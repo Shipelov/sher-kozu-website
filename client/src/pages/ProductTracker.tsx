@@ -99,6 +99,7 @@ function MetricBar({ value, max }: { value: number; max: number }) {
 
 export default function ProductTracker() {
   const [activeDelivery, setActiveDelivery] = useState(0);
+  const currentDelivery = deliveries[activeDelivery];
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -109,7 +110,7 @@ export default function ProductTracker() {
           <motion.section
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
-            className="mb-8 grid gap-5 rounded-[2rem] border border-border/70 bg-white/80 p-6 shadow-sm backdrop-blur lg:grid-cols-[1.05fr_0.95fr] lg:items-center"
+            className="mb-8 grid gap-5 rounded-[2rem] border border-border/70 bg-white/80 p-5 shadow-sm backdrop-blur md:p-6 lg:grid-cols-[1.05fr_0.95fr] lg:items-center"
           >
             <div>
               <p className="text-sm uppercase tracking-[0.22em] text-primary">Product transparency</p>
@@ -351,6 +352,47 @@ export default function ProductTracker() {
                   </div>
                   <Users className="h-5 w-5 text-amber-300" />
                 </Link>
+              </div>
+            </motion.section>
+            <motion.section
+              initial={{ opacity: 0, y: 18 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.22 }}
+              className="col-span-12 rounded-[2rem] border border-border/70 bg-card p-5 shadow-sm"
+            >
+              <div className="grid gap-5 lg:grid-cols-[1.1fr_0.9fr] lg:items-start">
+                <div>
+                  <p className="text-sm uppercase tracking-[0.22em] text-primary">Current route status</p>
+                  <h2 className="mt-3 text-2xl font-semibold text-foreground">Текущая активная доставка остаётся связанной с животным, коробкой и клубной историей.</h2>
+                  <p className="mt-3 max-w-2xl text-sm leading-7 text-muted-foreground">
+                    Для V1 важно, чтобы пользователь не видел набор разрозненных метрик. Он должен понимать, какая именно доставка сейчас в фокусе и куда идти дальше внутри системы.
+                  </p>
+
+                  <div className="mt-5 rounded-[1.5rem] bg-secondary/50 p-4">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div>
+                        <div className="text-xs uppercase tracking-[0.16em] text-primary">Активная доставка</div>
+                        <div className="mt-1 text-lg font-semibold text-foreground">{currentDelivery.id} · {currentDelivery.date}</div>
+                      </div>
+                      <div className="rounded-full bg-accent/20 px-4 py-2 text-xs font-semibold text-amber-800">
+                        {currentDelivery.status}
+                      </div>
+                    </div>
+                    <p className="mt-3 text-sm leading-7 text-muted-foreground">{currentDelivery.story}</p>
+                  </div>
+                </div>
+
+                <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-1">
+                  <Link href="/animal/marta" className="inline-flex items-center justify-center rounded-full bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/92">
+                    К профилю Марты
+                  </Link>
+                  <Link href="/dashboard" className="inline-flex items-center justify-center rounded-full border border-border px-4 py-3 text-sm font-semibold text-foreground transition-colors hover:bg-muted">
+                    Вернуться в Dashboard
+                  </Link>
+                  <Link href="/club" className="inline-flex items-center justify-center rounded-full border border-border px-4 py-3 text-sm font-semibold text-foreground transition-colors hover:bg-muted">
+                    Открыть клубную ленту
+                  </Link>
+                </div>
               </div>
             </motion.section>
           </div>

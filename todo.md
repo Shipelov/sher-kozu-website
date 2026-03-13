@@ -1,0 +1,5 @@
+- [ ] Сверить knowledge master roadmap, Sprint 1 документы и текущую реализацию сайта
+- [ ] Составить матрицу MVP-соответствия: done / partial / missing
+- [ ] Определить жёсткий V1 scope и вынести post-MVP элементы отдельно
+- [ ] Сохранить MVP Gap Analysis и V1 Execution Plan в папке проекта как knowledge
+- [ ] Подготовить следующий build-pass для доведения сайта до MVP V1

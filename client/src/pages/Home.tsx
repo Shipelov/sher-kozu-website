@@ -169,6 +169,10 @@ export default function Home() {
                   Познакомиться с Мартой
                   <ChevronRight className="h-4 w-4" />
                 </Link>
+                <Link href="/tracker" className="inline-flex items-center justify-center gap-2 rounded-full border border-primary/15 bg-secondary/70 px-7 py-4 text-sm font-semibold text-primary transition-colors hover:bg-secondary">
+                  Посмотреть путь продукта
+                  <Package className="h-4 w-4" />
+                </Link>
               </motion.div>
 
               <div className="mt-10 grid max-w-2xl grid-cols-2 gap-3 md:grid-cols-4">
@@ -373,11 +377,12 @@ export default function Home() {
                   <span className="text-sm font-medium">Следующий слой ценности</span>
                 </div>
                 <h3 className="mt-4 font-display text-3xl">AI-куратор владельца</h3>
-                <p className="mt-3 text-sm leading-7 text-white/75">
-                  В Sprint 2 продукт расширяется за счёт умного куратора, storyteller-логики и голоса животного.
-                  Уже сейчас архитектура сайта готовит для этого естественные точки входа.
-                </p>
-                <div className="mt-5 flex items-center gap-3 text-xs text-white/60">
+                  <p className="mt-3 text-sm leading-7 text-white/75">
+                    В Sprint 2 продукт расширяется за счёт умного куратора, storyteller-логики и голоса животного.
+                    Уже сейчас архитектура сайта готовит для этого естественные точки входа, не перегружая первую версию MVP лишней сложностью.
+                  </p>
+                  <div className="mt-5 flex flex-wrap items-center gap-3 text-xs text-white/60">
+
                   <span className="inline-flex items-center gap-1 rounded-full border border-white/15 px-3 py-1">
                     <Calendar className="h-3.5 w-3.5" />
                     Sprint 2 ready
@@ -386,6 +391,9 @@ export default function Home() {
                     <Sparkles className="h-3.5 w-3.5" />
                     AI touchpoints заложены
                   </span>
+                </div>
+                <div className="mt-5 rounded-[1.5rem] border border-white/10 bg-white/8 p-4 text-sm text-white/78">
+                  Первая версия MVP уже ведёт в рабочие слои продукта: владелец может понять модель, увидеть животное, проследить продукт и почувствовать клубную среду без разрывов маршрута.
                 </div>
               </div>
             </motion.div>
@@ -413,6 +421,10 @@ export default function Home() {
                 <Link href="/club" className="inline-flex items-center justify-center gap-2 rounded-full border border-white/20 px-7 py-4 text-sm font-semibold text-white transition-colors hover:bg-white/10">
                   Открыть клубную ленту
                   <Users className="h-4 w-4" />
+                </Link>
+                <Link href="/tracker" className="inline-flex items-center justify-center gap-2 rounded-full border border-white/20 px-7 py-4 text-sm font-semibold text-white transition-colors hover:bg-white/10">
+                  Перейти к трекеру продукта
+                  <Package className="h-4 w-4" />
                 </Link>
               </div>
             </div>

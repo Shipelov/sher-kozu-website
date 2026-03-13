@@ -1,3 +1,10 @@
+/*
+Design Philosophy Reminder — AnimalProfile.tsx
+Biomorphic Tech emotional core page.
+Core: one animal must feel alive, valuable and connected to dashboard, product and club routes.
+Hardening priority: no dead ends, calm mobile rhythm, consistent CTA logic.
+*/
+
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Link } from "wouter";
@@ -230,7 +237,7 @@ export default function AnimalProfile() {
               <motion.div
                 initial={{ opacity: 0, y: 16 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="grid grid-cols-4 gap-3"
+                className="grid grid-cols-2 gap-3 lg:grid-cols-4"
               >
                 {[
                   { emoji: "🥕", label: "Покормить", sub: "морковкой", color: "bg-orange-50 border-orange-200 hover:bg-orange-100" },
@@ -377,9 +384,9 @@ export default function AnimalProfile() {
                 initial={{ opacity: 0, y: 16 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.2 }}
-                className="bg-gradient-to-r from-slate-800 to-slate-900 rounded-2xl p-5 text-white"
+                className="rounded-2xl bg-gradient-to-r from-slate-800 to-slate-900 p-5 text-white"
               >
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
                   <div>
                     <p className="text-xs text-white/60 mb-1">NFT-паспорт животного</p>
                     <h3 className="text-lg font-bold">Марта #МК-2023-047</h3>
@@ -389,9 +396,21 @@ export default function AnimalProfile() {
                       <span className="text-xs text-white/60">Выдан: 14.02.2025</span>
                     </div>
                   </div>
-                  <div className="w-20 h-20 rounded-xl overflow-hidden border-2 border-white/20 flex-shrink-0">
-                    <img src={CDN.goat} alt="NFT" className="w-full h-full object-cover" />
+                  <div className="h-20 w-20 flex-shrink-0 overflow-hidden rounded-xl border-2 border-white/20">
+                    <img src={CDN.goat} alt="NFT" className="h-full w-full object-cover" />
                   </div>
+                </div>
+
+                <div className="mt-5 grid gap-3 sm:grid-cols-3">
+                  <Link href="/dashboard" className="inline-flex items-center justify-center rounded-full bg-white px-4 py-3 text-sm font-semibold text-slate-900 transition-colors hover:bg-white/90">
+                    Вернуться в Dashboard
+                  </Link>
+                  <Link href="/tracker" className="inline-flex items-center justify-center rounded-full border border-white/20 px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-white/10">
+                    Открыть трекер продукта
+                  </Link>
+                  <Link href="/club" className="inline-flex items-center justify-center rounded-full border border-white/20 px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-white/10">
+                    Перейти в клуб
+                  </Link>
                 </div>
               </motion.div>
             </div>
