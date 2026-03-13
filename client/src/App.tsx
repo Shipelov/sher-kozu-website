@@ -9,8 +9,8 @@ import Dashboard from "./pages/Dashboard";
 import AnimalProfile from "./pages/AnimalProfile";
 import ProductTracker from "./pages/ProductTracker";
 import ClubFeed from "./pages/ClubFeed";
-
 function Router() {
+  // make sure to consider if you need authentication for certain routes
   return (
     <Switch>
       <Route path="/" component={Home} />

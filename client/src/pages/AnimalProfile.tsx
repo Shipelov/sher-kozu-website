@@ -5,6 +5,7 @@ Core: one animal must feel alive, valuable and connected to dashboard, product a
 Hardening priority: no dead ends, calm mobile rhythm, consistent CTA logic.
 */
 
+import { trpc } from "@/lib/trpc";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
@@ -13,8 +14,19 @@ import Navbar from "@/components/Navbar";
 import {
   Heart, Thermometer, Milk, Camera, BookOpen, Star, Award,
   ChevronLeft, ChevronRight, Play, Calendar, Dna, MapPin, Zap, ChevronDown, Images, Upload, X, Share2, Link2,
-  Facebook, MessageCircle, Instagram
+  Facebook, MessageCircle, Instagram, Loader2
 } from "lucide-react";
+
+type GalleryImage = {
+  id: string;
+  src: string;
+  title: string;
+  meta: string;
+  isUploaded?: boolean;
+  photoId?: number;
+};
+
+const ANIMAL_SLUG = "marta";
 
 const CDN = {
   goat: "https://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/goat_portrait_80fc5726.jpg",
@@ -64,18 +76,75 @@ const healthHistory = [
   { date: "1 февраля", event: "Обрезка копыт", status: "ok", note: "Плановая процедура" },
 ];
 
-const defaultGallery = [
-  { id: "cover", src: CDN.goat, title: "Портрет Марты", meta: "Основной профиль" },
-  { id: "live", src: CDN.liveCam, title: "Марта в стойле", meta: "Утренний эфир" },
-  { id: "family", src: CDN.family, title: "День с семьёй", meta: "Визит на ферму" },
+const defaultGallery: GalleryImage[] = [
+  { id: "cover", src: CDN.goat, title: "Портрет Марты", meta: "Основной профиль", isUploaded: false },
+  { id: "live", src: CDN.liveCam, title: "Марта в стойле", meta: "Утренний эфир", isUploaded: false },
+  { id: "family", src: CDN.family, title: "День с семьёй", meta: "Визит на ферму", isUploaded: false },
 ];
+
+function fileToBase64(file: File) {
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = typeof reader.result === "string" ? reader.result : "";
+      const base64 = result.includes(",") ? result.split(",")[1] ?? "" : result;
+      resolve(base64);
+    };
+    reader.onerror = () => reject(new Error("Не удалось прочитать файл"));
+    reader.readAsDataURL(file);
+  });
+}
 
 export default function AnimalProfile() {
   const [activeTab, setActiveTab] = useState<"diary" | "health" | "milk">("diary");
   const [showFullBio, setShowFullBio] = useState(false);
-  const [galleryImages, setGalleryImages] = useState(defaultGallery);
   const [selectedImageId, setSelectedImageId] = useState(defaultGallery[0].id);
   const [lightboxOpen, setLightboxOpen] = useState(false);
+
+  const utils = trpc.useUtils();
+  const photosQuery = trpc.animalPhotos.list.useQuery({ animalSlug: ANIMAL_SLUG });
+  const uploadPhoto = trpc.animalPhotos.upload.useMutation({
+    onSuccess: async (created) => {
+      await utils.animalPhotos.list.invalidate({ animalSlug: ANIMAL_SLUG });
+      setSelectedImageId(created.id);
+      toast.success("Фото сохранено", {
+        description: "Снимок теперь хранится в профиле Марты и останется после перезагрузки.",
+      });
+    },
+    onError: (error) => {
+      toast.error("Не удалось сохранить фото", {
+        description: error.message,
+      });
+    },
+  });
+
+  const removePhoto = trpc.animalPhotos.remove.useMutation({
+    onSuccess: async ({ photoId }) => {
+      await utils.animalPhotos.list.invalidate({ animalSlug: ANIMAL_SLUG });
+      setSelectedImageId((current) => (current === `user-${photoId}` ? defaultGallery[0].id : current));
+      toast.success("Фото удалено", {
+        description: "Снимок убран из постоянной галереи профиля.",
+      });
+    },
+    onError: (error) => {
+      toast.error("Не удалось удалить фото", {
+        description: error.message,
+      });
+    },
+  });
+
+  const galleryImages = useMemo<GalleryImage[]>(() => {
+    const persistent = photosQuery.data ?? [];
+    return [...persistent, ...defaultGallery];
+  }, [photosQuery.data]);
+
+  useEffect(() => {
+    if (!galleryImages.length) return;
+    const hasSelected = galleryImages.some((item) => item.id === selectedImageId);
+    if (!hasSelected) {
+      setSelectedImageId(galleryImages[0].id);
+    }
+  }, [galleryImages, selectedImageId]);
 
   const selectedImage = useMemo(
     () => galleryImages.find((item) => item.id === selectedImageId) ?? galleryImages[0],
@@ -144,62 +213,45 @@ export default function AnimalProfile() {
     });
   }
 
-  function handleGalleryUpload(event: React.ChangeEvent<HTMLInputElement>) {
+  async function handleGalleryUpload(event: React.ChangeEvent<HTMLInputElement>) {
     const files = Array.from(event.target.files ?? []);
     if (!files.length) return;
 
-    const uploadedImages = files.map((file, index) => ({
-      id: `${file.name}-${file.lastModified}-${index}`,
-      src: URL.createObjectURL(file),
-      title: file.name.replace(/\.[^.]+$/, "") || `Фото ${galleryImages.length + index + 1}`,
-      meta: `Загружено владельцем · ${Math.round(file.size / 1024)} KB`,
-    }));
-
-    setGalleryImages((current) => [...uploadedImages, ...current]);
-    setSelectedImageId(uploadedImages[0].id);
-    event.target.value = "";
+    try {
+      for (const file of files) {
+        const base64Data = await fileToBase64(file);
+        await uploadPhoto.mutateAsync({
+          animalSlug: ANIMAL_SLUG,
+          fileName: file.name,
+          mimeType: file.type || "image/jpeg",
+          sizeBytes: file.size,
+          base64Data,
+        });
+      }
+    } finally {
+      event.target.value = "";
+    }
   }
 
-  function handleRemoveUploadedImage(imageId: string) {
-    setGalleryImages((current) => {
-      const target = current.find((item) => item.id === imageId);
-      if (target && target.src.startsWith("blob:")) {
-        URL.revokeObjectURL(target.src);
-      }
-
-      const next = current.filter((item) => item.id !== imageId);
-      if (selectedImageId === imageId && next.length) {
-        setSelectedImageId(next[0].id);
-      }
-      return next;
-    });
+  function handleRemoveUploadedImage(image: GalleryImage) {
+    if (!image.isUploaded || !image.photoId) return;
+    removePhoto.mutate({ photoId: image.photoId });
   }
-
-  useEffect(() => {
-    return () => {
-      galleryImages.forEach((item) => {
-        if (item.src.startsWith("blob:")) {
-          URL.revokeObjectURL(item.src);
-        }
-      });
-    };
-  }, [galleryImages]);
 
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
       <div className="pt-20 pb-12">
-        {/* Hero */}
-        <div className="relative h-72 md:h-96 overflow-hidden">
-          <img src={CDN.family} alt="Ферма" className="w-full h-full object-cover" />
+        <div className="relative h-72 overflow-hidden md:h-96">
+          <img src={CDN.family} alt="Ферма" className="h-full w-full object-cover" />
           <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-black/70" />
           <div className="absolute top-4 left-4">
             <Link href="/dashboard">
               <motion.button
                 whileHover={{ scale: 1.05 }}
-                className="flex items-center gap-1.5 bg-white/20 backdrop-blur-sm text-white text-sm font-medium px-3 py-2 rounded-full"
+                className="flex items-center gap-1.5 rounded-full bg-white/20 px-3 py-2 text-sm font-medium text-white backdrop-blur-sm"
               >
-                <ChevronLeft className="w-4 h-4" />
+                <ChevronLeft className="h-4 w-4" />
                 Назад
               </motion.button>
             </Link>
@@ -208,17 +260,13 @@ export default function AnimalProfile() {
             <div className="container">
               <div className="flex items-end gap-4">
                 <div className="relative">
-                  <img
-                    src={CDN.goat}
-                    alt="Марта"
-                    className="w-24 h-24 rounded-2xl object-cover border-4 border-white shadow-xl"
-                  />
-                  <div className="absolute -bottom-1 -right-1 bg-green-500 rounded-full p-1.5">
-                    <div className="w-2 h-2 bg-white rounded-full" />
+                  <img src={CDN.goat} alt="Марта" className="h-24 w-24 rounded-2xl border-4 border-white object-cover shadow-xl" />
+                  <div className="absolute -bottom-1 -right-1 rounded-full bg-green-500 p-1.5">
+                    <div className="h-2 w-2 rounded-full bg-white" />
                   </div>
                 </div>
-                <div className="text-white pb-1">
-                  <div className="flex items-center gap-2 mb-1">
+                <div className="pb-1 text-white">
+                  <div className="mb-1 flex items-center gap-2">
                     <span className="pulse-dot" />
                     <span className="text-xs">Онлайн · Стойло №3</span>
                   </div>
@@ -226,8 +274,8 @@ export default function AnimalProfile() {
                   <p className="text-white/80">Англо-нубийская · 3 года · #МК-2023-047</p>
                 </div>
                 <div className="ml-auto flex items-center gap-2 pb-1">
-                  <div className="bg-amber-500 text-white text-xs font-bold px-3 py-1 rounded-full flex items-center gap-1">
-                    <Star className="w-3 h-3 fill-white" />
+                  <div className="flex items-center gap-1 rounded-full bg-amber-500 px-3 py-1 text-xs font-bold text-white">
+                    <Star className="h-3 w-3 fill-white" />
                     Элита
                   </div>
                 </div>
@@ -238,17 +286,9 @@ export default function AnimalProfile() {
 
         <div className="container mt-6">
           <div className="grid grid-cols-12 gap-5">
-
-            {/* Left column */}
-            <div className="col-span-12 md:col-span-4 space-y-4">
-
-              {/* Vital stats */}
-              <motion.div
-                initial={{ opacity: 0, x: -16 }}
-                animate={{ opacity: 1, x: 0 }}
-                className="bg-card rounded-2xl border border-border shadow-sm p-5"
-              >
-                <h3 className="font-bold text-foreground mb-4">Показатели здоровья</h3>
+            <div className="col-span-12 space-y-4 md:col-span-4">
+              <motion.div initial={{ opacity: 0, x: -16 }} animate={{ opacity: 1, x: 0 }} className="rounded-2xl border border-border bg-card p-5 shadow-sm">
+                <h3 className="mb-4 font-bold text-foreground">Показатели здоровья</h3>
                 <div className="grid grid-cols-2 gap-4">
                   {[
                     { label: "Счастье", value: 87, color: "#e11d48", icon: Heart },
@@ -262,10 +302,10 @@ export default function AnimalProfile() {
                         <div className="relative">
                           <ProgressRing value={stat.value} size={72} strokeWidth={5} color={stat.color} />
                           <div className="absolute inset-0 flex items-center justify-center">
-                            <Icon className="w-4 h-4" style={{ color: stat.color }} />
+                            <Icon className="h-4 w-4" style={{ color: stat.color }} />
                           </div>
                         </div>
-                        <p className="text-xs text-muted-foreground mt-1">{stat.label}</p>
+                        <p className="mt-1 text-xs text-muted-foreground">{stat.label}</p>
                         <p className="font-mono-data text-sm font-semibold">{stat.value}%</p>
                       </div>
                     );
@@ -273,15 +313,9 @@ export default function AnimalProfile() {
                 </div>
               </motion.div>
 
-              {/* Passport */}
-              <motion.div
-                initial={{ opacity: 0, x: -16 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.1 }}
-                className="bg-card rounded-2xl border border-border shadow-sm p-5"
-              >
-                <h3 className="font-bold text-foreground mb-3 flex items-center gap-2">
-                  <Dna className="w-4 h-4 text-primary" />
+              <motion.div initial={{ opacity: 0, x: -16 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.1 }} className="rounded-2xl border border-border bg-card p-5 shadow-sm">
+                <h3 className="mb-3 flex items-center gap-2 font-bold text-foreground">
+                  <Dna className="h-4 w-4 text-primary" />
                   Паспорт животного
                 </h3>
                 <div className="space-y-2.5 text-sm">
@@ -300,28 +334,20 @@ export default function AnimalProfile() {
                     </div>
                   ))}
                 </div>
-                <div className="mt-4 pt-3 border-t border-border">
+                <div className="mt-4 border-t border-border pt-3">
                   <p className="text-xs text-muted-foreground">
                     {showFullBio
                       ? "Англо-нубийская коза — одна из самых продуктивных молочных пород мира. Отличается высокой жирностью молока (до 5%), отсутствием специфического запаха и дружелюбным характером. Марта — дочь чемпиона выставки «АгроФерм 2022», обладатель золотой медали по надою."
                       : "Одна из самых продуктивных молочных пород мира..."}
                   </p>
-                  <button
-                    onClick={() => setShowFullBio(!showFullBio)}
-                    className="text-xs text-primary mt-1 flex items-center gap-1 hover:underline"
-                  >
+                  <button onClick={() => setShowFullBio(!showFullBio)} className="mt-1 flex items-center gap-1 text-xs text-primary hover:underline">
                     {showFullBio ? "Свернуть" : "Читать полностью"}
-                    <ChevronDown className={`w-3 h-3 transition-transform ${showFullBio ? "rotate-180" : ""}`} />
+                    <ChevronDown className={`h-3 w-3 transition-transform ${showFullBio ? "rotate-180" : ""}`} />
                   </button>
                 </div>
               </motion.div>
 
-              <motion.div
-                initial={{ opacity: 0, x: -16 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.18 }}
-                className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm"
-              >
+              <motion.div initial={{ opacity: 0, x: -16 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.18 }} className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
                 <div className="border-b border-border p-5">
                   <div className="flex items-center justify-between gap-3">
                     <div>
@@ -332,9 +358,9 @@ export default function AnimalProfile() {
                       <p className="mt-1 text-sm text-muted-foreground">Фотоистория Марты с быстрым переходом между кадрами.</p>
                     </div>
                     <label className="inline-flex cursor-pointer items-center gap-2 rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/92">
-                      <Upload className="h-4 w-4" />
-                      Добавить фото
-                      <input type="file" accept="image/*" multiple className="hidden" onChange={handleGalleryUpload} />
+                      {uploadPhoto.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+                      {uploadPhoto.isPending ? "Сохраняем..." : "Добавить фото"}
+                      <input type="file" accept="image/*" multiple className="hidden" onChange={handleGalleryUpload} disabled={uploadPhoto.isPending} />
                     </label>
                   </div>
                 </div>
@@ -342,11 +368,7 @@ export default function AnimalProfile() {
                 <div className="p-5">
                   {selectedImage && (
                     <div className="overflow-hidden rounded-[1.5rem] border border-border/70 bg-muted/30">
-                      <button
-                        type="button"
-                        onClick={() => setLightboxOpen(true)}
-                        className="group relative block w-full text-left"
-                      >
+                      <button type="button" onClick={() => setLightboxOpen(true)} className="group relative block w-full text-left">
                         <img src={selectedImage.src} alt={selectedImage.title} className="h-56 w-full object-cover md:h-72" />
                         <div className="absolute inset-0 bg-black/0 transition-colors group-hover:bg-black/12" />
                         <div className="absolute bottom-4 right-4 rounded-full bg-black/60 px-3 py-1 text-xs font-medium text-white opacity-0 backdrop-blur transition-opacity group-hover:opacity-100">
@@ -363,20 +385,10 @@ export default function AnimalProfile() {
                             {galleryImages.length} фото в истории
                           </div>
                           <div className="inline-flex items-center gap-1 rounded-full border border-border bg-white px-1 py-1">
-                            <button
-                              type="button"
-                              onClick={() => moveGallery("prev")}
-                              aria-label="Предыдущее фото"
-                              className="inline-flex h-8 w-8 items-center justify-center rounded-full text-foreground transition-colors hover:bg-muted"
-                            >
+                            <button type="button" onClick={() => moveGallery("prev")} aria-label="Предыдущее фото" className="inline-flex h-8 w-8 items-center justify-center rounded-full text-foreground transition-colors hover:bg-muted">
                               <ChevronLeft className="h-4 w-4" />
                             </button>
-                            <button
-                              type="button"
-                              onClick={() => moveGallery("next")}
-                              aria-label="Следующее фото"
-                              className="inline-flex h-8 w-8 items-center justify-center rounded-full text-foreground transition-colors hover:bg-muted"
-                            >
+                            <button type="button" onClick={() => moveGallery("next")} aria-label="Следующее фото" className="inline-flex h-8 w-8 items-center justify-center rounded-full text-foreground transition-colors hover:bg-muted">
                               <ChevronRight className="h-4 w-4" />
                             </button>
                           </div>
@@ -393,48 +405,22 @@ export default function AnimalProfile() {
                       </div>
 
                       <div className="flex flex-wrap items-center gap-2">
-                        <button
-                          type="button"
-                          aria-label="Поделиться в Facebook"
-                          title="Facebook"
-                          onClick={() => handleShare("facebook")}
-                          className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-border bg-card text-[#1877F2] transition-colors hover:bg-muted"
-                        >
+                        <button type="button" aria-label="Поделиться в Facebook" title="Facebook" onClick={() => handleShare("facebook")} className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-border bg-card text-[#1877F2] transition-colors hover:bg-muted">
                           <Facebook className="h-4 w-4" />
                         </button>
-                        <button
-                          type="button"
-                          aria-label="Поделиться во ВКонтакте"
-                          title="VK"
-                          onClick={() => handleShare("vk")}
-                          className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-border bg-card text-[#0077FF] transition-colors hover:bg-muted"
-                        >
+                        <button type="button" aria-label="Поделиться во ВКонтакте" title="VK" onClick={() => handleShare("vk")} className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-border bg-card text-[#0077FF] transition-colors hover:bg-muted">
                           <MessageCircle className="h-4 w-4" />
                         </button>
-                        <button
-                          type="button"
-                          aria-label="Поделиться в Instagram"
-                          title="Instagram"
-                          onClick={() => handleShare("instagram")}
-                          className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-border bg-card text-[#E1306C] transition-colors hover:bg-muted"
-                        >
+                        <button type="button" aria-label="Поделиться в Instagram" title="Instagram" onClick={() => handleShare("instagram")} className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-border bg-card text-[#E1306C] transition-colors hover:bg-muted">
                           <Instagram className="h-4 w-4" />
                         </button>
-                        <button
-                          type="button"
-                          aria-label="Скопировать ссылку"
-                          title="Копировать ссылку"
-                          onClick={handleCopyShareLink}
-                          className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-dashed border-primary/40 bg-primary/5 text-primary transition-colors hover:bg-primary/10"
-                        >
+                        <button type="button" aria-label="Скопировать ссылку" title="Копировать ссылку" onClick={handleCopyShareLink} className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-dashed border-primary/40 bg-primary/5 text-primary transition-colors hover:bg-primary/10">
                           <Link2 className="h-4 w-4" />
                         </button>
                       </div>
                     </div>
 
-                    <div className="mt-3 truncate rounded-full border border-border/60 bg-card px-4 py-2 text-xs text-muted-foreground">
-                      {shareUrl}
-                    </div>
+                    <div className="mt-3 truncate rounded-full border border-border/60 bg-card px-4 py-2 text-xs text-muted-foreground">{shareUrl}</div>
                   </div>
 
                   <div className="mt-3 rounded-[1.5rem] border border-border bg-card/85 p-4 shadow-sm">
@@ -443,59 +429,50 @@ export default function AnimalProfile() {
                         <p className="text-sm font-semibold text-foreground">Фотографии</p>
                         <p className="mt-1 text-xs text-muted-foreground">Быстрый переход к нужному снимку.</p>
                       </div>
-                      <div className="rounded-full bg-primary/10 px-3 py-1 text-[11px] font-medium text-primary">
-                        {galleryImages.length} фото
+                      <div className="rounded-full bg-primary/10 px-3 py-1 text-[11px] font-medium text-primary">{galleryImages.length} фото</div>
+                    </div>
+
+                    {photosQuery.isLoading ? (
+                      <div className="flex items-center gap-2 rounded-2xl bg-secondary/50 px-4 py-3 text-sm text-muted-foreground">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Загружаем сохранённые фотографии профиля...
                       </div>
-                    </div>
-                    <div className="flex snap-x gap-3 overflow-x-auto pb-2">
-                      {galleryImages.map((image) => {
-                        const isSelected = image.id === selectedImageId;
-                        const isUploaded = image.src.startsWith("blob:");
+                    ) : (
+                      <div className="flex gap-3 overflow-x-auto pb-1">
+                        {galleryImages.map((image) => {
+                          const isSelected = image.id === selectedImageId;
 
-                        return (
-                          <div
-                            key={image.id}
-                            className={`group relative min-w-[120px] max-w-[120px] snap-start overflow-hidden rounded-[1rem] border transition-all ${
-                              isSelected ? "border-primary shadow-md shadow-primary/10" : "border-border bg-card"
-                            }`}
-                          >
-                            <button
-                              type="button"
-                              onClick={() => setSelectedImageId(image.id)}
-                              className="block w-full text-left"
-                            >
-                              <img src={image.src} alt={image.title} className="h-20 w-full object-cover" />
-                              <div className="p-2.5">
-                                <div className="truncate text-[11px] font-semibold text-foreground">{image.title}</div>
-                              </div>
-                            </button>
-
-                            {isUploaded && galleryImages.length > 1 && (
-                              <button
-                                type="button"
-                                aria-label="Удалить фото"
-                                onClick={() => handleRemoveUploadedImage(image.id)}
-                                className="absolute right-2 top-2 inline-flex h-6 w-6 items-center justify-center rounded-full bg-black/55 text-white opacity-100 transition-colors hover:bg-black/70 md:opacity-0 md:group-hover:opacity-100"
-                              >
-                                <X className="h-3 w-3" />
+                          return (
+                            <div key={image.id} className={`group relative min-w-[120px] max-w-[120px] snap-start overflow-hidden rounded-[1rem] border transition-all ${isSelected ? "border-primary shadow-md shadow-primary/10" : "border-border bg-card"}`}>
+                              <button type="button" onClick={() => setSelectedImageId(image.id)} className="block w-full text-left">
+                                <img src={image.src} alt={image.title} className="h-20 w-full object-cover" />
+                                <div className="p-2.5">
+                                  <div className="truncate text-[11px] font-semibold text-foreground">{image.title}</div>
+                                </div>
                               </button>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
 
+                              {image.isUploaded && galleryImages.length > 1 && (
+                                <button
+                                  type="button"
+                                  aria-label="Удалить фото"
+                                  onClick={() => handleRemoveUploadedImage(image)}
+                                  disabled={removePhoto.isPending}
+                                  className="absolute right-2 top-2 inline-flex h-6 w-6 items-center justify-center rounded-full bg-black/55 text-white opacity-100 transition-colors hover:bg-black/70 disabled:cursor-not-allowed disabled:opacity-60 md:opacity-0 md:group-hover:opacity-100"
+                                >
+                                  <X className="h-3 w-3" />
+                                </button>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
                 </div>
               </motion.div>
 
-              <motion.div
-                initial={{ opacity: 0, x: -16 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.24 }}
-                className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm"
-              >
-                <div className="relative h-56 cursor-pointer group md:h-64">
+              <motion.div initial={{ opacity: 0, x: -16 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.24 }} className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
+                <div className="group relative h-56 cursor-pointer md:h-64">
                   <img src={CDN.liveCam} alt="Прямой эфир" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
                   <div className="absolute inset-0 bg-black/30 transition-colors group-hover:bg-black/20" />
                   <div className="absolute left-3 top-3 flex items-center gap-1.5 rounded-full bg-red-600 px-2 py-0.5 text-xs font-bold text-white">
@@ -523,41 +500,23 @@ export default function AnimalProfile() {
               </motion.div>
             </div>
 
-            {/* Right column */}
-            <div className="col-span-12 md:col-span-8 space-y-4">
-
-              {/* Quick actions */}
-              <motion.div
-                initial={{ opacity: 0, y: 16 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="grid grid-cols-2 gap-3 lg:grid-cols-4"
-              >
+            <div className="col-span-12 space-y-4 md:col-span-8">
+              <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} className="grid grid-cols-2 gap-3 lg:grid-cols-4">
                 {[
                   { emoji: "🥕", label: "Покормить", sub: "морковкой", color: "bg-orange-50 border-orange-200 hover:bg-orange-100" },
                   { emoji: "🛁", label: "SPA-уход", sub: "груминг", color: "bg-blue-50 border-blue-200 hover:bg-blue-100" },
                   { emoji: "🚶", label: "Прогулка", sub: "1 час", color: "bg-green-50 border-green-200 hover:bg-green-100" },
                   { emoji: "🎂", label: "День рождения", sub: "через 32 дня", color: "bg-amber-50 border-amber-200 hover:bg-amber-100" },
                 ].map((action, i) => (
-                  <motion.button
-                    key={i}
-                    whileHover={{ scale: 1.04, y: -2 }}
-                    whileTap={{ scale: 0.97 }}
-                    className={`flex flex-col items-center p-3 rounded-xl border text-center transition-colors ${action.color}`}
-                  >
-                    <span className="text-2xl mb-1">{action.emoji}</span>
+                  <motion.button key={i} whileHover={{ scale: 1.04, y: -2 }} whileTap={{ scale: 0.97 }} className={`flex flex-col items-center rounded-xl border p-3 text-center transition-colors ${action.color}`}>
+                    <span className="mb-1 text-2xl">{action.emoji}</span>
                     <span className="text-xs font-semibold text-foreground">{action.label}</span>
                     <span className="text-xs text-muted-foreground">{action.sub}</span>
                   </motion.button>
                 ))}
               </motion.div>
 
-              {/* Tabs */}
-              <motion.div
-                initial={{ opacity: 0, y: 16 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.1 }}
-                className="bg-card rounded-2xl border border-border shadow-sm overflow-hidden"
-              >
+              <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
                 <div className="flex border-b border-border">
                   {(["diary", "health", "milk"] as const).map((tab) => {
                     const labels = { diary: "Дневник", health: "Здоровье", milk: "Надои" };
@@ -567,13 +526,9 @@ export default function AnimalProfile() {
                       <button
                         key={tab}
                         onClick={() => setActiveTab(tab)}
-                        className={`flex-1 flex items-center justify-center gap-2 py-3.5 text-sm font-medium transition-colors ${
-                          activeTab === tab
-                            ? "text-primary border-b-2 border-primary bg-primary/5"
-                            : "text-muted-foreground hover:text-foreground"
-                        }`}
+                        className={`flex flex-1 items-center justify-center gap-2 py-3.5 text-sm font-medium transition-colors ${activeTab === tab ? "border-b-2 border-primary bg-primary/5 text-primary" : "text-muted-foreground hover:text-foreground"}`}
                       >
-                        <Icon className="w-4 h-4" />
+                        <Icon className="h-4 w-4" />
                         {labels[tab]}
                       </button>
                     );
@@ -581,31 +536,24 @@ export default function AnimalProfile() {
                 </div>
 
                 <AnimatePresence mode="wait">
-                  <motion.div
-                    key={activeTab}
-                    initial={{ opacity: 0, y: 8 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -8 }}
-                    transition={{ duration: 0.2 }}
-                    className="p-5"
-                  >
+                  <motion.div key={activeTab} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.2 }} className="p-5">
                     {activeTab === "diary" && (
                       <div className="space-y-4">
                         {diaryEntries.map((entry, i) => (
-                          <div key={i} className="flex gap-4 p-4 rounded-xl bg-muted/40 hover:bg-muted/70 transition-colors">
+                          <div key={i} className="flex gap-4 rounded-xl bg-muted/40 p-4 transition-colors hover:bg-muted/70">
                             <div className="text-3xl">{entry.mood}</div>
                             <div className="flex-1">
-                              <div className="flex items-center justify-between mb-1">
+                              <div className="mb-1 flex items-center justify-between">
                                 <h4 className="font-semibold text-foreground">{entry.title}</h4>
-                                <span className="text-xs text-muted-foreground flex items-center gap-1">
-                                  <Calendar className="w-3 h-3" />
+                                <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                                  <Calendar className="h-3 w-3" />
                                   {entry.date}
                                 </span>
                               </div>
-                              <p className="text-sm text-muted-foreground leading-relaxed">{entry.text}</p>
-                              <div className="flex gap-1.5 mt-2">
+                              <p className="text-sm leading-relaxed text-muted-foreground">{entry.text}</p>
+                              <div className="mt-2 flex gap-1.5">
                                 {entry.tags.map((tag) => (
-                                  <span key={tag} className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full">
+                                  <span key={tag} className="rounded-full bg-primary/10 px-2 py-0.5 text-xs text-primary">
                                     #{tag}
                                   </span>
                                 ))}
@@ -619,20 +567,20 @@ export default function AnimalProfile() {
                     {activeTab === "health" && (
                       <div className="space-y-3">
                         {healthHistory.map((item, i) => (
-                          <div key={i} className="flex items-start gap-3 p-3 rounded-xl bg-muted/40">
-                            <div className="w-2 h-2 rounded-full bg-green-500 mt-1.5 flex-shrink-0" />
+                          <div key={i} className="flex items-start gap-3 rounded-xl bg-muted/40 p-3">
+                            <div className="mt-1.5 h-2 w-2 flex-shrink-0 rounded-full bg-green-500" />
                             <div className="flex-1">
                               <div className="flex items-center justify-between">
                                 <p className="text-sm font-medium text-foreground">{item.event}</p>
                                 <span className="text-xs text-muted-foreground">{item.date}</span>
                               </div>
-                              <p className="text-xs text-muted-foreground mt-0.5">{item.note}</p>
+                              <p className="mt-0.5 text-xs text-muted-foreground">{item.note}</p>
                             </div>
                           </div>
                         ))}
-                        <div className="mt-4 p-4 rounded-xl bg-green-50 border border-green-200">
-                          <p className="text-sm font-semibold text-green-800 flex items-center gap-2">
-                            <Award className="w-4 h-4" />
+                        <div className="mt-4 rounded-xl border border-green-200 bg-green-50 p-4">
+                          <p className="flex items-center gap-2 text-sm font-semibold text-green-800">
+                            <Award className="h-4 w-4" />
                             Следующий плановый осмотр: 10 апреля 2026
                           </p>
                         </div>
@@ -641,20 +589,20 @@ export default function AnimalProfile() {
 
                     {activeTab === "milk" && (
                       <div>
-                        <div className="grid grid-cols-3 gap-3 mb-5">
+                        <div className="mb-5 grid grid-cols-3 gap-3">
                           {[
                             { label: "Сегодня", value: "1.8 л", trend: "+12%" },
                             { label: "Эта неделя", value: "11.4 л", trend: "+8%" },
                             { label: "Этот месяц", value: "47.2 л", trend: "+5%" },
                           ].map((stat, i) => (
-                            <div key={i} className="bg-muted/50 rounded-xl p-3 text-center">
-                              <p className="text-xs text-muted-foreground mb-1">{stat.label}</p>
+                            <div key={i} className="rounded-xl bg-muted/50 p-3 text-center">
+                              <p className="mb-1 text-xs text-muted-foreground">{stat.label}</p>
                               <p className="font-mono-data text-xl font-bold text-foreground">{stat.value}</p>
-                              <p className="text-xs text-green-600 font-medium">{stat.trend}</p>
+                              <p className="text-xs font-medium text-green-600">{stat.trend}</p>
                             </div>
                           ))}
                         </div>
-                        <div className="h-32 flex items-end gap-1.5">
+                        <div className="flex h-32 items-end gap-1.5">
                           {[1.4, 1.6, 1.5, 1.7, 1.8, 1.6, 1.8, 1.7, 1.9, 1.8, 1.6, 1.8, 1.7, 1.8].map((v, i) => (
                             <motion.div
                               key={i}
@@ -665,32 +613,36 @@ export default function AnimalProfile() {
                             />
                           ))}
                         </div>
-                        <p className="text-xs text-muted-foreground text-center mt-2">Надой за последние 14 дней (л)</p>
+                        <p className="mt-2 text-center text-xs text-muted-foreground">Надой за последние 14 дней (л)</p>
                       </div>
                     )}
                   </motion.div>
                 </AnimatePresence>
               </motion.div>
 
-              {/* NFT Passport */}
-              <motion.div
-                initial={{ opacity: 0, y: 16 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.2 }}
-                className="rounded-2xl bg-gradient-to-r from-slate-800 to-slate-900 p-5 text-white"
-              >
+              <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.18 }} className="rounded-2xl border border-border bg-card p-5 shadow-sm">
+                <div className="mb-4 flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-sm uppercase tracking-[0.22em] text-primary">История заботы</p>
+                    <h2 className="mt-2 text-2xl font-semibold text-foreground">Марта остаётся в центре маршрута владельца.</h2>
+                  </div>
+                  <Heart className="h-5 w-5 text-primary" />
+                </div>
+                <p className="max-w-3xl text-sm leading-7 text-muted-foreground">
+                  Профиль животного должен соединять ежедневную эмоциональную связь, рациональную прозрачность и переходы в продуктовый трекер и клубную жизнь без тупиковых маршрутов.
+                </p>
+              </motion.div>
+
+              <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.24 }} className="rounded-2xl bg-gradient-to-r from-slate-800 to-slate-900 p-5 text-white">
                 <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
                   <div>
-                    <p className="text-xs text-white/60 mb-1">Цифровой паспорт животного</p>
+                    <p className="mb-1 text-xs text-white/60">Цифровой паспорт животного</p>
                     <h3 className="text-lg font-bold">Марта #МК-2023-047</h3>
-                    <p className="text-sm text-white/70 mt-1">Цифровая карточка с историей животного. Подтверждает происхождение, статус и связь владельца с Мартой.</p>
-                    <div className="flex items-center gap-3 mt-3">
-                      <span className="font-mono-data text-xs bg-white/10 px-2 py-1 rounded">0x7f3a...c9b2</span>
+                    <p className="mt-1 text-sm text-white/70">Цифровая карточка с историей животного. Подтверждает происхождение, статус и связь владельца с Мартой.</p>
+                    <div className="mt-3 flex items-center gap-3">
+                      <span className="rounded bg-white/10 px-2 py-1 font-mono-data text-xs">0x7f3a...c9b2</span>
                       <span className="text-xs text-white/60">Выдан: 14.02.2025</span>
                     </div>
-                  </div>
-                  <div className="h-20 w-20 flex-shrink-0 overflow-hidden rounded-xl border-2 border-white/20">
-                    <img src={CDN.goat} alt="NFT" className="h-full w-full object-cover" />
                   </div>
                 </div>
 
@@ -709,77 +661,60 @@ export default function AnimalProfile() {
             </div>
           </div>
         </div>
-        <AnimatePresence>
-          {lightboxOpen && selectedImage && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 z-[70] bg-black/82 px-4 py-6 backdrop-blur-sm"
-            >
-              <div className="mx-auto flex h-full w-full max-w-5xl flex-col justify-center">
-                <div className="mb-4 flex items-center justify-between text-white">
+      </div>
+
+      <AnimatePresence>
+        {lightboxOpen && selectedImage && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-4" onClick={() => setLightboxOpen(false)}>
+            <motion.div initial={{ scale: 0.96, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.96, opacity: 0 }} className="relative w-full max-w-5xl overflow-hidden rounded-[2rem] bg-black/40 backdrop-blur" onClick={(event) => event.stopPropagation()}>
+              <button type="button" onClick={() => setLightboxOpen(false)} className="absolute right-4 top-4 z-10 inline-flex h-10 w-10 items-center justify-center rounded-full bg-black/45 text-white transition-colors hover:bg-black/60">
+                <X className="h-4 w-4" />
+              </button>
+              <div className="grid gap-4 p-4 md:grid-cols-[1fr_320px] md:p-6">
+                <div className="overflow-hidden rounded-[1.5rem] bg-black/30">
+                  <img src={selectedImage.src} alt={selectedImage.title} className="max-h-[72vh] w-full object-contain" />
+                </div>
+                <div className="flex flex-col gap-4 rounded-[1.5rem] bg-white/8 p-4 text-white">
                   <div>
-                    <div className="text-lg font-semibold">{selectedImage.title}</div>
-                    <div className="text-sm text-white/70">{selectedImage.meta}</div>
+                    <p className="text-xs uppercase tracking-[0.22em] text-amber-300">Текущее фото</p>
+                    <h3 className="mt-2 text-2xl font-semibold">{selectedImage.title}</h3>
+                    <p className="mt-2 text-sm leading-7 text-white/70">{selectedImage.meta}</p>
                   </div>
-                  <button
-                    type="button"
-                    aria-label="Закрыть просмотр"
-                    onClick={() => setLightboxOpen(false)}
-                    className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-white/15 bg-white/10 transition-colors hover:bg-white/15"
-                  >
-                    <X className="h-5 w-5" />
-                  </button>
-                </div>
 
-                <div className="relative overflow-hidden rounded-[2rem] border border-white/10 bg-white/6 shadow-2xl">
-                  <img src={selectedImage.src} alt={selectedImage.title} className="max-h-[72vh] w-full object-contain bg-black/30" />
+                  <div className="rounded-[1.25rem] border border-white/10 bg-white/6 p-4">
+                    <p className="text-sm font-semibold text-white">Навигация</p>
+                    <div className="mt-3 flex gap-2">
+                      <button type="button" onClick={() => moveGallery("prev")} className="inline-flex flex-1 items-center justify-center gap-2 rounded-full border border-white/15 px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-white/10">
+                        <ChevronLeft className="h-4 w-4" />
+                        Предыдущее
+                      </button>
+                      <button type="button" onClick={() => moveGallery("next")} className="inline-flex flex-1 items-center justify-center gap-2 rounded-full border border-white/15 px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-white/10">
+                        Следующее
+                        <ChevronRight className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </div>
 
-                  {galleryImages.length > 1 && (
-                    <>
-                      <button
-                        type="button"
-                        aria-label="Предыдущее фото"
-                        onClick={() => moveGallery("prev")}
-                        className="absolute left-4 top-1/2 inline-flex h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full border border-white/15 bg-black/45 text-white transition-colors hover:bg-black/60"
-                      >
-                        <ChevronLeft className="h-5 w-5" />
-                      </button>
-                      <button
-                        type="button"
-                        aria-label="Следующее фото"
-                        onClick={() => moveGallery("next")}
-                        className="absolute right-4 top-1/2 inline-flex h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full border border-white/15 bg-black/45 text-white transition-colors hover:bg-black/60"
-                      >
-                        <ChevronRight className="h-5 w-5" />
-                      </button>
-                    </>
-                  )}
-                </div>
-
-                <div className="mt-4 grid grid-cols-3 gap-3 md:grid-cols-5">
-                  {galleryImages.map((image) => {
-                    const isActive = image.id === selectedImageId;
-                    return (
-                      <button
-                        key={image.id}
-                        type="button"
-                        onClick={() => setSelectedImageId(image.id)}
-                        className={`overflow-hidden rounded-2xl border transition-all ${
-                          isActive ? "border-white shadow-lg shadow-white/10" : "border-white/10 opacity-70 hover:opacity-100"
-                        }`}
-                      >
-                        <img src={image.src} alt={image.title} className="h-20 w-full object-cover" />
-                      </button>
-                    );
-                  })}
+                  <div className="rounded-[1.25rem] border border-white/10 bg-white/6 p-4">
+                    <p className="text-sm font-semibold text-white">Быстрые переходы</p>
+                    <div className="mt-3 space-y-2">
+                      <Link href="/dashboard" className="block rounded-2xl border border-white/10 px-4 py-3 text-sm text-white/80 transition-colors hover:bg-white/10 hover:text-white">
+                        Вернуться в кабинет
+                      </Link>
+                      <Link href="/tracker" className="block rounded-2xl border border-white/10 px-4 py-3 text-sm text-white/80 transition-colors hover:bg-white/10 hover:text-white">
+                        Открыть трекер продукта
+                      </Link>
+                      <Link href="/club" className="block rounded-2xl border border-white/10 px-4 py-3 text-sm text-white/80 transition-colors hover:bg-white/10 hover:text-white">
+                        Перейти в клуб
+                      </Link>
+                    </div>
+                  </div>
                 </div>
               </div>
             </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
