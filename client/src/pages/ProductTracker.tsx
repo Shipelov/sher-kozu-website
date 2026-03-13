@@ -113,7 +113,7 @@ export default function ProductTracker() {
             className="mb-8 grid gap-5 rounded-[2rem] border border-border/70 bg-white/80 p-5 shadow-sm backdrop-blur md:p-6 lg:grid-cols-[1.05fr_0.95fr] lg:items-center"
           >
             <div>
-              <p className="text-sm uppercase tracking-[0.22em] text-primary">Product tracker</p>
+              <p className="text-sm uppercase tracking-[0.22em] text-primary">Трекер продукта</p>
               <h1 className="mt-3 font-display text-4xl text-foreground md:text-5xl">Трекер показывает, как Марта превращается в семейный продуктовый маршрут.</h1>
               <p className="mt-4 max-w-2xl text-sm leading-7 text-muted-foreground">
                 Здесь пользователь видит происхождение молока, параметры партии, ход доставки и связь с конкретным животным.
@@ -256,7 +256,7 @@ export default function ProductTracker() {
                   <div className="flex items-start justify-between gap-4">
                     <div>
                       <p className="text-sm uppercase tracking-[0.22em] text-primary">История доставок</p>
-                      <h2 className="mt-3 text-2xl font-semibold text-foreground">Каждая доставка — часть narrative, а не просто заказ.</h2>
+                      <h2 className="mt-3 text-2xl font-semibold text-foreground">Каждая доставка — часть истории, а не просто заказ.</h2>
                     </div>
                     <Package className="h-6 w-6 text-primary" />
                   </div>
@@ -319,7 +319,7 @@ export default function ProductTracker() {
                 <p className="text-sm uppercase tracking-[0.22em] text-primary">Именной продукт</p>
                 <h2 className="mt-3 text-2xl font-semibold text-foreground">Сыр «Марта Петровых» завершает цикл от фермы до стола.</h2>
                 <p className="mt-3 text-sm leading-7 text-muted-foreground">
-                  Продуктовый слой должен быть премиальным и личным: не generic cheese, а конкретный результат связи владельца с животным.
+                  Продуктовый слой должен быть личным и премиальным: не безликий сыр, а конкретный результат связи владельца с животным.
                 </p>
               </div>
             </motion.section>
@@ -333,7 +333,7 @@ export default function ProductTracker() {
               <p className="text-sm uppercase tracking-[0.22em] text-amber-300">Связанные маршруты</p>
               <h2 className="mt-3 font-display text-3xl">Трекер не должен быть тупиком.</h2>
               <p className="mt-3 text-sm leading-7 text-white/75">
-                Пользователь должен естественно возвращаться к животному, кабинету и клубной жизни, чтобы рациональная прозрачность работала вместе с эмоциональной связью и community-слоем.
+                  Пользователь должен естественно возвращаться к животному, кабинету и клубной жизни, чтобы рациональная прозрачность работала вместе с эмоциональной связью и клубной средой.
               </p>
 
               <div className="mt-6 grid gap-3">
@@ -368,7 +368,7 @@ export default function ProductTracker() {
             >
               <div className="grid gap-5 lg:grid-cols-[1.1fr_0.9fr] lg:items-start">
                 <div>
-                  <p className="text-sm uppercase tracking-[0.22em] text-primary">Current route status</p>
+                  <p className="text-sm uppercase tracking-[0.22em] text-primary">Текущий статус маршрута</p>
                   <h2 className="mt-3 text-2xl font-semibold text-foreground">Текущая активная доставка остаётся связанной с животным, коробкой и клубной историей.</h2>
                   <p className="mt-3 max-w-2xl text-sm leading-7 text-muted-foreground">
                     Для V1 важно, чтобы пользователь не видел набор разрозненных метрик. Он должен понимать, какая именно доставка сейчас в фокусе и куда идти дальше внутри системы.
@@ -393,7 +393,7 @@ export default function ProductTracker() {
                     К профилю Марты
                   </Link>
                   <Link href="/dashboard" className="inline-flex items-center justify-center rounded-full border border-border px-4 py-3 text-sm font-semibold text-foreground transition-colors hover:bg-muted">
-                    Вернуться в Dashboard
+                    Вернуться в кабинет
                   </Link>
                   <Link href="/club" className="inline-flex items-center justify-center rounded-full border border-border px-4 py-3 text-sm font-semibold text-foreground transition-colors hover:bg-muted">
                     Открыть клубную ленту

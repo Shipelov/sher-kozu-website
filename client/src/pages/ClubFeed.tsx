@@ -278,7 +278,7 @@ export default function ClubFeed() {
               >
                 <div className="flex items-center justify-between gap-3">
                   <div>
-                    <p className="text-sm uppercase tracking-[0.22em] text-primary">Club calendar</p>
+                    <p className="text-sm uppercase tracking-[0.22em] text-primary">Календарь клуба</p>
                     <h2 className="mt-3 text-2xl font-semibold text-foreground">Ближайшие события клуба</h2>
                   </div>
                   <Calendar className="h-5 w-5 text-primary" />
@@ -314,7 +314,7 @@ export default function ClubFeed() {
                   <p className="text-sm uppercase tracking-[0.22em] text-primary">Персональный ритуал</p>
                   <h2 className="mt-3 text-2xl font-semibold text-foreground">День рождения Марты уже в календаре семьи.</h2>
                   <p className="mt-3 text-sm leading-7 text-muted-foreground">
-                    Удержание здесь строится на личных и эмоционально значимых событиях, а не только на скидках.
+                    Связь здесь строится на личных и эмоционально значимых событиях, а не только на скидках.
                   </p>
                 </div>
               </motion.section>
@@ -357,7 +357,7 @@ export default function ClubFeed() {
               >
                 <div className="flex items-center gap-2 text-amber-300">
                   <Wine className="h-5 w-5" />
-                  <span className="text-sm uppercase tracking-[0.2em]">Community loops</span>
+                  <span className="text-sm uppercase tracking-[0.2em]">Маршруты сообщества</span>
                 </div>
                 <h2 className="mt-4 font-display text-3xl">Клуб удерживает связь между животным, продуктом и семьёй.</h2>
                 <p className="mt-3 text-sm leading-7 text-white/75">
@@ -381,7 +381,7 @@ export default function ClubFeed() {
                   <Link href="/dashboard" className="group flex items-center justify-between rounded-2xl border border-white/12 bg-white/8 px-4 py-3 text-sm transition-colors hover:bg-white/12">
                     <div>
                       <div className="font-semibold text-white">Вернуться в кабинет</div>
-                      <div className="mt-1 text-xs text-white/60">Подписка, статусы и быстрые действия семьи</div>
+                      <div className="mt-1 text-xs text-white/60">Подписка, статусы и быстрые действия владельца</div>
                     </div>
                     <ChevronRight className="h-5 w-5 text-amber-300 transition-transform group-hover:translate-x-0.5" />
                   </Link>
@@ -403,7 +403,7 @@ export default function ClubFeed() {
                       {[
                         "Новые посты от фермы и команды ухода",
                         "Анонсы клубных событий и персональных визитов",
-                        "Упоминания семьи и животного в community-слое",
+                        "Упоминания семьи и животного в клубной среде",
                       ].map((item) => (
                         <div key={item} className="flex items-center justify-between rounded-2xl bg-secondary/55 px-4 py-3">
                           <span className="text-sm text-foreground">{item}</span>

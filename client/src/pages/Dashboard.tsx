@@ -101,7 +101,7 @@ export default function Dashboard() {
             className="mb-8 grid gap-4 rounded-[2rem] border border-border/70 bg-white/80 p-5 shadow-sm backdrop-blur md:grid-cols-[1fr_auto] md:items-center"
           >
               <div>
-                <p className="text-sm uppercase tracking-[0.22em] text-primary">Owner dashboard</p>
+                <p className="text-sm uppercase tracking-[0.22em] text-primary">Кабинет владельца</p>
                 <h1 className="mt-3 font-display text-4xl text-foreground md:text-5xl">Александр, здесь соединяются Марта, продукты и клубная жизнь.</h1>
                 <p className="mt-3 max-w-2xl text-sm leading-7 text-muted-foreground">
                   Это главный экран владельца: живая связь с животным, статус семейной коробки и маршруты в клуб и трекер происхождения.
@@ -115,7 +115,7 @@ export default function Dashboard() {
               </button>
               <div className="rounded-2xl border border-border bg-card px-4 py-3 shadow-sm">
                 <div className="text-xs uppercase tracking-[0.2em] text-primary">Статус</div>
-                <div className="mt-1 font-mono-data text-sm font-semibold text-foreground">Owner since 14.02.2025</div>
+                <div className="mt-1 font-mono-data text-sm font-semibold text-foreground">С владельцем с 14.02.2025</div>
               </div>
             </div>
           </motion.div>
@@ -184,7 +184,7 @@ export default function Dashboard() {
                   </Link>
                   <div className="grid gap-3 sm:grid-cols-2">
                     <Link href="/tracker" className="inline-flex items-center justify-center rounded-full bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/92">
-                      К трекеру продуктов
+                      В трекер продукта
                     </Link>
                     <Link href="/club" className="inline-flex items-center justify-center rounded-full border border-border px-4 py-3 text-sm font-semibold text-foreground transition-colors hover:bg-muted">
                       В клубную ленту
@@ -246,7 +246,7 @@ export default function Dashboard() {
 
                 <Link href="/tracker" className="group mt-5 flex items-center justify-between rounded-2xl border border-border bg-white px-4 py-3 text-sm transition-colors hover:bg-muted/40">
                   <div>
-                    <div className="font-semibold text-foreground">Открыть полный трекер продуктов</div>
+                    <div className="font-semibold text-foreground">Открыть полный трекер продукта</div>
                     <div className="mt-1 text-xs text-muted-foreground">Состав молока, надои и история доставок</div>
                   </div>
                   <ChevronRight className="h-5 w-5 text-primary transition-transform group-hover:translate-x-0.5" />
@@ -373,7 +373,7 @@ export default function Dashboard() {
                   <div>
                     <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/8 px-3 py-1 text-xs uppercase tracking-[0.18em] text-amber-300">
                       <Bot className="h-3.5 w-3.5" />
-                      AI-slot для Sprint 2
+                      AI-блок для Sprint 2
                     </div>
                     <h3 className="mt-4 font-display text-3xl">Куратор владельца появится здесь.</h3>
                     <p className="mt-3 max-w-2xl text-sm leading-7 text-white/75">
@@ -381,9 +381,9 @@ export default function Dashboard() {
                       голос животного и умные сценарии удержания.
                     </p>
                     <div className="mt-5 flex flex-wrap gap-2 text-xs text-white/65">
-                      <span className="rounded-full border border-white/15 px-3 py-1">voice of animal</span>
-                      <span className="rounded-full border border-white/15 px-3 py-1">storyteller</span>
-                      <span className="rounded-full border border-white/15 px-3 py-1">retention agent</span>
+                      <span className="rounded-full border border-white/15 px-3 py-1">голос животного</span>
+                      <span className="rounded-full border border-white/15 px-3 py-1">истории и объяснения</span>
+                      <span className="rounded-full border border-white/15 px-3 py-1">сценарии возврата</span>
                     </div>
                   </div>
 
@@ -394,7 +394,7 @@ export default function Dashboard() {
                       </div>
                     ))}
                     <div className="rounded-2xl border border-dashed border-white/20 p-3 text-xs text-white/55">
-                      Пространство для AI-объяснений, рекомендаций и next-best-action сценариев.
+                      Пространство для AI-объяснений, рекомендаций и следующих лучших действий.
                     </div>
                   </div>
                 </div>

@@ -104,7 +104,7 @@ export default function AnimalProfile() {
   }, [selectedImageId]);
 
   const shareText = useMemo(
-    () => `Посмотрите профиль ${selectedImage?.title ? `и фото «${selectedImage.title}»` : "козы Марты"} на ферме Шерь Козу`,
+    () => `Посмотрите профиль ${selectedImage?.title ? `и фото «${selectedImage.title}»` : "Марты"} на ферме Шерь Козу`,
     [selectedImage],
   );
 
@@ -329,7 +329,7 @@ export default function AnimalProfile() {
                         <Images className="h-4 w-4 text-primary" />
                         Галерея Марты
                       </h3>
-                      <p className="mt-1 text-sm text-muted-foreground">Фотоистория Марты с быстрым переключением кадров.</p>
+                      <p className="mt-1 text-sm text-muted-foreground">Фотоистория Марты с быстрым переходом между кадрами.</p>
                     </div>
                     <label className="inline-flex cursor-pointer items-center gap-2 rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/92">
                       <Upload className="h-4 w-4" />
@@ -441,7 +441,7 @@ export default function AnimalProfile() {
                     <div className="mb-3 flex items-center justify-between gap-3">
                       <div>
                         <p className="text-sm font-semibold text-foreground">Фотографии</p>
-                        <p className="mt-1 text-xs text-muted-foreground">Быстрый переход к нужному кадру.</p>
+                        <p className="mt-1 text-xs text-muted-foreground">Быстрый переход к нужному снимку.</p>
                       </div>
                       <div className="rounded-full bg-primary/10 px-3 py-1 text-[11px] font-medium text-primary">
                         {galleryImages.length} фото
@@ -681,9 +681,9 @@ export default function AnimalProfile() {
               >
                 <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
                   <div>
-                    <p className="text-xs text-white/60 mb-1">NFT-паспорт животного</p>
+                    <p className="text-xs text-white/60 mb-1">Цифровой паспорт животного</p>
                     <h3 className="text-lg font-bold">Марта #МК-2023-047</h3>
-                    <p className="text-sm text-white/70 mt-1">Цифровой токен с историей животного. Подтверждает право собственности и ликвидность.</p>
+                    <p className="text-sm text-white/70 mt-1">Цифровая карточка с историей животного. Подтверждает происхождение, статус и связь владельца с Мартой.</p>
                     <div className="flex items-center gap-3 mt-3">
                       <span className="font-mono-data text-xs bg-white/10 px-2 py-1 rounded">0x7f3a...c9b2</span>
                       <span className="text-xs text-white/60">Выдан: 14.02.2025</span>
@@ -696,7 +696,7 @@ export default function AnimalProfile() {
 
                 <div className="mt-5 grid gap-3 sm:grid-cols-3">
                   <Link href="/dashboard" className="inline-flex items-center justify-center rounded-full bg-white px-4 py-3 text-sm font-semibold text-slate-900 transition-colors hover:bg-white/90">
-                    Вернуться в Dashboard
+                    Вернуться в кабинет
                   </Link>
                   <Link href="/tracker" className="inline-flex items-center justify-center rounded-full border border-white/20 px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-white/10">
                     Открыть трекер продукта

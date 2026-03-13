@@ -326,7 +326,7 @@ export default function Home() {
               <h2 className="mt-4 max-w-2xl font-display text-4xl text-foreground md:text-5xl">Лендинг не заканчивает историю, а открывает вход в экосистему.</h2>
               <p className="mt-5 max-w-xl text-base leading-7 text-muted-foreground">
                 Смысл Day 2 — превратить главную страницу в объясняющий интерфейс и маршрутизатор. Отсюда пользователь должен
-                естественно уходить в dashboard, профиль животного, трекер и клубную ленту.
+                естественно переходить в кабинет владельца, профиль животного, трекер продукта и клубную ленту.
               </p>
 
               <div className="mt-8 grid gap-4">
@@ -383,11 +383,11 @@ export default function Home() {
 
                   <span className="inline-flex items-center gap-1 rounded-full border border-white/15 px-3 py-1">
                     <Calendar className="h-3.5 w-3.5" />
-                    Sprint 2 ready
+                    Основа для Sprint 2 готова
                   </span>
                   <span className="inline-flex items-center gap-1 rounded-full border border-white/15 px-3 py-1">
                     <Sparkles className="h-3.5 w-3.5" />
-                    AI touchpoints заложены
+                    Точки входа для AI уже заложены
                   </span>
                 </div>
                 <div className="mt-5 rounded-[1.5rem] border border-white/10 bg-white/8 p-4 text-sm text-white/78">
@@ -413,7 +413,7 @@ export default function Home() {
               </div>
               <div className="flex flex-col gap-3 sm:flex-row lg:flex-col">
                 <Link href="/dashboard" className="inline-flex items-center justify-center gap-2 rounded-full bg-white px-7 py-4 text-sm font-semibold text-primary transition-colors hover:bg-white/95">
-                  Перейти в Dashboard
+                  Перейти в кабинет
                   <ArrowRight className="h-4 w-4" />
                 </Link>
                 <Link href="/club" className="inline-flex items-center justify-center gap-2 rounded-full border border-white/20 px-7 py-4 text-sm font-semibold text-white transition-colors hover:bg-white/10">
@@ -421,7 +421,7 @@ export default function Home() {
                   <Users className="h-4 w-4" />
                 </Link>
                 <Link href="/tracker" className="inline-flex items-center justify-center gap-2 rounded-full border border-white/20 px-7 py-4 text-sm font-semibold text-white transition-colors hover:bg-white/10">
-                  Перейти к трекеру продукта
+                  Перейти в трекер продукта
                   <Package className="h-4 w-4" />
                 </Link>
               </div>
