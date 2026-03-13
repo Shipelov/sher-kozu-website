@@ -366,22 +366,22 @@ export default function ClubFeed() {
                 <div className="mt-6 grid gap-3">
                   <Link href="/animal/marta" className="group flex items-center justify-between rounded-2xl border border-white/12 bg-white/8 px-4 py-3 text-sm transition-colors hover:bg-white/12">
                     <div>
-                      <div className="font-semibold text-white">Открыть профиль Марты</div>
-                      <div className="mt-1 text-xs text-white/60">Вернуться к источнику связи</div>
+                      <div className="font-semibold text-white">К профилю Марты</div>
+                      <div className="mt-1 text-xs text-white/60">Вернуться к животному, вокруг которого строится клубная история</div>
                     </div>
                     <ChevronRight className="h-5 w-5 text-amber-300 transition-transform group-hover:translate-x-0.5" />
                   </Link>
                   <Link href="/tracker" className="group flex items-center justify-between rounded-2xl border border-white/12 bg-white/8 px-4 py-3 text-sm transition-colors hover:bg-white/12">
                     <div>
-                      <div className="font-semibold text-white">Перейти в трекер продуктов</div>
-                      <div className="mt-1 text-xs text-white/60">Вернуться к продуктовой прозрачности</div>
+                      <div className="font-semibold text-white">К трекеру продуктов</div>
+                      <div className="mt-1 text-xs text-white/60">Перейти к составу, доставкам и прозрачности продуктового пути</div>
                     </div>
                     <ChevronRight className="h-5 w-5 text-amber-300 transition-transform group-hover:translate-x-0.5" />
                   </Link>
                   <Link href="/dashboard" className="group flex items-center justify-between rounded-2xl border border-white/12 bg-white/8 px-4 py-3 text-sm transition-colors hover:bg-white/12">
                     <div>
-                      <div className="font-semibold text-white">Вернуться в кабинет</div>
-                      <div className="mt-1 text-xs text-white/60">Подписка, статусы и быстрые действия владельца</div>
+                      <div className="font-semibold text-white">В кабинет</div>
+                      <div className="mt-1 text-xs text-white/60">Вернуться к статусам подписки и быстрым действиям владельца</div>
                     </div>
                     <ChevronRight className="h-5 w-5 text-amber-300 transition-transform group-hover:translate-x-0.5" />
                   </Link>
@@ -417,12 +417,15 @@ export default function ClubFeed() {
                       <Bell className="h-4 w-4 text-primary" />
                       Уведомления помогают возвращать пользователя в ритм клуба.
                     </div>
-                    <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                    <div className="mt-4 grid gap-3 sm:grid-cols-3">
                       <Link href="/animal/marta" className="inline-flex items-center justify-center rounded-full bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/92">
                         К профилю Марты
                       </Link>
                       <Link href="/tracker" className="inline-flex items-center justify-center rounded-full border border-border px-4 py-3 text-sm font-semibold text-foreground transition-colors hover:bg-muted">
                         К трекеру продуктов
+                      </Link>
+                      <Link href="/dashboard" className="inline-flex items-center justify-center rounded-full border border-border px-4 py-3 text-sm font-semibold text-foreground transition-colors hover:bg-muted">
+                        В кабинет
                       </Link>
                     </div>
                   </div>

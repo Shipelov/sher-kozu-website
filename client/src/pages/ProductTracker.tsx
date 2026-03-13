@@ -339,24 +339,24 @@ export default function ProductTracker() {
               <div className="mt-6 grid gap-3">
                 <Link href="/animal/marta" className="group flex items-center justify-between rounded-2xl border border-white/12 bg-white/8 px-4 py-3 text-sm transition-colors hover:bg-white/12">
                   <div>
-                    <div className="font-semibold text-white">Вернуться в профиль Марты</div>
-                    <div className="mt-1 text-xs text-white/60">Животное как источник продукта и удержания</div>
-                  </div>
-                  <ChevronRight className="h-5 w-5 text-amber-300 transition-transform group-hover:translate-x-0.5" />
-                </Link>
-                <Link href="/dashboard" className="group flex items-center justify-between rounded-2xl border border-white/12 bg-white/8 px-4 py-3 text-sm transition-colors hover:bg-white/12">
-                  <div>
-                    <div className="font-semibold text-white">Вернуться в кабинет</div>
-                    <div className="mt-1 text-xs text-white/60">Подписка, статусы и быстрые действия семьи</div>
+                    <div className="font-semibold text-white">К профилю Марты</div>
+                    <div className="mt-1 text-xs text-white/60">Вернуться к животному, от которого начинается продуктовый путь</div>
                   </div>
                   <ChevronRight className="h-5 w-5 text-amber-300 transition-transform group-hover:translate-x-0.5" />
                 </Link>
                 <Link href="/club" className="group flex items-center justify-between rounded-2xl border border-white/12 bg-white/8 px-4 py-3 text-sm transition-colors hover:bg-white/12">
                   <div>
-                    <div className="font-semibold text-white">Открыть клубную ленту</div>
-                    <div className="mt-1 text-xs text-white/60">События, дегустации и семейные ритуалы вокруг продукта</div>
+                    <div className="font-semibold text-white">К клубной ленте</div>
+                    <div className="mt-1 text-xs text-white/60">Перейти к событиям, отзывам и семейным ритуалам вокруг продукта</div>
                   </div>
                   <Users className="h-5 w-5 text-amber-300" />
+                </Link>
+                <Link href="/dashboard" className="group flex items-center justify-between rounded-2xl border border-white/12 bg-white/8 px-4 py-3 text-sm transition-colors hover:bg-white/12">
+                  <div>
+                    <div className="font-semibold text-white">В кабинет</div>
+                    <div className="mt-1 text-xs text-white/60">Вернуться к статусам подписки и быстрым действиям семьи</div>
+                  </div>
+                  <ChevronRight className="h-5 w-5 text-amber-300 transition-transform group-hover:translate-x-0.5" />
                 </Link>
               </div>
             </motion.section>
@@ -392,11 +392,11 @@ export default function ProductTracker() {
                   <Link href="/animal/marta" className="inline-flex items-center justify-center rounded-full bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/92">
                     К профилю Марты
                   </Link>
-                  <Link href="/dashboard" className="inline-flex items-center justify-center rounded-full border border-border px-4 py-3 text-sm font-semibold text-foreground transition-colors hover:bg-muted">
-                    Вернуться в кабинет
-                  </Link>
                   <Link href="/club" className="inline-flex items-center justify-center rounded-full border border-border px-4 py-3 text-sm font-semibold text-foreground transition-colors hover:bg-muted">
-                    Открыть клубную ленту
+                    К клубной ленте
+                  </Link>
+                  <Link href="/dashboard" className="inline-flex items-center justify-center rounded-full border border-border px-4 py-3 text-sm font-semibold text-foreground transition-colors hover:bg-muted">
+                    В кабинет
                   </Link>
                 </div>
               </div>

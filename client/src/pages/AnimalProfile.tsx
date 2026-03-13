@@ -7,6 +7,7 @@ Hardening priority: no dead ends, calm mobile rhythm, consistent CTA logic.
 
 import { trpc } from "@/lib/trpc";
 import { useEffect, useMemo, useState } from "react";
+import type { ChangeEvent } from "react";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
 import { Link } from "wouter";
@@ -24,6 +25,13 @@ type GalleryImage = {
   meta: string;
   isUploaded?: boolean;
   photoId?: number;
+};
+
+type PhotoActivity = {
+  id: string;
+  action: "upload" | "remove";
+  title: string;
+  timestamp: number;
 };
 
 const ANIMAL_SLUG = "marta";
@@ -100,6 +108,7 @@ export default function AnimalProfile() {
   const [showFullBio, setShowFullBio] = useState(false);
   const [selectedImageId, setSelectedImageId] = useState(defaultGallery[0].id);
   const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [photoActivity, setPhotoActivity] = useState<PhotoActivity[]>([]);
 
   const utils = trpc.useUtils();
   const photosQuery = trpc.animalPhotos.list.useQuery({ animalSlug: ANIMAL_SLUG });
@@ -107,6 +116,15 @@ export default function AnimalProfile() {
     onSuccess: async (created) => {
       await utils.animalPhotos.list.invalidate({ animalSlug: ANIMAL_SLUG });
       setSelectedImageId(created.id);
+      setPhotoActivity((current) => ([
+        {
+          id: `upload-${created.photoId}-${Date.now()}`,
+          action: "upload" as const,
+          title: created.title,
+          timestamp: Date.now(),
+        },
+        ...current,
+      ].slice(0, 4)));
       toast.success("Фото сохранено", {
         description: "Снимок теперь хранится в профиле Марты и останется после перезагрузки.",
       });
@@ -120,8 +138,20 @@ export default function AnimalProfile() {
 
   const removePhoto = trpc.animalPhotos.remove.useMutation({
     onSuccess: async ({ photoId }) => {
+      const removedImage = galleryImages.find((image) => image.photoId === photoId);
       await utils.animalPhotos.list.invalidate({ animalSlug: ANIMAL_SLUG });
       setSelectedImageId((current) => (current === `user-${photoId}` ? defaultGallery[0].id : current));
+      if (removedImage) {
+        setPhotoActivity((current) => ([
+          {
+            id: `remove-${photoId}-${Date.now()}`,
+            action: "remove" as const,
+            title: removedImage.title,
+            timestamp: Date.now(),
+          },
+          ...current,
+        ].slice(0, 4)));
+      }
       toast.success("Фото удалено", {
         description: "Снимок убран из постоянной галереи профиля.",
       });
@@ -213,7 +243,7 @@ export default function AnimalProfile() {
     });
   }
 
-  async function handleGalleryUpload(event: React.ChangeEvent<HTMLInputElement>) {
+  async function handleGalleryUpload(event: ChangeEvent<HTMLInputElement>) {
     const files = Array.from(event.target.files ?? []);
     if (!files.length) return;
 
@@ -348,25 +378,68 @@ export default function AnimalProfile() {
               </motion.div>
 
               <motion.div initial={{ opacity: 0, x: -16 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.18 }} className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
-                <div className="border-b border-border p-5">
-                  <div className="flex items-center justify-between gap-3">
-                    <div>
-                      <h3 className="flex items-center gap-2 text-lg font-bold text-foreground">
-                        <Images className="h-4 w-4 text-primary" />
-                        Галерея Марты
-                      </h3>
-                      <p className="mt-1 text-sm text-muted-foreground">Фотоистория Марты с быстрым переходом между кадрами.</p>
+                  <div className="border-b border-border p-5">
+                    <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                      <div>
+                        <h3 className="flex items-center gap-2 text-lg font-bold text-foreground">
+                          <Images className="h-4 w-4 text-primary" />
+                          Галерея Марты
+                        </h3>
+                        <p className="mt-1 text-sm text-muted-foreground">Фотоистория Марты с быстрым переходом между кадрами.</p>
+                      </div>
+                      <label className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/92 md:self-start">
+                        {uploadPhoto.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+                        {uploadPhoto.isPending ? "Сохраняем..." : "Добавить фото"}
+                        <input type="file" accept="image/*" multiple className="hidden" onChange={handleGalleryUpload} disabled={uploadPhoto.isPending} />
+                      </label>
                     </div>
-                    <label className="inline-flex cursor-pointer items-center gap-2 rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/92">
-                      {uploadPhoto.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
-                      {uploadPhoto.isPending ? "Сохраняем..." : "Добавить фото"}
-                      <input type="file" accept="image/*" multiple className="hidden" onChange={handleGalleryUpload} disabled={uploadPhoto.isPending} />
-                    </label>
                   </div>
-                </div>
 
-                <div className="p-5">
-                  {selectedImage && (
+                  <div className="p-5">
+                    <div className="mb-4 grid gap-3 lg:grid-cols-[1.1fr_0.9fr]">
+                      <div className="rounded-[1.25rem] border border-emerald-200 bg-emerald-50/80 p-4">
+                        <div className="flex items-start gap-3">
+                          <div className="mt-0.5 rounded-full bg-emerald-100 p-2 text-emerald-700">
+                            {uploadPhoto.isPending || removePhoto.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Camera className="h-4 w-4" />}
+                          </div>
+                          <div>
+                            <p className="text-sm font-semibold text-emerald-900">Статус галереи</p>
+                            <p className="mt-1 text-sm text-emerald-800">
+                              {uploadPhoto.isPending
+                                ? "Сохраняем новые фото в постоянную галерею Марты."
+                                : removePhoto.isPending
+                                  ? "Удаляем фото из постоянной галереи."
+                                  : "Все добавленные снимки сохраняются в профиле и остаются после перезагрузки."}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="rounded-[1.25rem] border border-border bg-background/80 p-4">
+                        <div className="flex items-center justify-between gap-3">
+                          <p className="text-sm font-semibold text-foreground">Последние действия</p>
+                          <span className="text-xs text-muted-foreground">До 4 записей</span>
+                        </div>
+                        <div className="mt-3 space-y-2">
+                          {photoActivity.length ? photoActivity.map((entry) => (
+                            <div key={entry.id} className="flex items-center justify-between gap-3 rounded-2xl bg-card px-3 py-2 text-sm">
+                              <div>
+                                <div className="font-medium text-foreground">{entry.action === "upload" ? "Добавлено фото" : "Удалено фото"}</div>
+                                <div className="text-xs text-muted-foreground">{entry.title}</div>
+                              </div>
+                              <div className="text-[11px] text-muted-foreground">{new Date(entry.timestamp).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })}</div>
+                            </div>
+                          )) : (
+                            <div className="rounded-2xl bg-secondary/50 px-3 py-2 text-sm text-muted-foreground">
+                              После первой загрузки или удаления здесь появится короткая история действий.
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {selectedImage && (
+
                     <div className="overflow-hidden rounded-[1.5rem] border border-border/70 bg-muted/30">
                       <button type="button" onClick={() => setLightboxOpen(true)} className="group relative block w-full text-left">
                         <img src={selectedImage.src} alt={selectedImage.title} className="h-56 w-full object-cover md:h-72" />
