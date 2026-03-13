@@ -1,9 +1,28 @@
-import { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+/*
+Design Philosophy Reminder — ClubFeed.tsx
+Biomorphic Tech community layer.
+Core: club is retention engine and status environment, not a generic social feed.
+Must reinforce belonging, ritual, event gravity and routes back to animal/product layers.
+*/
+
+import { useMemo, useState } from "react";
+import { motion } from "framer-motion";
+import { Link } from "wouter";
 import Navbar from "@/components/Navbar";
 import {
-  Users, Heart, MessageCircle, Share2, Calendar, MapPin,
-  Star, Bell, ChevronRight, Bookmark, Award, Sparkles
+  Award,
+  Bell,
+  Bookmark,
+  Calendar,
+  ChevronRight,
+  Heart,
+  MapPin,
+  MessageCircle,
+  Share2,
+  Sparkles,
+  Star,
+  Users,
+  Wine,
 } from "lucide-react";
 
 const CDN = {
@@ -16,336 +35,384 @@ const CDN = {
 const posts = [
   {
     id: 1,
+    category: "news",
     author: "Ферма Шерь Козу",
-    avatar: "🌿",
+    avatar: "ФШ",
     role: "Официальный аккаунт",
     time: "2 часа назад",
-    text: "Дорогие владельцы! Весна пришла на ферму — наши козы и овцы впервые вышли на луг после зимы. Смотрите, как радуется Марта! 🐐",
+    title: "Весна пришла на ферму — Марта вышла на первый солнечный выгул",
+    text: "Первые тёплые часы на лугу всегда повышают настроение животных и вовлечённость владельцев. Такие моменты — основа эмоционального удержания в продукте.",
     image: CDN.family,
     likes: 47,
     comments: 12,
-    isLiked: false,
-    isPinned: true,
     tags: ["новости", "весна", "ферма"],
+    pinned: true,
   },
   {
     id: 2,
-    author: "Александр П.",
+    category: "members",
+    author: "Александр Петров",
     avatar: "АП",
     role: "Владелец · Марта",
     time: "вчера",
-    text: "Получил первую партию именного сыра «Марта Петровых». Упаковка просто шикарная, вкус — невероятный! Рекомендую попробовать с мёдом и грецкими орехами 🧀",
+    title: "Получили первую коробку с сыром «Марта Петровых»",
+    text: "Персонализация работает особенно сильно, когда продукт связан не с абстрактной фермой, а с нашим животным. Даже дети теперь спрашивают, как поживает Марта.",
     image: CDN.cheese,
     likes: 31,
     comments: 8,
-    isLiked: true,
-    isPinned: false,
-    tags: ["сыр", "отзыв"],
+    tags: ["отзыв", "сыр", "семья"],
+    pinned: false,
   },
   {
     id: 3,
-    author: "Ферма Шерь Козу",
-    avatar: "🌿",
-    role: "Официальный аккаунт",
+    category: "events",
+    author: "Клуб Шерь Козу",
+    avatar: "КШ",
+    role: "Клубная программа",
     time: "3 дня назад",
-    text: "Анонс! 22 марта проводим закрытый ужин на ферме для владельцев. Длинный стол в поле, свечи, наши продукты и живая музыка. Места ограничены — только 20 семей.",
+    title: "22 марта — закрытый ужин на ферме под открытым небом",
+    text: "Длинный стол в поле, свечи, живая музыка, дегустация именных сыров и тёплая встреча владельцев. Такие ритуалы превращают продукт в lifestyle-layer.",
     image: CDN.club,
     likes: 89,
     comments: 34,
-    isLiked: false,
-    isPinned: false,
-    tags: ["мероприятие", "ужин", "анонс"],
+    tags: ["мероприятие", "ужин", "клуб"],
+    pinned: false,
   },
 ];
 
 const events = [
   {
-    date: "22 марта",
     title: "Закрытый ужин на ферме",
-    desc: "Длинный стол в поле, свечи, живая музыка",
-    spots: "4 места",
-    color: "bg-amber-50 border-amber-200",
-    iconColor: "text-amber-600",
+    date: "22 марта",
+    description: "Длинный стол в поле, живая музыка и дегустация именных продуктов",
+    status: "4 места",
+    tone: "bg-amber-50 border-amber-200",
   },
   {
-    date: "5 апреля",
     title: "Мастер-класс по сыроварению",
-    desc: "Научитесь делать сыр из молока вашей козы",
-    spots: "8 мест",
-    color: "bg-green-50 border-green-200",
-    iconColor: "text-green-600",
+    date: "5 апреля",
+    description: "Из молока вашей козы вы собираете собственный семейный сыр",
+    status: "8 мест",
+    tone: "bg-green-50 border-green-200",
   },
   {
-    date: "14 апреля",
     title: "День рождения Марты",
-    desc: "Персональное мероприятие для семьи Петровых",
-    spots: "Только для вас",
-    color: "bg-rose-50 border-rose-200",
-    iconColor: "text-rose-600",
-  },
-  {
-    date: "1 мая",
-    title: "Детская академия фермерства",
-    desc: "Уроки дойки, ухода и сыроварения для детей",
-    spots: "12 мест",
-    color: "bg-blue-50 border-blue-200",
-    iconColor: "text-blue-600",
+    date: "14 апреля",
+    description: "Личный семейный формат с фотосессией, угощением и дневниковой капсулой",
+    status: "Только для вас",
+    tone: "bg-rose-50 border-rose-200",
   },
 ];
 
 const members = [
-  { name: "Семья Петровых", animal: "Коза Марта", avatar: "АП", since: "фев 2025" },
-  { name: "Семья Ивановых", animal: "Овца Белла", avatar: "ЕИ", since: "янв 2025" },
-  { name: "Семья Смирновых", animal: "Коза Роза", avatar: "МС", since: "мар 2025" },
-  { name: "Семья Козловых", animal: "Коза Нора", avatar: "АК", since: "апр 2025" },
+  { name: "Семья Петровых", animal: "Коза Марта", since: "с февраля 2025", badge: "Founder Circle" },
+  { name: "Семья Ивановых", animal: "Овца Белла", since: "с января 2025", badge: "Club Member" },
+  { name: "Семья Смирновых", animal: "Коза Роза", since: "с марта 2025", badge: "Club Member" },
+  { name: "Семья Козловых", animal: "Коза Нора", since: "с апреля 2025", badge: "Family Tier" },
 ];
 
-function PostCard({ post }: { post: typeof posts[0] }) {
-  const [liked, setLiked] = useState(post.isLiked);
-  const [likeCount, setLikeCount] = useState(post.likes);
+function PostCard({ post }: { post: (typeof posts)[number] }) {
+  const [liked, setLiked] = useState(false);
   const [saved, setSaved] = useState(false);
+  const likeCount = liked ? post.likes + 1 : post.likes;
 
   return (
-    <motion.div
+    <motion.article
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
-      className="bg-card rounded-2xl border border-border shadow-sm overflow-hidden"
+      className="overflow-hidden rounded-[2rem] border border-border/70 bg-card shadow-sm"
     >
-      {post.isPinned && (
-        <div className="flex items-center gap-1.5 px-4 py-2 bg-primary/5 border-b border-primary/10">
-          <Sparkles className="w-3.5 h-3.5 text-primary" />
-          <span className="text-xs font-medium text-primary">Закреплённое сообщение</span>
+      {post.pinned && (
+        <div className="flex items-center gap-2 border-b border-primary/10 bg-primary/5 px-5 py-3 text-xs font-medium text-primary">
+          <Sparkles className="h-4 w-4" />
+          Закреплённое сообщение от фермы
         </div>
       )}
-      <div className="p-4">
-        <div className="flex items-start justify-between mb-3">
+
+      <div className="p-5">
+        <div className="flex items-start justify-between gap-4">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center font-bold text-primary text-sm">
+            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary/10 text-sm font-semibold text-primary">
               {post.avatar}
             </div>
             <div>
-              <p className="font-semibold text-foreground text-sm">{post.author}</p>
-              <p className="text-xs text-muted-foreground">{post.role} · {post.time}</p>
+              <div className="text-sm font-semibold text-foreground">{post.author}</div>
+              <div className="text-xs text-muted-foreground">{post.role} · {post.time}</div>
             </div>
           </div>
-          <motion.button
-            whileHover={{ scale: 1.1 }}
-            whileTap={{ scale: 0.9 }}
-            onClick={() => setSaved(!saved)}
-            className={`p-1.5 rounded-lg transition-colors ${saved ? "text-primary bg-primary/10" : "text-muted-foreground hover:bg-muted"}`}
+
+          <button
+            onClick={() => setSaved((value) => !value)}
+            className={`rounded-xl p-2 transition-colors ${saved ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-muted"}`}
           >
-            <Bookmark className="w-4 h-4" />
-          </motion.button>
+            <Bookmark className="h-4 w-4" />
+          </button>
         </div>
-        <p className="text-sm text-foreground leading-relaxed mb-3">{post.text}</p>
-        {post.image && (
-          <div className="rounded-xl overflow-hidden mb-3 h-52">
-            <img src={post.image} alt="" className="w-full h-full object-cover hover:scale-105 transition-transform duration-500" />
-          </div>
-        )}
-        <div className="flex gap-1.5 mb-3">
+
+        <div className="mt-4">
+          <h3 className="text-xl font-semibold text-foreground">{post.title}</h3>
+          <p className="mt-3 text-sm leading-7 text-muted-foreground">{post.text}</p>
+        </div>
+
+        <div className="mt-4 overflow-hidden rounded-[1.5rem]">
+          <img src={post.image} alt={post.title} className="h-60 w-full object-cover transition-transform duration-500 hover:scale-105" />
+        </div>
+
+        <div className="mt-4 flex flex-wrap gap-2">
           {post.tags.map((tag) => (
-            <span key={tag} className="text-xs bg-muted text-muted-foreground px-2 py-0.5 rounded-full">
-              #{tag}
-            </span>
+            <span key={tag} className="rounded-full bg-secondary px-3 py-1 text-xs text-muted-foreground">#{tag}</span>
           ))}
         </div>
-        <div className="flex items-center gap-4 pt-3 border-t border-border">
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={() => {
-              setLiked(!liked);
-              setLikeCount(liked ? likeCount - 1 : likeCount + 1);
-            }}
-            className={`flex items-center gap-1.5 text-sm transition-colors ${liked ? "text-rose-500" : "text-muted-foreground hover:text-rose-500"}`}
-          >
-            <Heart className={`w-4 h-4 ${liked ? "fill-rose-500" : ""}`} />
+
+        <div className="mt-5 flex items-center gap-5 border-t border-border pt-4 text-sm text-muted-foreground">
+          <button onClick={() => setLiked((value) => !value)} className={`flex items-center gap-2 transition-colors ${liked ? "text-rose-500" : "hover:text-rose-500"}`}>
+            <Heart className={`h-4 w-4 ${liked ? "fill-rose-500" : ""}`} />
             {likeCount}
-          </motion.button>
-          <button className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors">
-            <MessageCircle className="w-4 h-4" />
+          </button>
+          <button className="flex items-center gap-2 transition-colors hover:text-foreground">
+            <MessageCircle className="h-4 w-4" />
             {post.comments}
           </button>
-          <button className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors ml-auto">
-            <Share2 className="w-4 h-4" />
+          <button className="ml-auto flex items-center gap-2 transition-colors hover:text-foreground">
+            <Share2 className="h-4 w-4" />
             Поделиться
           </button>
         </div>
       </div>
-    </motion.div>
+    </motion.article>
   );
 }
 
 export default function ClubFeed() {
   const [activeFilter, setActiveFilter] = useState("all");
 
-  return (
-    <div className="min-h-screen bg-background">
-      <Navbar />
-      <div className="pt-20 pb-12">
-        <div className="container">
+  const visiblePosts = useMemo(() => {
+    if (activeFilter === "all") return posts;
+    return posts.filter((post) => post.category === activeFilter);
+  }, [activeFilter]);
 
-          {/* Hero */}
-          <motion.div
-            initial={{ opacity: 0, y: -12 }}
+  return (
+    <div className="min-h-screen bg-background text-foreground">
+      <Navbar />
+
+      <div className="pb-14 pt-24 md:pt-28">
+        <div className="container">
+          <motion.section
+            initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
-            className="relative rounded-2xl overflow-hidden mb-8 h-48"
+            className="relative mb-8 overflow-hidden rounded-[2.25rem] border border-border/70"
           >
-            <img src={CDN.club} alt="Клуб" className="w-full h-full object-cover" />
-            <div className="absolute inset-0 bg-gradient-to-r from-black/70 to-black/20" />
-            <div className="absolute inset-0 flex items-center p-8">
-              <div className="text-white">
-                <div className="flex items-center gap-2 mb-2">
-                  <Award className="w-5 h-5 text-amber-400" />
-                  <span className="text-sm font-medium text-amber-400">Закрытый клуб</span>
+            <img src={CDN.club} alt="Клуб Шерь Козу" className="h-[360px] w-full object-cover" />
+            <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(25,22,20,0.82),rgba(25,22,20,0.34),rgba(25,22,20,0.18))]" />
+            <div className="absolute inset-0 flex flex-col justify-between p-6 text-white md:p-8">
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="inline-flex items-center gap-2 rounded-full bg-white/12 px-4 py-2 text-xs uppercase tracking-[0.18em] text-amber-300 backdrop-blur">
+                  <Award className="h-4 w-4" />
+                  Закрытый клуб владельцев
                 </div>
-                <h1 className="text-3xl font-bold mb-1">Клуб Шерь Козу</h1>
-                <p className="text-white/80 text-sm">Сообщество владельцев персональных животных</p>
+                <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-2 text-xs text-white/80 backdrop-blur">
+                  <MapPin className="h-4 w-4" />
+                  Семейная ферма + digital community
+                </div>
               </div>
-              <div className="ml-auto flex items-center gap-4 text-white">
-                <div className="text-center">
-                  <p className="text-2xl font-bold font-mono-data">47</p>
-                  <p className="text-xs text-white/70">владельцев</p>
+
+              <div className="grid gap-5 lg:grid-cols-[1fr_auto] lg:items-end">
+                <div className="max-w-2xl">
+                  <h1 className="font-display text-4xl text-white md:text-6xl">Клуб Шерь Козу удерживает связь между человеком, животным и фермой.</h1>
+                  <p className="mt-4 text-sm leading-7 text-white/75 md:text-base">
+                    Это не просто лента новостей. Клуб формирует статусную среду, семейные ритуалы, событийную жизнь и чувство принадлежности,
+                    которое возвращает владельца в продукт снова и снова.
+                  </p>
                 </div>
-                <div className="text-center">
-                  <p className="text-2xl font-bold font-mono-data">4</p>
-                  <p className="text-xs text-white/70">события в апреле</p>
+                <div className="grid grid-cols-2 gap-3 text-center text-white">
+                  {[
+                    { value: "47", label: "семей в клубе" },
+                    { value: "4", label: "события в апреле" },
+                    { value: "89", label: "средний отклик поста" },
+                    { value: "24/7", label: "ритм сообщества" },
+                  ].map((item) => (
+                    <div key={item.label} className="rounded-2xl border border-white/12 bg-white/10 px-4 py-4 backdrop-blur">
+                      <div className="font-mono-data text-2xl font-semibold">{item.value}</div>
+                      <div className="mt-1 text-xs text-white/70">{item.label}</div>
+                    </div>
+                  ))}
                 </div>
               </div>
             </div>
-          </motion.div>
+          </motion.section>
 
           <div className="grid grid-cols-12 gap-5">
-
-            {/* Feed */}
-            <div className="col-span-12 md:col-span-7 space-y-4">
-              {/* Filter */}
-              <div className="flex gap-2 overflow-x-auto pb-1">
-                {["all", "news", "events", "members"].map((filter) => {
-                  const labels: Record<string, string> = { all: "Все", news: "Новости", events: "События", members: "Участники" };
-                  return (
-                    <motion.button
-                      key={filter}
-                      whileHover={{ scale: 1.03 }}
-                      onClick={() => setActiveFilter(filter)}
-                      className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors ${
-                        activeFilter === filter
-                          ? "bg-primary text-white"
-                          : "bg-card border border-border text-muted-foreground hover:text-foreground"
-                      }`}
-                    >
-                      {labels[filter]}
-                    </motion.button>
-                  );
-                })}
+            <div className="col-span-12 space-y-4 lg:col-span-7">
+              <div className="flex flex-wrap gap-2">
+                {[
+                  { key: "all", label: "Все" },
+                  { key: "news", label: "Новости" },
+                  { key: "events", label: "События" },
+                  { key: "members", label: "Участники" },
+                ].map((filter) => (
+                  <button
+                    key={filter.key}
+                    onClick={() => setActiveFilter(filter.key)}
+                    className={`rounded-full px-4 py-2 text-sm font-medium transition-colors ${
+                      activeFilter === filter.key
+                        ? "bg-primary text-primary-foreground"
+                        : "border border-border bg-card text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    {filter.label}
+                  </button>
+                ))}
               </div>
 
-              {posts.map((post, i) => (
-                <motion.div key={post.id} transition={{ delay: i * 0.08 }}>
-                  <PostCard post={post} />
-                </motion.div>
+              {visiblePosts.map((post) => (
+                <PostCard key={post.id} post={post} />
               ))}
             </div>
 
-            {/* Sidebar */}
-            <div className="col-span-12 md:col-span-5 space-y-4">
-
-              {/* Events */}
-              <motion.div
-                initial={{ opacity: 0, x: 16 }}
+            <div className="col-span-12 space-y-4 lg:col-span-5">
+              <motion.section
+                initial={{ opacity: 0, x: 14 }}
                 animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.1 }}
-                className="bg-card rounded-2xl border border-border shadow-sm p-5"
+                transition={{ delay: 0.08 }}
+                className="rounded-[2rem] border border-border/70 bg-card p-5 shadow-sm"
               >
-                <h3 className="font-bold text-foreground flex items-center gap-2 mb-4">
-                  <Calendar className="w-4 h-4 text-primary" />
-                  Ближайшие события
-                </h3>
-                <div className="space-y-3">
-                  {events.map((event, i) => (
-                    <motion.div
-                      key={i}
-                      whileHover={{ scale: 1.01, x: 2 }}
-                      className={`flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition-all ${event.color}`}
-                    >
-                      <div className={`p-2 rounded-lg bg-white/60 ${event.iconColor}`}>
-                        <Calendar className="w-4 h-4" />
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-sm uppercase tracking-[0.22em] text-primary">Календарь клуба</p>
+                    <h2 className="mt-3 text-2xl font-semibold text-foreground">Ближайшие события</h2>
+                  </div>
+                  <Calendar className="h-5 w-5 text-primary" />
+                </div>
+
+                <div className="mt-5 space-y-3">
+                  {events.map((event) => (
+                    <div key={event.title} className={`rounded-[1.5rem] border p-4 ${event.tone}`}>
+                      <div className="flex items-center justify-between gap-3">
+                        <h3 className="text-sm font-semibold text-foreground">{event.title}</h3>
+                        <span className="text-xs text-muted-foreground">{event.date}</span>
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between gap-2">
-                          <p className="text-sm font-semibold text-foreground truncate">{event.title}</p>
-                          <span className="text-xs text-muted-foreground whitespace-nowrap">{event.date}</span>
-                        </div>
-                        <p className="text-xs text-muted-foreground mt-0.5">{event.desc}</p>
-                        <div className="flex items-center justify-between mt-1.5">
-                          <span className="text-xs font-medium text-foreground">{event.spots}</span>
-                          <button className="text-xs text-primary hover:underline flex items-center gap-0.5">
-                            Записаться <ChevronRight className="w-3 h-3" />
-                          </button>
-                        </div>
+                      <p className="mt-2 text-sm leading-6 text-muted-foreground">{event.description}</p>
+                      <div className="mt-3 flex items-center justify-between gap-3">
+                        <span className="text-xs font-medium text-foreground">{event.status}</span>
+                        <button className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline">
+                          Записаться <ChevronRight className="h-3.5 w-3.5" />
+                        </button>
                       </div>
-                    </motion.div>
+                    </div>
                   ))}
                 </div>
-              </motion.div>
+              </motion.section>
 
-              {/* Members */}
-              <motion.div
-                initial={{ opacity: 0, x: 16 }}
+              <motion.section
+                initial={{ opacity: 0, x: 14 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.12 }}
+                className="overflow-hidden rounded-[2rem] border border-border/70 bg-card shadow-sm"
+              >
+                <img src={CDN.goat} alt="Марта" className="h-48 w-full object-cover object-top" />
+                <div className="p-5">
+                  <p className="text-sm uppercase tracking-[0.22em] text-primary">Персональный ритуал</p>
+                  <h2 className="mt-3 text-2xl font-semibold text-foreground">День рождения Марты уже в календаре семьи.</h2>
+                  <p className="mt-3 text-sm leading-7 text-muted-foreground">
+                    Сильные удерживающие механики часто возникают не из скидок, а из событийных ritual loops — личных, редких и эмоционально значимых.
+                  </p>
+                </div>
+              </motion.section>
+
+              <motion.section
+                initial={{ opacity: 0, x: 14 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.16 }}
+                className="rounded-[2rem] border border-border/70 bg-card p-5 shadow-sm"
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-sm uppercase tracking-[0.22em] text-primary">Участники</p>
+                    <h2 className="mt-3 text-2xl font-semibold text-foreground">Кто уже внутри клуба</h2>
+                  </div>
+                  <Users className="h-5 w-5 text-primary" />
+                </div>
+
+                <div className="mt-5 space-y-3">
+                  {members.map((member) => (
+                    <div key={member.name} className="flex items-center gap-3 rounded-[1.5rem] bg-secondary/50 p-4">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-primary/10 text-xs font-semibold text-primary">
+                        {member.name.slice(0, 2)}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="text-sm font-semibold text-foreground">{member.name}</div>
+                        <div className="text-xs text-muted-foreground">{member.animal} · {member.since}</div>
+                      </div>
+                      <div className="rounded-full bg-white px-3 py-1 text-[11px] text-primary shadow-sm">{member.badge}</div>
+                    </div>
+                  ))}
+                </div>
+              </motion.section>
+
+              <motion.section
+                initial={{ opacity: 0, x: 14 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: 0.2 }}
-                className="bg-card rounded-2xl border border-border shadow-sm p-5"
+                className="rounded-[2rem] border border-primary/15 bg-[linear-gradient(135deg,rgba(26,58,42,0.97),rgba(46,77,59,0.94))] p-6 text-white shadow-[0_34px_80px_-42px_rgba(26,58,42,0.72)]"
               >
-                <h3 className="font-bold text-foreground flex items-center gap-2 mb-4">
-                  <Users className="w-4 h-4 text-primary" />
-                  Участники клуба
-                </h3>
-                <div className="space-y-3">
-                  {members.map((member, i) => (
-                    <div key={i} className="flex items-center gap-3 p-2 rounded-xl hover:bg-muted/50 transition-colors">
-                      <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center font-bold text-primary text-xs">
-                        {member.avatar}
-                      </div>
-                      <div className="flex-1">
-                        <p className="text-sm font-medium text-foreground">{member.name}</p>
-                        <p className="text-xs text-muted-foreground">{member.animal}</p>
-                      </div>
-                      <span className="text-xs text-muted-foreground">с {member.since}</span>
-                    </div>
-                  ))}
+                <div className="flex items-center gap-2 text-amber-300">
+                  <Wine className="h-5 w-5" />
+                  <span className="text-sm uppercase tracking-[0.2em]">Community loops</span>
                 </div>
-                <button className="w-full mt-3 text-sm text-primary font-medium flex items-center justify-center gap-1 py-2 hover:underline">
-                  Все 47 участников <ChevronRight className="w-4 h-4" />
-                </button>
-              </motion.div>
+                <h2 className="mt-4 font-display text-3xl">Клуб усиливает продуктовую и эмоциональную лояльность одновременно.</h2>
+                <p className="mt-3 text-sm leading-7 text-white/75">
+                  Пользователь приходит за животным и продуктом, но остаётся дольше из-за сообщества, событий и ощущения принадлежности к красивой, тёплой, редкой среде.
+                </p>
+                <div className="mt-6 grid gap-3">
+                  <Link href="/animal/marta" className="group flex items-center justify-between rounded-2xl border border-white/12 bg-white/8 px-4 py-3 text-sm transition-colors hover:bg-white/12">
+                    <div>
+                      <div className="font-semibold text-white">Открыть профиль Марты</div>
+                      <div className="mt-1 text-xs text-white/60">Вернуться к источнику связи</div>
+                    </div>
+                    <ChevronRight className="h-5 w-5 text-amber-300 transition-transform group-hover:translate-x-0.5" />
+                  </Link>
+                  <Link href="/tracker" className="group flex items-center justify-between rounded-2xl border border-white/12 bg-white/8 px-4 py-3 text-sm transition-colors hover:bg-white/12">
+                    <div>
+                      <div className="font-semibold text-white">Перейти в трекер продуктов</div>
+                      <div className="mt-1 text-xs text-white/60">Посмотреть материальный результат участия</div>
+                    </div>
+                    <ChevronRight className="h-5 w-5 text-amber-300 transition-transform group-hover:translate-x-0.5" />
+                  </Link>
+                </div>
+              </motion.section>
 
-              {/* Notification settings */}
-              <motion.div
-                initial={{ opacity: 0, x: 16 }}
+              <motion.section
+                initial={{ opacity: 0, x: 14 }}
                 animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.3 }}
-                className="bg-gradient-to-br from-primary/10 to-primary/5 rounded-2xl border border-primary/20 p-5"
+                transition={{ delay: 0.24 }}
+                className="overflow-hidden rounded-[2rem] border border-border/70 bg-card shadow-sm"
               >
-                <h3 className="font-bold text-foreground flex items-center gap-2 mb-3">
-                  <Bell className="w-4 h-4 text-primary" />
-                  Уведомления клуба
-                </h3>
-                <div className="space-y-2">
-                  {[
-                    { label: "Новые посты", enabled: true },
-                    { label: "Анонсы событий", enabled: true },
-                    { label: "Упоминания", enabled: false },
-                  ].map((item, i) => (
-                    <div key={i} className="flex items-center justify-between py-1">
-                      <span className="text-sm text-foreground">{item.label}</span>
-                      <div className={`w-10 h-5 rounded-full transition-colors cursor-pointer ${item.enabled ? "bg-primary" : "bg-muted"} relative`}>
-                        <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${item.enabled ? "translate-x-5" : "translate-x-0.5"}`} />
-                      </div>
+                <div className="grid gap-0 md:grid-cols-[0.9fr_1.1fr]">
+                  <img src={CDN.family} alt="Семейный визит" className="h-full min-h-[220px] w-full object-cover" />
+                  <div className="p-5">
+                    <p className="text-sm uppercase tracking-[0.22em] text-primary">Уведомления клуба</p>
+                    <h2 className="mt-3 text-2xl font-semibold text-foreground">Какие сигналы должны возвращать пользователя</h2>
+                    <div className="mt-5 space-y-3">
+                      {[
+                        "Новые посты от фермы и команды ухода",
+                        "Анонсы клубных событий и персональных визитов",
+                        "Упоминания семьи и животного в community-слое",
+                      ].map((item) => (
+                        <div key={item} className="flex items-center justify-between rounded-2xl bg-secondary/55 px-4 py-3">
+                          <span className="text-sm text-foreground">{item}</span>
+                          <div className="flex h-6 w-11 items-center rounded-full bg-primary px-1">
+                            <div className="ml-auto h-4 w-4 rounded-full bg-white shadow" />
+                          </div>
+                        </div>
+                      ))}
                     </div>
-                  ))}
+                    <div className="mt-4 flex items-center gap-2 text-xs text-muted-foreground">
+                      <Bell className="h-4 w-4 text-primary" />
+                      Уведомления здесь — не техническая настройка, а часть retention architecture.
+                    </div>
+                  </div>
                 </div>
-              </motion.div>
+              </motion.section>
             </div>
           </div>
         </div>

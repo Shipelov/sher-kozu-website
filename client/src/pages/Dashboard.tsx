@@ -1,413 +1,406 @@
-import { useState, useEffect } from "react";
+/*
+Design Philosophy Reminder — Dashboard.tsx
+Biomorphic Tech owner dashboard.
+Core hierarchy: animal first, product second, club third, AI fourth.
+Must feel like a warm ownership hub, not an order management panel.
+*/
+
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { Link } from "wouter";
 import Navbar from "@/components/Navbar";
 import {
-  Heart, Thermometer, Milk, Package, Camera, BookOpen,
-  ChevronRight, Star, Gift, Zap, TrendingUp, Bell, Calendar,
-  ShoppingBag, Users, Leaf
+  Bell,
+  BookOpen,
+  Bot,
+  Camera,
+  Calendar,
+  ChevronRight,
+  Heart,
+  Milk,
+  Package,
+  Sparkles,
+  Star,
+  Thermometer,
+  Truck,
+  Users,
+  Waves,
 } from "lucide-react";
 
 const CDN = {
   goat: "https://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/goat_portrait_80fc5726.jpg",
   liveCam: "https://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/live_cam_07e872b4.jpg",
   delivery: "https://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/delivery_box_6b16c712.jpg",
-  cheese: "https://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/named_cheese_e69af325.jpg",
+  family: "https://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/family_farm_446b395e.jpg",
 };
 
-function AnimatedNumber({ value, suffix = "" }: { value: number; suffix?: string }) {
-  const [display, setDisplay] = useState(0);
-  useEffect(() => {
-    const step = value / 40;
-    let current = 0;
-    const timer = setInterval(() => {
-      current = Math.min(current + step, value);
-      setDisplay(Math.round(current));
-      if (current >= value) clearInterval(timer);
-    }, 30);
-    return () => clearInterval(timer);
-  }, [value]);
-  return <span className="font-mono-data">{display}{suffix}</span>;
-}
-
-function ProgressBar({ value, color = "bg-primary" }: { value: number; color?: string }) {
+function ProgressBar({ value, tone }: { value: number; tone: string }) {
   const [width, setWidth] = useState(0);
+
   useEffect(() => {
-    const t = setTimeout(() => setWidth(value), 300);
-    return () => clearTimeout(t);
+    const timer = setTimeout(() => setWidth(value), 250);
+    return () => clearTimeout(timer);
   }, [value]);
+
   return (
-    <div className="h-2.5 bg-muted rounded-full overflow-hidden">
-      <div
-        className={`h-full ${color} rounded-full progress-bar-fill`}
-        style={{ width: `${width}%` }}
-      />
+    <div className="h-2 overflow-hidden rounded-full bg-muted">
+      <div className={`h-full rounded-full ${tone} progress-bar-fill`} style={{ width: `${width}%` }} />
     </div>
   );
 }
 
 const diaryEntries = [
-  { date: "13 марта", text: "Сегодня меня угостили морковкой! Так вкусно 🥕 Надой сегодня 1.8 л.", mood: "😊" },
-  { date: "12 марта", text: "Провела SPA-процедуры. Шерсть блестит, настроение отличное!", mood: "✨" },
-  { date: "11 марта", text: "Гуляла на свежем воздухе 3 часа. Весна чувствуется!", mood: "🌿" },
+  {
+    date: "13 марта",
+    title: "Марта встретила утро на солнечном выгуле",
+    text: "Сегодня у неё высокий аппетит, спокойный ритм и отличный надой. После обеда фермер загрузил новые фотографии в дневник.",
+  },
+  {
+    date: "12 марта",
+    title: "SPA-уход и расчёсывание шерсти",
+    text: "Плановые процедуры прошли мягко: груминг, травяная ванна и осмотр копыт. Показатели здоровья сохранили высокий уровень.",
+  },
+  {
+    date: "11 марта",
+    title: "Первая весенняя прогулка на лугу",
+    text: "Марта провела на открытом воздухе почти три часа. Это повысило активность и настроение — что важно для пользовательского чувства связи.",
+  },
+];
+
+const clubMoments = [
+  {
+    title: "Закрытый ужин на ферме",
+    meta: "22 марта · осталось 4 места",
+  },
+  {
+    title: "Семейный визит к Марте",
+    meta: "5 апреля · персональная запись",
+  },
+  {
+    title: "Мастер-класс по сыроварению",
+    meta: "12 апреля · клубный формат",
+  },
 ];
 
 const notifications = [
-  { icon: Milk, text: "Надой за сегодня: 1.8 л", time: "2 ч назад", color: "text-primary" },
-  { icon: Package, text: "Доставка запланирована на 15 марта", time: "5 ч назад", color: "text-accent" },
-  { icon: Gift, text: "День рождения Марты через 12 дней!", time: "вчера", color: "text-amber-500" },
-  { icon: Star, text: "Ваш сыр «Марта Премиум» созрел", time: "2 дня назад", color: "text-purple-500" },
+  "Новая запись в дневнике Марты опубликована 2 часа назад",
+  "Следующая доставка сформирована на 15 марта",
+  "Именной сыр «Марта Петровых» готов к включению в коробку",
 ];
 
 export default function Dashboard() {
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background text-foreground">
       <Navbar />
-      <div className="pt-20 pb-12">
+
+      <div className="pb-14 pt-24 md:pt-28">
         <div className="container">
-          {/* Header */}
           <motion.div
-            initial={{ opacity: 0, y: -16 }}
+            initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
-            className="flex items-center justify-between mb-8"
+            className="mb-8 grid gap-4 rounded-[2rem] border border-border/70 bg-white/80 p-5 shadow-sm backdrop-blur md:grid-cols-[1fr_auto] md:items-center"
           >
             <div>
-              <p className="text-sm text-muted-foreground mb-1">Добро пожаловать,</p>
-              <h1 className="text-3xl font-bold text-foreground">Александр Петров</h1>
-              <p className="text-sm text-muted-foreground mt-1">
-                Владелец с <span className="font-mono-data text-primary font-semibold">14 февраля 2025</span>
+              <p className="text-sm text-muted-foreground">Добро пожаловать обратно</p>
+              <h1 className="mt-2 font-display text-4xl text-foreground md:text-5xl">Александр, это цифровое сердце вашей фермерской жизни.</h1>
+              <p className="mt-3 max-w-2xl text-sm leading-7 text-muted-foreground">
+                Здесь соединяются живая связь с Мартой, статус вашей продукции, ритм клуба и будущий AI-куратор,
+                который станет следующим уровнем персонализации.
               </p>
             </div>
-            <div className="flex items-center gap-3">
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                className="relative p-2.5 rounded-xl bg-card border border-border shadow-sm"
-              >
-                <Bell className="w-5 h-5 text-muted-foreground" />
-                <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-accent rounded-full" />
-              </motion.button>
-              <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center font-bold text-primary">
-                АП
+
+            <div className="flex items-center gap-3 self-start md:self-center">
+              <button className="relative flex h-12 w-12 items-center justify-center rounded-2xl border border-border bg-card shadow-sm transition-colors hover:bg-muted/50">
+                <Bell className="h-5 w-5 text-muted-foreground" />
+                <span className="absolute right-3 top-3 h-2.5 w-2.5 rounded-full bg-accent" />
+              </button>
+              <div className="rounded-2xl border border-border bg-card px-4 py-3 shadow-sm">
+                <div className="text-xs uppercase tracking-[0.2em] text-primary">Статус</div>
+                <div className="mt-1 font-mono-data text-sm font-semibold text-foreground">Owner since 14.02.2025</div>
               </div>
             </div>
           </motion.div>
 
-          {/* Bento Grid */}
-          <div className="grid grid-cols-12 gap-4">
-
-            {/* Animal Card — large */}
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
+          <div className="grid grid-cols-12 gap-4 md:gap-5">
+            <motion.section
+              initial={{ opacity: 0, scale: 0.98 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ delay: 0.05 }}
-              className="col-span-12 md:col-span-4 bg-card rounded-2xl border border-border shadow-sm overflow-hidden card-hover"
+              className="col-span-12 overflow-hidden rounded-[2rem] border border-border/70 bg-card shadow-[0_30px_70px_-38px_rgba(26,58,42,0.28)] lg:col-span-5"
             >
-              <div className="relative h-52 overflow-hidden">
-                <img src={CDN.goat} alt="Коза Марта" className="w-full h-full object-cover object-top" />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-                <div className="absolute bottom-3 left-4 text-white">
-                  <div className="flex items-center gap-2 mb-1">
+              <div className="relative h-64 overflow-hidden">
+                <img src={CDN.goat} alt="Коза Марта" className="h-full w-full object-cover object-top" />
+                <div className="absolute inset-0 bg-gradient-to-t from-dark-oak/80 via-dark-oak/15 to-transparent" />
+                <div className="absolute left-5 right-5 top-5 flex items-center justify-between text-white">
+                  <div className="inline-flex items-center gap-2 rounded-full bg-white/15 px-3 py-1 text-xs backdrop-blur">
                     <span className="pulse-dot" />
-                    <span className="text-xs font-medium">Онлайн сейчас</span>
+                    Марта онлайн сейчас
                   </div>
-                  <h2 className="text-xl font-bold">Коза Марта</h2>
-                  <p className="text-sm text-white/80">Англо-нубийская · 3 года</p>
+                  <div className="inline-flex items-center gap-1 rounded-full bg-amber-500 px-3 py-1 text-xs font-semibold text-white">
+                    <Star className="h-3.5 w-3.5 fill-white" />
+                    Элита
+                  </div>
                 </div>
-                <div className="absolute top-3 right-3 bg-white/20 backdrop-blur-sm rounded-full px-2.5 py-1 text-white text-xs font-semibold flex items-center gap-1">
-                  <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
-                  Элита
+                <div className="absolute bottom-0 left-0 right-0 p-5 text-white">
+                  <p className="text-xs uppercase tracking-[0.2em] text-white/65">Ваше животное</p>
+                  <h2 className="mt-2 text-3xl font-semibold">Коза Марта</h2>
+                  <p className="mt-1 text-sm text-white/75">Англо-нубийская · 3 года · эмоциональный центр вашего опыта</p>
                 </div>
               </div>
-              <div className="p-4 space-y-3">
-                <div>
-                  <div className="flex justify-between text-sm mb-1.5">
-                    <span className="flex items-center gap-1.5 text-muted-foreground"><Heart className="w-3.5 h-3.5 text-rose-500" /> Счастье</span>
-                    <span className="font-mono-data font-semibold text-foreground">87%</span>
+
+              <div className="space-y-4 p-5">
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div>
+                    <div className="mb-2 flex items-center justify-between text-sm">
+                      <span className="flex items-center gap-2 text-muted-foreground"><Heart className="h-4 w-4 text-rose-500" /> Счастье</span>
+                      <span className="font-mono-data font-semibold text-foreground">87%</span>
+                    </div>
+                    <ProgressBar value={87} tone="bg-rose-400" />
                   </div>
-                  <ProgressBar value={87} color="bg-rose-400" />
-                </div>
-                <div>
-                  <div className="flex justify-between text-sm mb-1.5">
-                    <span className="flex items-center gap-1.5 text-muted-foreground"><Thermometer className="w-3.5 h-3.5 text-primary" /> Здоровье</span>
-                    <span className="font-mono-data font-semibold text-foreground">94%</span>
+                  <div>
+                    <div className="mb-2 flex items-center justify-between text-sm">
+                      <span className="flex items-center gap-2 text-muted-foreground"><Thermometer className="h-4 w-4 text-primary" /> Здоровье</span>
+                      <span className="font-mono-data font-semibold text-foreground">94%</span>
+                    </div>
+                    <ProgressBar value={94} tone="bg-primary" />
                   </div>
-                  <ProgressBar value={94} color="bg-primary" />
                 </div>
-                <div className="flex gap-2 pt-1">
-                  <motion.button
-                    whileHover={{ scale: 1.04 }}
-                    whileTap={{ scale: 0.96 }}
-                    className="flex-1 text-xs font-semibold bg-primary/10 text-primary rounded-xl py-2.5 hover:bg-primary/20 transition-colors"
-                  >
-                    🥕 Покормить
-                  </motion.button>
-                  <motion.button
-                    whileHover={{ scale: 1.04 }}
-                    whileTap={{ scale: 0.96 }}
-                    className="flex-1 text-xs font-semibold bg-accent/10 text-amber-700 rounded-xl py-2.5 hover:bg-accent/20 transition-colors"
-                  >
-                    🛁 SPA-уход
-                  </motion.button>
-                </div>
-                <Link href="/animal/marta">
-                  <button className="w-full text-xs text-primary font-medium flex items-center justify-center gap-1 py-1 hover:underline">
-                    Полный профиль <ChevronRight className="w-3.5 h-3.5" />
+
+                <div className="grid grid-cols-2 gap-3">
+                  <button className="rounded-2xl bg-secondary px-4 py-3 text-sm font-semibold text-primary transition-colors hover:bg-secondary/80">
+                    🥕 Покормить морковкой
                   </button>
+                  <button className="rounded-2xl bg-accent/15 px-4 py-3 text-sm font-semibold text-amber-700 transition-colors hover:bg-accent/25">
+                    🛁 Заказать SPA-уход
+                  </button>
+                </div>
+
+                <Link href="/animal/marta" className="group flex items-center justify-between rounded-2xl border border-border bg-white px-4 py-3 text-sm transition-colors hover:bg-muted/40">
+                  <div>
+                    <div className="font-semibold text-foreground">Открыть полный профиль животного</div>
+                    <div className="mt-1 text-xs text-muted-foreground">Биография, дневник, показатели и narrative-слой</div>
+                  </div>
+                  <ChevronRight className="h-5 w-5 text-primary transition-transform group-hover:translate-x-0.5" />
                 </Link>
               </div>
-            </motion.div>
+            </motion.section>
 
-            {/* Stats column */}
-            <div className="col-span-12 md:col-span-8 grid grid-cols-2 gap-4">
-              {/* Milk stats */}
-              <motion.div
+            <div className="col-span-12 grid grid-cols-12 gap-4 lg:col-span-7">
+              <motion.section
                 initial={{ opacity: 0, y: 16 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.1 }}
-                className="col-span-2 sm:col-span-1 bg-card rounded-2xl border border-border shadow-sm p-5 card-hover"
+                className="col-span-12 rounded-[2rem] border border-border/70 bg-card p-5 shadow-sm md:col-span-7"
               >
-                <div className="flex items-start justify-between mb-3">
+                <div className="flex items-start justify-between gap-4">
                   <div>
-                    <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Надой сегодня</p>
-                    <p className="text-4xl font-bold text-foreground">
-                      <AnimatedNumber value={1.8} />
-                      <span className="text-lg text-muted-foreground ml-1">л</span>
+                    <p className="text-xs uppercase tracking-[0.18em] text-primary">Продуктовый статус</p>
+                    <h3 className="mt-2 text-2xl font-semibold text-foreground">Следующая доставка уже собирается.</h3>
+                    <p className="mt-2 max-w-md text-sm leading-7 text-muted-foreground">
+                      Рациональная ценность участия должна быть видна сразу: что производится, что будет доставлено и на каком этапе находится коробка.
                     </p>
                   </div>
-                  <div className="p-2.5 rounded-xl bg-primary/10">
-                    <Milk className="w-5 h-5 text-primary" />
+                  <div className="rounded-2xl bg-primary/10 p-3 text-primary">
+                    <Package className="h-6 w-6" />
                   </div>
                 </div>
-                <div className="flex items-center gap-1.5 text-xs text-green-600">
-                  <TrendingUp className="w-3.5 h-3.5" />
-                  <span>+12% к прошлой неделе</span>
-                </div>
-                <div className="mt-3 h-12 flex items-end gap-1">
-                  {[1.4, 1.6, 1.5, 1.7, 1.8, 1.6, 1.8].map((v, i) => (
-                    <motion.div
-                      key={i}
-                      initial={{ height: 0 }}
-                      animate={{ height: `${(v / 2) * 100}%` }}
-                      transition={{ delay: 0.3 + i * 0.05, duration: 0.5 }}
-                      className={`flex-1 rounded-sm ${i === 6 ? "bg-primary" : "bg-primary/25"}`}
-                    />
-                  ))}
-                </div>
-                <div className="flex justify-between text-xs text-muted-foreground mt-1">
-                  <span>Пн</span><span>Вт</span><span>Ср</span><span>Чт</span><span>Пт</span><span>Сб</span><span className="text-primary font-semibold">Вс</span>
-                </div>
-              </motion.div>
 
-              {/* Delivery tracker */}
-              <motion.div
+                <div className="mt-6 overflow-hidden rounded-[1.5rem] border border-border/70">
+                  <img src={CDN.delivery} alt="Следующая доставка" className="h-36 w-full object-cover" />
+                  <div className="grid gap-4 p-4 md:grid-cols-[1fr_auto] md:items-center">
+                    <div>
+                      <div className="text-sm font-semibold text-foreground">15 марта · суббота</div>
+                      <div className="mt-1 text-sm text-muted-foreground">Коробка: молоко 2 л, сыр «Марта Петровых», натуральный йогурт 500 г</div>
+                    </div>
+                    <div className="rounded-full bg-accent/20 px-4 py-2 text-xs font-semibold text-amber-800">Сборка 45%</div>
+                  </div>
+                </div>
+
+                <div className="mt-5 grid gap-3 sm:grid-cols-3">
+                  {[
+                    { label: "Надой сегодня", value: "1.8 л", icon: Milk },
+                    { label: "Именной продукт", value: "Сыр созрел", icon: Sparkles },
+                    { label: "Маршрут", value: "Ферма → семья", icon: Truck },
+                  ].map((item) => {
+                    const Icon = item.icon;
+                    return (
+                      <div key={item.label} className="rounded-2xl bg-secondary/55 p-4">
+                        <div className="flex items-center gap-2 text-primary">
+                          <Icon className="h-4 w-4" />
+                          <span className="text-xs uppercase tracking-[0.16em]">{item.label}</span>
+                        </div>
+                        <div className="mt-3 text-lg font-semibold text-foreground">{item.value}</div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <Link href="/tracker" className="group mt-5 flex items-center justify-between rounded-2xl border border-border bg-white px-4 py-3 text-sm transition-colors hover:bg-muted/40">
+                  <div>
+                    <div className="font-semibold text-foreground">Открыть полный трекер продуктов</div>
+                    <div className="mt-1 text-xs text-muted-foreground">Состав молока, надои и история доставок</div>
+                  </div>
+                  <ChevronRight className="h-5 w-5 text-primary transition-transform group-hover:translate-x-0.5" />
+                </Link>
+              </motion.section>
+
+              <motion.section
                 initial={{ opacity: 0, y: 16 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.15 }}
-                className="col-span-2 sm:col-span-1 bg-card rounded-2xl border border-border shadow-sm overflow-hidden card-hover"
+                className="col-span-12 rounded-[2rem] border border-border/70 bg-card p-5 shadow-sm md:col-span-5"
               >
-                <div className="relative h-28 overflow-hidden">
-                  <img src={CDN.delivery} alt="Доставка" className="w-full h-full object-cover" />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
-                  <div className="absolute bottom-2 left-3 text-white">
-                    <p className="text-xs opacity-80">Следующая доставка</p>
-                    <p className="font-bold">15 марта, суббота</p>
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-xs uppercase tracking-[0.18em] text-primary">Live-слой</p>
+                    <h3 className="mt-2 text-xl font-semibold text-foreground">Прямой эфир стойла</h3>
+                  </div>
+                  <div className="inline-flex items-center gap-1 rounded-full bg-red-50 px-3 py-1 text-xs font-semibold text-red-600">
+                    <span className="h-2 w-2 rounded-full bg-red-500 animate-pulse" /> LIVE
                   </div>
                 </div>
-                <div className="p-4">
-                  <div className="flex items-center gap-2 mb-3">
-                    <div className="flex-1">
-                      <div className="flex justify-between text-xs text-muted-foreground mb-1">
-                        <span>Собирается</span><span>В пути</span><span>Доставлено</span>
-                      </div>
-                      <div className="h-1.5 bg-muted rounded-full overflow-hidden">
-                        <motion.div
-                          initial={{ width: 0 }}
-                          animate={{ width: "45%" }}
-                          transition={{ delay: 0.5, duration: 1 }}
-                          className="h-full bg-accent rounded-full"
-                        />
-                      </div>
-                    </div>
-                  </div>
-                  <div className="text-xs text-muted-foreground">
-                    <span className="font-semibold text-foreground">Состав:</span> Молоко 2л · Сыр «Марта» 300г · Йогурт 500г
-                  </div>
-                </div>
-              </motion.div>
 
-              {/* Live cam */}
-              <motion.div
+                <div className="mt-4 overflow-hidden rounded-[1.5rem] border border-border/70">
+                  <div className="relative">
+                    <img src={CDN.liveCam} alt="Прямой эфир" className="h-48 w-full object-cover" />
+                    <div className="absolute inset-0 bg-black/25" />
+                    <div className="absolute bottom-4 right-4 rounded-full bg-black/55 px-3 py-1 text-xs text-white backdrop-blur">Камера · Стойло №3</div>
+                  </div>
+                </div>
+
+                <div className="mt-4 rounded-2xl bg-secondary/55 p-4 text-sm text-muted-foreground">
+                  Эксклюзивный live-слой удерживает ощущение присутствия между визитами и доставками.
+                </div>
+              </motion.section>
+
+              <motion.section
                 initial={{ opacity: 0, y: 16 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.2 }}
-                className="col-span-2 sm:col-span-1 bg-card rounded-2xl border border-border shadow-sm overflow-hidden card-hover"
+                className="col-span-12 rounded-[2rem] border border-border/70 bg-card p-5 shadow-sm md:col-span-7"
               >
-                <div className="relative h-36 overflow-hidden group">
-                  <img src={CDN.liveCam} alt="Прямой эфир" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-                  <div className="absolute inset-0 bg-black/30" />
-                  <div className="absolute top-2 left-2 flex items-center gap-1.5 bg-red-600 text-white text-xs font-bold px-2 py-0.5 rounded-full">
-                    <span className="w-1.5 h-1.5 bg-white rounded-full animate-pulse" />
-                    LIVE
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-xs uppercase tracking-[0.18em] text-primary">Дневник</p>
+                    <h3 className="mt-2 text-xl font-semibold text-foreground">Последние события из жизни Марты</h3>
                   </div>
-                  <div className="absolute bottom-2 right-2 bg-black/60 text-white text-xs px-2 py-1 rounded-lg">
-                    <Camera className="w-3 h-3 inline mr-1" />
-                    Стойло №3
-                  </div>
-                  <motion.button
-                    whileHover={{ scale: 1.1 }}
-                    className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                  >
-                    <div className="w-12 h-12 rounded-full bg-white/30 backdrop-blur-sm flex items-center justify-center">
-                      <div className="w-0 h-0 border-l-[16px] border-l-white border-y-[10px] border-y-transparent ml-1" />
-                    </div>
-                  </motion.button>
+                  <BookOpen className="h-5 w-5 text-primary" />
                 </div>
-                <div className="p-3">
-                  <p className="text-sm font-semibold">Прямой эфир 24/7</p>
-                  <p className="text-xs text-muted-foreground">Эксклюзивно для владельца</p>
-                </div>
-              </motion.div>
 
-              {/* Named cheese */}
-              <motion.div
+                <div className="mt-4 space-y-3">
+                  {diaryEntries.map((entry) => (
+                    <div key={entry.title} className="rounded-2xl bg-muted/45 p-4 transition-colors hover:bg-muted/65">
+                      <div className="flex items-center justify-between gap-3">
+                        <h4 className="text-sm font-semibold text-foreground">{entry.title}</h4>
+                        <span className="text-xs text-muted-foreground">{entry.date}</span>
+                      </div>
+                      <p className="mt-2 text-sm leading-6 text-muted-foreground">{entry.text}</p>
+                    </div>
+                  ))}
+                </div>
+              </motion.section>
+
+              <motion.section
                 initial={{ opacity: 0, y: 16 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.25 }}
-                className="col-span-2 sm:col-span-1 bg-card rounded-2xl border border-border shadow-sm overflow-hidden card-hover"
+                className="col-span-12 rounded-[2rem] border border-border/70 bg-card p-5 shadow-sm md:col-span-5"
               >
-                <div className="relative h-36 overflow-hidden">
-                  <img src={CDN.cheese} alt="Именной сыр" className="w-full h-full object-cover" />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-                  <div className="absolute bottom-2 left-3 text-white">
-                    <p className="text-xs opacity-80">Именной продукт</p>
-                    <p className="font-bold text-sm">Сыр «Марта Петровых»</p>
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-xs uppercase tracking-[0.18em] text-primary">Клуб</p>
+                    <h3 className="mt-2 text-xl font-semibold text-foreground">Ближайшие моменты сообщества</h3>
                   </div>
-                  <div className="absolute top-2 right-2 bg-amber-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">
-                    Созрел!
-                  </div>
+                  <Users className="h-5 w-5 text-primary" />
                 </div>
-                <div className="p-3">
-                  <p className="text-xs text-muted-foreground">Выдержка 21 день · Жирность 45%</p>
-                  <motion.button
-                    whileHover={{ scale: 1.03 }}
-                    className="mt-2 w-full text-xs font-semibold bg-accent/15 text-amber-700 rounded-lg py-2 hover:bg-accent/25 transition-colors"
-                  >
-                    Добавить в доставку
-                  </motion.button>
-                </div>
-              </motion.div>
-            </div>
 
-            {/* Diary */}
-            <motion.div
-              initial={{ opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.3 }}
-              className="col-span-12 md:col-span-5 bg-card rounded-2xl border border-border shadow-sm p-5 card-hover"
-            >
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="font-bold text-foreground flex items-center gap-2">
-                  <BookOpen className="w-4 h-4 text-primary" />
-                  Дневник Марты
-                </h3>
-                <Link href="/animal/marta">
-                  <span className="text-xs text-primary hover:underline cursor-pointer">Все записи</span>
-                </Link>
-              </div>
-              <div className="space-y-3">
-                {diaryEntries.map((entry, i) => (
-                  <motion.div
-                    key={i}
-                    initial={{ opacity: 0, x: -12 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: 0.4 + i * 0.08 }}
-                    className="flex gap-3 p-3 rounded-xl bg-muted/50 hover:bg-muted transition-colors"
-                  >
-                    <span className="text-2xl">{entry.mood}</span>
-                    <div>
-                      <p className="text-xs text-muted-foreground mb-0.5">{entry.date}</p>
-                      <p className="text-sm text-foreground leading-relaxed">{entry.text}</p>
+                <div className="mt-4 space-y-3">
+                  {clubMoments.map((item) => (
+                    <div key={item.title} className="rounded-2xl border border-border bg-white p-4">
+                      <div className="text-sm font-semibold text-foreground">{item.title}</div>
+                      <div className="mt-1 text-xs text-muted-foreground">{item.meta}</div>
                     </div>
-                  </motion.div>
-                ))}
-              </div>
-            </motion.div>
+                  ))}
+                </div>
 
-            {/* Notifications */}
-            <motion.div
-              initial={{ opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.35 }}
-              className="col-span-12 md:col-span-4 bg-card rounded-2xl border border-border shadow-sm p-5 card-hover"
-            >
-              <h3 className="font-bold text-foreground flex items-center gap-2 mb-4">
-                <Bell className="w-4 h-4 text-primary" />
-                Уведомления
-              </h3>
-              <div className="space-y-3">
-                {notifications.map((n, i) => {
-                  const Icon = n.icon;
-                  return (
-                    <motion.div
-                      key={i}
-                      initial={{ opacity: 0, x: 12 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: 0.45 + i * 0.07 }}
-                      className="flex items-start gap-3 p-3 rounded-xl hover:bg-muted/50 transition-colors cursor-pointer"
-                    >
-                      <div className={`p-2 rounded-lg bg-muted ${n.color}`}>
-                        <Icon className="w-4 h-4" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm text-foreground leading-snug">{n.text}</p>
-                        <p className="text-xs text-muted-foreground mt-0.5">{n.time}</p>
-                      </div>
-                    </motion.div>
-                  );
-                })}
-              </div>
-            </motion.div>
+                <Link href="/club" className="group mt-4 flex items-center justify-between rounded-2xl bg-secondary px-4 py-3 text-sm font-medium text-primary transition-colors hover:bg-secondary/80">
+                  Открыть клубную ленту
+                  <ChevronRight className="h-5 w-5 transition-transform group-hover:translate-x-0.5" />
+                </Link>
+              </motion.section>
 
-            {/* Quick actions */}
-            <motion.div
-              initial={{ opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.4 }}
-              className="col-span-12 md:col-span-3 bg-gradient-to-br from-primary to-primary/80 rounded-2xl shadow-sm p-5 text-white"
-            >
-              <h3 className="font-bold mb-4 flex items-center gap-2">
-                <Zap className="w-4 h-4" />
-                Быстрые действия
-              </h3>
-              <div className="space-y-2.5">
-                {[
-                  { icon: ShoppingBag, label: "Заказать корм", sub: "Морковь, сено, зерно" },
-                  { icon: Calendar, label: "Запись на визит", sub: "Приехать на ферму" },
-                  { icon: Gift, label: "Подарить подписку", sub: "Другу или партнёру" },
-                  { icon: Users, label: "Клубная лента", sub: "Новости сообщества" },
-                ].map((action, i) => {
-                  const Icon = action.icon;
-                  return (
-                    <motion.button
-                      key={i}
-                      whileHover={{ scale: 1.02, x: 4 }}
-                      whileTap={{ scale: 0.98 }}
-                      className="w-full flex items-center gap-3 p-3 rounded-xl bg-white/10 hover:bg-white/20 transition-colors text-left"
-                    >
-                      <div className="p-1.5 rounded-lg bg-white/20">
-                        <Icon className="w-4 h-4" />
-                      </div>
-                      <div>
-                        <p className="text-sm font-semibold leading-tight">{action.label}</p>
-                        <p className="text-xs text-white/70">{action.sub}</p>
-                      </div>
-                      <ChevronRight className="w-4 h-4 ml-auto text-white/50" />
-                    </motion.button>
-                  );
-                })}
-              </div>
-            </motion.div>
+              <motion.section
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.3 }}
+                className="col-span-12 overflow-hidden rounded-[2rem] border border-primary/15 bg-[linear-gradient(135deg,rgba(26,58,42,0.97),rgba(46,77,59,0.94))] p-6 text-white shadow-[0_34px_80px_-42px_rgba(26,58,42,0.72)]"
+              >
+                <div className="grid gap-5 md:grid-cols-[1fr_auto] md:items-center">
+                  <div>
+                    <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/8 px-3 py-1 text-xs uppercase tracking-[0.18em] text-amber-300">
+                      <Bot className="h-3.5 w-3.5" />
+                      AI-slot для Sprint 2
+                    </div>
+                    <h3 className="mt-4 font-display text-3xl">Куратор владельца появится здесь.</h3>
+                    <p className="mt-3 max-w-2xl text-sm leading-7 text-white/75">
+                      Этот блок подготавливает следующий слой ценности: персональные рекомендации по уходу, объяснение событий фермы,
+                      голос животного и умные сценарии удержания.
+                    </p>
+                    <div className="mt-5 flex flex-wrap gap-2 text-xs text-white/65">
+                      <span className="rounded-full border border-white/15 px-3 py-1">voice of animal</span>
+                      <span className="rounded-full border border-white/15 px-3 py-1">storyteller</span>
+                      <span className="rounded-full border border-white/15 px-3 py-1">retention agent</span>
+                    </div>
+                  </div>
 
+                  <div className="grid gap-3 rounded-[1.5rem] bg-white/8 p-4 backdrop-blur md:min-w-[280px]">
+                    {notifications.map((note) => (
+                      <div key={note} className="rounded-2xl border border-white/10 bg-white/8 p-3 text-sm text-white/82">
+                        {note}
+                      </div>
+                    ))}
+                    <div className="rounded-2xl border border-dashed border-white/20 p-3 text-xs text-white/55">
+                      Пространство для AI-объяснений, рекомендаций и next-best-action сценариев.
+                    </div>
+                  </div>
+                </div>
+              </motion.section>
+
+              <motion.section
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.35 }}
+                className="col-span-12 overflow-hidden rounded-[2rem] border border-border/70 bg-card shadow-sm"
+              >
+                <div className="grid gap-0 md:grid-cols-[0.92fr_1.08fr]">
+                  <img src={CDN.family} alt="Семья на ферме" className="h-full min-h-[220px] w-full object-cover" />
+                  <div className="p-6">
+                    <p className="text-xs uppercase tracking-[0.18em] text-primary">Ритм участия</p>
+                    <h3 className="mt-2 text-2xl font-semibold text-foreground">Сайт должен удерживать пользователя между продуктом и жизнью фермы.</h3>
+                    <p className="mt-3 text-sm leading-7 text-muted-foreground">
+                      Именно поэтому Sprint 1 не ограничивается красивыми карточками: каждая зона дашборда обязана вести либо в эмоциональную,
+                      либо в продуктовую, либо в community-логику.
+                    </p>
+                    <div className="mt-5 grid gap-3 sm:grid-cols-3">
+                      {[
+                        { icon: Waves, label: "Живой ритм", value: "Дневник + Live" },
+                        { icon: Calendar, label: "Возврат", value: "События клуба" },
+                        { icon: Camera, label: "Присутствие", value: "24/7 touchpoints" },
+                      ].map((item) => {
+                        const Icon = item.icon;
+                        return (
+                          <div key={item.label} className="rounded-2xl bg-secondary/55 p-4">
+                            <Icon className="h-4 w-4 text-primary" />
+                            <div className="mt-3 text-xs uppercase tracking-[0.15em] text-muted-foreground">{item.label}</div>
+                            <div className="mt-1 text-sm font-semibold text-foreground">{item.value}</div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+              </motion.section>
+            </div>
           </div>
         </div>
       </div>
