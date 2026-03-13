@@ -100,14 +100,13 @@ export default function Dashboard() {
             animate={{ opacity: 1, y: 0 }}
             className="mb-8 grid gap-4 rounded-[2rem] border border-border/70 bg-white/80 p-5 shadow-sm backdrop-blur md:grid-cols-[1fr_auto] md:items-center"
           >
-            <div>
-              <p className="text-sm text-muted-foreground">Добро пожаловать обратно</p>
-              <h1 className="mt-2 font-display text-4xl text-foreground md:text-5xl">Александр, это цифровое сердце вашей фермерской жизни.</h1>
-              <p className="mt-3 max-w-2xl text-sm leading-7 text-muted-foreground">
-                Здесь соединяются живая связь с Мартой, статус вашей продукции, ритм клуба и будущий AI-куратор,
-                который станет следующим уровнем персонализации.
-              </p>
-            </div>
+              <div>
+                <p className="text-sm uppercase tracking-[0.22em] text-primary">Owner dashboard</p>
+                <h1 className="mt-3 font-display text-4xl text-foreground md:text-5xl">Александр, здесь соединяются Марта, продукты и клубная жизнь.</h1>
+                <p className="mt-3 max-w-2xl text-sm leading-7 text-muted-foreground">
+                  Это главный экран владельца: живая связь с животным, статус семейной коробки и маршруты в клуб и трекер происхождения.
+                </p>
+              </div>
 
             <div className="flex items-center gap-3 self-start md:self-center">
               <button className="relative flex h-12 w-12 items-center justify-center rounded-2xl border border-border bg-card shadow-sm transition-colors hover:bg-muted/50">
@@ -175,13 +174,23 @@ export default function Dashboard() {
                   </button>
                 </div>
 
-                <Link href="/animal/marta" className="group flex items-center justify-between rounded-2xl border border-border bg-white px-4 py-3 text-sm transition-colors hover:bg-muted/40">
-                  <div>
-                    <div className="font-semibold text-foreground">Открыть полный профиль животного</div>
-                    <div className="mt-1 text-xs text-muted-foreground">Биография, дневник, показатели и narrative-слой</div>
+                <div className="grid gap-3">
+                  <Link href="/animal/marta" className="group flex items-center justify-between rounded-2xl border border-border bg-white px-4 py-3 text-sm transition-colors hover:bg-muted/40">
+                    <div>
+                      <div className="font-semibold text-foreground">Открыть полный профиль животного</div>
+                      <div className="mt-1 text-xs text-muted-foreground">Фото, история и живой контакт с Мартой</div>
+                    </div>
+                    <ChevronRight className="h-5 w-5 text-primary transition-transform group-hover:translate-x-0.5" />
+                  </Link>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <Link href="/tracker" className="inline-flex items-center justify-center rounded-full bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/92">
+                      К трекеру продуктов
+                    </Link>
+                    <Link href="/club" className="inline-flex items-center justify-center rounded-full border border-border px-4 py-3 text-sm font-semibold text-foreground transition-colors hover:bg-muted">
+                      В клубную ленту
+                    </Link>
                   </div>
-                  <ChevronRight className="h-5 w-5 text-primary transition-transform group-hover:translate-x-0.5" />
-                </Link>
+                </div>
               </div>
             </motion.section>
 
@@ -197,7 +206,7 @@ export default function Dashboard() {
                     <p className="text-xs uppercase tracking-[0.18em] text-primary">Продуктовый статус</p>
                     <h3 className="mt-2 text-2xl font-semibold text-foreground">Следующая доставка уже собирается.</h3>
                     <p className="mt-2 max-w-md text-sm leading-7 text-muted-foreground">
-                      Рациональная ценность участия должна быть видна сразу: что производится, что будет доставлено и на каком этапе находится коробка.
+                        Здесь видно, что именно собирается в семейную коробку и на каком этапе находится доставка.
                     </p>
                   </div>
                   <div className="rounded-2xl bg-primary/10 p-3 text-primary">
@@ -269,8 +278,16 @@ export default function Dashboard() {
                 </div>
 
                 <div className="mt-4 rounded-2xl bg-secondary/55 p-4 text-sm text-muted-foreground">
-                  Эксклюзивный live-слой удерживает ощущение присутствия между визитами и доставками.
+                  Live-камера возвращает ощущение присутствия между визитами, событиями и доставками.
                 </div>
+
+                <Link href="/animal/marta" className="group mt-4 flex items-center justify-between rounded-2xl border border-border bg-white px-4 py-3 text-sm transition-colors hover:bg-muted/40">
+                  <div>
+                    <div className="font-semibold text-foreground">Перейти к профилю Марты</div>
+                    <div className="mt-1 text-xs text-muted-foreground">Открыть галерею, историю и профиль животного</div>
+                  </div>
+                  <ChevronRight className="h-5 w-5 text-primary transition-transform group-hover:translate-x-0.5" />
+                </Link>
               </motion.section>
 
               <motion.section
@@ -298,6 +315,14 @@ export default function Dashboard() {
                     </div>
                   ))}
                 </div>
+
+                <Link href="/animal/marta" className="group mt-4 flex items-center justify-between rounded-2xl border border-border bg-white px-4 py-3 text-sm transition-colors hover:bg-muted/40">
+                  <div>
+                    <div className="font-semibold text-foreground">Продолжить в профиле Марты</div>
+                    <div className="mt-1 text-xs text-muted-foreground">Открыть полную биографию, галерею и фотопоток</div>
+                  </div>
+                  <ChevronRight className="h-5 w-5 text-primary transition-transform group-hover:translate-x-0.5" />
+                </Link>
               </motion.section>
 
               <motion.section
@@ -323,10 +348,19 @@ export default function Dashboard() {
                   ))}
                 </div>
 
-                <Link href="/club" className="group mt-4 flex items-center justify-between rounded-2xl bg-secondary px-4 py-3 text-sm font-medium text-primary transition-colors hover:bg-secondary/80">
-                  Открыть клубную ленту
-                  <ChevronRight className="h-5 w-5 transition-transform group-hover:translate-x-0.5" />
-                </Link>
+                <div className="mt-4 grid gap-3">
+                  <Link href="/club" className="group flex items-center justify-between rounded-2xl bg-secondary px-4 py-3 text-sm font-medium text-primary transition-colors hover:bg-secondary/80">
+                    <span>Открыть клубную ленту</span>
+                    <ChevronRight className="h-5 w-5 transition-transform group-hover:translate-x-0.5" />
+                  </Link>
+                  <Link href="/tracker" className="group flex items-center justify-between rounded-2xl border border-border bg-white px-4 py-3 text-sm transition-colors hover:bg-muted/40">
+                    <div>
+                      <div className="font-semibold text-foreground">Проверить продуктовый трекер</div>
+                      <div className="mt-1 text-xs text-muted-foreground">Увидеть путь коробки и активную доставку</div>
+                    </div>
+                    <ChevronRight className="h-5 w-5 text-primary transition-transform group-hover:translate-x-0.5" />
+                  </Link>
+                </div>
               </motion.section>
 
               <motion.section
@@ -378,8 +412,7 @@ export default function Dashboard() {
                     <p className="text-xs uppercase tracking-[0.18em] text-primary">Ритм участия</p>
                     <h3 className="mt-2 text-2xl font-semibold text-foreground">Сайт должен удерживать пользователя между продуктом и жизнью фермы.</h3>
                     <p className="mt-3 text-sm leading-7 text-muted-foreground">
-                      Именно поэтому Sprint 1 не ограничивается красивыми карточками: каждая зона дашборда обязана вести либо в эмоциональную,
-                      либо в продуктовую, либо в community-логику.
+                      Каждая зона дашборда должна вести либо в эмоциональный слой, либо в продуктовый маршрут, либо в клубную среду.
                     </p>
                     <div className="mt-5 grid gap-3 sm:grid-cols-3">
                       {[

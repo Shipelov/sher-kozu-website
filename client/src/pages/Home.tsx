@@ -150,9 +150,8 @@ export default function Home() {
                 transition={{ delay: 0.15 }}
                 className="mt-6 max-w-xl text-lg leading-8 text-muted-foreground"
               >
-                <strong className="text-foreground">Шерь Козу</strong> соединяет семью с конкретным животным, фермой и продуктами от него.
-                Вы не просто заказываете доставку, а входите в цифровую экосистему участия: профиль животного, дневник,
-                трекер продукции, клуб и будущий AI-куратор.
+                <strong className="text-foreground">Шерь Козу</strong> соединяет семью с конкретным животным, фермой и именными продуктами.
+                Вы входите в одну экосистему: профиль питомца, дашборд владельца, трекер происхождения и клубную жизнь.
               </motion.p>
 
               <motion.div
@@ -162,15 +161,15 @@ export default function Home() {
                 className="mt-8 flex flex-col gap-3 sm:flex-row"
               >
                 <Link href="/dashboard" className="group inline-flex items-center justify-center gap-2 rounded-full bg-primary px-7 py-4 text-sm font-semibold text-primary-foreground shadow-[0_18px_40px_-20px_rgba(26,58,42,0.65)] transition-all duration-300 hover:-translate-y-0.5 hover:bg-primary/95">
-                  Открыть экосистему владельца
+                  Открыть дашборд владельца
                   <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
                 </Link>
                 <Link href="/animal/marta" className="inline-flex items-center justify-center gap-2 rounded-full border border-border bg-white/80 px-7 py-4 text-sm font-semibold text-foreground backdrop-blur transition-colors hover:bg-white">
-                  Познакомиться с Мартой
+                  Открыть профиль Марты
                   <ChevronRight className="h-4 w-4" />
                 </Link>
                 <Link href="/tracker" className="inline-flex items-center justify-center gap-2 rounded-full border border-primary/15 bg-secondary/70 px-7 py-4 text-sm font-semibold text-primary transition-colors hover:bg-secondary">
-                  Посмотреть путь продукта
+                  Перейти в трекер продуктов
                   <Package className="h-4 w-4" />
                 </Link>
               </motion.div>
@@ -255,8 +254,7 @@ export default function Home() {
                 Новая категория между фермерством, сервисом и клубом.
               </h2>
               <p className="mt-5 max-w-md text-base leading-7 text-muted-foreground">
-                Чтобы модель была понятной за первые экраны, лендинг должен объяснить не только эмоцию, но и механику участия.
-                Пользователь выбирает животное, наблюдает за ним и получает продукты как материальный результат личной связи.
+                Пользователь выбирает животное, наблюдает за ним и получает продукты как материальный результат этой связи.
               </p>
             </div>
 

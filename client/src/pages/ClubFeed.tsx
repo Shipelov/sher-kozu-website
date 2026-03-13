@@ -278,8 +278,8 @@ export default function ClubFeed() {
               >
                 <div className="flex items-center justify-between gap-3">
                   <div>
-                    <p className="text-sm uppercase tracking-[0.22em] text-primary">Календарь клуба</p>
-                    <h2 className="mt-3 text-2xl font-semibold text-foreground">Ближайшие события</h2>
+                    <p className="text-sm uppercase tracking-[0.22em] text-primary">Club calendar</p>
+                    <h2 className="mt-3 text-2xl font-semibold text-foreground">Ближайшие события клуба</h2>
                   </div>
                   <Calendar className="h-5 w-5 text-primary" />
                 </div>
@@ -314,7 +314,7 @@ export default function ClubFeed() {
                   <p className="text-sm uppercase tracking-[0.22em] text-primary">Персональный ритуал</p>
                   <h2 className="mt-3 text-2xl font-semibold text-foreground">День рождения Марты уже в календаре семьи.</h2>
                   <p className="mt-3 text-sm leading-7 text-muted-foreground">
-                    Сильные удерживающие механики часто возникают не из скидок, а из событийных ritual loops — личных, редких и эмоционально значимых.
+                    Удержание здесь строится на личных и эмоционально значимых событиях, а не только на скидках.
                   </p>
                 </div>
               </motion.section>
@@ -359,9 +359,9 @@ export default function ClubFeed() {
                   <Wine className="h-5 w-5" />
                   <span className="text-sm uppercase tracking-[0.2em]">Community loops</span>
                 </div>
-                <h2 className="mt-4 font-display text-3xl">Клуб усиливает продуктовую и эмоциональную лояльность одновременно.</h2>
+                <h2 className="mt-4 font-display text-3xl">Клуб удерживает связь между животным, продуктом и семьёй.</h2>
                 <p className="mt-3 text-sm leading-7 text-white/75">
-                  Пользователь приходит за животным и продуктом, но остаётся дольше из-за сообщества, событий и ощущения принадлежности к красивой, тёплой, редкой среде.
+                  Пользователь возвращается сюда ради событий, сообщества и ощущения принадлежности к жизни фермы.
                 </p>
                 <div className="mt-6 grid gap-3">
                   <Link href="/animal/marta" className="group flex items-center justify-between rounded-2xl border border-white/12 bg-white/8 px-4 py-3 text-sm transition-colors hover:bg-white/12">
@@ -374,7 +374,14 @@ export default function ClubFeed() {
                   <Link href="/tracker" className="group flex items-center justify-between rounded-2xl border border-white/12 bg-white/8 px-4 py-3 text-sm transition-colors hover:bg-white/12">
                     <div>
                       <div className="font-semibold text-white">Перейти в трекер продуктов</div>
-                      <div className="mt-1 text-xs text-white/60">Посмотреть материальный результат участия</div>
+                      <div className="mt-1 text-xs text-white/60">Вернуться к продуктовой прозрачности</div>
+                    </div>
+                    <ChevronRight className="h-5 w-5 text-amber-300 transition-transform group-hover:translate-x-0.5" />
+                  </Link>
+                  <Link href="/dashboard" className="group flex items-center justify-between rounded-2xl border border-white/12 bg-white/8 px-4 py-3 text-sm transition-colors hover:bg-white/12">
+                    <div>
+                      <div className="font-semibold text-white">Вернуться в кабинет</div>
+                      <div className="mt-1 text-xs text-white/60">Подписка, статусы и быстрые действия семьи</div>
                     </div>
                     <ChevronRight className="h-5 w-5 text-amber-300 transition-transform group-hover:translate-x-0.5" />
                   </Link>
@@ -408,7 +415,15 @@ export default function ClubFeed() {
                     </div>
                     <div className="mt-4 flex items-center gap-2 text-xs text-muted-foreground">
                       <Bell className="h-4 w-4 text-primary" />
-                      Уведомления здесь — не техническая настройка, а часть retention architecture.
+                      Уведомления помогают возвращать пользователя в ритм клуба.
+                    </div>
+                    <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                      <Link href="/animal/marta" className="inline-flex items-center justify-center rounded-full bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/92">
+                        К профилю Марты
+                      </Link>
+                      <Link href="/tracker" className="inline-flex items-center justify-center rounded-full border border-border px-4 py-3 text-sm font-semibold text-foreground transition-colors hover:bg-muted">
+                        К трекеру продуктов
+                      </Link>
                     </div>
                   </div>
                 </div>

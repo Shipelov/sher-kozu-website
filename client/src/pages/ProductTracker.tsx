@@ -113,11 +113,10 @@ export default function ProductTracker() {
             className="mb-8 grid gap-5 rounded-[2rem] border border-border/70 bg-white/80 p-5 shadow-sm backdrop-blur md:p-6 lg:grid-cols-[1.05fr_0.95fr] lg:items-center"
           >
             <div>
-              <p className="text-sm uppercase tracking-[0.22em] text-primary">Product transparency</p>
-              <h1 className="mt-3 font-display text-4xl text-foreground md:text-5xl">Трекер продуктов показывает, как участие превращается в осязаемую ценность.</h1>
+              <p className="text-sm uppercase tracking-[0.22em] text-primary">Product tracker</p>
+              <h1 className="mt-3 font-display text-4xl text-foreground md:text-5xl">Трекер показывает, как Марта превращается в семейный продуктовый маршрут.</h1>
               <p className="mt-4 max-w-2xl text-sm leading-7 text-muted-foreground">
-                Этот экран закрывает рациональную часть обещания Шерь Козу: пользователь должен видеть происхождение молока,
-                параметры партии, ход доставки и связь между животным, фермой и семейной коробкой.
+                Здесь пользователь видит происхождение молока, параметры партии, ход доставки и связь с конкретным животным.
               </p>
             </div>
 
@@ -161,7 +160,7 @@ export default function ProductTracker() {
                 </div>
                 <div className="absolute bottom-5 left-5 right-5 text-white">
                   <h2 className="text-2xl font-semibold">Состав молока от Марты</h2>
-                  <p className="mt-2 max-w-md text-sm text-white/75">Часть доверия строится на том, что качество продукта наблюдаемо и читаемо в интерфейсе.</p>
+                  <p className="mt-2 max-w-md text-sm text-white/75">Качество партии видно прямо в интерфейсе, а не обещается абстрактно.</p>
                 </div>
               </div>
 
@@ -177,7 +176,7 @@ export default function ProductTracker() {
                 ))}
 
                 <div className="rounded-2xl bg-secondary/55 p-4 text-sm leading-7 text-muted-foreground">
-                  Сертификат качества №СК-2026-0310 подтверждает лабораторную фиксацию партии. Это превращает promise о прозрачности в интерфейсный факт.
+                  Сертификат качества №СК-2026-0310 подтверждает партию и делает прозрачность наблюдаемой.
                 </div>
               </div>
             </motion.section>
@@ -193,7 +192,7 @@ export default function ProductTracker() {
                   <p className="text-sm uppercase tracking-[0.22em] text-primary">Динамика надоев</p>
                   <h2 className="mt-3 text-2xl font-semibold text-foreground">Сентябрь 2025 — март 2026</h2>
                   <p className="mt-2 text-sm leading-7 text-muted-foreground">
-                    График нужен не ради цифр, а чтобы показать: участие в системе имеет ритм, сезонность и наблюдаемую связь с жизнью животного.
+                    График показывает сезонность и связь между жизнью животного и объёмом продукта.
                   </p>
                 </div>
                 <div className="text-right">
@@ -334,7 +333,7 @@ export default function ProductTracker() {
               <p className="text-sm uppercase tracking-[0.22em] text-amber-300">Связанные маршруты</p>
               <h2 className="mt-3 font-display text-3xl">Трекер не должен быть тупиком.</h2>
               <p className="mt-3 text-sm leading-7 text-white/75">
-                Пользователь должен естественно возвращаться к животному и клубной жизни, чтобы рациональная прозрачность работала вместе с эмоциональной связью и community-слоем.
+                Пользователь должен естественно возвращаться к животному, кабинету и клубной жизни, чтобы рациональная прозрачность работала вместе с эмоциональной связью и community-слоем.
               </p>
 
               <div className="mt-6 grid gap-3">
@@ -342,6 +341,13 @@ export default function ProductTracker() {
                   <div>
                     <div className="font-semibold text-white">Вернуться в профиль Марты</div>
                     <div className="mt-1 text-xs text-white/60">Животное как источник продукта и удержания</div>
+                  </div>
+                  <ChevronRight className="h-5 w-5 text-amber-300 transition-transform group-hover:translate-x-0.5" />
+                </Link>
+                <Link href="/dashboard" className="group flex items-center justify-between rounded-2xl border border-white/12 bg-white/8 px-4 py-3 text-sm transition-colors hover:bg-white/12">
+                  <div>
+                    <div className="font-semibold text-white">Вернуться в кабинет</div>
+                    <div className="mt-1 text-xs text-white/60">Подписка, статусы и быстрые действия семьи</div>
                   </div>
                   <ChevronRight className="h-5 w-5 text-amber-300 transition-transform group-hover:translate-x-0.5" />
                 </Link>
