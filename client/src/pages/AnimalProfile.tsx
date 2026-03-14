@@ -25,6 +25,7 @@ type GalleryImage = {
   meta: string;
   isUploaded?: boolean;
   photoId?: number;
+  isCover?: boolean;
 };
 
 type PhotoActivity = {
@@ -43,6 +44,8 @@ type CropDraft = {
 };
 
 const ANIMAL_SLUG = "marta";
+const MAX_UPLOAD_SIZE_BYTES = 8 * 1024 * 1024;
+const ACCEPTED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"] as const;
 
 const CDN = {
   goat: "https://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/goat_portrait_80fc5726.jpg",
@@ -119,6 +122,7 @@ export default function AnimalProfile() {
   const [photoActivity, setPhotoActivity] = useState<PhotoActivity[]>([]);
   const [isDragActive, setIsDragActive] = useState(false);
   const [cropDraft, setCropDraft] = useState<CropDraft | null>(null);
+  const [coverImageId, setCoverImageId] = useState(defaultGallery[0].id);
 
   const utils = trpc.useUtils();
   const photosQuery = trpc.animalPhotos.list.useQuery({ animalSlug: ANIMAL_SLUG });
@@ -175,8 +179,12 @@ export default function AnimalProfile() {
 
   const galleryImages = useMemo<GalleryImage[]>(() => {
     const persistent = photosQuery.data ?? [];
-    return [...persistent, ...defaultGallery];
-  }, [photosQuery.data]);
+    const merged = [...persistent, ...defaultGallery];
+    return merged.map((image) => ({
+      ...image,
+      isCover: image.id === coverImageId,
+    }));
+  }, [coverImageId, photosQuery.data]);
 
   useEffect(() => {
     if (!galleryImages.length) return;
@@ -185,6 +193,14 @@ export default function AnimalProfile() {
       setSelectedImageId(galleryImages[0].id);
     }
   }, [galleryImages, selectedImageId]);
+
+  useEffect(() => {
+    if (!galleryImages.length) return;
+    const hasCover = galleryImages.some((item) => item.id === coverImageId);
+    if (!hasCover) {
+      setCoverImageId(galleryImages[0].id);
+    }
+  }, [coverImageId, galleryImages]);
 
   const selectedImage = useMemo(
     () => galleryImages.find((item) => item.id === selectedImageId) ?? galleryImages[0],
@@ -255,9 +271,15 @@ export default function AnimalProfile() {
 
   function openCropperForFile(file?: File) {
     if (!file) return;
-    if (!file.type.startsWith("image/")) {
-      toast.error("Поддерживаются только изображения", {
-        description: "Выберите файл JPG, PNG или WebP для галереи Марты.",
+    if (!ACCEPTED_IMAGE_TYPES.includes(file.type as (typeof ACCEPTED_IMAGE_TYPES)[number])) {
+      toast.error("Неподдерживаемый формат файла", {
+        description: "Загрузите JPG, PNG или WebP для галереи Марты.",
+      });
+      return;
+    }
+    if (file.size > MAX_UPLOAD_SIZE_BYTES) {
+      toast.error("Файл слишком большой", {
+        description: "Выберите изображение размером до 8 МБ, чтобы загрузка и кадрирование проходили стабильно.",
       });
       return;
     }
@@ -360,6 +382,14 @@ export default function AnimalProfile() {
   function handleRemoveUploadedImage(image: GalleryImage) {
     if (!image.isUploaded || !image.photoId) return;
     removePhoto.mutate({ photoId: image.photoId });
+  }
+
+  function handleSetCoverImage(imageId: string) {
+    setCoverImageId(imageId);
+    const cover = galleryImages.find((image) => image.id === imageId);
+    toast.success("Обложка обновлена", {
+      description: cover ? `Главным фото выбрано: ${cover.title}.` : "Новое фото закреплено как обложка галереи.",
+    });
   }
 
   return (
@@ -503,7 +533,7 @@ export default function AnimalProfile() {
                         onDrop={handleDropZoneDrop}
                       >
                         <div className="flex items-start gap-3">
-                          <div className={`mt-0.5 rounded-full p-2 ${isDragActive ? "bg-primary/15 text-primary" : "bg-emerald-100 text-emerald-700"}`}>
+                          <div className={`mt-0.5 rounded-full p-2 ${isDragActive ? "bg-primary/15 text-primary ring-4 ring-primary/10" : "bg-emerald-100 text-emerald-700"}`}>
                             {uploadPhoto.isPending || removePhoto.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Camera className="h-4 w-4" />}
                           </div>
                           <div className="flex-1">
@@ -519,9 +549,14 @@ export default function AnimalProfile() {
                             </p>
                             <div className="mt-3 flex flex-wrap items-center gap-2 text-xs font-medium">
                               <span className="rounded-full bg-white/80 px-3 py-1 text-foreground">Drag-and-drop</span>
+                              <span className="rounded-full bg-white/80 px-3 py-1 text-foreground">JPG, PNG, WebP</span>
+                              <span className="rounded-full bg-white/80 px-3 py-1 text-foreground">До 8 МБ</span>
                               <span className="rounded-full bg-white/80 px-3 py-1 text-foreground">Квадратное кадрирование</span>
                               <span className="rounded-full bg-white/80 px-3 py-1 text-foreground">Постоянное хранение</span>
                             </div>
+                            <p className="mt-3 text-xs leading-relaxed text-muted-foreground">
+                              Лучше всего подходят вертикальные или квадратные снимки без мелкого текста: после выбора откроется простое кадрирование, а затем фото сохранится в постоянную галерею Марты.
+                            </p>
                             <input type="file" accept="image/*" className="hidden" onChange={handleGalleryUpload} disabled={uploadPhoto.isPending} />
                           </div>
                         </div>
@@ -562,7 +597,14 @@ export default function AnimalProfile() {
                       </button>
                       <div className="flex flex-col gap-2 p-4 md:flex-row md:items-center md:justify-between">
                         <div>
-                          <div className="text-base font-semibold text-foreground">{selectedImage.title}</div>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <div className="text-base font-semibold text-foreground">{selectedImage.title}</div>
+                            {selectedImage.isCover && (
+                              <span className="rounded-full bg-primary/10 px-2.5 py-1 text-[11px] font-semibold text-primary">
+                                Обложка галереи
+                              </span>
+                            )}
+                          </div>
                           <div className="text-sm text-muted-foreground">{selectedImage.meta}</div>
                         </div>
                         <div className="flex flex-wrap items-center gap-2">
@@ -631,8 +673,18 @@ export default function AnimalProfile() {
                             <div key={image.id} className={`group relative min-w-[120px] max-w-[120px] snap-start overflow-hidden rounded-[1rem] border transition-all ${isSelected ? "border-primary shadow-md shadow-primary/10" : "border-border bg-card"}`}>
                               <button type="button" onClick={() => setSelectedImageId(image.id)} className="block w-full text-left">
                                 <img src={image.src} alt={image.title} className="h-20 w-full object-cover" />
-                                <div className="p-2.5">
+                                <div className="space-y-2 p-2.5">
                                   <div className="truncate text-[11px] font-semibold text-foreground">{image.title}</div>
+                                  <button
+                                    type="button"
+                                    onClick={(event) => {
+                                      event.stopPropagation();
+                                      handleSetCoverImage(image.id);
+                                    }}
+                                    className={`w-full rounded-full px-2 py-1 text-[10px] font-semibold transition-colors ${image.isCover ? "bg-primary text-primary-foreground" : "bg-secondary text-foreground hover:bg-secondary/80"}`}
+                                  >
+                                    {image.isCover ? "Текущая обложка" : "Сделать обложкой"}
+                                  </button>
                                 </div>
                               </button>
 
