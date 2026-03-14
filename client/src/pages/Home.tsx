@@ -23,14 +23,15 @@ import {
   Calendar,
   Bot,
   Leaf,
+  Star,
 } from "lucide-react";
 
 const CDN = {
-  hero: "https://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/hero_farm_ab0d054b.jpg",
-  goat: "https://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/goat_portrait_80fc5726.jpg",
-  milk: "https://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/milk_products_d3f8c13d.jpg",
-  family: "https://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/family_farm_446b395e.jpg",
-  club: "https://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/club_event_3bef2b1e.jpg",
+  hero: "https://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/sherkozu_family_farm_hero-UF9QBY2UhWL9gdEpLXiEFS.webp",
+  goat: "https://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/sherkozu_anglonubian_portrait-fvqToDAjgebgcmNhLN93Db.webp",
+  milk: "https://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/sherkozu_named_dairy_box-3mP3ykmuPDWBoKghC7cnDc.webp",
+  family: "https://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/sherkozu_family_farm_hero-UF9QBY2UhWL9gdEpLXiEFS.webp",
+  club: "https://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/sherkozu_club_visit-mmi2c8j4W8VB63TUjVvZ4S.webp",
 };
 
 const steps = [
@@ -111,13 +112,19 @@ const signals = [
   { value: "24/7", label: "цифровое присутствие" },
 ];
 
+const atmosphereNotes = [
+  "Живое участие семьи вместо обычной подписки на молоко",
+  "Именные продукты с визуально понятным происхождением",
+  "События и визиты, поддерживающие связь между доставками",
+];
+
 export default function Home() {
   return (
-    <div className="min-h-screen bg-background text-foreground overflow-hidden">
+    <div className="min-h-screen overflow-hidden bg-background text-foreground">
       <Navbar />
 
-      <section className="relative isolate overflow-hidden border-b border-border/60 bg-[radial-gradient(circle_at_top_left,rgba(255,255,255,0.85),rgba(244,240,232,0.42)_35%,rgba(235,230,220,0)_65%)] pt-28 pb-16 md:pt-34 md:pb-24">
-        <div className="absolute inset-0 opacity-35 pointer-events-none" aria-hidden>
+      <section className="relative isolate overflow-hidden border-b border-border/60 bg-[radial-gradient(circle_at_top_left,rgba(255,255,255,0.88),rgba(244,240,232,0.48)_35%,rgba(235,230,220,0)_70%)] pt-28 pb-16 md:pt-34 md:pb-24">
+        <div className="absolute inset-0 opacity-40 pointer-events-none" aria-hidden>
           <div className="absolute -left-24 top-24 h-72 w-72 rounded-full bg-primary/10 blur-3xl" />
           <div className="absolute right-0 top-0 h-96 w-96 rounded-full bg-accent/20 blur-3xl" />
         </div>
@@ -198,25 +205,28 @@ export default function Home() {
             >
               <div className="grid gap-4 md:grid-cols-[1.05fr_0.95fr]">
                 <div className="relative overflow-hidden rounded-[2rem] border border-white/60 bg-card shadow-[0_30px_70px_-35px_rgba(33,30,24,0.35)]">
-                  <img src={CDN.hero} alt="Семейная ферма Шерь Козу" className="h-[480px] w-full object-cover" />
-                  <div className="absolute inset-0 bg-gradient-to-t from-dark-oak/80 via-dark-oak/10 to-transparent" />
+                  <img src={CDN.hero} alt="Семейная ферма Шерь Козу" className="h-[520px] w-full object-cover" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-dark-oak/85 via-dark-oak/20 to-transparent" />
                   <div className="absolute bottom-0 left-0 right-0 p-6 text-white">
                     <div className="inline-flex items-center gap-2 rounded-full bg-white/15 px-3 py-1 text-xs backdrop-blur">
                       <MapPin className="h-3.5 w-3.5" />
                       Семейная ферма в живом цифровом формате
                     </div>
-                    <h2 className="mt-3 font-display text-3xl leading-none">Ваше участие начинается с одного живого существа.</h2>
+                    <h2 className="mt-3 font-display text-3xl leading-none md:text-4xl">Ваше участие начинается с одного живого существа.</h2>
+                    <p className="mt-3 max-w-md text-sm leading-6 text-white/78">
+                      Визуальный слой теперь показывает не абстрактный rural lifestyle, а премиальную семейную ферму с личным присутствием и атмосферой редкости.
+                    </p>
                   </div>
                 </div>
 
                 <div className="flex flex-col gap-4">
                   <div className="overflow-hidden rounded-[1.75rem] border border-border/70 bg-card p-4 shadow-sm">
                     <div className="flex items-start gap-4">
-                      <img src={CDN.goat} alt="Коза Марта" className="h-24 w-24 rounded-2xl object-cover object-top" />
+                      <img src={CDN.goat} alt="Коза Марта" className="h-28 w-24 rounded-2xl object-cover object-center" />
                       <div>
                         <p className="text-xs uppercase tracking-[0.18em] text-primary">Животное недели</p>
                         <h3 className="mt-2 text-2xl font-semibold text-foreground">Коза Марта</h3>
-                        <p className="mt-1 text-sm leading-6 text-muted-foreground">Англо-нубийская, 3 года, элитная порода с высокой жирностью молока и мягким темпераментом.</p>
+                        <p className="mt-1 text-sm leading-6 text-muted-foreground">Англо-нубийская, 3 года, мягкий темперамент, выразительный профиль и высокий премиальный потенциал продуктовой линии.</p>
                       </div>
                     </div>
                     <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
@@ -232,10 +242,13 @@ export default function Home() {
                   </div>
 
                   <div className="overflow-hidden rounded-[1.75rem] border border-border/70 bg-card shadow-sm">
-                    <img src={CDN.milk} alt="Именные молочные продукты" className="h-40 w-full object-cover" />
+                    <img src={CDN.milk} alt="Именные молочные продукты" className="h-48 w-full object-cover" />
                     <div className="p-4">
                       <p className="text-xs uppercase tracking-[0.18em] text-primary">Продуктовый слой</p>
-                      <p className="mt-2 text-base font-semibold text-foreground">От Марты в вашу доставку: молоко, сыр и сезонные наборы с прозрачным происхождением.</p>
+                      <h3 className="mt-2 text-xl font-semibold text-foreground">Именная коробка делает происхождение зримым.</h3>
+                      <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                        Пользователь видит не просто молочную продукцию, а красиво упакованный результат своей связи с конкретным животным и конкретной фермой.
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -289,31 +302,38 @@ export default function Home() {
 
       <section className="border-y border-border/60 bg-secondary/45 py-18 md:py-24">
         <div className="container">
-          <div className="max-w-2xl">
-            <p className="text-sm font-semibold uppercase tracking-[0.22em] text-primary">Почему это ценно</p>
-            <h2 className="mt-4 font-display text-4xl text-foreground md:text-5xl">Шерь Козу соединяет сердце, прозрачность и продукт.</h2>
-          </div>
+          <div className="grid gap-6 lg:grid-cols-[0.95fr_1.05fr] lg:items-center">
+            <div className="overflow-hidden rounded-[2rem] border border-white/70 bg-card shadow-sm">
+              <img src={CDN.club} alt="Семья на клубном визите" className="h-full min-h-[360px] w-full object-cover" />
+            </div>
+            <div>
+              <div className="max-w-2xl">
+                <p className="text-sm font-semibold uppercase tracking-[0.22em] text-primary">Почему это ценно</p>
+                <h2 className="mt-4 font-display text-4xl text-foreground md:text-5xl">Шерь Козу соединяет сердце, прозрачность и продукт.</h2>
+              </div>
 
-          <div className="mt-10 grid gap-4 md:grid-cols-2">
-            {values.map((item, index) => {
-              const Icon = item.icon;
-              return (
-                <motion.div
-                  key={item.title}
-                  initial={{ opacity: 0, y: 16 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ delay: index * 0.06 }}
-                  className="rounded-[2rem] border border-white/70 bg-white/80 p-6 shadow-sm"
-                >
-                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 text-primary">
-                    <Icon className="h-5 w-5" />
-                  </div>
-                  <h3 className="mt-4 text-2xl font-semibold text-foreground">{item.title}</h3>
-                  <p className="mt-3 text-sm leading-7 text-muted-foreground">{item.text}</p>
-                </motion.div>
-              );
-            })}
+              <div className="mt-8 grid gap-4 md:grid-cols-2">
+                {values.map((item, index) => {
+                  const Icon = item.icon;
+                  return (
+                    <motion.div
+                      key={item.title}
+                      initial={{ opacity: 0, y: 16 }}
+                      whileInView={{ opacity: 1, y: 0 }}
+                      viewport={{ once: true }}
+                      transition={{ delay: index * 0.06 }}
+                      className="rounded-[2rem] border border-white/70 bg-white/80 p-6 shadow-sm"
+                    >
+                      <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+                        <Icon className="h-5 w-5" />
+                      </div>
+                      <h3 className="mt-4 text-2xl font-semibold text-foreground">{item.title}</h3>
+                      <p className="mt-3 text-sm leading-7 text-muted-foreground">{item.text}</p>
+                    </motion.div>
+                  );
+                })}
+              </div>
+            </div>
           </div>
         </div>
       </section>
@@ -363,10 +383,18 @@ export default function Home() {
               className="grid gap-4"
             >
               <div className="overflow-hidden rounded-[2rem] border border-border/70 bg-card shadow-sm">
-                <img src={CDN.family} alt="Семья на ферме" className="h-72 w-full object-cover" />
+                <img src={CDN.family} alt="Семейная ферма на закате" className="h-72 w-full object-cover" />
                 <div className="p-6">
-                  <p className="text-xs uppercase tracking-[0.18em] text-primary">Доверие и масштаб</p>
+                  <p className="text-xs uppercase tracking-[0.18em] text-primary">Атмосфера бренда</p>
                   <p className="mt-2 text-lg font-semibold text-foreground">Семейная ферма остаётся человеческой по масштабу, но цифровой по качеству опыта.</p>
+                  <div className="mt-4 space-y-2">
+                    {atmosphereNotes.map((note) => (
+                      <div key={note} className="flex items-start gap-2 text-sm text-muted-foreground">
+                        <Star className="mt-0.5 h-4 w-4 text-accent" />
+                        <span>{note}</span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
               <div className="overflow-hidden rounded-[2rem] border border-border/70 bg-dark-oak p-6 text-white shadow-[0_24px_60px_-35px_rgba(20,18,16,0.7)]">
@@ -375,12 +403,11 @@ export default function Home() {
                   <span className="text-sm font-medium">Следующий слой ценности</span>
                 </div>
                 <h3 className="mt-4 font-display text-3xl">AI-куратор владельца</h3>
-                  <p className="mt-3 text-sm leading-7 text-white/75">
-                    В Sprint 2 продукт расширяется за счёт умного куратора, storyteller-логики и голоса животного.
-                    Уже сейчас архитектура сайта готовит для этого естественные точки входа, не перегружая первую версию MVP лишней сложностью.
-                  </p>
-                  <div className="mt-5 flex flex-wrap items-center gap-3 text-xs text-white/60">
-
+                <p className="mt-3 text-sm leading-7 text-white/75">
+                  В Sprint 2 продукт расширяется за счёт умного куратора, storyteller-логики и голоса животного.
+                  Уже сейчас архитектура сайта готовит для этого естественные точки входа, не перегружая первую версию MVP лишней сложностью.
+                </p>
+                <div className="mt-5 flex flex-wrap items-center gap-3 text-xs text-white/60">
                   <span className="inline-flex items-center gap-1 rounded-full border border-white/15 px-3 py-1">
                     <Calendar className="h-3.5 w-3.5" />
                     Основа для Sprint 2 готова
@@ -419,10 +446,6 @@ export default function Home() {
                 <Link href="/club" className="inline-flex items-center justify-center gap-2 rounded-full border border-white/20 px-7 py-4 text-sm font-semibold text-white transition-colors hover:bg-white/10">
                   Открыть клубную ленту
                   <Users className="h-4 w-4" />
-                </Link>
-                <Link href="/tracker" className="inline-flex items-center justify-center gap-2 rounded-full border border-white/20 px-7 py-4 text-sm font-semibold text-white transition-colors hover:bg-white/10">
-                  Перейти в трекер продукта
-                  <Package className="h-4 w-4" />
                 </Link>
               </div>
             </div>

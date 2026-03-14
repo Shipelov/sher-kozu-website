@@ -1,0 +1,156 @@
+{
+  "query": "SHOW FULL COLUMNS FROM animalPhotos; SELECT id, animalSlug, ownerOpenId, sortOrder, isCover, createdAt FROM animalPhotos WHERE animalSlug = 'marta' ORDER BY id DESC LIMIT 10;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3J2fXRHx8d1YjF6.root --database mLhmg5VmBsEBpZiYqdnhMQ --execute SHOW FULL COLUMNS FROM animalPhotos; SELECT id, animalSlug, ownerOpenId, sortOrder, isCover, createdAt FROM animalPhotos WHERE animalSlug = 'marta' ORDER BY id DESC LIMIT 10;",
+  "rows": [
+    {
+      "Field": "id",
+      "Type": "int",
+      "Collation": "NULL",
+      "Null": "NO",
+      "Key": "PRI",
+      "Default": "NULL",
+      "Extra": "auto_increment",
+      "Privileges": "select,insert,update,references",
+      "Comment": ""
+    },
+    {
+      "Field": "animalSlug",
+      "Type": "varchar(64)",
+      "Collation": "utf8mb4_bin",
+      "Null": "NO",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": "",
+      "Privileges": "select,insert,update,references",
+      "Comment": ""
+    },
+    {
+      "Field": "ownerOpenId",
+      "Type": "varchar(64)",
+      "Collation": "utf8mb4_bin",
+      "Null": "NO",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": "",
+      "Privileges": "select,insert,update,references",
+      "Comment": ""
+    },
+    {
+      "Field": "title",
+      "Type": "varchar(160)",
+      "Collation": "utf8mb4_bin",
+      "Null": "NO",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": "",
+      "Privileges": "select,insert,update,references",
+      "Comment": ""
+    },
+    {
+      "Field": "meta",
+      "Type": "varchar(255)",
+      "Collation": "utf8mb4_bin",
+      "Null": "NO",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": "",
+      "Privileges": "select,insert,update,references",
+      "Comment": ""
+    },
+    {
+      "Field": "fileKey",
+      "Type": "varchar(255)",
+      "Collation": "utf8mb4_bin",
+      "Null": "NO",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": "",
+      "Privileges": "select,insert,update,references",
+      "Comment": ""
+    },
+    {
+      "Field": "url",
+      "Type": "text",
+      "Collation": "utf8mb4_bin",
+      "Null": "NO",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": "",
+      "Privileges": "select,insert,update,references",
+      "Comment": ""
+    },
+    {
+      "Field": "mimeType",
+      "Type": "varchar(120)",
+      "Collation": "utf8mb4_bin",
+      "Null": "NO",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": "",
+      "Privileges": "select,insert,update,references",
+      "Comment": ""
+    },
+    {
+      "Field": "sizeBytes",
+      "Type": "int",
+      "Collation": "NULL",
+      "Null": "NO",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": "",
+      "Privileges": "select,insert,update,references",
+      "Comment": ""
+    },
+    {
+      "Field": "createdAt",
+      "Type": "timestamp",
+      "Collation": "NULL",
+      "Null": "NO",
+      "Key": "",
+      "Default": "CURRENT_TIMESTAMP",
+      "Extra": "",
+      "Privileges": "select,insert,update,references",
+      "Comment": ""
+    },
+    {
+      "Field": "updatedAt",
+      "Type": "timestamp",
+      "Collation": "NULL",
+      "Null": "NO",
+      "Key": "",
+      "Default": "CURRENT_TIMESTAMP",
+      "Extra": "DEFAULT_GENERATED on update CURRENT_TIMESTAMP",
+      "Privileges": "select,insert,update,references",
+      "Comment": ""
+    },
+    {
+      "Field": "sortOrder",
+      "Type": "int",
+      "Collation": "NULL",
+      "Null": "NO",
+      "Key": "",
+      "Default": "0",
+      "Extra": "",
+      "Privileges": "select,insert,update,references",
+      "Comment": ""
+    },
+    {
+      "Field": "isCover",
+      "Type": "int",
+      "Collation": "NULL",
+      "Null": "NO",
+      "Key": "",
+      "Default": "0",
+      "Extra": "",
+      "Privileges": "select,insert,update,references",
+      "Comment": ""
+    }
+  ],
+  "messages": [
+    "id\tanimalSlug\townerOpenId\tsortOrder\tisCover\tcreatedAt",
+    "1\tmarta\tjP5iBYMcdYguBWJPw5Sruu\t0\t0\t2026-03-14 08:49:19"
+  ],
+  "stdout": "Field\tType\tCollation\tNull\tKey\tDefault\tExtra\tPrivileges\tComment\nid\tint\tNULL\tNO\tPRI\tNULL\tauto_increment\tselect,insert,update,references\t\nanimalSlug\tvarchar(64)\tutf8mb4_bin\tNO\t\tNULL\t\tselect,insert,update,references\t\nownerOpenId\tvarchar(64)\tutf8mb4_bin\tNO\t\tNULL\t\tselect,insert,update,references\t\ntitle\tvarchar(160)\tutf8mb4_bin\tNO\t\tNULL\t\tselect,insert,update,references\t\nmeta\tvarchar(255)\tutf8mb4_bin\tNO\t\tNULL\t\tselect,insert,update,references\t\nfileKey\tvarchar(255)\tutf8mb4_bin\tNO\t\tNULL\t\tselect,insert,update,references\t\nurl\ttext\tutf8mb4_bin\tNO\t\tNULL\t\tselect,insert,update,references\t\nmimeType\tvarchar(120)\tutf8mb4_bin\tNO\t\tNULL\t\tselect,insert,update,references\t\nsizeBytes\tint\tNULL\tNO\t\tNULL\t\tselect,insert,update,references\t\ncreatedAt\ttimestamp\tNULL\tNO\t\tCURRENT_TIMESTAMP\t\tselect,insert,update,references\t\nupdatedAt\ttimestamp\tNULL\tNO\t\tCURRENT_TIMESTAMP\tDEFAULT_GENERATED on update CURRENT_TIMESTAMP\tselect,insert,update,references\t\nsortOrder\tint\tNULL\tNO\t\t0\t\tselect,insert,update,references\t\nisCover\tint\tNULL\tNO\t\t0\t\tselect,insert,update,references\t\nid\tanimalSlug\townerOpenId\tsortOrder\tisCover\tcreatedAt\n1\tmarta\tjP5iBYMcdYguBWJPw5Sruu\t0\t0\t2026-03-14 08:49:19\n",
+  "stderr": "",
+  "execution_time_ms": 392
+}

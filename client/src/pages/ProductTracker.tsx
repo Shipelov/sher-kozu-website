@@ -21,12 +21,15 @@ import {
   Sparkles,
   Truck,
   Users,
+  ShieldCheck,
+  Star,
 } from "lucide-react";
 
 const CDN = {
-  milk: "https://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/milk_products_d3f8c13d.jpg",
-  delivery: "https://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/delivery_box_6b16c712.jpg",
-  cheese: "https://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/named_cheese_e69af325.jpg",
+  milk: "https://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/sherkozu_named_dairy_box-3mP3ykmuPDWBoKghC7cnDc.webp",
+  delivery: "https://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/sherkozu_family_farm_hero-UF9QBY2UhWL9gdEpLXiEFS.webp",
+  cheese: "https://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/sherkozu_named_dairy_box-3mP3ykmuPDWBoKghC7cnDc.webp",
+  goat: "https://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/sherkozu_anglonubian_portrait-fvqToDAjgebgcmNhLN93Db.webp",
 };
 
 const composition = [
@@ -52,7 +55,7 @@ const deliveries = [
     date: "15 марта 2026",
     status: "Собирается",
     progress: 45,
-    story: "Надой Марты от 13 марта уже распределён в коробку семьи Петровых. Сейчас ферма комплектует молоко, сыр и йогурт.",
+    story: "Надой Марты от 13 марта уже распределён в коробку семьи Петровых. Сейчас ферма комплектует молоко, сыр и йогурт в персональную капсулу продукта.",
     items: ["Молоко козье свежее · 2 л", "Сыр «Марта Петровых» · 300 г", "Йогурт натуральный · 500 г"],
   },
   {
@@ -80,6 +83,12 @@ const originSteps = [
   { title: "Семейный опыт", text: "Доставка становится не финалом транзакции, а продолжением фермерской истории дома." },
 ];
 
+const routeNotes = [
+  "Трекер объясняет происхождение через данные, а не только через copywriting.",
+  "Именная коробка визуально доказывает, что продукт связан с животным и семьёй.",
+  "Даже логистический слой должен вести обратно к профилю животного и клубным сценариям.",
+];
+
 const maxLiters = Math.max(...monthlyData.map((item) => item.liters));
 
 function MetricBar({ value, max }: { value: number; max: number }) {
@@ -99,7 +108,7 @@ function MetricBar({ value, max }: { value: number; max: number }) {
 
 export default function ProductTracker() {
   const [activeDelivery, setActiveDelivery] = useState(0);
-  const currentDelivery = deliveries[activeDelivery];
+  const currentDelivery = deliveries[activeDelivery] ?? deliveries[0];
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -110,34 +119,64 @@ export default function ProductTracker() {
           <motion.section
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
-            className="mb-8 grid gap-5 rounded-[2rem] border border-border/70 bg-white/80 p-5 shadow-sm backdrop-blur md:p-6 lg:grid-cols-[1.05fr_0.95fr] lg:items-center"
+            className="mb-8 overflow-hidden rounded-[2.25rem] border border-border/70 bg-card shadow-[0_28px_80px_-42px_rgba(32,26,20,0.26)]"
           >
-            <div>
-              <p className="text-sm uppercase tracking-[0.22em] text-primary">Трекер продукта</p>
-              <h1 className="mt-3 font-display text-4xl text-foreground md:text-5xl">Трекер показывает, как Марта превращается в семейный продуктовый маршрут.</h1>
-              <p className="mt-4 max-w-2xl text-sm leading-7 text-muted-foreground">
-                Здесь пользователь видит происхождение молока, параметры партии, ход доставки и связь с конкретным животным.
-              </p>
-            </div>
-
-            <div className="grid gap-3 sm:grid-cols-2">
-              {[
-                { label: "Надой за март", value: "47.2 л", icon: Milk },
-                { label: "Доставок в сезоне", value: "12", icon: Truck },
-                { label: "Именных продуктов", value: "8", icon: Sparkles },
-                { label: "Качество партии", value: "сертифицировано", icon: FlaskConical },
-              ].map((item) => {
-                const Icon = item.icon;
-                return (
-                  <div key={item.label} className="rounded-2xl border border-border/70 bg-card p-4 shadow-sm">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-secondary text-primary">
-                      <Icon className="h-5 w-5" />
+            <div className="grid gap-0 lg:grid-cols-[1.05fr_0.95fr] lg:items-stretch">
+              <div className="relative min-h-[360px] overflow-hidden">
+                <img src={CDN.milk} alt="Именная молочная коробка" className="h-full w-full object-cover" />
+                <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(25,22,20,0.84),rgba(25,22,20,0.42),rgba(25,22,20,0.14))]" />
+                <div className="absolute inset-0 flex flex-col justify-between p-6 text-white md:p-8">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <div className="inline-flex items-center gap-2 rounded-full bg-white/15 px-3 py-1 text-xs backdrop-blur">
+                      <Leaf className="h-3.5 w-3.5" />
+                      Анализ партии от 10 марта
                     </div>
-                    <div className="mt-4 text-xs uppercase tracking-[0.16em] text-muted-foreground">{item.label}</div>
-                    <div className="mt-1 text-xl font-semibold text-foreground">{item.value}</div>
+                    <div className="rounded-full bg-green-500 px-3 py-1 text-xs font-semibold">Органик</div>
                   </div>
-                );
-              })}
+
+                  <div className="max-w-2xl">
+                    <p className="text-sm uppercase tracking-[0.22em] text-amber-300">Трекер продукта</p>
+                    <h1 className="mt-3 font-display text-4xl text-white md:text-5xl">Трекер показывает, как Марта превращается в семейный продуктовый маршрут.</h1>
+                    <p className="mt-4 max-w-xl text-sm leading-7 text-white/76 md:text-base">
+                      Здесь пользователь видит происхождение молока, параметры партии, ход доставки и связь с конкретным животным.
+                      Новый visual layer делает продукт более личным и премиальным, не теряя прозрачности.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-[linear-gradient(180deg,rgba(255,250,244,0.98),rgba(250,245,237,0.92))] p-5 md:p-6">
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {[
+                    { label: "Надой за март", value: "47.2 л", icon: Milk },
+                    { label: "Доставок в сезоне", value: "12", icon: Truck },
+                    { label: "Именных продуктов", value: "8", icon: Sparkles },
+                    { label: "Качество партии", value: "сертифицировано", icon: FlaskConical },
+                  ].map((item) => {
+                    const Icon = item.icon;
+                    return (
+                      <div key={item.label} className="rounded-2xl border border-border/70 bg-card p-4 shadow-sm">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-secondary text-primary">
+                          <Icon className="h-5 w-5" />
+                        </div>
+                        <div className="mt-4 text-xs uppercase tracking-[0.16em] text-muted-foreground">{item.label}</div>
+                        <div className="mt-1 text-xl font-semibold text-foreground">{item.value}</div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <div className="mt-4 overflow-hidden rounded-[1.75rem] border border-border/70 bg-card shadow-sm">
+                  <img src={CDN.goat} alt="Марта" className="h-44 w-full object-cover object-top" />
+                  <div className="p-4">
+                    <p className="text-xs uppercase tracking-[0.18em] text-primary">Источник маршрута</p>
+                    <h2 className="mt-2 text-xl font-semibold text-foreground">Любой продукт в системе начинается с конкретного животного.</h2>
+                    <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                      Поэтому трекер не отрывается от живого профиля Марты и всегда оставляет маршрут обратно к источнику продукта.
+                    </p>
+                  </div>
+                </div>
+              </div>
             </div>
           </motion.section>
 
@@ -148,23 +187,15 @@ export default function ProductTracker() {
               transition={{ delay: 0.08 }}
               className="col-span-12 overflow-hidden rounded-[2rem] border border-border/70 bg-card shadow-sm lg:col-span-5"
             >
-              <div className="relative h-56 overflow-hidden">
-                <img src={CDN.milk} alt="Состав молока" className="h-full w-full object-cover" />
-                <div className="absolute inset-0 bg-gradient-to-t from-dark-oak/80 via-dark-oak/15 to-transparent" />
-                <div className="absolute left-5 right-5 top-5 flex items-center justify-between text-white">
-                  <div className="inline-flex items-center gap-2 rounded-full bg-white/15 px-3 py-1 text-xs backdrop-blur">
-                    <Leaf className="h-3.5 w-3.5" />
-                    Анализ партии от 10 марта
-                  </div>
-                  <div className="rounded-full bg-green-500 px-3 py-1 text-xs font-semibold">Органик</div>
-                </div>
-                <div className="absolute bottom-5 left-5 right-5 text-white">
-                  <h2 className="text-2xl font-semibold">Состав молока от Марты</h2>
-                  <p className="mt-2 max-w-md text-sm text-white/75">Качество партии видно прямо в интерфейсе, а не обещается абстрактно.</p>
-                </div>
-              </div>
-
               <div className="space-y-4 p-5">
+                <div>
+                  <p className="text-sm uppercase tracking-[0.22em] text-primary">Состав партии</p>
+                  <h2 className="mt-3 text-2xl font-semibold text-foreground">Состав молока от Марты</h2>
+                  <p className="mt-2 text-sm leading-7 text-muted-foreground">
+                    Качество партии видно прямо в интерфейсе, а не обещается абстрактно. Новый визуальный слой усиливает ощущение премиального, но прозрачного продукта.
+                  </p>
+                </div>
+
                 {composition.map((item) => (
                   <div key={item.label}>
                     <div className="mb-2 flex items-center justify-between gap-3 text-sm">
@@ -176,7 +207,7 @@ export default function ProductTracker() {
                 ))}
 
                 <div className="rounded-2xl bg-secondary/55 p-4 text-sm leading-7 text-muted-foreground">
-                  Сертификат качества №СК-2026-0310 подтверждает партию и делает прозрачность наблюдаемой.
+                  Сертификат качества №СК-2026-0310 подтверждает партию и делает прозрачность наблюдаемой и эмоционально убедительной.
                 </div>
               </div>
             </motion.section>
@@ -246,11 +277,11 @@ export default function ProductTracker() {
               initial={{ opacity: 0, y: 14 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2 }}
-              className="col-span-12 rounded-[2rem] border border-border/70 bg-card shadow-sm"
+              className="col-span-12 overflow-hidden rounded-[2rem] border border-border/70 bg-card shadow-sm"
             >
               <div className="grid gap-0 lg:grid-cols-[0.95fr_1.05fr]">
                 <div className="overflow-hidden border-b border-border/70 lg:border-b-0 lg:border-r">
-                  <img src={CDN.delivery} alt="История доставок" className="h-full min-h-[240px] w-full object-cover" />
+                  <img src={CDN.delivery} alt="История доставок" className="h-full min-h-[260px] w-full object-cover" />
                 </div>
                 <div className="p-5">
                   <div className="flex items-start justify-between gap-4">
@@ -321,6 +352,14 @@ export default function ProductTracker() {
                 <p className="mt-3 text-sm leading-7 text-muted-foreground">
                   Продуктовый слой должен быть личным и премиальным: не безликий сыр, а конкретный результат связи владельца с животным.
                 </p>
+                <div className="mt-5 space-y-2">
+                  {routeNotes.map((note) => (
+                    <div key={note} className="flex items-start gap-2 text-sm text-muted-foreground">
+                      <Star className="mt-0.5 h-4 w-4 text-accent" />
+                      <span>{note}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
             </motion.section>
 
@@ -333,7 +372,7 @@ export default function ProductTracker() {
               <p className="text-sm uppercase tracking-[0.22em] text-amber-300">Связанные маршруты</p>
               <h2 className="mt-3 font-display text-3xl">Трекер не должен быть тупиком.</h2>
               <p className="mt-3 text-sm leading-7 text-white/75">
-                  Пользователь должен естественно возвращаться к животному, кабинету и клубной жизни, чтобы рациональная прозрачность работала вместе с эмоциональной связью и клубной средой.
+                Пользователь должен естественно возвращаться к животному, кабинету и клубной жизни, чтобы рациональная прозрачность работала вместе с эмоциональной связью и клубной средой.
               </p>
 
               <div className="mt-6 grid gap-3">
@@ -360,6 +399,7 @@ export default function ProductTracker() {
                 </Link>
               </div>
             </motion.section>
+
             <motion.section
               initial={{ opacity: 0, y: 18 }}
               animate={{ opacity: 1, y: 0 }}

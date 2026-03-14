@@ -170,8 +170,21 @@ export default function AnimalProfile() {
   });
 
   const reorderPhotos = trpc.animalPhotos.reorder.useMutation({
-    onSuccess: async () => {
+    onSuccess: async ({ items }) => {
+      utils.animalPhotos.list.setData({ animalSlug: ANIMAL_SLUG }, (current: typeof photosQuery.data) => {
+        if (!current) return current;
+        const sortMap = new Map(items.map((item: { photoId: number; sortOrder: number }) => [item.photoId, item.sortOrder] as const));
+        return [...current]
+          .map((image) => ({
+            ...image,
+            sortOrder: image.photoId ? (sortMap.get(image.photoId) ?? image.sortOrder) : image.sortOrder,
+          }))
+          .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
+      });
       await utils.animalPhotos.list.invalidate({ animalSlug: ANIMAL_SLUG });
+      toast.success("Порядок фото сохранён", {
+        description: "Новая последовательность миниатюр записана в профиль Марты.",
+      });
     },
     onError: (error) => {
       toast.error("Не удалось сохранить порядок фото", {
@@ -443,19 +456,46 @@ export default function AnimalProfile() {
 
   function moveUploadedPhoto(photoId: number, direction: "left" | "right") {
     const persistent = [...(photosQuery.data ?? [])].sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
+    if (persistent.length < 2) {
+      toast.info("Пока нечего переставлять", {
+        description: "Добавьте ещё одно пользовательское фото, чтобы изменить порядок миниатюр.",
+      });
+      return;
+    }
+
     const currentIndex = persistent.findIndex((image) => image.photoId === photoId);
     if (currentIndex < 0) return;
 
     const nextIndex = direction === "left" ? currentIndex - 1 : currentIndex + 1;
-    if (nextIndex < 0 || nextIndex >= persistent.length) return;
+    if (nextIndex < 0 || nextIndex >= persistent.length) {
+      toast.info("Фото уже находится на краю", {
+        description: direction === "left" ? "Этот снимок уже первый среди пользовательских фото." : "Этот снимок уже последний среди пользовательских фото.",
+      });
+      return;
+    }
 
     const reordered = [...persistent];
     const [moved] = reordered.splice(currentIndex, 1);
     reordered.splice(nextIndex, 0, moved);
 
+    const reorderedIds = reordered
+      .map((image) => image.photoId)
+      .filter((value): value is number => typeof value === "number");
+
+    utils.animalPhotos.list.setData({ animalSlug: ANIMAL_SLUG }, (current: typeof photosQuery.data) => {
+      if (!current) return current;
+      const sortMap = new Map(reorderedIds.map((id, index) => [id, index] as const));
+      return [...current]
+        .map((image) => ({
+          ...image,
+          sortOrder: image.photoId ? (sortMap.get(image.photoId) ?? image.sortOrder) : image.sortOrder,
+        }))
+        .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
+    });
+
     reorderPhotos.mutate({
       animalSlug: ANIMAL_SLUG,
-      photoIds: reordered.map((image) => image.photoId).filter((value): value is number => typeof value === "number"),
+      photoIds: reorderedIds,
     });
   }
 

@@ -1,19 +1,30 @@
 import { and, asc, desc, eq, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
+import { createPool, type Pool } from "mysql2/promise";
 import { animalPhotos, InsertAnimalPhoto, InsertUser, users } from "../drizzle/schema";
 import { ENV } from "./_core/env";
 
-let _db: ReturnType<typeof drizzle> | null = null;
+let _db: any = null;
+let _pool: Pool | null = null;
 
 export async function getDb() {
-  if (!_db && process.env.DATABASE_URL) {
+  const databaseUrl = ENV.databaseUrl || process.env.DATABASE_URL;
+
+  if (!_db && databaseUrl) {
     try {
-      _db = drizzle(process.env.DATABASE_URL);
+      _pool = createPool({
+        uri: databaseUrl,
+        connectionLimit: 10,
+        enableKeepAlive: true,
+      });
+      _db = drizzle(_pool);
     } catch (error) {
-      console.warn("[Database] Failed to connect:", error);
+      console.error("[Database] Failed to connect:", error);
       _db = null;
+      _pool = null;
     }
   }
+
   return _db;
 }
 
@@ -95,11 +106,28 @@ export async function listAnimalPhotos(animalSlug: string, ownerOpenId: string) 
     return [];
   }
 
-  return db
-    .select()
-    .from(animalPhotos)
-    .where(and(eq(animalPhotos.animalSlug, animalSlug), eq(animalPhotos.ownerOpenId, ownerOpenId)))
-    .orderBy(asc(animalPhotos.sortOrder), desc(animalPhotos.createdAt));
+  try {
+    const rows = await db
+      .select()
+      .from(animalPhotos)
+      .where(and(eq(animalPhotos.animalSlug, animalSlug), eq(animalPhotos.ownerOpenId, ownerOpenId)))
+      .orderBy(asc(animalPhotos.sortOrder), desc(animalPhotos.createdAt));
+
+    console.info("[AnimalPhotos] list", {
+      animalSlug,
+      ownerOpenId,
+      ordered: rows.map((row: { id: number; sortOrder: number; isCover: number }) => ({
+        id: row.id,
+        sortOrder: row.sortOrder,
+        isCover: row.isCover,
+      })),
+    });
+
+    return rows;
+  } catch (error) {
+    console.error("[Database] Failed to list animal photos:", error);
+    throw error;
+  }
 }
 
 export async function createAnimalPhoto(input: InsertAnimalPhoto) {
@@ -124,13 +152,24 @@ export async function createAnimalPhoto(input: InsertAnimalPhoto) {
   };
 
   const result = await db.insert(animalPhotos).values(values);
-  const insertedId = Number((result as { insertId?: number }).insertId);
+  const insertMeta = Array.isArray(result) ? result[0] : result;
+  const insertedId = Number((insertMeta as { insertId?: number | string }).insertId);
+
+  if (!Number.isFinite(insertedId) || insertedId <= 0) {
+    throw new Error("Failed to resolve inserted photo id after upload");
+  }
 
   if (values.isCover) {
     await db
       .update(animalPhotos)
       .set({ isCover: 0 })
-      .where(and(eq(animalPhotos.animalSlug, values.animalSlug), eq(animalPhotos.ownerOpenId, values.ownerOpenId), sql`${animalPhotos.id} <> ${insertedId}`));
+      .where(
+        and(
+          eq(animalPhotos.animalSlug, values.animalSlug),
+          eq(animalPhotos.ownerOpenId, values.ownerOpenId),
+          sql`${animalPhotos.id} <> ${insertedId}`,
+        ),
+      );
   }
 
   const created = await db.select().from(animalPhotos).where(eq(animalPhotos.id, insertedId)).limit(1);
@@ -168,7 +207,7 @@ export async function deleteAnimalPhoto(photoId: number, ownerOpenId: string) {
   }
 
   await Promise.all(
-    remaining.map((photo, index) =>
+    remaining.map((photo: { id: number }, index: number) =>
       db.update(animalPhotos).set({ sortOrder: index }).where(eq(animalPhotos.id, photo.id)),
     ),
   );
@@ -214,10 +253,21 @@ export async function reorderAnimalPhotos(photoIds: number[], ownerOpenId: strin
     .where(and(eq(animalPhotos.animalSlug, animalSlug), eq(animalPhotos.ownerOpenId, ownerOpenId)))
     .orderBy(asc(animalPhotos.sortOrder), desc(animalPhotos.createdAt));
 
-  const existingIds = existing.map((photo) => photo.id).sort((a, b) => a - b);
-  const incomingIds = [...photoIds].sort((a, b) => a - b);
+  console.info("[AnimalPhotos] reorder:before", {
+    animalSlug,
+    ownerOpenId,
+    requestedPhotoIds: photoIds,
+    existing: existing.map((photo: { id: number; sortOrder: number; isCover: number }) => ({
+      id: photo.id,
+      sortOrder: photo.sortOrder,
+      isCover: photo.isCover,
+    })),
+  });
 
-  if (existingIds.length !== incomingIds.length || existingIds.some((id, index) => id !== incomingIds[index])) {
+  const existingIds = existing.map((photo: { id: number }) => photo.id).sort((a: number, b: number) => a - b);
+  const incomingIds = [...photoIds].sort((a: number, b: number) => a - b);
+
+  if (existingIds.length !== incomingIds.length || existingIds.some((id: number, index: number) => id !== incomingIds[index])) {
     throw new Error("Photo order payload does not match available gallery items");
   }
 
@@ -225,9 +275,21 @@ export async function reorderAnimalPhotos(photoIds: number[], ownerOpenId: strin
     photoIds.map((photoId, index) => db.update(animalPhotos).set({ sortOrder: index }).where(eq(animalPhotos.id, photoId))),
   );
 
-  return db
+  const updated = await db
     .select()
     .from(animalPhotos)
     .where(and(eq(animalPhotos.animalSlug, animalSlug), eq(animalPhotos.ownerOpenId, ownerOpenId)))
     .orderBy(asc(animalPhotos.sortOrder), desc(animalPhotos.createdAt));
+
+  console.info("[AnimalPhotos] reorder:after", {
+    animalSlug,
+    ownerOpenId,
+    ordered: updated.map((photo: { id: number; sortOrder: number; isCover: number }) => ({
+      id: photo.id,
+      sortOrder: photo.sortOrder,
+      isCover: photo.isCover,
+    })),
+  });
+
+  return updated;
 }

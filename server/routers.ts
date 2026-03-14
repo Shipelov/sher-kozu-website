@@ -57,7 +57,7 @@ export const appRouter = router({
   animalPhotos: router({
     list: protectedProcedure.input(animalPhotoListInput).query(async ({ ctx, input }) => {
       const items = await listAnimalPhotos(input.animalSlug, ctx.user.openId);
-      return items.map((item) => ({
+      return items.map((item: any) => ({
         id: `user-${item.id}`,
         photoId: item.id,
         src: item.url,
@@ -134,7 +134,7 @@ export const appRouter = router({
         const updated = await reorderAnimalPhotos(input.photoIds, ctx.user.openId, input.animalSlug);
         return {
           success: true,
-          items: updated.map((item) => ({
+          items: updated.map((item: any) => ({
             photoId: item.id,
             sortOrder: item.sortOrder,
             isCover: Boolean(item.isCover),

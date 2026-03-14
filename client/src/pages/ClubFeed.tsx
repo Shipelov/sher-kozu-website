@@ -26,10 +26,10 @@ import {
 } from "lucide-react";
 
 const CDN = {
-  club: "https://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/club_event_3bef2b1e.jpg",
-  family: "https://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/family_farm_446b395e.jpg",
-  goat: "https://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/goat_portrait_80fc5726.jpg",
-  cheese: "https://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/named_cheese_e69af325.jpg",
+  club: "https://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/sherkozu_club_visit-mmi2c8j4W8VB63TUjVvZ4S.webp",
+  family: "https://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/sherkozu_family_farm_hero-UF9QBY2UhWL9gdEpLXiEFS.webp",
+  goat: "https://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/sherkozu_anglonubian_portrait-fvqToDAjgebgcmNhLN93Db.webp",
+  cheese: "https://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/sherkozu_named_dairy_box-3mP3ykmuPDWBoKghC7cnDc.webp",
 };
 
 const posts = [
@@ -109,6 +109,12 @@ const members = [
   { name: "Семья Ивановых", animal: "Овца Белла", since: "с января 2025", badge: "Club Member" },
   { name: "Семья Смирновых", animal: "Коза Роза", since: "с марта 2025", badge: "Club Member" },
   { name: "Семья Козловых", animal: "Коза Нора", since: "с апреля 2025", badge: "Family Tier" },
+];
+
+const clubSignals = [
+  "Клуб возвращает пользователя через статус и ритуалы, а не только через новости.",
+  "Новые изображения усиливают ощущение редкого семейного опыта на ферме.",
+  "Каждый экран клуба держит маршруты к животному, продукту и кабинету владельца.",
 ];
 
 function PostCard({ post }: { post: (typeof posts)[number] }) {
@@ -200,9 +206,9 @@ export default function ClubFeed() {
           <motion.section
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
-            className="relative mb-8 overflow-hidden rounded-[2.25rem] border border-border/70"
+            className="relative mb-8 overflow-hidden rounded-[2.25rem] border border-border/70 shadow-[0_28px_80px_-42px_rgba(32,26,20,0.26)]"
           >
-            <img src={CDN.club} alt="Клуб Шерь Козу" className="h-[360px] w-full object-cover" />
+            <img src={CDN.club} alt="Клуб Шерь Козу" className="h-[420px] w-full object-cover" />
             <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(25,22,20,0.82),rgba(25,22,20,0.34),rgba(25,22,20,0.18))]" />
             <div className="absolute inset-0 flex flex-col justify-between p-6 text-white md:p-8">
               <div className="flex flex-wrap items-center gap-2">
@@ -309,7 +315,7 @@ export default function ClubFeed() {
                 transition={{ delay: 0.12 }}
                 className="overflow-hidden rounded-[2rem] border border-border/70 bg-card shadow-sm"
               >
-                <img src={CDN.goat} alt="Марта" className="h-48 w-full object-cover object-top" />
+                <img src={CDN.goat} alt="Марта" className="h-56 w-full object-cover object-top" />
                 <div className="p-5">
                   <p className="text-sm uppercase tracking-[0.22em] text-primary">Персональный ритуал</p>
                   <h2 className="mt-3 text-2xl font-semibold text-foreground">День рождения Марты уже в календаре семьи.</h2>
@@ -363,6 +369,14 @@ export default function ClubFeed() {
                 <p className="mt-3 text-sm leading-7 text-white/75">
                   Пользователь возвращается сюда ради событий, сообщества и ощущения принадлежности к жизни фермы.
                 </p>
+                <div className="mt-5 space-y-2 text-sm text-white/72">
+                  {clubSignals.map((note) => (
+                    <div key={note} className="flex items-start gap-2">
+                      <Star className="mt-0.5 h-4 w-4 text-amber-300" />
+                      <span>{note}</span>
+                    </div>
+                  ))}
+                </div>
                 <div className="mt-6 grid gap-3">
                   <Link href="/animal/marta" className="group flex items-center justify-between rounded-2xl border border-white/12 bg-white/8 px-4 py-3 text-sm transition-colors hover:bg-white/12">
                     <div>
