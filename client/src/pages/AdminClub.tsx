@@ -415,10 +415,10 @@ export default function AdminClub() {
         ) : null}
 
         <Tabs defaultValue="posts" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-3 md:w-auto">
-            <TabsTrigger value="posts">Посты</TabsTrigger>
-            <TabsTrigger value="events">События</TabsTrigger>
-            <TabsTrigger value="members">Участники</TabsTrigger>
+          <TabsList className="grid h-auto w-full grid-cols-1 gap-2 rounded-2xl bg-stone-100 p-1 sm:grid-cols-3 sm:gap-1 md:w-auto">
+            <TabsTrigger value="posts" className="w-full whitespace-normal px-3 py-2 text-center">Посты</TabsTrigger>
+            <TabsTrigger value="events" className="w-full whitespace-normal px-3 py-2 text-center">События</TabsTrigger>
+            <TabsTrigger value="members" className="w-full whitespace-normal px-3 py-2 text-center">Участники</TabsTrigger>
           </TabsList>
 
           <TabsContent value="posts" className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
@@ -859,9 +859,13 @@ function ListRow({
           <p className="text-sm text-stone-600">{subtitle}</p>
           <p className="text-xs text-stone-500">{meta}</p>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={onEdit}><Pencil className="mr-2 h-4 w-4" />Править</Button>
-          <Button variant="outline" size="sm" onClick={onDelete} disabled={deleting}><Trash2 className="mr-2 h-4 w-4" />{deleting ? "Удаление..." : "Удалить"}</Button>
+        <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:justify-end">
+          <Button variant="outline" size="sm" onClick={onEdit} className="w-full sm:w-auto">
+            <Pencil className="mr-2 h-4 w-4" />Править
+          </Button>
+          <Button variant="outline" size="sm" onClick={onDelete} disabled={deleting} className="w-full sm:w-auto">
+            <Trash2 className="mr-2 h-4 w-4" />{deleting ? "Удаление..." : "Удалить"}
+          </Button>
         </div>
       </div>
     </div>
