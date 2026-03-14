@@ -90,3 +90,7 @@
 - [x] Довести Product Tracker до полного соответствия ответу productTracker.summary и убрать остаточные фронтенд-моки
 - [x] Синхронизировать Club Feed с реальными клубными данными и проверить пустые/загруженные состояния
 - [x] Диагностировать и исправить server/client reorder фото в AnimalProfile как следующий publish-critical шаг
+- [x] Выполнить ручной smoke-test reorder галереи с двумя пользовательскими фото и проверкой восстановления порядка после reload
+- [x] Закрыть оставшиеся gallery QA-задачи по moveUploadedPhoto, reorder-кнопкам и серверному восстановлению порядка
+- [x] Провести финальный CTA/navigation review по маршруту Home → Dashboard → Animal Profile → Product Tracker → Club Feed
+- [x] Внести последние cross-screen правки CTA и навигации перед publish-ready checkpoint
