@@ -7,7 +7,7 @@ Hardening priority: no dead ends, calm mobile rhythm, consistent CTA logic.
 
 import { trpc } from "@/lib/trpc";
 import { useEffect, useMemo, useState } from "react";
-import type { ChangeEvent } from "react";
+import type { ChangeEvent, DragEvent } from "react";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
 import { Link } from "wouter";
@@ -32,6 +32,14 @@ type PhotoActivity = {
   action: "upload" | "remove";
   title: string;
   timestamp: number;
+};
+
+type CropDraft = {
+  file: File;
+  previewUrl: string;
+  zoom: number;
+  offsetX: number;
+  offsetY: number;
 };
 
 const ANIMAL_SLUG = "marta";
@@ -109,6 +117,8 @@ export default function AnimalProfile() {
   const [selectedImageId, setSelectedImageId] = useState(defaultGallery[0].id);
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [photoActivity, setPhotoActivity] = useState<PhotoActivity[]>([]);
+  const [isDragActive, setIsDragActive] = useState(false);
+  const [cropDraft, setCropDraft] = useState<CropDraft | null>(null);
 
   const utils = trpc.useUtils();
   const photosQuery = trpc.animalPhotos.list.useQuery({ animalSlug: ANIMAL_SLUG });
@@ -243,24 +253,108 @@ export default function AnimalProfile() {
     });
   }
 
-  async function handleGalleryUpload(event: ChangeEvent<HTMLInputElement>) {
-    const files = Array.from(event.target.files ?? []);
-    if (!files.length) return;
-
-    try {
-      for (const file of files) {
-        const base64Data = await fileToBase64(file);
-        await uploadPhoto.mutateAsync({
-          animalSlug: ANIMAL_SLUG,
-          fileName: file.name,
-          mimeType: file.type || "image/jpeg",
-          sizeBytes: file.size,
-          base64Data,
-        });
-      }
-    } finally {
-      event.target.value = "";
+  function openCropperForFile(file?: File) {
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      toast.error("Поддерживаются только изображения", {
+        description: "Выберите файл JPG, PNG или WebP для галереи Марты.",
+      });
+      return;
     }
+
+    const previewUrl = URL.createObjectURL(file);
+    setCropDraft({
+      file,
+      previewUrl,
+      zoom: 1,
+      offsetX: 0,
+      offsetY: 0,
+    });
+  }
+
+  async function handleGalleryUpload(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    openCropperForFile(file);
+    event.target.value = "";
+  }
+
+  function handleDropZoneDragOver(event: DragEvent<HTMLLabelElement>) {
+    event.preventDefault();
+    setIsDragActive(true);
+  }
+
+  function handleDropZoneDragLeave(event: DragEvent<HTMLLabelElement>) {
+    event.preventDefault();
+    setIsDragActive(false);
+  }
+
+  function handleDropZoneDrop(event: DragEvent<HTMLLabelElement>) {
+    event.preventDefault();
+    setIsDragActive(false);
+    const file = event.dataTransfer.files?.[0];
+    openCropperForFile(file);
+  }
+
+  function closeCropDraft() {
+    setCropDraft((current) => {
+      if (current?.previewUrl) {
+        URL.revokeObjectURL(current.previewUrl);
+      }
+      return null;
+    });
+  }
+
+  async function handleConfirmCrop() {
+    if (!cropDraft) return;
+
+    const image = new Image();
+    image.src = cropDraft.previewUrl;
+
+    await new Promise<void>((resolve, reject) => {
+      image.onload = () => resolve();
+      image.onerror = () => reject(new Error("Не удалось подготовить изображение"));
+    });
+
+    const canvas = document.createElement("canvas");
+    const size = 1200;
+    canvas.width = size;
+    canvas.height = size;
+
+    const context = canvas.getContext("2d");
+    if (!context) {
+      toast.error("Не удалось открыть редактор кадрирования");
+      return;
+    }
+
+    const minSide = Math.min(image.width, image.height);
+    const cropSide = minSide / cropDraft.zoom;
+    const maxOffsetX = Math.max((image.width - cropSide) / 2, 0);
+    const maxOffsetY = Math.max((image.height - cropSide) / 2, 0);
+    const sourceX = (image.width - cropSide) / 2 + cropDraft.offsetX * maxOffsetX;
+    const sourceY = (image.height - cropSide) / 2 + cropDraft.offsetY * maxOffsetY;
+
+    context.drawImage(image, sourceX, sourceY, cropSide, cropSide, 0, 0, size, size);
+
+    const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.92));
+    if (!blob) {
+      toast.error("Не удалось подготовить кадрированное фото");
+      return;
+    }
+
+    const processedFile = new File([blob], cropDraft.file.name.replace(/\.[^.]+$/, "") + "-cropped.jpg", {
+      type: "image/jpeg",
+    });
+
+    const base64Data = await fileToBase64(processedFile);
+    await uploadPhoto.mutateAsync({
+      animalSlug: ANIMAL_SLUG,
+      fileName: processedFile.name,
+      mimeType: processedFile.type,
+      sizeBytes: processedFile.size,
+      base64Data,
+    });
+
+    closeCropDraft();
   }
 
   function handleRemoveUploadedImage(image: GalleryImage) {
@@ -387,33 +481,51 @@ export default function AnimalProfile() {
                         </h3>
                         <p className="mt-1 text-sm text-muted-foreground">Фотоистория Марты с быстрым переходом между кадрами.</p>
                       </div>
-                      <label className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/92 md:self-start">
+                      <label
+                        className={`inline-flex cursor-pointer items-center justify-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition-colors md:self-start ${isDragActive ? "bg-primary/15 text-primary ring-2 ring-primary/30" : "bg-primary text-primary-foreground hover:bg-primary/92"}`}
+                        onDragOver={handleDropZoneDragOver}
+                        onDragLeave={handleDropZoneDragLeave}
+                        onDrop={handleDropZoneDrop}
+                      >
                         {uploadPhoto.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
                         {uploadPhoto.isPending ? "Сохраняем..." : "Добавить фото"}
-                        <input type="file" accept="image/*" multiple className="hidden" onChange={handleGalleryUpload} disabled={uploadPhoto.isPending} />
+                        <input type="file" accept="image/*" className="hidden" onChange={handleGalleryUpload} disabled={uploadPhoto.isPending} />
                       </label>
                     </div>
                   </div>
 
                   <div className="p-5">
                     <div className="mb-4 grid gap-3 lg:grid-cols-[1.1fr_0.9fr]">
-                      <div className="rounded-[1.25rem] border border-emerald-200 bg-emerald-50/80 p-4">
+                      <label
+                        className={`rounded-[1.25rem] border border-dashed p-4 transition-all ${isDragActive ? "border-primary bg-primary/5 shadow-sm shadow-primary/10" : "border-emerald-200 bg-emerald-50/80"}`}
+                        onDragOver={handleDropZoneDragOver}
+                        onDragLeave={handleDropZoneDragLeave}
+                        onDrop={handleDropZoneDrop}
+                      >
                         <div className="flex items-start gap-3">
-                          <div className="mt-0.5 rounded-full bg-emerald-100 p-2 text-emerald-700">
+                          <div className={`mt-0.5 rounded-full p-2 ${isDragActive ? "bg-primary/15 text-primary" : "bg-emerald-100 text-emerald-700"}`}>
                             {uploadPhoto.isPending || removePhoto.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Camera className="h-4 w-4" />}
                           </div>
-                          <div>
-                            <p className="text-sm font-semibold text-emerald-900">Статус галереи</p>
-                            <p className="mt-1 text-sm text-emerald-800">
+                          <div className="flex-1">
+                            <p className={`text-sm font-semibold ${isDragActive ? "text-primary" : "text-emerald-900"}`}>Загрузка в галерею</p>
+                            <p className={`mt-1 text-sm ${isDragActive ? "text-primary/80" : "text-emerald-800"}`}>
                               {uploadPhoto.isPending
                                 ? "Сохраняем новые фото в постоянную галерею Марты."
                                 : removePhoto.isPending
                                   ? "Удаляем фото из постоянной галереи."
-                                  : "Все добавленные снимки сохраняются в профиле и остаются после перезагрузки."}
+                                  : isDragActive
+                                    ? "Отпустите файл, чтобы открыть кадрирование перед сохранением."
+                                    : "Перетащите фото сюда или выберите файл, а затем аккуратно кадрируйте снимок перед сохранением."}
                             </p>
+                            <div className="mt-3 flex flex-wrap items-center gap-2 text-xs font-medium">
+                              <span className="rounded-full bg-white/80 px-3 py-1 text-foreground">Drag-and-drop</span>
+                              <span className="rounded-full bg-white/80 px-3 py-1 text-foreground">Квадратное кадрирование</span>
+                              <span className="rounded-full bg-white/80 px-3 py-1 text-foreground">Постоянное хранение</span>
+                            </div>
+                            <input type="file" accept="image/*" className="hidden" onChange={handleGalleryUpload} disabled={uploadPhoto.isPending} />
                           </div>
                         </div>
-                      </div>
+                      </label>
 
                       <div className="rounded-[1.25rem] border border-border bg-background/80 p-4">
                         <div className="flex items-center justify-between gap-3">
@@ -733,10 +845,103 @@ export default function AnimalProfile() {
               </motion.div>
             </div>
           </div>
-        </div>
-      </div>
+          {cropDraft && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/65 px-4 py-6 backdrop-blur-sm">
+            <div className="w-full max-w-3xl rounded-[2rem] border border-white/10 bg-background shadow-2xl">
+              <div className="flex items-start justify-between gap-4 border-b border-border px-5 py-4">
+                <div>
+                  <p className="text-lg font-semibold text-foreground">Подготовка фото перед сохранением</p>
+                  <p className="mt-1 text-sm text-muted-foreground">Сделайте аккуратный квадратный кадр для галереи Марты. Вы можете приблизить фото и сместить фокус.</p>
+                </div>
+                <button type="button" onClick={closeCropDraft} className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-border bg-card text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
 
-      <AnimatePresence>
+              <div className="grid gap-5 px-5 py-5 lg:grid-cols-[1.1fr_0.9fr]">
+                <div>
+                  <div className="relative mx-auto aspect-square max-w-[28rem] overflow-hidden rounded-[1.75rem] border border-border bg-muted">
+                    <img
+                      src={cropDraft.previewUrl}
+                      alt="Предпросмотр кадрирования"
+                      className="h-full w-full object-cover"
+                      style={{
+                        transform: `translate(${cropDraft.offsetX * 18}%, ${cropDraft.offsetY * 18}%) scale(${cropDraft.zoom})`,
+                        transformOrigin: "center",
+                      }}
+                    />
+                    <div className="pointer-events-none absolute inset-0 border-[10px] border-white/50" />
+                  </div>
+                </div>
+
+                <div className="space-y-5">
+                  <div className="rounded-[1.5rem] border border-border bg-card p-4">
+                    <div className="flex items-center justify-between gap-3">
+                      <p className="text-sm font-semibold text-foreground">Приближение</p>
+                      <span className="text-xs text-muted-foreground">{cropDraft.zoom.toFixed(1)}x</span>
+                    </div>
+                    <input
+                      type="range"
+                      min={1}
+                      max={2.5}
+                      step={0.1}
+                      value={cropDraft.zoom}
+                      onChange={(event) => setCropDraft((current) => current ? { ...current, zoom: Number(event.target.value) } : current)}
+                      className="mt-3 w-full accent-primary"
+                    />
+                  </div>
+
+                  <div className="rounded-[1.5rem] border border-border bg-card p-4">
+                    <div className="flex items-center justify-between gap-3">
+                      <p className="text-sm font-semibold text-foreground">Смещение по горизонтали</p>
+                      <span className="text-xs text-muted-foreground">{Math.round(cropDraft.offsetX * 100)}%</span>
+                    </div>
+                    <input
+                      type="range"
+                      min={-1}
+                      max={1}
+                      step={0.05}
+                      value={cropDraft.offsetX}
+                      onChange={(event) => setCropDraft((current) => current ? { ...current, offsetX: Number(event.target.value) } : current)}
+                      className="mt-3 w-full accent-primary"
+                    />
+
+                    <div className="mt-4 flex items-center justify-between gap-3">
+                      <p className="text-sm font-semibold text-foreground">Смещение по вертикали</p>
+                      <span className="text-xs text-muted-foreground">{Math.round(cropDraft.offsetY * 100)}%</span>
+                    </div>
+                    <input
+                      type="range"
+                      min={-1}
+                      max={1}
+                      step={0.05}
+                      value={cropDraft.offsetY}
+                      onChange={(event) => setCropDraft((current) => current ? { ...current, offsetY: Number(event.target.value) } : current)}
+                      className="mt-3 w-full accent-primary"
+                    />
+                  </div>
+
+                  <div className="rounded-[1.5rem] border border-primary/15 bg-primary/5 p-4 text-sm text-muted-foreground">
+                    После подтверждения в профиль отправится уже кадрированная версия снимка. Исходный файл на сервер не загружается.
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-3 border-t border-border px-5 py-4 sm:flex-row sm:justify-end">
+                <button type="button" onClick={closeCropDraft} className="inline-flex items-center justify-center rounded-full border border-border px-5 py-3 text-sm font-semibold text-foreground transition-colors hover:bg-muted">
+                  Отменить
+                </button>
+                <button type="button" onClick={handleConfirmCrop} disabled={uploadPhoto.isPending} className="inline-flex items-center justify-center gap-2 rounded-full bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/92 disabled:cursor-not-allowed disabled:opacity-70">
+                  {uploadPhoto.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+                  {uploadPhoto.isPending ? "Сохраняем фото..." : "Сохранить в галерею"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );     <AnimatePresence>
         {lightboxOpen && selectedImage && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-4" onClick={() => setLightboxOpen(false)}>
             <motion.div initial={{ scale: 0.96, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.96, opacity: 0 }} className="relative w-full max-w-5xl overflow-hidden rounded-[2rem] bg-black/40 backdrop-blur" onClick={(event) => event.stopPropagation()}>
