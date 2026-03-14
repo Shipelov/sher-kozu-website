@@ -26,6 +26,7 @@ type GalleryImage = {
   isUploaded?: boolean;
   photoId?: number;
   isCover?: boolean;
+  sortOrder?: number;
 };
 
 type PhotoActivity = {
@@ -150,6 +151,35 @@ export default function AnimalProfile() {
     },
   });
 
+  const setCoverPhoto = trpc.animalPhotos.setCover.useMutation({
+    onSuccess: async ({ photoId }) => {
+      const nextCoverId = `user-${photoId}`;
+      setCoverImageId(nextCoverId);
+      setSelectedImageId(nextCoverId);
+      const cover = galleryImages.find((image) => image.photoId === photoId);
+      await utils.animalPhotos.list.invalidate({ animalSlug: ANIMAL_SLUG });
+      toast.success("Обложка обновлена", {
+        description: cover ? `Главным фото выбрано: ${cover.title}.` : "Новое фото закреплено как обложка галереи.",
+      });
+    },
+    onError: (error) => {
+      toast.error("Не удалось сохранить обложку", {
+        description: error.message,
+      });
+    },
+  });
+
+  const reorderPhotos = trpc.animalPhotos.reorder.useMutation({
+    onSuccess: async () => {
+      await utils.animalPhotos.list.invalidate({ animalSlug: ANIMAL_SLUG });
+    },
+    onError: (error) => {
+      toast.error("Не удалось сохранить порядок фото", {
+        description: error.message,
+      });
+    },
+  });
+
   const removePhoto = trpc.animalPhotos.remove.useMutation({
     onSuccess: async ({ photoId }) => {
       const removedImage = galleryImages.find((image) => image.photoId === photoId);
@@ -178,11 +208,17 @@ export default function AnimalProfile() {
   });
 
   const galleryImages = useMemo<GalleryImage[]>(() => {
-    const persistent = photosQuery.data ?? [];
+    const persistent = [...(photosQuery.data ?? [])].sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
+    const coverFromServer = persistent.find((image) => image.isCover)?.id;
+    const fallbackCoverId = persistent.length > 0 ? persistent[0].id : coverImageId;
     const merged = [...persistent, ...defaultGallery];
-    return merged.map((image) => ({
+
+    return merged.map((image, index) => ({
       ...image,
-      isCover: image.id === coverImageId,
+      sortOrder: image.sortOrder ?? persistent.length + index,
+      isCover: coverFromServer
+        ? image.id === coverFromServer
+        : image.id === fallbackCoverId,
     }));
   }, [coverImageId, photosQuery.data]);
 
@@ -196,11 +232,18 @@ export default function AnimalProfile() {
 
   useEffect(() => {
     if (!galleryImages.length) return;
+    const persistedCover = galleryImages.find((item) => item.isCover)?.id;
+    if (persistedCover && persistedCover !== coverImageId) {
+      setCoverImageId(persistedCover);
+      return;
+    }
+
     const hasCover = galleryImages.some((item) => item.id === coverImageId);
     if (!hasCover) {
-      setCoverImageId(galleryImages[0].id);
+      const persistentFallback = photosQuery.data?.[0]?.id ?? galleryImages[0].id;
+      setCoverImageId(persistentFallback);
     }
-  }, [coverImageId, galleryImages]);
+  }, [coverImageId, galleryImages, photosQuery.data]);
 
   const selectedImage = useMemo(
     () => galleryImages.find((item) => item.id === selectedImageId) ?? galleryImages[0],
@@ -384,15 +427,40 @@ export default function AnimalProfile() {
     removePhoto.mutate({ photoId: image.photoId });
   }
 
-  function handleSetCoverImage(imageId: string) {
-    setCoverImageId(imageId);
-    const cover = galleryImages.find((image) => image.id === imageId);
-    toast.success("Обложка обновлена", {
-      description: cover ? `Главным фото выбрано: ${cover.title}.` : "Новое фото закреплено как обложка галереи.",
+  function handleSetCoverImage(image: GalleryImage) {
+    setCoverImageId(image.id);
+    setSelectedImageId(image.id);
+
+    if (!image.isUploaded || !image.photoId) {
+      toast.success("Обложка обновлена", {
+        description: `Главным фото выбрано: ${image.title}.`,
+      });
+      return;
+    }
+
+    setCoverPhoto.mutate({ photoId: image.photoId });
+  }
+
+  function moveUploadedPhoto(photoId: number, direction: "left" | "right") {
+    const persistent = [...(photosQuery.data ?? [])].sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
+    const currentIndex = persistent.findIndex((image) => image.photoId === photoId);
+    if (currentIndex < 0) return;
+
+    const nextIndex = direction === "left" ? currentIndex - 1 : currentIndex + 1;
+    if (nextIndex < 0 || nextIndex >= persistent.length) return;
+
+    const reordered = [...persistent];
+    const [moved] = reordered.splice(currentIndex, 1);
+    reordered.splice(nextIndex, 0, moved);
+
+    reorderPhotos.mutate({
+      animalSlug: ANIMAL_SLUG,
+      photoIds: reordered.map((image) => image.photoId).filter((value): value is number => typeof value === "number"),
     });
   }
 
   return (
+    <>
     <div className="min-h-screen bg-background">
       <Navbar />
       <div className="pt-20 pb-12">
@@ -681,11 +749,32 @@ export default function AnimalProfile() {
                                   </button>
                                   <button
                                     type="button"
-                                    onClick={() => handleSetCoverImage(image.id)}
+                                    onClick={() => handleSetCoverImage(image)}
+                                    disabled={setCoverPhoto.isPending && image.isUploaded}
                                     className={`w-full rounded-full px-2 py-1 text-[10px] font-semibold transition-colors ${image.isCover ? "bg-primary text-primary-foreground" : "bg-secondary text-foreground hover:bg-secondary/80"}`}
                                   >
                                     {image.isCover ? "Текущая обложка" : "Сделать обложкой"}
                                   </button>
+                                  {image.isUploaded && image.photoId && (
+                                    <div className="flex items-center gap-1">
+                                      <button
+                                        type="button"
+                                        onClick={() => moveUploadedPhoto(image.photoId!, "left")}
+                                        disabled={reorderPhotos.isPending}
+                                        className="flex-1 rounded-full border border-border px-2 py-1 text-[10px] font-medium text-foreground transition-colors hover:bg-muted disabled:opacity-50"
+                                      >
+                                        Сдвинуть влево
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => moveUploadedPhoto(image.photoId!, "right")}
+                                        disabled={reorderPhotos.isPending}
+                                        className="flex-1 rounded-full border border-border px-2 py-1 text-[10px] font-medium text-foreground transition-colors hover:bg-muted disabled:opacity-50"
+                                      >
+                                        Сдвинуть вправо
+                                      </button>
+                                    </div>
+                                  )}
                                 </div>
                               </div>
 
@@ -994,7 +1083,8 @@ export default function AnimalProfile() {
         )}
       </div>
     </div>
-  );     <AnimatePresence>
+  </div>
+      <AnimatePresence>
         {lightboxOpen && selectedImage && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-4" onClick={() => setLightboxOpen(false)}>
             <motion.div initial={{ scale: 0.96, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.96, opacity: 0 }} className="relative w-full max-w-5xl overflow-hidden rounded-[2rem] bg-black/40 backdrop-blur" onClick={(event) => event.stopPropagation()}>
@@ -1046,6 +1136,6 @@ export default function AnimalProfile() {
           </motion.div>
         )}
       </AnimatePresence>
-    </div>
+    </>
   );
 }

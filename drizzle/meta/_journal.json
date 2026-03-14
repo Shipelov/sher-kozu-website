@@ -15,6 +15,13 @@
       "when": 1773421857325,
       "tag": "0001_needy_thunderbolt_ross",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1773479815303,
+      "tag": "0002_chief_blink",
+      "breakpoints": true
     }
   ]
 }

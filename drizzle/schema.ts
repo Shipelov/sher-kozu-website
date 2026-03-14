@@ -32,6 +32,8 @@ export const animalPhotos = mysqlTable("animalPhotos", {
   url: text("url").notNull(),
   mimeType: varchar("mimeType", { length: 120 }).notNull(),
   sizeBytes: int("sizeBytes").notNull(),
+  sortOrder: int("sortOrder").default(0).notNull(),
+  isCover: int("isCover").default(0).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });

@@ -1,11 +1,10 @@
-import { and, desc, eq } from "drizzle-orm";
+import { and, asc, desc, eq, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import { animalPhotos, InsertAnimalPhoto, InsertUser, users } from "../drizzle/schema";
 import { ENV } from "./_core/env";
 
 let _db: ReturnType<typeof drizzle> | null = null;
 
-// Lazily create the drizzle instance so local tooling can run without a DB.
 export async function getDb() {
   if (!_db && process.env.DATABASE_URL) {
     try {
@@ -89,7 +88,7 @@ export async function getUserByOpenId(openId: string) {
   return result.length > 0 ? result[0] : undefined;
 }
 
-export async function listAnimalPhotos(animalSlug: string) {
+export async function listAnimalPhotos(animalSlug: string, ownerOpenId: string) {
   const db = await getDb();
   if (!db) {
     console.warn("[Database] Cannot list animal photos: database not available");
@@ -99,57 +98,136 @@ export async function listAnimalPhotos(animalSlug: string) {
   return db
     .select()
     .from(animalPhotos)
-    .where(eq(animalPhotos.animalSlug, animalSlug))
-    .orderBy(desc(animalPhotos.createdAt));
+    .where(and(eq(animalPhotos.animalSlug, animalSlug), eq(animalPhotos.ownerOpenId, ownerOpenId)))
+    .orderBy(asc(animalPhotos.sortOrder), desc(animalPhotos.createdAt));
 }
 
-export async function createAnimalPhoto(photo: InsertAnimalPhoto) {
+export async function createAnimalPhoto(input: InsertAnimalPhoto) {
   const db = await getDb();
   if (!db) {
-    throw new Error("Database not available");
+    throw new Error("Database not available for photo creation");
   }
 
-  await db.insert(animalPhotos).values(photo);
-  const created = await db
-    .select()
+  const currentPhotos = await db
+    .select({ sortOrder: animalPhotos.sortOrder })
     .from(animalPhotos)
-    .where(and(eq(animalPhotos.fileKey, photo.fileKey), eq(animalPhotos.ownerOpenId, photo.ownerOpenId)))
-    .orderBy(desc(animalPhotos.id))
+    .where(and(eq(animalPhotos.animalSlug, input.animalSlug), eq(animalPhotos.ownerOpenId, input.ownerOpenId)))
+    .orderBy(desc(animalPhotos.sortOrder))
     .limit(1);
 
-  if (!created[0]) {
-    throw new Error("Failed to create animal photo record");
+  const nextSortOrder = (currentPhotos[0]?.sortOrder ?? -1) + 1;
+
+  const values: InsertAnimalPhoto = {
+    ...input,
+    sortOrder: input.sortOrder ?? nextSortOrder,
+    isCover: input.isCover ?? 0,
+  };
+
+  const result = await db.insert(animalPhotos).values(values);
+  const insertedId = Number((result as { insertId?: number }).insertId);
+
+  if (values.isCover) {
+    await db
+      .update(animalPhotos)
+      .set({ isCover: 0 })
+      .where(and(eq(animalPhotos.animalSlug, values.animalSlug), eq(animalPhotos.ownerOpenId, values.ownerOpenId), sql`${animalPhotos.id} <> ${insertedId}`));
   }
 
+  const created = await db.select().from(animalPhotos).where(eq(animalPhotos.id, insertedId)).limit(1);
   return created[0];
-}
-
-export async function getAnimalPhotoById(photoId: number) {
-  const db = await getDb();
-  if (!db) {
-    throw new Error("Database not available");
-  }
-
-  const result = await db.select().from(animalPhotos).where(eq(animalPhotos.id, photoId)).limit(1);
-  return result[0];
 }
 
 export async function deleteAnimalPhoto(photoId: number, ownerOpenId: string) {
   const db = await getDb();
   if (!db) {
-    throw new Error("Database not available");
+    throw new Error("Database not available for photo deletion");
   }
 
-  const existing = await db
+  const rows = await db
     .select()
     .from(animalPhotos)
     .where(and(eq(animalPhotos.id, photoId), eq(animalPhotos.ownerOpenId, ownerOpenId)))
     .limit(1);
 
-  if (!existing[0]) {
-    return null;
-  }
+  const existing = rows[0];
+  if (!existing) return null;
 
   await db.delete(animalPhotos).where(eq(animalPhotos.id, photoId));
-  return existing[0];
+
+  const remaining = await db
+    .select()
+    .from(animalPhotos)
+    .where(and(eq(animalPhotos.animalSlug, existing.animalSlug), eq(animalPhotos.ownerOpenId, ownerOpenId)))
+    .orderBy(asc(animalPhotos.sortOrder), desc(animalPhotos.createdAt));
+
+  if (existing.isCover && remaining.length) {
+    const nextCoverId = remaining[0]?.id;
+    if (nextCoverId) {
+      await db.update(animalPhotos).set({ isCover: 1 }).where(eq(animalPhotos.id, nextCoverId));
+    }
+  }
+
+  await Promise.all(
+    remaining.map((photo, index) =>
+      db.update(animalPhotos).set({ sortOrder: index }).where(eq(animalPhotos.id, photo.id)),
+    ),
+  );
+
+  return existing;
+}
+
+export async function setAnimalPhotoCover(photoId: number, ownerOpenId: string) {
+  const db = await getDb();
+  if (!db) {
+    throw new Error("Database not available for setting photo cover");
+  }
+
+  const rows = await db
+    .select()
+    .from(animalPhotos)
+    .where(and(eq(animalPhotos.id, photoId), eq(animalPhotos.ownerOpenId, ownerOpenId)))
+    .limit(1);
+
+  const target = rows[0];
+  if (!target) return null;
+
+  await db
+    .update(animalPhotos)
+    .set({ isCover: 0 })
+    .where(and(eq(animalPhotos.animalSlug, target.animalSlug), eq(animalPhotos.ownerOpenId, ownerOpenId)));
+
+  await db.update(animalPhotos).set({ isCover: 1 }).where(eq(animalPhotos.id, photoId));
+
+  const updated = await db.select().from(animalPhotos).where(eq(animalPhotos.id, photoId)).limit(1);
+  return updated[0] ?? null;
+}
+
+export async function reorderAnimalPhotos(photoIds: number[], ownerOpenId: string, animalSlug: string) {
+  const db = await getDb();
+  if (!db) {
+    throw new Error("Database not available for reordering photos");
+  }
+
+  const existing = await db
+    .select()
+    .from(animalPhotos)
+    .where(and(eq(animalPhotos.animalSlug, animalSlug), eq(animalPhotos.ownerOpenId, ownerOpenId)))
+    .orderBy(asc(animalPhotos.sortOrder), desc(animalPhotos.createdAt));
+
+  const existingIds = existing.map((photo) => photo.id).sort((a, b) => a - b);
+  const incomingIds = [...photoIds].sort((a, b) => a - b);
+
+  if (existingIds.length !== incomingIds.length || existingIds.some((id, index) => id !== incomingIds[index])) {
+    throw new Error("Photo order payload does not match available gallery items");
+  }
+
+  await Promise.all(
+    photoIds.map((photoId, index) => db.update(animalPhotos).set({ sortOrder: index }).where(eq(animalPhotos.id, photoId))),
+  );
+
+  return db
+    .select()
+    .from(animalPhotos)
+    .where(and(eq(animalPhotos.animalSlug, animalSlug), eq(animalPhotos.ownerOpenId, ownerOpenId)))
+    .orderBy(asc(animalPhotos.sortOrder), desc(animalPhotos.createdAt));
 }

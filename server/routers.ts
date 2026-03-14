@@ -4,7 +4,13 @@ import { z } from "zod";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
-import { createAnimalPhoto, deleteAnimalPhoto, listAnimalPhotos } from "./db";
+import {
+  createAnimalPhoto,
+  deleteAnimalPhoto,
+  listAnimalPhotos,
+  reorderAnimalPhotos,
+  setAnimalPhotoCover,
+} from "./db";
 import { storagePut } from "./storage";
 
 const uploadPhotoInput = z.object({
@@ -21,6 +27,15 @@ const animalPhotoListInput = z.object({
 
 const deletePhotoInput = z.object({
   photoId: z.number().int().positive(),
+});
+
+const setCoverInput = z.object({
+  photoId: z.number().int().positive(),
+});
+
+const reorderPhotosInput = z.object({
+  animalSlug: z.string().min(1).max(64),
+  photoIds: z.array(z.number().int().positive()).min(1),
 });
 
 function sanitizeFileName(fileName: string) {
@@ -40,8 +55,8 @@ export const appRouter = router({
     }),
   }),
   animalPhotos: router({
-    list: publicProcedure.input(animalPhotoListInput).query(async ({ input }) => {
-      const items = await listAnimalPhotos(input.animalSlug);
+    list: protectedProcedure.input(animalPhotoListInput).query(async ({ ctx, input }) => {
+      const items = await listAnimalPhotos(input.animalSlug, ctx.user.openId);
       return items.map((item) => ({
         id: `user-${item.id}`,
         photoId: item.id,
@@ -51,6 +66,8 @@ export const appRouter = router({
         isUploaded: true,
         ownerOpenId: item.ownerOpenId,
         createdAt: item.createdAt,
+        isCover: Boolean(item.isCover),
+        sortOrder: item.sortOrder,
       }));
     }),
     upload: protectedProcedure.input(uploadPhotoInput).mutation(async ({ ctx, input }) => {
@@ -73,6 +90,7 @@ export const appRouter = router({
         url,
         mimeType: input.mimeType,
         sizeBytes: input.sizeBytes,
+        isCover: 0,
       });
 
       return {
@@ -84,6 +102,8 @@ export const appRouter = router({
         isUploaded: true,
         ownerOpenId: created.ownerOpenId,
         createdAt: created.createdAt,
+        isCover: Boolean(created.isCover),
+        sortOrder: created.sortOrder,
       };
     }),
     remove: protectedProcedure.input(deletePhotoInput).mutation(async ({ ctx, input }) => {
@@ -96,6 +116,36 @@ export const appRouter = router({
         success: true,
         photoId: deleted.id,
       } as const;
+    }),
+    setCover: protectedProcedure.input(setCoverInput).mutation(async ({ ctx, input }) => {
+      const updated = await setAnimalPhotoCover(input.photoId, ctx.user.openId);
+      if (!updated) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Фото не найдено или недоступно для выбора обложки." });
+      }
+
+      return {
+        success: true,
+        photoId: updated.id,
+        isCover: Boolean(updated.isCover),
+      } as const;
+    }),
+    reorder: protectedProcedure.input(reorderPhotosInput).mutation(async ({ ctx, input }) => {
+      try {
+        const updated = await reorderAnimalPhotos(input.photoIds, ctx.user.openId, input.animalSlug);
+        return {
+          success: true,
+          items: updated.map((item) => ({
+            photoId: item.id,
+            sortOrder: item.sortOrder,
+            isCover: Boolean(item.isCover),
+          })),
+        } as const;
+      } catch (error) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: error instanceof Error ? error.message : "Не удалось сохранить порядок фото.",
+        });
+      }
     }),
   }),
 });
