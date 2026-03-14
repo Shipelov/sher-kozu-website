@@ -31,21 +31,33 @@ type ClubMemberRecord = {
   sortOrder: number;
 };
 
+type SortDirection = "asc" | "desc";
+
+type PostSortField = "sortOrder" | "timeLabel" | "title";
+type EventSortField = "sortOrder" | "dateLabel" | "status";
+type MemberSortField = "sortOrder" | "name" | "badge";
+
 type PostFilters = {
   query: string;
   category: string;
   pinned: "all" | "pinned" | "regular";
+  sortBy: PostSortField;
+  sortDirection: SortDirection;
 };
 
 type EventFilters = {
   query: string;
   status: string;
   tone: string;
+  sortBy: EventSortField;
+  sortDirection: SortDirection;
 };
 
 type MemberFilters = {
   query: string;
   badge: string;
+  sortBy: MemberSortField;
+  sortDirection: SortDirection;
 };
 
 function upsertRecord<T extends { id?: number }>(records: T[], nextRecord: T & { id?: number }) {
@@ -137,6 +149,27 @@ function filterMembers(members: ClubMemberRecord[], filters: MemberFilters) {
   });
 }
 
+function compareValues(left: string | number | null | undefined, right: string | number | null | undefined, direction: SortDirection) {
+  const leftValue = typeof left === "number" ? left : String(left ?? "").toLowerCase();
+  const rightValue = typeof right === "number" ? right : String(right ?? "").toLowerCase();
+
+  if (leftValue < rightValue) return direction === "asc" ? -1 : 1;
+  if (leftValue > rightValue) return direction === "asc" ? 1 : -1;
+  return 0;
+}
+
+function sortFilteredPosts(records: ClubPostRecord[], filters: PostFilters) {
+  return [...records].sort((left, right) => compareValues(left[filters.sortBy], right[filters.sortBy], filters.sortDirection));
+}
+
+function sortFilteredEvents(records: ClubEventRecord[], filters: EventFilters) {
+  return [...records].sort((left, right) => compareValues(left[filters.sortBy], right[filters.sortBy], filters.sortDirection));
+}
+
+function sortFilteredMembers(records: ClubMemberRecord[], filters: MemberFilters) {
+  return [...records].sort((left, right) => compareValues(left[filters.sortBy], right[filters.sortBy], filters.sortDirection));
+}
+
 function getCrudToastCopy(entity: "post" | "event" | "member", action: "create" | "update" | "delete", title: string) {
   const safeTitle = title || (entity === "member" ? "Без имени" : "Без названия");
 
@@ -212,15 +245,21 @@ function readAdminClubStateFromSearch(search: string) {
       pinned: params.get("postPinned") === "pinned" || params.get("postPinned") === "regular"
         ? params.get("postPinned")
         : "all",
+      sortBy: params.get("postSortBy") === "timeLabel" || params.get("postSortBy") === "title" ? params.get("postSortBy") as PostSortField : "sortOrder",
+      sortDirection: (params.get("postSortDirection") === "desc" ? "desc" : "asc") as SortDirection,
     },
     eventFilters: {
       query: params.get("eventQuery") ?? "",
       status: params.get("eventStatus") ?? "all",
       tone: params.get("eventTone") ?? "all",
+      sortBy: params.get("eventSortBy") === "dateLabel" || params.get("eventSortBy") === "status" ? params.get("eventSortBy") as EventSortField : "sortOrder",
+      sortDirection: (params.get("eventSortDirection") === "desc" ? "desc" : "asc") as SortDirection,
     },
     memberFilters: {
       query: params.get("memberQuery") ?? "",
       badge: params.get("memberBadge") ?? "all",
+      sortBy: params.get("memberSortBy") === "name" || params.get("memberSortBy") === "badge" ? params.get("memberSortBy") as MemberSortField : "sortOrder",
+      sortDirection: (params.get("memberSortDirection") === "desc" ? "desc" : "asc") as SortDirection,
     },
   };
 }
@@ -237,11 +276,17 @@ function buildAdminClubUrl(
   if (postFilters.query) params.set("postQuery", postFilters.query);
   if (postFilters.category !== "all") params.set("postCategory", postFilters.category);
   if (postFilters.pinned !== "all") params.set("postPinned", postFilters.pinned);
+  if (postFilters.sortBy !== "sortOrder") params.set("postSortBy", postFilters.sortBy);
+  if (postFilters.sortDirection !== "asc") params.set("postSortDirection", postFilters.sortDirection);
   if (eventFilters.query) params.set("eventQuery", eventFilters.query);
   if (eventFilters.status !== "all") params.set("eventStatus", eventFilters.status);
   if (eventFilters.tone !== "all") params.set("eventTone", eventFilters.tone);
+  if (eventFilters.sortBy !== "sortOrder") params.set("eventSortBy", eventFilters.sortBy);
+  if (eventFilters.sortDirection !== "asc") params.set("eventSortDirection", eventFilters.sortDirection);
   if (memberFilters.query) params.set("memberQuery", memberFilters.query);
   if (memberFilters.badge !== "all") params.set("memberBadge", memberFilters.badge);
+  if (memberFilters.sortBy !== "sortOrder") params.set("memberSortBy", memberFilters.sortBy);
+  if (memberFilters.sortDirection !== "asc") params.set("memberSortDirection", memberFilters.sortDirection);
 
   const query = params.toString();
   return query ? `/admin/club?${query}` : "/admin/club";
@@ -335,14 +380,16 @@ describe("admin club helpers", () => {
         author: "Команда фермы",
         category: "events",
         tagsCsv: "клуб,визит",
-        timeLabel: "Пятница",
-        pinned: true,
+        timeLabel: "Завтра",
+        pinned: false,
         sortOrder: 2,
       },
     ], {
       query: "марта",
       category: "journal",
       pinned: "pinned",
+      sortBy: "sortOrder",
+      sortDirection: "asc",
     });
 
     expect(filtered.map((item) => item.id)).toEqual([1]);
@@ -352,52 +399,56 @@ describe("admin club helpers", () => {
     const filtered = filterEvents([
       {
         id: 1,
-        title: "Весенний визит",
-        description: "Семейный день на ферме",
-        dateLabel: "20 апреля",
-        status: "Открыта регистрация",
+        title: "Ужин на ферме",
+        description: "Камерный вечер с дегустацией",
+        dateLabel: "12 апреля",
+        status: "Открыта запись",
         tone: "warm",
         sortOrder: 0,
       },
       {
         id: 2,
-        title: "Онлайн-дегустация",
-        description: "Вечер с новыми сырами",
-        dateLabel: "25 апреля",
-        status: "Лист ожидания",
+        title: "Экскурсия",
+        description: "Семейный обход двора",
+        dateLabel: "20 апреля",
+        status: "Архив",
         tone: "calm",
         sortOrder: 1,
       },
     ], {
-      query: "сырами",
-      status: "Лист ожидания",
-      tone: "calm",
+      query: "ужин",
+      status: "Открыта запись",
+      tone: "warm",
+      sortBy: "sortOrder",
+      sortDirection: "asc",
     });
 
-    expect(filtered.map((item) => item.id)).toEqual([2]);
+    expect(filtered.map((item) => item.id)).toEqual([1]);
   });
 
   it("filters members by query and badge", () => {
     const filtered = filterMembers([
       {
         id: 1,
-        name: "Семья Петровых",
-        animal: "Марта",
-        sinceLabel: "С весны 2024",
+        name: "Марта",
+        animal: "Белла",
+        sinceLabel: "2024",
         badge: "Founder",
         sortOrder: 0,
       },
       {
         id: 2,
-        name: "Елена",
+        name: "Семья Ивановых",
         animal: "Луна",
-        sinceLabel: "С осени 2025",
-        badge: "New",
+        sinceLabel: "2025",
+        badge: "Friend",
         sortOrder: 1,
       },
     ], {
       query: "марта",
       badge: "Founder",
+      sortBy: "sortOrder",
+      sortDirection: "asc",
     });
 
     expect(filtered.map((item) => item.id)).toEqual([1]);
@@ -429,33 +480,39 @@ describe("admin club helpers", () => {
     });
   });
 
-  it("reads active tab and filters from query string", () => {
-    expect(readAdminClubStateFromSearch("?tab=events&eventQuery=ферма&eventStatus=Открыта+регистрация&eventTone=warm")).toEqual({
+  it("reads active tab, filters and sorting from query string", () => {
+    expect(readAdminClubStateFromSearch("?tab=events&eventQuery=ферма&eventStatus=Открыта+регистрация&eventTone=warm&postSortBy=title&postSortDirection=desc&eventSortBy=status&eventSortDirection=desc&memberSortBy=badge")).toEqual({
       activeTab: "events",
       postFilters: {
         query: "",
         category: "all",
         pinned: "all",
+        sortBy: "title",
+        sortDirection: "desc",
       },
       eventFilters: {
         query: "ферма",
         status: "Открыта регистрация",
         tone: "warm",
+        sortBy: "status",
+        sortDirection: "desc",
       },
       memberFilters: {
         query: "",
         badge: "all",
+        sortBy: "badge",
+        sortDirection: "asc",
       },
     });
   });
 
-  it("builds shareable admin url only from non-default state", () => {
+  it("builds shareable admin url only from non-default state including sorting", () => {
     expect(buildAdminClubUrl(
       "members",
-      { query: "", category: "all", pinned: "all" },
-      { query: "", status: "all", tone: "all" },
-      { query: "Марта", badge: "Founder" },
-    )).toBe("/admin/club?tab=members&memberQuery=%D0%9C%D0%B0%D1%80%D1%82%D0%B0&memberBadge=Founder");
+      { query: "", category: "all", pinned: "all", sortBy: "sortOrder", sortDirection: "asc" },
+      { query: "", status: "all", tone: "all", sortBy: "sortOrder", sortDirection: "asc" },
+      { query: "Марта", badge: "Founder", sortBy: "name", sortDirection: "desc" },
+    )).toBe("/admin/club?tab=members&memberQuery=%D0%9C%D0%B0%D1%80%D1%82%D0%B0&memberBadge=Founder&memberSortBy=name&memberSortDirection=desc");
   });
 
   it("falls back to posts tab for invalid tab in query string", () => {
@@ -510,5 +567,52 @@ describe("admin club helpers", () => {
       members: ["Поиск: Марта", "Бейдж: Founder"],
       action: "remove_single_filter_on_chip_click",
     });
+  });
+
+  it("sorts filtered posts by selected field and direction", () => {
+    const sorted = sortFilteredPosts([
+      { id: 1, title: "Бета", timeLabel: "Сегодня", pinned: false, sortOrder: 2 },
+      { id: 2, title: "Альфа", timeLabel: "Вчера", pinned: false, sortOrder: 0 },
+      { id: 3, title: "Гамма", timeLabel: "Завтра", pinned: true, sortOrder: 1 },
+    ], {
+      query: "",
+      category: "all",
+      pinned: "all",
+      sortBy: "title",
+      sortDirection: "asc",
+    });
+
+    expect(sorted.map((item) => item.title)).toEqual(["Альфа", "Бета", "Гамма"]);
+  });
+
+  it("sorts filtered events by status in descending order", () => {
+    const sorted = sortFilteredEvents([
+      { id: 1, title: "Ужин", status: "Открыта регистрация", sortOrder: 2 },
+      { id: 2, title: "Визит", status: "Архив", sortOrder: 0 },
+      { id: 3, title: "Экскурсия", status: "Лист ожидания", sortOrder: 1 },
+    ], {
+      query: "",
+      status: "all",
+      tone: "all",
+      sortBy: "status",
+      sortDirection: "desc",
+    });
+
+    expect(sorted.map((item) => item.status)).toEqual(["Открыта регистрация", "Лист ожидания", "Архив"]);
+  });
+
+  it("sorts filtered members by name in ascending order", () => {
+    const sorted = sortFilteredMembers([
+      { id: 1, name: "Семья Я", animal: "Луна", badge: "Друг", sortOrder: 2 },
+      { id: 2, name: "Семья А", animal: "Марта", badge: "Амбассадор", sortOrder: 0 },
+      { id: 3, name: "Семья Б", animal: "Белла", badge: "Гость", sortOrder: 1 },
+    ], {
+      query: "",
+      badge: "all",
+      sortBy: "name",
+      sortDirection: "asc",
+    });
+
+    expect(sorted.map((item) => item.name)).toEqual(["Семья А", "Семья Б", "Семья Я"]);
   });
 });

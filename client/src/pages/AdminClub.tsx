@@ -63,21 +63,33 @@ type MemberFormState = {
   sortOrder: number;
 };
 
+type SortDirection = "asc" | "desc";
+
+type PostSortField = "sortOrder" | "timeLabel" | "title";
+type EventSortField = "sortOrder" | "dateLabel" | "status";
+type MemberSortField = "sortOrder" | "name" | "badge";
+
 type PostFilterState = {
   query: string;
   category: string;
   pinned: "all" | "pinned" | "regular";
+  sortBy: PostSortField;
+  sortDirection: SortDirection;
 };
 
 type EventFilterState = {
   query: string;
   status: string;
   tone: string;
+  sortBy: EventSortField;
+  sortDirection: SortDirection;
 };
 
 type MemberFilterState = {
   query: string;
   badge: string;
+  sortBy: MemberSortField;
+  sortDirection: SortDirection;
 };
 
 type PendingDeleteState =
@@ -125,17 +137,23 @@ const defaultPostFilters = (): PostFilterState => ({
   query: "",
   category: "all",
   pinned: "all",
+  sortBy: "sortOrder",
+  sortDirection: "asc",
 });
 
 const defaultEventFilters = (): EventFilterState => ({
   query: "",
   status: "all",
   tone: "all",
+  sortBy: "sortOrder",
+  sortDirection: "asc",
 });
 
 const defaultMemberFilters = (): MemberFilterState => ({
   query: "",
   badge: "all",
+  sortBy: "sortOrder",
+  sortDirection: "asc",
 });
 
 function normalizeSearchValue(value: string) {
@@ -203,6 +221,27 @@ function uniqueValues(items: any[], key: string) {
   return Array.from(new Set(items.map((item) => String(item[key] ?? "")).filter(Boolean)));
 }
 
+function compareValues(left: string | number | null | undefined, right: string | number | null | undefined, direction: SortDirection) {
+  const leftValue = typeof left === "number" ? left : String(left ?? "").toLowerCase();
+  const rightValue = typeof right === "number" ? right : String(right ?? "").toLowerCase();
+
+  if (leftValue < rightValue) return direction === "asc" ? -1 : 1;
+  if (leftValue > rightValue) return direction === "asc" ? 1 : -1;
+  return 0;
+}
+
+function sortPosts(posts: any[], filters: PostFilterState) {
+  return [...posts].sort((left, right) => compareValues(left[filters.sortBy], right[filters.sortBy], filters.sortDirection));
+}
+
+function sortEvents(events: any[], filters: EventFilterState) {
+  return [...events].sort((left, right) => compareValues(left[filters.sortBy], right[filters.sortBy], filters.sortDirection));
+}
+
+function sortMembers(members: any[], filters: MemberFilterState) {
+  return [...members].sort((left, right) => compareValues(left[filters.sortBy], right[filters.sortBy], filters.sortDirection));
+}
+
 function isAdminTabValue(value: string | null): value is AdminTabValue {
   return value === "posts" || value === "events" || value === "members";
 }
@@ -228,15 +267,21 @@ function readAdminClubStateFromUrl() {
       pinned: params.get("postPinned") === "pinned" || params.get("postPinned") === "regular"
         ? params.get("postPinned") as PostFilterState["pinned"]
         : "all",
+      sortBy: params.get("postSortBy") === "timeLabel" || params.get("postSortBy") === "title" ? params.get("postSortBy") as PostSortField : "sortOrder",
+      sortDirection: (params.get("postSortDirection") === "desc" ? "desc" : "asc") as SortDirection,
     },
     eventFilters: {
       query: params.get("eventQuery") ?? "",
       status: params.get("eventStatus") ?? "all",
       tone: params.get("eventTone") ?? "all",
+      sortBy: params.get("eventSortBy") === "dateLabel" || params.get("eventSortBy") === "status" ? params.get("eventSortBy") as EventSortField : "sortOrder",
+      sortDirection: (params.get("eventSortDirection") === "desc" ? "desc" : "asc") as SortDirection,
     },
     memberFilters: {
       query: params.get("memberQuery") ?? "",
       badge: params.get("memberBadge") ?? "all",
+      sortBy: params.get("memberSortBy") === "name" || params.get("memberSortBy") === "badge" ? params.get("memberSortBy") as MemberSortField : "sortOrder",
+      sortDirection: (params.get("memberSortDirection") === "desc" ? "desc" : "asc") as SortDirection,
     },
   };
 }
@@ -248,11 +293,17 @@ function buildAdminClubUrl(activeTab: AdminTabValue, postFilters: PostFilterStat
   if (postFilters.query) params.set("postQuery", postFilters.query);
   if (postFilters.category !== "all") params.set("postCategory", postFilters.category);
   if (postFilters.pinned !== "all") params.set("postPinned", postFilters.pinned);
+  if (postFilters.sortBy !== "sortOrder") params.set("postSortBy", postFilters.sortBy);
+  if (postFilters.sortDirection !== "asc") params.set("postSortDirection", postFilters.sortDirection);
   if (eventFilters.query) params.set("eventQuery", eventFilters.query);
   if (eventFilters.status !== "all") params.set("eventStatus", eventFilters.status);
   if (eventFilters.tone !== "all") params.set("eventTone", eventFilters.tone);
+  if (eventFilters.sortBy !== "sortOrder") params.set("eventSortBy", eventFilters.sortBy);
+  if (eventFilters.sortDirection !== "asc") params.set("eventSortDirection", eventFilters.sortDirection);
   if (memberFilters.query) params.set("memberQuery", memberFilters.query);
   if (memberFilters.badge !== "all") params.set("memberBadge", memberFilters.badge);
+  if (memberFilters.sortBy !== "sortOrder") params.set("memberSortBy", memberFilters.sortBy);
+  if (memberFilters.sortDirection !== "asc") params.set("memberSortDirection", memberFilters.sortDirection);
 
   const query = params.toString();
   return query ? `/admin/club?${query}` : "/admin/club";
@@ -413,15 +464,27 @@ export default function AdminClub() {
   const events = adminQuery.data?.events ?? [];
   const members = adminQuery.data?.members ?? [];
 
-  const counts = useMemo(() => ({
-    posts: posts.length,
-    events: events.length,
-    members: members.length,
-  }), [events.length, members.length, posts.length]);
+  const counts = useMemo(
+    () => ({
+      posts: posts.length,
+      events: events.length,
+      members: members.length,
+    }),
+    [posts.length, events.length, members.length],
+  );
 
-  const filteredPosts = useMemo(() => filterPosts(posts, postFilters), [posts, postFilters]);
-  const filteredEvents = useMemo(() => filterEvents(events, eventFilters), [events, eventFilters]);
-  const filteredMembers = useMemo(() => filterMembers(members, memberFilters), [members, memberFilters]);
+  const filteredPosts = useMemo(
+    () => sortPosts(filterPosts(posts, postFilters), postFilters),
+    [posts, postFilters],
+  );
+  const filteredEvents = useMemo(
+    () => sortEvents(filterEvents(events, eventFilters), eventFilters),
+    [events, eventFilters],
+  );
+  const filteredMembers = useMemo(
+    () => sortMembers(filterMembers(members, memberFilters), memberFilters),
+    [members, memberFilters],
+  );
 
   const postCategories = useMemo(() => uniqueValues(posts, "category"), [posts]);
   const eventStatuses = useMemo(() => uniqueValues(events, "status"), [events]);
@@ -659,10 +722,16 @@ export default function AdminClub() {
                       : postFilters.pinned === "regular"
                         ? { label: "Тип: только обычные", onRemove: () => setPostFilters((current) => ({ ...current, pinned: "all" })) }
                         : null,
+                    postFilters.sortBy !== "sortOrder"
+                      ? { label: `Сортировка: ${postFilters.sortBy === "timeLabel" ? "время" : "заголовок"}`, onRemove: () => setPostFilters((current) => ({ ...current, sortBy: "sortOrder" })) }
+                      : null,
+                    postFilters.sortDirection !== "asc"
+                      ? { label: "Порядок: по убыванию", onRemove: () => setPostFilters((current) => ({ ...current, sortDirection: "asc" })) }
+                      : null,
                   ].filter(Boolean) as FilterChip[]}
                   onSearchChange={(value) => setPostFilters((current) => ({ ...current, query: value }))}
                   onReset={() => setPostFilters(defaultPostFilters())}
-                  hasActiveFilters={postFilters.query !== "" || postFilters.category !== "all" || postFilters.pinned !== "all"}
+                  hasActiveFilters={postFilters.query !== "" || postFilters.category !== "all" || postFilters.pinned !== "all" || postFilters.sortBy !== "sortOrder" || postFilters.sortDirection !== "asc"}
                 >
                   <SelectFilter
                     label="Категория"
@@ -678,6 +747,25 @@ export default function AdminClub() {
                       { label: "Все посты", value: "all" },
                       { label: "Только pinned", value: "pinned" },
                       { label: "Только обычные", value: "regular" },
+                    ]}
+                  />
+                  <SelectFilter
+                    label="Сортировать по"
+                    value={postFilters.sortBy}
+                    onChange={(value) => setPostFilters((current) => ({ ...current, sortBy: value as PostSortField }))}
+                    options={[
+                      { label: "Порядок", value: "sortOrder" },
+                      { label: "Время", value: "timeLabel" },
+                      { label: "Заголовок", value: "title" },
+                    ]}
+                  />
+                  <SelectFilter
+                    label="Направление"
+                    value={postFilters.sortDirection}
+                    onChange={(value) => setPostFilters((current) => ({ ...current, sortDirection: value as SortDirection }))}
+                    options={[
+                      { label: "По возрастанию", value: "asc" },
+                      { label: "По убыванию", value: "desc" },
                     ]}
                   />
                 </FilterToolbar>
@@ -771,10 +859,16 @@ export default function AdminClub() {
                     eventFilters.tone !== "all"
                       ? { label: `Тон: ${eventFilters.tone}`, onRemove: () => setEventFilters((current) => ({ ...current, tone: "all" })) }
                       : null,
+                    eventFilters.sortBy !== "sortOrder"
+                      ? { label: `Сортировка: ${eventFilters.sortBy === "dateLabel" ? "дата" : "статус"}`, onRemove: () => setEventFilters((current) => ({ ...current, sortBy: "sortOrder" })) }
+                      : null,
+                    eventFilters.sortDirection !== "asc"
+                      ? { label: "Порядок: по убыванию", onRemove: () => setEventFilters((current) => ({ ...current, sortDirection: "asc" })) }
+                      : null,
                   ].filter(Boolean) as FilterChip[]}
                   onSearchChange={(value) => setEventFilters((current) => ({ ...current, query: value }))}
                   onReset={() => setEventFilters(defaultEventFilters())}
-                  hasActiveFilters={eventFilters.query !== "" || eventFilters.status !== "all" || eventFilters.tone !== "all"}
+                  hasActiveFilters={eventFilters.query !== "" || eventFilters.status !== "all" || eventFilters.tone !== "all" || eventFilters.sortBy !== "sortOrder" || eventFilters.sortDirection !== "asc"}
                 >
                   <SelectFilter
                     label="Статус"
@@ -787,6 +881,25 @@ export default function AdminClub() {
                     value={eventFilters.tone}
                     onChange={(value) => setEventFilters((current) => ({ ...current, tone: value }))}
                     options={[{ label: "Все тона", value: "all" }, ...eventTones.map((value) => ({ label: value, value }))]}
+                  />
+                  <SelectFilter
+                    label="Сортировать по"
+                    value={eventFilters.sortBy}
+                    onChange={(value) => setEventFilters((current) => ({ ...current, sortBy: value as EventSortField }))}
+                    options={[
+                      { label: "Порядок", value: "sortOrder" },
+                      { label: "Дату", value: "dateLabel" },
+                      { label: "Статус", value: "status" },
+                    ]}
+                  />
+                  <SelectFilter
+                    label="Направление"
+                    value={eventFilters.sortDirection}
+                    onChange={(value) => setEventFilters((current) => ({ ...current, sortDirection: value as SortDirection }))}
+                    options={[
+                      { label: "По возрастанию", value: "asc" },
+                      { label: "По убыванию", value: "desc" },
+                    ]}
                   />
                 </FilterToolbar>
               }
@@ -867,16 +980,41 @@ export default function AdminClub() {
                     memberFilters.badge !== "all"
                       ? { label: `Бейдж: ${memberFilters.badge}`, onRemove: () => setMemberFilters((current) => ({ ...current, badge: "all" })) }
                       : null,
+                    memberFilters.sortBy !== "sortOrder"
+                      ? { label: `Сортировка: ${memberFilters.sortBy === "name" ? "имя" : "бейдж"}`, onRemove: () => setMemberFilters((current) => ({ ...current, sortBy: "sortOrder" })) }
+                      : null,
+                    memberFilters.sortDirection !== "asc"
+                      ? { label: "Порядок: по убыванию", onRemove: () => setMemberFilters((current) => ({ ...current, sortDirection: "asc" })) }
+                      : null,
                   ].filter(Boolean) as FilterChip[]}
                   onSearchChange={(value) => setMemberFilters((current) => ({ ...current, query: value }))}
                   onReset={() => setMemberFilters(defaultMemberFilters())}
-                  hasActiveFilters={memberFilters.query !== "" || memberFilters.badge !== "all"}
+                  hasActiveFilters={memberFilters.query !== "" || memberFilters.badge !== "all" || memberFilters.sortBy !== "sortOrder" || memberFilters.sortDirection !== "asc"}
                 >
                   <SelectFilter
                     label="Бейдж"
                     value={memberFilters.badge}
                     onChange={(value) => setMemberFilters((current) => ({ ...current, badge: value }))}
                     options={[{ label: "Все бейджи", value: "all" }, ...memberBadges.map((value) => ({ label: value, value }))]}
+                  />
+                  <SelectFilter
+                    label="Сортировать по"
+                    value={memberFilters.sortBy}
+                    onChange={(value) => setMemberFilters((current) => ({ ...current, sortBy: value as MemberSortField }))}
+                    options={[
+                      { label: "Порядок", value: "sortOrder" },
+                      { label: "Имени", value: "name" },
+                      { label: "Бейджу", value: "badge" },
+                    ]}
+                  />
+                  <SelectFilter
+                    label="Направление"
+                    value={memberFilters.sortDirection}
+                    onChange={(value) => setMemberFilters((current) => ({ ...current, sortDirection: value as SortDirection }))}
+                    options={[
+                      { label: "По возрастанию", value: "asc" },
+                      { label: "По убыванию", value: "desc" },
+                    ]}
                   />
                 </FilterToolbar>
               }
@@ -1045,7 +1183,7 @@ function FilterToolbar({
           ))}
         </div>
       ) : null}
-      {children ? <div className="grid gap-3 md:grid-cols-2">{children}</div> : null}
+      {children ? <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">{children}</div> : null}
     </div>
   );
 }
