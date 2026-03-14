@@ -1,4 +1,4 @@
-import { COOKIE_NAME } from "@shared/const";
+import { COOKIE_NAME, NOT_ADMIN_ERR_MSG } from "@shared/const";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { getSessionCookieOptions } from "./_core/cookies";
@@ -6,12 +6,22 @@ import { systemRouter } from "./_core/systemRouter";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import {
   createAnimalPhoto,
+  createClubEvent,
+  createClubMember,
+  createClubPost,
   deleteAnimalPhoto,
+  deleteClubEvent,
+  deleteClubMember,
+  deleteClubPost,
   getClubFeedData,
   getProductTrackerData,
   listAnimalPhotos,
+  listClubAdminData,
   reorderAnimalPhotos,
   setAnimalPhotoCover,
+  updateClubEvent,
+  updateClubMember,
+  updateClubPost,
 } from "./db";
 import { storagePut } from "./storage";
 
@@ -44,9 +54,66 @@ const trackerSummaryInput = z.object({
   animalSlug: z.string().min(1).max(64).default("marta"),
 });
 
+const clubPostInput = z.object({
+  category: z.string().min(1).max(32),
+  author: z.string().min(1).max(160),
+  avatar: z.string().min(1).max(8),
+  role: z.string().min(1).max(120),
+  timeLabel: z.string().min(1).max(80),
+  title: z.string().min(1).max(255),
+  text: z.string().min(1).max(5000),
+  imageUrl: z.string().url().or(z.literal("")),
+  likes: z.number().int().min(0).max(999999),
+  comments: z.number().int().min(0).max(999999),
+  tagsCsv: z.string().max(255),
+  pinned: z.boolean(),
+  sortOrder: z.number().int().min(0).max(9999),
+});
+
+const clubEventInput = z.object({
+  title: z.string().min(1).max(160),
+  dateLabel: z.string().min(1).max(80),
+  description: z.string().min(1).max(5000),
+  status: z.string().min(1).max(120),
+  tone: z.string().min(1).max(32),
+  sortOrder: z.number().int().min(0).max(9999),
+});
+
+const clubMemberInput = z.object({
+  name: z.string().min(1).max(160),
+  animal: z.string().min(1).max(120),
+  sinceLabel: z.string().min(1).max(120),
+  badge: z.string().min(1).max(80),
+  sortOrder: z.number().int().min(0).max(9999),
+});
+
+const idInput = z.object({
+  id: z.number().int().positive(),
+});
+
+const updateClubPostInput = clubPostInput.extend({
+  id: z.number().int().positive(),
+});
+
+const updateClubEventInput = clubEventInput.extend({
+  id: z.number().int().positive(),
+});
+
+const updateClubMemberInput = clubMemberInput.extend({
+  id: z.number().int().positive(),
+});
+
 function sanitizeFileName(fileName: string) {
   return fileName.toLowerCase().replace(/[^a-z0-9.-]+/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "") || "photo";
 }
+
+const adminProcedure = protectedProcedure.use(({ ctx, next }) => {
+  if (ctx.user.role !== "admin") {
+    throw new TRPCError({ code: "FORBIDDEN", message: NOT_ADMIN_ERR_MSG });
+  }
+
+  return next({ ctx });
+});
 
 export const appRouter = router({
   system: systemRouter,
@@ -162,6 +229,50 @@ export const appRouter = router({
   club: router({
     feed: protectedProcedure.query(async ({ ctx }) => {
       return getClubFeedData(ctx.user.openId);
+    }),
+  }),
+  adminClub: router({
+    dashboard: adminProcedure.query(async ({ ctx }) => {
+      return listClubAdminData(ctx.user.openId);
+    }),
+    createPost: adminProcedure.input(clubPostInput).mutation(async ({ ctx, input }) => {
+      return createClubPost({ ...input, ownerOpenId: ctx.user.openId, pinned: input.pinned ? 1 : 0 });
+    }),
+    updatePost: adminProcedure.input(updateClubPostInput).mutation(async ({ ctx, input }) => {
+      return updateClubPost({ ...input, ownerOpenId: ctx.user.openId, pinned: input.pinned ? 1 : 0 });
+    }),
+    deletePost: adminProcedure.input(idInput).mutation(async ({ ctx, input }) => {
+      const deleted = await deleteClubPost(input.id, ctx.user.openId);
+      if (!deleted) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Пост не найден." });
+      }
+      return { success: true, id: input.id } as const;
+    }),
+    createEvent: adminProcedure.input(clubEventInput).mutation(async ({ ctx, input }) => {
+      return createClubEvent({ ...input, ownerOpenId: ctx.user.openId });
+    }),
+    updateEvent: adminProcedure.input(updateClubEventInput).mutation(async ({ ctx, input }) => {
+      return updateClubEvent({ ...input, ownerOpenId: ctx.user.openId });
+    }),
+    deleteEvent: adminProcedure.input(idInput).mutation(async ({ ctx, input }) => {
+      const deleted = await deleteClubEvent(input.id, ctx.user.openId);
+      if (!deleted) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Событие не найдено." });
+      }
+      return { success: true, id: input.id } as const;
+    }),
+    createMember: adminProcedure.input(clubMemberInput).mutation(async ({ ctx, input }) => {
+      return createClubMember({ ...input, ownerOpenId: ctx.user.openId });
+    }),
+    updateMember: adminProcedure.input(updateClubMemberInput).mutation(async ({ ctx, input }) => {
+      return updateClubMember({ ...input, ownerOpenId: ctx.user.openId });
+    }),
+    deleteMember: adminProcedure.input(idInput).mutation(async ({ ctx, input }) => {
+      const deleted = await deleteClubMember(input.id, ctx.user.openId);
+      if (!deleted) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Участник не найден." });
+      }
+      return { success: true, id: input.id } as const;
     }),
   }),
 });

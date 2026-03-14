@@ -7,6 +7,9 @@ import {
   clubMembers,
   clubPosts,
   InsertAnimalPhoto,
+  InsertClubEvent,
+  InsertClubMember,
+  InsertClubPost,
   InsertUser,
   productBatches,
   productCompositionSnapshots,
@@ -574,4 +577,155 @@ export async function getClubFeedData(ownerOpenId: string) {
     events,
     members,
   };
+}
+
+export async function listClubAdminData(ownerOpenId: string) {
+  return getClubFeedData(ownerOpenId);
+}
+
+export async function createClubPost(input: InsertClubPost) {
+  const db = await getDb();
+  if (!db) {
+    throw new Error("Database not available for creating club post");
+  }
+
+  const result = await db.insert(clubPosts).values(input);
+  const insertMeta = Array.isArray(result) ? result[0] : result;
+  const insertedId = Number((insertMeta as { insertId?: number | string }).insertId);
+  const created = await db.select().from(clubPosts).where(eq(clubPosts.id, insertedId)).limit(1);
+  return created[0] ?? null;
+}
+
+export async function updateClubPost(input: InsertClubPost & { id: number }) {
+  const db = await getDb();
+  if (!db) {
+    throw new Error("Database not available for updating club post");
+  }
+
+  await db
+    .update(clubPosts)
+    .set({
+      category: input.category,
+      author: input.author,
+      avatar: input.avatar,
+      role: input.role,
+      timeLabel: input.timeLabel,
+      title: input.title,
+      text: input.text,
+      imageUrl: input.imageUrl,
+      likes: input.likes,
+      comments: input.comments,
+      tagsCsv: input.tagsCsv,
+      pinned: input.pinned,
+      sortOrder: input.sortOrder,
+    })
+    .where(and(eq(clubPosts.id, input.id), eq(clubPosts.ownerOpenId, input.ownerOpenId)));
+
+  const updated = await db.select().from(clubPosts).where(eq(clubPosts.id, input.id)).limit(1);
+  return updated[0] ?? null;
+}
+
+export async function deleteClubPost(id: number, ownerOpenId: string) {
+  const db = await getDb();
+  if (!db) {
+    throw new Error("Database not available for deleting club post");
+  }
+
+  const existing = await db.select().from(clubPosts).where(and(eq(clubPosts.id, id), eq(clubPosts.ownerOpenId, ownerOpenId))).limit(1);
+  if (!existing[0]) return null;
+  await db.delete(clubPosts).where(and(eq(clubPosts.id, id), eq(clubPosts.ownerOpenId, ownerOpenId)));
+  return existing[0];
+}
+
+export async function createClubEvent(input: InsertClubEvent) {
+  const db = await getDb();
+  if (!db) {
+    throw new Error("Database not available for creating club event");
+  }
+
+  const result = await db.insert(clubEvents).values(input);
+  const insertMeta = Array.isArray(result) ? result[0] : result;
+  const insertedId = Number((insertMeta as { insertId?: number | string }).insertId);
+  const created = await db.select().from(clubEvents).where(eq(clubEvents.id, insertedId)).limit(1);
+  return created[0] ?? null;
+}
+
+export async function updateClubEvent(input: InsertClubEvent & { id: number }) {
+  const db = await getDb();
+  if (!db) {
+    throw new Error("Database not available for updating club event");
+  }
+
+  await db
+    .update(clubEvents)
+    .set({
+      title: input.title,
+      dateLabel: input.dateLabel,
+      description: input.description,
+      status: input.status,
+      tone: input.tone,
+      sortOrder: input.sortOrder,
+    })
+    .where(and(eq(clubEvents.id, input.id), eq(clubEvents.ownerOpenId, input.ownerOpenId)));
+
+  const updated = await db.select().from(clubEvents).where(eq(clubEvents.id, input.id)).limit(1);
+  return updated[0] ?? null;
+}
+
+export async function deleteClubEvent(id: number, ownerOpenId: string) {
+  const db = await getDb();
+  if (!db) {
+    throw new Error("Database not available for deleting club event");
+  }
+
+  const existing = await db.select().from(clubEvents).where(and(eq(clubEvents.id, id), eq(clubEvents.ownerOpenId, ownerOpenId))).limit(1);
+  if (!existing[0]) return null;
+  await db.delete(clubEvents).where(and(eq(clubEvents.id, id), eq(clubEvents.ownerOpenId, ownerOpenId)));
+  return existing[0];
+}
+
+export async function createClubMember(input: InsertClubMember) {
+  const db = await getDb();
+  if (!db) {
+    throw new Error("Database not available for creating club member");
+  }
+
+  const result = await db.insert(clubMembers).values(input);
+  const insertMeta = Array.isArray(result) ? result[0] : result;
+  const insertedId = Number((insertMeta as { insertId?: number | string }).insertId);
+  const created = await db.select().from(clubMembers).where(eq(clubMembers.id, insertedId)).limit(1);
+  return created[0] ?? null;
+}
+
+export async function updateClubMember(input: InsertClubMember & { id: number }) {
+  const db = await getDb();
+  if (!db) {
+    throw new Error("Database not available for updating club member");
+  }
+
+  await db
+    .update(clubMembers)
+    .set({
+      name: input.name,
+      animal: input.animal,
+      sinceLabel: input.sinceLabel,
+      badge: input.badge,
+      sortOrder: input.sortOrder,
+    })
+    .where(and(eq(clubMembers.id, input.id), eq(clubMembers.ownerOpenId, input.ownerOpenId)));
+
+  const updated = await db.select().from(clubMembers).where(eq(clubMembers.id, input.id)).limit(1);
+  return updated[0] ?? null;
+}
+
+export async function deleteClubMember(id: number, ownerOpenId: string) {
+  const db = await getDb();
+  if (!db) {
+    throw new Error("Database not available for deleting club member");
+  }
+
+  const existing = await db.select().from(clubMembers).where(and(eq(clubMembers.id, id), eq(clubMembers.ownerOpenId, ownerOpenId))).limit(1);
+  if (!existing[0]) return null;
+  await db.delete(clubMembers).where(and(eq(clubMembers.id, id), eq(clubMembers.ownerOpenId, ownerOpenId)));
+  return existing[0];
 }
