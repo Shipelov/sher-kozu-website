@@ -466,15 +466,22 @@ export async function reorderAnimalPhotos(photoIds: number[], ownerOpenId: strin
     })),
   });
 
-  const existingIds = existing.map((photo: { id: number }) => photo.id).sort((a: number, b: number) => a - b);
-  const incomingIds = [...photoIds].sort((a: number, b: number) => a - b);
+  const existingById = new Map(existing.map((photo: { id: number }) => [photo.id, photo] as const));
 
-  if (existingIds.length !== incomingIds.length || existingIds.some((id: number, index: number) => id !== incomingIds[index])) {
-    throw new Error("Photo order payload does not match available gallery items");
+  if (!photoIds.length) {
+    throw new Error("Photo order payload is empty");
   }
 
+  const hasUnknownIds = photoIds.some((photoId) => !existingById.has(photoId));
+  if (hasUnknownIds) {
+    throw new Error("Photo order payload contains unknown gallery items");
+  }
+
+  const untouchedPhotos = existing.filter((photo: { id: number }) => !photoIds.includes(photo.id));
+  const finalOrder = [...photoIds.map((photoId) => existingById.get(photoId)!), ...untouchedPhotos];
+
   await Promise.all(
-    photoIds.map((photoId, index) => db.update(animalPhotos).set({ sortOrder: index }).where(eq(animalPhotos.id, photoId))),
+    finalOrder.map((photo: { id: number }, index: number) => db.update(animalPhotos).set({ sortOrder: index }).where(eq(animalPhotos.id, photo.id))),
   );
 
   const updated = await db

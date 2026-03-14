@@ -38,14 +38,17 @@ function resolveCoverImageId(imageIds: string[], currentCoverId: string) {
 }
 
 function reorderPhotoRecords(records: PhotoRecord[], orderedPhotoIds: number[]) {
-  const indexById = new Map(orderedPhotoIds.map((photoId, index) => [photoId, index]));
+  const recordsById = new Map(records.map((record) => [record.photoId, record] as const));
+  const untouchedRecords = records.filter((record) => !orderedPhotoIds.includes(record.photoId));
+  const finalOrder = [
+    ...orderedPhotoIds.map((photoId) => recordsById.get(photoId)).filter((record): record is PhotoRecord => Boolean(record)),
+    ...untouchedRecords,
+  ];
 
-  return records
-    .map((record) => ({
-      ...record,
-      sortOrder: indexById.get(record.photoId) ?? record.sortOrder,
-    }))
-    .sort((left, right) => left.sortOrder - right.sortOrder);
+  return finalOrder.map((record, index) => ({
+    ...record,
+    sortOrder: index,
+  }));
 }
 
 describe("animal photo helpers", () => {
@@ -119,5 +122,21 @@ describe("animal photo helpers", () => {
     expect(reordered.map((photo) => photo.photoId)).toEqual([202, 101, 303]);
     expect(reordered.map((photo) => photo.sortOrder)).toEqual([0, 1, 2]);
     expect(reordered.find((photo) => photo.isCover)?.photoId).toBe(101);
+  });
+
+  it("keeps non-reordered photos after the explicitly reordered uploaded subset", () => {
+    const reordered = reorderPhotoRecords(
+      [
+        { photoId: 11, sortOrder: 0, isCover: false },
+        { photoId: 22, sortOrder: 1, isCover: true },
+        { photoId: 33, sortOrder: 2, isCover: false },
+        { photoId: 44, sortOrder: 3, isCover: false },
+      ],
+      [33, 22],
+    );
+
+    expect(reordered.map((photo) => photo.photoId)).toEqual([33, 22, 11, 44]);
+    expect(reordered.map((photo) => photo.sortOrder)).toEqual([0, 1, 2, 3]);
+    expect(reordered.find((photo) => photo.isCover)?.photoId).toBe(22);
   });
 });
