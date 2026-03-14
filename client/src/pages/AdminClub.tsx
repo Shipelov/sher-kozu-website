@@ -644,6 +644,8 @@ export default function AdminClub() {
                 <FilterToolbar
                   searchPlaceholder="Искать по заголовку, тексту, автору или тегам"
                   searchValue={postFilters.query}
+                  resultCount={filteredPosts.length}
+                  resultLabel="постов"
                   resetLabel="Сбросить фильтры постов"
                   onSearchChange={(value) => setPostFilters((current) => ({ ...current, query: value }))}
                   onReset={() => setPostFilters(defaultPostFilters())}
@@ -743,6 +745,8 @@ export default function AdminClub() {
                 <FilterToolbar
                   searchPlaceholder="Искать по названию, описанию или дате"
                   searchValue={eventFilters.query}
+                  resultCount={filteredEvents.length}
+                  resultLabel="событий"
                   resetLabel="Сбросить фильтры событий"
                   onSearchChange={(value) => setEventFilters((current) => ({ ...current, query: value }))}
                   onReset={() => setEventFilters(defaultEventFilters())}
@@ -829,6 +833,8 @@ export default function AdminClub() {
                 <FilterToolbar
                   searchPlaceholder="Искать по имени, животному или периоду участия"
                   searchValue={memberFilters.query}
+                  resultCount={filteredMembers.length}
+                  resultLabel="участников"
                   resetLabel="Сбросить фильтры участников"
                   onSearchChange={(value) => setMemberFilters((current) => ({ ...current, query: value }))}
                   onReset={() => setMemberFilters(defaultMemberFilters())}
@@ -946,6 +952,8 @@ function EntityListCard({
 function FilterToolbar({
   searchPlaceholder,
   searchValue,
+  resultCount,
+  resultLabel,
   resetLabel,
   onSearchChange,
   onReset,
@@ -954,6 +962,8 @@ function FilterToolbar({
 }: {
   searchPlaceholder: string;
   searchValue: string;
+  resultCount: number;
+  resultLabel: string;
   resetLabel: string;
   onSearchChange: (value: string) => void;
   onReset: () => void;
@@ -964,7 +974,12 @@ function FilterToolbar({
     <div className="rounded-2xl border border-stone-200 bg-stone-50/80 p-4 space-y-4">
       <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_auto] md:items-end">
         <div className="space-y-2">
-          <Label>Поиск</Label>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <Label>Поиск</Label>
+            <span className="inline-flex items-center rounded-full border border-stone-200 bg-white px-2.5 py-1 text-xs font-medium text-stone-600">
+              Найдено: {resultCount} {resultLabel}
+            </span>
+          </div>
           <div className="relative">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400" />
             <Input className="pl-9" value={searchValue} onChange={(e) => onSearchChange(e.target.value)} placeholder={searchPlaceholder} />

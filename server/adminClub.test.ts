@@ -473,4 +473,16 @@ describe("admin club helpers", () => {
       members: "Сбросить фильтры участников",
     });
   });
+
+  it("provides compact result labels for each admin tab filter toolbar", () => {
+    expect({
+      posts: "постов",
+      events: "событий",
+      members: "участников",
+    }).toEqual({
+      posts: "постов",
+      events: "событий",
+      members: "участников",
+    });
+  });
 });
