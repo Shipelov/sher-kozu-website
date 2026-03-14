@@ -859,11 +859,11 @@ function ListRow({
           <p className="text-sm text-stone-600">{subtitle}</p>
           <p className="text-xs text-stone-500">{meta}</p>
         </div>
-        <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:justify-end">
-          <Button variant="outline" size="sm" onClick={onEdit} className="w-full sm:w-auto">
+        <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center sm:justify-end">
+          <Button variant="outline" size="sm" onClick={onEdit} className="w-full justify-center sm:min-w-[132px] sm:w-[132px]">
             <Pencil className="mr-2 h-4 w-4" />Править
           </Button>
-          <Button variant="outline" size="sm" onClick={onDelete} disabled={deleting} className="w-full sm:w-auto">
+          <Button variant="outline" size="sm" onClick={onDelete} disabled={deleting} className="w-full justify-center sm:min-w-[132px] sm:w-[132px]">
             <Trash2 className="mr-2 h-4 w-4" />{deleting ? "Удаление..." : "Удалить"}
           </Button>
         </div>
