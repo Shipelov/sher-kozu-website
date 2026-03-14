@@ -1,5 +1,15 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import DashboardLayout from "@/components/DashboardLayout";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -69,6 +79,12 @@ type MemberFilterState = {
   badge: string;
 };
 
+type PendingDeleteState =
+  | { entity: "post"; id: number; title: string; description: string }
+  | { entity: "event"; id: number; title: string; description: string }
+  | { entity: "member"; id: number; title: string; description: string }
+  | null;
+
 const defaultPostForm = (): PostFormState => ({
   category: "journal",
   author: "Команда фермы",
@@ -128,10 +144,7 @@ function includesQuery(fields: Array<string | number | null | undefined>, query:
   return fields.some((field) => String(field ?? "").toLowerCase().includes(query));
 }
 
-function filterPosts(
-  posts: any[],
-  filters: PostFilterState,
-) {
+function filterPosts(posts: any[], filters: PostFilterState) {
   const query = normalizeSearchValue(filters.query);
   return posts.filter((post) => {
     const matchesQuery = includesQuery([
@@ -151,10 +164,7 @@ function filterPosts(
   });
 }
 
-function filterEvents(
-  events: any[],
-  filters: EventFilterState,
-) {
+function filterEvents(events: any[], filters: EventFilterState) {
   const query = normalizeSearchValue(filters.query);
   return events.filter((event) => {
     const matchesQuery = includesQuery([
@@ -171,10 +181,7 @@ function filterEvents(
   });
 }
 
-function filterMembers(
-  members: any[],
-  filters: MemberFilterState,
-) {
+function filterMembers(members: any[], filters: MemberFilterState) {
   const query = normalizeSearchValue(filters.query);
   return members.filter((member) => {
     const matchesQuery = includesQuery([
@@ -203,6 +210,7 @@ export default function AdminClub() {
   const [postFilters, setPostFilters] = useState<PostFilterState>(defaultPostFilters);
   const [eventFilters, setEventFilters] = useState<EventFilterState>(defaultEventFilters);
   const [memberFilters, setMemberFilters] = useState<MemberFilterState>(defaultMemberFilters);
+  const [pendingDelete, setPendingDelete] = useState<PendingDeleteState>(null);
 
   const adminQuery = trpc.adminClub.dashboard.useQuery(undefined, {
     enabled: Boolean(user?.role === "admin"),
@@ -217,15 +225,30 @@ export default function AdminClub() {
 
   const createPost = trpc.adminClub.createPost.useMutation({ onSuccess: refreshAdminData });
   const updatePost = trpc.adminClub.updatePost.useMutation({ onSuccess: refreshAdminData });
-  const deletePost = trpc.adminClub.deletePost.useMutation({ onSuccess: refreshAdminData });
+  const deletePost = trpc.adminClub.deletePost.useMutation({
+    onSuccess: async () => {
+      setPendingDelete(null);
+      await refreshAdminData();
+    },
+  });
 
   const createEvent = trpc.adminClub.createEvent.useMutation({ onSuccess: refreshAdminData });
   const updateEvent = trpc.adminClub.updateEvent.useMutation({ onSuccess: refreshAdminData });
-  const deleteEvent = trpc.adminClub.deleteEvent.useMutation({ onSuccess: refreshAdminData });
+  const deleteEvent = trpc.adminClub.deleteEvent.useMutation({
+    onSuccess: async () => {
+      setPendingDelete(null);
+      await refreshAdminData();
+    },
+  });
 
   const createMember = trpc.adminClub.createMember.useMutation({ onSuccess: refreshAdminData });
   const updateMember = trpc.adminClub.updateMember.useMutation({ onSuccess: refreshAdminData });
-  const deleteMember = trpc.adminClub.deleteMember.useMutation({ onSuccess: refreshAdminData });
+  const deleteMember = trpc.adminClub.deleteMember.useMutation({
+    onSuccess: async () => {
+      setPendingDelete(null);
+      await refreshAdminData();
+    },
+  });
 
   const posts = adminQuery.data?.posts ?? [];
   const events = adminQuery.data?.events ?? [];
@@ -245,6 +268,24 @@ export default function AdminClub() {
   const eventStatuses = useMemo(() => uniqueValues(events, "status"), [events]);
   const eventTones = useMemo(() => uniqueValues(events, "tone"), [events]);
   const memberBadges = useMemo(() => uniqueValues(members, "badge"), [members]);
+
+  const isDeleting = deletePost.isPending || deleteEvent.isPending || deleteMember.isPending;
+
+  const confirmDelete = async () => {
+    if (!pendingDelete) return;
+
+    if (pendingDelete.entity === "post") {
+      await deletePost.mutateAsync({ id: pendingDelete.id });
+      return;
+    }
+
+    if (pendingDelete.entity === "event") {
+      await deleteEvent.mutateAsync({ id: pendingDelete.id });
+      return;
+    }
+
+    await deleteMember.mutateAsync({ id: pendingDelete.id });
+  };
 
   if (loading) {
     return (
@@ -289,6 +330,41 @@ export default function AdminClub() {
 
   return (
     <DashboardLayout>
+      <AlertDialog open={Boolean(pendingDelete)} onOpenChange={(open) => {
+        if (!open && !isDeleting) {
+          setPendingDelete(null);
+        }
+      }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Подтвердите удаление</AlertDialogTitle>
+            <AlertDialogDescription>
+              {pendingDelete
+                ? `Вы собираетесь удалить ${pendingDelete.description}. Действие нельзя отменить.`
+                : "Вы собираетесь удалить запись. Действие нельзя отменить."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          {pendingDelete ? (
+            <div className="rounded-xl border border-stone-200 bg-stone-50 px-4 py-3 text-sm text-stone-700">
+              <p className="font-medium text-stone-950">{pendingDelete.title}</p>
+            </div>
+          ) : null}
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Отмена</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(event) => {
+                event.preventDefault();
+                void confirmDelete();
+              }}
+              disabled={isDeleting}
+              className="bg-red-600 text-white hover:bg-red-700"
+            >
+              {isDeleting ? "Удаляем..." : "Удалить запись"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       <div className="container py-6 md:py-8 space-y-6">
         <section className="grid gap-4 lg:grid-cols-[1.35fr_0.65fr]">
           <Card className="border-stone-200 bg-gradient-to-br from-amber-50 via-white to-stone-50 shadow-sm">
@@ -307,6 +383,7 @@ export default function AdminClub() {
               <MetricCard label="Участники" value={counts.members} icon={<Users className="h-4 w-4" />} />
             </CardContent>
           </Card>
+
           <Card>
             <CardHeader>
               <CardTitle>Состояние</CardTitle>
@@ -443,8 +520,13 @@ export default function AdminClub() {
                     pinned: Boolean(post.pinned),
                     sortOrder: post.sortOrder,
                   })}
-                  onDelete={() => deletePost.mutate({ id: post.id })}
-                  deleting={deletePost.isPending}
+                  onDelete={() => setPendingDelete({
+                    entity: "post",
+                    id: post.id,
+                    title: post.title,
+                    description: `пост «${post.title}»`,
+                  })}
+                  deleting={isDeleting && pendingDelete?.entity === "post" && pendingDelete.id === post.id}
                 />
               )}
             />
@@ -524,8 +606,13 @@ export default function AdminClub() {
                     tone: event.tone,
                     sortOrder: event.sortOrder,
                   })}
-                  onDelete={() => deleteEvent.mutate({ id: event.id })}
-                  deleting={deleteEvent.isPending}
+                  onDelete={() => setPendingDelete({
+                    entity: "event",
+                    id: event.id,
+                    title: event.title,
+                    description: `событие «${event.title}»`,
+                  })}
+                  deleting={isDeleting && pendingDelete?.entity === "event" && pendingDelete.id === event.id}
                 />
               )}
             />
@@ -597,8 +684,13 @@ export default function AdminClub() {
                     badge: member.badge,
                     sortOrder: member.sortOrder,
                   })}
-                  onDelete={() => deleteMember.mutate({ id: member.id })}
-                  deleting={deleteMember.isPending}
+                  onDelete={() => setPendingDelete({
+                    entity: "member",
+                    id: member.id,
+                    title: member.name,
+                    description: `участника «${member.name}»`,
+                  })}
+                  deleting={isDeleting && pendingDelete?.entity === "member" && pendingDelete.id === member.id}
                 />
               )}
             />
@@ -769,7 +861,7 @@ function ListRow({
         </div>
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={onEdit}><Pencil className="mr-2 h-4 w-4" />Править</Button>
-          <Button variant="outline" size="sm" onClick={onDelete} disabled={deleting}><Trash2 className="mr-2 h-4 w-4" />Удалить</Button>
+          <Button variant="outline" size="sm" onClick={onDelete} disabled={deleting}><Trash2 className="mr-2 h-4 w-4" />{deleting ? "Удаление..." : "Удалить"}</Button>
         </div>
       </div>
     </div>
