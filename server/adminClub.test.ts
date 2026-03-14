@@ -461,4 +461,16 @@ describe("admin club helpers", () => {
   it("falls back to posts tab for invalid tab in query string", () => {
     expect(readAdminClubStateFromSearch("?tab=unknown&postQuery=утро").activeTab).toBe("posts");
   });
+
+  it("provides separate reset labels for each admin tab filter toolbar", () => {
+    expect({
+      posts: "Сбросить фильтры постов",
+      events: "Сбросить фильтры событий",
+      members: "Сбросить фильтры участников",
+    }).toEqual({
+      posts: "Сбросить фильтры постов",
+      events: "Сбросить фильтры событий",
+      members: "Сбросить фильтры участников",
+    });
+  });
 });

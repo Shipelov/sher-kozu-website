@@ -644,6 +644,7 @@ export default function AdminClub() {
                 <FilterToolbar
                   searchPlaceholder="Искать по заголовку, тексту, автору или тегам"
                   searchValue={postFilters.query}
+                  resetLabel="Сбросить фильтры постов"
                   onSearchChange={(value) => setPostFilters((current) => ({ ...current, query: value }))}
                   onReset={() => setPostFilters(defaultPostFilters())}
                   hasActiveFilters={postFilters.query !== "" || postFilters.category !== "all" || postFilters.pinned !== "all"}
@@ -742,6 +743,7 @@ export default function AdminClub() {
                 <FilterToolbar
                   searchPlaceholder="Искать по названию, описанию или дате"
                   searchValue={eventFilters.query}
+                  resetLabel="Сбросить фильтры событий"
                   onSearchChange={(value) => setEventFilters((current) => ({ ...current, query: value }))}
                   onReset={() => setEventFilters(defaultEventFilters())}
                   hasActiveFilters={eventFilters.query !== "" || eventFilters.status !== "all" || eventFilters.tone !== "all"}
@@ -827,6 +829,7 @@ export default function AdminClub() {
                 <FilterToolbar
                   searchPlaceholder="Искать по имени, животному или периоду участия"
                   searchValue={memberFilters.query}
+                  resetLabel="Сбросить фильтры участников"
                   onSearchChange={(value) => setMemberFilters((current) => ({ ...current, query: value }))}
                   onReset={() => setMemberFilters(defaultMemberFilters())}
                   hasActiveFilters={memberFilters.query !== "" || memberFilters.badge !== "all"}
@@ -943,6 +946,7 @@ function EntityListCard({
 function FilterToolbar({
   searchPlaceholder,
   searchValue,
+  resetLabel,
   onSearchChange,
   onReset,
   hasActiveFilters,
@@ -950,6 +954,7 @@ function FilterToolbar({
 }: {
   searchPlaceholder: string;
   searchValue: string;
+  resetLabel: string;
   onSearchChange: (value: string) => void;
   onReset: () => void;
   hasActiveFilters: boolean;
@@ -966,7 +971,7 @@ function FilterToolbar({
           </div>
         </div>
         <Button variant="outline" onClick={onReset} disabled={!hasActiveFilters}>
-          <X className="mr-2 h-4 w-4" />Сбросить
+          <X className="mr-2 h-4 w-4" />{resetLabel}
         </Button>
       </div>
       {children ? <div className="grid gap-3 md:grid-cols-2">{children}</div> : null}
