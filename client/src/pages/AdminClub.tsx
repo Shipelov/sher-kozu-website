@@ -23,7 +23,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { trpc } from "@/lib/trpc";
 import { NOT_ADMIN_ERR_MSG } from "@shared/const";
 import { CalendarRange, Crown, Pencil, Search, ShieldAlert, Trash2, Users, X } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { useLocation } from "wouter";
 
@@ -85,6 +85,8 @@ type PendingDeleteState =
   | { entity: "event"; id: number; title: string; description: string }
   | { entity: "member"; id: number; title: string; description: string }
   | null;
+
+type AdminTabValue = "posts" | "events" | "members";
 
 const defaultPostForm = (): PostFormState => ({
   category: "journal",
@@ -201,16 +203,73 @@ function uniqueValues(items: any[], key: string) {
   return Array.from(new Set(items.map((item) => String(item[key] ?? "")).filter(Boolean)));
 }
 
+function isAdminTabValue(value: string | null): value is AdminTabValue {
+  return value === "posts" || value === "events" || value === "members";
+}
+
+function readAdminClubStateFromUrl() {
+  if (typeof window === "undefined") {
+    return {
+      activeTab: "posts" as AdminTabValue,
+      postFilters: defaultPostFilters(),
+      eventFilters: defaultEventFilters(),
+      memberFilters: defaultMemberFilters(),
+    };
+  }
+
+  const params = new URLSearchParams(window.location.search);
+  const tabParam = params.get("tab");
+
+  return {
+    activeTab: isAdminTabValue(tabParam) ? tabParam : "posts",
+    postFilters: {
+      query: params.get("postQuery") ?? "",
+      category: params.get("postCategory") ?? "all",
+      pinned: params.get("postPinned") === "pinned" || params.get("postPinned") === "regular"
+        ? params.get("postPinned") as PostFilterState["pinned"]
+        : "all",
+    },
+    eventFilters: {
+      query: params.get("eventQuery") ?? "",
+      status: params.get("eventStatus") ?? "all",
+      tone: params.get("eventTone") ?? "all",
+    },
+    memberFilters: {
+      query: params.get("memberQuery") ?? "",
+      badge: params.get("memberBadge") ?? "all",
+    },
+  };
+}
+
+function buildAdminClubUrl(activeTab: AdminTabValue, postFilters: PostFilterState, eventFilters: EventFilterState, memberFilters: MemberFilterState) {
+  const params = new URLSearchParams();
+
+  if (activeTab !== "posts") params.set("tab", activeTab);
+  if (postFilters.query) params.set("postQuery", postFilters.query);
+  if (postFilters.category !== "all") params.set("postCategory", postFilters.category);
+  if (postFilters.pinned !== "all") params.set("postPinned", postFilters.pinned);
+  if (eventFilters.query) params.set("eventQuery", eventFilters.query);
+  if (eventFilters.status !== "all") params.set("eventStatus", eventFilters.status);
+  if (eventFilters.tone !== "all") params.set("eventTone", eventFilters.tone);
+  if (memberFilters.query) params.set("memberQuery", memberFilters.query);
+  if (memberFilters.badge !== "all") params.set("memberBadge", memberFilters.badge);
+
+  const query = params.toString();
+  return query ? `/admin/club?${query}` : "/admin/club";
+}
+
 export default function AdminClub() {
+  const initialUrlState = useMemo(() => readAdminClubStateFromUrl(), []);
   const { user, loading } = useAuth();
-  const [, setLocation] = useLocation();
+  const [location, setLocation] = useLocation();
   const utils = trpc.useUtils();
+  const [activeTab, setActiveTab] = useState<AdminTabValue>(initialUrlState.activeTab);
   const [postForm, setPostForm] = useState<PostFormState>(defaultPostForm);
   const [eventForm, setEventForm] = useState<EventFormState>(defaultEventForm);
   const [memberForm, setMemberForm] = useState<MemberFormState>(defaultMemberForm);
-  const [postFilters, setPostFilters] = useState<PostFilterState>(defaultPostFilters);
-  const [eventFilters, setEventFilters] = useState<EventFilterState>(defaultEventFilters);
-  const [memberFilters, setMemberFilters] = useState<MemberFilterState>(defaultMemberFilters);
+  const [postFilters, setPostFilters] = useState<PostFilterState>(initialUrlState.postFilters);
+  const [eventFilters, setEventFilters] = useState<EventFilterState>(initialUrlState.eventFilters);
+  const [memberFilters, setMemberFilters] = useState<MemberFilterState>(initialUrlState.memberFilters);
   const [pendingDelete, setPendingDelete] = useState<PendingDeleteState>(null);
 
   const adminQuery = trpc.adminClub.dashboard.useQuery(undefined, {
@@ -371,6 +430,13 @@ export default function AdminClub() {
 
   const isDeleting = deletePost.isPending || deleteEvent.isPending || deleteMember.isPending;
 
+  useEffect(() => {
+    const nextUrl = buildAdminClubUrl(activeTab, postFilters, eventFilters, memberFilters);
+    if (location !== nextUrl) {
+      setLocation(nextUrl, { replace: true });
+    }
+  }, [activeTab, eventFilters, location, memberFilters, postFilters, setLocation]);
+
   const confirmDelete = async () => {
     if (!pendingDelete) return;
 
@@ -514,7 +580,11 @@ export default function AdminClub() {
           </Alert>
         ) : null}
 
-        <Tabs defaultValue="posts" className="space-y-6">
+        <Tabs value={activeTab} onValueChange={(value) => {
+          if (isAdminTabValue(value)) {
+            setActiveTab(value);
+          }
+        }} className="space-y-6">
           <TabsList className="grid h-auto w-full grid-cols-1 gap-2 rounded-2xl bg-stone-100 p-1 sm:grid-cols-3 sm:gap-1 md:w-auto">
             <TabsTrigger value="posts" className="w-full whitespace-normal px-3 py-2 text-center">Посты</TabsTrigger>
             <TabsTrigger value="events" className="w-full whitespace-normal px-3 py-2 text-center">События</TabsTrigger>

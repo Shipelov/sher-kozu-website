@@ -196,6 +196,57 @@ function getCrudToastCopy(entity: "post" | "event" | "member", action: "create" 
   };
 }
 
+function isAdminTabValue(value: string | null): value is "posts" | "events" | "members" {
+  return value === "posts" || value === "events" || value === "members";
+}
+
+function readAdminClubStateFromSearch(search: string) {
+  const params = new URLSearchParams(search);
+  const tabParam = params.get("tab");
+
+  return {
+    activeTab: isAdminTabValue(tabParam) ? tabParam : "posts",
+    postFilters: {
+      query: params.get("postQuery") ?? "",
+      category: params.get("postCategory") ?? "all",
+      pinned: params.get("postPinned") === "pinned" || params.get("postPinned") === "regular"
+        ? params.get("postPinned")
+        : "all",
+    },
+    eventFilters: {
+      query: params.get("eventQuery") ?? "",
+      status: params.get("eventStatus") ?? "all",
+      tone: params.get("eventTone") ?? "all",
+    },
+    memberFilters: {
+      query: params.get("memberQuery") ?? "",
+      badge: params.get("memberBadge") ?? "all",
+    },
+  };
+}
+
+function buildAdminClubUrl(
+  activeTab: "posts" | "events" | "members",
+  postFilters: PostFilters,
+  eventFilters: EventFilters,
+  memberFilters: MemberFilters,
+) {
+  const params = new URLSearchParams();
+
+  if (activeTab !== "posts") params.set("tab", activeTab);
+  if (postFilters.query) params.set("postQuery", postFilters.query);
+  if (postFilters.category !== "all") params.set("postCategory", postFilters.category);
+  if (postFilters.pinned !== "all") params.set("postPinned", postFilters.pinned);
+  if (eventFilters.query) params.set("eventQuery", eventFilters.query);
+  if (eventFilters.status !== "all") params.set("eventStatus", eventFilters.status);
+  if (eventFilters.tone !== "all") params.set("eventTone", eventFilters.tone);
+  if (memberFilters.query) params.set("memberQuery", memberFilters.query);
+  if (memberFilters.badge !== "all") params.set("memberBadge", memberFilters.badge);
+
+  const query = params.toString();
+  return query ? `/admin/club?${query}` : "/admin/club";
+}
+
 describe("admin club helpers", () => {
   it("creates and updates club posts while preserving ids", () => {
     const created = upsertRecord<ClubPostRecord>([], {
@@ -376,5 +427,38 @@ describe("admin club helpers", () => {
       title: "Участник добавлен",
       description: "Профиль «Без имени» появился в составе клуба.",
     });
+  });
+
+  it("reads active tab and filters from query string", () => {
+    expect(readAdminClubStateFromSearch("?tab=events&eventQuery=ферма&eventStatus=Открыта+регистрация&eventTone=warm")).toEqual({
+      activeTab: "events",
+      postFilters: {
+        query: "",
+        category: "all",
+        pinned: "all",
+      },
+      eventFilters: {
+        query: "ферма",
+        status: "Открыта регистрация",
+        tone: "warm",
+      },
+      memberFilters: {
+        query: "",
+        badge: "all",
+      },
+    });
+  });
+
+  it("builds shareable admin url only from non-default state", () => {
+    expect(buildAdminClubUrl(
+      "members",
+      { query: "", category: "all", pinned: "all" },
+      { query: "", status: "all", tone: "all" },
+      { query: "Марта", badge: "Founder" },
+    )).toBe("/admin/club?tab=members&memberQuery=%D0%9C%D0%B0%D1%80%D1%82%D0%B0&memberBadge=Founder");
+  });
+
+  it("falls back to posts tab for invalid tab in query string", () => {
+    expect(readAdminClubStateFromSearch("?tab=unknown&postQuery=утро").activeTab).toBe("posts");
   });
 });
