@@ -671,22 +671,23 @@ export default function AnimalProfile() {
 
                           return (
                             <div key={image.id} className={`group relative min-w-[120px] max-w-[120px] snap-start overflow-hidden rounded-[1rem] border transition-all ${isSelected ? "border-primary shadow-md shadow-primary/10" : "border-border bg-card"}`}>
-                              <button type="button" onClick={() => setSelectedImageId(image.id)} className="block w-full text-left">
-                                <img src={image.src} alt={image.title} className="h-20 w-full object-cover" />
+                              <div>
+                                <button type="button" onClick={() => setSelectedImageId(image.id)} className="block w-full text-left">
+                                  <img src={image.src} alt={image.title} className="h-20 w-full object-cover" />
+                                </button>
                                 <div className="space-y-2 p-2.5">
-                                  <div className="truncate text-[11px] font-semibold text-foreground">{image.title}</div>
+                                  <button type="button" onClick={() => setSelectedImageId(image.id)} className="block w-full text-left">
+                                    <div className="truncate text-[11px] font-semibold text-foreground">{image.title}</div>
+                                  </button>
                                   <button
                                     type="button"
-                                    onClick={(event) => {
-                                      event.stopPropagation();
-                                      handleSetCoverImage(image.id);
-                                    }}
+                                    onClick={() => handleSetCoverImage(image.id)}
                                     className={`w-full rounded-full px-2 py-1 text-[10px] font-semibold transition-colors ${image.isCover ? "bg-primary text-primary-foreground" : "bg-secondary text-foreground hover:bg-secondary/80"}`}
                                   >
                                     {image.isCover ? "Текущая обложка" : "Сделать обложкой"}
                                   </button>
                                 </div>
-                              </button>
+                              </div>
 
                               {image.isUploaded && galleryImages.length > 1 && (
                                 <button
