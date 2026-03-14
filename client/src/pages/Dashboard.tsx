@@ -108,7 +108,7 @@ export default function Dashboard() {
               </div>
 
               <div className="bg-[linear-gradient(180deg,rgba(255,250,244,0.98),rgba(250,245,237,0.92))] p-5 md:p-6">
-                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-2">
+                <div className="grid gap-3 sm:grid-cols-2">
                   {[
                     { label: "Марта", value: "в хорошем ритме", icon: Heart },
                     { label: "Активная доставка", value: "ДСТ-2026-031", icon: Package },
@@ -149,12 +149,12 @@ export default function Dashboard() {
               transition={{ delay: 0.08 }}
               className="col-span-12 rounded-[2rem] border border-border/70 bg-card p-5 shadow-sm md:col-span-7"
             >
-              <div className="flex items-start justify-between gap-4">
+              <div className="flex flex-col items-start gap-4 sm:flex-row sm:justify-between">
                 <div>
                   <p className="text-xs uppercase tracking-[0.18em] text-primary">Сводка дня</p>
                   <h3 className="mt-2 text-2xl font-semibold text-foreground">Марта, продукт и маршрут семьи синхронизированы.</h3>
                 </div>
-                <div className="inline-flex items-center gap-2 rounded-full bg-secondary px-3 py-1 text-xs font-medium text-primary">
+                <div className="inline-flex max-w-full items-center gap-2 self-start rounded-full bg-secondary px-3 py-1 text-xs font-medium text-primary">
                   <span className="pulse-dot" />
                   Live day status
                 </div>
@@ -184,7 +184,7 @@ export default function Dashboard() {
                 })}
               </div>
 
-              <Link href="/tracker" className="group mt-5 flex items-center justify-between rounded-2xl border border-border bg-white px-4 py-3 text-sm transition-colors hover:bg-muted/40">
+              <Link href="/tracker" className="group mt-5 flex flex-col items-start gap-3 rounded-2xl border border-border bg-white px-4 py-3 text-sm transition-colors hover:bg-muted/40 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <div className="font-semibold text-foreground">Открыть полный трекер продукта</div>
                   <div className="mt-1 text-xs text-muted-foreground">Состав молока, надои и история доставок</div>
@@ -220,7 +220,7 @@ export default function Dashboard() {
                   Live-слой должен работать как эмоциональный мост между продуктом, заботой о животном и клубными визитами.
                 </div>
 
-                <Link href="/animal/marta" className="group mt-4 flex items-center justify-between rounded-2xl border border-border bg-white px-4 py-3 text-sm transition-colors hover:bg-muted/40">
+                <Link href="/animal/marta" className="group mt-4 flex flex-col items-start gap-3 rounded-2xl border border-border bg-white px-4 py-3 text-sm transition-colors hover:bg-muted/40 sm:flex-row sm:items-center sm:justify-between">
                   <div>
                     <div className="font-semibold text-foreground">Перейти к профилю Марты</div>
                     <div className="mt-1 text-xs text-muted-foreground">Открыть галерею, историю и профиль животного</div>
@@ -236,7 +236,7 @@ export default function Dashboard() {
               transition={{ delay: 0.2 }}
               className="col-span-12 rounded-[2rem] border border-border/70 bg-card p-5 shadow-sm md:col-span-7"
             >
-              <div className="flex items-center justify-between gap-3">
+              <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <p className="text-xs uppercase tracking-[0.18em] text-primary">Дневник</p>
                   <h3 className="mt-2 text-xl font-semibold text-foreground">Последние события из жизни Марты</h3>
@@ -247,7 +247,7 @@ export default function Dashboard() {
               <div className="mt-4 space-y-3">
                 {diaryEntries.map((entry) => (
                   <div key={entry.title} className="rounded-2xl bg-muted/45 p-4 transition-colors hover:bg-muted/65">
-                    <div className="flex items-center justify-between gap-3">
+                    <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
                       <h4 className="text-sm font-semibold text-foreground">{entry.title}</h4>
                       <span className="text-xs text-muted-foreground">{entry.date}</span>
                     </div>
@@ -256,7 +256,7 @@ export default function Dashboard() {
                 ))}
               </div>
 
-              <Link href="/animal/marta" className="group mt-4 flex items-center justify-between rounded-2xl border border-border bg-white px-4 py-3 text-sm transition-colors hover:bg-muted/40">
+              <Link href="/animal/marta" className="group mt-4 flex flex-col items-start gap-3 rounded-2xl border border-border bg-white px-4 py-3 text-sm transition-colors hover:bg-muted/40 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <div className="font-semibold text-foreground">Продолжить в профиле Марты</div>
                   <div className="mt-1 text-xs text-muted-foreground">Открыть полную биографию, галерею и фотопоток</div>
@@ -271,7 +271,7 @@ export default function Dashboard() {
               transition={{ delay: 0.25 }}
               className="col-span-12 rounded-[2rem] border border-border/70 bg-card p-5 shadow-sm md:col-span-5"
             >
-              <div className="flex items-center justify-between gap-3">
+              <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <p className="text-xs uppercase tracking-[0.18em] text-primary">Клуб</p>
                   <h3 className="mt-2 text-xl font-semibold text-foreground">Ближайшие моменты сообщества</h3>
@@ -327,7 +327,7 @@ export default function Dashboard() {
                   </div>
                 </div>
 
-                <div className="grid gap-3 rounded-[1.5rem] bg-white/8 p-4 backdrop-blur md:min-w-[300px]">
+                <div className="grid min-w-0 gap-3 rounded-[1.5rem] bg-white/8 p-4 backdrop-blur md:min-w-[300px]">
                   {notifications.map((note) => (
                     <div key={note} className="rounded-2xl border border-white/10 bg-white/8 p-3 text-sm text-white/82">
                       {note}

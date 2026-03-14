@@ -7,6 +7,8 @@ import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import {
   createAnimalPhoto,
   deleteAnimalPhoto,
+  getClubFeedData,
+  getProductTrackerData,
   listAnimalPhotos,
   reorderAnimalPhotos,
   setAnimalPhotoCover,
@@ -36,6 +38,10 @@ const setCoverInput = z.object({
 const reorderPhotosInput = z.object({
   animalSlug: z.string().min(1).max(64),
   photoIds: z.array(z.number().int().positive()).min(1),
+});
+
+const trackerSummaryInput = z.object({
+  animalSlug: z.string().min(1).max(64).default("marta"),
 });
 
 function sanitizeFileName(fileName: string) {
@@ -146,6 +152,16 @@ export const appRouter = router({
           message: error instanceof Error ? error.message : "Не удалось сохранить порядок фото.",
         });
       }
+    }),
+  }),
+  productTracker: router({
+    summary: protectedProcedure.input(trackerSummaryInput).query(async ({ ctx, input }) => {
+      return getProductTrackerData(ctx.user.openId, input.animalSlug);
+    }),
+  }),
+  club: router({
+    feed: protectedProcedure.query(async ({ ctx }) => {
+      return getClubFeedData(ctx.user.openId);
     }),
   }),
 });

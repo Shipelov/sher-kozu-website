@@ -281,7 +281,7 @@ export default function Home() {
                     whileInView={{ opacity: 1, y: 0 }}
                     viewport={{ once: true }}
                     transition={{ delay: index * 0.07 }}
-                    className="grid gap-4 rounded-[2rem] border border-border/70 bg-card p-5 shadow-sm md:grid-cols-[88px_1fr_auto] md:items-center"
+                    className="grid gap-4 rounded-[2rem] border border-border/70 bg-card p-5 shadow-sm md:grid-cols-[88px_minmax(0,1fr)_auto] md:items-center"
                   >
                     <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-secondary text-primary">
                       <Icon className="h-7 w-7" />
@@ -291,7 +291,7 @@ export default function Home() {
                       <h3 className="mt-1 text-xl font-semibold text-foreground">{step.title}</h3>
                       <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">{step.text}</p>
                     </div>
-                    <div className="text-right font-display text-5xl leading-none text-primary/15">{step.index}</div>
+                    <div className="text-left font-display text-4xl leading-none text-primary/15 md:text-right md:text-5xl">{step.index}</div>
                   </motion.div>
                 );
               })}
@@ -312,7 +312,7 @@ export default function Home() {
                 <h2 className="mt-4 font-display text-4xl text-foreground md:text-5xl">Шерь Козу соединяет сердце, прозрачность и продукт.</h2>
               </div>
 
-              <div className="mt-8 grid gap-4 md:grid-cols-2">
+              <div className="mt-8 grid gap-4 sm:grid-cols-2">
                 {values.map((item, index) => {
                   const Icon = item.icon;
                   return (
@@ -322,7 +322,7 @@ export default function Home() {
                       whileInView={{ opacity: 1, y: 0 }}
                       viewport={{ once: true }}
                       transition={{ delay: index * 0.06 }}
-                      className="rounded-[2rem] border border-white/70 bg-white/80 p-6 shadow-sm"
+                      className="min-w-0 rounded-[2rem] border border-white/70 bg-white/80 p-5 shadow-sm md:p-6"
                     >
                       <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 text-primary">
                         <Icon className="h-5 w-5" />
@@ -359,7 +359,7 @@ export default function Home() {
                         whileInView={{ opacity: 1, x: 0 }}
                         viewport={{ once: true }}
                         transition={{ delay: index * 0.06 }}
-                        className="flex items-start gap-4 rounded-[1.75rem] border border-border/70 bg-card p-5 shadow-sm transition-all duration-300 group-hover:-translate-y-0.5 group-hover:shadow-lg"
+                        className="flex flex-col items-start gap-4 rounded-[1.75rem] border border-border/70 bg-card p-5 shadow-sm transition-all duration-300 group-hover:-translate-y-0.5 group-hover:shadow-lg sm:flex-row"
                       >
                         <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-secondary text-primary">
                           <Icon className="h-5 w-5" />
@@ -368,7 +368,7 @@ export default function Home() {
                           <h3 className="text-xl font-semibold text-foreground">{route.title}</h3>
                           <p className="mt-2 text-sm leading-6 text-muted-foreground">{route.text}</p>
                         </div>
-                        <ChevronRight className="mt-1 h-5 w-5 shrink-0 text-primary transition-transform group-hover:translate-x-0.5" />
+                        <ChevronRight className="mt-1 h-5 w-5 shrink-0 text-primary transition-transform group-hover:translate-x-0.5 sm:self-start" />
                       </motion.div>
                     </Link>
                   );
@@ -397,7 +397,7 @@ export default function Home() {
                   </div>
                 </div>
               </div>
-              <div className="overflow-hidden rounded-[2rem] border border-border/70 bg-dark-oak p-6 text-white shadow-[0_24px_60px_-35px_rgba(20,18,16,0.7)]">
+              <div className="overflow-hidden rounded-[2rem] border border-border/70 bg-dark-oak p-5 text-white shadow-[0_24px_60px_-35px_rgba(20,18,16,0.7)] md:p-6">
                 <div className="flex items-center gap-2 text-amber-300">
                   <Bot className="h-5 w-5" />
                   <span className="text-sm font-medium">Следующий слой ценности</span>

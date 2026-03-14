@@ -5,10 +5,11 @@ Core: transform product status into trust and narrative, not dry logistics.
 Must connect milk, delivery, named products and animal origin in one readable route.
 */
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Link } from "wouter";
 import Navbar from "@/components/Navbar";
+import { trpc } from "@/lib/trpc";
 import {
   BarChart3,
   Calendar,
@@ -21,7 +22,6 @@ import {
   Sparkles,
   Truck,
   Users,
-  ShieldCheck,
   Star,
 } from "lucide-react";
 
@@ -32,64 +32,55 @@ const CDN = {
   goat: "https://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/sherkozu_anglonubian_portrait-fvqToDAjgebgcmNhLN93Db.webp",
 };
 
-const composition = [
-  { label: "Жирность", value: 4.8, max: 6, unit: "%" },
-  { label: "Белок", value: 3.2, max: 5, unit: "%" },
-  { label: "Лактоза", value: 4.1, max: 6, unit: "%" },
-  { label: "Кальций", value: 134, max: 200, unit: "мг/100 мл" },
-];
+type CompositionItem = {
+  label: string;
+  value: number;
+  max: number;
+  unit: string;
+};
 
-const monthlyData = [
-  { month: "Сен", liters: 38 },
-  { month: "Окт", liters: 42 },
-  { month: "Ноя", liters: 44 },
-  { month: "Дек", liters: 40 },
-  { month: "Янв", liters: 36 },
-  { month: "Фев", liters: 43 },
-  { month: "Мар", liters: 47 },
-];
+type MonthlyItem = {
+  month: string;
+  liters: number;
+};
 
-const deliveries = [
-  {
-    id: "ДСТ-2026-031",
-    date: "15 марта 2026",
-    status: "Собирается",
-    progress: 45,
-    story: "Надой Марты от 13 марта уже распределён в коробку семьи Петровых. Сейчас ферма комплектует молоко, сыр и йогурт в персональную капсулу продукта.",
-    items: ["Молоко козье свежее · 2 л", "Сыр «Марта Петровых» · 300 г", "Йогурт натуральный · 500 г"],
-  },
-  {
-    id: "ДСТ-2026-028",
-    date: "8 марта 2026",
-    status: "Доставлено",
-    progress: 100,
-    story: "Коробка была передана семье вовремя. Включала молоко, мягкий творог и сезонную карту происхождения партии.",
-    items: ["Молоко козье свежее · 2 л", "Творог мягкий · 400 г", "Карта происхождения партии"],
-  },
-  {
-    id: "ДСТ-2026-021",
-    date: "1 марта 2026",
-    status: "Доставлено",
-    progress: 100,
-    story: "Первая мартовская коробка стала базой для клубного дегустационного вечера и семейной фотосессии с Мартой.",
-    items: ["Молоко козье свежее · 3 л", "Сыр «Марта Петровых» · 200 г", "Масло сливочное · 200 г"],
-  },
-];
+type DeliveryItem = {
+  id: string;
+  date: string;
+  status: string;
+  progress: number;
+  story: string;
+  items: string[];
+};
 
-const originSteps = [
-  { title: "Жизнь животного", text: "Уход, питание и состояние Марты напрямую влияют на качество молока и доверие владельца." },
-  { title: "Надой и анализ", text: "Каждая партия получает лабораторную фиксацию состава, чтобы продукт был наблюдаемым, а не абстрактным." },
-  { title: "Сборка доставки", text: "Продукты из вашей истории участия собираются в именную коробку с понятным маршрутом." },
-  { title: "Семейный опыт", text: "Доставка становится не финалом транзакции, а продолжением фермерской истории дома." },
-];
+type OriginStep = {
+  title: string;
+  text: string;
+};
 
-const routeNotes = [
-  "Трекер объясняет происхождение через данные, а не только через copywriting.",
-  "Именная коробка визуально доказывает, что продукт связан с животным и семьёй.",
-  "Даже логистический слой должен вести обратно к профилю животного и клубным сценариям.",
-];
-
-const maxLiters = Math.max(...monthlyData.map((item) => item.liters));
+type TrackerSummary = {
+  headline: {
+    analysisLabel: string;
+    organicLabel: string;
+    title: string;
+    description: string;
+  };
+  stats: Array<{ label: string; value: string; icon: "milk" | "truck" | "sparkles" | "flask" }>;
+  composition: CompositionItem[];
+  monthlyData: MonthlyItem[];
+  deliveries: DeliveryItem[];
+  originSteps: OriginStep[];
+  routeNotes: string[];
+  currentAnimal: {
+    name: string;
+    title: string;
+    description: string;
+  };
+  productStory: {
+    title: string;
+    description: string;
+  };
+};
 
 function MetricBar({ value, max }: { value: number; max: number }) {
   const [width, setWidth] = useState(0);
@@ -106,9 +97,36 @@ function MetricBar({ value, max }: { value: number; max: number }) {
   );
 }
 
+function iconForStat(icon: TrackerSummary["stats"][number]["icon"]) {
+  switch (icon) {
+    case "milk":
+      return Milk;
+    case "truck":
+      return Truck;
+    case "sparkles":
+      return Sparkles;
+    case "flask":
+    default:
+      return FlaskConical;
+  }
+}
+
 export default function ProductTracker() {
+  const trackerQuery = trpc.productTracker.summary.useQuery({ animalSlug: "marta" });
+  const summary = trackerQuery.data as TrackerSummary | undefined;
+
+  const deliveries = summary?.deliveries ?? [];
   const [activeDelivery, setActiveDelivery] = useState(0);
+
+  useEffect(() => {
+    if (activeDelivery > Math.max(0, deliveries.length - 1)) {
+      setActiveDelivery(0);
+    }
+  }, [activeDelivery, deliveries.length]);
+
   const currentDelivery = deliveries[activeDelivery] ?? deliveries[0];
+  const monthlyData = summary?.monthlyData ?? [];
+  const maxLiters = useMemo(() => Math.max(1, ...monthlyData.map((item) => item.liters)), [monthlyData]);
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -129,17 +147,20 @@ export default function ProductTracker() {
                   <div className="flex flex-wrap items-center gap-2">
                     <div className="inline-flex items-center gap-2 rounded-full bg-white/15 px-3 py-1 text-xs backdrop-blur">
                       <Leaf className="h-3.5 w-3.5" />
-                      Анализ партии от 10 марта
+                      {summary?.headline.analysisLabel ?? "Анализ партии загружается"}
                     </div>
-                    <div className="rounded-full bg-green-500 px-3 py-1 text-xs font-semibold">Органик</div>
+                    <div className="rounded-full bg-green-500 px-3 py-1 text-xs font-semibold">
+                      {summary?.headline.organicLabel ?? "Органик"}
+                    </div>
                   </div>
 
                   <div className="max-w-2xl">
                     <p className="text-sm uppercase tracking-[0.22em] text-amber-300">Трекер продукта</p>
-                    <h1 className="mt-3 font-display text-4xl text-white md:text-5xl">Трекер показывает, как Марта превращается в семейный продуктовый маршрут.</h1>
+                    <h1 className="mt-3 font-display text-4xl text-white md:text-5xl">
+                      {summary?.headline.title ?? "Трекер показывает, как Марта превращается в семейный продуктовый маршрут."}
+                    </h1>
                     <p className="mt-4 max-w-xl text-sm leading-7 text-white/76 md:text-base">
-                      Здесь пользователь видит происхождение молока, параметры партии, ход доставки и связь с конкретным животным.
-                      Новый visual layer делает продукт более личным и премиальным, не теряя прозрачности.
+                      {summary?.headline.description ?? "Здесь пользователь видит происхождение молока, параметры партии, ход доставки и связь с конкретным животным."}
                     </p>
                   </div>
                 </div>
@@ -147,13 +168,8 @@ export default function ProductTracker() {
 
               <div className="bg-[linear-gradient(180deg,rgba(255,250,244,0.98),rgba(250,245,237,0.92))] p-5 md:p-6">
                 <div className="grid gap-3 sm:grid-cols-2">
-                  {[
-                    { label: "Надой за март", value: "47.2 л", icon: Milk },
-                    { label: "Доставок в сезоне", value: "12", icon: Truck },
-                    { label: "Именных продуктов", value: "8", icon: Sparkles },
-                    { label: "Качество партии", value: "сертифицировано", icon: FlaskConical },
-                  ].map((item) => {
-                    const Icon = item.icon;
+                  {(summary?.stats ?? []).map((item) => {
+                    const Icon = iconForStat(item.icon);
                     return (
                       <div key={item.label} className="rounded-2xl border border-border/70 bg-card p-4 shadow-sm">
                         <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-secondary text-primary">
@@ -167,18 +183,26 @@ export default function ProductTracker() {
                 </div>
 
                 <div className="mt-4 overflow-hidden rounded-[1.75rem] border border-border/70 bg-card shadow-sm">
-                  <img src={CDN.goat} alt="Марта" className="h-44 w-full object-cover object-top" />
+                  <img src={CDN.goat} alt={summary?.currentAnimal.name ?? "Марта"} className="h-44 w-full object-cover object-top" />
                   <div className="p-4">
                     <p className="text-xs uppercase tracking-[0.18em] text-primary">Источник маршрута</p>
-                    <h2 className="mt-2 text-xl font-semibold text-foreground">Любой продукт в системе начинается с конкретного животного.</h2>
+                    <h2 className="mt-2 text-xl font-semibold text-foreground">
+                      {summary?.currentAnimal.title ?? "Любой продукт в системе начинается с конкретного животного."}
+                    </h2>
                     <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                      Поэтому трекер не отрывается от живого профиля Марты и всегда оставляет маршрут обратно к источнику продукта.
+                      {summary?.currentAnimal.description ?? "Трекер не отрывается от живого профиля животного и всегда оставляет маршрут обратно к источнику продукта."}
                     </p>
                   </div>
                 </div>
               </div>
             </div>
           </motion.section>
+
+          {trackerQuery.isLoading ? (
+            <div className="mb-5 rounded-[2rem] border border-border/70 bg-card p-6 text-sm text-muted-foreground shadow-sm">
+              Загружаем реальные данные продуктового маршрута…
+            </div>
+          ) : null}
 
           <div className="grid grid-cols-12 gap-5">
             <motion.section
@@ -190,24 +214,26 @@ export default function ProductTracker() {
               <div className="space-y-4 p-5">
                 <div>
                   <p className="text-sm uppercase tracking-[0.22em] text-primary">Состав партии</p>
-                  <h2 className="mt-3 text-2xl font-semibold text-foreground">Состав молока от Марты</h2>
+                  <h2 className="mt-3 text-2xl font-semibold text-foreground">Состав молока от {summary?.currentAnimal.name ?? "Марты"}</h2>
                   <p className="mt-2 text-sm leading-7 text-muted-foreground">
                     Качество партии видно прямо в интерфейсе, а не обещается абстрактно. Новый визуальный слой усиливает ощущение премиального, но прозрачного продукта.
                   </p>
                 </div>
 
-                {composition.map((item) => (
+                {(summary?.composition ?? []).map((item) => (
                   <div key={item.label}>
                     <div className="mb-2 flex items-center justify-between gap-3 text-sm">
                       <span className="text-muted-foreground">{item.label}</span>
-                      <span className="font-mono-data font-semibold text-foreground">{item.value} {item.unit}</span>
+                      <span className="font-mono-data font-semibold text-foreground">
+                        {item.value} {item.unit}
+                      </span>
                     </div>
                     <MetricBar value={item.value} max={item.max} />
                   </div>
                 ))}
 
                 <div className="rounded-2xl bg-secondary/55 p-4 text-sm leading-7 text-muted-foreground">
-                  Сертификат качества №СК-2026-0310 подтверждает партию и делает прозрачность наблюдаемой и эмоционально убедительной.
+                  Сертификат качества подтверждает партию и делает прозрачность наблюдаемой и эмоционально убедительной.
                 </div>
               </div>
             </motion.section>
@@ -218,23 +244,25 @@ export default function ProductTracker() {
               transition={{ delay: 0.12 }}
               className="col-span-12 rounded-[2rem] border border-border/70 bg-card p-5 shadow-sm lg:col-span-7"
             >
-              <div className="flex items-start justify-between gap-4">
+              <div className="flex flex-col items-start gap-4 sm:flex-row sm:justify-between">
                 <div>
                   <p className="text-sm uppercase tracking-[0.22em] text-primary">Динамика надоев</p>
-                  <h2 className="mt-3 text-2xl font-semibold text-foreground">Сентябрь 2025 — март 2026</h2>
+                  <h2 className="mt-3 text-2xl font-semibold text-foreground">Сезонный ритм животного</h2>
                   <p className="mt-2 text-sm leading-7 text-muted-foreground">
                     График показывает сезонность и связь между жизнью животного и объёмом продукта.
                   </p>
                 </div>
-                <div className="text-right">
-                  <div className="font-mono-data text-3xl font-semibold text-foreground">47.2 л</div>
-                  <div className="text-xs text-green-600">+9% к прошлому месяцу</div>
+                <div className="text-left sm:text-right">
+                  <div className="font-mono-data text-3xl font-semibold text-foreground">
+                    {monthlyData[monthlyData.length - 1]?.liters ?? 0} л
+                  </div>
+                  <div className="text-xs text-green-600">Последний доступный месяц</div>
                 </div>
               </div>
 
-              <div className="mt-8 flex h-48 items-end gap-3">
+              <div className="mt-8 flex h-44 items-end gap-2 overflow-x-auto pb-2 sm:h-48 sm:gap-3">
                 {monthlyData.map((item, index) => (
-                  <div key={item.month} className="flex flex-1 flex-col items-center gap-2">
+                  <div key={item.month} className="flex min-w-[42px] flex-1 flex-col items-center gap-2 sm:min-w-0">
                     <span className="font-mono-data text-xs text-muted-foreground">{item.liters}</span>
                     <motion.div
                       initial={{ height: 0 }}
@@ -254,7 +282,7 @@ export default function ProductTracker() {
               transition={{ delay: 0.16 }}
               className="col-span-12 rounded-[2rem] border border-border/70 bg-card p-5 shadow-sm"
             >
-              <div className="flex items-start justify-between gap-4">
+              <div className="flex flex-col items-start gap-4 sm:flex-row sm:justify-between">
                 <div>
                   <p className="text-sm uppercase tracking-[0.22em] text-primary">Путь продукта</p>
                   <h2 className="mt-3 text-2xl font-semibold text-foreground">От жизни животного до семейной коробки</h2>
@@ -262,8 +290,8 @@ export default function ProductTracker() {
                 <BarChart3 className="h-6 w-6 text-primary" />
               </div>
 
-              <div className="mt-6 grid gap-4 md:grid-cols-4">
-                {originSteps.map((step, index) => (
+              <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                {(summary?.originSteps ?? []).map((step, index) => (
                   <div key={step.title} className="rounded-[1.5rem] bg-secondary/50 p-4">
                     <div className="font-mono-data text-xs uppercase tracking-[0.18em] text-primary">0{index + 1}</div>
                     <div className="mt-3 text-lg font-semibold text-foreground">{step.title}</div>
@@ -284,7 +312,7 @@ export default function ProductTracker() {
                   <img src={CDN.delivery} alt="История доставок" className="h-full min-h-[260px] w-full object-cover" />
                 </div>
                 <div className="p-5">
-                  <div className="flex items-start justify-between gap-4">
+                  <div className="flex flex-col items-start gap-4 sm:flex-row sm:justify-between">
                     <div>
                       <p className="text-sm uppercase tracking-[0.22em] text-primary">История доставок</p>
                       <h2 className="mt-3 text-2xl font-semibold text-foreground">Каждая доставка — часть истории, а не просто заказ.</h2>
@@ -326,7 +354,9 @@ export default function ProductTracker() {
                               <p className="mt-4 text-sm leading-7 text-muted-foreground">{delivery.story}</p>
                               <div className="mt-3 grid gap-2">
                                 {delivery.items.map((item) => (
-                                  <div key={item} className="rounded-xl bg-secondary/55 px-3 py-2 text-sm text-foreground">{item}</div>
+                                  <div key={item} className="rounded-xl bg-secondary/55 px-3 py-2 text-sm text-foreground">
+                                    {item}
+                                  </div>
                                 ))}
                               </div>
                             </motion.div>
@@ -348,12 +378,14 @@ export default function ProductTracker() {
               <img src={CDN.cheese} alt="Именной сыр" className="h-56 w-full object-cover" />
               <div className="p-5">
                 <p className="text-sm uppercase tracking-[0.22em] text-primary">Именной продукт</p>
-                <h2 className="mt-3 text-2xl font-semibold text-foreground">Сыр «Марта Петровых» завершает цикл от фермы до стола.</h2>
+                <h2 className="mt-3 text-2xl font-semibold text-foreground">
+                  {summary?.productStory.title ?? "Именной продукт завершает цикл от фермы до стола."}
+                </h2>
                 <p className="mt-3 text-sm leading-7 text-muted-foreground">
-                  Продуктовый слой должен быть личным и премиальным: не безликий сыр, а конкретный результат связи владельца с животным.
+                  {summary?.productStory.description ?? "Продуктовый слой должен быть личным и премиальным: не безликий сыр, а конкретный результат связи владельца с животным."}
                 </p>
                 <div className="mt-5 space-y-2">
-                  {routeNotes.map((note) => (
+                  {(summary?.routeNotes ?? []).map((note) => (
                     <div key={note} className="flex items-start gap-2 text-sm text-muted-foreground">
                       <Star className="mt-0.5 h-4 w-4 text-accent" />
                       <span>{note}</span>
@@ -376,21 +408,21 @@ export default function ProductTracker() {
               </p>
 
               <div className="mt-6 grid gap-3">
-                <Link href="/animal/marta" className="group flex items-center justify-between rounded-2xl border border-white/12 bg-white/8 px-4 py-3 text-sm transition-colors hover:bg-white/12">
+                <Link href="/animal/marta" className="group flex flex-col items-start gap-3 rounded-2xl border border-white/12 bg-white/8 px-4 py-3 text-sm transition-colors hover:bg-white/12 sm:flex-row sm:items-center sm:justify-between">
                   <div>
                     <div className="font-semibold text-white">К профилю Марты</div>
                     <div className="mt-1 text-xs text-white/60">Вернуться к животному, от которого начинается продуктовый путь</div>
                   </div>
                   <ChevronRight className="h-5 w-5 text-amber-300 transition-transform group-hover:translate-x-0.5" />
                 </Link>
-                <Link href="/club" className="group flex items-center justify-between rounded-2xl border border-white/12 bg-white/8 px-4 py-3 text-sm transition-colors hover:bg-white/12">
+                <Link href="/club" className="group flex flex-col items-start gap-3 rounded-2xl border border-white/12 bg-white/8 px-4 py-3 text-sm transition-colors hover:bg-white/12 sm:flex-row sm:items-center sm:justify-between">
                   <div>
                     <div className="font-semibold text-white">К клубной ленте</div>
                     <div className="mt-1 text-xs text-white/60">Перейти к событиям, отзывам и семейным ритуалам вокруг продукта</div>
                   </div>
                   <Users className="h-5 w-5 text-amber-300" />
                 </Link>
-                <Link href="/dashboard" className="group flex items-center justify-between rounded-2xl border border-white/12 bg-white/8 px-4 py-3 text-sm transition-colors hover:bg-white/12">
+                <Link href="/dashboard" className="group flex flex-col items-start gap-3 rounded-2xl border border-white/12 bg-white/8 px-4 py-3 text-sm transition-colors hover:bg-white/12 sm:flex-row sm:items-center sm:justify-between">
                   <div>
                     <div className="font-semibold text-white">В кабинет</div>
                     <div className="mt-1 text-xs text-white/60">Вернуться к статусам подписки и быстрым действиям семьи</div>
@@ -400,47 +432,51 @@ export default function ProductTracker() {
               </div>
             </motion.section>
 
-            <motion.section
-              initial={{ opacity: 0, y: 18 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.22 }}
-              className="col-span-12 rounded-[2rem] border border-border/70 bg-card p-5 shadow-sm"
-            >
-              <div className="grid gap-5 lg:grid-cols-[1.1fr_0.9fr] lg:items-start">
-                <div>
-                  <p className="text-sm uppercase tracking-[0.22em] text-primary">Текущий статус маршрута</p>
-                  <h2 className="mt-3 text-2xl font-semibold text-foreground">Текущая активная доставка остаётся связанной с животным, коробкой и клубной историей.</h2>
-                  <p className="mt-3 max-w-2xl text-sm leading-7 text-muted-foreground">
-                    Для V1 важно, чтобы пользователь не видел набор разрозненных метрик. Он должен понимать, какая именно доставка сейчас в фокусе и куда идти дальше внутри системы.
-                  </p>
+            {currentDelivery ? (
+              <motion.section
+                initial={{ opacity: 0, y: 18 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.22 }}
+                className="col-span-12 rounded-[2rem] border border-border/70 bg-card p-5 shadow-sm"
+              >
+                <div className="grid gap-5 lg:grid-cols-[1.1fr_0.9fr] lg:items-start">
+                  <div>
+                    <p className="text-sm uppercase tracking-[0.22em] text-primary">Текущий статус маршрута</p>
+                    <h2 className="mt-3 text-2xl font-semibold text-foreground">Текущая активная доставка остаётся связанной с животным, коробкой и клубной историей.</h2>
+                    <p className="mt-3 max-w-2xl text-sm leading-7 text-muted-foreground">
+                      Для V1 важно, чтобы пользователь не видел набор разрозненных метрик. Он должен понимать, какая именно доставка сейчас в фокусе и куда идти дальше внутри системы.
+                    </p>
 
-                  <div className="mt-5 rounded-[1.5rem] bg-secondary/50 p-4">
-                    <div className="flex flex-wrap items-center justify-between gap-3">
-                      <div>
-                        <div className="text-xs uppercase tracking-[0.16em] text-primary">Активная доставка</div>
-                        <div className="mt-1 text-lg font-semibold text-foreground">{currentDelivery.id} · {currentDelivery.date}</div>
+                    <div className="mt-5 rounded-[1.5rem] bg-secondary/50 p-4">
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        <div>
+                          <div className="text-xs uppercase tracking-[0.16em] text-primary">Активная доставка</div>
+                          <div className="mt-1 text-lg font-semibold text-foreground">
+                            {currentDelivery.id} · {currentDelivery.date}
+                          </div>
+                        </div>
+                        <div className="rounded-full bg-accent/20 px-4 py-2 text-xs font-semibold text-amber-800">
+                          {currentDelivery.status}
+                        </div>
                       </div>
-                      <div className="rounded-full bg-accent/20 px-4 py-2 text-xs font-semibold text-amber-800">
-                        {currentDelivery.status}
-                      </div>
+                      <p className="mt-3 text-sm leading-7 text-muted-foreground">{currentDelivery.story}</p>
                     </div>
-                    <p className="mt-3 text-sm leading-7 text-muted-foreground">{currentDelivery.story}</p>
+                  </div>
+
+                  <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-1">
+                    <Link href="/animal/marta" className="inline-flex items-center justify-center rounded-full bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/92">
+                      К профилю Марты
+                    </Link>
+                    <Link href="/club" className="inline-flex items-center justify-center rounded-full border border-border px-4 py-3 text-sm font-semibold text-foreground transition-colors hover:bg-muted">
+                      К клубной ленте
+                    </Link>
+                    <Link href="/dashboard" className="inline-flex items-center justify-center rounded-full border border-border px-4 py-3 text-sm font-semibold text-foreground transition-colors hover:bg-muted">
+                      В кабинет
+                    </Link>
                   </div>
                 </div>
-
-                <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-1">
-                  <Link href="/animal/marta" className="inline-flex items-center justify-center rounded-full bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/92">
-                    К профилю Марты
-                  </Link>
-                  <Link href="/club" className="inline-flex items-center justify-center rounded-full border border-border px-4 py-3 text-sm font-semibold text-foreground transition-colors hover:bg-muted">
-                    К клубной ленте
-                  </Link>
-                  <Link href="/dashboard" className="inline-flex items-center justify-center rounded-full border border-border px-4 py-3 text-sm font-semibold text-foreground transition-colors hover:bg-muted">
-                    В кабинет
-                  </Link>
-                </div>
-              </div>
-            </motion.section>
+              </motion.section>
+            ) : null}
           </div>
         </div>
       </div>

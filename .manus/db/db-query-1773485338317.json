@@ -1,0 +1,49 @@
+{
+  "query": "SHOW TABLES LIKE 'productBatches'; SHOW TABLES LIKE 'productCompositionSnapshots'; SHOW TABLES LIKE 'productMonthlyMetrics'; SHOW TABLES LIKE 'productDeliveries'; SHOW TABLES LIKE 'clubPosts'; SHOW TABLES LIKE 'clubEvents'; SHOW TABLES LIKE 'clubMembers';",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3J2fXRHx8d1YjF6.root --database mLhmg5VmBsEBpZiYqdnhMQ --execute SHOW TABLES LIKE 'productBatches'; SHOW TABLES LIKE 'productCompositionSnapshots'; SHOW TABLES LIKE 'productMonthlyMetrics'; SHOW TABLES LIKE 'productDeliveries'; SHOW TABLES LIKE 'clubPosts'; SHOW TABLES LIKE 'clubEvents'; SHOW TABLES LIKE 'clubMembers';",
+  "rows": [
+    {
+      "Tables_in_mLhmg5VmBsEBpZiYqdnhMQ (productBatches)": "productBatches"
+    },
+    {
+      "Tables_in_mLhmg5VmBsEBpZiYqdnhMQ (productBatches)": "Tables_in_mLhmg5VmBsEBpZiYqdnhMQ (productCompositionSnapshots)"
+    },
+    {
+      "Tables_in_mLhmg5VmBsEBpZiYqdnhMQ (productBatches)": "productCompositionSnapshots"
+    },
+    {
+      "Tables_in_mLhmg5VmBsEBpZiYqdnhMQ (productBatches)": "Tables_in_mLhmg5VmBsEBpZiYqdnhMQ (productMonthlyMetrics)"
+    },
+    {
+      "Tables_in_mLhmg5VmBsEBpZiYqdnhMQ (productBatches)": "productMonthlyMetrics"
+    },
+    {
+      "Tables_in_mLhmg5VmBsEBpZiYqdnhMQ (productBatches)": "Tables_in_mLhmg5VmBsEBpZiYqdnhMQ (productDeliveries)"
+    },
+    {
+      "Tables_in_mLhmg5VmBsEBpZiYqdnhMQ (productBatches)": "productDeliveries"
+    },
+    {
+      "Tables_in_mLhmg5VmBsEBpZiYqdnhMQ (productBatches)": "Tables_in_mLhmg5VmBsEBpZiYqdnhMQ (clubPosts)"
+    },
+    {
+      "Tables_in_mLhmg5VmBsEBpZiYqdnhMQ (productBatches)": "clubPosts"
+    },
+    {
+      "Tables_in_mLhmg5VmBsEBpZiYqdnhMQ (productBatches)": "Tables_in_mLhmg5VmBsEBpZiYqdnhMQ (clubEvents)"
+    },
+    {
+      "Tables_in_mLhmg5VmBsEBpZiYqdnhMQ (productBatches)": "clubEvents"
+    },
+    {
+      "Tables_in_mLhmg5VmBsEBpZiYqdnhMQ (productBatches)": "Tables_in_mLhmg5VmBsEBpZiYqdnhMQ (clubMembers)"
+    },
+    {
+      "Tables_in_mLhmg5VmBsEBpZiYqdnhMQ (productBatches)": "clubMembers"
+    }
+  ],
+  "messages": [],
+  "stdout": "Tables_in_mLhmg5VmBsEBpZiYqdnhMQ (productBatches)\nproductBatches\nTables_in_mLhmg5VmBsEBpZiYqdnhMQ (productCompositionSnapshots)\nproductCompositionSnapshots\nTables_in_mLhmg5VmBsEBpZiYqdnhMQ (productMonthlyMetrics)\nproductMonthlyMetrics\nTables_in_mLhmg5VmBsEBpZiYqdnhMQ (productDeliveries)\nproductDeliveries\nTables_in_mLhmg5VmBsEBpZiYqdnhMQ (clubPosts)\nclubPosts\nTables_in_mLhmg5VmBsEBpZiYqdnhMQ (clubEvents)\nclubEvents\nTables_in_mLhmg5VmBsEBpZiYqdnhMQ (clubMembers)\nclubMembers\n",
+  "stderr": "",
+  "execution_time_ms": 698
+}
