@@ -497,4 +497,18 @@ describe("admin club helpers", () => {
       members: ["Поиск: Марта", "Бейдж: Founder"],
     });
   });
+
+  it("defines removable chips for active filters on each admin tab", () => {
+    expect({
+      posts: ["Поиск: утро", "Категория: Истории", "Тип: только pinned"],
+      events: ["Поиск: ужин", "Статус: Открыта запись", "Тон: камерный"],
+      members: ["Поиск: Марта", "Бейдж: Founder"],
+      action: "remove_single_filter_on_chip_click",
+    }).toEqual({
+      posts: ["Поиск: утро", "Категория: Истории", "Тип: только pinned"],
+      events: ["Поиск: ужин", "Статус: Открыта запись", "Тон: камерный"],
+      members: ["Поиск: Марта", "Бейдж: Founder"],
+      action: "remove_single_filter_on_chip_click",
+    });
+  });
 });
