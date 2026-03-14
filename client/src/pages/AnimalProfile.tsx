@@ -13,9 +13,36 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Link } from "wouter";
 import Navbar from "@/components/Navbar";
 import {
-  Heart, Thermometer, Milk, Camera, BookOpen, Star, Award,
-  ChevronLeft, ChevronRight, Play, Calendar, Dna, MapPin, Zap, ChevronDown, Images, Upload, X, Share2, Link2,
-  Facebook, MessageCircle, Instagram, Loader2
+  Heart,
+  Thermometer,
+  Milk,
+  Camera,
+  BookOpen,
+  Star,
+  Award,
+  ChevronLeft,
+  ChevronRight,
+  Play,
+  Calendar,
+  Dna,
+  MapPin,
+  Zap,
+  ChevronDown,
+  Images,
+  Upload,
+  X,
+  Share2,
+  Link2,
+  Facebook,
+  MessageCircle,
+  Instagram,
+  Loader2,
+  ArrowRight,
+  Sparkles,
+  ShieldCheck,
+  Package,
+  Leaf,
+  Clock3,
 } from "lucide-react";
 
 type GalleryImage = {
@@ -49,9 +76,11 @@ const MAX_UPLOAD_SIZE_BYTES = 8 * 1024 * 1024;
 const ACCEPTED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"] as const;
 
 const CDN = {
-  goat: "https://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/goat_portrait_80fc5726.jpg",
+  hero: "https://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/sherkozu_anglonubian_portrait-fvqToDAjgebgcmNhLN93Db.webp",
   liveCam: "https://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/live_cam_07e872b4.jpg",
-  family: "https://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/family_farm_446b395e.jpg",
+  farm: "https://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/sherkozu_family_farm_hero-UF9QBY2UhWL9gdEpLXiEFS.webp",
+  milk: "https://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/sherkozu_named_dairy_box-3mP3ykmuPDWBoKghC7cnDc.webp",
+  club: "https://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/sherkozu_club_visit-mmi2c8j4W8VB63TUjVvZ4S.webp",
 };
 
 function ProgressRing({ value, size = 80, strokeWidth = 6, color = "#1A3A2A" }: {
@@ -71,8 +100,12 @@ function ProgressRing({ value, size = 80, strokeWidth = 6, color = "#1A3A2A" }: 
     <svg width={size} height={size} className="-rotate-90">
       <circle cx={size / 2} cy={size / 2} r={radius} fill="none" stroke="#e5e7eb" strokeWidth={strokeWidth} />
       <circle
-        cx={size / 2} cy={size / 2} r={radius} fill="none"
-        stroke={color} strokeWidth={strokeWidth}
+        cx={size / 2}
+        cy={size / 2}
+        r={radius}
+        fill="none"
+        stroke={color}
+        strokeWidth={strokeWidth}
         strokeDasharray={circumference}
         strokeDashoffset={offset}
         strokeLinecap="round"
@@ -86,7 +119,7 @@ const diaryEntries = [
   { date: "13 марта 2026", mood: "😊", title: "Угостили морковкой!", text: "Сегодня хозяин приехал и принёс целую корзину морковки. Я так рада! Надой сегодня 1.8 л — рекорд недели.", tags: ["корм", "рекорд"] },
   { date: "12 марта 2026", mood: "✨", title: "SPA-день", text: "Провела SPA-процедуры: расчёсывание, ванна с травами, обрезка копыт. Шерсть блестит, настроение отличное!", tags: ["уход", "SPA"] },
   { date: "11 марта 2026", mood: "🌿", title: "Прогулка на лугу", text: "Гуляла на свежем воздухе 3 часа. Весна чувствуется — трава уже пробивается. Нашла особенно вкусный клевер.", tags: ["прогулка", "весна"] },
-  { date: "8 марта 2026", mood: "🎉", title: "Праздник!", text: "Хозяева приехали всей семьёй с детьми. Дети кормили меня с руки — так весело! Сделали много фотографий.", tags: ["семья", "праздник"] },
+  { date: "8 марта 2026", mood: "🎉", title: "Семейный визит", text: "Хозяева приехали всей семьёй с детьми. Дети кормили меня с руки, сделали фотографии и записали маленький видеодневник.", tags: ["семья", "праздник"] },
 ];
 
 const healthHistory = [
@@ -97,9 +130,39 @@ const healthHistory = [
 ];
 
 const defaultGallery: GalleryImage[] = [
-  { id: "cover", src: CDN.goat, title: "Портрет Марты", meta: "Основной профиль", isUploaded: false },
+  { id: "cover", src: CDN.hero, title: "Портрет Марты", meta: "Главный образ профиля", isUploaded: false },
+  { id: "farm", src: CDN.farm, title: "Семейное утро на ферме", meta: "Контекст происхождения", isUploaded: false },
+  { id: "milk", src: CDN.milk, title: "Именной молочный набор", meta: "Продуктовый маршрут Марты", isUploaded: false },
+  { id: "club", src: CDN.club, title: "Клубный визит к Марте", meta: "Community layer бренда", isUploaded: false },
   { id: "live", src: CDN.liveCam, title: "Марта в стойле", meta: "Утренний эфир", isUploaded: false },
-  { id: "family", src: CDN.family, title: "День с семьёй", meta: "Визит на ферму", isUploaded: false },
+];
+
+const premiumSignals = [
+  { value: "4.8%", label: "жирность молока" },
+  { value: "650 л", label: "годовой надой" },
+  { value: "24/7", label: "живое присутствие" },
+  { value: "47", label: "семей в клубе" },
+];
+
+const routeCards = [
+  {
+    title: "Вернуться в кабинет",
+    text: "Отсюда начинается управление животным, продуктовым циклом и участием семьи в ферме.",
+    href: "/dashboard",
+    icon: Sparkles,
+  },
+  {
+    title: "Открыть трекер продукта",
+    text: "Посмотреть, как молоко Марты превращается в именной набор и доставку для семьи.",
+    href: "/tracker",
+    icon: Package,
+  },
+  {
+    title: "Перейти в клуб",
+    text: "Продолжить эмоциональную связь через события, визиты и контент вокруг фермы.",
+    href: "/club",
+    icon: Heart,
+  },
 ];
 
 function fileToBase64(file: File) {
@@ -374,7 +437,7 @@ export default function AnimalProfile() {
   }
 
   function closeCropDraft() {
-    setCropDraft((current) => {
+    setCropDraft((current: CropDraft | null) => {
       if (current?.previewUrl) {
         URL.revokeObjectURL(current.previewUrl);
       }
@@ -469,7 +532,9 @@ export default function AnimalProfile() {
     const nextIndex = direction === "left" ? currentIndex - 1 : currentIndex + 1;
     if (nextIndex < 0 || nextIndex >= persistent.length) {
       toast.info("Фото уже находится на краю", {
-        description: direction === "left" ? "Этот снимок уже первый среди пользовательских фото." : "Этот снимок уже последний среди пользовательских фото.",
+        description: direction === "left"
+          ? "Этот снимок уже первый среди пользовательских фото."
+          : "Этот снимок уже последний среди пользовательских фото.",
       });
       return;
     }
@@ -501,141 +566,277 @@ export default function AnimalProfile() {
 
   return (
     <>
-    <div className="min-h-screen bg-background">
-      <Navbar />
-      <div className="pt-20 pb-12">
-        <div className="relative h-72 overflow-hidden md:h-96">
-          <img src={CDN.family} alt="Ферма" className="h-full w-full object-cover" />
-          <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-black/70" />
-          <div className="absolute top-4 left-4">
-            <Link href="/dashboard">
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                className="flex items-center gap-1.5 rounded-full bg-white/20 px-3 py-2 text-sm font-medium text-white backdrop-blur-sm"
-              >
-                <ChevronLeft className="h-4 w-4" />
-                Назад
-              </motion.button>
-            </Link>
+      <div className="min-h-screen overflow-hidden bg-background text-foreground">
+        <Navbar />
+
+        <section className="relative isolate overflow-hidden border-b border-border/60 bg-[radial-gradient(circle_at_top_left,rgba(255,255,255,0.86),rgba(244,240,232,0.55)_36%,rgba(235,230,220,0)_70%)] pt-28 pb-14 md:pt-32 md:pb-20">
+          <div className="absolute inset-0 opacity-50 pointer-events-none" aria-hidden>
+            <div className="absolute -left-20 top-20 h-72 w-72 rounded-full bg-primary/10 blur-3xl" />
+            <div className="absolute right-0 top-0 h-[26rem] w-[26rem] rounded-full bg-accent/20 blur-3xl" />
           </div>
-          <div className="absolute bottom-0 left-0 right-0 p-6">
-            <div className="container">
-              <div className="flex items-end gap-4">
-                <div className="relative">
-                  <img src={CDN.goat} alt="Марта" className="h-24 w-24 rounded-2xl border-4 border-white object-cover shadow-xl" />
-                  <div className="absolute -bottom-1 -right-1 rounded-full bg-green-500 p-1.5">
-                    <div className="h-2 w-2 rounded-full bg-white" />
-                  </div>
-                </div>
-                <div className="pb-1 text-white">
-                  <div className="mb-1 flex items-center gap-2">
-                    <span className="pulse-dot" />
-                    <span className="text-xs">Онлайн · Стойло №3</span>
-                  </div>
-                  <h1 className="text-3xl font-bold">Коза Марта</h1>
-                  <p className="text-white/80">Англо-нубийская · 3 года · #МК-2023-047</p>
-                </div>
-                <div className="ml-auto flex items-center gap-2 pb-1">
-                  <div className="flex items-center gap-1 rounded-full bg-amber-500 px-3 py-1 text-xs font-bold text-white">
-                    <Star className="h-3 w-3 fill-white" />
-                    Элита
-                  </div>
+
+          <div className="container relative">
+            <div className="grid gap-8 lg:grid-cols-[1.02fr_0.98fr] lg:items-center">
+              <div className="max-w-2xl">
+                <motion.div
+                  initial={{ opacity: 0, y: 18 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="inline-flex items-center gap-2 rounded-full border border-primary/15 bg-white/80 px-4 py-2 text-sm text-primary shadow-sm backdrop-blur"
+                >
+                  <Leaf className="h-4 w-4" />
+                  Профиль животного как эмоциональное ядро экосистемы
+                </motion.div>
+
+                <motion.h1
+                  initial={{ opacity: 0, y: 24 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.08 }}
+                  className="mt-6 max-w-2xl font-display text-5xl leading-[0.95] text-foreground md:text-7xl"
+                >
+                  Марта — не карточка товара,
+                  <span className="block text-primary">а живая причина вернуться на ферму.</span>
+                </motion.h1>
+
+                <motion.p
+                  initial={{ opacity: 0, y: 24 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.15 }}
+                  className="mt-6 max-w-xl text-lg leading-8 text-muted-foreground"
+                >
+                  Здесь соединяются ежедневная эмоциональная связь, прозрачность ухода, цифровой паспорт
+                  и путь к именным продуктам. Именно профиль животного удерживает семью внутри
+                  <strong className="text-foreground"> Sher Kozu</strong> между визитами, доставками и клубными событиями.
+                </motion.p>
+
+                <motion.div
+                  initial={{ opacity: 0, y: 22 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.22 }}
+                  className="mt-8 flex flex-col gap-3 sm:flex-row"
+                >
+                  <Link href="/tracker" className="group inline-flex items-center justify-center gap-2 rounded-full bg-primary px-7 py-4 text-sm font-semibold text-primary-foreground shadow-[0_18px_40px_-20px_rgba(26,58,42,0.65)] transition-all duration-300 hover:-translate-y-0.5 hover:bg-primary/95">
+                    Открыть трекер продукта
+                    <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+                  </Link>
+                  <Link href="/club" className="inline-flex items-center justify-center gap-2 rounded-full border border-border bg-white/80 px-7 py-4 text-sm font-semibold text-foreground backdrop-blur transition-colors hover:bg-white">
+                    Перейти в клуб Марты
+                    <Heart className="h-4 w-4" />
+                  </Link>
+                  <Link href="/dashboard" className="inline-flex items-center justify-center gap-2 rounded-full border border-primary/15 bg-secondary/70 px-7 py-4 text-sm font-semibold text-primary transition-colors hover:bg-secondary">
+                    Вернуться в кабинет
+                    <Sparkles className="h-4 w-4" />
+                  </Link>
+                </motion.div>
+
+                <div className="mt-10 grid max-w-2xl grid-cols-2 gap-3 md:grid-cols-4">
+                  {premiumSignals.map((signal, index) => (
+                    <motion.div
+                      key={signal.label}
+                      initial={{ opacity: 0, y: 18 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.28 + index * 0.05 }}
+                      className="rounded-2xl border border-border/70 bg-white/75 p-4 shadow-sm backdrop-blur"
+                    >
+                      <div className="font-mono-data text-2xl font-semibold text-foreground">{signal.value}</div>
+                      <div className="mt-1 text-xs leading-5 text-muted-foreground">{signal.label}</div>
+                    </motion.div>
+                  ))}
                 </div>
               </div>
+
+              <motion.div
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.18 }}
+                className="relative"
+              >
+                <div className="grid gap-4 md:grid-cols-[1.02fr_0.98fr]">
+                  <div className="relative overflow-hidden rounded-[2rem] border border-white/60 bg-card shadow-[0_30px_70px_-35px_rgba(33,30,24,0.35)]">
+                    <img src={selectedImage?.src ?? CDN.hero} alt={selectedImage?.title ?? "Марта"} className="h-[520px] w-full object-cover" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-dark-oak/90 via-dark-oak/18 to-transparent" />
+                    <div className="absolute left-5 top-5 flex items-center gap-2 rounded-full bg-white/15 px-3 py-1 text-xs text-white backdrop-blur">
+                      <span className="inline-flex h-2 w-2 rounded-full bg-emerald-400" />
+                      Онлайн · стойло №3
+                    </div>
+                    <div className="absolute bottom-0 left-0 right-0 p-6 text-white">
+                      <div className="inline-flex items-center gap-2 rounded-full bg-white/15 px-3 py-1 text-xs backdrop-blur">
+                        <MapPin className="h-3.5 w-3.5" />
+                        Англо-нубийская · #МК-2023-047
+                      </div>
+                      <h2 className="mt-3 font-display text-3xl leading-none md:text-4xl">Коза Марта</h2>
+                      <p className="mt-3 max-w-md text-sm leading-6 text-white/78">
+                        Точка входа в личное фермерство: характер, здоровье, дневник, визуальная история и продуктовая ценность в одном профиле.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col gap-4">
+                    <div className="overflow-hidden rounded-[1.75rem] border border-border/70 bg-card p-4 shadow-sm">
+                      <div className="flex items-start gap-4">
+                        <img src={CDN.farm} alt="Семейная ферма Шерь Козу" className="h-28 w-24 rounded-2xl object-cover object-center" />
+                        <div>
+                          <p className="text-xs uppercase tracking-[0.18em] text-primary">Происхождение</p>
+                          <h3 className="mt-2 text-2xl font-semibold text-foreground">Ферма с живым контекстом</h3>
+                          <p className="mt-1 text-sm leading-6 text-muted-foreground">
+                            Профиль Марты показывает не только животное, но и среду, в которой рождаются доверие, редкость и премиальный продукт.
+                          </p>
+                        </div>
+                      </div>
+                      <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
+                        <div className="rounded-2xl bg-secondary p-3">
+                          <div className="text-muted-foreground">Счастье</div>
+                          <div className="mt-1 font-mono-data text-xl font-semibold text-foreground">87%</div>
+                        </div>
+                        <div className="rounded-2xl bg-secondary p-3">
+                          <div className="text-muted-foreground">Статус ухода</div>
+                          <div className="mt-1 font-mono-data text-xl font-semibold text-foreground">OK</div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="overflow-hidden rounded-[1.75rem] border border-border/70 bg-card shadow-sm">
+                      <img src={CDN.milk} alt="Именной набор молочной продукции" className="h-48 w-full object-cover" />
+                      <div className="p-4">
+                        <p className="text-xs uppercase tracking-[0.18em] text-primary">Продуктовый слой</p>
+                        <h3 className="mt-2 text-xl font-semibold text-foreground">От Марты к именной коробке</h3>
+                        <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                          Профиль соединяет эмоцию с рациональным доверием: пользователь видит, как конкретное животное связано с молоком, сыром и набором для семьи.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
             </div>
           </div>
-        </div>
+        </section>
 
-        <div className="container mt-6">
-          <div className="grid grid-cols-12 gap-5">
-            <div className="col-span-12 space-y-4 md:col-span-4">
-              <motion.div initial={{ opacity: 0, x: -16 }} animate={{ opacity: 1, x: 0 }} className="rounded-2xl border border-border bg-card p-5 shadow-sm">
-                <h3 className="mb-4 font-bold text-foreground">Показатели здоровья</h3>
-                <div className="grid grid-cols-2 gap-4">
+        <div className="container py-10 md:py-14">
+          <div className="grid gap-6 xl:grid-cols-[0.98fr_1.02fr]">
+            <div className="space-y-6">
+              <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} className="rounded-[2rem] border border-border/70 bg-card p-6 shadow-sm">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <p className="text-xs uppercase tracking-[0.22em] text-primary">Паспорт и статус</p>
+                    <h3 className="mt-2 text-2xl font-semibold text-foreground">Премиальный профиль животного</h3>
+                    <p className="mt-2 max-w-xl text-sm leading-7 text-muted-foreground">
+                      Страница Марты должна удерживать баланс между тёплой личной связью и доказательной прозрачностью ухода.
+                    </p>
+                  </div>
+                  <div className="rounded-full bg-primary/10 p-3 text-primary">
+                    <ShieldCheck className="h-5 w-5" />
+                  </div>
+                </div>
+
+                <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
                   {[
-                    { label: "Счастье", value: 87, color: "#e11d48", icon: Heart },
+                    { label: "Счастье", value: 87, color: "#d9465f", icon: Heart },
                     { label: "Здоровье", value: 94, color: "#1A3A2A", icon: Thermometer },
                     { label: "Активность", value: 78, color: "#F0A500", icon: Zap },
                     { label: "Питание", value: 91, color: "#5A7A4A", icon: Milk },
-                  ].map((stat, i) => {
+                  ].map((stat) => {
                     const Icon = stat.icon;
                     return (
-                      <div key={i} className="flex flex-col items-center">
-                        <div className="relative">
-                          <ProgressRing value={stat.value} size={72} strokeWidth={5} color={stat.color} />
-                          <div className="absolute inset-0 flex items-center justify-center">
-                            <Icon className="h-4 w-4" style={{ color: stat.color }} />
+                      <div key={stat.label} className="rounded-[1.5rem] border border-border/70 bg-background/70 p-4 text-center">
+                        <div className="mx-auto flex w-fit items-center justify-center">
+                          <div className="relative">
+                            <ProgressRing value={stat.value} size={80} strokeWidth={6} color={stat.color} />
+                            <div className="absolute inset-0 flex items-center justify-center">
+                              <Icon className="h-4 w-4" style={{ color: stat.color }} />
+                            </div>
                           </div>
                         </div>
-                        <p className="mt-1 text-xs text-muted-foreground">{stat.label}</p>
-                        <p className="font-mono-data text-sm font-semibold">{stat.value}%</p>
+                        <p className="mt-3 text-xs uppercase tracking-[0.16em] text-muted-foreground">{stat.label}</p>
+                        <p className="mt-1 font-mono-data text-xl font-semibold text-foreground">{stat.value}%</p>
                       </div>
                     );
                   })}
                 </div>
-              </motion.div>
 
-              <motion.div initial={{ opacity: 0, x: -16 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.1 }} className="rounded-2xl border border-border bg-card p-5 shadow-sm">
-                <h3 className="mb-3 flex items-center gap-2 font-bold text-foreground">
-                  <Dna className="h-4 w-4 text-primary" />
-                  Паспорт животного
-                </h3>
-                <div className="space-y-2.5 text-sm">
-                  {[
-                    { label: "Порода", value: "Англо-нубийская" },
-                    { label: "Дата рождения", value: "14 апреля 2023" },
-                    { label: "Вес", value: "52 кг" },
-                    { label: "Жирность молока", value: "4.8%" },
-                    { label: "Белок молока", value: "3.2%" },
-                    { label: "Годовой надой", value: "~650 л" },
-                    { label: "Стойло", value: "№3, Ферма Шерь Козу" },
-                  ].map((item, i) => (
-                    <div key={i} className="flex justify-between">
-                      <span className="text-muted-foreground">{item.label}</span>
-                      <span className="font-medium text-foreground">{item.value}</span>
+                <div className="mt-6 grid gap-4 lg:grid-cols-[1.08fr_0.92fr]">
+                  <div className="rounded-[1.5rem] border border-border/70 bg-background/70 p-5">
+                    <h4 className="flex items-center gap-2 text-lg font-semibold text-foreground">
+                      <Dna className="h-4 w-4 text-primary" />
+                      Паспорт животного
+                    </h4>
+                    <div className="mt-4 space-y-3 text-sm">
+                      {[
+                        { label: "Порода", value: "Англо-нубийская" },
+                        { label: "Дата рождения", value: "14 апреля 2023" },
+                        { label: "Вес", value: "52 кг" },
+                        { label: "Жирность молока", value: "4.8%" },
+                        { label: "Белок молока", value: "3.2%" },
+                        { label: "Годовой надой", value: "~650 л" },
+                        { label: "Стойло", value: "№3, Ферма Шерь Козу" },
+                      ].map((item) => (
+                        <div key={item.label} className="flex items-center justify-between gap-4 rounded-2xl bg-card px-4 py-3">
+                          <span className="text-muted-foreground">{item.label}</span>
+                          <span className="font-medium text-foreground">{item.value}</span>
+                        </div>
+                      ))}
                     </div>
-                  ))}
-                </div>
-                <div className="mt-4 border-t border-border pt-3">
-                  <p className="text-xs text-muted-foreground">
-                    {showFullBio
-                      ? "Англо-нубийская коза — одна из самых продуктивных молочных пород мира. Отличается высокой жирностью молока (до 5%), отсутствием специфического запаха и дружелюбным характером. Марта — дочь чемпиона выставки «АгроФерм 2022», обладатель золотой медали по надою."
-                      : "Одна из самых продуктивных молочных пород мира..."}
-                  </p>
-                  <button onClick={() => setShowFullBio(!showFullBio)} className="mt-1 flex items-center gap-1 text-xs text-primary hover:underline">
-                    {showFullBio ? "Свернуть" : "Читать полностью"}
-                    <ChevronDown className={`h-3 w-3 transition-transform ${showFullBio ? "rotate-180" : ""}`} />
-                  </button>
-                </div>
-              </motion.div>
-
-              <motion.div initial={{ opacity: 0, x: -16 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.18 }} className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
-                  <div className="border-b border-border p-5">
-                    <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-                      <div>
-                        <h3 className="flex items-center gap-2 text-lg font-bold text-foreground">
-                          <Images className="h-4 w-4 text-primary" />
-                          Галерея Марты
-                        </h3>
-                        <p className="mt-1 text-sm text-muted-foreground">Фотоистория Марты с быстрым переходом между кадрами.</p>
-                      </div>
-                      <label
-                        className={`inline-flex cursor-pointer items-center justify-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition-colors md:self-start ${isDragActive ? "bg-primary/15 text-primary ring-2 ring-primary/30" : "bg-primary text-primary-foreground hover:bg-primary/92"}`}
-                        onDragOver={handleDropZoneDragOver}
-                        onDragLeave={handleDropZoneDragLeave}
-                        onDrop={handleDropZoneDrop}
-                      >
-                        {uploadPhoto.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
-                        {uploadPhoto.isPending ? "Сохраняем..." : "Добавить фото"}
-                        <input type="file" accept="image/*" className="hidden" onChange={handleGalleryUpload} disabled={uploadPhoto.isPending} />
-                      </label>
+                    <div className="mt-4 rounded-[1.25rem] border border-primary/10 bg-primary/5 p-4">
+                      <p className="text-sm leading-7 text-muted-foreground">
+                        {showFullBio
+                          ? "Англо-нубийская коза — одна из самых продуктивных молочных пород мира. Марта сочетает высокую жирность молока, мягкий характер и устойчивую визуальную идентичность для премиального семейного бренда. Её профиль важен не только как биография, но и как точка происхождения именной продукции и клубных сценариев."
+                          : "Одна из самых продуктивных молочных пород мира с высоким потенциалом для премиального продуктового маршрута."}
+                      </p>
+                      <button onClick={() => setShowFullBio(!showFullBio)} className="mt-3 inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline">
+                        {showFullBio ? "Свернуть" : "Читать полностью"}
+                        <ChevronDown className={`h-4 w-4 transition-transform ${showFullBio ? "rotate-180" : ""}`} />
+                      </button>
                     </div>
                   </div>
 
-                  <div className="p-5">
-                    <div className="mb-4 grid gap-3 lg:grid-cols-[1.1fr_0.9fr]">
+                  <div className="overflow-hidden rounded-[1.5rem] border border-border/70 bg-card shadow-sm">
+                    <img src={CDN.club} alt="Клубный визит на ферму" className="h-52 w-full object-cover" />
+                    <div className="p-5">
+                      <p className="text-xs uppercase tracking-[0.2em] text-primary">Community layer</p>
+                      <h4 className="mt-2 text-xl font-semibold text-foreground">Клуб удерживает связь с Мартой между доставками</h4>
+                      <p className="mt-2 text-sm leading-7 text-muted-foreground">
+                        Фотографии, визиты, семейные ужины и сезонные события усиливают восприятие Марты как части живой фермерской истории, а не как абстрактной единицы каталога.
+                      </p>
+                      <Link href="/club" className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-primary hover:underline">
+                        Открыть клубную ленту
+                        <ArrowRight className="h-4 w-4" />
+                      </Link>
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+
+              <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }} className="overflow-hidden rounded-[2rem] border border-border/70 bg-card shadow-sm">
+                <div className="border-b border-border/70 p-6">
+                  <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                    <div>
+                      <p className="text-xs uppercase tracking-[0.22em] text-primary">Галерея</p>
+                      <h3 className="mt-2 flex items-center gap-2 text-2xl font-semibold text-foreground">
+                        <Images className="h-5 w-5 text-primary" />
+                        Визуальная история Марты
+                      </h3>
+                      <p className="mt-2 max-w-2xl text-sm leading-7 text-muted-foreground">
+                        Галерея объединяет системные кадры Sher Kozu и пользовательские фотографии: отсюда начинается личная связь, которая затем ведёт в продуктовый трекер и клуб.
+                      </p>
+                    </div>
+
+                    <label
+                      className={`inline-flex cursor-pointer items-center justify-center gap-2 rounded-full px-4 py-2.5 text-sm font-semibold transition-colors lg:self-start ${isDragActive ? "bg-primary/15 text-primary ring-2 ring-primary/30" : "bg-primary text-primary-foreground hover:bg-primary/92"}`}
+                      onDragOver={handleDropZoneDragOver}
+                      onDragLeave={handleDropZoneDragLeave}
+                      onDrop={handleDropZoneDrop}
+                    >
+                      {uploadPhoto.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+                      {uploadPhoto.isPending ? "Сохраняем..." : "Добавить фото"}
+                      <input type="file" accept="image/*" className="hidden" onChange={handleGalleryUpload} disabled={uploadPhoto.isPending} />
+                    </label>
+                  </div>
+                </div>
+
+                <div className="p-6">
+                  <div className="grid gap-4 xl:grid-cols-[1.08fr_0.92fr]">
+                    <div className="space-y-4">
                       <label
-                        className={`rounded-[1.25rem] border border-dashed p-4 transition-all ${isDragActive ? "border-primary bg-primary/5 shadow-sm shadow-primary/10" : "border-emerald-200 bg-emerald-50/80"}`}
+                        className={`block rounded-[1.5rem] border border-dashed p-5 transition-all ${isDragActive ? "border-primary bg-primary/5 shadow-sm shadow-primary/10" : "border-emerald-200 bg-emerald-50/80"}`}
                         onDragOver={handleDropZoneDragOver}
                         onDragLeave={handleDropZoneDragLeave}
                         onDrop={handleDropZoneDrop}
@@ -645,15 +846,17 @@ export default function AnimalProfile() {
                             {uploadPhoto.isPending || removePhoto.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Camera className="h-4 w-4" />}
                           </div>
                           <div className="flex-1">
-                            <p className={`text-sm font-semibold ${isDragActive ? "text-primary" : "text-emerald-900"}`}>Загрузка в галерею</p>
-                            <p className={`mt-1 text-sm ${isDragActive ? "text-primary/80" : "text-emerald-800"}`}>
+                            <p className={`text-sm font-semibold ${isDragActive ? "text-primary" : "text-emerald-900"}`}>
                               {uploadPhoto.isPending
                                 ? "Сохраняем новые фото в постоянную галерею Марты."
                                 : removePhoto.isPending
                                   ? "Удаляем фото из постоянной галереи."
                                   : isDragActive
                                     ? "Отпустите файл, чтобы открыть кадрирование перед сохранением."
-                                    : "Перетащите фото сюда или выберите файл, а затем аккуратно кадрируйте снимок перед сохранением."}
+                                    : "Добавьте семейный кадр, визит на ферму или новый портрет Марты."}
+                            </p>
+                            <p className={`mt-1 text-sm ${isDragActive ? "text-primary/80" : "text-emerald-800"}`}>
+                              Галерея поддерживает drag-and-drop, квадратное кадрирование и постоянное сохранение пользовательских фотографий в профиле.
                             </p>
                             <div className="mt-3 flex flex-wrap items-center gap-2 text-xs font-medium">
                               <span className="rounded-full bg-white/80 px-3 py-1 text-foreground">Drag-and-drop</span>
@@ -662,220 +865,229 @@ export default function AnimalProfile() {
                               <span className="rounded-full bg-white/80 px-3 py-1 text-foreground">Квадратное кадрирование</span>
                               <span className="rounded-full bg-white/80 px-3 py-1 text-foreground">Постоянное хранение</span>
                             </div>
-                            <p className="mt-3 text-xs leading-relaxed text-muted-foreground">
-                              Лучше всего подходят вертикальные или квадратные снимки без мелкого текста: после выбора откроется простое кадрирование, а затем фото сохранится в постоянную галерею Марты.
-                            </p>
                             <input type="file" accept="image/*" className="hidden" onChange={handleGalleryUpload} disabled={uploadPhoto.isPending} />
                           </div>
                         </div>
                       </label>
 
-                      <div className="rounded-[1.25rem] border border-border bg-background/80 p-4">
+                      {selectedImage && (
+                        <div className="overflow-hidden rounded-[1.75rem] border border-border/70 bg-muted/30">
+                          <button type="button" onClick={() => setLightboxOpen(true)} className="group relative block w-full text-left">
+                            <img src={selectedImage.src} alt={selectedImage.title} className="h-64 w-full object-cover md:h-[26rem]" />
+                            <div className="absolute inset-0 bg-black/0 transition-colors group-hover:bg-black/12" />
+                            <div className="absolute bottom-4 right-4 rounded-full bg-black/60 px-3 py-1 text-xs font-medium text-white opacity-0 backdrop-blur transition-opacity group-hover:opacity-100">
+                              Открыть крупно
+                            </div>
+                          </button>
+                          <div className="flex flex-col gap-3 p-5 md:flex-row md:items-center md:justify-between">
+                            <div>
+                              <div className="flex flex-wrap items-center gap-2">
+                                <div className="text-lg font-semibold text-foreground">{selectedImage.title}</div>
+                                {selectedImage.isCover && (
+                                  <span className="rounded-full bg-primary/10 px-2.5 py-1 text-[11px] font-semibold text-primary">
+                                    Обложка галереи
+                                  </span>
+                                )}
+                              </div>
+                              <div className="mt-1 text-sm text-muted-foreground">{selectedImage.meta}</div>
+                            </div>
+                            <div className="flex flex-wrap items-center gap-2">
+                              <div className="rounded-full bg-secondary px-3 py-1 text-xs font-medium text-primary">
+                                {galleryImages.length} фото в истории
+                              </div>
+                              <div className="inline-flex items-center gap-1 rounded-full border border-border bg-white px-1 py-1">
+                                <button type="button" onClick={() => moveGallery("prev")} aria-label="Предыдущее фото" className="inline-flex h-8 w-8 items-center justify-center rounded-full text-foreground transition-colors hover:bg-muted">
+                                  <ChevronLeft className="h-4 w-4" />
+                                </button>
+                                <button type="button" onClick={() => moveGallery("next")} aria-label="Следующее фото" className="inline-flex h-8 w-8 items-center justify-center rounded-full text-foreground transition-colors hover:bg-muted">
+                                  <ChevronRight className="h-4 w-4" />
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="space-y-4">
+                      <div className="rounded-[1.5rem] border border-border/70 bg-background/70 p-4">
                         <div className="flex items-center justify-between gap-3">
                           <p className="text-sm font-semibold text-foreground">Последние действия</p>
                           <span className="text-xs text-muted-foreground">До 4 записей</span>
                         </div>
                         <div className="mt-3 space-y-2">
                           {photoActivity.length ? photoActivity.map((entry) => (
-                            <div key={entry.id} className="flex items-center justify-between gap-3 rounded-2xl bg-card px-3 py-2 text-sm">
+                            <div key={entry.id} className="flex items-center justify-between gap-3 rounded-2xl bg-card px-3 py-3 text-sm">
                               <div>
                                 <div className="font-medium text-foreground">{entry.action === "upload" ? "Добавлено фото" : "Удалено фото"}</div>
                                 <div className="text-xs text-muted-foreground">{entry.title}</div>
                               </div>
-                              <div className="text-[11px] text-muted-foreground">{new Date(entry.timestamp).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })}</div>
+                              <div className="text-[11px] text-muted-foreground">
+                                {new Date(entry.timestamp).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })}
+                              </div>
                             </div>
                           )) : (
-                            <div className="rounded-2xl bg-secondary/50 px-3 py-2 text-sm text-muted-foreground">
+                            <div className="rounded-2xl bg-secondary/50 px-3 py-3 text-sm text-muted-foreground">
                               После первой загрузки или удаления здесь появится короткая история действий.
                             </div>
                           )}
                         </div>
                       </div>
-                    </div>
 
-                    {selectedImage && (
-
-                    <div className="overflow-hidden rounded-[1.5rem] border border-border/70 bg-muted/30">
-                      <button type="button" onClick={() => setLightboxOpen(true)} className="group relative block w-full text-left">
-                        <img src={selectedImage.src} alt={selectedImage.title} className="h-56 w-full object-cover md:h-72" />
-                        <div className="absolute inset-0 bg-black/0 transition-colors group-hover:bg-black/12" />
-                        <div className="absolute bottom-4 right-4 rounded-full bg-black/60 px-3 py-1 text-xs font-medium text-white opacity-0 backdrop-blur transition-opacity group-hover:opacity-100">
-                          Открыть крупно
-                        </div>
-                      </button>
-                      <div className="flex flex-col gap-2 p-4 md:flex-row md:items-center md:justify-between">
-                        <div>
+                      <div className="rounded-[1.5rem] border border-border/70 bg-background/70 p-4">
+                        <div className="space-y-3">
+                          <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                            <Share2 className="h-4 w-4 text-primary" />
+                            Поделиться профилем
+                          </div>
                           <div className="flex flex-wrap items-center gap-2">
-                            <div className="text-base font-semibold text-foreground">{selectedImage.title}</div>
-                            {selectedImage.isCover && (
-                              <span className="rounded-full bg-primary/10 px-2.5 py-1 text-[11px] font-semibold text-primary">
-                                Обложка галереи
-                              </span>
-                            )}
-                          </div>
-                          <div className="text-sm text-muted-foreground">{selectedImage.meta}</div>
-                        </div>
-                        <div className="flex flex-wrap items-center gap-2">
-                          <div className="rounded-full bg-secondary px-3 py-1 text-xs font-medium text-primary">
-                            {galleryImages.length} фото в истории
-                          </div>
-                          <div className="inline-flex items-center gap-1 rounded-full border border-border bg-white px-1 py-1">
-                            <button type="button" onClick={() => moveGallery("prev")} aria-label="Предыдущее фото" className="inline-flex h-8 w-8 items-center justify-center rounded-full text-foreground transition-colors hover:bg-muted">
-                              <ChevronLeft className="h-4 w-4" />
+                            <button type="button" aria-label="Поделиться в Facebook" title="Facebook" onClick={() => handleShare("facebook")} className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-border bg-card text-[#1877F2] transition-colors hover:bg-muted">
+                              <Facebook className="h-4 w-4" />
                             </button>
-                            <button type="button" onClick={() => moveGallery("next")} aria-label="Следующее фото" className="inline-flex h-8 w-8 items-center justify-center rounded-full text-foreground transition-colors hover:bg-muted">
-                              <ChevronRight className="h-4 w-4" />
+                            <button type="button" aria-label="Поделиться во ВКонтакте" title="VK" onClick={() => handleShare("vk")} className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-border bg-card text-[#0077FF] transition-colors hover:bg-muted">
+                              <MessageCircle className="h-4 w-4" />
+                            </button>
+                            <button type="button" aria-label="Поделиться в Instagram" title="Instagram" onClick={() => handleShare("instagram")} className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-border bg-card text-[#E1306C] transition-colors hover:bg-muted">
+                              <Instagram className="h-4 w-4" />
+                            </button>
+                            <button type="button" aria-label="Скопировать ссылку" title="Копировать ссылку" onClick={handleCopyShareLink} className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-dashed border-primary/40 bg-primary/5 text-primary transition-colors hover:bg-primary/10">
+                              <Link2 className="h-4 w-4" />
                             </button>
                           </div>
+                          <div className="truncate rounded-full border border-border/60 bg-card px-4 py-2 text-xs text-muted-foreground">{shareUrl}</div>
                         </div>
                       </div>
-                    </div>
-                  )}
 
-                  <div className="mt-3 rounded-[1.5rem] border border-border bg-background/70 p-4">
-                    <div className="space-y-3">
-                      <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
-                        <Share2 className="h-4 w-4 text-primary" />
-                        Поделиться
-                      </div>
+                      <div className="rounded-[1.5rem] border border-border/70 bg-background/70 p-4">
+                        <div className="mb-3 flex items-center justify-between gap-3">
+                          <div>
+                            <p className="text-sm font-semibold text-foreground">Фотографии</p>
+                            <p className="mt-1 text-xs text-muted-foreground">Быстрый переход, обложка и порядок пользовательских фото.</p>
+                          </div>
+                          <div className="rounded-full bg-primary/10 px-3 py-1 text-[11px] font-medium text-primary">{galleryImages.length} фото</div>
+                        </div>
 
-                      <div className="flex flex-wrap items-center gap-2">
-                        <button type="button" aria-label="Поделиться в Facebook" title="Facebook" onClick={() => handleShare("facebook")} className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-border bg-card text-[#1877F2] transition-colors hover:bg-muted">
-                          <Facebook className="h-4 w-4" />
-                        </button>
-                        <button type="button" aria-label="Поделиться во ВКонтакте" title="VK" onClick={() => handleShare("vk")} className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-border bg-card text-[#0077FF] transition-colors hover:bg-muted">
-                          <MessageCircle className="h-4 w-4" />
-                        </button>
-                        <button type="button" aria-label="Поделиться в Instagram" title="Instagram" onClick={() => handleShare("instagram")} className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-border bg-card text-[#E1306C] transition-colors hover:bg-muted">
-                          <Instagram className="h-4 w-4" />
-                        </button>
-                        <button type="button" aria-label="Скопировать ссылку" title="Копировать ссылку" onClick={handleCopyShareLink} className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-dashed border-primary/40 bg-primary/5 text-primary transition-colors hover:bg-primary/10">
-                          <Link2 className="h-4 w-4" />
-                        </button>
-                      </div>
-                    </div>
+                        {photosQuery.isLoading ? (
+                          <div className="flex items-center gap-2 rounded-2xl bg-secondary/50 px-4 py-3 text-sm text-muted-foreground">
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                            Загружаем сохранённые фотографии профиля...
+                          </div>
+                        ) : (
+                          <div className="flex gap-3 overflow-x-auto pb-1">
+                            {galleryImages.map((image) => {
+                              const isSelected = image.id === selectedImageId;
 
-                    <div className="mt-3 truncate rounded-full border border-border/60 bg-card px-4 py-2 text-xs text-muted-foreground">{shareUrl}</div>
-                  </div>
-
-                  <div className="mt-3 rounded-[1.5rem] border border-border bg-card/85 p-4 shadow-sm">
-                    <div className="mb-3 flex items-center justify-between gap-3">
-                      <div>
-                        <p className="text-sm font-semibold text-foreground">Фотографии</p>
-                        <p className="mt-1 text-xs text-muted-foreground">Быстрый переход к нужному снимку.</p>
-                      </div>
-                      <div className="rounded-full bg-primary/10 px-3 py-1 text-[11px] font-medium text-primary">{galleryImages.length} фото</div>
-                    </div>
-
-                    {photosQuery.isLoading ? (
-                      <div className="flex items-center gap-2 rounded-2xl bg-secondary/50 px-4 py-3 text-sm text-muted-foreground">
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                        Загружаем сохранённые фотографии профиля...
-                      </div>
-                    ) : (
-                      <div className="flex gap-3 overflow-x-auto pb-1">
-                        {galleryImages.map((image) => {
-                          const isSelected = image.id === selectedImageId;
-
-                          return (
-                            <div key={image.id} className={`group relative min-w-[120px] max-w-[120px] snap-start overflow-hidden rounded-[1rem] border transition-all ${isSelected ? "border-primary shadow-md shadow-primary/10" : "border-border bg-card"}`}>
-                              <div>
-                                <button type="button" onClick={() => setSelectedImageId(image.id)} className="block w-full text-left">
-                                  <img src={image.src} alt={image.title} className="h-20 w-full object-cover" />
-                                </button>
-                                <div className="space-y-2 p-2.5">
+                              return (
+                                <div key={image.id} className={`group relative min-w-[132px] max-w-[132px] snap-start overflow-hidden rounded-[1.15rem] border transition-all ${isSelected ? "border-primary shadow-md shadow-primary/10" : "border-border bg-card"}`}>
                                   <button type="button" onClick={() => setSelectedImageId(image.id)} className="block w-full text-left">
-                                    <div className="truncate text-[11px] font-semibold text-foreground">{image.title}</div>
+                                    <img src={image.src} alt={image.title} className="h-24 w-full object-cover" />
                                   </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => handleSetCoverImage(image)}
-                                    disabled={setCoverPhoto.isPending && image.isUploaded}
-                                    className={`w-full rounded-full px-2 py-1 text-[10px] font-semibold transition-colors ${image.isCover ? "bg-primary text-primary-foreground" : "bg-secondary text-foreground hover:bg-secondary/80"}`}
-                                  >
-                                    {image.isCover ? "Текущая обложка" : "Сделать обложкой"}
-                                  </button>
-                                  {image.isUploaded && image.photoId && (
-                                    <div className="flex items-center gap-1">
-                                      <button
-                                        type="button"
-                                        onClick={() => moveUploadedPhoto(image.photoId!, "left")}
-                                        disabled={reorderPhotos.isPending}
-                                        className="flex-1 rounded-full border border-border px-2 py-1 text-[10px] font-medium text-foreground transition-colors hover:bg-muted disabled:opacity-50"
-                                      >
-                                        Сдвинуть влево
-                                      </button>
-                                      <button
-                                        type="button"
-                                        onClick={() => moveUploadedPhoto(image.photoId!, "right")}
-                                        disabled={reorderPhotos.isPending}
-                                        className="flex-1 rounded-full border border-border px-2 py-1 text-[10px] font-medium text-foreground transition-colors hover:bg-muted disabled:opacity-50"
-                                      >
-                                        Сдвинуть вправо
-                                      </button>
-                                    </div>
+                                  <div className="space-y-2 p-2.5">
+                                    <button type="button" onClick={() => setSelectedImageId(image.id)} className="block w-full text-left">
+                                      <div className="truncate text-[11px] font-semibold text-foreground">{image.title}</div>
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleSetCoverImage(image)}
+                                      disabled={setCoverPhoto.isPending && image.isUploaded}
+                                      className={`w-full rounded-full px-2 py-1 text-[10px] font-semibold transition-colors ${image.isCover ? "bg-primary text-primary-foreground" : "bg-secondary text-foreground hover:bg-secondary/80"}`}
+                                    >
+                                      {image.isCover ? "Текущая обложка" : "Сделать обложкой"}
+                                    </button>
+                                    {image.isUploaded && image.photoId && (
+                                      <div className="flex items-center gap-1">
+                                        <button
+                                          type="button"
+                                          onClick={() => moveUploadedPhoto(image.photoId!, "left")}
+                                          disabled={reorderPhotos.isPending}
+                                          className="flex-1 rounded-full border border-border px-2 py-1 text-[10px] font-medium text-foreground transition-colors hover:bg-muted disabled:opacity-50"
+                                        >
+                                          Влево
+                                        </button>
+                                        <button
+                                          type="button"
+                                          onClick={() => moveUploadedPhoto(image.photoId!, "right")}
+                                          disabled={reorderPhotos.isPending}
+                                          className="flex-1 rounded-full border border-border px-2 py-1 text-[10px] font-medium text-foreground transition-colors hover:bg-muted disabled:opacity-50"
+                                        >
+                                          Вправо
+                                        </button>
+                                      </div>
+                                    )}
+                                  </div>
+
+                                  {image.isUploaded && galleryImages.length > 1 && (
+                                    <button
+                                      type="button"
+                                      aria-label="Удалить фото"
+                                      onClick={() => handleRemoveUploadedImage(image)}
+                                      disabled={removePhoto.isPending}
+                                      className="absolute right-2 top-2 inline-flex h-6 w-6 items-center justify-center rounded-full bg-black/55 text-white opacity-100 transition-colors hover:bg-black/70 disabled:cursor-not-allowed disabled:opacity-60 md:opacity-0 md:group-hover:opacity-100"
+                                    >
+                                      <X className="h-3 w-3" />
+                                    </button>
                                   )}
                                 </div>
-                              </div>
-
-                              {image.isUploaded && galleryImages.length > 1 && (
-                                <button
-                                  type="button"
-                                  aria-label="Удалить фото"
-                                  onClick={() => handleRemoveUploadedImage(image)}
-                                  disabled={removePhoto.isPending}
-                                  className="absolute right-2 top-2 inline-flex h-6 w-6 items-center justify-center rounded-full bg-black/55 text-white opacity-100 transition-colors hover:bg-black/70 disabled:cursor-not-allowed disabled:opacity-60 md:opacity-0 md:group-hover:opacity-100"
-                                >
-                                  <X className="h-3 w-3" />
-                                </button>
-                              )}
-                            </div>
-                          );
-                        })}
+                              );
+                            })}
+                          </div>
+                        )}
                       </div>
-                    )}
+                    </div>
                   </div>
                 </div>
               </motion.div>
 
-              <motion.div initial={{ opacity: 0, x: -16 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.24 }} className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
-                <div className="group relative h-56 cursor-pointer md:h-64">
-                  <img src={CDN.liveCam} alt="Прямой эфир" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
-                  <div className="absolute inset-0 bg-black/30 transition-colors group-hover:bg-black/20" />
-                  <div className="absolute left-3 top-3 flex items-center gap-1.5 rounded-full bg-red-600 px-2 py-0.5 text-xs font-bold text-white">
-                    <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-white" />
-                    LIVE
-                  </div>
-                  <div className="absolute inset-0 flex items-center justify-center opacity-0 transition-opacity group-hover:opacity-100">
-                    <div className="flex h-14 w-14 items-center justify-center rounded-full bg-white/30 backdrop-blur-sm">
-                      <Play className="ml-1 h-6 w-6 text-white" />
+              <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="overflow-hidden rounded-[2rem] border border-border/70 bg-card shadow-sm">
+                <div className="grid gap-0 lg:grid-cols-[0.95fr_1.05fr]">
+                  <div className="group relative min-h-[20rem] overflow-hidden">
+                    <img src={CDN.liveCam} alt="Прямой эфир Марты" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
+                    <div className="absolute inset-0 bg-black/35 transition-colors group-hover:bg-black/20" />
+                    <div className="absolute left-4 top-4 flex items-center gap-1.5 rounded-full bg-red-600 px-2 py-1 text-xs font-bold text-white">
+                      <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-white" />
+                      LIVE
+                    </div>
+                    <div className="absolute inset-0 flex items-center justify-center opacity-0 transition-opacity group-hover:opacity-100">
+                      <div className="flex h-16 w-16 items-center justify-center rounded-full bg-white/30 backdrop-blur-sm">
+                        <Play className="ml-1 h-7 w-7 text-white" />
+                      </div>
                     </div>
                   </div>
-                </div>
-                <div className="border-t border-border p-4">
-                  <div className="flex items-center justify-between gap-3">
-                    <div>
-                      <p className="text-sm font-semibold text-foreground">Веб-камера 24/7</p>
-                      <p className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
-                        <MapPin className="h-3 w-3" />
-                        Стойло №3, Ферма Шерь Козу
-                      </p>
+
+                  <div className="p-6">
+                    <p className="text-xs uppercase tracking-[0.22em] text-primary">Прямой эфир и ритм ухода</p>
+                    <h3 className="mt-2 text-3xl font-semibold text-foreground">Живое присутствие делает профиль убедительным.</h3>
+                    <p className="mt-3 text-sm leading-7 text-muted-foreground">
+                      Веб-камера, дневник и карточки здоровья работают как система доверия: пользователь не просто читает описание, а получает ритм реальной жизни животного.
+                    </p>
+                    <div className="mt-5 grid gap-3 sm:grid-cols-2">
+                      <div className="rounded-[1.25rem] bg-secondary p-4">
+                        <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">Локация</p>
+                        <p className="mt-2 text-sm font-medium text-foreground">Стойло №3, Ферма Шерь Козу</p>
+                      </div>
+                      <div className="rounded-[1.25rem] bg-secondary p-4">
+                        <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">Следующий ритуал</p>
+                        <p className="mt-2 text-sm font-medium text-foreground">Семейный визит в субботу, 14:00</p>
+                      </div>
                     </div>
-                    <Camera className="h-5 w-5 text-muted-foreground" />
+                    <div className="mt-5 inline-flex items-center gap-2 rounded-full border border-border bg-background px-4 py-2 text-sm text-muted-foreground">
+                      <Clock3 className="h-4 w-4 text-primary" />
+                      Камера и diary-layer поддерживают ежедневное возвращение на страницу.
+                    </div>
                   </div>
                 </div>
               </motion.div>
             </div>
 
-            <div className="col-span-12 space-y-4 md:col-span-8">
+            <div className="space-y-6">
               <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} className="grid grid-cols-2 gap-3 lg:grid-cols-4">
                 {[
                   { emoji: "🥕", label: "Покормить", sub: "морковкой", color: "bg-orange-50 border-orange-200 hover:bg-orange-100" },
                   { emoji: "🛁", label: "SPA-уход", sub: "груминг", color: "bg-blue-50 border-blue-200 hover:bg-blue-100" },
                   { emoji: "🚶", label: "Прогулка", sub: "1 час", color: "bg-green-50 border-green-200 hover:bg-green-100" },
                   { emoji: "🎂", label: "День рождения", sub: "через 32 дня", color: "bg-amber-50 border-amber-200 hover:bg-amber-100" },
-                ].map((action, i) => (
-                  <motion.button key={i} whileHover={{ scale: 1.04, y: -2 }} whileTap={{ scale: 0.97 }} className={`flex flex-col items-center rounded-xl border p-3 text-center transition-colors ${action.color}`}>
+                ].map((action) => (
+                  <motion.button key={action.label} whileHover={{ scale: 1.04, y: -2 }} whileTap={{ scale: 0.97 }} className={`flex flex-col items-center rounded-2xl border p-4 text-center transition-colors ${action.color}`}>
                     <span className="mb-1 text-2xl">{action.emoji}</span>
                     <span className="text-xs font-semibold text-foreground">{action.label}</span>
                     <span className="text-xs text-muted-foreground">{action.sub}</span>
@@ -883,7 +1095,7 @@ export default function AnimalProfile() {
                 ))}
               </motion.div>
 
-              <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
+              <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.06 }} className="overflow-hidden rounded-[2rem] border border-border/70 bg-card shadow-sm">
                 <div className="flex border-b border-border">
                   {(["diary", "health", "milk"] as const).map((tab) => {
                     const labels = { diary: "Дневник", health: "Здоровье", milk: "Надои" };
@@ -893,7 +1105,7 @@ export default function AnimalProfile() {
                       <button
                         key={tab}
                         onClick={() => setActiveTab(tab)}
-                        className={`flex flex-1 items-center justify-center gap-2 py-3.5 text-sm font-medium transition-colors ${activeTab === tab ? "border-b-2 border-primary bg-primary/5 text-primary" : "text-muted-foreground hover:text-foreground"}`}
+                        className={`flex flex-1 items-center justify-center gap-2 py-4 text-sm font-medium transition-colors ${activeTab === tab ? "border-b-2 border-primary bg-primary/5 text-primary" : "text-muted-foreground hover:text-foreground"}`}
                       >
                         <Icon className="h-4 w-4" />
                         {labels[tab]}
@@ -903,22 +1115,22 @@ export default function AnimalProfile() {
                 </div>
 
                 <AnimatePresence mode="wait">
-                  <motion.div key={activeTab} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.2 }} className="p-5">
+                  <motion.div key={activeTab} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.2 }} className="p-6">
                     {activeTab === "diary" && (
                       <div className="space-y-4">
-                        {diaryEntries.map((entry, i) => (
-                          <div key={i} className="flex gap-4 rounded-xl bg-muted/40 p-4 transition-colors hover:bg-muted/70">
+                        {diaryEntries.map((entry) => (
+                          <div key={`${entry.date}-${entry.title}`} className="flex gap-4 rounded-[1.5rem] bg-muted/40 p-4 transition-colors hover:bg-muted/70">
                             <div className="text-3xl">{entry.mood}</div>
                             <div className="flex-1">
-                              <div className="mb-1 flex items-center justify-between">
+                              <div className="mb-1 flex items-center justify-between gap-3">
                                 <h4 className="font-semibold text-foreground">{entry.title}</h4>
                                 <span className="flex items-center gap-1 text-xs text-muted-foreground">
                                   <Calendar className="h-3 w-3" />
                                   {entry.date}
                                 </span>
                               </div>
-                              <p className="text-sm leading-relaxed text-muted-foreground">{entry.text}</p>
-                              <div className="mt-2 flex gap-1.5">
+                              <p className="text-sm leading-7 text-muted-foreground">{entry.text}</p>
+                              <div className="mt-3 flex flex-wrap gap-1.5">
                                 {entry.tags.map((tag) => (
                                   <span key={tag} className="rounded-full bg-primary/10 px-2 py-0.5 text-xs text-primary">
                                     #{tag}
@@ -933,19 +1145,19 @@ export default function AnimalProfile() {
 
                     {activeTab === "health" && (
                       <div className="space-y-3">
-                        {healthHistory.map((item, i) => (
-                          <div key={i} className="flex items-start gap-3 rounded-xl bg-muted/40 p-3">
+                        {healthHistory.map((item) => (
+                          <div key={`${item.date}-${item.event}`} className="flex items-start gap-3 rounded-[1.25rem] bg-muted/40 p-4">
                             <div className="mt-1.5 h-2 w-2 flex-shrink-0 rounded-full bg-green-500" />
                             <div className="flex-1">
-                              <div className="flex items-center justify-between">
+                              <div className="flex items-center justify-between gap-3">
                                 <p className="text-sm font-medium text-foreground">{item.event}</p>
                                 <span className="text-xs text-muted-foreground">{item.date}</span>
                               </div>
-                              <p className="mt-0.5 text-xs text-muted-foreground">{item.note}</p>
+                              <p className="mt-1 text-xs text-muted-foreground">{item.note}</p>
                             </div>
                           </div>
                         ))}
-                        <div className="mt-4 rounded-xl border border-green-200 bg-green-50 p-4">
+                        <div className="mt-4 rounded-[1.25rem] border border-green-200 bg-green-50 p-4">
                           <p className="flex items-center gap-2 text-sm font-semibold text-green-800">
                             <Award className="h-4 w-4" />
                             Следующий плановый осмотр: 10 апреля 2026
@@ -961,8 +1173,8 @@ export default function AnimalProfile() {
                             { label: "Сегодня", value: "1.8 л", trend: "+12%" },
                             { label: "Эта неделя", value: "11.4 л", trend: "+8%" },
                             { label: "Этот месяц", value: "47.2 л", trend: "+5%" },
-                          ].map((stat, i) => (
-                            <div key={i} className="rounded-xl bg-muted/50 p-3 text-center">
+                          ].map((stat) => (
+                            <div key={stat.label} className="rounded-[1.25rem] bg-muted/50 p-3 text-center">
                               <p className="mb-1 text-xs text-muted-foreground">{stat.label}</p>
                               <p className="font-mono-data text-xl font-bold text-foreground">{stat.value}</p>
                               <p className="text-xs font-medium text-green-600">{stat.trend}</p>
@@ -970,7 +1182,7 @@ export default function AnimalProfile() {
                           ))}
                         </div>
                         <div className="flex h-32 items-end gap-1.5">
-                          {[1.4, 1.6, 1.5, 1.7, 1.8, 1.6, 1.8, 1.7, 1.9, 1.8, 1.6, 1.8, 1.7, 1.8].map((v, i) => (
+                          {[0.8, 0.95, 1.1, 1.05, 1.12, 1.2, 1.28, 1.32, 1.4, 1.35, 1.45, 1.5, 1.62, 1.8].map((v, i) => (
                             <motion.div
                               key={i}
                               initial={{ height: 0 }}
@@ -987,47 +1199,46 @@ export default function AnimalProfile() {
                 </AnimatePresence>
               </motion.div>
 
-              <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.18 }} className="rounded-2xl border border-border bg-card p-5 shadow-sm">
-                <div className="mb-4 flex items-center justify-between gap-3">
-                  <div>
-                    <p className="text-sm uppercase tracking-[0.22em] text-primary">История заботы</p>
-                    <h2 className="mt-2 text-2xl font-semibold text-foreground">Марта остаётся в центре маршрута владельца.</h2>
-                  </div>
-                  <Heart className="h-5 w-5 text-primary" />
-                </div>
-                <p className="max-w-3xl text-sm leading-7 text-muted-foreground">
-                  Профиль животного должен соединять ежедневную эмоциональную связь, рациональную прозрачность и переходы в продуктовый трекер и клубную жизнь без тупиковых маршрутов.
-                </p>
-              </motion.div>
+              <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.12 }} className="overflow-hidden rounded-[2rem] border border-border/70 bg-card shadow-sm">
+                <div className="grid gap-0 lg:grid-cols-[1.02fr_0.98fr]">
+                  <div className="p-6">
+                    <p className="text-xs uppercase tracking-[0.22em] text-primary">Маршруты после профиля</p>
+                    <h3 className="mt-2 text-3xl font-semibold text-foreground">Профиль Марты не должен заканчиваться тупиком.</h3>
+                    <p className="mt-3 max-w-2xl text-sm leading-7 text-muted-foreground">
+                      Отсюда пользователь должен естественно продолжать путь в кабинет, продуктовый трекер и клубную жизнь. Поэтому нижний блок превращает эмоциональную страницу в связующий узел всей экосистемы.
+                    </p>
 
-              <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.24 }} className="rounded-2xl bg-gradient-to-r from-slate-800 to-slate-900 p-5 text-white">
-                <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
-                  <div>
-                    <p className="mb-1 text-xs text-white/60">Цифровой паспорт животного</p>
-                    <h3 className="text-lg font-bold">Марта #МК-2023-047</h3>
-                    <p className="mt-1 text-sm text-white/70">Цифровая карточка с историей животного. Подтверждает происхождение, статус и связь владельца с Мартой.</p>
-                    <div className="mt-3 flex items-center gap-3">
-                      <span className="rounded bg-white/10 px-2 py-1 font-mono-data text-xs">0x7f3a...c9b2</span>
-                      <span className="text-xs text-white/60">Выдан: 14.02.2025</span>
+                    <div className="mt-6 space-y-3">
+                      {routeCards.map((card) => {
+                        const Icon = card.icon;
+                        return (
+                          <Link key={card.title} href={card.href} className="group flex items-start justify-between gap-4 rounded-[1.5rem] border border-border/70 bg-background/75 px-5 py-4 transition-all hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-sm">
+                            <div className="flex items-start gap-3">
+                              <div className="rounded-full bg-primary/10 p-2 text-primary">
+                                <Icon className="h-4 w-4" />
+                              </div>
+                              <div>
+                                <div className="font-semibold text-foreground">{card.title}</div>
+                                <div className="mt-1 text-sm leading-6 text-muted-foreground">{card.text}</div>
+                              </div>
+                            </div>
+                            <ArrowRight className="mt-1 h-4 w-4 flex-shrink-0 text-primary transition-transform group-hover:translate-x-0.5" />
+                          </Link>
+                        );
+                      })}
                     </div>
                   </div>
-                </div>
 
-                <div className="mt-5 grid gap-3 sm:grid-cols-3">
-                  <Link href="/dashboard" className="inline-flex items-center justify-center rounded-full bg-white px-4 py-3 text-sm font-semibold text-slate-900 transition-colors hover:bg-white/90">
-                    Вернуться в кабинет
-                  </Link>
-                  <Link href="/tracker" className="inline-flex items-center justify-center rounded-full border border-white/20 px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-white/10">
-                    Открыть трекер продукта
-                  </Link>
-                  <Link href="/club" className="inline-flex items-center justify-center rounded-full border border-white/20 px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-white/10">
-                    Перейти в клуб
-                  </Link>
+                  <div className="overflow-hidden border-t border-border/70 lg:border-t-0 lg:border-l">
+                    <img src={CDN.milk} alt="Связь животного с именной молочной продукцией" className="h-full min-h-[20rem] w-full object-cover" />
+                  </div>
                 </div>
               </motion.div>
             </div>
           </div>
-          {cropDraft && (
+        </div>
+
+        {cropDraft && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/65 px-4 py-6 backdrop-blur-sm">
             <div className="w-full max-w-3xl rounded-[2rem] border border-white/10 bg-background shadow-2xl">
               <div className="flex items-start justify-between gap-4 border-b border-border px-5 py-4">
@@ -1068,7 +1279,7 @@ export default function AnimalProfile() {
                       max={2.5}
                       step={0.1}
                       value={cropDraft.zoom}
-                      onChange={(event) => setCropDraft((current) => current ? { ...current, zoom: Number(event.target.value) } : current)}
+                      onChange={(event) => setCropDraft((current: CropDraft | null) => current ? { ...current, zoom: Number(event.target.value) } : current)}
                       className="mt-3 w-full accent-primary"
                     />
                   </div>
@@ -1084,7 +1295,7 @@ export default function AnimalProfile() {
                       max={1}
                       step={0.05}
                       value={cropDraft.offsetX}
-                      onChange={(event) => setCropDraft((current) => current ? { ...current, offsetX: Number(event.target.value) } : current)}
+                      onChange={(event) => setCropDraft((current: CropDraft | null) => current ? { ...current, offsetX: Number(event.target.value) } : current)}
                       className="mt-3 w-full accent-primary"
                     />
 
@@ -1098,7 +1309,7 @@ export default function AnimalProfile() {
                       max={1}
                       step={0.05}
                       value={cropDraft.offsetY}
-                      onChange={(event) => setCropDraft((current) => current ? { ...current, offsetY: Number(event.target.value) } : current)}
+                      onChange={(event) => setCropDraft((current: CropDraft | null) => current ? { ...current, offsetY: Number(event.target.value) } : current)}
                       className="mt-3 w-full accent-primary"
                     />
                   </div>
@@ -1122,8 +1333,7 @@ export default function AnimalProfile() {
           </div>
         )}
       </div>
-    </div>
-  </div>
+
       <AnimatePresence>
         {lightboxOpen && selectedImage && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-4" onClick={() => setLightboxOpen(false)}>

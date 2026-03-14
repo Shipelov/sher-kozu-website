@@ -75,3 +75,6 @@
 - [x] Встроить новые премиальные изображения в Home, Dashboard, Product Tracker и Club
 - [x] Обновить визуальный язык ключевых страниц под premium family farming storytelling
 - [x] Проверить обновлённые страницы тестами и визуальным smoke-test
+- [x] Усилить визуальный язык страницы Animal Profile в стиле обновлённых ключевых экранов
+- [x] Встроить премиальные изображения и улучшить storytelling на Animal Profile
+- [x] Обновить тесты и выполнить smoke-test страницы Animal Profile
