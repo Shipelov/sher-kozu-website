@@ -24,6 +24,7 @@ import { trpc } from "@/lib/trpc";
 import { NOT_ADMIN_ERR_MSG } from "@shared/const";
 import { CalendarRange, Crown, Pencil, Search, ShieldAlert, Trash2, Users, X } from "lucide-react";
 import { useMemo, useState } from "react";
+import { toast } from "sonner";
 import { useLocation } from "wouter";
 
 type PostFormState = {
@@ -223,30 +224,129 @@ export default function AdminClub() {
     ]);
   };
 
-  const createPost = trpc.adminClub.createPost.useMutation({ onSuccess: refreshAdminData });
-  const updatePost = trpc.adminClub.updatePost.useMutation({ onSuccess: refreshAdminData });
+  const createPost = trpc.adminClub.createPost.useMutation({
+    onSuccess: async (_, variables) => {
+      await refreshAdminData();
+      toast.success("Пост создан", {
+        description: `Материал «${variables.title || "Без названия"}» опубликован в клубной ленте.`,
+      });
+    },
+    onError: (error) => {
+      toast.error("Не удалось создать пост", {
+        description: error.message,
+      });
+    },
+  });
+  const updatePost = trpc.adminClub.updatePost.useMutation({
+    onSuccess: async (_, variables) => {
+      await refreshAdminData();
+      toast.success("Пост сохранён", {
+        description: `Изменения для поста «${variables.title || "Без названия"}» успешно записаны.`,
+      });
+    },
+    onError: (error) => {
+      toast.error("Не удалось сохранить пост", {
+        description: error.message,
+      });
+    },
+  });
   const deletePost = trpc.adminClub.deletePost.useMutation({
     onSuccess: async () => {
+      const deletedTitle = pendingDelete?.title ?? "выбранный пост";
       setPendingDelete(null);
       await refreshAdminData();
+      toast.success("Пост удалён", {
+        description: `Материал «${deletedTitle}» убран из клубной ленты.`,
+      });
+    },
+    onError: (error) => {
+      toast.error("Не удалось удалить пост", {
+        description: error.message,
+      });
     },
   });
 
-  const createEvent = trpc.adminClub.createEvent.useMutation({ onSuccess: refreshAdminData });
-  const updateEvent = trpc.adminClub.updateEvent.useMutation({ onSuccess: refreshAdminData });
+  const createEvent = trpc.adminClub.createEvent.useMutation({
+    onSuccess: async (_, variables) => {
+      await refreshAdminData();
+      toast.success("Событие создано", {
+        description: `Карточка «${variables.title || "Без названия"}» добавлена в Club Feed.`,
+      });
+    },
+    onError: (error) => {
+      toast.error("Не удалось создать событие", {
+        description: error.message,
+      });
+    },
+  });
+  const updateEvent = trpc.adminClub.updateEvent.useMutation({
+    onSuccess: async (_, variables) => {
+      await refreshAdminData();
+      toast.success("Событие сохранено", {
+        description: `Изменения для события «${variables.title || "Без названия"}» успешно применены.`,
+      });
+    },
+    onError: (error) => {
+      toast.error("Не удалось сохранить событие", {
+        description: error.message,
+      });
+    },
+  });
   const deleteEvent = trpc.adminClub.deleteEvent.useMutation({
     onSuccess: async () => {
+      const deletedTitle = pendingDelete?.title ?? "выбранное событие";
       setPendingDelete(null);
       await refreshAdminData();
+      toast.success("Событие удалено", {
+        description: `Карточка «${deletedTitle}» убрана из расписания клуба.`,
+      });
+    },
+    onError: (error) => {
+      toast.error("Не удалось удалить событие", {
+        description: error.message,
+      });
     },
   });
 
-  const createMember = trpc.adminClub.createMember.useMutation({ onSuccess: refreshAdminData });
-  const updateMember = trpc.adminClub.updateMember.useMutation({ onSuccess: refreshAdminData });
+  const createMember = trpc.adminClub.createMember.useMutation({
+    onSuccess: async (_, variables) => {
+      await refreshAdminData();
+      toast.success("Участник добавлен", {
+        description: `Профиль «${variables.name || "Без имени"}» появился в составе клуба.`,
+      });
+    },
+    onError: (error) => {
+      toast.error("Не удалось добавить участника", {
+        description: error.message,
+      });
+    },
+  });
+  const updateMember = trpc.adminClub.updateMember.useMutation({
+    onSuccess: async (_, variables) => {
+      await refreshAdminData();
+      toast.success("Участник сохранён", {
+        description: `Изменения для профиля «${variables.name || "Без имени"}» успешно записаны.`,
+      });
+    },
+    onError: (error) => {
+      toast.error("Не удалось сохранить участника", {
+        description: error.message,
+      });
+    },
+  });
   const deleteMember = trpc.adminClub.deleteMember.useMutation({
     onSuccess: async () => {
+      const deletedTitle = pendingDelete?.title ?? "выбранный участник";
       setPendingDelete(null);
       await refreshAdminData();
+      toast.success("Участник удалён", {
+        description: `Профиль «${deletedTitle}» убран из клубного состава.`,
+      });
+    },
+    onError: (error) => {
+      toast.error("Не удалось удалить участника", {
+        description: error.message,
+      });
     },
   });
 

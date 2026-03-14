@@ -137,6 +137,65 @@ function filterMembers(members: ClubMemberRecord[], filters: MemberFilters) {
   });
 }
 
+function getCrudToastCopy(entity: "post" | "event" | "member", action: "create" | "update" | "delete", title: string) {
+  const safeTitle = title || (entity === "member" ? "Без имени" : "Без названия");
+
+  if (entity === "post") {
+    if (action === "create") {
+      return {
+        title: "Пост создан",
+        description: `Материал «${safeTitle}» опубликован в клубной ленте.`,
+      };
+    }
+    if (action === "update") {
+      return {
+        title: "Пост сохранён",
+        description: `Изменения для поста «${safeTitle}» успешно записаны.`,
+      };
+    }
+    return {
+      title: "Пост удалён",
+      description: `Материал «${safeTitle}» убран из клубной ленты.`,
+    };
+  }
+
+  if (entity === "event") {
+    if (action === "create") {
+      return {
+        title: "Событие создано",
+        description: `Карточка «${safeTitle}» добавлена в Club Feed.`,
+      };
+    }
+    if (action === "update") {
+      return {
+        title: "Событие сохранено",
+        description: `Изменения для события «${safeTitle}» успешно применены.`,
+      };
+    }
+    return {
+      title: "Событие удалено",
+      description: `Карточка «${safeTitle}» убрана из расписания клуба.`,
+    };
+  }
+
+  if (action === "create") {
+    return {
+      title: "Участник добавлен",
+      description: `Профиль «${safeTitle}» появился в составе клуба.`,
+    };
+  }
+  if (action === "update") {
+    return {
+      title: "Участник сохранён",
+      description: `Изменения для профиля «${safeTitle}» успешно записаны.`,
+    };
+  }
+  return {
+    title: "Участник удалён",
+    description: `Профиль «${safeTitle}» убран из клубного состава.`,
+  };
+}
+
 describe("admin club helpers", () => {
   it("creates and updates club posts while preserving ids", () => {
     const created = upsertRecord<ClubPostRecord>([], {
@@ -291,5 +350,31 @@ describe("admin club helpers", () => {
     });
 
     expect(filtered.map((item) => item.id)).toEqual([1]);
+  });
+
+  it("returns consistent toast copy for post create and delete flows", () => {
+    expect(getCrudToastCopy("post", "create", "Утро с Мартой")).toEqual({
+      title: "Пост создан",
+      description: "Материал «Утро с Мартой» опубликован в клубной ленте.",
+    });
+
+    expect(getCrudToastCopy("post", "delete", "Утро с Мартой")).toEqual({
+      title: "Пост удалён",
+      description: "Материал «Утро с Мартой» убран из клубной ленты.",
+    });
+  });
+
+  it("returns consistent toast copy for event update flows", () => {
+    expect(getCrudToastCopy("event", "update", "Летний вечер на ферме")).toEqual({
+      title: "Событие сохранено",
+      description: "Изменения для события «Летний вечер на ферме» успешно применены.",
+    });
+  });
+
+  it("falls back to safe toast copy for unnamed member records", () => {
+    expect(getCrudToastCopy("member", "create", "")).toEqual({
+      title: "Участник добавлен",
+      description: "Профиль «Без имени» появился в составе клуба.",
+    });
   });
 });
