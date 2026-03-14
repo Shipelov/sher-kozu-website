@@ -576,8 +576,8 @@ export default function AnimalProfile() {
           </div>
 
           <div className="container relative">
-            <div className="grid gap-8 lg:grid-cols-[1.02fr_0.98fr] lg:items-center">
-              <div className="max-w-2xl">
+            <div className="grid gap-8 lg:grid-cols-[minmax(0,1.02fr)_minmax(0,0.98fr)] lg:items-center">
+              <div className="min-w-0 max-w-2xl">
                 <motion.div
                   initial={{ opacity: 0, y: 18 }}
                   animate={{ opacity: 1, y: 0 }}
@@ -648,9 +648,9 @@ export default function AnimalProfile() {
                 initial={{ opacity: 0, x: 20 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: 0.18 }}
-                className="relative"
+                className="relative min-w-0"
               >
-                <div className="grid gap-4 md:grid-cols-[1.02fr_0.98fr]">
+                <div className="grid gap-4 md:grid-cols-[minmax(0,1.02fr)_minmax(0,0.98fr)]">
                   <div className="relative overflow-hidden rounded-[2rem] border border-white/60 bg-card shadow-[0_30px_70px_-35px_rgba(33,30,24,0.35)]">
                     <img src={selectedImage?.src ?? CDN.hero} alt={selectedImage?.title ?? "Марта"} className="h-[520px] w-full object-cover" />
                     <div className="absolute inset-0 bg-gradient-to-t from-dark-oak/90 via-dark-oak/18 to-transparent" />
@@ -672,7 +672,7 @@ export default function AnimalProfile() {
 
                   <div className="flex flex-col gap-4">
                     <div className="overflow-hidden rounded-[1.75rem] border border-border/70 bg-card p-4 shadow-sm">
-                      <div className="flex items-start gap-4">
+                      <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
                         <img src={CDN.farm} alt="Семейная ферма Шерь Козу" className="h-28 w-24 rounded-2xl object-cover object-center" />
                         <div>
                           <p className="text-xs uppercase tracking-[0.18em] text-primary">Происхождение</p>
@@ -712,10 +712,10 @@ export default function AnimalProfile() {
         </section>
 
         <div className="container py-10 md:py-14">
-          <div className="grid gap-6 xl:grid-cols-[0.98fr_1.02fr]">
-            <div className="space-y-6">
+          <div className="grid gap-6 xl:grid-cols-[minmax(0,0.98fr)_minmax(0,1.02fr)]">
+            <div className="min-w-0 space-y-6">
               <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} className="rounded-[2rem] border border-border/70 bg-card p-6 shadow-sm">
-                <div className="flex items-start justify-between gap-4">
+                <div className="flex flex-wrap items-start justify-between gap-4">
                   <div>
                     <p className="text-xs uppercase tracking-[0.22em] text-primary">Паспорт и статус</p>
                     <h3 className="mt-2 text-2xl font-semibold text-foreground">Премиальный профиль животного</h3>
@@ -723,7 +723,7 @@ export default function AnimalProfile() {
                       Страница Марты должна удерживать баланс между тёплой личной связью и доказательной прозрачностью ухода.
                     </p>
                   </div>
-                  <div className="rounded-full bg-primary/10 p-3 text-primary">
+                  <div className="shrink-0 rounded-full bg-primary/10 p-3 text-primary">
                     <ShieldCheck className="h-5 w-5" />
                   </div>
                 </div>
@@ -769,9 +769,9 @@ export default function AnimalProfile() {
                         { label: "Годовой надой", value: "~650 л" },
                         { label: "Стойло", value: "№3, Ферма Шерь Козу" },
                       ].map((item) => (
-                        <div key={item.label} className="flex items-center justify-between gap-4 rounded-2xl bg-card px-4 py-3">
+                        <div key={item.label} className="flex flex-col items-start gap-1 rounded-2xl bg-card px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
                           <span className="text-muted-foreground">{item.label}</span>
-                          <span className="font-medium text-foreground">{item.value}</span>
+                          <span className="max-w-full break-words text-left font-medium text-foreground sm:text-right">{item.value}</span>
                         </div>
                       ))}
                     </div>
@@ -833,7 +833,7 @@ export default function AnimalProfile() {
                 </div>
 
                 <div className="p-6">
-                  <div className="grid gap-4 xl:grid-cols-[1.08fr_0.92fr]">
+                  <div className="grid gap-4 xl:grid-cols-[minmax(0,1.08fr)_minmax(0,0.92fr)]">
                     <div className="space-y-4">
                       <label
                         className={`block rounded-[1.5rem] border border-dashed p-5 transition-all ${isDragActive ? "border-primary bg-primary/5 shadow-sm shadow-primary/10" : "border-emerald-200 bg-emerald-50/80"}`}
@@ -911,7 +911,7 @@ export default function AnimalProfile() {
 
                     <div className="space-y-4">
                       <div className="rounded-[1.5rem] border border-border/70 bg-background/70 p-4">
-                        <div className="flex items-center justify-between gap-3">
+                        <div className="flex flex-wrap items-center justify-between gap-3">
                           <p className="text-sm font-semibold text-foreground">Последние действия</p>
                           <span className="text-xs text-muted-foreground">До 4 записей</span>
                         </div>
@@ -1039,7 +1039,7 @@ export default function AnimalProfile() {
               </motion.div>
 
               <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="overflow-hidden rounded-[2rem] border border-border/70 bg-card shadow-sm">
-                <div className="grid gap-0 lg:grid-cols-[0.95fr_1.05fr]">
+                <div className="grid gap-0 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
                   <div className="group relative min-h-[20rem] overflow-hidden">
                     <img src={CDN.liveCam} alt="Прямой эфир Марты" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
                     <div className="absolute inset-0 bg-black/35 transition-colors group-hover:bg-black/20" />
@@ -1079,8 +1079,8 @@ export default function AnimalProfile() {
               </motion.div>
             </div>
 
-            <div className="space-y-6">
-              <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+            <div className="min-w-0 space-y-6">
+              <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
                 {[
                   { emoji: "🥕", label: "Покормить", sub: "морковкой", color: "bg-orange-50 border-orange-200 hover:bg-orange-100" },
                   { emoji: "🛁", label: "SPA-уход", sub: "груминг", color: "bg-blue-50 border-blue-200 hover:bg-blue-100" },
@@ -1149,7 +1149,7 @@ export default function AnimalProfile() {
                           <div key={`${item.date}-${item.event}`} className="flex items-start gap-3 rounded-[1.25rem] bg-muted/40 p-4">
                             <div className="mt-1.5 h-2 w-2 flex-shrink-0 rounded-full bg-green-500" />
                             <div className="flex-1">
-                              <div className="flex items-center justify-between gap-3">
+                              <div className="flex flex-wrap items-center justify-between gap-3">
                                 <p className="text-sm font-medium text-foreground">{item.event}</p>
                                 <span className="text-xs text-muted-foreground">{item.date}</span>
                               </div>
@@ -1168,7 +1168,7 @@ export default function AnimalProfile() {
 
                     {activeTab === "milk" && (
                       <div>
-                        <div className="mb-5 grid grid-cols-3 gap-3">
+                        <div className="mb-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
                           {[
                             { label: "Сегодня", value: "1.8 л", trend: "+12%" },
                             { label: "Эта неделя", value: "11.4 л", trend: "+8%" },
@@ -1200,7 +1200,7 @@ export default function AnimalProfile() {
               </motion.div>
 
               <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.12 }} className="overflow-hidden rounded-[2rem] border border-border/70 bg-card shadow-sm">
-                <div className="grid gap-0 lg:grid-cols-[1.02fr_0.98fr]">
+                <div className="grid gap-0 lg:grid-cols-[minmax(0,1.02fr)_minmax(0,0.98fr)]">
                   <div className="p-6">
                     <p className="text-xs uppercase tracking-[0.22em] text-primary">Маршруты после профиля</p>
                     <h3 className="mt-2 text-3xl font-semibold text-foreground">Профиль Марты не должен заканчиваться тупиком.</h3>
@@ -1212,7 +1212,7 @@ export default function AnimalProfile() {
                       {routeCards.map((card) => {
                         const Icon = card.icon;
                         return (
-                          <Link key={card.title} href={card.href} className="group flex items-start justify-between gap-4 rounded-[1.5rem] border border-border/70 bg-background/75 px-5 py-4 transition-all hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-sm">
+                          <Link key={card.title} href={card.href} className="group flex flex-col gap-4 rounded-[1.5rem] border border-border/70 bg-background/75 px-5 py-4 transition-all hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-sm sm:flex-row sm:items-start sm:justify-between">
                             <div className="flex items-start gap-3">
                               <div className="rounded-full bg-primary/10 p-2 text-primary">
                                 <Icon className="h-4 w-4" />
@@ -1269,7 +1269,7 @@ export default function AnimalProfile() {
 
                 <div className="space-y-5">
                   <div className="rounded-[1.5rem] border border-border bg-card p-4">
-                    <div className="flex items-center justify-between gap-3">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
                       <p className="text-sm font-semibold text-foreground">Приближение</p>
                       <span className="text-xs text-muted-foreground">{cropDraft.zoom.toFixed(1)}x</span>
                     </div>
@@ -1285,7 +1285,7 @@ export default function AnimalProfile() {
                   </div>
 
                   <div className="rounded-[1.5rem] border border-border bg-card p-4">
-                    <div className="flex items-center justify-between gap-3">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
                       <p className="text-sm font-semibold text-foreground">Смещение по горизонтали</p>
                       <span className="text-xs text-muted-foreground">{Math.round(cropDraft.offsetX * 100)}%</span>
                     </div>
