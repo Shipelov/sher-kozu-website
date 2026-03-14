@@ -647,6 +647,15 @@ export default function AdminClub() {
                   resultCount={filteredPosts.length}
                   resultLabel="постов"
                   resetLabel="Сбросить фильтры постов"
+                  activeFilterChips={[
+                    postFilters.query ? `Поиск: ${postFilters.query}` : null,
+                    postFilters.category !== "all" ? `Категория: ${postFilters.category}` : null,
+                    postFilters.pinned === "pinned"
+                      ? "Тип: только pinned"
+                      : postFilters.pinned === "regular"
+                        ? "Тип: только обычные"
+                        : null,
+                  ].filter(Boolean) as string[]}
                   onSearchChange={(value) => setPostFilters((current) => ({ ...current, query: value }))}
                   onReset={() => setPostFilters(defaultPostFilters())}
                   hasActiveFilters={postFilters.query !== "" || postFilters.category !== "all" || postFilters.pinned !== "all"}
@@ -748,6 +757,11 @@ export default function AdminClub() {
                   resultCount={filteredEvents.length}
                   resultLabel="событий"
                   resetLabel="Сбросить фильтры событий"
+                  activeFilterChips={[
+                    eventFilters.query ? `Поиск: ${eventFilters.query}` : null,
+                    eventFilters.status !== "all" ? `Статус: ${eventFilters.status}` : null,
+                    eventFilters.tone !== "all" ? `Тон: ${eventFilters.tone}` : null,
+                  ].filter(Boolean) as string[]}
                   onSearchChange={(value) => setEventFilters((current) => ({ ...current, query: value }))}
                   onReset={() => setEventFilters(defaultEventFilters())}
                   hasActiveFilters={eventFilters.query !== "" || eventFilters.status !== "all" || eventFilters.tone !== "all"}
@@ -836,6 +850,10 @@ export default function AdminClub() {
                   resultCount={filteredMembers.length}
                   resultLabel="участников"
                   resetLabel="Сбросить фильтры участников"
+                  activeFilterChips={[
+                    memberFilters.query ? `Поиск: ${memberFilters.query}` : null,
+                    memberFilters.badge !== "all" ? `Бейдж: ${memberFilters.badge}` : null,
+                  ].filter(Boolean) as string[]}
                   onSearchChange={(value) => setMemberFilters((current) => ({ ...current, query: value }))}
                   onReset={() => setMemberFilters(defaultMemberFilters())}
                   hasActiveFilters={memberFilters.query !== "" || memberFilters.badge !== "all"}
@@ -955,6 +973,7 @@ function FilterToolbar({
   resultCount,
   resultLabel,
   resetLabel,
+  activeFilterChips,
   onSearchChange,
   onReset,
   hasActiveFilters,
@@ -965,6 +984,7 @@ function FilterToolbar({
   resultCount: number;
   resultLabel: string;
   resetLabel: string;
+  activeFilterChips?: string[];
   onSearchChange: (value: string) => void;
   onReset: () => void;
   hasActiveFilters: boolean;
@@ -989,6 +1009,18 @@ function FilterToolbar({
           <X className="mr-2 h-4 w-4" />{resetLabel}
         </Button>
       </div>
+      {activeFilterChips?.length ? (
+        <div className="flex flex-wrap gap-2">
+          {activeFilterChips.map((chip) => (
+            <span
+              key={chip}
+              className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-900"
+            >
+              {chip}
+            </span>
+          ))}
+        </div>
+      ) : null}
       {children ? <div className="grid gap-3 md:grid-cols-2">{children}</div> : null}
     </div>
   );
