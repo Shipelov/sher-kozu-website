@@ -3,6 +3,11 @@ import { describe, expect, it } from "vitest";
 type ClubPostRecord = {
   id: number;
   title: string;
+  text?: string;
+  author?: string;
+  category?: string;
+  tagsCsv?: string;
+  timeLabel?: string;
   pinned: boolean;
   sortOrder: number;
 };
@@ -10,6 +15,10 @@ type ClubPostRecord = {
 type ClubEventRecord = {
   id: number;
   title: string;
+  description?: string;
+  dateLabel?: string;
+  status?: string;
+  tone?: string;
   sortOrder: number;
 };
 
@@ -17,7 +26,26 @@ type ClubMemberRecord = {
   id: number;
   name: string;
   animal: string;
+  sinceLabel?: string;
+  badge?: string;
   sortOrder: number;
+};
+
+type PostFilters = {
+  query: string;
+  category: string;
+  pinned: "all" | "pinned" | "regular";
+};
+
+type EventFilters = {
+  query: string;
+  status: string;
+  tone: string;
+};
+
+type MemberFilters = {
+  query: string;
+  badge: string;
 };
 
 function upsertRecord<T extends { id?: number }>(records: T[], nextRecord: T & { id?: number }) {
@@ -45,6 +73,67 @@ function sortByOrder<T extends { sortOrder: number; id: number }>(records: T[]) 
   return [...records].sort((a, b) => {
     if (a.sortOrder !== b.sortOrder) return a.sortOrder - b.sortOrder;
     return a.id - b.id;
+  });
+}
+
+function normalizeSearchValue(value: string) {
+  return value.trim().toLowerCase();
+}
+
+function includesQuery(fields: Array<string | number | null | undefined>, query: string) {
+  if (!query) return true;
+  return fields.some((field) => String(field ?? "").toLowerCase().includes(query));
+}
+
+function filterPosts(posts: ClubPostRecord[], filters: PostFilters) {
+  const query = normalizeSearchValue(filters.query);
+  return posts.filter((post) => {
+    const matchesQuery = includesQuery([
+      post.title,
+      post.text,
+      post.author,
+      post.category,
+      post.tagsCsv,
+      post.timeLabel,
+    ], query);
+    const matchesCategory = filters.category === "all" || post.category === filters.category;
+    const matchesPinned = filters.pinned === "all"
+      || (filters.pinned === "pinned" && Boolean(post.pinned))
+      || (filters.pinned === "regular" && !Boolean(post.pinned));
+
+    return matchesQuery && matchesCategory && matchesPinned;
+  });
+}
+
+function filterEvents(events: ClubEventRecord[], filters: EventFilters) {
+  const query = normalizeSearchValue(filters.query);
+  return events.filter((event) => {
+    const matchesQuery = includesQuery([
+      event.title,
+      event.description,
+      event.dateLabel,
+      event.status,
+      event.tone,
+    ], query);
+    const matchesStatus = filters.status === "all" || event.status === filters.status;
+    const matchesTone = filters.tone === "all" || event.tone === filters.tone;
+
+    return matchesQuery && matchesStatus && matchesTone;
+  });
+}
+
+function filterMembers(members: ClubMemberRecord[], filters: MemberFilters) {
+  const query = normalizeSearchValue(filters.query);
+  return members.filter((member) => {
+    const matchesQuery = includesQuery([
+      member.name,
+      member.animal,
+      member.sinceLabel,
+      member.badge,
+    ], query);
+    const matchesBadge = filters.badge === "all" || member.badge === filters.badge;
+
+    return matchesQuery && matchesBadge;
   });
 }
 
@@ -103,5 +192,104 @@ describe("admin club helpers", () => {
     ]);
 
     expect(sorted.map((item) => item.id)).toEqual([1, 2, 3]);
+  });
+
+  it("filters posts by query, category and pinned flag together", () => {
+    const filtered = filterPosts([
+      {
+        id: 1,
+        title: "Утро с Мартой",
+        text: "Свежий дневник из козьего дома",
+        author: "Команда фермы",
+        category: "journal",
+        tagsCsv: "марта,утро",
+        timeLabel: "Сегодня",
+        pinned: true,
+        sortOrder: 0,
+      },
+      {
+        id: 2,
+        title: "Рецепт сыра",
+        text: "Разбираем сезонную сыроварню",
+        author: "Анна",
+        category: "kitchen",
+        tagsCsv: "сыр,рецепт",
+        timeLabel: "Вчера",
+        pinned: false,
+        sortOrder: 1,
+      },
+      {
+        id: 3,
+        title: "Встреча клуба",
+        text: "Готовим субботний визит",
+        author: "Команда фермы",
+        category: "events",
+        tagsCsv: "клуб,визит",
+        timeLabel: "Пятница",
+        pinned: true,
+        sortOrder: 2,
+      },
+    ], {
+      query: "марта",
+      category: "journal",
+      pinned: "pinned",
+    });
+
+    expect(filtered.map((item) => item.id)).toEqual([1]);
+  });
+
+  it("filters events by query, status and tone", () => {
+    const filtered = filterEvents([
+      {
+        id: 1,
+        title: "Весенний визит",
+        description: "Семейный день на ферме",
+        dateLabel: "20 апреля",
+        status: "Открыта регистрация",
+        tone: "warm",
+        sortOrder: 0,
+      },
+      {
+        id: 2,
+        title: "Онлайн-дегустация",
+        description: "Вечер с новыми сырами",
+        dateLabel: "25 апреля",
+        status: "Лист ожидания",
+        tone: "calm",
+        sortOrder: 1,
+      },
+    ], {
+      query: "сырами",
+      status: "Лист ожидания",
+      tone: "calm",
+    });
+
+    expect(filtered.map((item) => item.id)).toEqual([2]);
+  });
+
+  it("filters members by query and badge", () => {
+    const filtered = filterMembers([
+      {
+        id: 1,
+        name: "Семья Петровых",
+        animal: "Марта",
+        sinceLabel: "С весны 2024",
+        badge: "Founder",
+        sortOrder: 0,
+      },
+      {
+        id: 2,
+        name: "Елена",
+        animal: "Луна",
+        sinceLabel: "С осени 2025",
+        badge: "New",
+        sortOrder: 1,
+      },
+    ], {
+      query: "марта",
+      badge: "Founder",
+    });
+
+    expect(filtered.map((item) => item.id)).toEqual([1]);
   });
 });

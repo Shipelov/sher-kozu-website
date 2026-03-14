@@ -12,7 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { trpc } from "@/lib/trpc";
 import { NOT_ADMIN_ERR_MSG } from "@shared/const";
-import { CalendarRange, Crown, Pencil, ShieldAlert, Trash2, Users } from "lucide-react";
+import { CalendarRange, Crown, Pencil, Search, ShieldAlert, Trash2, Users, X } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useLocation } from "wouter";
 
@@ -52,6 +52,23 @@ type MemberFormState = {
   sortOrder: number;
 };
 
+type PostFilterState = {
+  query: string;
+  category: string;
+  pinned: "all" | "pinned" | "regular";
+};
+
+type EventFilterState = {
+  query: string;
+  status: string;
+  tone: string;
+};
+
+type MemberFilterState = {
+  query: string;
+  badge: string;
+};
+
 const defaultPostForm = (): PostFormState => ({
   category: "journal",
   author: "Команда фермы",
@@ -85,6 +102,97 @@ const defaultMemberForm = (): MemberFormState => ({
   sortOrder: 0,
 });
 
+const defaultPostFilters = (): PostFilterState => ({
+  query: "",
+  category: "all",
+  pinned: "all",
+});
+
+const defaultEventFilters = (): EventFilterState => ({
+  query: "",
+  status: "all",
+  tone: "all",
+});
+
+const defaultMemberFilters = (): MemberFilterState => ({
+  query: "",
+  badge: "all",
+});
+
+function normalizeSearchValue(value: string) {
+  return value.trim().toLowerCase();
+}
+
+function includesQuery(fields: Array<string | number | null | undefined>, query: string) {
+  if (!query) return true;
+  return fields.some((field) => String(field ?? "").toLowerCase().includes(query));
+}
+
+function filterPosts(
+  posts: any[],
+  filters: PostFilterState,
+) {
+  const query = normalizeSearchValue(filters.query);
+  return posts.filter((post) => {
+    const matchesQuery = includesQuery([
+      post.title,
+      post.text,
+      post.author,
+      post.category,
+      post.tagsCsv,
+      post.timeLabel,
+    ], query);
+    const matchesCategory = filters.category === "all" || post.category === filters.category;
+    const matchesPinned = filters.pinned === "all"
+      || (filters.pinned === "pinned" && Boolean(post.pinned))
+      || (filters.pinned === "regular" && !Boolean(post.pinned));
+
+    return matchesQuery && matchesCategory && matchesPinned;
+  });
+}
+
+function filterEvents(
+  events: any[],
+  filters: EventFilterState,
+) {
+  const query = normalizeSearchValue(filters.query);
+  return events.filter((event) => {
+    const matchesQuery = includesQuery([
+      event.title,
+      event.description,
+      event.dateLabel,
+      event.status,
+      event.tone,
+    ], query);
+    const matchesStatus = filters.status === "all" || event.status === filters.status;
+    const matchesTone = filters.tone === "all" || event.tone === filters.tone;
+
+    return matchesQuery && matchesStatus && matchesTone;
+  });
+}
+
+function filterMembers(
+  members: any[],
+  filters: MemberFilterState,
+) {
+  const query = normalizeSearchValue(filters.query);
+  return members.filter((member) => {
+    const matchesQuery = includesQuery([
+      member.name,
+      member.animal,
+      member.sinceLabel,
+      member.badge,
+    ], query);
+    const matchesBadge = filters.badge === "all" || member.badge === filters.badge;
+
+    return matchesQuery && matchesBadge;
+  });
+}
+
+function uniqueValues(items: any[], key: string) {
+  return Array.from(new Set(items.map((item) => String(item[key] ?? "")).filter(Boolean)));
+}
+
 export default function AdminClub() {
   const { user, loading } = useAuth();
   const [, setLocation] = useLocation();
@@ -92,6 +200,9 @@ export default function AdminClub() {
   const [postForm, setPostForm] = useState<PostFormState>(defaultPostForm);
   const [eventForm, setEventForm] = useState<EventFormState>(defaultEventForm);
   const [memberForm, setMemberForm] = useState<MemberFormState>(defaultMemberForm);
+  const [postFilters, setPostFilters] = useState<PostFilterState>(defaultPostFilters);
+  const [eventFilters, setEventFilters] = useState<EventFilterState>(defaultEventFilters);
+  const [memberFilters, setMemberFilters] = useState<MemberFilterState>(defaultMemberFilters);
 
   const adminQuery = trpc.adminClub.dashboard.useQuery(undefined, {
     enabled: Boolean(user?.role === "admin"),
@@ -116,11 +227,24 @@ export default function AdminClub() {
   const updateMember = trpc.adminClub.updateMember.useMutation({ onSuccess: refreshAdminData });
   const deleteMember = trpc.adminClub.deleteMember.useMutation({ onSuccess: refreshAdminData });
 
+  const posts = adminQuery.data?.posts ?? [];
+  const events = adminQuery.data?.events ?? [];
+  const members = adminQuery.data?.members ?? [];
+
   const counts = useMemo(() => ({
-    posts: adminQuery.data?.posts.length ?? 0,
-    events: adminQuery.data?.events.length ?? 0,
-    members: adminQuery.data?.members.length ?? 0,
-  }), [adminQuery.data]);
+    posts: posts.length,
+    events: events.length,
+    members: members.length,
+  }), [events.length, members.length, posts.length]);
+
+  const filteredPosts = useMemo(() => filterPosts(posts, postFilters), [posts, postFilters]);
+  const filteredEvents = useMemo(() => filterEvents(events, eventFilters), [events, eventFilters]);
+  const filteredMembers = useMemo(() => filterMembers(members, memberFilters), [members, memberFilters]);
+
+  const postCategories = useMemo(() => uniqueValues(posts, "category"), [posts]);
+  const eventStatuses = useMemo(() => uniqueValues(events, "status"), [events]);
+  const eventTones = useMemo(() => uniqueValues(events, "tone"), [events]);
+  const memberBadges = useMemo(() => uniqueValues(members, "badge"), [members]);
 
   if (loading) {
     return (
@@ -174,7 +298,7 @@ export default function AdminClub() {
               </Badge>
               <CardTitle className="text-3xl text-stone-950">Управление клубными постами, событиями и участниками</CardTitle>
               <CardDescription className="max-w-2xl text-base text-stone-600">
-                Панель помогает быстро обновлять клубную ленту без редактирования базы вручную: можно создавать, править и удалять посты, события и карточки участников.
+                Панель помогает быстро обновлять клубную ленту без редактирования базы вручную: можно создавать, править, удалять, искать и фильтровать ключевые сущности клуба.
               </CardDescription>
             </CardHeader>
             <CardContent className="grid gap-3 sm:grid-cols-3">
@@ -268,8 +392,35 @@ export default function AdminClub() {
 
             <EntityListCard
               title="Текущие посты"
-              description="Быстрое редактирование и удаление существующих материалов клуба."
-              items={adminQuery.data?.posts ?? []}
+              description="Быстрое редактирование, удаление, поиск и фильтрация материалов клуба."
+              toolbar={
+                <FilterToolbar
+                  searchPlaceholder="Искать по заголовку, тексту, автору или тегам"
+                  searchValue={postFilters.query}
+                  onSearchChange={(value) => setPostFilters((current) => ({ ...current, query: value }))}
+                  onReset={() => setPostFilters(defaultPostFilters())}
+                  hasActiveFilters={postFilters.query !== "" || postFilters.category !== "all" || postFilters.pinned !== "all"}
+                >
+                  <SelectFilter
+                    label="Категория"
+                    value={postFilters.category}
+                    onChange={(value) => setPostFilters((current) => ({ ...current, category: value }))}
+                    options={[{ label: "Все категории", value: "all" }, ...postCategories.map((value) => ({ label: value, value }))]}
+                  />
+                  <SelectFilter
+                    label="Тип"
+                    value={postFilters.pinned}
+                    onChange={(value) => setPostFilters((current) => ({ ...current, pinned: value as PostFilterState["pinned"] }))}
+                    options={[
+                      { label: "Все посты", value: "all" },
+                      { label: "Только pinned", value: "pinned" },
+                      { label: "Только обычные", value: "regular" },
+                    ]}
+                  />
+                </FilterToolbar>
+              }
+              items={filteredPosts}
+              emptyText="По текущим фильтрам посты не найдены."
               renderItem={(post: any) => (
                 <ListRow
                   title={post.title}
@@ -334,8 +485,31 @@ export default function AdminClub() {
 
             <EntityListCard
               title="События клуба"
-              description="Редактируйте даты, статусы и тексты без вмешательства в базу данных вручную."
-              items={adminQuery.data?.events ?? []}
+              description="Редактируйте даты, статусы и тексты, а также быстро находите нужные записи."
+              toolbar={
+                <FilterToolbar
+                  searchPlaceholder="Искать по названию, описанию или дате"
+                  searchValue={eventFilters.query}
+                  onSearchChange={(value) => setEventFilters((current) => ({ ...current, query: value }))}
+                  onReset={() => setEventFilters(defaultEventFilters())}
+                  hasActiveFilters={eventFilters.query !== "" || eventFilters.status !== "all" || eventFilters.tone !== "all"}
+                >
+                  <SelectFilter
+                    label="Статус"
+                    value={eventFilters.status}
+                    onChange={(value) => setEventFilters((current) => ({ ...current, status: value }))}
+                    options={[{ label: "Все статусы", value: "all" }, ...eventStatuses.map((value) => ({ label: value, value }))]}
+                  />
+                  <SelectFilter
+                    label="Тон"
+                    value={eventFilters.tone}
+                    onChange={(value) => setEventFilters((current) => ({ ...current, tone: value }))}
+                    options={[{ label: "Все тона", value: "all" }, ...eventTones.map((value) => ({ label: value, value }))]}
+                  />
+                </FilterToolbar>
+              }
+              items={filteredEvents}
+              emptyText="По текущим фильтрам события не найдены."
               renderItem={(event: any) => (
                 <ListRow
                   title={event.title}
@@ -391,8 +565,25 @@ export default function AdminClub() {
 
             <EntityListCard
               title="Участники клуба"
-              description="Панель помогает обновлять состав сообщества и подписи карточек в ленте."
-              items={adminQuery.data?.members ?? []}
+              description="Ищите по имени, животному или бейджу и быстро поддерживайте состав сообщества в порядке."
+              toolbar={
+                <FilterToolbar
+                  searchPlaceholder="Искать по имени, животному или периоду участия"
+                  searchValue={memberFilters.query}
+                  onSearchChange={(value) => setMemberFilters((current) => ({ ...current, query: value }))}
+                  onReset={() => setMemberFilters(defaultMemberFilters())}
+                  hasActiveFilters={memberFilters.query !== "" || memberFilters.badge !== "all"}
+                >
+                  <SelectFilter
+                    label="Бейдж"
+                    value={memberFilters.badge}
+                    onChange={(value) => setMemberFilters((current) => ({ ...current, badge: value }))}
+                    options={[{ label: "Все бейджи", value: "all" }, ...memberBadges.map((value) => ({ label: value, value }))]}
+                  />
+                </FilterToolbar>
+              }
+              items={filteredMembers}
+              emptyText="По текущим фильтрам участники не найдены."
               renderItem={(member: any) => (
                 <ListRow
                   title={member.name}
@@ -459,13 +650,17 @@ function EntityFormCard({
 function EntityListCard({
   title,
   description,
+  toolbar,
   items,
   renderItem,
+  emptyText,
 }: {
   title: string;
   description: string;
+  toolbar?: React.ReactNode;
   items: any[];
   renderItem: (item: any) => React.ReactNode;
+  emptyText?: string;
 }) {
   return (
     <Card>
@@ -473,10 +668,74 @@ function EntityListCard({
         <CardTitle>{title}</CardTitle>
         <CardDescription>{description}</CardDescription>
       </CardHeader>
-      <CardContent className="space-y-3">
-        {items.length ? items.map((item) => <div key={item.id}>{renderItem(item)}</div>) : <p className="text-sm text-stone-500">Пока нет записей.</p>}
+      <CardContent className="space-y-4">
+        {toolbar}
+        <div className="space-y-3">
+          {items.length ? items.map((item) => <div key={item.id}>{renderItem(item)}</div>) : <p className="text-sm text-stone-500">{emptyText ?? "Пока нет записей."}</p>}
+        </div>
       </CardContent>
     </Card>
+  );
+}
+
+function FilterToolbar({
+  searchPlaceholder,
+  searchValue,
+  onSearchChange,
+  onReset,
+  hasActiveFilters,
+  children,
+}: {
+  searchPlaceholder: string;
+  searchValue: string;
+  onSearchChange: (value: string) => void;
+  onReset: () => void;
+  hasActiveFilters: boolean;
+  children?: React.ReactNode;
+}) {
+  return (
+    <div className="rounded-2xl border border-stone-200 bg-stone-50/80 p-4 space-y-4">
+      <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_auto] md:items-end">
+        <div className="space-y-2">
+          <Label>Поиск</Label>
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400" />
+            <Input className="pl-9" value={searchValue} onChange={(e) => onSearchChange(e.target.value)} placeholder={searchPlaceholder} />
+          </div>
+        </div>
+        <Button variant="outline" onClick={onReset} disabled={!hasActiveFilters}>
+          <X className="mr-2 h-4 w-4" />Сбросить
+        </Button>
+      </div>
+      {children ? <div className="grid gap-3 md:grid-cols-2">{children}</div> : null}
+    </div>
+  );
+}
+
+function SelectFilter({
+  label,
+  value,
+  onChange,
+  options,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  options: Array<{ label: string; value: string }>;
+}) {
+  return (
+    <div className="space-y-2">
+      <Label>{label}</Label>
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="flex h-10 w-full rounded-md border border-stone-200 bg-white px-3 py-2 text-sm text-stone-950 shadow-sm outline-none transition focus-visible:ring-2 focus-visible:ring-stone-300"
+      >
+        {options.map((option) => (
+          <option key={option.value} value={option.value}>{option.label}</option>
+        ))}
+      </select>
+    </div>
   );
 }
 
