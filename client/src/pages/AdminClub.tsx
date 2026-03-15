@@ -22,7 +22,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { trpc } from "@/lib/trpc";
 import { NOT_ADMIN_ERR_MSG } from "@shared/const";
-import { CalendarRange, Crown, Pencil, Save, Search, ShieldAlert, Trash2, Users, X } from "lucide-react";
+import { CalendarRange, CheckSquare, Crown, Pencil, Pin, Save, Search, ShieldAlert, Square, Trash2, Users, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import { toast } from "sonner";
@@ -97,6 +97,9 @@ type PendingDeleteState =
   | { entity: "post"; id: number; title: string; description: string }
   | { entity: "event"; id: number; title: string; description: string }
   | { entity: "member"; id: number; title: string; description: string }
+  | { entity: "bulk-post"; ids: number[]; title: string; description: string }
+  | { entity: "bulk-event"; ids: number[]; title: string; description: string }
+  | { entity: "bulk-member"; ids: number[]; title: string; description: string }
   | null;
 
 type AdminTabValue = "posts" | "events" | "members";
@@ -125,6 +128,17 @@ type FormErrors<T extends string> = Partial<Record<T, string>>;
 type PostFormField = "category" | "author" | "role" | "timeLabel" | "title" | "text";
 type EventFormField = "title" | "dateLabel" | "description" | "status" | "tone";
 type MemberFormField = "name" | "animal" | "sinceLabel";
+
+type SelectionState = Record<AdminTabValue, number[]>;
+
+type BulkActionConfig = {
+  label: string;
+  icon?: ReactNode;
+  variant?: "default" | "outline";
+  destructive?: boolean;
+  disabled?: boolean;
+  onClick: () => void;
+};
 
 const defaultPostForm = (): PostFormState => ({
   category: "journal",
@@ -426,6 +440,7 @@ export default function AdminClub() {
   const [eventErrors, setEventErrors] = useState<FormErrors<EventFormField>>({});
   const [memberErrors, setMemberErrors] = useState<FormErrors<MemberFormField>>({});
   const [presetName, setPresetName] = useState<Record<AdminTabValue, string>>({ posts: "", events: "", members: "" });
+  const [selectedIds, setSelectedIds] = useState<SelectionState>({ posts: [], events: [], members: [] });
 
   const adminQuery = trpc.adminClub.dashboard.useQuery(undefined, {
     enabled: Boolean(user?.role === "admin"),
@@ -624,6 +639,12 @@ export default function AdminClub() {
   const eventStatuses = useMemo(() => uniqueValues(events, "status"), [events]);
   const eventTones = useMemo(() => uniqueValues(events, "tone"), [events]);
   const memberBadges = useMemo(() => uniqueValues(members, "badge"), [members]);
+  const selectedPosts = useMemo(() => filteredPosts.filter((post) => selectedIds.posts.includes(post.id)), [filteredPosts, selectedIds.posts]);
+  const selectedEvents = useMemo(() => filteredEvents.filter((event) => selectedIds.events.includes(event.id)), [filteredEvents, selectedIds.events]);
+  const selectedMembers = useMemo(() => filteredMembers.filter((member) => selectedIds.members.includes(member.id)), [filteredMembers, selectedIds.members]);
+  const allVisiblePostsSelected = filteredPosts.length > 0 && filteredPosts.every((post) => selectedIds.posts.includes(post.id));
+  const allVisibleEventsSelected = filteredEvents.length > 0 && filteredEvents.every((event) => selectedIds.events.includes(event.id));
+  const allVisibleMembersSelected = filteredMembers.length > 0 && filteredMembers.every((member) => selectedIds.members.includes(member.id));
   const presetsByTab = useMemo(() => ({
     posts: presets.filter((preset) => preset.tab === "posts"),
     events: presets.filter((preset) => preset.tab === "events"),
@@ -631,6 +652,30 @@ export default function AdminClub() {
   }), [presets]);
 
   const isDeleting = deletePost.isPending || deleteEvent.isPending || deleteMember.isPending;
+
+  const setTabSelection = (tab: AdminTabValue, ids: number[]) => {
+    setSelectedIds((current) => ({ ...current, [tab]: ids }));
+  };
+
+  const toggleSelection = (tab: AdminTabValue, id: number) => {
+    setSelectedIds((current) => ({
+      ...current,
+      [tab]: current[tab].includes(id)
+        ? current[tab].filter((currentId) => currentId !== id)
+        : [...current[tab], id],
+    }));
+  };
+
+  const toggleSelectAllVisible = (tab: AdminTabValue, ids: number[]) => {
+    setSelectedIds((current) => ({
+      ...current,
+      [tab]: current[tab].length === ids.length && ids.every((id) => current[tab].includes(id)) ? [] : ids,
+    }));
+  };
+
+  const clearSelection = (tab: AdminTabValue) => {
+    setTabSelection(tab, []);
+  };
 
   const handleSavePreset = async (tab: AdminTabValue) => {
     const name = presetName[tab].trim();
@@ -775,7 +820,43 @@ export default function AdminClub() {
       return;
     }
 
-    await deleteMember.mutateAsync({ id: pendingDelete.id });
+    if (pendingDelete.entity === "member") {
+      await deleteMember.mutateAsync({ id: pendingDelete.id });
+      return;
+    }
+
+    if (pendingDelete.entity === "bulk-post") {
+      for (const id of pendingDelete.ids) {
+        await deletePost.mutateAsync({ id });
+      }
+      clearSelection("posts");
+      setPendingDelete(null);
+      toast.success("Посты удалены", {
+        description: `Удалено записей: ${pendingDelete.ids.length}.`,
+      });
+      return;
+    }
+
+    if (pendingDelete.entity === "bulk-event") {
+      for (const id of pendingDelete.ids) {
+        await deleteEvent.mutateAsync({ id });
+      }
+      clearSelection("events");
+      setPendingDelete(null);
+      toast.success("События удалены", {
+        description: `Удалено записей: ${pendingDelete.ids.length}.`,
+      });
+      return;
+    }
+
+    for (const id of pendingDelete.ids) {
+      await deleteMember.mutateAsync({ id });
+    }
+    clearSelection("members");
+    setPendingDelete(null);
+    toast.success("Участники удалены", {
+      description: `Удалено записей: ${pendingDelete.ids.length}.`,
+    });
   };
 
   if (loading) {
@@ -992,6 +1073,94 @@ export default function AdminClub() {
               toolbar={
                 <FilterToolbar
                   searchPlaceholder="Искать по заголовку, тексту, автору или тегам"
+                  selectionCount={selectedPosts.length}
+                  bulkActions={[
+                    {
+                      label: allVisiblePostsSelected ? "Снять выбор со всех" : "Выбрать все видимые",
+                      icon: allVisiblePostsSelected ? <Square className="h-4 w-4" /> : <CheckSquare className="h-4 w-4" />,
+                      variant: "outline",
+                      disabled: filteredPosts.length === 0,
+                      onClick: () => toggleSelectAllVisible("posts", filteredPosts.map((post) => post.id)),
+                    },
+                    {
+                      label: "Закрепить выбранные",
+                      icon: <Pin className="h-4 w-4" />,
+                      variant: "outline",
+                      disabled: selectedPosts.length === 0 || updatePost.isPending,
+                      onClick: () => {
+                        void (async () => {
+                          for (const post of selectedPosts) {
+                            await updatePost.mutateAsync({
+                              id: post.id,
+                              category: post.category,
+                              author: post.author,
+                              avatar: post.avatar,
+                              role: post.role,
+                              timeLabel: post.timeLabel,
+                              title: post.title,
+                              text: post.text,
+                              imageUrl: post.imageUrl,
+                              likes: post.likes,
+                              comments: post.comments,
+                              tagsCsv: post.tagsCsv,
+                              pinned: true,
+                              sortOrder: post.sortOrder,
+                            });
+                          }
+                          clearSelection("posts");
+                          toast.success("Посты закреплены", {
+                            description: `Обновлено записей: ${selectedPosts.length}.`,
+                          });
+                        })();
+                      },
+                    },
+                    {
+                      label: "Открепить выбранные",
+                      icon: <Pin className="h-4 w-4" />,
+                      variant: "outline",
+                      disabled: selectedPosts.length === 0 || updatePost.isPending,
+                      onClick: () => {
+                        void (async () => {
+                          for (const post of selectedPosts) {
+                            await updatePost.mutateAsync({
+                              id: post.id,
+                              category: post.category,
+                              author: post.author,
+                              avatar: post.avatar,
+                              role: post.role,
+                              timeLabel: post.timeLabel,
+                              title: post.title,
+                              text: post.text,
+                              imageUrl: post.imageUrl,
+                              likes: post.likes,
+                              comments: post.comments,
+                              tagsCsv: post.tagsCsv,
+                              pinned: false,
+                              sortOrder: post.sortOrder,
+                            });
+                          }
+                          clearSelection("posts");
+                          toast.success("Посты откреплены", {
+                            description: `Обновлено записей: ${selectedPosts.length}.`,
+                          });
+                        })();
+                      },
+                    },
+                    {
+                      label: "Удалить выбранные",
+                      icon: <Trash2 className="h-4 w-4" />,
+                      variant: "outline",
+                      destructive: true,
+                      disabled: selectedPosts.length === 0 || isDeleting,
+                      onClick: () => setPendingDelete({
+                        entity: "bulk-post",
+                        ids: selectedPosts.map((post) => post.id),
+                        title: `Выбрано постов: ${selectedPosts.length}`,
+                        description: `${selectedPosts.length} постов`,
+                      }),
+                    },
+                  ]}
+                  onClearSelection={() => clearSelection("posts")}
                   presetPanel={
                     <PresetToolbar
                       presetName={presetName.posts}
@@ -1072,6 +1241,8 @@ export default function AdminClub() {
               emptyText="По текущим фильтрам посты не найдены."
               renderItem={(post: any) => (
                 <ListRow
+                  selected={selectedIds.posts.includes(post.id)}
+                  onToggleSelected={() => toggleSelection("posts", post.id)}
                   title={post.title}
                   subtitle={`${post.author} · ${post.timeLabel}`}
                   meta={`Категория: ${post.category} · Порядок: ${post.sortOrder}`}
@@ -1163,6 +1334,30 @@ export default function AdminClub() {
               toolbar={
                 <FilterToolbar
                   searchPlaceholder="Искать по названию, описанию или дате"
+                  selectionCount={selectedEvents.length}
+                  bulkActions={[
+                    {
+                      label: allVisibleEventsSelected ? "Снять выбор со всех" : "Выбрать все видимые",
+                      icon: allVisibleEventsSelected ? <Square className="h-4 w-4" /> : <CheckSquare className="h-4 w-4" />,
+                      variant: "outline",
+                      disabled: filteredEvents.length === 0,
+                      onClick: () => toggleSelectAllVisible("events", filteredEvents.map((event) => event.id)),
+                    },
+                    {
+                      label: "Удалить выбранные",
+                      icon: <Trash2 className="h-4 w-4" />,
+                      variant: "outline",
+                      destructive: true,
+                      disabled: selectedEvents.length === 0 || isDeleting,
+                      onClick: () => setPendingDelete({
+                        entity: "bulk-event",
+                        ids: selectedEvents.map((event) => event.id),
+                        title: `Выбрано событий: ${selectedEvents.length}`,
+                        description: `${selectedEvents.length} событий`,
+                      }),
+                    },
+                  ]}
+                  onClearSelection={() => clearSelection("events")}
                   presetPanel={
                     <PresetToolbar
                       presetName={presetName.events}
@@ -1237,6 +1432,8 @@ export default function AdminClub() {
               emptyText="По текущим фильтрам события не найдены."
               renderItem={(event: any) => (
                 <ListRow
+                  selected={selectedIds.events.includes(event.id)}
+                  onToggleSelected={() => toggleSelection("events", event.id)}
                   title={event.title}
                   subtitle={event.dateLabel}
                   meta={`${event.status} · ${event.tone} · Порядок: ${event.sortOrder}`}
@@ -1311,6 +1508,30 @@ export default function AdminClub() {
               toolbar={
                 <FilterToolbar
                   searchPlaceholder="Искать по имени, животному или периоду участия"
+                  selectionCount={selectedMembers.length}
+                  bulkActions={[
+                    {
+                      label: allVisibleMembersSelected ? "Снять выбор со всех" : "Выбрать все видимые",
+                      icon: allVisibleMembersSelected ? <Square className="h-4 w-4" /> : <CheckSquare className="h-4 w-4" />,
+                      variant: "outline",
+                      disabled: filteredMembers.length === 0,
+                      onClick: () => toggleSelectAllVisible("members", filteredMembers.map((member) => member.id)),
+                    },
+                    {
+                      label: "Удалить выбранных",
+                      icon: <Trash2 className="h-4 w-4" />,
+                      variant: "outline",
+                      destructive: true,
+                      disabled: selectedMembers.length === 0 || isDeleting,
+                      onClick: () => setPendingDelete({
+                        entity: "bulk-member",
+                        ids: selectedMembers.map((member) => member.id),
+                        title: `Выбрано участников: ${selectedMembers.length}`,
+                        description: `${selectedMembers.length} участников`,
+                      }),
+                    },
+                  ]}
+                  onClearSelection={() => clearSelection("members")}
                   presetPanel={
                     <PresetToolbar
                       presetName={presetName.members}
@@ -1376,6 +1597,8 @@ export default function AdminClub() {
               emptyText="По текущим фильтрам участники не найдены."
               renderItem={(member: any) => (
                 <ListRow
+                  selected={selectedIds.members.includes(member.id)}
+                  onToggleSelected={() => toggleSelection("members", member.id)}
                   title={member.name}
                   subtitle={member.animal}
                   meta={`${member.sinceLabel} · ${member.badge} · Порядок: ${member.sortOrder}`}
@@ -1503,6 +1726,9 @@ function FilterToolbar({
   onSearchChange,
   onReset,
   hasActiveFilters,
+  selectionCount,
+  bulkActions,
+  onClearSelection,
   children,
 }: {
   searchPlaceholder: string;
@@ -1515,6 +1741,9 @@ function FilterToolbar({
   onSearchChange: (value: string) => void;
   onReset: () => void;
   hasActiveFilters: boolean;
+  selectionCount?: number;
+  bulkActions?: BulkActionConfig[];
+  onClearSelection?: () => void;
   children?: ReactNode;
 }) {
   return (
@@ -1536,6 +1765,39 @@ function FilterToolbar({
           <X className="mr-2 h-4 w-4" />{resetLabel}
         </Button>
       </div>
+      {selectionCount ? (
+        <div className="space-y-3 rounded-2xl border border-amber-200 bg-amber-50/70 p-3">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+            <div className="space-y-1">
+              <p className="text-sm font-medium text-amber-950">Выбрано записей: {selectionCount}</p>
+              <p className="text-xs text-amber-800">Массовые действия применяются только к текущим выбранным позициям.</p>
+            </div>
+            {onClearSelection ? (
+              <Button type="button" variant="outline" size="sm" onClick={onClearSelection}>
+                <X className="mr-2 h-4 w-4" />Очистить выбор
+              </Button>
+            ) : null}
+          </div>
+          {bulkActions?.length ? (
+            <div className="flex flex-wrap gap-2">
+              {bulkActions.map((action) => (
+                <Button
+                  key={action.label}
+                  type="button"
+                  variant={action.variant ?? "outline"}
+                  size="sm"
+                  onClick={action.onClick}
+                  disabled={action.disabled}
+                  className={action.destructive ? "border-red-200 text-red-700 hover:bg-red-50 hover:text-red-800" : undefined}
+                >
+                  {action.icon ? <span className="mr-2">{action.icon}</span> : null}
+                  {action.label}
+                </Button>
+              ))}
+            </div>
+          ) : null}
+        </div>
+      ) : null}
       {presetPanel}
       {activeFilterChips?.length ? (
         <div className="flex flex-wrap gap-2">
@@ -1662,6 +1924,8 @@ function ListRow({
   subtitle,
   meta,
   badge,
+  selected,
+  onToggleSelected,
   onEdit,
   onDelete,
   deleting,
@@ -1670,20 +1934,35 @@ function ListRow({
   subtitle: string;
   meta: string;
   badge?: string;
+  selected?: boolean;
+  onToggleSelected?: () => void;
   onEdit: () => void;
   onDelete: () => void;
   deleting?: boolean;
 }) {
   return (
-    <div className="rounded-2xl border border-stone-200 p-4">
+    <div className={`rounded-2xl border p-4 transition-colors ${selected ? "border-amber-300 bg-amber-50/50" : "border-stone-200"}`}>
       <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-        <div className="space-y-2">
-          <div className="flex flex-wrap items-center gap-2">
-            <p className="font-medium text-stone-950">{title}</p>
-            {badge ? <Badge variant="secondary">{badge}</Badge> : null}
+        <div className="flex items-start gap-3">
+          {onToggleSelected ? (
+            <button
+              type="button"
+              onClick={onToggleSelected}
+              className={`mt-0.5 inline-flex h-5 w-5 items-center justify-center rounded border transition-colors ${selected ? "border-amber-500 bg-amber-500 text-white" : "border-stone-300 bg-white text-stone-400 hover:border-stone-400"}`}
+              aria-pressed={selected}
+              aria-label={selected ? `Снять выбор с ${title}` : `Выбрать ${title}`}
+            >
+              {selected ? <CheckSquare className="h-3.5 w-3.5" /> : <Square className="h-3.5 w-3.5" />}
+            </button>
+          ) : null}
+          <div className="space-y-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <p className="font-medium text-stone-950">{title}</p>
+              {badge ? <Badge variant="secondary">{badge}</Badge> : null}
+            </div>
+            <p className="text-sm text-stone-600">{subtitle}</p>
+            <p className="text-xs text-stone-500">{meta}</p>
           </div>
-          <p className="text-sm text-stone-600">{subtitle}</p>
-          <p className="text-xs text-stone-500">{meta}</p>
         </div>
         <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center sm:justify-end">
           <Button variant="outline" size="sm" onClick={onEdit} className="w-full justify-center sm:min-w-[132px] sm:w-[132px]">

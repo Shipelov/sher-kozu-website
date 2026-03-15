@@ -855,3 +855,82 @@ describe("admin club presets", () => {
     });
   });
 });
+
+function toggleSelection(ids: number[], id: number) {
+  return ids.includes(id) ? ids.filter((currentId) => currentId !== id) : [...ids, id];
+}
+
+function toggleSelectAllVisible(currentIds: number[], visibleIds: number[]) {
+  return currentIds.length === visibleIds.length && visibleIds.every((id) => currentIds.includes(id)) ? [] : visibleIds;
+}
+
+function bulkDelete<T extends { id: number }>(records: T[], ids: number[]) {
+  return records.filter((record) => !ids.includes(record.id));
+}
+
+function bulkSetPinned(records: ClubPostRecord[], ids: number[], pinned: boolean) {
+  return records.map((record) => (ids.includes(record.id) ? { ...record, pinned } : record));
+}
+
+describe("admin club bulk actions", () => {
+  it("toggles a single selected id on and off", () => {
+    expect(toggleSelection([], 3)).toEqual([3]);
+    expect(toggleSelection([3, 7], 3)).toEqual([7]);
+  });
+
+  it("selects all visible ids and clears them on repeated toggle", () => {
+    const visibleIds = [2, 4, 6];
+    expect(toggleSelectAllVisible([], visibleIds)).toEqual(visibleIds);
+    expect(toggleSelectAllVisible([2, 4, 6], visibleIds)).toEqual([]);
+  });
+
+  it("bulk deletes only selected event ids", () => {
+    const events: ClubEventRecord[] = [
+      { id: 1, title: "Farm Dinner", sortOrder: 0 },
+      { id: 2, title: "Cheese Class", sortOrder: 1 },
+      { id: 3, title: "Open Day", sortOrder: 2 },
+    ];
+
+    expect(bulkDelete(events, [1, 3]).map((event) => event.id)).toEqual([2]);
+  });
+
+  it("bulk deletes only selected member ids", () => {
+    const members: ClubMemberRecord[] = [
+      { id: 1, name: "Анна", animal: "Марта", sortOrder: 0 },
+      { id: 2, name: "Илья", animal: "Злата", sortOrder: 1 },
+      { id: 3, name: "София", animal: "Луна", sortOrder: 2 },
+    ];
+
+    expect(bulkDelete(members, [2]).map((member) => member.id)).toEqual([1, 3]);
+  });
+
+  it("bulk pins selected posts only", () => {
+    const posts: ClubPostRecord[] = [
+      { id: 1, title: "Morning", pinned: false, sortOrder: 0 },
+      { id: 2, title: "Evening", pinned: false, sortOrder: 1 },
+      { id: 3, title: "Notes", pinned: true, sortOrder: 2 },
+    ];
+
+    const result = bulkSetPinned(posts, [1, 2], true);
+    expect(result.map((post) => ({ id: post.id, pinned: post.pinned }))).toEqual([
+      { id: 1, pinned: true },
+      { id: 2, pinned: true },
+      { id: 3, pinned: true },
+    ]);
+  });
+
+  it("bulk unpins selected posts only", () => {
+    const posts: ClubPostRecord[] = [
+      { id: 1, title: "Morning", pinned: true, sortOrder: 0 },
+      { id: 2, title: "Evening", pinned: true, sortOrder: 1 },
+      { id: 3, title: "Notes", pinned: false, sortOrder: 2 },
+    ];
+
+    const result = bulkSetPinned(posts, [1], false);
+    expect(result.map((post) => ({ id: post.id, pinned: post.pinned }))).toEqual([
+      { id: 1, pinned: false },
+      { id: 2, pinned: true },
+      { id: 3, pinned: false },
+    ]);
+  });
+});
