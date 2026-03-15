@@ -230,3 +230,11 @@
 - [x] Расширить detail-view лида историей retry/sync attempts и более глубоким audit monitoring
 - [x] Обновить и прогнать vitest-покрытие для server-side Bitrix24 filtering, pagination и retry-monitoring
 - [ ] Проверить статус проекта и сохранить checkpoint после четвёртой волны Bitrix24 pilot
+- [x] Добавить серверные уведомления администратору о новых partner leads Bitrix24
+- [x] Добавить серверные уведомления о failed/retried sync событиях Bitrix24
+- [x] Показать в AdminClub операционную ленту уведомлений Bitrix24 с состоянием доставки
+- [x] Обновить и прогнать vitest-покрытие для уведомлений Bitrix24 и операционного CRM-monitoring flow
+- [ ] Проверить статус проекта и сохранить checkpoint после пятой волны Bitrix24 pilot
+- [x] Добавить операционную ленту уведомлений Bitrix24 в CRM-вкладке /admin/club
+- [x] Расширить detail-view заявки side-panel с полным payload и историей retry/snapshot
+- [x] Добавить расширенный мониторинг sync-health и обновить vitest-покрытие Bitrix24 pilot

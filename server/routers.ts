@@ -171,6 +171,21 @@ const bitrixAdminDashboardInput = z.object({
   source: z.enum(["all", "website", "club", "referral", "manual"]).default("all"),
 });
 
+async function notifyBitrixOperationalEvent(args: {
+  title: string;
+  lines: Array<string | null | undefined>;
+}) {
+  const content = args.lines.filter(Boolean).join("\n");
+  if (!content.trim()) {
+    return false;
+  }
+
+  return notifyOwner({
+    title: args.title,
+    content,
+  });
+}
+
 function sanitizeFileName(fileName: string) {
   return fileName.toLowerCase().replace(/[^a-z0-9.-]+/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "") || "photo";
 }
@@ -249,6 +264,22 @@ async function runBitrixLeadSync(ownerOpenId: string, leadId: number, markAsRetr
       });
     }
 
+    if (markAsRetried) {
+      await notifyBitrixOperationalEvent({
+        title: `Bitrix24 retry выполнен для заявки #${updatedLead?.id ?? lead.id}`,
+        lines: [
+          `Заявка: #${updatedLead?.id ?? lead.id} · ${lead.companyName}`,
+          `Контакт: ${lead.fullName} · ${lead.email}`,
+          `Sync status: ${updatedLead?.syncStatus ?? "retried"}`,
+          `Deal ID: ${updatedLead?.bitrixDealId ?? syncResult.dealId ?? "—"}`,
+          `Stage ID: ${updatedLead?.bitrixStageId ?? syncResult.stageId ?? "—"}`,
+          `Менеджер: ${updatedLead?.assignedManagerName ?? syncResult.assignedManagerName ?? "не назначен"}`,
+          `Следующая активность: ${updatedLead?.nextActivityAt ? new Date(updatedLead.nextActivityAt).toLocaleString("ru-RU") : "не запланирована"}`,
+          audit ? `Audit ID: ${audit.id}` : null,
+        ],
+      });
+    }
+
     return {
       lead: updatedLead,
       auditId: audit?.id ?? null,
@@ -282,6 +313,19 @@ async function runBitrixLeadSync(ownerOpenId: string, leadId: number, markAsRetr
         externalId: lead.bitrixDealId ?? null,
       });
     }
+
+    await notifyBitrixOperationalEvent({
+      title: `Bitrix24 sync failed для заявки #${updatedLead?.id ?? lead.id}`,
+      lines: [
+        `Заявка: #${updatedLead?.id ?? lead.id} · ${lead.companyName}`,
+        `Контакт: ${lead.fullName} · ${lead.email}`,
+        `Операция: ${markAsRetried ? "retry sync" : "initial sync"}`,
+        `Текущий статус: ${updatedLead?.syncStatus ?? "failed"}`,
+        `Ошибка: ${message}`,
+        `Deal ID: ${updatedLead?.bitrixDealId ?? lead.bitrixDealId ?? "—"}`,
+        audit ? `Audit ID: ${audit.id}` : null,
+      ],
+    });
 
     return {
       lead: updatedLead,
@@ -442,6 +486,19 @@ export const appRouter = router({
 
       const syncOutcome = await runBitrixLeadSync(ctx.user.openId, createdLead.id, false);
 
+      await notifyBitrixOperationalEvent({
+        title: `Новая партнёрская заявка #${createdLead.id}`,
+        lines: [
+          `Компания: ${createdLead.companyName}`,
+          `Контакт: ${createdLead.fullName} · ${createdLead.email}`,
+          `Источник: ${createdLead.source}`,
+          `Интерес: ${createdLead.interestType}`,
+          `Предпочтительный контакт: ${createdLead.preferredContactMethod}`,
+          `Синхронизация: ${syncOutcome.errorMessage ? `с ошибкой — ${syncOutcome.errorMessage}` : "успешно отправлена в Bitrix24"}`,
+          syncOutcome.auditId ? `Audit ID: ${syncOutcome.auditId}` : null,
+        ],
+      });
+
       return {
         lead: syncOutcome.lead,
         auditId: syncOutcome.auditId,
@@ -511,6 +568,17 @@ export const appRouter = router({
           });
         }
 
+        await notifyBitrixOperationalEvent({
+          title: `Bitrix24 snapshot обновлён для заявки #${updatedLead?.id ?? lead.id}`,
+          lines: [
+            `Заявка: #${updatedLead?.id ?? lead.id} · ${lead.companyName}`,
+            `Deal ID: ${lead.bitrixDealId}`,
+            `Stage ID: ${snapshot.stageId ?? "—"}`,
+            `Следующая активность: ${snapshot.nextActivityAt ? new Date(snapshot.nextActivityAt).toLocaleString("ru-RU") : "не запланирована"}`,
+            audit ? `Audit ID: ${audit.id}` : null,
+          ],
+        });
+
         return {
           lead: updatedLead,
           auditId: audit?.id ?? null,
@@ -528,6 +596,16 @@ export const appRouter = router({
             externalId: lead.bitrixDealId,
           });
         }
+
+        await notifyBitrixOperationalEvent({
+          title: `Bitrix24 snapshot failed для заявки #${lead.id}`,
+          lines: [
+            `Заявка: #${lead.id} · ${lead.companyName}`,
+            `Deal ID: ${lead.bitrixDealId}`,
+            `Ошибка: ${message}`,
+            audit ? `Audit ID: ${audit.id}` : null,
+          ],
+        });
 
         throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message });
       }

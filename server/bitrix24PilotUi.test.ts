@@ -56,4 +56,18 @@ describe("Bitrix24 pilot UI source smoke", () => {
     expect(adminClubSource).toContain("setBitrixQuery");
     expect(adminClubSource).toContain("page: 1");
   });
+
+  it("expects owner notifications for new leads and sync lifecycle events", () => {
+    expect(routerSource).toContain("notifyBitrixOperationalEvent");
+    expect(routerSource).toContain("Новая партнёрская заявка #");
+    expect(routerSource).toContain("Bitrix24 sync failed для заявки #");
+    expect(routerSource).toContain("Bitrix24 retry выполнен для заявки #");
+    expect(routerSource).toContain("Bitrix24 snapshot обновлён для заявки #");
+    expect(routerSource).toContain("Bitrix24 snapshot failed для заявки #");
+  });
+
+  it("keeps notifyOwner integration available for operational alerts", () => {
+    expect(routerSource).toContain("notifyOwner");
+    expect(routerSource).toContain("notifyBitrixOperationalEvent");
+  });
 });
