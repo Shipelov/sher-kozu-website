@@ -1414,6 +1414,40 @@ function buildActionLogCsv(entries: AdminActionLogEntry[]) {
     .map((row) => row.map((value) => escapeCsvValue(String(value))).join(","))
     .join("\n");
 }
+function getActionTypeBadgeConfig(actionType: AdminActionType) {
+  if (actionType === "create") {
+    return {
+      label: "Создание",
+      className: "rounded-full border-emerald-200 bg-emerald-50 px-2.5 py-0.5 text-[11px] uppercase tracking-[0.12em] text-emerald-700",
+    };
+  }
+
+  if (actionType === "update") {
+    return {
+      label: "Изменение",
+      className: "rounded-full border-sky-200 bg-sky-50 px-2.5 py-0.5 text-[11px] uppercase tracking-[0.12em] text-sky-700",
+    };
+  }
+
+  if (actionType === "delete") {
+    return {
+      label: "Удаление",
+      className: "rounded-full border-rose-200 bg-rose-50 px-2.5 py-0.5 text-[11px] uppercase tracking-[0.12em] text-rose-700",
+    };
+  }
+
+  if (actionType === "bulk") {
+    return {
+      label: "Массово",
+      className: "rounded-full border-violet-200 bg-violet-50 px-2.5 py-0.5 text-[11px] uppercase tracking-[0.12em] text-violet-700",
+    };
+  }
+
+  return {
+    label: "Пресет",
+    className: "rounded-full border-amber-200 bg-amber-50 px-2.5 py-0.5 text-[11px] uppercase tracking-[0.12em] text-amber-700",
+  };
+}
 
 
 describe("recordAdminAction", () => {
@@ -1481,6 +1515,29 @@ describe("recordAdminAction", () => {
 
     expect(csv).toContain('"timestamp","area","actionType","title","description"');
     expect(csv).toContain('"2026-03-15T08:30:00.000Z","events","update","Статус, обновлён","Событие ""Весенний визит"" переведено в архив."');
+  });
+
+  it("returns distinct badge labels and classes for each action type", () => {
+    expect(getActionTypeBadgeConfig("create")).toEqual({
+      label: "Создание",
+      className: "rounded-full border-emerald-200 bg-emerald-50 px-2.5 py-0.5 text-[11px] uppercase tracking-[0.12em] text-emerald-700",
+    });
+    expect(getActionTypeBadgeConfig("update")).toEqual({
+      label: "Изменение",
+      className: "rounded-full border-sky-200 bg-sky-50 px-2.5 py-0.5 text-[11px] uppercase tracking-[0.12em] text-sky-700",
+    });
+    expect(getActionTypeBadgeConfig("delete")).toEqual({
+      label: "Удаление",
+      className: "rounded-full border-rose-200 bg-rose-50 px-2.5 py-0.5 text-[11px] uppercase tracking-[0.12em] text-rose-700",
+    });
+    expect(getActionTypeBadgeConfig("bulk")).toEqual({
+      label: "Массово",
+      className: "rounded-full border-violet-200 bg-violet-50 px-2.5 py-0.5 text-[11px] uppercase tracking-[0.12em] text-violet-700",
+    });
+    expect(getActionTypeBadgeConfig("preset")).toEqual({
+      label: "Пресет",
+      className: "rounded-full border-amber-200 bg-amber-50 px-2.5 py-0.5 text-[11px] uppercase tracking-[0.12em] text-amber-700",
+    });
   });
 
   it("clears all action log records", () => {
