@@ -1069,3 +1069,70 @@ describe("admin club bulk delete dialog helpers", () => {
     });
   });
 });
+
+function applyInlinePostQuickAction(post: ClubPostRecord, action: "incrementOrder" | "togglePinned") {
+  if (action === "incrementOrder") {
+    return { ...post, sortOrder: post.sortOrder + 1 };
+  }
+
+  return { ...post, pinned: !post.pinned };
+}
+
+function applyInlineEventQuickAction(event: ClubEventRecord, action: "incrementOrder" | "toggleStatus") {
+  if (action === "incrementOrder") {
+    return { ...event, sortOrder: event.sortOrder + 1 };
+  }
+
+  return {
+    ...event,
+    status: event.status === "Открыта регистрация" ? "Мест нет" : "Открыта регистрация",
+  };
+}
+
+function applyInlineMemberQuickAction(member: ClubMemberRecord, action: "incrementOrder" | "toggleBadge") {
+  if (action === "incrementOrder") {
+    return { ...member, sortOrder: member.sortOrder + 1 };
+  }
+
+  return {
+    ...member,
+    badge: member.badge === "Амбассадор" ? "Гость фермы" : "Амбассадор",
+  };
+}
+
+describe("admin club inline quick actions", () => {
+  it("increments post sort order without changing pinned state", () => {
+    expect(applyInlinePostQuickAction({
+      id: 1,
+      title: "Пост о ферме",
+      pinned: true,
+      sortOrder: 3,
+    }, "incrementOrder")).toMatchObject({
+      pinned: true,
+      sortOrder: 4,
+    });
+  });
+
+  it("toggles event status between open registration and sold out", () => {
+    expect(applyInlineEventQuickAction({
+      id: 2,
+      title: "Ужин у костра",
+      status: "Открыта регистрация",
+      sortOrder: 1,
+    }, "toggleStatus")).toMatchObject({
+      status: "Мест нет",
+    });
+  });
+
+  it("toggles member badge between ambassador and farm guest", () => {
+    expect(applyInlineMemberQuickAction({
+      id: 3,
+      name: "Анна",
+      animal: "Марта",
+      badge: "Амбассадор",
+      sortOrder: 2,
+    }, "toggleBadge")).toMatchObject({
+      badge: "Гость фермы",
+    });
+  });
+});

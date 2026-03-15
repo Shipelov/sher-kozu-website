@@ -22,7 +22,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { trpc } from "@/lib/trpc";
 import { NOT_ADMIN_ERR_MSG } from "@shared/const";
-import { CalendarRange, CheckSquare, Crown, Pencil, Pin, Save, Search, ShieldAlert, Square, Trash2, Users, X } from "lucide-react";
+import { ArrowDown, CalendarRange, CheckSquare, Crown, Pencil, Pin, Save, Search, ShieldAlert, Square, Trash2, Users, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import { toast } from "sonner";
@@ -139,6 +139,14 @@ type BulkActionConfig = {
   destructive?: boolean;
   disabled?: boolean;
   onClick: () => void;
+};
+
+type InlineActionConfig = {
+  label: string;
+  icon?: ReactNode;
+  value?: string | number;
+  onClick: () => void;
+  disabled?: boolean;
 };
 
 const defaultPostForm = (): PostFormState => ({
@@ -1379,6 +1387,51 @@ export default function AdminClub() {
                   subtitle={`${post.author} · ${post.timeLabel}`}
                   meta={`Категория: ${post.category} · Порядок: ${post.sortOrder}`}
                   badge={post.pinned ? "Pinned" : undefined}
+                  inlineActions={[
+                    {
+                      label: "Порядок",
+                      value: post.sortOrder,
+                      icon: <ArrowDown className="h-3.5 w-3.5" />,
+                      disabled: updatePost.isPending,
+                      onClick: () => void updatePost.mutateAsync({
+                        id: post.id,
+                        category: post.category,
+                        author: post.author,
+                        avatar: post.avatar,
+                        role: post.role,
+                        timeLabel: post.timeLabel,
+                        title: post.title,
+                        text: post.text,
+                        imageUrl: post.imageUrl,
+                        likes: post.likes,
+                        comments: post.comments,
+                        tagsCsv: post.tagsCsv,
+                        pinned: post.pinned,
+                        sortOrder: post.sortOrder + 1,
+                      }),
+                    },
+                    {
+                      label: post.pinned ? "Pinned" : "Обычный",
+                      icon: <Pin className="h-3.5 w-3.5" />,
+                      disabled: updatePost.isPending,
+                      onClick: () => void updatePost.mutateAsync({
+                        id: post.id,
+                        category: post.category,
+                        author: post.author,
+                        avatar: post.avatar,
+                        role: post.role,
+                        timeLabel: post.timeLabel,
+                        title: post.title,
+                        text: post.text,
+                        imageUrl: post.imageUrl,
+                        likes: post.likes,
+                        comments: post.comments,
+                        tagsCsv: post.tagsCsv,
+                        pinned: !post.pinned,
+                        sortOrder: post.sortOrder,
+                      }),
+                    },
+                  ]}
                   onEdit={() => setPostForm({
                     id: post.id,
                     category: post.category,
@@ -1574,6 +1627,38 @@ export default function AdminClub() {
                   title={event.title}
                   subtitle={event.dateLabel}
                   meta={`${event.status} · ${event.tone} · Порядок: ${event.sortOrder}`}
+                  inlineActions={[
+                    {
+                      label: "Порядок",
+                      value: event.sortOrder,
+                      icon: <ArrowDown className="h-3.5 w-3.5" />,
+                      disabled: updateEvent.isPending,
+                      onClick: () => void updateEvent.mutateAsync({
+                        id: event.id,
+                        title: event.title,
+                        dateLabel: event.dateLabel,
+                        description: event.description,
+                        status: event.status,
+                        tone: event.tone,
+                        sortOrder: event.sortOrder + 1,
+                      }),
+                    },
+                    {
+                      label: "Статус",
+                      value: event.status,
+                      icon: <CalendarRange className="h-3.5 w-3.5" />,
+                      disabled: updateEvent.isPending,
+                      onClick: () => void updateEvent.mutateAsync({
+                        id: event.id,
+                        title: event.title,
+                        dateLabel: event.dateLabel,
+                        description: event.description,
+                        status: event.status === "Открыта регистрация" ? "Мест нет" : "Открыта регистрация",
+                        tone: event.tone,
+                        sortOrder: event.sortOrder,
+                      }),
+                    },
+                  ]}
                   onEdit={() => setEventForm({
                     id: event.id,
                     title: event.title,
@@ -1744,6 +1829,36 @@ export default function AdminClub() {
                   title={member.name}
                   subtitle={member.animal}
                   meta={`${member.sinceLabel} · ${member.badge} · Порядок: ${member.sortOrder}`}
+                  inlineActions={[
+                    {
+                      label: "Порядок",
+                      value: member.sortOrder,
+                      icon: <ArrowDown className="h-3.5 w-3.5" />,
+                      disabled: updateMember.isPending,
+                      onClick: () => void updateMember.mutateAsync({
+                        id: member.id,
+                        name: member.name,
+                        animal: member.animal,
+                        sinceLabel: member.sinceLabel,
+                        badge: member.badge,
+                        sortOrder: member.sortOrder + 1,
+                      }),
+                    },
+                    {
+                      label: "Бейдж",
+                      value: member.badge || "без бейджа",
+                      icon: <Crown className="h-3.5 w-3.5" />,
+                      disabled: updateMember.isPending,
+                      onClick: () => void updateMember.mutateAsync({
+                        id: member.id,
+                        name: member.name,
+                        animal: member.animal,
+                        sinceLabel: member.sinceLabel,
+                        badge: member.badge === "Амбассадор" ? "Гость фермы" : "Амбассадор",
+                        sortOrder: member.sortOrder,
+                      }),
+                    },
+                  ]}
                   onEdit={() => setMemberForm({
                     id: member.id,
                     name: member.name,
@@ -2174,6 +2289,7 @@ function ListRow({
   badge,
   selected,
   onToggleSelected,
+  inlineActions,
   onEdit,
   onDelete,
   deleting,
@@ -2184,6 +2300,7 @@ function ListRow({
   badge?: string;
   selected?: boolean;
   onToggleSelected?: () => void;
+  inlineActions?: InlineActionConfig[];
   onEdit: () => void;
   onDelete: () => void;
   deleting?: boolean;
@@ -2210,6 +2327,25 @@ function ListRow({
             </div>
             <p className="text-sm text-stone-600">{subtitle}</p>
             <p className="text-xs text-stone-500">{meta}</p>
+            {inlineActions?.length ? (
+              <div className="flex flex-wrap gap-2 pt-1">
+                {inlineActions.map((action) => (
+                  <Button
+                    key={`${action.label}-${String(action.value ?? "")}`}
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={action.onClick}
+                    disabled={action.disabled}
+                    className="h-8 rounded-full border-stone-300 bg-white px-3 text-xs text-stone-700 hover:bg-stone-50"
+                  >
+                    {action.icon ? <span className="mr-1.5">{action.icon}</span> : null}
+                    <span>{action.label}</span>
+                    {action.value !== undefined ? <span className="ml-1 font-medium text-stone-950">{action.value}</span> : null}
+                  </Button>
+                ))}
+              </div>
+            ) : null}
           </div>
         </div>
         <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center sm:justify-end">
