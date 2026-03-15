@@ -22,7 +22,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { trpc } from "@/lib/trpc";
 import { NOT_ADMIN_ERR_MSG } from "@shared/const";
-import { ArrowDown, CalendarRange, CheckSquare, Crown, Pencil, Pin, Save, Search, ShieldAlert, Square, Trash2, Users, X } from "lucide-react";
+import { ArrowDown, CalendarRange, CheckSquare, ChevronDown, ChevronUp, Crown, Pencil, Pin, Save, Search, ShieldAlert, Square, Trash2, Users, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import { toast } from "sonner";
@@ -541,6 +541,7 @@ export default function AdminClub() {
   const [selectedIds, setSelectedIds] = useState<SelectionState>({ posts: [], events: [], members: [] });
   const [pagination, setPagination] = useState<PaginationState>(initialUrlState.pagination);
   const [actionLog, setActionLog] = useState<AdminActionLogEntry[]>([]);
+  const [actionLogCollapsed, setActionLogCollapsed] = useState(false);
   const [actionLogAreaFilter, setActionLogAreaFilter] = useState<"all" | AdminTabValue>("all");
   const [actionLogTypeFilter, setActionLogTypeFilter] = useState<"all" | AdminActionType>("all");
 
@@ -2093,66 +2094,95 @@ export default function AdminClub() {
                 <CardTitle>Последние действия администратора</CardTitle>
                 <CardDescription>Короткий локальный журнал последних операций в этой сессии для прозрачности изменений в клубной панели.</CardDescription>
               </div>
-              <Badge variant="outline" className="rounded-full border-stone-300 bg-stone-50 px-3 py-1 text-xs text-stone-700">
-                {actionLog.length} записей
-              </Badge>
+              <div className="flex flex-wrap items-center justify-end gap-2">
+                <Badge variant="outline" className="rounded-full border-stone-300 bg-stone-50 px-3 py-1 text-xs text-stone-700">
+                  {actionLog.length} записей
+                </Badge>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="rounded-full border-stone-300 px-3 text-stone-700"
+                  onClick={() => setActionLogCollapsed((current) => !current)}
+                >
+                  {actionLogCollapsed ? <ChevronDown className="mr-1.5 h-4 w-4" /> : <ChevronUp className="mr-1.5 h-4 w-4" />}
+                  {actionLogCollapsed ? "Развернуть" : "Свернуть"}
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="rounded-full border-stone-300 px-3 text-stone-700"
+                  onClick={() => setActionLog([])}
+                  disabled={!actionLog.length}
+                >
+                  <Trash2 className="mr-1.5 h-4 w-4" />
+                  Очистить
+                </Button>
+              </div>
             </div>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid gap-3 md:grid-cols-2">
-              <Field label="Область журнала">
-                <select
-                  value={actionLogAreaFilter}
-                  onChange={(event) => setActionLogAreaFilter(event.target.value as "all" | AdminTabValue)}
-                  className="h-11 w-full rounded-xl border border-stone-200 bg-white px-3 text-sm text-stone-700 outline-none transition focus:border-stone-400 focus:ring-2 focus:ring-stone-200"
-                >
-                  <option value="all">Все области</option>
-                  <option value="posts">Посты</option>
-                  <option value="events">События</option>
-                  <option value="members">Участники</option>
-                </select>
-              </Field>
-              <Field label="Тип операции">
-                <select
-                  value={actionLogTypeFilter}
-                  onChange={(event) => setActionLogTypeFilter(event.target.value as "all" | AdminActionType)}
-                  className="h-11 w-full rounded-xl border border-stone-200 bg-white px-3 text-sm text-stone-700 outline-none transition focus:border-stone-400 focus:ring-2 focus:ring-stone-200"
-                >
-                  <option value="all">Все типы</option>
-                  <option value="create">Создание</option>
-                  <option value="update">Изменение</option>
-                  <option value="delete">Удаление</option>
-                  <option value="bulk">Массовые операции</option>
-                  <option value="preset">Пресеты</option>
-                </select>
-              </Field>
-            </div>
-            {filteredActionLog.length ? (
-              <div className="space-y-3">
-                {filteredActionLog.map((entry) => (
-                  <div key={entry.id} className="rounded-2xl border border-stone-200 bg-stone-50/70 p-3">
-                    <div className="flex flex-wrap items-start justify-between gap-2">
-                      <div className="space-y-1">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <p className="text-sm font-semibold text-stone-950">{entry.title}</p>
-                          <Badge variant="outline" className="rounded-full border-stone-300 bg-white px-2.5 py-0.5 text-[11px] uppercase tracking-[0.12em] text-stone-600">
-                            {entry.area === "posts" ? "Посты" : entry.area === "events" ? "События" : "Участники"}
-                          </Badge>
-                          <Badge variant="outline" className="rounded-full border-stone-300 bg-white px-2.5 py-0.5 text-[11px] uppercase tracking-[0.12em] text-stone-600">
-                            {entry.actionType === "create" ? "Создание" : entry.actionType === "update" ? "Изменение" : entry.actionType === "delete" ? "Удаление" : entry.actionType === "bulk" ? "Массово" : "Пресет"}
-                          </Badge>
-                        </div>
-                        <p className="text-sm text-stone-600">{entry.description}</p>
-                      </div>
-                      <span className="text-xs text-stone-500">{new Date(entry.timestamp).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })}</span>
-                    </div>
-                  </div>
-                ))}
+          {actionLogCollapsed ? (
+            <CardContent>
+              <p className="text-sm text-stone-500">Журнал свёрнут. Разверните блок, чтобы посмотреть последние действия администратора и применить фильтры.</p>
+            </CardContent>
+          ) : (
+            <CardContent className="space-y-4">
+              <div className="grid gap-3 md:grid-cols-2">
+                <Field label="Область журнала">
+                  <select
+                    value={actionLogAreaFilter}
+                    onChange={(event) => setActionLogAreaFilter(event.target.value as "all" | AdminTabValue)}
+                    className="h-11 w-full rounded-xl border border-stone-200 bg-white px-3 text-sm text-stone-700 outline-none transition focus:border-stone-400 focus:ring-2 focus:ring-stone-200"
+                  >
+                    <option value="all">Все области</option>
+                    <option value="posts">Посты</option>
+                    <option value="events">События</option>
+                    <option value="members">Участники</option>
+                  </select>
+                </Field>
+                <Field label="Тип операции">
+                  <select
+                    value={actionLogTypeFilter}
+                    onChange={(event) => setActionLogTypeFilter(event.target.value as "all" | AdminActionType)}
+                    className="h-11 w-full rounded-xl border border-stone-200 bg-white px-3 text-sm text-stone-700 outline-none transition focus:border-stone-400 focus:ring-2 focus:ring-stone-200"
+                  >
+                    <option value="all">Все типы</option>
+                    <option value="create">Создание</option>
+                    <option value="update">Изменение</option>
+                    <option value="delete">Удаление</option>
+                    <option value="bulk">Массовые операции</option>
+                    <option value="preset">Пресеты</option>
+                  </select>
+                </Field>
               </div>
-            ) : (
-              <p className="text-sm text-stone-500">По выбранным фильтрам действий пока ничего не найдено. Измените область или тип операции, либо выполните новые действия в панели.</p>
-            )}
-          </CardContent>
+              {filteredActionLog.length ? (
+                <div className="space-y-3">
+                  {filteredActionLog.map((entry) => (
+                    <div key={entry.id} className="rounded-2xl border border-stone-200 bg-stone-50/70 p-3">
+                      <div className="flex flex-wrap items-start justify-between gap-2">
+                        <div className="space-y-1">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <p className="text-sm font-semibold text-stone-950">{entry.title}</p>
+                            <Badge variant="outline" className="rounded-full border-stone-300 bg-white px-2.5 py-0.5 text-[11px] uppercase tracking-[0.12em] text-stone-600">
+                              {entry.area === "posts" ? "Посты" : entry.area === "events" ? "События" : "Участники"}
+                            </Badge>
+                            <Badge variant="outline" className="rounded-full border-stone-300 bg-white px-2.5 py-0.5 text-[11px] uppercase tracking-[0.12em] text-stone-600">
+                              {entry.actionType === "create" ? "Создание" : entry.actionType === "update" ? "Изменение" : entry.actionType === "delete" ? "Удаление" : entry.actionType === "bulk" ? "Массово" : "Пресет"}
+                            </Badge>
+                          </div>
+                          <p className="text-sm text-stone-600">{entry.description}</p>
+                        </div>
+                        <span className="text-xs text-stone-500">{new Date(entry.timestamp).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-stone-500">По выбранным фильтрам действий пока ничего не найдено. Измените область или тип операции, либо выполните новые действия в панели.</p>
+              )}
+            </CardContent>
+          )}
         </Card>
       </div>
     </DashboardLayout>

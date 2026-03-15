@@ -1336,10 +1336,12 @@ describe("admin club action toast copy", () => {
 });
 
 type AdminActionArea = "posts" | "events" | "members";
+type AdminActionType = "create" | "update" | "delete" | "bulk" | "preset";
 
 type AdminActionLogEntry = {
   id: string;
   area: AdminActionArea;
+  actionType: AdminActionType;
   title: string;
   description: string;
   timestamp: number;
@@ -1351,10 +1353,12 @@ function recordAdminAction(
   title: string,
   description: string,
   now = Date.now(),
+  actionType: AdminActionType = "update",
 ) {
   const nextEntry: AdminActionLogEntry = {
     id: `${area}-${now}-${currentLog.length}`,
     area,
+    actionType,
     title,
     description,
     timestamp: now,
@@ -1363,11 +1367,26 @@ function recordAdminAction(
   return [nextEntry, ...currentLog].slice(0, 6);
 }
 
+function getActionLogViewState(isCollapsed: boolean, actionLogLength: number) {
+  return {
+    toggleLabel: isCollapsed ? "Развернуть" : "Свернуть",
+    helperText: isCollapsed
+      ? "Журнал свёрнут. Разверните блок, чтобы посмотреть последние действия администратора и применить фильтры."
+      : null,
+    clearDisabled: actionLogLength === 0,
+  };
+}
+
+function clearActionLog() {
+  return [] as AdminActionLogEntry[];
+}
+
 describe("recordAdminAction", () => {
   it("adds newest entries to the top and limits the journal to six records", () => {
     const seeded = Array.from({ length: 6 }, (_, index) => ({
       id: `posts-${index}`,
       area: "posts" as const,
+      actionType: "update" as const,
       title: `Действие ${index}`,
       description: `Описание ${index}`,
       timestamp: 1_710_000_000_000 + index,
@@ -1384,6 +1403,7 @@ describe("recordAdminAction", () => {
     expect(result).toHaveLength(6);
     expect(result[0]).toMatchObject({
       area: "members",
+      actionType: "update",
       title: "Бейдж обновлён",
       description: "Для профиля «Лейла» установлен статус «Амбассадор».",
       timestamp: 1_710_000_000_999,
@@ -1395,5 +1415,26 @@ describe("recordAdminAction", () => {
     const result = recordAdminAction([], "events", "Статус обновлён", "Событие переведено в архив.", 1_710_123_456_789);
 
     expect(result[0]?.id).toBe("events-1710123456789-0");
+  });
+
+  it("returns correct state for collapsed and expanded journal controls", () => {
+    expect(getActionLogViewState(false, 3)).toEqual({
+      toggleLabel: "Свернуть",
+      helperText: null,
+      clearDisabled: false,
+    });
+
+    expect(getActionLogViewState(true, 0)).toEqual({
+      toggleLabel: "Развернуть",
+      helperText: "Журнал свёрнут. Разверните блок, чтобы посмотреть последние действия администратора и применить фильтры.",
+      clearDisabled: true,
+    });
+  });
+
+  it("clears all action log records", () => {
+    const seeded = recordAdminAction([], "posts", "Пост сохранён", "Изменения применены.", 1_710_123_400_000, "update");
+
+    expect(seeded).toHaveLength(1);
+    expect(clearActionLog()).toEqual([]);
   });
 });
