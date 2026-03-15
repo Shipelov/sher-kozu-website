@@ -149,10 +149,13 @@ type InlineActionConfig = {
   disabled?: boolean;
 };
 
+type AdminActionType = "create" | "update" | "delete" | "bulk" | "preset";
+
 type AdminActionLogEntry = {
   id: number;
   timestamp: number;
   area: AdminTabValue;
+  actionType: AdminActionType;
   title: string;
   description: string;
 };
@@ -538,6 +541,8 @@ export default function AdminClub() {
   const [selectedIds, setSelectedIds] = useState<SelectionState>({ posts: [], events: [], members: [] });
   const [pagination, setPagination] = useState<PaginationState>(initialUrlState.pagination);
   const [actionLog, setActionLog] = useState<AdminActionLogEntry[]>([]);
+  const [actionLogAreaFilter, setActionLogAreaFilter] = useState<"all" | AdminTabValue>("all");
+  const [actionLogTypeFilter, setActionLogTypeFilter] = useState<"all" | AdminActionType>("all");
 
   const adminQuery = trpc.adminClub.dashboard.useQuery(undefined, {
     enabled: Boolean(user?.role === "admin"),
@@ -594,18 +599,25 @@ export default function AdminClub() {
     };
   };
 
-  const recordAdminAction = (area: AdminTabValue, title: string, description: string) => {
+  const recordAdminAction = (area: AdminTabValue, actionType: AdminActionType, title: string, description: string) => {
     setActionLog((current) => [
       {
         id: Date.now() + current.length,
         timestamp: Date.now(),
         area,
+        actionType,
         title,
         description,
       },
       ...current,
-    ].slice(0, 8));
+    ].slice(0, 6));
   };
+
+  const filteredActionLog = actionLog.filter((entry) => {
+    const matchesArea = actionLogAreaFilter === "all" || entry.area === actionLogAreaFilter;
+    const matchesType = actionLogTypeFilter === "all" || entry.actionType === actionLogTypeFilter;
+    return matchesArea && matchesType;
+  });
 
   const getBulkActionToastCopy = (entity: "post" | "event" | "member", action: "delete" | "pin" | "unpin", count: number) => {
     if (entity === "post") {
@@ -1569,7 +1581,7 @@ export default function AdminClub() {
                       label: post.pinned ? "Pinned" : "Обычный",
                       icon: <Pin className="h-3.5 w-3.5" />,
                       disabled: updatePost.isPending,
-                      onClick: () => void (async () => {
+                      onClick: async () => {
                         const nextPinned = !post.pinned;
                         await updatePost.mutateAsync({
                           id: post.id,
@@ -1591,7 +1603,7 @@ export default function AdminClub() {
                         toast.success(toastCopy.status.title, {
                           description: toastCopy.status.description,
                         });
-                      })(),
+                      },
                     },
                   ]}
                   onEdit={() => setPostForm({
@@ -1795,7 +1807,7 @@ export default function AdminClub() {
                       value: event.sortOrder,
                       icon: <ArrowDown className="h-3.5 w-3.5" />,
                       disabled: updateEvent.isPending,
-                      onClick: () => void (async () => {
+                      onClick: async () => {
                         const nextSortOrder = event.sortOrder + 1;
                         await updateEvent.mutateAsync({
                           id: event.id,
@@ -1810,15 +1822,15 @@ export default function AdminClub() {
                         toast.success(toastCopy.sortOrder.title, {
                           description: toastCopy.sortOrder.description,
                         });
-                        recordAdminAction("events", toastCopy.sortOrder.title, toastCopy.sortOrder.description);
-                      })(),
+                        recordAdminAction("events", "update", toastCopy.sortOrder.title, toastCopy.sortOrder.description);
+                      },
                     },
                     {
                       label: "Статус",
                       value: event.status,
                       icon: <CalendarRange className="h-3.5 w-3.5" />,
                       disabled: updateEvent.isPending,
-                      onClick: () => void (async () => {
+                      onClick: async () => {
                         const nextStatus = event.status === "Открыта регистрация" ? "Мест нет" : "Открыта регистрация";
                         await updateEvent.mutateAsync({
                           id: event.id,
@@ -1833,8 +1845,8 @@ export default function AdminClub() {
                         toast.success(toastCopy.status.title, {
                           description: toastCopy.status.description,
                         });
-                        recordAdminAction("events", toastCopy.status.title, toastCopy.status.description);
-                      })(),
+                        recordAdminAction("events", "update", toastCopy.status.title, toastCopy.status.description);
+                      },
                     },
                   ]}
                   onEdit={() => setEventForm({
@@ -2013,7 +2025,7 @@ export default function AdminClub() {
                       value: member.sortOrder,
                       icon: <ArrowDown className="h-3.5 w-3.5" />,
                       disabled: updateMember.isPending,
-                      onClick: () => void (async () => {
+                      onClick: async () => {
                         const nextSortOrder = member.sortOrder + 1;
                         await updateMember.mutateAsync({
                           id: member.id,
@@ -2027,15 +2039,15 @@ export default function AdminClub() {
                         toast.success(toastCopy.sortOrder.title, {
                           description: toastCopy.sortOrder.description,
                         });
-                        recordAdminAction("members", toastCopy.sortOrder.title, toastCopy.sortOrder.description);
-                      })(),
+                        recordAdminAction("members", "update", toastCopy.sortOrder.title, toastCopy.sortOrder.description);
+                      },
                     },
                     {
                       label: "Бейдж",
                       value: member.badge || "без бейджа",
                       icon: <Crown className="h-3.5 w-3.5" />,
                       disabled: updateMember.isPending,
-                      onClick: () => void (async () => {
+                      onClick: async () => {
                         const nextBadge = member.badge === "Амбассадор" ? "Гость фермы" : "Амбассадор";
                         await updateMember.mutateAsync({
                           id: member.id,
@@ -2049,8 +2061,8 @@ export default function AdminClub() {
                         toast.success(toastCopy.status.title, {
                           description: toastCopy.status.description,
                         });
-                        recordAdminAction("members", toastCopy.status.title, toastCopy.status.description);
-                      })(),
+                        recordAdminAction("members", "update", toastCopy.status.title, toastCopy.status.description);
+                      },
                     },
                   ]}
                   onEdit={() => setMemberForm({
@@ -2086,10 +2098,38 @@ export default function AdminClub() {
               </Badge>
             </div>
           </CardHeader>
-          <CardContent>
-            {actionLog.length ? (
+          <CardContent className="space-y-4">
+            <div className="grid gap-3 md:grid-cols-2">
+              <Field label="Область журнала">
+                <select
+                  value={actionLogAreaFilter}
+                  onChange={(event) => setActionLogAreaFilter(event.target.value as "all" | AdminTabValue)}
+                  className="h-11 w-full rounded-xl border border-stone-200 bg-white px-3 text-sm text-stone-700 outline-none transition focus:border-stone-400 focus:ring-2 focus:ring-stone-200"
+                >
+                  <option value="all">Все области</option>
+                  <option value="posts">Посты</option>
+                  <option value="events">События</option>
+                  <option value="members">Участники</option>
+                </select>
+              </Field>
+              <Field label="Тип операции">
+                <select
+                  value={actionLogTypeFilter}
+                  onChange={(event) => setActionLogTypeFilter(event.target.value as "all" | AdminActionType)}
+                  className="h-11 w-full rounded-xl border border-stone-200 bg-white px-3 text-sm text-stone-700 outline-none transition focus:border-stone-400 focus:ring-2 focus:ring-stone-200"
+                >
+                  <option value="all">Все типы</option>
+                  <option value="create">Создание</option>
+                  <option value="update">Изменение</option>
+                  <option value="delete">Удаление</option>
+                  <option value="bulk">Массовые операции</option>
+                  <option value="preset">Пресеты</option>
+                </select>
+              </Field>
+            </div>
+            {filteredActionLog.length ? (
               <div className="space-y-3">
-                {actionLog.map((entry) => (
+                {filteredActionLog.map((entry) => (
                   <div key={entry.id} className="rounded-2xl border border-stone-200 bg-stone-50/70 p-3">
                     <div className="flex flex-wrap items-start justify-between gap-2">
                       <div className="space-y-1">
@@ -2097,6 +2137,9 @@ export default function AdminClub() {
                           <p className="text-sm font-semibold text-stone-950">{entry.title}</p>
                           <Badge variant="outline" className="rounded-full border-stone-300 bg-white px-2.5 py-0.5 text-[11px] uppercase tracking-[0.12em] text-stone-600">
                             {entry.area === "posts" ? "Посты" : entry.area === "events" ? "События" : "Участники"}
+                          </Badge>
+                          <Badge variant="outline" className="rounded-full border-stone-300 bg-white px-2.5 py-0.5 text-[11px] uppercase tracking-[0.12em] text-stone-600">
+                            {entry.actionType === "create" ? "Создание" : entry.actionType === "update" ? "Изменение" : entry.actionType === "delete" ? "Удаление" : entry.actionType === "bulk" ? "Массово" : "Пресет"}
                           </Badge>
                         </div>
                         <p className="text-sm text-stone-600">{entry.description}</p>
@@ -2107,7 +2150,7 @@ export default function AdminClub() {
                 ))}
               </div>
             ) : (
-              <p className="text-sm text-stone-500">Пока нет действий в текущей сессии. Журнал начнёт заполняться после быстрых изменений, сохранений и массовых операций.</p>
+              <p className="text-sm text-stone-500">По выбранным фильтрам действий пока ничего не найдено. Измените область или тип операции, либо выполните новые действия в панели.</p>
             )}
           </CardContent>
         </Card>
