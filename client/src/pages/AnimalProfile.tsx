@@ -287,11 +287,20 @@ export default function AnimalProfile() {
     const persistent = [...(photosQuery.data ?? [])].sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
     const coverFromServer = persistent.find((image) => image.isCover)?.id;
     const fallbackCoverId = persistent.length > 0 ? persistent[0].id : coverImageId;
-    const merged = [...persistent, ...defaultGallery];
 
-    return merged.map((image, index) => ({
+    const merged = [
+      ...persistent.map((image, index) => ({
+        ...image,
+        sortOrder: image.sortOrder ?? index,
+      })),
+      ...defaultGallery.map((image, index) => ({
+        ...image,
+        sortOrder: persistent.length + index,
+      })),
+    ];
+
+    return merged.map((image) => ({
       ...image,
-      sortOrder: image.sortOrder ?? persistent.length + index,
       isCover: coverFromServer
         ? image.id === coverFromServer
         : image.id === fallbackCoverId,

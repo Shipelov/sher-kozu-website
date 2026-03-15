@@ -139,4 +139,30 @@ describe("animal photo helpers", () => {
     expect(reordered.map((photo) => photo.sortOrder)).toEqual([0, 1, 2, 3]);
     expect(reordered.find((photo) => photo.isCover)?.photoId).toBe(22);
   });
+
+  it("keeps uploaded photos grouped in server order before static gallery items after reload", () => {
+    const uploaded = [
+      { id: "user-33", photoId: 33, sortOrder: 0 },
+      { id: "user-22", photoId: 22, sortOrder: 1 },
+    ];
+    const defaults = [
+      { id: "story", sortOrder: 100 },
+      { id: "passport", sortOrder: 101 },
+    ];
+
+    const merged = [
+      ...uploaded.map((image, index) => ({
+        id: image.id,
+        photoId: image.photoId,
+        order: image.sortOrder ?? index,
+      })),
+      ...defaults.map((image, index) => ({
+        id: image.id,
+        photoId: null,
+        order: uploaded.length + index,
+      })),
+    ];
+
+    expect(merged.map((image) => image.id)).toEqual(["user-33", "user-22", "story", "passport"]);
+  });
 });
