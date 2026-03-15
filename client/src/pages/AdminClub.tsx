@@ -1106,6 +1106,9 @@ export default function AdminClub() {
   const bitrixSummary = bitrixAdminQuery.data?.summary;
   const bitrixLeads = bitrixAdminQuery.data?.leads ?? [];
   const bitrixAudits = bitrixAdminQuery.data?.audits ?? [];
+  const [bitrixStatusFilter, setBitrixStatusFilter] = useState<"all" | "pending" | "success" | "failed" | "retried">("all");
+  const [bitrixErrorFilter, setBitrixErrorFilter] = useState<"all" | "with_error" | "without_error">("all");
+  const [selectedBitrixLeadId, setSelectedBitrixLeadId] = useState<number | null>(null);
 
   const counts = useMemo(
     () => ({
@@ -1154,6 +1157,30 @@ export default function AdminClub() {
     pagination.events.pageSize,
     pagination.members.pageSize,
   ]);
+
+  const filteredBitrixLeads = useMemo(() => {
+    return bitrixLeads.filter((lead: any) => {
+      const matchesStatus = bitrixStatusFilter === "all" ? true : lead.syncStatus === bitrixStatusFilter;
+      const hasError = Boolean(lead.lastSyncError);
+      const matchesError = bitrixErrorFilter === "all"
+        ? true
+        : bitrixErrorFilter === "with_error"
+          ? hasError
+          : !hasError;
+
+      return matchesStatus && matchesError;
+    });
+  }, [bitrixErrorFilter, bitrixLeads, bitrixStatusFilter]);
+
+  const selectedBitrixLead = useMemo(() => {
+    if (!filteredBitrixLeads.length) return null;
+    return filteredBitrixLeads.find((lead: any) => lead.id === selectedBitrixLeadId) ?? filteredBitrixLeads[0] ?? null;
+  }, [filteredBitrixLeads, selectedBitrixLeadId]);
+
+  const selectedBitrixLeadAudits = useMemo(() => {
+    if (!selectedBitrixLead) return [];
+    return bitrixAudits.filter((audit: any) => Number(audit.entityId) === Number(selectedBitrixLead.id));
+  }, [bitrixAudits, selectedBitrixLead]);
 
   const postCategories = useMemo(() => uniqueValues(posts, "category"), [posts]);
   const eventStatuses = useMemo(() => uniqueValues(events, "status"), [events]);
@@ -2403,7 +2430,7 @@ export default function AdminClub() {
               <MetricCard label="Ошибки аудита" value={bitrixSummary?.failedAudits ?? 0} icon={<ShieldAlert className="h-4 w-4" />} />
             </div>
 
-            <div className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
+            <div className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
               <Card className="border-stone-200 bg-white/90 shadow-none">
                 <CardHeader className="space-y-2">
                   <div className="flex flex-wrap items-start justify-between gap-3">
@@ -2426,9 +2453,35 @@ export default function AdminClub() {
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  {bitrixLeads.length ? (
+                  <div className="grid gap-3 md:grid-cols-2">
+                    <Field label="Sync status">
+                      <select
+                        value={bitrixStatusFilter}
+                        onChange={(event) => setBitrixStatusFilter(event.target.value as "all" | "pending" | "success" | "failed" | "retried")}
+                        className="h-11 w-full rounded-xl border border-stone-200 bg-white px-3 text-sm text-stone-700 outline-none transition focus:border-stone-400 focus:ring-2 focus:ring-stone-200"
+                      >
+                        <option value="all">Все статусы</option>
+                        <option value="pending">pending</option>
+                        <option value="success">success</option>
+                        <option value="failed">failed</option>
+                        <option value="retried">retried</option>
+                      </select>
+                    </Field>
+                    <Field label="Ошибки синхронизации">
+                      <select
+                        value={bitrixErrorFilter}
+                        onChange={(event) => setBitrixErrorFilter(event.target.value as "all" | "with_error" | "without_error")}
+                        className="h-11 w-full rounded-xl border border-stone-200 bg-white px-3 text-sm text-stone-700 outline-none transition focus:border-stone-400 focus:ring-2 focus:ring-stone-200"
+                      >
+                        <option value="all">Все лиды</option>
+                        <option value="with_error">Только с ошибками</option>
+                        <option value="without_error">Без ошибок</option>
+                      </select>
+                    </Field>
+                  </div>
+                  {filteredBitrixLeads.length ? (
                     <div className="space-y-3">
-                      {bitrixLeads.map((lead: any) => {
+                      {filteredBitrixLeads.map((lead: any) => {
                         const statusTone = lead.syncStatus === "success"
                           ? "border-emerald-200 bg-emerald-50 text-emerald-800"
                           : lead.syncStatus === "failed"
@@ -2438,7 +2491,12 @@ export default function AdminClub() {
                               : "border-sky-200 bg-sky-50 text-sky-800";
 
                         return (
-                          <div key={lead.id} className="rounded-2xl border border-stone-200 bg-stone-50/80 p-4">
+                          <div
+                            key={lead.id}
+                            className={selectedBitrixLead?.id === lead.id
+                              ? "rounded-2xl border border-stone-900 bg-stone-100 p-4 shadow-[inset_0_0_0_1px_rgba(28,25,23,0.08)]"
+                              : "rounded-2xl border border-stone-200 bg-stone-50/80 p-4"}
+                          >
                             <div className="flex flex-wrap items-start justify-between gap-3">
                               <div className="space-y-2">
                                 <div className="flex flex-wrap items-center gap-2">
@@ -2472,6 +2530,14 @@ export default function AdminClub() {
                                   type="button"
                                   variant="outline"
                                   className="rounded-full border-stone-300 bg-white text-stone-700 hover:bg-stone-100"
+                                  onClick={() => setSelectedBitrixLeadId(lead.id)}
+                                >
+                                  {selectedBitrixLead?.id === lead.id ? "Открыто" : "Открыть detail-view"}
+                                </Button>
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  className="rounded-full border-stone-300 bg-white text-stone-700 hover:bg-stone-100"
                                   onClick={() => void retryLeadSync.mutateAsync({ leadId: lead.id })}
                                   disabled={retryLeadSync.isPending}
                                 >
@@ -2493,22 +2559,143 @@ export default function AdminClub() {
                     </div>
                   ) : (
                     <div className="rounded-2xl border border-dashed border-stone-200 bg-stone-50/70 px-4 py-5 text-sm text-stone-500">
-                      Пока нет ни одной партнёрской заявки для CRM-мониторинга. После отправки формы с Home лиды появятся здесь автоматически.
+                      По текущим фильтрам лиды не найдены. Измените статус или режим ошибок, чтобы вернуть заявки в CRM-мониторинг.
                     </div>
                   )}
                 </CardContent>
               </Card>
 
-              <Card className="border-stone-200 bg-white/90 shadow-none">
-                <CardHeader>
-                  <CardTitle className="text-base text-stone-950">Audit trail Bitrix24</CardTitle>
-                  <CardDescription className="text-stone-600">
-                    Последние push/pull операции по интеграции: видно статус, entity, внешний ID и ошибки синхронизации.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  {bitrixAudits.length ? (
-                    bitrixAudits.slice(0, 12).map((audit: any) => (
+              <div className="space-y-6">
+                <Card className="border-stone-200 bg-white/90 shadow-none">
+                  <CardHeader>
+                    <CardTitle className="text-base text-stone-950">Detail-view заявки</CardTitle>
+                    <CardDescription className="text-stone-600">
+                      Карточка выбранного лида: видно контакт, CRM-связки, next activity, ошибки sync и ручные действия из текущего контекста.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {selectedBitrixLead ? (
+                      <>
+                        <div className="rounded-2xl border border-stone-200 bg-stone-50/80 p-4">
+                          <div className="flex flex-wrap items-start justify-between gap-3">
+                            <div className="space-y-2">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <p className="text-base font-semibold text-stone-950">#{selectedBitrixLead.id} · {selectedBitrixLead.companyName}</p>
+                                <Badge variant="outline" className="rounded-full border-stone-300 bg-white px-2.5 py-0.5 text-[11px] uppercase tracking-[0.12em] text-stone-700">
+                                  {selectedBitrixLead.syncStatus}
+                                </Badge>
+                                {selectedBitrixLead.bitrixStageId ? (
+                                  <Badge variant="outline" className="rounded-full border-stone-300 bg-white px-2.5 py-0.5 text-[11px] text-stone-700">
+                                    Stage: {selectedBitrixLead.bitrixStageId}
+                                  </Badge>
+                                ) : null}
+                              </div>
+                              <p className="text-sm text-stone-600">{selectedBitrixLead.fullName} · {selectedBitrixLead.email}{selectedBitrixLead.phone ? ` · ${selectedBitrixLead.phone}` : ""}</p>
+                              <div className="grid gap-2 sm:grid-cols-2">
+                                <div className="rounded-2xl border border-stone-200 bg-white px-3 py-3 text-sm text-stone-600">
+                                  <p className="text-xs uppercase tracking-[0.12em] text-stone-400">Менеджер</p>
+                                  <p className="mt-2 font-medium text-stone-950">{selectedBitrixLead.assignedManagerName || "Не назначен"}</p>
+                                </div>
+                                <div className="rounded-2xl border border-stone-200 bg-white px-3 py-3 text-sm text-stone-600">
+                                  <p className="text-xs uppercase tracking-[0.12em] text-stone-400">Следующая активность</p>
+                                  <p className="mt-2 font-medium text-stone-950">{selectedBitrixLead.nextActivityAt ? new Date(selectedBitrixLead.nextActivityAt).toLocaleString("ru-RU") : "Не запланирована"}</p>
+                                </div>
+                                <div className="rounded-2xl border border-stone-200 bg-white px-3 py-3 text-sm text-stone-600">
+                                  <p className="text-xs uppercase tracking-[0.12em] text-stone-400">CRM IDs</p>
+                                  <p className="mt-2 leading-6 text-stone-950">Deal: {selectedBitrixLead.bitrixDealId || "—"}<br />Lead: {selectedBitrixLead.bitrixLeadId || "—"}<br />Contact: {selectedBitrixLead.bitrixContactId || "—"}</p>
+                                </div>
+                                <div className="rounded-2xl border border-stone-200 bg-white px-3 py-3 text-sm text-stone-600">
+                                  <p className="text-xs uppercase tracking-[0.12em] text-stone-400">Sync attempts</p>
+                                  <p className="mt-2 font-medium text-stone-950">{selectedBitrixLead.syncAttemptCount}</p>
+                                  <p className="mt-1 text-xs text-stone-500">Последний sync: {selectedBitrixLead.lastSyncAt ? new Date(selectedBitrixLead.lastSyncAt).toLocaleString("ru-RU") : "ещё не запускался"}</p>
+                                </div>
+                              </div>
+                            </div>
+                            <div className="flex flex-wrap gap-2">
+                              <Button
+                                type="button"
+                                variant="outline"
+                                className="rounded-full border-stone-300 bg-white text-stone-700 hover:bg-stone-100"
+                                onClick={() => void retryLeadSync.mutateAsync({ leadId: selectedBitrixLead.id })}
+                                disabled={retryLeadSync.isPending}
+                              >
+                                Retry sync
+                              </Button>
+                              <Button
+                                type="button"
+                                className="rounded-full bg-stone-950 text-white hover:bg-stone-800"
+                                onClick={() => void refreshDealSnapshot.mutateAsync({ leadId: selectedBitrixLead.id })}
+                                disabled={!selectedBitrixLead.bitrixDealId || refreshDealSnapshot.isPending}
+                              >
+                                Refresh snapshot
+                              </Button>
+                            </div>
+                          </div>
+                          {selectedBitrixLead.lastSyncError ? (
+                            <Alert className="mt-4 border-rose-200 bg-rose-50/80 text-rose-900">
+                              <ShieldAlert className="h-4 w-4" />
+                              <AlertTitle>Последняя ошибка синхронизации</AlertTitle>
+                              <AlertDescription>{selectedBitrixLead.lastSyncError}</AlertDescription>
+                            </Alert>
+                          ) : null}
+                        </div>
+
+                        <div className="rounded-2xl border border-stone-200 bg-stone-50/70 p-4">
+                          <div className="mb-3 flex items-center justify-between gap-3">
+                            <div>
+                              <p className="text-sm font-semibold text-stone-950">Timeline sync attempts</p>
+                              <p className="text-xs text-stone-500">Локальная временная шкала строится из CRM-счётчиков и связанных audit-записей по выбранному лиду.</p>
+                            </div>
+                            <Badge variant="outline" className="rounded-full border-stone-300 bg-white px-2.5 py-0.5 text-[11px] text-stone-700">
+                              {selectedBitrixLeadAudits.length} audit events
+                            </Badge>
+                          </div>
+                          <div className="space-y-3">
+                            <div className="rounded-2xl border border-dashed border-stone-200 bg-white px-4 py-3">
+                              <p className="text-sm font-medium text-stone-900">Старт лидогенерации</p>
+                              <p className="text-xs text-stone-500">Создано: {selectedBitrixLead.createdAt ? new Date(selectedBitrixLead.createdAt).toLocaleString("ru-RU") : "дата недоступна"}</p>
+                            </div>
+                            {selectedBitrixLeadAudits.slice(0, 6).map((audit: any) => (
+                              <div key={audit.id} className="rounded-2xl border border-stone-200 bg-white px-4 py-3">
+                                <div className="flex flex-wrap items-start justify-between gap-2">
+                                  <div className="space-y-1">
+                                    <p className="text-sm font-medium text-stone-950">{audit.operation} · {audit.entityType}</p>
+                                    <p className="text-xs text-stone-500">{audit.externalId ? `External ID: ${audit.externalId}` : "Без внешнего ID"}</p>
+                                    {audit.errorMessage ? <p className="text-xs leading-5 text-rose-700">{audit.errorMessage}</p> : null}
+                                  </div>
+                                  <Badge variant="outline" className={audit.status === "success" ? "rounded-full border-emerald-200 bg-emerald-50 px-2.5 py-0.5 text-[11px] text-emerald-800" : audit.status === "failed" ? "rounded-full border-rose-200 bg-rose-50 px-2.5 py-0.5 text-[11px] text-rose-800" : "rounded-full border-sky-200 bg-sky-50 px-2.5 py-0.5 text-[11px] text-sky-800"}>
+                                    {audit.status}
+                                  </Badge>
+                                </div>
+                                <p className="mt-2 text-xs text-stone-500">{new Date(audit.createdAt).toLocaleString("ru-RU")}</p>
+                              </div>
+                            ))}
+                            {!selectedBitrixLeadAudits.length ? (
+                              <div className="rounded-2xl border border-dashed border-stone-200 bg-white px-4 py-4 text-sm text-stone-500">
+                                Для этой заявки audit trail пока пуст. После retry sync или refresh snapshot здесь появятся события таймлайна.
+                              </div>
+                            ) : null}
+                          </div>
+                        </div>
+                      </>
+                    ) : (
+                      <div className="rounded-2xl border border-dashed border-stone-200 bg-stone-50/70 px-4 py-5 text-sm text-stone-500">
+                        Выберите лид слева, чтобы открыть detail-view, CRM-связки и timeline попыток синхронизации.
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                <Card className="border-stone-200 bg-white/90 shadow-none">
+                  <CardHeader>
+                    <CardTitle className="text-base text-stone-950">Audit trail Bitrix24</CardTitle>
+                    <CardDescription className="text-stone-600">
+                      Последние push/pull операции по интеграции: видно статус, entity, внешний ID и ошибки синхронизации.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    {bitrixAudits.length ? (
+                      bitrixAudits.slice(0, 12).map((audit: any) => (
                       <div key={audit.id} className="rounded-2xl border border-stone-200 bg-stone-50/80 px-4 py-3">
                         <div className="flex flex-wrap items-start justify-between gap-2">
                           <div className="space-y-1">
@@ -2530,8 +2717,9 @@ export default function AdminClub() {
                       Аудит интеграции пока пуст. После первой отправки или refresh snapshot здесь появятся push/pull записи.
                     </div>
                   )}
-                </CardContent>
-              </Card>
+                  </CardContent>
+                </Card>
+              </div>
             </div>
           </TabsContent>
 
@@ -2932,7 +3120,6 @@ export default function AdminClub() {
                         </div>
                       </div>
                     )}
-
                   </div>
                 </CardContent>
               )}

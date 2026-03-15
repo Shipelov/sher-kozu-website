@@ -27,4 +27,13 @@ describe("Bitrix24 pilot UI source smoke", () => {
     expect(adminClubSource).toContain("retryLeadSync");
     expect(adminClubSource).toContain("refreshDealSnapshot");
   });
+
+  it("requires lead detail view, CRM filters and sync timeline copy in AdminClub", () => {
+    expect(adminClubSource).toContain("Detail-view заявки");
+    expect(adminClubSource).toContain("Timeline sync attempts");
+    expect(adminClubSource).toContain("Для этой заявки audit trail пока пуст");
+    expect(adminClubSource).toContain("Sync status");
+    expect(adminClubSource).toContain("Ошибки синхронизации");
+    expect(adminClubSource).toContain("Открыть detail-view");
+  });
 });

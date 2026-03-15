@@ -216,7 +216,12 @@
 - [x] Обновить vitest-покрытие для Bitrix24 pilot UI и интеграционных контрактов
 - [ ] Проверить статус проекта, прогнать тесты и подготовить checkpoint по Bitrix24 pilot
 - [x] Добавить отдельную админскую вкладку Bitrix24 с live-списком partner leads, sync status и последними ошибками
-- [ ] Реализовать расширенный detail-view заявки: карточка лида, таймлайн sync attempts и audit trail
+- [x] Реализовать расширенный detail-view заявки: карточка лида, таймлайн sync attempts и audit trail
 - [x] Добавить ручные действия refresh snapshot и retry sync из Bitrix24 admin UI
 - [x] Обновить и прогнать vitest-покрытие для расширенного Bitrix24 admin monitoring flow
 - [ ] Проверить статус проекта и сохранить checkpoint после второй волны Bitrix24 pilot
+- [x] Реализовать detail-view заявки Bitrix24 в AdminClub с карточкой лида и ключевыми полями CRM
+- [x] Добавить таймлайн sync attempts и audit trail внутри detail-view Bitrix24
+- [x] Добавить фильтры и поиск по статусу синхронизации, ошибкам и источнику заявки во вкладке Bitrix24
+- [x] Обновить и прогнать vitest-покрытие для Bitrix24 detail-view и расширенного CRM-monitoring flow
+- [ ] Проверить статус проекта и сохранить checkpoint после третьей волны Bitrix24 pilot
