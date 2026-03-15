@@ -149,6 +149,14 @@ type InlineActionConfig = {
   disabled?: boolean;
 };
 
+type AdminActionLogEntry = {
+  id: number;
+  timestamp: number;
+  area: AdminTabValue;
+  title: string;
+  description: string;
+};
+
 const defaultPostForm = (): PostFormState => ({
   category: "journal",
   author: "Команда фермы",
@@ -529,6 +537,7 @@ export default function AdminClub() {
   const [presetName, setPresetName] = useState<Record<AdminTabValue, string>>({ posts: "", events: "", members: "" });
   const [selectedIds, setSelectedIds] = useState<SelectionState>({ posts: [], events: [], members: [] });
   const [pagination, setPagination] = useState<PaginationState>(initialUrlState.pagination);
+  const [actionLog, setActionLog] = useState<AdminActionLogEntry[]>([]);
 
   const adminQuery = trpc.adminClub.dashboard.useQuery(undefined, {
     enabled: Boolean(user?.role === "admin"),
@@ -583,6 +592,19 @@ export default function AdminClub() {
         description: `Для профиля «${record.name || "Без имени"}» установлен бейдж «${record.badge || "Без бейджа"}».`,
       },
     };
+  };
+
+  const recordAdminAction = (area: AdminTabValue, title: string, description: string) => {
+    setActionLog((current) => [
+      {
+        id: Date.now() + current.length,
+        timestamp: Date.now(),
+        area,
+        title,
+        description,
+      },
+      ...current,
+    ].slice(0, 8));
   };
 
   const getBulkActionToastCopy = (entity: "post" | "event" | "member", action: "delete" | "pin" | "unpin", count: number) => {
@@ -1788,6 +1810,7 @@ export default function AdminClub() {
                         toast.success(toastCopy.sortOrder.title, {
                           description: toastCopy.sortOrder.description,
                         });
+                        recordAdminAction("events", toastCopy.sortOrder.title, toastCopy.sortOrder.description);
                       })(),
                     },
                     {
@@ -1810,6 +1833,7 @@ export default function AdminClub() {
                         toast.success(toastCopy.status.title, {
                           description: toastCopy.status.description,
                         });
+                        recordAdminAction("events", toastCopy.status.title, toastCopy.status.description);
                       })(),
                     },
                   ]}
@@ -2003,6 +2027,7 @@ export default function AdminClub() {
                         toast.success(toastCopy.sortOrder.title, {
                           description: toastCopy.sortOrder.description,
                         });
+                        recordAdminAction("members", toastCopy.sortOrder.title, toastCopy.sortOrder.description);
                       })(),
                     },
                     {
@@ -2024,6 +2049,7 @@ export default function AdminClub() {
                         toast.success(toastCopy.status.title, {
                           description: toastCopy.status.description,
                         });
+                        recordAdminAction("members", toastCopy.status.title, toastCopy.status.description);
                       })(),
                     },
                   ]}
@@ -2047,6 +2073,44 @@ export default function AdminClub() {
             />
           </TabsContent>
         </Tabs>
+
+        <Card className="border-stone-200 bg-white/90">
+          <CardHeader>
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div className="space-y-1">
+                <CardTitle>Последние действия администратора</CardTitle>
+                <CardDescription>Короткий локальный журнал последних операций в этой сессии для прозрачности изменений в клубной панели.</CardDescription>
+              </div>
+              <Badge variant="outline" className="rounded-full border-stone-300 bg-stone-50 px-3 py-1 text-xs text-stone-700">
+                {actionLog.length} записей
+              </Badge>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {actionLog.length ? (
+              <div className="space-y-3">
+                {actionLog.map((entry) => (
+                  <div key={entry.id} className="rounded-2xl border border-stone-200 bg-stone-50/70 p-3">
+                    <div className="flex flex-wrap items-start justify-between gap-2">
+                      <div className="space-y-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <p className="text-sm font-semibold text-stone-950">{entry.title}</p>
+                          <Badge variant="outline" className="rounded-full border-stone-300 bg-white px-2.5 py-0.5 text-[11px] uppercase tracking-[0.12em] text-stone-600">
+                            {entry.area === "posts" ? "Посты" : entry.area === "events" ? "События" : "Участники"}
+                          </Badge>
+                        </div>
+                        <p className="text-sm text-stone-600">{entry.description}</p>
+                      </div>
+                      <span className="text-xs text-stone-500">{new Date(entry.timestamp).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-stone-500">Пока нет действий в текущей сессии. Журнал начнёт заполняться после быстрых изменений, сохранений и массовых операций.</p>
+            )}
+          </CardContent>
+        </Card>
       </div>
     </DashboardLayout>
   );

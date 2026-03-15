@@ -1334,3 +1334,66 @@ describe("admin club action toast copy", () => {
     });
   });
 });
+
+type AdminActionArea = "posts" | "events" | "members";
+
+type AdminActionLogEntry = {
+  id: string;
+  area: AdminActionArea;
+  title: string;
+  description: string;
+  timestamp: number;
+};
+
+function recordAdminAction(
+  currentLog: AdminActionLogEntry[],
+  area: AdminActionArea,
+  title: string,
+  description: string,
+  now = Date.now(),
+) {
+  const nextEntry: AdminActionLogEntry = {
+    id: `${area}-${now}-${currentLog.length}`,
+    area,
+    title,
+    description,
+    timestamp: now,
+  };
+
+  return [nextEntry, ...currentLog].slice(0, 6);
+}
+
+describe("recordAdminAction", () => {
+  it("adds newest entries to the top and limits the journal to six records", () => {
+    const seeded = Array.from({ length: 6 }, (_, index) => ({
+      id: `posts-${index}`,
+      area: "posts" as const,
+      title: `Действие ${index}`,
+      description: `Описание ${index}`,
+      timestamp: 1_710_000_000_000 + index,
+    }));
+
+    const result = recordAdminAction(
+      seeded,
+      "members",
+      "Бейдж обновлён",
+      "Для профиля «Лейла» установлен статус «Амбассадор».",
+      1_710_000_000_999,
+    );
+
+    expect(result).toHaveLength(6);
+    expect(result[0]).toMatchObject({
+      area: "members",
+      title: "Бейдж обновлён",
+      description: "Для профиля «Лейла» установлен статус «Амбассадор».",
+      timestamp: 1_710_000_000_999,
+    });
+    expect(result.at(-1)?.id).toBe("posts-4");
+  });
+
+  it("creates stable ids using area, timestamp and previous length", () => {
+    const result = recordAdminAction([], "events", "Статус обновлён", "Событие переведено в архив.", 1_710_123_456_789);
+
+    expect(result[0]?.id).toBe("events-1710123456789-0");
+  });
+});
