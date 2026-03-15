@@ -2277,6 +2277,9 @@ export default function AdminClub() {
                   <Copy className="mr-1.5 h-4 w-4" />
                   Скопировать ссылку
                 </Button>
+                <Badge variant="outline" className="rounded-full border-stone-300 bg-white px-3 py-1 text-xs text-stone-700">
+                  Видимо сейчас: {filteredActionLog.length}
+                </Badge>
                 <Select value={actionLogExportScope} onValueChange={(value) => setActionLogExportScope(value as "filtered" | "all")}>
                   <SelectTrigger className="h-9 w-[220px] rounded-full border-stone-300 bg-white text-xs text-stone-700">
                     <SelectValue placeholder="Глубина экспорта" />
@@ -2337,6 +2340,10 @@ export default function AdminClub() {
                       </Button>
                     );
                   })}
+                </div>
+                <div className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-stone-200 bg-stone-50/70 px-4 py-3 text-sm text-stone-600">
+                  <span>Текущий фильтр показывает {filteredActionLog.length} из {actionLog.length} записей журнала.</span>
+                  <span>Режим экспорта: {actionLogExportScope === "all" ? "весь журнал сессии" : "только текущий вид"}.</span>
                 </div>
                 <div className="grid gap-3 md:grid-cols-2">
                 <Field label="Область журнала">

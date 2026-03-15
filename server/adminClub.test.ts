@@ -1499,6 +1499,13 @@ function applyActionLogPreset(presetId: string) {
 
   return presets[presetId] ?? presets.all;
 }
+function getVisibleActionLogSummary(filteredCount: number, totalCount: number, scope: "filtered" | "all") {
+  return {
+    badgeLabel: `Видимо сейчас: ${filteredCount}`,
+    helperText: `Текущий фильтр показывает ${filteredCount} из ${totalCount} записей журнала.`,
+    exportModeText: `Режим экспорта: ${scope === "all" ? "весь журнал сессии" : "только текущий вид"}.`,
+  };
+}
 
 
 describe("recordAdminAction", () => {
@@ -1682,6 +1689,19 @@ describe("recordAdminAction", () => {
     ];
 
     expect(getExportableActionLog(entries, "all", "events", "update")).toEqual(entries);
+  });
+
+  it("returns visible action log counters and export mode labels", () => {
+    expect(getVisibleActionLogSummary(3, 6, "filtered")).toEqual({
+      badgeLabel: "Видимо сейчас: 3",
+      helperText: "Текущий фильтр показывает 3 из 6 записей журнала.",
+      exportModeText: "Режим экспорта: только текущий вид.",
+    });
+    expect(getVisibleActionLogSummary(6, 6, "all")).toEqual({
+      badgeLabel: "Видимо сейчас: 6",
+      helperText: "Текущий фильтр показывает 6 из 6 записей журнала.",
+      exportModeText: "Режим экспорта: весь журнал сессии.",
+    });
   });
 
   it("applies quick presets for frequent admin log scenarios", () => {
