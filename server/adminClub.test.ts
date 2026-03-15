@@ -1488,6 +1488,17 @@ function groupActionLogEntries(entries: AdminActionLogEntry[]) {
     return groups;
   }, []);
 }
+function applyActionLogPreset(presetId: string) {
+  const presets: Record<string, { area: "all" | AdminTabValue; actionType: "all" | AdminActionType }> = {
+    all: { area: "all", actionType: "all" },
+    "content-updates": { area: "posts", actionType: "update" },
+    "event-changes": { area: "events", actionType: "all" },
+    "member-ops": { area: "members", actionType: "all" },
+    "risky-actions": { area: "all", actionType: "delete" },
+  };
+
+  return presets[presetId] ?? presets.all;
+}
 
 
 describe("recordAdminAction", () => {
@@ -1671,6 +1682,33 @@ describe("recordAdminAction", () => {
     ];
 
     expect(getExportableActionLog(entries, "all", "events", "update")).toEqual(entries);
+  });
+
+  it("applies quick presets for frequent admin log scenarios", () => {
+    expect(applyActionLogPreset("all")).toEqual({
+      area: "all",
+      actionType: "all",
+    });
+    expect(applyActionLogPreset("content-updates")).toEqual({
+      area: "posts",
+      actionType: "update",
+    });
+    expect(applyActionLogPreset("event-changes")).toEqual({
+      area: "events",
+      actionType: "all",
+    });
+    expect(applyActionLogPreset("member-ops")).toEqual({
+      area: "members",
+      actionType: "all",
+    });
+    expect(applyActionLogPreset("risky-actions")).toEqual({
+      area: "all",
+      actionType: "delete",
+    });
+    expect(applyActionLogPreset("unknown-preset")).toEqual({
+      area: "all",
+      actionType: "all",
+    });
   });
 
   it("groups adjacent journal entries by date and minute", () => {

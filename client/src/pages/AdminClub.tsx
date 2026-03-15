@@ -652,6 +652,29 @@ export default function AdminClub() {
     });
     return groups;
   }, []);
+  const actionLogFilterPresets: Array<{ id: string; label: string; area: "all" | AdminTabValue; actionType: "all" | AdminActionType }> = [
+    { id: "all", label: "Все действия", area: "all", actionType: "all" },
+    { id: "content-updates", label: "Обновления контента", area: "posts", actionType: "update" },
+    { id: "event-changes", label: "Изменения событий", area: "events", actionType: "all" },
+    { id: "member-ops", label: "Операции с участниками", area: "members", actionType: "all" },
+    { id: "risky-actions", label: "Удаления и массовые", area: "all", actionType: "delete" },
+  ];
+  const applyActionLogPreset = (presetId: string) => {
+    if (presetId === "all") {
+      setActionLogAreaFilter("all");
+      setActionLogTypeFilter("all");
+      return;
+    }
+
+    const preset = actionLogFilterPresets.find((item) => item.id === presetId);
+
+    if (!preset) {
+      return;
+    }
+
+    setActionLogAreaFilter(preset.area);
+    setActionLogTypeFilter(preset.actionType);
+  };
   const exportActionLogToCsv = () => {
     if (!exportableActionLog.length) {
       toast.error("Журнал пуст", {
@@ -2294,7 +2317,28 @@ export default function AdminClub() {
             </CardContent>
           ) : (
             <CardContent className="space-y-4">
-              <div className="grid gap-3 md:grid-cols-2">
+              <div className="space-y-3">
+                <div className="flex flex-wrap gap-2">
+                  {actionLogFilterPresets.map((preset) => {
+                    const isActive = actionLogAreaFilter === preset.area && actionLogTypeFilter === preset.actionType;
+
+                    return (
+                      <Button
+                        key={preset.id}
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className={isActive
+                          ? "rounded-full border-stone-900 bg-stone-900 px-3 text-white hover:bg-stone-800"
+                          : "rounded-full border-stone-300 bg-white px-3 text-stone-700 hover:bg-stone-50"}
+                        onClick={() => applyActionLogPreset(preset.id)}
+                      >
+                        {preset.label}
+                      </Button>
+                    );
+                  })}
+                </div>
+                <div className="grid gap-3 md:grid-cols-2">
                 <Field label="Область журнала">
                   <select
                     value={actionLogAreaFilter}
@@ -2321,6 +2365,7 @@ export default function AdminClub() {
                     <option value="preset">Пресеты</option>
                   </select>
                 </Field>
+              </div>
               </div>
               {filteredActionLog.length ? (
                 <div className="space-y-4">
