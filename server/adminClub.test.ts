@@ -732,3 +732,21 @@ describe("admin club inline validation", () => {
     });
   });
 });
+
+describe("admin club sort indicator", () => {
+  function getSortIndicatorLabel(fieldLabel: string, direction: "asc" | "desc") {
+    return `Сортировка: по ${fieldLabel} ${direction === "asc" ? "↑" : "↓"}`;
+  }
+
+  it("builds ascending sort indicator labels", () => {
+    expect(getSortIndicatorLabel("порядку", "asc")).toBe("Сортировка: по порядку ↑");
+    expect(getSortIndicatorLabel("дате", "asc")).toBe("Сортировка: по дате ↑");
+    expect(getSortIndicatorLabel("имени", "asc")).toBe("Сортировка: по имени ↑");
+  });
+
+  it("builds descending sort indicator labels", () => {
+    expect(getSortIndicatorLabel("заголовку", "desc")).toBe("Сортировка: по заголовку ↓");
+    expect(getSortIndicatorLabel("статусу", "desc")).toBe("Сортировка: по статусу ↓");
+    expect(getSortIndicatorLabel("бейджу", "desc")).toBe("Сортировка: по бейджу ↓");
+  });
+});

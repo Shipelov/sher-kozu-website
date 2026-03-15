@@ -833,6 +833,10 @@ export default function AdminClub() {
             <EntityListCard
               title="Текущие посты"
               description="Быстрое редактирование, удаление, поиск и фильтрация материалов клуба."
+              sortIndicator={{
+                fieldLabel: postFilters.sortBy === "timeLabel" ? "времени" : postFilters.sortBy === "title" ? "заголовку" : "порядку",
+                directionLabel: postFilters.sortDirection === "asc" ? "↑" : "↓",
+              }}
               toolbar={
                 <FilterToolbar
                   searchPlaceholder="Искать по заголовку, тексту, автору или тегам"
@@ -988,6 +992,10 @@ export default function AdminClub() {
             <EntityListCard
               title="События клуба"
               description="Редактируйте даты, статусы и тексты, а также быстро находите нужные записи."
+              sortIndicator={{
+                fieldLabel: eventFilters.sortBy === "dateLabel" ? "дате" : eventFilters.sortBy === "status" ? "статусу" : "порядку",
+                directionLabel: eventFilters.sortDirection === "asc" ? "↑" : "↓",
+              }}
               toolbar={
                 <FilterToolbar
                   searchPlaceholder="Искать по названию, описанию или дате"
@@ -1120,6 +1128,10 @@ export default function AdminClub() {
             <EntityListCard
               title="Участники клуба"
               description="Ищите по имени, животному или бейджу и быстро поддерживайте состав сообщества в порядке."
+              sortIndicator={{
+                fieldLabel: memberFilters.sortBy === "name" ? "имени" : memberFilters.sortBy === "badge" ? "бейджу" : "порядку",
+                directionLabel: memberFilters.sortDirection === "asc" ? "↑" : "↓",
+              }}
               toolbar={
                 <FilterToolbar
                   searchPlaceholder="Искать по имени, животному или периоду участия"
@@ -1249,6 +1261,7 @@ function EntityListCard({
   items,
   renderItem,
   emptyText,
+  sortIndicator,
 }: {
   title: string;
   description: string;
@@ -1256,12 +1269,25 @@ function EntityListCard({
   items: any[];
   renderItem: (item: any) => ReactNode;
   emptyText?: string;
+  sortIndicator?: {
+    fieldLabel: string;
+    directionLabel: string;
+  };
 }) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>{title}</CardTitle>
-        <CardDescription>{description}</CardDescription>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="space-y-1">
+            <CardTitle>{title}</CardTitle>
+            <CardDescription>{description}</CardDescription>
+          </div>
+          {sortIndicator ? (
+            <Badge variant="outline" className="rounded-full border-amber-300 bg-amber-50 px-3 py-1 text-xs font-medium text-amber-800">
+              Сортировка: по {sortIndicator.fieldLabel} {sortIndicator.directionLabel}
+            </Badge>
+          ) : null}
+        </div>
       </CardHeader>
       <CardContent className="space-y-4">
         {toolbar}
