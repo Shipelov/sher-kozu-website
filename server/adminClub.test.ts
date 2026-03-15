@@ -750,3 +750,108 @@ describe("admin club sort indicator", () => {
     expect(getSortIndicatorLabel("бейджу", "desc")).toBe("Сортировка: по бейджу ↓");
   });
 });
+type PresetTab = "posts" | "events" | "members";
+
+type PresetRecord = {
+  id: number;
+  tab: PresetTab;
+  name: string;
+  stateJson: string;
+  userId: string;
+};
+
+function createPresetRecord(records: PresetRecord[], input: Omit<PresetRecord, "id">) {
+  const nextId = records.reduce((max, record) => Math.max(max, record.id), 0) + 1;
+  return [...records, { id: nextId, ...input }];
+}
+
+function deletePresetRecord(records: PresetRecord[], id: number) {
+  return records.filter((record) => record.id !== id);
+}
+
+function listPresetsByTab(records: PresetRecord[], tab: PresetTab) {
+  return records.filter((record) => record.tab === tab).sort((left, right) => left.name.localeCompare(right.name, "ru"));
+}
+
+function buildPresetPayload(tab: PresetTab, state: PostFilters | EventFilters | MemberFilters) {
+  return JSON.stringify({ tab, state });
+}
+
+function applyPresetPayload(payload: string) {
+  return JSON.parse(payload) as { tab: PresetTab; state: PostFilters | EventFilters | MemberFilters };
+}
+
+describe("admin club presets", () => {
+  it("creates preset records with incremental ids and stores serialized state", () => {
+    const created = createPresetRecord([], {
+      tab: "posts",
+      name: "Pinned stories",
+      stateJson: buildPresetPayload("posts", {
+        query: "утро",
+        category: "journal",
+        pinned: "pinned",
+        sortBy: "title",
+        sortDirection: "desc",
+      }),
+      userId: "owner-1",
+    });
+
+    expect(created).toHaveLength(1);
+    expect(created[0]).toMatchObject({
+      id: 1,
+      tab: "posts",
+      name: "Pinned stories",
+      userId: "owner-1",
+    });
+    expect(applyPresetPayload(created[0].stateJson)).toEqual({
+      tab: "posts",
+      state: {
+        query: "утро",
+        category: "journal",
+        pinned: "pinned",
+        sortBy: "title",
+        sortDirection: "desc",
+      },
+    });
+  });
+
+  it("lists presets only for the requested tab in alphabetical order", () => {
+    const records: PresetRecord[] = [
+      { id: 3, tab: "events", name: "Архив", stateJson: "{}", userId: "owner-1" },
+      { id: 1, tab: "posts", name: "Pinned", stateJson: "{}", userId: "owner-1" },
+      { id: 2, tab: "posts", name: "Journal", stateJson: "{}", userId: "owner-1" },
+    ];
+
+    expect(listPresetsByTab(records, "posts").map((preset) => preset.name)).toEqual(["Journal", "Pinned"]);
+  });
+
+  it("deletes only the selected preset record", () => {
+    const records: PresetRecord[] = [
+      { id: 1, tab: "posts", name: "Pinned", stateJson: "{}", userId: "owner-1" },
+      { id: 2, tab: "members", name: "Founders", stateJson: "{}", userId: "owner-1" },
+    ];
+
+    expect(deletePresetRecord(records, 1)).toEqual([
+      { id: 2, tab: "members", name: "Founders", stateJson: "{}", userId: "owner-1" },
+    ]);
+  });
+
+  it("keeps sorting parameters inside member preset payloads", () => {
+    const payload = buildPresetPayload("members", {
+      query: "семья",
+      badge: "Founder",
+      sortBy: "name",
+      sortDirection: "asc",
+    });
+
+    expect(applyPresetPayload(payload)).toEqual({
+      tab: "members",
+      state: {
+        query: "семья",
+        badge: "Founder",
+        sortBy: "name",
+        sortDirection: "asc",
+      },
+    });
+  });
+});

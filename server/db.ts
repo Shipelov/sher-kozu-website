@@ -3,10 +3,12 @@ import { drizzle } from "drizzle-orm/mysql2";
 import { createPool, type Pool } from "mysql2/promise";
 import {
   animalPhotos,
+  clubAdminPresets,
   clubEvents,
   clubMembers,
   clubPosts,
   InsertAnimalPhoto,
+  InsertClubAdminPreset,
   InsertClubEvent,
   InsertClubMember,
   InsertClubPost,
@@ -580,7 +582,78 @@ export async function getClubFeedData(ownerOpenId: string) {
 }
 
 export async function listClubAdminData(ownerOpenId: string) {
-  return getClubFeedData(ownerOpenId);
+  const feed = await getClubFeedData(ownerOpenId);
+  const presets = await listClubAdminPresets(ownerOpenId);
+  return {
+    ...feed,
+    presets,
+  };
+}
+
+export async function listClubAdminPresets(ownerOpenId: string) {
+  const db = await getDb();
+  if (!db) {
+    console.warn("[Database] Cannot get club admin presets: database not available");
+    return [];
+  }
+
+  const presets = await db
+    .select()
+    .from(clubAdminPresets)
+    .where(eq(clubAdminPresets.ownerOpenId, ownerOpenId))
+    .orderBy(asc(clubAdminPresets.tab), asc(clubAdminPresets.sortOrder), asc(clubAdminPresets.name));
+
+  return presets;
+}
+
+export async function createClubAdminPreset(input: InsertClubAdminPreset) {
+  const db = await getDb();
+  if (!db) {
+    throw new Error("Database not available for creating club admin preset");
+  }
+
+  const result = await db.insert(clubAdminPresets).values(input);
+  const insertMeta = Array.isArray(result) ? result[0] : result;
+  const insertedId = Number((insertMeta as { insertId?: number | string }).insertId);
+  const created = await db.select().from(clubAdminPresets).where(eq(clubAdminPresets.id, insertedId)).limit(1);
+  return created[0] ?? null;
+}
+
+export async function updateClubAdminPreset(input: InsertClubAdminPreset & { id: number }) {
+  const db = await getDb();
+  if (!db) {
+    throw new Error("Database not available for updating club admin preset");
+  }
+
+  await db
+    .update(clubAdminPresets)
+    .set({
+      tab: input.tab,
+      name: input.name,
+      configJson: input.configJson,
+      sortOrder: input.sortOrder,
+    })
+    .where(and(eq(clubAdminPresets.id, input.id), eq(clubAdminPresets.ownerOpenId, input.ownerOpenId)));
+
+  const updated = await db.select().from(clubAdminPresets).where(eq(clubAdminPresets.id, input.id)).limit(1);
+  return updated[0] ?? null;
+}
+
+export async function deleteClubAdminPreset(id: number, ownerOpenId: string) {
+  const db = await getDb();
+  if (!db) {
+    throw new Error("Database not available for deleting club admin preset");
+  }
+
+  const existing = await db
+    .select()
+    .from(clubAdminPresets)
+    .where(and(eq(clubAdminPresets.id, id), eq(clubAdminPresets.ownerOpenId, ownerOpenId)))
+    .limit(1);
+
+  if (!existing[0]) return null;
+  await db.delete(clubAdminPresets).where(and(eq(clubAdminPresets.id, id), eq(clubAdminPresets.ownerOpenId, ownerOpenId)));
+  return existing[0];
 }
 
 export async function createClubPost(input: InsertClubPost) {

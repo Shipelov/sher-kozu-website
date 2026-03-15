@@ -141,6 +141,17 @@ export const clubMembers = mysqlTable("clubMembers", {
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
 
+export const clubAdminPresets = mysqlTable("clubAdminPresets", {
+  id: int("id").autoincrement().primaryKey(),
+  ownerOpenId: varchar("ownerOpenId", { length: 64 }).notNull(),
+  tab: mysqlEnum("tab", ["posts", "events", "members"]).notNull(),
+  name: varchar("name", { length: 120 }).notNull(),
+  configJson: text("configJson").notNull(),
+  sortOrder: int("sortOrder").default(0).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
 
@@ -167,3 +178,6 @@ export type InsertClubEvent = typeof clubEvents.$inferInsert;
 
 export type ClubMember = typeof clubMembers.$inferSelect;
 export type InsertClubMember = typeof clubMembers.$inferInsert;
+
+export type ClubAdminPreset = typeof clubAdminPresets.$inferSelect;
+export type InsertClubAdminPreset = typeof clubAdminPresets.$inferInsert;

@@ -6,10 +6,12 @@ import { systemRouter } from "./_core/systemRouter";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import {
   createAnimalPhoto,
+  createClubAdminPreset,
   createClubEvent,
   createClubMember,
   createClubPost,
   deleteAnimalPhoto,
+  deleteClubAdminPreset,
   deleteClubEvent,
   deleteClubMember,
   deleteClubPost,
@@ -19,6 +21,7 @@ import {
   listClubAdminData,
   reorderAnimalPhotos,
   setAnimalPhotoCover,
+  updateClubAdminPreset,
   updateClubEvent,
   updateClubMember,
   updateClubPost,
@@ -100,6 +103,30 @@ const updateClubEventInput = clubEventInput.extend({
 });
 
 const updateClubMemberInput = clubMemberInput.extend({
+  id: z.number().int().positive(),
+});
+
+const presetTabSchema = z.enum(["posts", "events", "members"]);
+
+const presetConfigSchema = z.object({
+  query: z.string().max(200).default(""),
+  category: z.string().max(64).optional(),
+  pinned: z.enum(["all", "pinned", "regular"]).optional(),
+  status: z.string().max(120).optional(),
+  tone: z.string().max(32).optional(),
+  badge: z.string().max(80).optional(),
+  sortBy: z.string().min(1).max(32),
+  sortDirection: z.enum(["asc", "desc"]),
+});
+
+const clubAdminPresetInput = z.object({
+  tab: presetTabSchema,
+  name: z.string().min(1).max(120),
+  config: presetConfigSchema,
+  sortOrder: z.number().int().min(0).max(9999).default(0),
+});
+
+const updateClubAdminPresetInput = clubAdminPresetInput.extend({
   id: z.number().int().positive(),
 });
 
@@ -271,6 +298,32 @@ export const appRouter = router({
       const deleted = await deleteClubMember(input.id, ctx.user.openId);
       if (!deleted) {
         throw new TRPCError({ code: "NOT_FOUND", message: "Участник не найден." });
+      }
+      return { success: true, id: input.id } as const;
+    }),
+    createPreset: adminProcedure.input(clubAdminPresetInput).mutation(async ({ ctx, input }) => {
+      return createClubAdminPreset({
+        ownerOpenId: ctx.user.openId,
+        tab: input.tab,
+        name: input.name,
+        configJson: JSON.stringify(input.config),
+        sortOrder: input.sortOrder,
+      });
+    }),
+    updatePreset: adminProcedure.input(updateClubAdminPresetInput).mutation(async ({ ctx, input }) => {
+      return updateClubAdminPreset({
+        id: input.id,
+        ownerOpenId: ctx.user.openId,
+        tab: input.tab,
+        name: input.name,
+        configJson: JSON.stringify(input.config),
+        sortOrder: input.sortOrder,
+      });
+    }),
+    deletePreset: adminProcedure.input(idInput).mutation(async ({ ctx, input }) => {
+      const deleted = await deleteClubAdminPreset(input.id, ctx.user.openId);
+      if (!deleted) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Пресет не найден." });
       }
       return { success: true, id: input.id } as const;
     }),

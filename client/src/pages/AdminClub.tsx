@@ -22,7 +22,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { trpc } from "@/lib/trpc";
 import { NOT_ADMIN_ERR_MSG } from "@shared/const";
-import { CalendarRange, Crown, Pencil, Search, ShieldAlert, Trash2, Users, X } from "lucide-react";
+import { CalendarRange, Crown, Pencil, Save, Search, ShieldAlert, Trash2, Users, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import { toast } from "sonner";
@@ -100,6 +100,25 @@ type PendingDeleteState =
   | null;
 
 type AdminTabValue = "posts" | "events" | "members";
+
+type PresetConfig = {
+  query?: string;
+  category?: string;
+  pinned?: "all" | "pinned" | "regular";
+  status?: string;
+  tone?: string;
+  badge?: string;
+  sortBy: string;
+  sortDirection: SortDirection;
+};
+
+type ClubAdminPreset = {
+  id: number;
+  tab: AdminTabValue;
+  name: string;
+  configJson: string;
+  sortOrder: number;
+};
 
 type FormErrors<T extends string> = Partial<Record<T, string>>;
 
@@ -330,6 +349,43 @@ function hasFormErrors<T extends string>(errors: FormErrors<T>) {
   return Object.values(errors).some(Boolean);
 }
 
+function parsePresetConfig(configJson: string): PresetConfig | null {
+  try {
+    return JSON.parse(configJson) as PresetConfig;
+  } catch {
+    return null;
+  }
+}
+
+function getPresetConfigForTab(tab: AdminTabValue, postFilters: PostFilterState, eventFilters: EventFilterState, memberFilters: MemberFilterState): PresetConfig {
+  if (tab === "posts") {
+    return {
+      query: postFilters.query,
+      category: postFilters.category,
+      pinned: postFilters.pinned,
+      sortBy: postFilters.sortBy,
+      sortDirection: postFilters.sortDirection,
+    };
+  }
+
+  if (tab === "events") {
+    return {
+      query: eventFilters.query,
+      status: eventFilters.status,
+      tone: eventFilters.tone,
+      sortBy: eventFilters.sortBy,
+      sortDirection: eventFilters.sortDirection,
+    };
+  }
+
+  return {
+    query: memberFilters.query,
+    badge: memberFilters.badge,
+    sortBy: memberFilters.sortBy,
+    sortDirection: memberFilters.sortDirection,
+  };
+}
+
 function buildAdminClubUrl(activeTab: AdminTabValue, postFilters: PostFilterState, eventFilters: EventFilterState, memberFilters: MemberFilterState) {
   const params = new URLSearchParams();
 
@@ -369,6 +425,7 @@ export default function AdminClub() {
   const [postErrors, setPostErrors] = useState<FormErrors<PostFormField>>({});
   const [eventErrors, setEventErrors] = useState<FormErrors<EventFormField>>({});
   const [memberErrors, setMemberErrors] = useState<FormErrors<MemberFormField>>({});
+  const [presetName, setPresetName] = useState<Record<AdminTabValue, string>>({ posts: "", events: "", members: "" });
 
   const adminQuery = trpc.adminClub.dashboard.useQuery(undefined, {
     enabled: Boolean(user?.role === "admin"),
@@ -507,9 +564,39 @@ export default function AdminClub() {
     },
   });
 
+  const createPreset = trpc.adminClub.createPreset.useMutation({
+    onSuccess: async (_, variables) => {
+      await refreshAdminData();
+      setPresetName((current) => ({ ...current, [variables.tab]: "" }));
+      toast.success("Пресет сохранён", {
+        description: `Набор «${variables.name}» теперь доступен для вкладки ${variables.tab}.`,
+      });
+    },
+    onError: (error) => {
+      toast.error("Не удалось сохранить пресет", {
+        description: error.message,
+      });
+    },
+  });
+
+  const deletePreset = trpc.adminClub.deletePreset.useMutation({
+    onSuccess: async (_, variables) => {
+      await refreshAdminData();
+      toast.success("Пресет удалён", {
+        description: `Сохранённый набор #${variables.id} удалён из панели.`,
+      });
+    },
+    onError: (error) => {
+      toast.error("Не удалось удалить пресет", {
+        description: error.message,
+      });
+    },
+  });
+
   const posts = adminQuery.data?.posts ?? [];
   const events = adminQuery.data?.events ?? [];
   const members = adminQuery.data?.members ?? [];
+  const presets = (adminQuery.data?.presets ?? []) as ClubAdminPreset[];
 
   const counts = useMemo(
     () => ({
@@ -537,8 +624,73 @@ export default function AdminClub() {
   const eventStatuses = useMemo(() => uniqueValues(events, "status"), [events]);
   const eventTones = useMemo(() => uniqueValues(events, "tone"), [events]);
   const memberBadges = useMemo(() => uniqueValues(members, "badge"), [members]);
+  const presetsByTab = useMemo(() => ({
+    posts: presets.filter((preset) => preset.tab === "posts"),
+    events: presets.filter((preset) => preset.tab === "events"),
+    members: presets.filter((preset) => preset.tab === "members"),
+  }), [presets]);
 
   const isDeleting = deletePost.isPending || deleteEvent.isPending || deleteMember.isPending;
+
+  const handleSavePreset = async (tab: AdminTabValue) => {
+    const name = presetName[tab].trim();
+    if (!name) {
+      toast.error("Укажите название пресета", {
+        description: "Название нужно, чтобы повторно использовать сохранённый набор фильтров и сортировки.",
+      });
+      return;
+    }
+
+    const sameTabPresets = presetsByTab[tab];
+    await createPreset.mutateAsync({
+      tab,
+      name,
+      config: getPresetConfigForTab(tab, postFilters, eventFilters, memberFilters),
+      sortOrder: sameTabPresets.length,
+    });
+  };
+
+  const applyPreset = (preset: ClubAdminPreset) => {
+    const config = parsePresetConfig(preset.configJson);
+    if (!config) {
+      toast.error("Пресет повреждён", {
+        description: "Не удалось прочитать сохранённую конфигурацию. Попробуйте сохранить её заново.",
+      });
+      return;
+    }
+
+    if (preset.tab === "posts") {
+      setActiveTab("posts");
+      setPostFilters({
+        query: config.query ?? "",
+        category: config.category ?? "all",
+        pinned: config.pinned ?? "all",
+        sortBy: (config.sortBy === "timeLabel" || config.sortBy === "title" ? config.sortBy : "sortOrder") as PostSortField,
+        sortDirection: config.sortDirection === "desc" ? "desc" : "asc",
+      });
+      return;
+    }
+
+    if (preset.tab === "events") {
+      setActiveTab("events");
+      setEventFilters({
+        query: config.query ?? "",
+        status: config.status ?? "all",
+        tone: config.tone ?? "all",
+        sortBy: (config.sortBy === "dateLabel" || config.sortBy === "status" ? config.sortBy : "sortOrder") as EventSortField,
+        sortDirection: config.sortDirection === "desc" ? "desc" : "asc",
+      });
+      return;
+    }
+
+    setActiveTab("members");
+    setMemberFilters({
+      query: config.query ?? "",
+      badge: config.badge ?? "all",
+      sortBy: (config.sortBy === "name" || config.sortBy === "badge" ? config.sortBy : "sortOrder") as MemberSortField,
+      sortDirection: config.sortDirection === "desc" ? "desc" : "asc",
+    });
+  };
 
   useEffect(() => {
     const nextUrl = buildAdminClubUrl(activeTab, postFilters, eventFilters, memberFilters);
@@ -840,6 +992,18 @@ export default function AdminClub() {
               toolbar={
                 <FilterToolbar
                   searchPlaceholder="Искать по заголовку, тексту, автору или тегам"
+                  presetPanel={
+                    <PresetToolbar
+                      presetName={presetName.posts}
+                      onPresetNameChange={(value) => setPresetName((current) => ({ ...current, posts: value }))}
+                      onSave={() => void handleSavePreset("posts")}
+                      saveDisabled={createPreset.isPending}
+                      presets={presetsByTab.posts}
+                      onApplyPreset={applyPreset}
+                      onDeletePreset={(presetId) => void deletePreset.mutateAsync({ id: presetId })}
+                      deletePending={deletePreset.isPending}
+                    />
+                  }
                   searchValue={postFilters.query}
                   resultCount={filteredPosts.length}
                   resultLabel="постов"
@@ -999,6 +1163,18 @@ export default function AdminClub() {
               toolbar={
                 <FilterToolbar
                   searchPlaceholder="Искать по названию, описанию или дате"
+                  presetPanel={
+                    <PresetToolbar
+                      presetName={presetName.events}
+                      onPresetNameChange={(value) => setPresetName((current) => ({ ...current, events: value }))}
+                      onSave={() => void handleSavePreset("events")}
+                      saveDisabled={createPreset.isPending}
+                      presets={presetsByTab.events}
+                      onApplyPreset={applyPreset}
+                      onDeletePreset={(presetId) => void deletePreset.mutateAsync({ id: presetId })}
+                      deletePending={deletePreset.isPending}
+                    />
+                  }
                   searchValue={eventFilters.query}
                   resultCount={filteredEvents.length}
                   resultLabel="событий"
@@ -1135,6 +1311,18 @@ export default function AdminClub() {
               toolbar={
                 <FilterToolbar
                   searchPlaceholder="Искать по имени, животному или периоду участия"
+                  presetPanel={
+                    <PresetToolbar
+                      presetName={presetName.members}
+                      onPresetNameChange={(value) => setPresetName((current) => ({ ...current, members: value }))}
+                      onSave={() => void handleSavePreset("members")}
+                      saveDisabled={createPreset.isPending}
+                      presets={presetsByTab.members}
+                      onApplyPreset={applyPreset}
+                      onDeletePreset={(presetId) => void deletePreset.mutateAsync({ id: presetId })}
+                      deletePending={deletePreset.isPending}
+                    />
+                  }
                   searchValue={memberFilters.query}
                   resultCount={filteredMembers.length}
                   resultLabel="участников"
@@ -1311,6 +1499,7 @@ function FilterToolbar({
   resultLabel,
   resetLabel,
   activeFilterChips,
+  presetPanel,
   onSearchChange,
   onReset,
   hasActiveFilters,
@@ -1322,6 +1511,7 @@ function FilterToolbar({
   resultLabel: string;
   resetLabel: string;
   activeFilterChips?: FilterChip[];
+  presetPanel?: ReactNode;
   onSearchChange: (value: string) => void;
   onReset: () => void;
   hasActiveFilters: boolean;
@@ -1346,6 +1536,7 @@ function FilterToolbar({
           <X className="mr-2 h-4 w-4" />{resetLabel}
         </Button>
       </div>
+      {presetPanel}
       {activeFilterChips?.length ? (
         <div className="flex flex-wrap gap-2">
           {activeFilterChips.map((chip) => (
@@ -1364,6 +1555,77 @@ function FilterToolbar({
         </div>
       ) : null}
       {children ? <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">{children}</div> : null}
+    </div>
+  );
+}
+
+function PresetToolbar({
+  presetName,
+  onPresetNameChange,
+  onSave,
+  saveDisabled,
+  presets,
+  onApplyPreset,
+  onDeletePreset,
+  deletePending,
+}: {
+  presetName: string;
+  onPresetNameChange: (value: string) => void;
+  onSave: () => void;
+  saveDisabled: boolean;
+  presets: ClubAdminPreset[];
+  onApplyPreset: (preset: ClubAdminPreset) => void;
+  onDeletePreset: (presetId: number) => void;
+  deletePending: boolean;
+}) {
+  return (
+    <div className="space-y-3 rounded-2xl border border-dashed border-amber-200 bg-white/80 p-3">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-end">
+        <div className="flex-1 space-y-2">
+          <Label>Сохранить текущий набор</Label>
+          <Input
+            value={presetName}
+            onChange={(e) => onPresetNameChange(e.target.value)}
+            placeholder="Например: Публикации для витрины"
+          />
+        </div>
+        <Button type="button" onClick={onSave} disabled={saveDisabled} className="lg:self-end">
+          <Save className="mr-2 h-4 w-4" />Сохранить пресет
+        </Button>
+      </div>
+      <div className="space-y-2">
+        <div className="flex items-center justify-between gap-3">
+          <Label>Сохранённые пресеты</Label>
+          <span className="text-xs text-stone-500">{presets.length} шт.</span>
+        </div>
+        {presets.length ? (
+          <div className="flex flex-wrap gap-2">
+            {presets.map((preset) => (
+              <div key={preset.id} className="inline-flex items-center gap-1 rounded-full border border-stone-200 bg-stone-50 px-2 py-1">
+                <button
+                  type="button"
+                  onClick={() => onApplyPreset(preset)}
+                  className="text-xs font-medium text-stone-800 transition-colors hover:text-stone-950"
+                  title="Применить пресет"
+                >
+                  {preset.name}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onDeletePreset(preset.id)}
+                  disabled={deletePending}
+                  className="rounded-full p-0.5 text-stone-500 transition-colors hover:bg-red-50 hover:text-red-600 disabled:opacity-60"
+                  aria-label={`Удалить пресет ${preset.name}`}
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="text-sm text-stone-500">Пока нет сохранённых пресетов для этой вкладки.</p>
+        )}
+      </div>
     </div>
   );
 }
