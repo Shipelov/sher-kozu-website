@@ -2475,30 +2475,30 @@ export default function AdminClub() {
                     </div>
                     <div className="grid gap-3 md:grid-cols-2">
                       <Field label="Область журнала">
-                      <select
-                        value={actionLogAreaFilter}
-                        onChange={(event) => setActionLogAreaFilter(event.target.value as "all" | AdminTabValue)}
-                        className="h-11 w-full rounded-xl border border-stone-200 bg-white px-3 text-sm text-stone-700 outline-none transition focus:border-stone-400 focus:ring-2 focus:ring-stone-200"
-                      >
-                        <option value="all">Все области</option>
-                        <option value="posts">Посты</option>
-                        <option value="events">События</option>
-                        <option value="members">Участники</option>
-                      </select>
+                        <select
+                          value={actionLogAreaFilter}
+                          onChange={(event) => setActionLogAreaFilter(event.target.value as "all" | AdminTabValue)}
+                          className="h-11 w-full rounded-xl border border-stone-200 bg-white px-3 text-sm text-stone-700 outline-none transition focus:border-stone-400 focus:ring-2 focus:ring-stone-200"
+                        >
+                          <option value="all">Все области</option>
+                          <option value="posts">Посты</option>
+                          <option value="events">События</option>
+                          <option value="members">Участники</option>
+                        </select>
                       </Field>
                       <Field label="Тип операции">
-                      <select
-                        value={actionLogTypeFilter}
-                        onChange={(event) => setActionLogTypeFilter(event.target.value as "all" | AdminActionType)}
-                        className="h-11 w-full rounded-xl border border-stone-200 bg-white px-3 text-sm text-stone-700 outline-none transition focus:border-stone-400 focus:ring-2 focus:ring-stone-200"
-                      >
-                        <option value="all">Все типы</option>
-                        <option value="create">Создание</option>
-                        <option value="update">Изменение</option>
-                        <option value="delete">Удаление</option>
-                        <option value="bulk">Массовые операции</option>
-                        <option value="preset">Пресеты</option>
-                      </select>
+                        <select
+                          value={actionLogTypeFilter}
+                          onChange={(event) => setActionLogTypeFilter(event.target.value as "all" | AdminActionType)}
+                          className="h-11 w-full rounded-xl border border-stone-200 bg-white px-3 text-sm text-stone-700 outline-none transition focus:border-stone-400 focus:ring-2 focus:ring-stone-200"
+                        >
+                          <option value="all">Все типы</option>
+                          <option value="create">Создание</option>
+                          <option value="update">Изменение</option>
+                          <option value="delete">Удаление</option>
+                          <option value="bulk">Массовые операции</option>
+                          <option value="preset">Пресеты</option>
+                        </select>
                       </Field>
                     </div>
                     <Card className="border-amber-200 bg-amber-50/70 shadow-none">
@@ -2661,19 +2661,19 @@ export default function AdminClub() {
                         )}
                       </CardContent>
                     </Card>
-                  </div>
-                  {filteredActionLog.length ? (
-                    <div className="space-y-4">
-                      {groupedActionLog.map((group) => (
-                        <div key={group.key} className="space-y-3">
-                          <div className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-dashed border-stone-200 bg-stone-50/70 px-4 py-2">
-                            <p className="text-sm font-semibold text-stone-900">{group.dateLabel}</p>
-                            <div className="flex items-center gap-2 text-xs text-stone-500">
-                              <span className="rounded-full bg-white px-2.5 py-1 text-stone-600">{group.hourLabel}</span>
-                              <span>{group.entries.length} {group.entries.length === 1 ? "запись" : group.entries.length < 5 ? "записи" : "записей"}</span>
+
+                    {filteredActionLog.length ? (
+                      <div className="space-y-4">
+                        {groupedActionLog.map((group) => (
+                          <div key={group.key} className="space-y-3">
+                            <div className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-dashed border-stone-200 bg-stone-50/70 px-4 py-2">
+                              <p className="text-sm font-semibold text-stone-900">{group.dateLabel}</p>
+                              <div className="flex items-center gap-2 text-xs text-stone-500">
+                                <span className="rounded-full bg-white px-2.5 py-1 text-stone-600">{group.hourLabel}</span>
+                                <span>{group.entries.length} {group.entries.length === 1 ? "запись" : group.entries.length < 5 ? "записи" : "записей"}</span>
+                              </div>
                             </div>
-                          </div>
-                          {group.entries.map((entry) => {
+                            {group.entries.map((entry) => {
                             const actionTypeBadge = getActionTypeBadgeConfig(entry.actionType);
                             const includedInExport = exportableActionLogIds.has(entry.id);
 
@@ -2709,12 +2709,12 @@ export default function AdminClub() {
                               </div>
                             );
                           })}
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="rounded-3xl border border-dashed border-stone-200 bg-stone-50/70 px-5 py-8">
-                      <div className="mx-auto flex max-w-2xl flex-col items-start gap-4 text-left">
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="rounded-3xl border border-dashed border-stone-200 bg-stone-50/70 px-5 py-8">
+                        <div className="mx-auto flex max-w-2xl flex-col items-start gap-4 text-left">
                         <div className="rounded-2xl bg-white p-3 text-stone-700 shadow-sm ring-1 ring-stone-200/80">
                           <ShieldAlert className="h-5 w-5" />
                         </div>
@@ -2745,9 +2745,11 @@ export default function AdminClub() {
                             Вернуться к вкладке «{lastEntityTab === "posts" ? "Посты" : lastEntityTab === "events" ? "События" : "Участники"}»
                           </Button>
                         </div>
+                        </div>
                       </div>
-                    </div>
-                  )}
+                    )}
+
+                  </div>
                 </CardContent>
               )}
             </Card>

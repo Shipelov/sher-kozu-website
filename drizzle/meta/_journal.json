@@ -36,6 +36,13 @@
       "when": 1773566121768,
       "tag": "0004_needy_jazinda",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "5",
+      "when": 1773596845939,
+      "tag": "0005_cooing_squirrel_girl",
+      "breakpoints": true
     }
   ]
 }

@@ -7,4 +7,7 @@ export const ENV = {
   isProduction: process.env.NODE_ENV === "production",
   forgeApiUrl: process.env.BUILT_IN_FORGE_API_URL ?? "",
   forgeApiKey: process.env.BUILT_IN_FORGE_API_KEY ?? "",
+  bitrix24BaseUrl: process.env.BITRIX24_BASE_URL ?? "",
+  bitrix24RestUserId: process.env.BITRIX24_REST_USER_ID ?? "",
+  bitrix24WebhookToken: process.env.BITRIX24_WEBHOOK_TOKEN ?? "",
 };

@@ -152,6 +152,53 @@ export const clubAdminPresets = mysqlTable("clubAdminPresets", {
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
 
+export const partnerLeads = mysqlTable("partnerLeads", {
+  id: int("id").autoincrement().primaryKey(),
+  ownerOpenId: varchar("ownerOpenId", { length: 64 }).notNull(),
+  fullName: varchar("fullName", { length: 160 }).notNull(),
+  companyName: varchar("companyName", { length: 180 }).notNull(),
+  email: varchar("email", { length: 320 }).notNull(),
+  phone: varchar("phone", { length: 64 }),
+  telegram: varchar("telegram", { length: 80 }),
+  region: varchar("region", { length: 160 }),
+  source: mysqlEnum("source", ["website", "club", "referral", "manual"]).default("website").notNull(),
+  interestType: mysqlEnum("interestType", ["retail", "horeca", "distribution", "collaboration", "other"]).default("other").notNull(),
+  preferredContactMethod: mysqlEnum("preferredContactMethod", ["email", "phone", "whatsapp", "telegram", "any"]).default("any").notNull(),
+  interestProducts: text("interestProducts"),
+  notes: text("notes"),
+  syncStatus: mysqlEnum("syncStatus", ["pending", "success", "failed", "retried"]).default("pending").notNull(),
+  syncAttemptCount: int("syncAttemptCount").default(0).notNull(),
+  lastSyncAt: timestamp("lastSyncAt"),
+  lastSyncError: text("lastSyncError"),
+  bitrixContactId: varchar("bitrixContactId", { length: 64 }),
+  bitrixCompanyId: varchar("bitrixCompanyId", { length: 64 }),
+  bitrixDealId: varchar("bitrixDealId", { length: 64 }),
+  bitrixLeadId: varchar("bitrixLeadId", { length: 64 }),
+  bitrixStageId: varchar("bitrixStageId", { length: 120 }),
+  assignedManagerId: varchar("assignedManagerId", { length: 64 }),
+  assignedManagerName: varchar("assignedManagerName", { length: 160 }),
+  nextActivityAt: timestamp("nextActivityAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export const integrationAudits = mysqlTable("integrationAudits", {
+  id: int("id").autoincrement().primaryKey(),
+  ownerOpenId: varchar("ownerOpenId", { length: 64 }).notNull(),
+  integration: mysqlEnum("integration", ["bitrix24"]).default("bitrix24").notNull(),
+  entityType: mysqlEnum("entityType", ["partnerLead", "contact", "company", "deal", "webhook"]).notNull(),
+  entityId: int("entityId").notNull(),
+  operation: mysqlEnum("operation", ["create", "sync", "retry", "pull", "webhook"]).notNull(),
+  status: mysqlEnum("status", ["pending", "success", "failed"]).default("pending").notNull(),
+  requestPayload: text("requestPayload"),
+  responsePayload: text("responsePayload"),
+  errorMessage: text("errorMessage"),
+  externalId: varchar("externalId", { length: 120 }),
+  retryOfAuditId: int("retryOfAuditId"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
 
@@ -181,3 +228,9 @@ export type InsertClubMember = typeof clubMembers.$inferInsert;
 
 export type ClubAdminPreset = typeof clubAdminPresets.$inferSelect;
 export type InsertClubAdminPreset = typeof clubAdminPresets.$inferInsert;
+
+export type PartnerLead = typeof partnerLeads.$inferSelect;
+export type InsertPartnerLead = typeof partnerLeads.$inferInsert;
+
+export type IntegrationAudit = typeof integrationAudits.$inferSelect;
+export type InsertIntegrationAudit = typeof integrationAudits.$inferInsert;

@@ -5,26 +5,42 @@ Core: asymmetric storytelling, warm organic luxury, clear route into product eco
 Avoid generic food ecommerce tropes. Every section must explain personal farming and route deeper.
 */
 
+import { trpc } from "@/lib/trpc";
 import { motion } from "framer-motion";
 import { Link } from "wouter";
 import Navbar from "@/components/Navbar";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import {
   ArrowRight,
+  Building2,
+  Calendar,
+  CheckCircle2,
   ChevronRight,
+  Clock3,
   Heart,
+  Leaf,
+  Mail,
+  MapPin,
   Milk,
+  Package,
+  Phone,
   ShieldCheck,
   Sparkles,
+  Star,
+  UserRound,
   Users,
   Camera,
-  Package,
   BookOpen,
-  MapPin,
-  Calendar,
   Bot,
-  Leaf,
-  Star,
+  RefreshCcw,
 } from "lucide-react";
+import { useMemo, useState } from "react";
+import { toast } from "sonner";
 
 const CDN = {
   hero: "https://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/sherkozu_family_farm_hero-UF9QBY2UhWL9gdEpLXiEFS.webp",
@@ -118,13 +134,131 @@ const atmosphereNotes = [
   "События и визиты, поддерживающие связь между доставками",
 ];
 
+type PartnerLeadFormState = {
+  fullName: string;
+  companyName: string;
+  email: string;
+  phone: string;
+  telegram: string;
+  region: string;
+  interestType: "retail" | "horeca" | "distribution" | "collaboration" | "other";
+  preferredContactMethod: "email" | "phone" | "whatsapp" | "telegram" | "any";
+  interestProducts: string;
+  notes: string;
+};
+
+const defaultPartnerLeadForm = (): PartnerLeadFormState => ({
+  fullName: "",
+  companyName: "",
+  email: "",
+  phone: "",
+  telegram: "",
+  region: "",
+  interestType: "distribution",
+  preferredContactMethod: "phone",
+  interestProducts: "Молоко, сыры, именные наборы",
+  notes: "",
+});
+
+function getStatusCopy(status: string | null | undefined) {
+  if (status === "success") {
+    return {
+      label: "Синхронизировано",
+      className: "border-emerald-200 bg-emerald-50 text-emerald-800",
+      icon: CheckCircle2,
+    };
+  }
+
+  if (status === "retried") {
+    return {
+      label: "Успешно после повтора",
+      className: "border-sky-200 bg-sky-50 text-sky-800",
+      icon: RefreshCcw,
+    };
+  }
+
+  if (status === "failed") {
+    return {
+      label: "Требует повтора",
+      className: "border-rose-200 bg-rose-50 text-rose-800",
+      icon: Clock3,
+    };
+  }
+
+  return {
+    label: "В очереди синхронизации",
+    className: "border-amber-200 bg-amber-50 text-amber-800",
+    icon: Clock3,
+  };
+}
+
 export default function Home() {
+  const [partnerLeadForm, setPartnerLeadForm] = useState<PartnerLeadFormState>(defaultPartnerLeadForm);
+  const [latestSubmission, setLatestSubmission] = useState<{
+    id: number;
+    syncStatus: string | null;
+    bitrixDealId: string | null;
+    assignedManagerName: string | null;
+    nextActivityAt: Date | number | string | null;
+    lastSyncError: string | null;
+  } | null>(null);
+
+  const createPartnerLead = trpc.bitrix24.createPartnerLead.useMutation({
+    onSuccess: (result) => {
+      setLatestSubmission({
+        id: result.lead.id,
+        syncStatus: result.lead.syncStatus,
+        bitrixDealId: result.lead.bitrixDealId,
+        assignedManagerName: result.lead.assignedManagerName,
+        nextActivityAt: result.lead.nextActivityAt,
+        lastSyncError: result.errorMessage ?? result.lead.lastSyncError ?? null,
+      });
+
+      if (result.synced) {
+        toast.success("Заявка отправлена в Bitrix24", {
+          description: "Партнёрская заявка создана и сразу синхронизирована с CRM пилота.",
+        });
+      } else {
+        toast.error("Заявка сохранена, но CRM требует повторной синхронизации", {
+          description: result.errorMessage ?? "Проверьте статус в админ-панели Bitrix24 pilot.",
+        });
+      }
+
+      setPartnerLeadForm(defaultPartnerLeadForm());
+    },
+    onError: (error) => {
+      toast.error("Не удалось отправить партнёрскую заявку", {
+        description: error.message,
+      });
+    },
+  });
+
+  const latestSubmissionStatus = useMemo(() => getStatusCopy(latestSubmission?.syncStatus), [latestSubmission?.syncStatus]);
+
+  const handlePartnerLeadSubmit = async () => {
+    await createPartnerLead.mutateAsync({
+      fullName: partnerLeadForm.fullName,
+      companyName: partnerLeadForm.companyName,
+      email: partnerLeadForm.email,
+      phone: partnerLeadForm.phone || null,
+      telegram: partnerLeadForm.telegram || null,
+      region: partnerLeadForm.region || null,
+      source: "website",
+      interestType: partnerLeadForm.interestType,
+      preferredContactMethod: partnerLeadForm.preferredContactMethod,
+      interestProducts: partnerLeadForm.interestProducts || null,
+      notes: partnerLeadForm.notes || null,
+    });
+  };
+
+  const LatestStatusIcon = latestSubmissionStatus.icon;
+
   return (
     <div className="min-h-screen overflow-hidden bg-background text-foreground">
       <Navbar />
 
       <section className="relative isolate overflow-hidden border-b border-border/60 bg-[radial-gradient(circle_at_top_left,rgba(255,255,255,0.88),rgba(244,240,232,0.48)_35%,rgba(235,230,220,0)_70%)] pt-28 pb-16 md:pt-34 md:pb-24">
-        <div className="absolute inset-0 opacity-40 pointer-events-none" aria-hidden>
+        <div className="absolute inset-0 pointer-events-none opacity-40" aria-hidden>
           <div className="absolute -left-24 top-24 h-72 w-72 rounded-full bg-primary/10 blur-3xl" />
           <div className="absolute right-0 top-0 h-96 w-96 rounded-full bg-accent/20 blur-3xl" />
         </div>
@@ -175,10 +309,10 @@ export default function Home() {
                   Открыть профиль Марты
                   <ChevronRight className="h-4 w-4" />
                 </Link>
-                <Link href="/tracker" className="inline-flex items-center justify-center gap-2 rounded-full border border-primary/15 bg-secondary/70 px-7 py-4 text-sm font-semibold text-primary transition-colors hover:bg-secondary">
-                  Перейти в трекер продуктов
-                  <Package className="h-4 w-4" />
-                </Link>
+                <a href="#partner-pilot" className="inline-flex items-center justify-center gap-2 rounded-full border border-primary/15 bg-secondary/70 px-7 py-4 text-sm font-semibold text-primary transition-colors hover:bg-secondary">
+                  Стать партнёром
+                  <Building2 className="h-4 w-4" />
+                </a>
               </motion.div>
 
               <div className="mt-10 grid max-w-2xl grid-cols-2 gap-3 md:grid-cols-4">
@@ -333,6 +467,228 @@ export default function Home() {
                   );
                 })}
               </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="partner-pilot" className="py-18 md:py-24">
+        <div className="container">
+          <div className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
+            <Card className="border-stone-200 bg-[linear-gradient(135deg,rgba(255,250,244,0.96),rgba(247,242,234,0.9))] shadow-sm">
+              <CardHeader className="space-y-4">
+                <div className="inline-flex w-fit items-center gap-2 rounded-full border border-amber-200 bg-white/80 px-3 py-1 text-xs font-medium uppercase tracking-[0.18em] text-amber-900">
+                  <Building2 className="h-3.5 w-3.5" />
+                  Pilot Bitrix24 CRM
+                </div>
+                <CardTitle className="text-3xl text-stone-950">Стать партнёром Sher Kozu</CardTitle>
+                <CardDescription className="max-w-xl text-base leading-7 text-stone-600">
+                  Для дистрибуции, horeca, розницы и специальных коллабораций мы уже подключили пилотную CRM-синхронизацию.
+                  Заявка с этой страницы создаётся в системе Sher Kozu и сразу отправляется в Bitrix24.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4 text-sm text-stone-700">
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="rounded-2xl border border-white/70 bg-white/80 p-4">
+                    <div className="flex items-center gap-2 text-stone-950">
+                      <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                      <span className="font-semibold">Что уже в pilot</span>
+                    </div>
+                    <p className="mt-2 leading-6 text-stone-600">Приём заявок, синхронизация сделки в Bitrix24, аудит событий интеграции и повторная отправка при ошибке.</p>
+                  </div>
+                  <div className="rounded-2xl border border-white/70 bg-white/80 p-4">
+                    <div className="flex items-center gap-2 text-stone-950">
+                      <Clock3 className="h-4 w-4 text-amber-700" />
+                      <span className="font-semibold">Что вернётся обратно</span>
+                    </div>
+                    <p className="mt-2 leading-6 text-stone-600">Стадия сделки, назначенный менеджер и ближайшая активность подтягиваются обратно в Sher Kozu для мониторинга.</p>
+                  </div>
+                </div>
+
+                <div className="rounded-[1.75rem] border border-stone-200 bg-white/90 p-5">
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label htmlFor="partner-full-name">Имя и фамилия</Label>
+                      <div className="relative">
+                        <UserRound className="pointer-events-none absolute left-3 top-3.5 h-4 w-4 text-stone-400" />
+                        <Input id="partner-full-name" className="pl-10" value={partnerLeadForm.fullName} onChange={(event) => setPartnerLeadForm((current) => ({ ...current, fullName: event.target.value }))} placeholder="Алексей Иванов" />
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="partner-company">Компания</Label>
+                      <div className="relative">
+                        <Building2 className="pointer-events-none absolute left-3 top-3.5 h-4 w-4 text-stone-400" />
+                        <Input id="partner-company" className="pl-10" value={partnerLeadForm.companyName} onChange={(event) => setPartnerLeadForm((current) => ({ ...current, companyName: event.target.value }))} placeholder="ООО Премиум Ритейл" />
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="partner-email">Email</Label>
+                      <div className="relative">
+                        <Mail className="pointer-events-none absolute left-3 top-3.5 h-4 w-4 text-stone-400" />
+                        <Input id="partner-email" type="email" className="pl-10" value={partnerLeadForm.email} onChange={(event) => setPartnerLeadForm((current) => ({ ...current, email: event.target.value }))} placeholder="buyer@company.kz" />
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="partner-phone">Телефон</Label>
+                      <div className="relative">
+                        <Phone className="pointer-events-none absolute left-3 top-3.5 h-4 w-4 text-stone-400" />
+                        <Input id="partner-phone" className="pl-10" value={partnerLeadForm.phone} onChange={(event) => setPartnerLeadForm((current) => ({ ...current, phone: event.target.value }))} placeholder="+7 701 000 00 00" />
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="partner-region">Регион</Label>
+                      <Input id="partner-region" value={partnerLeadForm.region} onChange={(event) => setPartnerLeadForm((current) => ({ ...current, region: event.target.value }))} placeholder="Алматы" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="partner-telegram">Telegram</Label>
+                      <Input id="partner-telegram" value={partnerLeadForm.telegram} onChange={(event) => setPartnerLeadForm((current) => ({ ...current, telegram: event.target.value }))} placeholder="@alex_partner" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Тип партнёрства</Label>
+                      <Select value={partnerLeadForm.interestType} onValueChange={(value: PartnerLeadFormState["interestType"]) => setPartnerLeadForm((current) => ({ ...current, interestType: value }))}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Выберите направление" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="retail">Retail</SelectItem>
+                          <SelectItem value="horeca">HoReCa</SelectItem>
+                          <SelectItem value="distribution">Дистрибуция</SelectItem>
+                          <SelectItem value="collaboration">Коллаборация</SelectItem>
+                          <SelectItem value="other">Другое</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Предпочтительный канал</Label>
+                      <Select value={partnerLeadForm.preferredContactMethod} onValueChange={(value: PartnerLeadFormState["preferredContactMethod"]) => setPartnerLeadForm((current) => ({ ...current, preferredContactMethod: value }))}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Как лучше связаться" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="email">Email</SelectItem>
+                          <SelectItem value="phone">Телефон</SelectItem>
+                          <SelectItem value="whatsapp">WhatsApp</SelectItem>
+                          <SelectItem value="telegram">Telegram</SelectItem>
+                          <SelectItem value="any">Любой канал</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 space-y-2">
+                    <Label htmlFor="partner-products">Интересующие продукты</Label>
+                    <Input id="partner-products" value={partnerLeadForm.interestProducts} onChange={(event) => setPartnerLeadForm((current) => ({ ...current, interestProducts: event.target.value }))} placeholder="Молоко A2, крафтовые сыры, branded boxes" />
+                  </div>
+
+                  <div className="mt-4 space-y-2">
+                    <Label htmlFor="partner-notes">Комментарий</Label>
+                    <Textarea id="partner-notes" className="min-h-28" value={partnerLeadForm.notes} onChange={(event) => setPartnerLeadForm((current) => ({ ...current, notes: event.target.value }))} placeholder="Опишите формат поставки, объёмы или совместную идею." />
+                  </div>
+
+                  <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <p className="text-xs leading-6 text-stone-500">
+                      Отправляя форму, вы инициируете pilot-сценарий двусторонней интеграции Sher Kozu ↔ Bitrix24 только для партнёрских заявок.
+                    </p>
+                    <Button onClick={() => void handlePartnerLeadSubmit()} disabled={createPartnerLead.isPending} className="rounded-full px-6">
+                      {createPartnerLead.isPending ? "Отправляем в CRM..." : "Отправить партнёрскую заявку"}
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <div className="grid gap-6">
+              <Card className="border-stone-200 shadow-sm">
+                <CardHeader>
+                  <CardTitle className="text-2xl text-stone-950">Последняя заявка и статус pilot-синхронизации</CardTitle>
+                  <CardDescription className="text-stone-600">
+                    После отправки здесь сразу показывается, попала ли заявка в Bitrix24 и какие поля уже вернулись назад из CRM.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {latestSubmission ? (
+                    <div className="space-y-4">
+                      <div className="flex flex-wrap items-center gap-3">
+                        <span className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-medium ${latestSubmissionStatus.className}`}>
+                          <LatestStatusIcon className="h-3.5 w-3.5" />
+                          {latestSubmissionStatus.label}
+                        </span>
+                        <span className="rounded-full border border-stone-200 bg-stone-50 px-3 py-1 text-xs text-stone-600">
+                          Lead ID: {latestSubmission.id}
+                        </span>
+                        {latestSubmission.bitrixDealId ? (
+                          <span className="rounded-full border border-stone-200 bg-stone-50 px-3 py-1 text-xs text-stone-600">
+                            Deal ID: {latestSubmission.bitrixDealId}
+                          </span>
+                        ) : null}
+                      </div>
+
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        <div className="rounded-2xl border border-stone-200 bg-stone-50 px-4 py-4">
+                          <p className="text-xs uppercase tracking-[0.14em] text-stone-500">Назначенный менеджер</p>
+                          <p className="mt-2 text-sm font-semibold text-stone-950">{latestSubmission.assignedManagerName || "Будет подтянут после обработки в CRM"}</p>
+                        </div>
+                        <div className="rounded-2xl border border-stone-200 bg-stone-50 px-4 py-4">
+                          <p className="text-xs uppercase tracking-[0.14em] text-stone-500">Следующая активность</p>
+                          <p className="mt-2 text-sm font-semibold text-stone-950">
+                            {latestSubmission.nextActivityAt ? new Date(latestSubmission.nextActivityAt).toLocaleString("ru-RU") : "Пока не назначена"}
+                          </p>
+                        </div>
+                      </div>
+
+                      {latestSubmission.lastSyncError ? (
+                        <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-4 text-sm text-rose-800">
+                          <p className="font-semibold">Последняя ошибка синхронизации</p>
+                          <p className="mt-2 leading-6">{latestSubmission.lastSyncError}</p>
+                          <p className="mt-2 text-xs leading-5 text-rose-700/80">Администратор может повторить отправку и обновить snapshot сделки в панели управления CRM.</p>
+                        </div>
+                      ) : null}
+                    </div>
+                  ) : (
+                    <div className="rounded-[1.75rem] border border-dashed border-stone-200 bg-stone-50/80 px-5 py-8 text-sm leading-7 text-stone-500">
+                      Пока ещё нет отправленной партнёрской заявки в текущей сессии. Заполните форму слева, и здесь появится live-статус интеграции с Bitrix24.
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              <Card className="border-stone-200 shadow-sm">
+                <CardHeader>
+                  <CardTitle className="text-2xl text-stone-950">Что видит администратор</CardTitle>
+                  <CardDescription className="text-stone-600">
+                    Внутри админ-панели pilot-мониторинг показывает заявки, аудиты интеграции, статусы retry и back-sync поля CRM.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-3 text-sm text-stone-600">
+                  <div className="flex items-start gap-3 rounded-2xl border border-stone-200 bg-stone-50 px-4 py-4">
+                    <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
+                    <div>
+                      <p className="font-semibold text-stone-950">Интеграционный аудит</p>
+                      <p className="mt-1 leading-6">Каждая отправка, повтор и pull snapshot фиксируются как отдельные audit-записи для быстрой диагностики.</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3 rounded-2xl border border-stone-200 bg-stone-50 px-4 py-4">
+                    <RefreshCcw className="mt-0.5 h-4 w-4 shrink-0 text-sky-700" />
+                    <div>
+                      <p className="font-semibold text-stone-950">Retry без дублей</p>
+                      <p className="mt-1 leading-6">Повторная отправка запускается вручную только для нужной заявки, а idempotency держится на стороне Sher Kozu lead record.</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3 rounded-2xl border border-stone-200 bg-stone-50 px-4 py-4">
+                    <Clock3 className="mt-0.5 h-4 w-4 shrink-0 text-amber-700" />
+                    <div>
+                      <p className="font-semibold text-stone-950">Back-sync полей CRM</p>
+                      <p className="mt-1 leading-6">Стадия сделки, ответственный менеджер и next activity возвращаются в Sher Kozu для управленческого контроля.</p>
+                    </div>
+                  </div>
+                  <div className="pt-2">
+                    <Link href="/admin/club" className="inline-flex items-center gap-2 text-sm font-semibold text-primary transition-colors hover:text-primary/80">
+                      Открыть админ-панель
+                      <ChevronRight className="h-4 w-4" />
+                    </Link>
+                  </div>
+                </CardContent>
+              </Card>
             </div>
           </div>
         </div>

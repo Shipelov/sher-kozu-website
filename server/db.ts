@@ -12,7 +12,11 @@ import {
   InsertClubEvent,
   InsertClubMember,
   InsertClubPost,
+  InsertIntegrationAudit,
+  InsertPartnerLead,
   InsertUser,
+  integrationAudits,
+  partnerLeads,
   productBatches,
   productCompositionSnapshots,
   productDeliveries,
@@ -801,4 +805,167 @@ export async function deleteClubMember(id: number, ownerOpenId: string) {
   if (!existing[0]) return null;
   await db.delete(clubMembers).where(and(eq(clubMembers.id, id), eq(clubMembers.ownerOpenId, ownerOpenId)));
   return existing[0];
+}
+
+export async function createPartnerLead(input: InsertPartnerLead) {
+  const db = await getDb();
+  if (!db) {
+    throw new Error("Database not available for creating partner lead");
+  }
+
+  const result = await db.insert(partnerLeads).values(input);
+  const insertMeta = Array.isArray(result) ? result[0] : result;
+  const insertedId = Number((insertMeta as { insertId?: number | string }).insertId);
+  const created = await db.select().from(partnerLeads).where(eq(partnerLeads.id, insertedId)).limit(1);
+  return created[0] ?? null;
+}
+
+export async function getPartnerLeadById(id: number, ownerOpenId: string) {
+  const db = await getDb();
+  if (!db) {
+    throw new Error("Database not available for reading partner lead");
+  }
+
+  const rows = await db
+    .select()
+    .from(partnerLeads)
+    .where(and(eq(partnerLeads.id, id), eq(partnerLeads.ownerOpenId, ownerOpenId)))
+    .limit(1);
+
+  return rows[0] ?? null;
+}
+
+export async function updatePartnerLeadSyncResult(input: {
+  id: number;
+  ownerOpenId: string;
+  syncStatus: "pending" | "success" | "failed" | "retried";
+  lastSyncError?: string | null;
+  bitrixContactId?: string | null;
+  bitrixCompanyId?: string | null;
+  bitrixDealId?: string | null;
+  bitrixLeadId?: string | null;
+  bitrixStageId?: string | null;
+  assignedManagerId?: string | null;
+  assignedManagerName?: string | null;
+  nextActivityAt?: Date | null;
+}) {
+  const db = await getDb();
+  if (!db) {
+    throw new Error("Database not available for updating partner lead sync result");
+  }
+
+  await db
+    .update(partnerLeads)
+    .set({
+      syncStatus: input.syncStatus,
+      syncAttemptCount: sql`${partnerLeads.syncAttemptCount} + 1`,
+      lastSyncAt: new Date(),
+      lastSyncError: input.lastSyncError ?? null,
+      bitrixContactId: input.bitrixContactId ?? null,
+      bitrixCompanyId: input.bitrixCompanyId ?? null,
+      bitrixDealId: input.bitrixDealId ?? null,
+      bitrixLeadId: input.bitrixLeadId ?? null,
+      bitrixStageId: input.bitrixStageId ?? null,
+      assignedManagerId: input.assignedManagerId ?? null,
+      assignedManagerName: input.assignedManagerName ?? null,
+      nextActivityAt: input.nextActivityAt ?? null,
+    })
+    .where(and(eq(partnerLeads.id, input.id), eq(partnerLeads.ownerOpenId, input.ownerOpenId)));
+
+  return getPartnerLeadById(input.id, input.ownerOpenId);
+}
+
+export async function createIntegrationAudit(input: InsertIntegrationAudit) {
+  const db = await getDb();
+  if (!db) {
+    throw new Error("Database not available for creating integration audit");
+  }
+
+  const result = await db.insert(integrationAudits).values(input);
+  const insertMeta = Array.isArray(result) ? result[0] : result;
+  const insertedId = Number((insertMeta as { insertId?: number | string }).insertId);
+  const created = await db.select().from(integrationAudits).where(eq(integrationAudits.id, insertedId)).limit(1);
+  return created[0] ?? null;
+}
+
+export async function updateIntegrationAuditResult(input: {
+  id: number;
+  ownerOpenId: string;
+  status: "pending" | "success" | "failed";
+  responsePayload?: string | null;
+  errorMessage?: string | null;
+  externalId?: string | null;
+}) {
+  const db = await getDb();
+  if (!db) {
+    throw new Error("Database not available for updating integration audit");
+  }
+
+  await db
+    .update(integrationAudits)
+    .set({
+      status: input.status,
+      responsePayload: input.responsePayload ?? null,
+      errorMessage: input.errorMessage ?? null,
+      externalId: input.externalId ?? null,
+    })
+    .where(and(eq(integrationAudits.id, input.id), eq(integrationAudits.ownerOpenId, input.ownerOpenId)));
+
+  const updated = await db.select().from(integrationAudits).where(eq(integrationAudits.id, input.id)).limit(1);
+  return updated[0] ?? null;
+}
+
+export async function getIntegrationAuditById(id: number, ownerOpenId: string) {
+  const db = await getDb();
+  if (!db) {
+    throw new Error("Database not available for reading integration audit");
+  }
+
+  const rows = await db
+    .select()
+    .from(integrationAudits)
+    .where(and(eq(integrationAudits.id, id), eq(integrationAudits.ownerOpenId, ownerOpenId)))
+    .limit(1);
+
+  return rows[0] ?? null;
+}
+
+export async function listBitrixAdminData(ownerOpenId: string) {
+  const db = await getDb();
+  if (!db) {
+    return {
+      leads: [],
+      audits: [],
+      summary: {
+        totalLeads: 0,
+        pendingLeads: 0,
+        successfulLeads: 0,
+        failedLeads: 0,
+        retriedLeads: 0,
+        totalAudits: 0,
+        failedAudits: 0,
+      },
+    };
+  }
+
+  const [leads, audits] = await Promise.all([
+    db.select().from(partnerLeads).where(eq(partnerLeads.ownerOpenId, ownerOpenId)).orderBy(desc(partnerLeads.createdAt), desc(partnerLeads.id)),
+    db.select().from(integrationAudits).where(eq(integrationAudits.ownerOpenId, ownerOpenId)).orderBy(desc(integrationAudits.createdAt), desc(integrationAudits.id)).limit(100),
+  ]);
+
+  const summary = {
+    totalLeads: leads.length,
+    pendingLeads: leads.filter((lead: any) => lead.syncStatus === "pending").length,
+    successfulLeads: leads.filter((lead: any) => lead.syncStatus === "success").length,
+    failedLeads: leads.filter((lead: any) => lead.syncStatus === "failed").length,
+    retriedLeads: leads.filter((lead: any) => lead.syncStatus === "retried").length,
+    totalAudits: audits.length,
+    failedAudits: audits.filter((audit: any) => audit.status === "failed").length,
+  };
+
+  return {
+    leads,
+    audits,
+    summary,
+  };
 }
