@@ -562,6 +562,39 @@ describe("admin club helpers", () => {
     });
   });
 
+  it("marks risky actions preset active for both delete and bulk action filters", () => {
+    const riskyPreset = {
+      id: "risky-actions",
+      label: "Удаления и массовые",
+      area: "all",
+      actionTypes: ["delete", "bulk"],
+    } as const;
+
+    const isDeleteActive = "all" === riskyPreset.area
+      && riskyPreset.actionTypes.includes("delete");
+    const isBulkActive = "all" === riskyPreset.area
+      && riskyPreset.actionTypes.includes("bulk");
+    const isCreateActive = "all" === riskyPreset.area
+      && riskyPreset.actionTypes.includes("create");
+
+    expect(isDeleteActive).toBe(true);
+    expect(isBulkActive).toBe(true);
+    expect(isCreateActive).toBe(false);
+  });
+
+  it("falls back to all action type when preset does not declare a specific action type", () => {
+    const preset = {
+      id: "risky-actions",
+      label: "Удаления и массовые",
+      area: "all",
+      actionTypes: ["delete", "bulk"],
+    } as const;
+
+    const appliedActionType = (preset as { actionType?: "all" | "create" | "update" | "delete" | "bulk" | "preset" }).actionType ?? "all";
+
+    expect(appliedActionType).toBe("all");
+  });
+
   it("builds active filter chips for each admin tab", () => {
     expect({
       posts: ["Поиск: утро", "Категория: Истории", "Тип: только pinned"],

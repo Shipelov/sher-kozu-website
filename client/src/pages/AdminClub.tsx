@@ -652,12 +652,18 @@ export default function AdminClub() {
     });
     return groups;
   }, []);
-  const actionLogFilterPresets: Array<{ id: string; label: string; area: "all" | AdminTabValue; actionType: "all" | AdminActionType }> = [
+  const actionLogFilterPresets: Array<{
+    id: string;
+    label: string;
+    area: "all" | AdminTabValue;
+    actionType?: "all" | AdminActionType;
+    actionTypes?: AdminActionType[];
+  }> = [
     { id: "all", label: "Все действия", area: "all", actionType: "all" },
     { id: "content-updates", label: "Обновления контента", area: "posts", actionType: "update" },
     { id: "event-changes", label: "Изменения событий", area: "events", actionType: "all" },
     { id: "member-ops", label: "Операции с участниками", area: "members", actionType: "all" },
-    { id: "risky-actions", label: "Удаления и массовые", area: "all", actionType: "delete" },
+    { id: "risky-actions", label: "Удаления и массовые", area: "all", actionTypes: ["delete", "bulk"] },
   ];
   const applyActionLogPreset = (presetId: string) => {
     if (presetId === "all") {
@@ -673,7 +679,7 @@ export default function AdminClub() {
     }
 
     setActionLogAreaFilter(preset.area);
-    setActionLogTypeFilter(preset.actionType);
+    setActionLogTypeFilter(preset.actionType ?? "all");
   };
   const exportActionLogToCsv = () => {
     if (!exportableActionLog.length) {
@@ -2341,7 +2347,11 @@ export default function AdminClub() {
                 <div className="sticky top-3 z-10 -mx-1 space-y-3 rounded-2xl border border-stone-200 bg-white/95 px-3 py-3 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-white/85">
                 <div className="flex flex-wrap gap-2">
                   {actionLogFilterPresets.map((preset) => {
-                    const isActive = actionLogAreaFilter === preset.area && actionLogTypeFilter === preset.actionType;
+                    const matchesArea = actionLogAreaFilter === preset.area;
+                    const matchesType = preset.actionTypes?.length
+                      ? preset.actionTypes.includes(actionLogTypeFilter as AdminActionType)
+                      : actionLogTypeFilter === (preset.actionType ?? "all");
+                    const isActive = matchesArea && matchesType;
 
                     return (
                       <Button
