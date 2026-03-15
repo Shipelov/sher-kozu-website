@@ -1451,6 +1451,15 @@ function getActionTypeBadgeConfig(actionType: AdminActionType) {
 function buildShareableAdminClubUrl(origin: string, activeTab: AdminTabValue, postFilters: PostFilterState, eventFilters: EventFilterState, memberFilters: MemberFilterState, pagination: PaginationState, actionLogCollapsed: boolean) {
   return `${origin}${buildAdminClubUrl(activeTab, postFilters, eventFilters, memberFilters, pagination, actionLogCollapsed)}`;
 }
+function getExportableActionLog(entries: AdminActionLogEntry[], scope: "filtered" | "all", areaFilter: "all" | AdminTabValue, typeFilter: "all" | AdminActionType) {
+  const filteredEntries = entries.filter((entry) => {
+    const matchesArea = areaFilter === "all" || entry.area === areaFilter;
+    const matchesType = typeFilter === "all" || entry.actionType === typeFilter;
+    return matchesArea && matchesType;
+  });
+
+  return scope === "all" ? entries : filteredEntries;
+}
 
 
 describe("recordAdminAction", () => {
@@ -1571,6 +1580,69 @@ describe("recordAdminAction", () => {
     expect(url).not.toContain("memberPage=");
     expect(url).not.toContain("memberPageSize=");
     expect(url).toContain("log=collapsed");
+  });
+
+  it("returns filtered journal entries when export scope is current view", () => {
+    const entries: AdminActionLogEntry[] = [
+      {
+        id: "posts-1",
+        timestamp: 1_710_123_400_000,
+        area: "posts",
+        actionType: "create",
+        title: "Пост добавлен",
+        description: "Добавлен новый пост клуба.",
+      },
+      {
+        id: "events-1",
+        timestamp: 1_710_123_500_000,
+        area: "events",
+        actionType: "update",
+        title: "Событие обновлено",
+        description: "Обновлено описание экскурсии.",
+      },
+      {
+        id: "events-2",
+        timestamp: 1_710_123_600_000,
+        area: "events",
+        actionType: "delete",
+        title: "Событие удалено",
+        description: "Удалено отменённое событие.",
+      },
+    ];
+
+    expect(getExportableActionLog(entries, "filtered", "events", "update")).toEqual([
+      {
+        id: "events-1",
+        timestamp: 1_710_123_500_000,
+        area: "events",
+        actionType: "update",
+        title: "Событие обновлено",
+        description: "Обновлено описание экскурсии.",
+      },
+    ]);
+  });
+
+  it("returns the whole session journal when export scope is all", () => {
+    const entries: AdminActionLogEntry[] = [
+      {
+        id: "posts-1",
+        timestamp: 1_710_123_400_000,
+        area: "posts",
+        actionType: "create",
+        title: "Пост добавлен",
+        description: "Добавлен новый пост клуба.",
+      },
+      {
+        id: "events-1",
+        timestamp: 1_710_123_500_000,
+        area: "events",
+        actionType: "update",
+        title: "Событие обновлено",
+        description: "Обновлено описание экскурсии.",
+      },
+    ];
+
+    expect(getExportableActionLog(entries, "all", "events", "update")).toEqual(entries);
   });
 
   it("clears all action log records", () => {

@@ -20,6 +20,7 @@ import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { trpc } from "@/lib/trpc";
 import { NOT_ADMIN_ERR_MSG } from "@shared/const";
 import { ArrowDown, CalendarRange, CheckSquare, ChevronDown, ChevronUp, Copy, Crown, Download, Pencil, Pin, Save, Search, ShieldAlert, Square, Trash2, Users, X } from "lucide-react";
@@ -548,6 +549,7 @@ export default function AdminClub() {
   const [actionLogCollapsed, setActionLogCollapsed] = useState(initialUrlState.actionLogCollapsed);
   const [actionLogAreaFilter, setActionLogAreaFilter] = useState<"all" | AdminTabValue>("all");
   const [actionLogTypeFilter, setActionLogTypeFilter] = useState<"all" | AdminActionType>("all");
+  const [actionLogExportScope, setActionLogExportScope] = useState<"filtered" | "all">("filtered");
 
   const adminQuery = trpc.adminClub.dashboard.useQuery(undefined, {
     enabled: Boolean(user?.role === "admin"),
@@ -623,17 +625,20 @@ export default function AdminClub() {
     const matchesType = actionLogTypeFilter === "all" || entry.actionType === actionLogTypeFilter;
     return matchesArea && matchesType;
   });
+  const exportableActionLog = actionLogExportScope === "all" ? actionLog : filteredActionLog;
 
   const exportActionLogToCsv = () => {
-    if (!filteredActionLog.length) {
+    if (!exportableActionLog.length) {
       toast.error("Журнал пуст", {
-        description: "Нет записей, подходящих под текущие фильтры, для экспорта в CSV.",
+        description: actionLogExportScope === "all"
+          ? "В текущей сессии пока нет записей журнала для экспорта в CSV."
+          : "Нет записей, подходящих под текущие фильтры, для экспорта в CSV.",
       });
       return;
     }
 
     const escapeCsvValue = (value: string) => `"${value.replaceAll('"', '""')}"`;
-    const rows = filteredActionLog.map((entry) => [
+    const rows = exportableActionLog.map((entry) => [
       new Date(entry.timestamp).toISOString(),
       entry.area,
       entry.actionType,
@@ -658,7 +663,9 @@ export default function AdminClub() {
     window.URL.revokeObjectURL(objectUrl);
 
     toast.success("CSV выгружен", {
-      description: `Экспортировано ${filteredActionLog.length} записей журнала действий.`,
+      description: actionLogExportScope === "all"
+        ? `Экспортировано ${exportableActionLog.length} записей всего журнала текущей сессии.`
+        : `Экспортировано ${exportableActionLog.length} записей журнала действий по текущему виду.`,
     });
   };
 
@@ -2222,13 +2229,22 @@ export default function AdminClub() {
                   <Copy className="mr-1.5 h-4 w-4" />
                   Скопировать ссылку
                 </Button>
+                <Select value={actionLogExportScope} onValueChange={(value) => setActionLogExportScope(value as "filtered" | "all")}>
+                  <SelectTrigger className="h-9 w-[220px] rounded-full border-stone-300 bg-white text-xs text-stone-700">
+                    <SelectValue placeholder="Глубина экспорта" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="filtered">Экспорт: текущий вид</SelectItem>
+                    <SelectItem value="all">Экспорт: весь журнал сессии</SelectItem>
+                  </SelectContent>
+                </Select>
                 <Button
                   type="button"
                   variant="outline"
                   size="sm"
                   className="rounded-full border-stone-300 px-3 text-stone-700"
                   onClick={exportActionLogToCsv}
-                  disabled={!filteredActionLog.length}
+                  disabled={!exportableActionLog.length}
                 >
                   <Download className="mr-1.5 h-4 w-4" />
                   CSV
