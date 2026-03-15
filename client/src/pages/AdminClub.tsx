@@ -97,9 +97,9 @@ type PendingDeleteState =
   | { entity: "post"; id: number; title: string; description: string }
   | { entity: "event"; id: number; title: string; description: string }
   | { entity: "member"; id: number; title: string; description: string }
-  | { entity: "bulk-post"; ids: number[]; title: string; description: string }
-  | { entity: "bulk-event"; ids: number[]; title: string; description: string }
-  | { entity: "bulk-member"; ids: number[]; title: string; description: string }
+  | { entity: "bulk-post"; ids: number[]; title: string; description: string; summaryItems: string[]; totalCount: number }
+  | { entity: "bulk-event"; ids: number[]; title: string; description: string; summaryItems: string[]; totalCount: number }
+  | { entity: "bulk-member"; ids: number[]; title: string; description: string; summaryItems: string[]; totalCount: number }
   | null;
 
 type AdminTabValue = "posts" | "events" | "members";
@@ -362,6 +362,43 @@ function validateMemberForm(form: MemberFormState): FormErrors<MemberFormField> 
 
 function hasFormErrors<T extends string>(errors: FormErrors<T>) {
   return Object.values(errors).some(Boolean);
+}
+
+function buildBulkDeleteSummaryItems(items: Array<{ title?: string; name?: string }>) {
+  return items
+    .map((item) => item.title ?? item.name ?? "Без названия")
+    .filter(Boolean)
+    .slice(0, 5);
+}
+
+function getDeleteDialogCopy(pendingDelete: PendingDeleteState) {
+  if (!pendingDelete) {
+    return {
+      title: "Подтвердите удаление",
+      description: "Вы собираетесь удалить запись. Действие нельзя отменить.",
+      actionLabel: "Удалить запись",
+    };
+  }
+
+  if (pendingDelete.entity === "bulk-post" || pendingDelete.entity === "bulk-event" || pendingDelete.entity === "bulk-member") {
+    const entityLabel = pendingDelete.entity === "bulk-post"
+      ? "постов"
+      : pendingDelete.entity === "bulk-event"
+        ? "событий"
+        : "участников";
+
+    return {
+      title: `Удалить выбранные ${entityLabel}`,
+      description: `Вы собираетесь удалить ${pendingDelete.totalCount} ${entityLabel}. Ниже показаны первые записи из выбранного набора. Действие нельзя отменить.`,
+      actionLabel: `Удалить ${pendingDelete.totalCount}`,
+    };
+  }
+
+  return {
+    title: "Подтвердите удаление",
+    description: `Вы собираетесь удалить ${pendingDelete.description}. Действие нельзя отменить.`,
+    actionLabel: "Удалить запись",
+  };
 }
 
 function parsePresetConfig(configJson: string): PresetConfig | null {
@@ -684,6 +721,10 @@ export default function AdminClub() {
   }), [presets]);
 
   const isDeleting = deletePost.isPending || deleteEvent.isPending || deleteMember.isPending;
+  const deleteDialogCopy = getDeleteDialogCopy(pendingDelete);
+  const deleteSummaryOverflow = pendingDelete && "summaryItems" in pendingDelete
+    ? Math.max(0, pendingDelete.totalCount - pendingDelete.summaryItems.length)
+    : 0;
 
   const setTabSelection = (tab: AdminTabValue, ids: number[]) => {
     setSelectedIds((current) => ({ ...current, [tab]: ids }));
@@ -982,16 +1023,29 @@ export default function AdminClub() {
       }}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Подтвердите удаление</AlertDialogTitle>
-            <AlertDialogDescription>
-              {pendingDelete
-                ? `Вы собираетесь удалить ${pendingDelete.description}. Действие нельзя отменить.`
-                : "Вы собираетесь удалить запись. Действие нельзя отменить."}
-            </AlertDialogDescription>
+            <AlertDialogTitle>{deleteDialogCopy.title}</AlertDialogTitle>
+            <AlertDialogDescription>{deleteDialogCopy.description}</AlertDialogDescription>
           </AlertDialogHeader>
           {pendingDelete ? (
-            <div className="rounded-xl border border-stone-200 bg-stone-50 px-4 py-3 text-sm text-stone-700">
+            <div className="space-y-3 rounded-xl border border-stone-200 bg-stone-50 px-4 py-3 text-sm text-stone-700">
               <p className="font-medium text-stone-950">{pendingDelete.title}</p>
+              {"summaryItems" in pendingDelete ? (
+                <>
+                  <div className="rounded-lg border border-stone-200 bg-white p-3">
+                    <p className="text-xs font-semibold uppercase tracking-[0.12em] text-stone-500">Первые выбранные записи</p>
+                    <div className="mt-2 space-y-2">
+                      {pendingDelete.summaryItems.map((item) => (
+                        <div key={item} className="rounded-md bg-stone-50 px-3 py-2 text-sm text-stone-700">
+                          {item}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  {deleteSummaryOverflow > 0 ? (
+                    <p className="text-xs text-stone-500">И ещё {deleteSummaryOverflow} записей будут удалены вместе с показанными выше.</p>
+                  ) : null}
+                </>
+              ) : null}
             </div>
           ) : null}
           <AlertDialogFooter>
@@ -1004,7 +1058,7 @@ export default function AdminClub() {
               disabled={isDeleting}
               className="bg-red-600 text-white hover:bg-red-700"
             >
-              {isDeleting ? "Удаляем..." : "Удалить запись"}
+              {isDeleting ? "Удаляем..." : deleteDialogCopy.actionLabel}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -1230,6 +1284,8 @@ export default function AdminClub() {
                         ids: selectedPosts.map((post) => post.id),
                         title: `Выбрано постов: ${selectedPosts.length}`,
                         description: `${selectedPosts.length} постов`,
+                        summaryItems: buildBulkDeleteSummaryItems(selectedPosts),
+                        totalCount: selectedPosts.length,
                       }),
                     },
                   ]}
@@ -1430,6 +1486,8 @@ export default function AdminClub() {
                         ids: selectedEvents.map((event) => event.id),
                         title: `Выбрано событий: ${selectedEvents.length}`,
                         description: `${selectedEvents.length} событий`,
+                        summaryItems: buildBulkDeleteSummaryItems(selectedEvents),
+                        totalCount: selectedEvents.length,
                       }),
                     },
                   ]}
@@ -1607,6 +1665,8 @@ export default function AdminClub() {
                         ids: selectedMembers.map((member) => member.id),
                         title: `Выбрано участников: ${selectedMembers.length}`,
                         description: `${selectedMembers.length} участников`,
+                        summaryItems: buildBulkDeleteSummaryItems(selectedMembers),
+                        totalCount: selectedMembers.length,
                       }),
                     },
                   ]}

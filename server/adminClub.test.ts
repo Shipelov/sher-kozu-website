@@ -995,3 +995,77 @@ describe("admin club pagination helpers", () => {
     });
   });
 });
+
+function buildBulkDeleteSummaryItems(items: Array<{ title?: string; name?: string }>) {
+  return items
+    .map((item) => item.title ?? item.name ?? "Без названия")
+    .filter(Boolean)
+    .slice(0, 5);
+}
+
+function getDeleteDialogCopy(pendingDelete:
+  | null
+  | { entity: "post"; id: number; title: string; description: string }
+  | { entity: "event"; id: number; title: string; description: string }
+  | { entity: "member"; id: number; title: string; description: string }
+  | { entity: "bulk-post"; ids: number[]; title: string; description: string; summaryItems: string[]; totalCount: number }
+  | { entity: "bulk-event"; ids: number[]; title: string; description: string; summaryItems: string[]; totalCount: number }
+  | { entity: "bulk-member"; ids: number[]; title: string; description: string; summaryItems: string[]; totalCount: number }
+) {
+  if (!pendingDelete) {
+    return {
+      title: "Подтвердите удаление",
+      description: "Вы собираетесь удалить запись. Действие нельзя отменить.",
+      actionLabel: "Удалить запись",
+    };
+  }
+
+  if (pendingDelete.entity === "bulk-post" || pendingDelete.entity === "bulk-event" || pendingDelete.entity === "bulk-member") {
+    const entityLabel = pendingDelete.entity === "bulk-post"
+      ? "постов"
+      : pendingDelete.entity === "bulk-event"
+        ? "событий"
+        : "участников";
+
+    return {
+      title: `Удалить выбранные ${entityLabel}`,
+      description: `Вы собираетесь удалить ${pendingDelete.totalCount} ${entityLabel}. Ниже показаны первые записи из выбранного набора. Действие нельзя отменить.`,
+      actionLabel: `Удалить ${pendingDelete.totalCount}`,
+    };
+  }
+
+  return {
+    title: "Подтвердите удаление",
+    description: `Вы собираетесь удалить ${pendingDelete.description}. Действие нельзя отменить.`,
+    actionLabel: "Удалить запись",
+  };
+}
+
+describe("admin club bulk delete dialog helpers", () => {
+  it("limits summary items to the first five selected records", () => {
+    const selected = Array.from({ length: 7 }, (_, index) => ({ title: `Запись ${index + 1}` }));
+
+    expect(buildBulkDeleteSummaryItems(selected)).toEqual([
+      "Запись 1",
+      "Запись 2",
+      "Запись 3",
+      "Запись 4",
+      "Запись 5",
+    ]);
+  });
+
+  it("builds a dedicated copy for bulk member deletion", () => {
+    expect(getDeleteDialogCopy({
+      entity: "bulk-member",
+      ids: [1, 2, 3],
+      title: "Выбрано участников: 3",
+      description: "3 участников",
+      summaryItems: ["Анна", "Мария", "Илья"],
+      totalCount: 3,
+    })).toEqual({
+      title: "Удалить выбранные участников",
+      description: "Вы собираетесь удалить 3 участников. Ниже показаны первые записи из выбранного набора. Действие нельзя отменить.",
+      actionLabel: "Удалить 3",
+    });
+  });
+});
