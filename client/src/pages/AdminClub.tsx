@@ -130,6 +130,7 @@ type EventFormField = "title" | "dateLabel" | "description" | "status" | "tone";
 type MemberFormField = "name" | "animal" | "sinceLabel";
 
 type SelectionState = Record<AdminTabValue, number[]>;
+type PaginationState = Record<AdminTabValue, { page: number; pageSize: number }>;
 
 type BulkActionConfig = {
   label: string;
@@ -441,6 +442,11 @@ export default function AdminClub() {
   const [memberErrors, setMemberErrors] = useState<FormErrors<MemberFormField>>({});
   const [presetName, setPresetName] = useState<Record<AdminTabValue, string>>({ posts: "", events: "", members: "" });
   const [selectedIds, setSelectedIds] = useState<SelectionState>({ posts: [], events: [], members: [] });
+  const [pagination, setPagination] = useState<PaginationState>({
+    posts: { page: 1, pageSize: 10 },
+    events: { page: 1, pageSize: 10 },
+    members: { page: 1, pageSize: 10 },
+  });
 
   const adminQuery = trpc.adminClub.dashboard.useQuery(undefined, {
     enabled: Boolean(user?.role === "admin"),
@@ -635,6 +641,32 @@ export default function AdminClub() {
     [members, memberFilters],
   );
 
+  const paginatedPosts = useMemo(() => {
+    const start = (pagination.posts.page - 1) * pagination.posts.pageSize;
+    return filteredPosts.slice(start, start + pagination.posts.pageSize);
+  }, [filteredPosts, pagination.posts.page, pagination.posts.pageSize]);
+  const paginatedEvents = useMemo(() => {
+    const start = (pagination.events.page - 1) * pagination.events.pageSize;
+    return filteredEvents.slice(start, start + pagination.events.pageSize);
+  }, [filteredEvents, pagination.events.page, pagination.events.pageSize]);
+  const paginatedMembers = useMemo(() => {
+    const start = (pagination.members.page - 1) * pagination.members.pageSize;
+    return filteredMembers.slice(start, start + pagination.members.pageSize);
+  }, [filteredMembers, pagination.members.page, pagination.members.pageSize]);
+
+  const totalPages = useMemo(() => ({
+    posts: Math.max(1, Math.ceil(filteredPosts.length / pagination.posts.pageSize)),
+    events: Math.max(1, Math.ceil(filteredEvents.length / pagination.events.pageSize)),
+    members: Math.max(1, Math.ceil(filteredMembers.length / pagination.members.pageSize)),
+  }), [
+    filteredPosts.length,
+    filteredEvents.length,
+    filteredMembers.length,
+    pagination.posts.pageSize,
+    pagination.events.pageSize,
+    pagination.members.pageSize,
+  ]);
+
   const postCategories = useMemo(() => uniqueValues(posts, "category"), [posts]);
   const eventStatuses = useMemo(() => uniqueValues(events, "status"), [events]);
   const eventTones = useMemo(() => uniqueValues(events, "tone"), [events]);
@@ -675,6 +707,26 @@ export default function AdminClub() {
 
   const clearSelection = (tab: AdminTabValue) => {
     setTabSelection(tab, []);
+  };
+
+  const setTabPage = (tab: AdminTabValue, page: number) => {
+    setPagination((current) => ({
+      ...current,
+      [tab]: {
+        ...current[tab],
+        page: Math.min(Math.max(page, 1), totalPages[tab]),
+      },
+    }));
+  };
+
+  const setTabPageSize = (tab: AdminTabValue, pageSize: number) => {
+    setPagination((current) => ({
+      ...current,
+      [tab]: {
+        page: 1,
+        pageSize,
+      },
+    }));
   };
 
   const handleSavePreset = async (tab: AdminTabValue) => {
@@ -743,6 +795,27 @@ export default function AdminClub() {
       setLocation(nextUrl, { replace: true });
     }
   }, [activeTab, eventFilters, location, memberFilters, postFilters, setLocation]);
+
+  useEffect(() => {
+    setPagination((current) => ({
+      ...current,
+      posts: { ...current.posts, page: Math.min(current.posts.page, Math.max(1, Math.ceil(filteredPosts.length / current.posts.pageSize))) },
+    }));
+  }, [filteredPosts.length]);
+
+  useEffect(() => {
+    setPagination((current) => ({
+      ...current,
+      events: { ...current.events, page: Math.min(current.events.page, Math.max(1, Math.ceil(filteredEvents.length / current.events.pageSize))) },
+    }));
+  }, [filteredEvents.length]);
+
+  useEffect(() => {
+    setPagination((current) => ({
+      ...current,
+      members: { ...current.members, page: Math.min(current.members.page, Math.max(1, Math.ceil(filteredMembers.length / current.members.pageSize))) },
+    }));
+  }, [filteredMembers.length]);
 
   const handlePostSubmit = async () => {
     const nextErrors = validatePostForm(postForm);
@@ -1237,7 +1310,10 @@ export default function AdminClub() {
                   />
                 </FilterToolbar>
               }
-              items={filteredPosts}
+              items={paginatedPosts}
+              pagination={buildPaginationMeta(filteredPosts.length, pagination.posts.page, pagination.posts.pageSize, totalPages.posts)}
+              onPageChange={(page) => setTabPage("posts", page)}
+              onPageSizeChange={(pageSize) => setTabPageSize("posts", pageSize)}
               emptyText="По текущим фильтрам посты не найдены."
               renderItem={(post: any) => (
                 <ListRow
@@ -1428,7 +1504,10 @@ export default function AdminClub() {
                   />
                 </FilterToolbar>
               }
-              items={filteredEvents}
+              items={paginatedEvents}
+              pagination={buildPaginationMeta(filteredEvents.length, pagination.events.page, pagination.events.pageSize, totalPages.events)}
+              onPageChange={(page) => setTabPage("events", page)}
+              onPageSizeChange={(pageSize) => setTabPageSize("events", pageSize)}
               emptyText="По текущим фильтрам события не найдены."
               renderItem={(event: any) => (
                 <ListRow
@@ -1593,7 +1672,10 @@ export default function AdminClub() {
                   />
                 </FilterToolbar>
               }
-              items={filteredMembers}
+              items={paginatedMembers}
+              pagination={buildPaginationMeta(filteredMembers.length, pagination.members.page, pagination.members.pageSize, totalPages.members)}
+              onPageChange={(page) => setTabPage("members", page)}
+              onPageSizeChange={(pageSize) => setTabPageSize("members", pageSize)}
               emptyText="По текущим фильтрам участники не найдены."
               renderItem={(member: any) => (
                 <ListRow
@@ -1673,6 +1755,9 @@ function EntityListCard({
   renderItem,
   emptyText,
   sortIndicator,
+  pagination,
+  onPageChange,
+  onPageSizeChange,
 }: {
   title: string;
   description: string;
@@ -1684,6 +1769,16 @@ function EntityListCard({
     fieldLabel: string;
     directionLabel: string;
   };
+  pagination?: {
+    totalItems: number;
+    page: number;
+    pageSize: number;
+    totalPages: number;
+    startItem: number;
+    endItem: number;
+  };
+  onPageChange?: (page: number) => void;
+  onPageSizeChange?: (pageSize: number) => void;
 }) {
   return (
     <Card>
@@ -1705,6 +1800,18 @@ function EntityListCard({
         <div className="space-y-3">
           {items.length ? items.map((item) => <div key={item.id}>{renderItem(item)}</div>) : <p className="text-sm text-stone-500">{emptyText ?? "Пока нет записей."}</p>}
         </div>
+        {pagination && onPageChange && onPageSizeChange ? (
+          <PaginationToolbar
+            totalItems={pagination.totalItems}
+            page={pagination.page}
+            pageSize={pagination.pageSize}
+            totalPages={pagination.totalPages}
+            startItem={pagination.startItem}
+            endItem={pagination.endItem}
+            onPageChange={onPageChange}
+            onPageSizeChange={onPageSizeChange}
+          />
+        ) : null}
       </CardContent>
     </Card>
   );
@@ -1714,6 +1821,87 @@ type FilterChip = {
   label: string;
   onRemove: () => void;
 };
+
+function buildPaginationMeta(totalItems: number, page: number, pageSize: number, totalPages: number) {
+  if (!totalItems) {
+    return {
+      totalItems,
+      page: 1,
+      pageSize,
+      totalPages: 1,
+      startItem: 0,
+      endItem: 0,
+    };
+  }
+
+  const safePage = Math.min(Math.max(page, 1), totalPages);
+  const startItem = (safePage - 1) * pageSize + 1;
+  const endItem = Math.min(totalItems, safePage * pageSize);
+
+  return {
+    totalItems,
+    page: safePage,
+    pageSize,
+    totalPages,
+    startItem,
+    endItem,
+  };
+}
+
+function PaginationToolbar({
+  totalItems,
+  page,
+  pageSize,
+  totalPages,
+  startItem,
+  endItem,
+  onPageChange,
+  onPageSizeChange,
+}: {
+  totalItems: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+  startItem: number;
+  endItem: number;
+  onPageChange: (page: number) => void;
+  onPageSizeChange: (pageSize: number) => void;
+}) {
+  return (
+    <div className="flex flex-col gap-3 rounded-2xl border border-stone-200 bg-stone-50/70 p-3 lg:flex-row lg:items-center lg:justify-between">
+      <div className="space-y-1">
+        <p className="text-sm font-medium text-stone-900">
+          Показаны записи {startItem}-{endItem} из {totalItems}
+        </p>
+        <p className="text-xs text-stone-500">
+          Страница {page} из {totalPages}
+        </p>
+      </div>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
+        <div className="flex items-center gap-2">
+          <Label className="text-xs text-stone-600">На странице</Label>
+          <select
+            value={String(pageSize)}
+            onChange={(e) => onPageSizeChange(Number(e.target.value))}
+            className="flex h-9 rounded-md border border-stone-200 bg-white px-3 py-2 text-sm text-stone-950 shadow-sm outline-none transition focus-visible:ring-2 focus-visible:ring-stone-300"
+          >
+            {[5, 10, 20, 50].map((size) => (
+              <option key={size} value={size}>{size}</option>
+            ))}
+          </select>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button type="button" variant="outline" size="sm" onClick={() => onPageChange(page - 1)} disabled={page <= 1}>
+            Назад
+          </Button>
+          <Button type="button" variant="outline" size="sm" onClick={() => onPageChange(page + 1)} disabled={page >= totalPages}>
+            Вперёд
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function FilterToolbar({
   searchPlaceholder,

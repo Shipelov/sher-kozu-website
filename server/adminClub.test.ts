@@ -934,3 +934,64 @@ describe("admin club bulk actions", () => {
     ]);
   });
 });
+
+function paginateRecords<T>(items: T[], page: number, pageSize: number) {
+  const start = (page - 1) * pageSize;
+  return items.slice(start, start + pageSize);
+}
+
+function buildPaginationMeta(totalItems: number, page: number, pageSize: number, totalPages: number) {
+  if (!totalItems) {
+    return {
+      totalItems,
+      page: 1,
+      pageSize,
+      totalPages: 1,
+      startItem: 0,
+      endItem: 0,
+    };
+  }
+
+  const safePage = Math.min(Math.max(page, 1), totalPages);
+  const startItem = (safePage - 1) * pageSize + 1;
+  const endItem = Math.min(totalItems, safePage * pageSize);
+
+  return {
+    totalItems,
+    page: safePage,
+    pageSize,
+    totalPages,
+    startItem,
+    endItem,
+  };
+}
+
+describe("admin club pagination helpers", () => {
+  it("returns only the records for the requested page", () => {
+    const records = Array.from({ length: 12 }, (_, index) => ({ id: index + 1 }));
+
+    expect(paginateRecords(records, 2, 5).map((item) => item.id)).toEqual([6, 7, 8, 9, 10]);
+  });
+
+  it("builds correct visible range meta for a middle page", () => {
+    expect(buildPaginationMeta(42, 2, 10, 5)).toEqual({
+      totalItems: 42,
+      page: 2,
+      pageSize: 10,
+      totalPages: 5,
+      startItem: 11,
+      endItem: 20,
+    });
+  });
+
+  it("normalizes empty collections to a safe first page state", () => {
+    expect(buildPaginationMeta(0, 4, 10, 1)).toEqual({
+      totalItems: 0,
+      page: 1,
+      pageSize: 10,
+      totalPages: 1,
+      startItem: 0,
+      endItem: 0,
+    });
+  });
+});
