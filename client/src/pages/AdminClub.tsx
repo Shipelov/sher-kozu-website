@@ -22,7 +22,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { trpc } from "@/lib/trpc";
 import { NOT_ADMIN_ERR_MSG } from "@shared/const";
-import { ArrowDown, CalendarRange, CheckSquare, ChevronDown, ChevronUp, Crown, Pencil, Pin, Save, Search, ShieldAlert, Square, Trash2, Users, X } from "lucide-react";
+import { ArrowDown, CalendarRange, CheckSquare, ChevronDown, ChevronUp, Crown, Download, Pencil, Pin, Save, Search, ShieldAlert, Square, Trash2, Users, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import { toast } from "sonner";
@@ -623,6 +623,44 @@ export default function AdminClub() {
     const matchesType = actionLogTypeFilter === "all" || entry.actionType === actionLogTypeFilter;
     return matchesArea && matchesType;
   });
+
+  const exportActionLogToCsv = () => {
+    if (!filteredActionLog.length) {
+      toast.error("Журнал пуст", {
+        description: "Нет записей, подходящих под текущие фильтры, для экспорта в CSV.",
+      });
+      return;
+    }
+
+    const escapeCsvValue = (value: string) => `"${value.replaceAll('"', '""')}"`;
+    const rows = filteredActionLog.map((entry) => [
+      new Date(entry.timestamp).toISOString(),
+      entry.area,
+      entry.actionType,
+      entry.title,
+      entry.description,
+    ]);
+    const csv = [
+      ["timestamp", "area", "actionType", "title", "description"],
+      ...rows,
+    ]
+      .map((row) => row.map((value) => escapeCsvValue(String(value))).join(","))
+      .join("\n");
+
+    const blob = new Blob([`\uFEFF${csv}`], { type: "text/csv;charset=utf-8;" });
+    const objectUrl = window.URL.createObjectURL(blob);
+    const link = window.document.createElement("a");
+    link.href = objectUrl;
+    link.download = `admin-club-action-log-${new Date().toISOString().slice(0, 19).replaceAll(":", "-")}.csv`;
+    window.document.body.appendChild(link);
+    link.click();
+    window.document.body.removeChild(link);
+    window.URL.revokeObjectURL(objectUrl);
+
+    toast.success("CSV выгружен", {
+      description: `Экспортировано ${filteredActionLog.length} записей журнала действий.`,
+    });
+  };
 
   const getBulkActionToastCopy = (entity: "post" | "event" | "member", action: "delete" | "pin" | "unpin", count: number) => {
     if (entity === "post") {
@@ -2110,6 +2148,17 @@ export default function AdminClub() {
                 >
                   {actionLogCollapsed ? <ChevronDown className="mr-1.5 h-4 w-4" /> : <ChevronUp className="mr-1.5 h-4 w-4" />}
                   {actionLogCollapsed ? "Развернуть" : "Свернуть"}
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="rounded-full border-stone-300 px-3 text-stone-700"
+                  onClick={exportActionLogToCsv}
+                  disabled={!filteredActionLog.length}
+                >
+                  <Download className="mr-1.5 h-4 w-4" />
+                  CSV
                 </Button>
                 <Button
                   type="button"

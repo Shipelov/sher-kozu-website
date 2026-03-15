@@ -1393,12 +1393,28 @@ function getActionLogViewState(isCollapsed: boolean, actionLogLength: number) {
       ? "Журнал свёрнут. Разверните блок, чтобы посмотреть последние действия администратора и применить фильтры."
       : null,
     clearDisabled: actionLogLength === 0,
+    exportDisabled: actionLogLength === 0,
   };
 }
-
 function clearActionLog() {
   return [] as AdminActionLogEntry[];
 }
+function buildActionLogCsv(entries: AdminActionLogEntry[]) {
+  const escapeCsvValue = (value: string) => `"${value.replaceAll('"', '""')}"`;
+  return [
+    ["timestamp", "area", "actionType", "title", "description"],
+    ...entries.map((entry) => [
+      new Date(entry.timestamp).toISOString(),
+      entry.area,
+      entry.actionType,
+      entry.title,
+      entry.description,
+    ]),
+  ]
+    .map((row) => row.map((value) => escapeCsvValue(String(value))).join(","))
+    .join("\n");
+}
+
 
 describe("recordAdminAction", () => {
   it("adds newest entries to the top and limits the journal to six records", () => {
@@ -1436,18 +1452,35 @@ describe("recordAdminAction", () => {
     expect(result[0]?.id).toBe("events-1710123456789-0");
   });
 
-  it("returns correct state for collapsed and expanded journal controls", () => {
+   it("returns correct state for collapsed and expanded journal controls", () => {
     expect(getActionLogViewState(false, 3)).toEqual({
       toggleLabel: "Свернуть",
       helperText: null,
       clearDisabled: false,
+      exportDisabled: false,
     });
-
     expect(getActionLogViewState(true, 0)).toEqual({
       toggleLabel: "Развернуть",
       helperText: "Журнал свёрнут. Разверните блок, чтобы посмотреть последние действия администратора и применить фильтры.",
       clearDisabled: true,
+      exportDisabled: true,
     });
+  });
+
+  it("builds csv export for action log entries with header and escaped values", () => {
+    const csv = buildActionLogCsv([
+      {
+        id: "events-1710123456789-0",
+        area: "events",
+        actionType: "update",
+        title: "Статус, обновлён",
+        description: "Событие \"Весенний визит\" переведено в архив.",
+        timestamp: Date.UTC(2026, 2, 15, 8, 30, 0),
+      },
+    ]);
+
+    expect(csv).toContain('"timestamp","area","actionType","title","description"');
+    expect(csv).toContain('"2026-03-15T08:30:00.000Z","events","update","Статус, обновлён","Событие ""Весенний визит"" переведено в архив."');
   });
 
   it("clears all action log records", () => {
