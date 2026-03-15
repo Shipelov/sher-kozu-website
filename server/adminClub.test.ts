@@ -1506,6 +1506,9 @@ function getVisibleActionLogSummary(filteredCount: number, totalCount: number, s
     exportModeText: `Режим экспорта: ${scope === "all" ? "весь журнал сессии" : "только текущий вид"}.`,
   };
 }
+function getStickyActionLogToolbarClasses() {
+  return "sticky top-3 z-10 -mx-1 space-y-3 rounded-2xl border border-stone-200 bg-white/95 px-3 py-3 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-white/85";
+}
 
 
 describe("recordAdminAction", () => {
@@ -1692,6 +1695,10 @@ describe("recordAdminAction", () => {
   });
 
   it("returns visible action log counters and export mode labels", () => {
+    expect(getStickyActionLogToolbarClasses()).toContain("sticky");
+    expect(getStickyActionLogToolbarClasses()).toContain("top-3");
+    expect(getStickyActionLogToolbarClasses()).toContain("backdrop-blur");
+
     expect(getVisibleActionLogSummary(3, 6, "filtered")).toEqual({
       badgeLabel: "Видимо сейчас: 3",
       helperText: "Текущий фильтр показывает 3 из 6 записей журнала.",

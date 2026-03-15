@@ -2321,6 +2321,7 @@ export default function AdminClub() {
           ) : (
             <CardContent className="space-y-4">
               <div className="space-y-3">
+                <div className="sticky top-3 z-10 -mx-1 space-y-3 rounded-2xl border border-stone-200 bg-white/95 px-3 py-3 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-white/85">
                 <div className="flex flex-wrap gap-2">
                   {actionLogFilterPresets.map((preset) => {
                     const isActive = actionLogAreaFilter === preset.area && actionLogTypeFilter === preset.actionType;
@@ -2372,6 +2373,7 @@ export default function AdminClub() {
                     <option value="preset">Пресеты</option>
                   </select>
                 </Field>
+              </div>
               </div>
               </div>
               {filteredActionLog.length ? (
