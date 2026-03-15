@@ -34,7 +34,7 @@ import {
 } from "@/lib/adminClubActivity";
 import { trpc } from "@/lib/trpc";
 import { NOT_ADMIN_ERR_MSG } from "@shared/const";
-import { ArrowDown, CalendarRange, CheckSquare, ChevronDown, ChevronUp, Copy, Crown, Download, Pencil, Pin, Save, Search, ShieldAlert, Square, Trash2, Users, X } from "lucide-react";
+import { ArrowDown, ArrowLeft, CalendarRange, CheckSquare, ChevronDown, ChevronUp, Copy, Crown, Download, Pencil, Pin, Save, Search, ShieldAlert, Square, Trash2, Users, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import { toast } from "sonner";
@@ -532,6 +532,7 @@ export default function AdminClub() {
   const [location, setLocation] = useLocation();
   const utils = trpc.useUtils();
   const [activeTab, setActiveTab] = useState<AdminTabValue>(initialUrlState.activeTab);
+  const [lastEntityTab, setLastEntityTab] = useState<EntityAdminTabValue>(initialUrlState.activeTab === "activity" ? "posts" : initialUrlState.activeTab);
   const [postForm, setPostForm] = useState<PostFormState>(defaultPostForm);
   const [eventForm, setEventForm] = useState<EventFormState>(defaultEventForm);
   const [memberForm, setMemberForm] = useState<MemberFormState>(defaultMemberForm);
@@ -691,6 +692,12 @@ export default function AdminClub() {
     });
     return groups;
   }, []);
+  useEffect(() => {
+    if (activeTab !== "activity") {
+      setLastEntityTab(activeTab);
+    }
+  }, [activeTab]);
+
   const actionLogFilterPresets: Array<{
     id: string;
     label: string;
@@ -1516,6 +1523,9 @@ export default function AdminClub() {
 
         <Tabs value={activeTab} onValueChange={(value) => {
           if (isAdminTabValue(value)) {
+            if (value !== "activity") {
+              setLastEntityTab(value);
+            }
             setActiveTab(value);
           }
         }} className="space-y-6">
@@ -2619,8 +2629,39 @@ export default function AdminClub() {
                       ))}
                     </div>
                   ) : (
-                    <div className="rounded-2xl border border-dashed border-stone-200 bg-stone-50/60 px-4 py-6 text-sm text-stone-500">
-                      По текущим фильтрам записи журнала не найдены.
+                    <div className="rounded-3xl border border-dashed border-stone-200 bg-stone-50/70 px-5 py-8">
+                      <div className="mx-auto flex max-w-2xl flex-col items-start gap-4 text-left">
+                        <div className="rounded-2xl bg-white p-3 text-stone-700 shadow-sm ring-1 ring-stone-200/80">
+                          <ShieldAlert className="h-5 w-5" />
+                        </div>
+                        <div className="space-y-2">
+                          <p className="text-base font-semibold text-stone-950">По текущим фильтрам записи журнала не найдены</p>
+                          <p className="text-sm leading-6 text-stone-500">
+                            Попробуйте сбросить фильтры или вернуться к последней рабочей вкладке, чтобы продолжить управление контентом без лишней навигации.
+                          </p>
+                        </div>
+                        <div className="flex flex-wrap gap-3">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            className="rounded-full border-stone-300 bg-white text-stone-700 hover:bg-stone-100"
+                            onClick={() => {
+                              setActionLogAreaFilter("all");
+                              setActionLogTypeFilter("all");
+                            }}
+                          >
+                            Сбросить фильтры
+                          </Button>
+                          <Button
+                            type="button"
+                            className="rounded-full bg-stone-950 text-white hover:bg-stone-800"
+                            onClick={() => setActiveTab(lastEntityTab)}
+                          >
+                            <ArrowLeft className="mr-2 h-4 w-4" />
+                            Вернуться к вкладке «{lastEntityTab === "posts" ? "Посты" : lastEntityTab === "events" ? "События" : "Участники"}»
+                          </Button>
+                        </div>
+                      </div>
                     </div>
                   )}
                 </CardContent>

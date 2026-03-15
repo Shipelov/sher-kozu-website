@@ -2034,3 +2034,37 @@ describe("admin club critical notifications", () => {
     expect(log.at(-1)?.title).toBe("Действие 2");
   });
 });
+
+function getActivityEmptyStateCopy(lastEntityTab: "posts" | "events" | "members") {
+  return {
+    title: "По текущим фильтрам записи журнала не найдены",
+    description: "Попробуйте сбросить фильтры или вернуться к последней рабочей вкладке, чтобы продолжить управление контентом без лишней навигации.",
+    resetLabel: "Сбросить фильтры",
+    returnLabel: `Вернуться к вкладке «${lastEntityTab === "posts" ? "Посты" : lastEntityTab === "events" ? "События" : "Участники"}»`,
+  };
+}
+
+function resolveLastEntityTab(activeTab: "posts" | "events" | "members" | "activity", previousTab: "posts" | "events" | "members") {
+  return activeTab === "activity" ? previousTab : activeTab;
+}
+
+describe("admin club activity empty state", () => {
+  it("builds CTA copy for return to the last working CRUD tab", () => {
+    expect(getActivityEmptyStateCopy("posts")).toEqual({
+      title: "По текущим фильтрам записи журнала не найдены",
+      description: "Попробуйте сбросить фильтры или вернуться к последней рабочей вкладке, чтобы продолжить управление контентом без лишней навигации.",
+      resetLabel: "Сбросить фильтры",
+      returnLabel: "Вернуться к вкладке «Посты»",
+    });
+
+    expect(getActivityEmptyStateCopy("events").returnLabel).toBe("Вернуться к вкладке «События»");
+    expect(getActivityEmptyStateCopy("members").returnLabel).toBe("Вернуться к вкладке «Участники»");
+  });
+
+  it("preserves last CRUD tab when the administrator is currently inside activity", () => {
+    expect(resolveLastEntityTab("activity", "events")).toBe("events");
+    expect(resolveLastEntityTab("activity", "members")).toBe("members");
+    expect(resolveLastEntityTab("posts", "events")).toBe("posts");
+    expect(resolveLastEntityTab("members", "posts")).toBe("members");
+  });
+});
