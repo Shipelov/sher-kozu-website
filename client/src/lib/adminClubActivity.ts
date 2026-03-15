@@ -39,6 +39,20 @@ export type CriticalNotificationDecision = {
   reason: string;
 };
 
+export type CriticalNotificationHistoryEntry = {
+  id: number;
+  timestamp: number;
+  area: EntityAdminTabValue;
+  actionType: AdminActionType;
+  title: string;
+  description: string;
+  severityLabel: "high" | "medium";
+  delivered: boolean;
+  reason: string;
+  actorLabel: string;
+  affectedCount?: number;
+};
+
 export const defaultCriticalNotificationSettings = (): CriticalNotificationSettings => ({
   enabled: true,
   notifyOnDelete: true,
@@ -125,4 +139,54 @@ export function buildCriticalNotificationPayload(
       `Описание: ${candidate.description}.${affectedLine}`,
     ].join("\n"),
   };
+}
+
+export function recordCriticalNotificationHistory(
+  currentHistory: CriticalNotificationHistoryEntry[],
+  candidate: CriticalNotificationCandidate & { area: EntityAdminTabValue },
+  decision: CriticalNotificationDecision,
+  actorLabel: string,
+  delivered: boolean,
+  now = Date.now(),
+) {
+  return [
+    {
+      id: now + currentHistory.length,
+      timestamp: now,
+      area: candidate.area,
+      actionType: candidate.actionType,
+      title: candidate.title,
+      description: candidate.description,
+      severityLabel: decision.severityLabel,
+      delivered,
+      reason: decision.reason,
+      actorLabel,
+      affectedCount: candidate.affectedCount,
+    },
+    ...currentHistory,
+  ].slice(0, 8);
+}
+
+export function getCriticalNotificationStatusCopy(entry: Pick<CriticalNotificationHistoryEntry, "delivered" | "severityLabel">) {
+  if (entry.delivered) {
+    return {
+      label: entry.severityLabel === "high" ? "Доставлено · high" : "Доставлено · medium",
+      className: entry.severityLabel === "high"
+        ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+        : "border-sky-200 bg-sky-50 text-sky-800",
+    };
+  }
+
+  return {
+    label: entry.severityLabel === "high" ? "Сбой доставки · high" : "Сбой доставки · medium",
+    className: entry.severityLabel === "high"
+      ? "border-rose-200 bg-rose-50 text-rose-800"
+      : "border-amber-200 bg-amber-50 text-amber-800",
+  };
+}
+
+export function getCriticalNotificationAreaLabel(area: EntityAdminTabValue) {
+  if (area === "posts") return "Посты";
+  if (area === "events") return "События";
+  return "Участники";
 }

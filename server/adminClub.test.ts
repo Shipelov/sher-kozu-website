@@ -1970,7 +1970,9 @@ describe("recordAdminAction", () => {
 import {
   buildCriticalNotificationPayload,
   defaultCriticalNotificationSettings,
+  getCriticalNotificationStatusCopy,
   recordAdminAction as recordAdminActivityAction,
+  recordCriticalNotificationHistory,
   shouldSendCriticalNotification,
 } from "../client/src/lib/adminClubActivity";
 
@@ -2032,6 +2034,45 @@ describe("admin club critical notifications", () => {
     expect(log).toHaveLength(6);
     expect(log[0].title).toBe("Действие 7");
     expect(log.at(-1)?.title).toBe("Действие 2");
+  });
+
+  it("records critical notification history with delivery status and keeps only the latest eight items", () => {
+    let history = [] as ReturnType<typeof recordCriticalNotificationHistory>;
+
+    for (let index = 0; index < 9; index += 1) {
+      history = recordCriticalNotificationHistory(history, {
+        area: index % 2 === 0 ? "posts" : "events",
+        actionType: "bulk",
+        title: `Критическое действие ${index + 1}`,
+        description: "Описание критического действия.",
+        affectedCount: index + 2,
+      }, {
+        shouldNotify: true,
+        severityLabel: index > 5 ? "high" : "medium",
+        reason: `Причина ${index + 1}`,
+      }, "Тестовый администратор", index % 3 !== 0, 2000 + index);
+    }
+
+    expect(history).toHaveLength(8);
+    expect(history[0]).toMatchObject({
+      title: "Критическое действие 9",
+      severityLabel: "high",
+      delivered: true,
+      actorLabel: "Тестовый администратор",
+    });
+    expect(history.at(-1)?.title).toBe("Критическое действие 2");
+  });
+
+  it("builds delivery badge copy for delivered and failed critical notifications", () => {
+    expect(getCriticalNotificationStatusCopy({ delivered: true, severityLabel: "high" })).toEqual({
+      label: "Доставлено · high",
+      className: "border-emerald-200 bg-emerald-50 text-emerald-800",
+    });
+
+    expect(getCriticalNotificationStatusCopy({ delivered: false, severityLabel: "medium" })).toEqual({
+      label: "Сбой доставки · medium",
+      className: "border-amber-200 bg-amber-50 text-amber-800",
+    });
   });
 });
 

@@ -24,11 +24,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import {
   buildCriticalNotificationPayload,
   defaultCriticalNotificationSettings,
+  getCriticalNotificationAreaLabel,
+  getCriticalNotificationStatusCopy,
   recordAdminAction,
+  recordCriticalNotificationHistory,
   shouldSendCriticalNotification,
   type AdminActionLogEntry,
   type AdminActionType,
   type AdminTabValue,
+  type CriticalNotificationHistoryEntry,
   type CriticalNotificationSettings,
   type EntityAdminTabValue,
 } from "@/lib/adminClubActivity";
@@ -552,6 +556,7 @@ export default function AdminClub() {
   const [actionLogTypeFilter, setActionLogTypeFilter] = useState<"all" | AdminActionType>("all");
   const [actionLogExportScope, setActionLogExportScope] = useState<"filtered" | "all">("filtered");
   const [criticalNotificationSettings, setCriticalNotificationSettings] = useState<CriticalNotificationSettings>(defaultCriticalNotificationSettings);
+  const [criticalNotificationHistory, setCriticalNotificationHistory] = useState<CriticalNotificationHistoryEntry[]>([]);
 
   const adminQuery = trpc.adminClub.dashboard.useQuery(undefined, {
     enabled: Boolean(user?.role === "admin"),
@@ -603,6 +608,16 @@ export default function AdminClub() {
     }, decision, actorLabel);
 
     const result = await notifyCriticalAction.mutateAsync(payload);
+
+    if (area !== "activity") {
+      setCriticalNotificationHistory((current) => recordCriticalNotificationHistory(current, {
+        area,
+        actionType,
+        title,
+        description,
+        affectedCount,
+      }, decision, actorLabel, result.delivered));
+    }
 
     toast[decision.severityLabel === "high" ? "warning" : "info"]("Критическое уведомление отправлено", {
       description: result.delivered
@@ -805,6 +820,9 @@ export default function AdminClub() {
       className: "rounded-full border-amber-200 bg-amber-50 px-2.5 py-0.5 text-[11px] uppercase tracking-[0.12em] text-amber-700",
     };
   };
+
+  const deliveredCriticalCount = criticalNotificationHistory.filter((entry) => entry.delivered).length;
+  const failedCriticalCount = criticalNotificationHistory.length - deliveredCriticalCount;
 
   const actionLogTypeStats = filteredActionLog.reduce<Record<AdminActionType, number>>((accumulator, entry) => {
     accumulator[entry.actionType] += 1;
@@ -2575,6 +2593,72 @@ export default function AdminClub() {
                             </AlertDescription>
                           </Alert>
                         </div>
+                      </CardContent>
+                    </Card>
+
+                    <Card className="border-stone-200 bg-white/90 shadow-none">
+                      <CardHeader className="space-y-2">
+                        <div className="flex flex-wrap items-start justify-between gap-3">
+                          <div>
+                            <CardTitle className="text-base text-stone-950">История критических уведомлений</CardTitle>
+                            <CardDescription className="text-stone-600">
+                              Последние owner-уведомления по рискованным действиям: видно severity, статус доставки и связь с операцией журнала.
+                            </CardDescription>
+                          </div>
+                          <div className="flex flex-wrap gap-2">
+                            <Badge variant="outline" className="rounded-full border-stone-300 bg-stone-50 px-3 py-1 text-xs text-stone-700">
+                              Всего: {criticalNotificationHistory.length}
+                            </Badge>
+                            <Badge variant="outline" className="rounded-full border-emerald-200 bg-emerald-50 px-3 py-1 text-xs text-emerald-800">
+                              Доставлено: {deliveredCriticalCount}
+                            </Badge>
+                            <Badge variant="outline" className="rounded-full border-rose-200 bg-rose-50 px-3 py-1 text-xs text-rose-800">
+                              Сбой: {failedCriticalCount}
+                            </Badge>
+                          </div>
+                        </div>
+                      </CardHeader>
+                      <CardContent>
+                        {criticalNotificationHistory.length ? (
+                          <div className="space-y-3">
+                            {criticalNotificationHistory.map((entry) => {
+                              const statusBadge = getCriticalNotificationStatusCopy(entry);
+
+                              return (
+                                <div key={entry.id} className="rounded-2xl border border-stone-200 bg-stone-50/80 px-4 py-4">
+                                  <div className="flex flex-wrap items-start justify-between gap-3">
+                                    <div className="space-y-2">
+                                      <div className="flex flex-wrap items-center gap-2">
+                                        <p className="text-sm font-semibold text-stone-950">{entry.title}</p>
+                                        <Badge variant="outline" className="rounded-full border-stone-300 bg-white px-2.5 py-0.5 text-[11px] uppercase tracking-[0.12em] text-stone-600">
+                                          {getCriticalNotificationAreaLabel(entry.area)}
+                                        </Badge>
+                                        <Badge variant="outline" className={statusBadge.className}>
+                                          {statusBadge.label}
+                                        </Badge>
+                                      </div>
+                                      <p className="text-sm text-stone-600">{entry.description}</p>
+                                      <div className="flex flex-wrap gap-2 text-xs text-stone-500">
+                                        <span>Действие: {entry.actionType}</span>
+                                        <span>Severity: {entry.severityLabel}</span>
+                                        <span>Автор: {entry.actorLabel}</span>
+                                        {typeof entry.affectedCount === "number" ? <span>Затронуто: {entry.affectedCount}</span> : null}
+                                      </div>
+                                      <p className="text-xs leading-5 text-stone-500">Причина: {entry.reason}</p>
+                                    </div>
+                                    <span className="text-xs text-stone-500">
+                                      {new Date(entry.timestamp).toLocaleString("ru-RU", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}
+                                    </span>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        ) : (
+                          <div className="rounded-2xl border border-dashed border-stone-200 bg-stone-50/70 px-4 py-5 text-sm text-stone-500">
+                            Пока критические уведомления не отправлялись. Как только администратор выполнит рискованное действие, здесь появится запись со статусом доставки.
+                          </div>
+                        )}
                       </CardContent>
                     </Card>
                   </div>
