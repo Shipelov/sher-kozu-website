@@ -328,6 +328,7 @@ function readAdminClubStateFromUrl() {
         events: { page: 1, pageSize: 10 },
         members: { page: 1, pageSize: 10 },
       },
+      actionLogCollapsed: false,
     };
   }
 
@@ -372,6 +373,7 @@ function readAdminClubStateFromUrl() {
         pageSize: parsePageSizeParam(params.get("memberPageSize")),
       },
     },
+    actionLogCollapsed: params.get("log") === "collapsed",
   };
 }
 
@@ -492,6 +494,7 @@ function buildAdminClubUrl(
   eventFilters: EventFilterState,
   memberFilters: MemberFilterState,
   pagination: PaginationState,
+  actionLogCollapsed: boolean,
 ) {
   const params = new URLSearchParams();
 
@@ -516,6 +519,7 @@ function buildAdminClubUrl(
   if (pagination.events.pageSize !== 10) params.set("eventPageSize", String(pagination.events.pageSize));
   if (pagination.members.page !== 1) params.set("memberPage", String(pagination.members.page));
   if (pagination.members.pageSize !== 10) params.set("memberPageSize", String(pagination.members.pageSize));
+  if (actionLogCollapsed) params.set("log", "collapsed");
 
   const query = params.toString();
   return query ? `/admin/club?${query}` : "/admin/club";
@@ -541,7 +545,7 @@ export default function AdminClub() {
   const [selectedIds, setSelectedIds] = useState<SelectionState>({ posts: [], events: [], members: [] });
   const [pagination, setPagination] = useState<PaginationState>(initialUrlState.pagination);
   const [actionLog, setActionLog] = useState<AdminActionLogEntry[]>([]);
-  const [actionLogCollapsed, setActionLogCollapsed] = useState(false);
+  const [actionLogCollapsed, setActionLogCollapsed] = useState(initialUrlState.actionLogCollapsed);
   const [actionLogAreaFilter, setActionLogAreaFilter] = useState<"all" | AdminTabValue>("all");
   const [actionLogTypeFilter, setActionLogTypeFilter] = useState<"all" | AdminActionType>("all");
 
@@ -990,12 +994,11 @@ export default function AdminClub() {
   };
 
   useEffect(() => {
-    const nextUrl = buildAdminClubUrl(activeTab, postFilters, eventFilters, memberFilters, pagination);
+    const nextUrl = buildAdminClubUrl(activeTab, postFilters, eventFilters, memberFilters, pagination, actionLogCollapsed);
     if (location !== nextUrl) {
       setLocation(nextUrl, { replace: true });
     }
-  }, [activeTab, eventFilters, location, memberFilters, pagination, postFilters, setLocation]);
-
+  }, [actionLogCollapsed, activeTab, eventFilters, location, memberFilters, pagination, postFilters, setLocation]);
   useEffect(() => {
     setPagination((current) => ({
       ...current,

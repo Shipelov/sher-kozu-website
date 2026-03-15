@@ -261,6 +261,7 @@ function readAdminClubStateFromSearch(search: string) {
       sortBy: params.get("memberSortBy") === "name" || params.get("memberSortBy") === "badge" ? params.get("memberSortBy") as MemberSortField : "sortOrder",
       sortDirection: (params.get("memberSortDirection") === "desc" ? "desc" : "asc") as SortDirection,
     },
+    actionLogCollapsed: params.get("log") === "collapsed",
   };
 }
 
@@ -269,6 +270,7 @@ function buildAdminClubUrl(
   postFilters: PostFilters,
   eventFilters: EventFilters,
   memberFilters: MemberFilters,
+  actionLogCollapsed = false,
 ) {
   const params = new URLSearchParams();
 
@@ -287,6 +289,7 @@ function buildAdminClubUrl(
   if (memberFilters.badge !== "all") params.set("memberBadge", memberFilters.badge);
   if (memberFilters.sortBy !== "sortOrder") params.set("memberSortBy", memberFilters.sortBy);
   if (memberFilters.sortDirection !== "asc") params.set("memberSortDirection", memberFilters.sortDirection);
+  if (actionLogCollapsed) params.set("log", "collapsed");
 
   const query = params.toString();
   return query ? `/admin/club?${query}` : "/admin/club";
@@ -503,6 +506,7 @@ describe("admin club helpers", () => {
         sortBy: "badge",
         sortDirection: "asc",
       },
+      actionLogCollapsed: false,
     });
   });
 
@@ -513,6 +517,21 @@ describe("admin club helpers", () => {
       { query: "", status: "all", tone: "all", sortBy: "sortOrder", sortDirection: "asc" },
       { query: "Марта", badge: "Founder", sortBy: "name", sortDirection: "desc" },
     )).toBe("/admin/club?tab=members&memberQuery=%D0%9C%D0%B0%D1%80%D1%82%D0%B0&memberBadge=Founder&memberSortBy=name&memberSortDirection=desc");
+  });
+
+  it("persists collapsed action log state in shareable admin url", () => {
+    expect(buildAdminClubUrl(
+      "posts",
+      { query: "", category: "all", pinned: "all", sortBy: "sortOrder", sortDirection: "asc" },
+      { query: "", status: "all", tone: "all", sortBy: "sortOrder", sortDirection: "asc" },
+      { query: "", badge: "all", sortBy: "sortOrder", sortDirection: "asc" },
+      true,
+    )).toBe("/admin/club?log=collapsed");
+  });
+
+  it("restores collapsed action log state from query string", () => {
+    expect(readAdminClubStateFromSearch("?tab=posts&log=collapsed").actionLogCollapsed).toBe(true);
+    expect(readAdminClubStateFromSearch("?tab=posts").actionLogCollapsed).toBe(false);
   });
 
   it("falls back to posts tab for invalid tab in query string", () => {
