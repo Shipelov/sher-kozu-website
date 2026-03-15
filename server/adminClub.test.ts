@@ -1448,6 +1448,9 @@ function getActionTypeBadgeConfig(actionType: AdminActionType) {
     className: "rounded-full border-amber-200 bg-amber-50 px-2.5 py-0.5 text-[11px] uppercase tracking-[0.12em] text-amber-700",
   };
 }
+function buildShareableAdminClubUrl(origin: string, activeTab: AdminTabValue, postFilters: PostFilterState, eventFilters: EventFilterState, memberFilters: MemberFilterState, pagination: PaginationState, actionLogCollapsed: boolean) {
+  return `${origin}${buildAdminClubUrl(activeTab, postFilters, eventFilters, memberFilters, pagination, actionLogCollapsed)}`;
+}
 
 
 describe("recordAdminAction", () => {
@@ -1538,6 +1541,36 @@ describe("recordAdminAction", () => {
       label: "Пресет",
       className: "rounded-full border-amber-200 bg-amber-50 px-2.5 py-0.5 text-[11px] uppercase tracking-[0.12em] text-amber-700",
     });
+  });
+
+  it("builds shareable url for the current admin view including filters and collapsed log state", () => {
+    const url = buildShareableAdminClubUrl(
+      "https://sherkozu-mlhmg5vm.manus.space",
+      "members",
+      { query: "ферма", category: "all", pinned: "all", sortBy: "sortOrder", sortDirection: "asc" },
+      { query: "", status: "Планируется", tone: "all", sortBy: "sortOrder", sortDirection: "asc" },
+      { query: "Лейла", badge: "Амбассадор", sortBy: "badge", sortDirection: "desc" },
+      {
+        posts: { page: 2, pageSize: 20 },
+        events: { page: 1, pageSize: 10 },
+        members: { page: 3, pageSize: 20 },
+      },
+      true,
+    );
+
+    expect(url).toContain("https://sherkozu-mlhmg5vm.manus.space/admin/club?");
+    expect(url).toContain("tab=members");
+    expect(url).toContain("postQuery=%D1%84%D0%B5%D1%80%D0%BC%D0%B0");
+    expect(url).toContain("eventStatus=%D0%9F%D0%BB%D0%B0%D0%BD%D0%B8%D1%80%D1%83%D0%B5%D1%82%D1%81%D1%8F");
+    expect(url).toContain("memberQuery=%D0%9B%D0%B5%D0%B9%D0%BB%D0%B0");
+    expect(url).toContain("memberBadge=%D0%90%D0%BC%D0%B1%D0%B0%D1%81%D1%81%D0%B0%D0%B4%D0%BE%D1%80");
+    expect(url).toContain("memberSortBy=badge");
+    expect(url).toContain("memberSortDirection=desc");
+    expect(url).not.toContain("postPage=");
+    expect(url).not.toContain("postPageSize=");
+    expect(url).not.toContain("memberPage=");
+    expect(url).not.toContain("memberPageSize=");
+    expect(url).toContain("log=collapsed");
   });
 
   it("clears all action log records", () => {

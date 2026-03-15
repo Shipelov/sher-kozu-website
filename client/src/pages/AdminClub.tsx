@@ -22,7 +22,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { trpc } from "@/lib/trpc";
 import { NOT_ADMIN_ERR_MSG } from "@shared/const";
-import { ArrowDown, CalendarRange, CheckSquare, ChevronDown, ChevronUp, Crown, Download, Pencil, Pin, Save, Search, ShieldAlert, Square, Trash2, Users, X } from "lucide-react";
+import { ArrowDown, CalendarRange, CheckSquare, ChevronDown, ChevronUp, Copy, Crown, Download, Pencil, Pin, Save, Search, ShieldAlert, Square, Trash2, Users, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import { toast } from "sonner";
@@ -695,6 +695,34 @@ export default function AdminClub() {
       label: "Пресет",
       className: "rounded-full border-amber-200 bg-amber-50 px-2.5 py-0.5 text-[11px] uppercase tracking-[0.12em] text-amber-700",
     };
+  };
+
+  const copyCurrentViewLink = async () => {
+    const shareUrl = `${window.location.origin}${buildAdminClubUrl(activeTab, postFilters, eventFilters, memberFilters, pagination, actionLogCollapsed)}`;
+
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(shareUrl);
+      } else {
+        const textArea = window.document.createElement("textarea");
+        textArea.value = shareUrl;
+        textArea.setAttribute("readonly", "true");
+        textArea.style.position = "absolute";
+        textArea.style.left = "-9999px";
+        window.document.body.appendChild(textArea);
+        textArea.select();
+        window.document.execCommand("copy");
+        window.document.body.removeChild(textArea);
+      }
+
+      toast.success("Ссылка скопирована", {
+        description: "Текущий вид админ-панели сохранён в буфере обмена вместе с фильтрами и состоянием журнала.",
+      });
+    } catch {
+      toast.error("Не удалось скопировать ссылку", {
+        description: "Попробуйте ещё раз или скопируйте адрес страницы вручную из браузера.",
+      });
+    }
   };
 
   const getBulkActionToastCopy = (entity: "post" | "event" | "member", action: "delete" | "pin" | "unpin", count: number) => {
@@ -2183,6 +2211,16 @@ export default function AdminClub() {
                 >
                   {actionLogCollapsed ? <ChevronDown className="mr-1.5 h-4 w-4" /> : <ChevronUp className="mr-1.5 h-4 w-4" />}
                   {actionLogCollapsed ? "Развернуть" : "Свернуть"}
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="rounded-full border-stone-300 px-3 text-stone-700"
+                  onClick={copyCurrentViewLink}
+                >
+                  <Copy className="mr-1.5 h-4 w-4" />
+                  Скопировать ссылку
                 </Button>
                 <Button
                   type="button"
