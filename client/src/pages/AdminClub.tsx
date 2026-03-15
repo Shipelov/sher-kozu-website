@@ -103,7 +103,8 @@ type PendingDeleteState =
   | { entity: "bulk-member"; ids: number[]; title: string; description: string; summaryItems: string[]; totalCount: number }
   | null;
 
-type AdminTabValue = "posts" | "events" | "members";
+type EntityAdminTabValue = "posts" | "events" | "members";
+type AdminTabValue = EntityAdminTabValue | "activity";
 
 type PresetConfig = {
   query?: string;
@@ -118,7 +119,7 @@ type PresetConfig = {
 
 type ClubAdminPreset = {
   id: number;
-  tab: AdminTabValue;
+  tab: EntityAdminTabValue;
   name: string;
   configJson: string;
   sortOrder: number;
@@ -130,8 +131,8 @@ type PostFormField = "category" | "author" | "role" | "timeLabel" | "title" | "t
 type EventFormField = "title" | "dateLabel" | "description" | "status" | "tone";
 type MemberFormField = "name" | "animal" | "sinceLabel";
 
-type SelectionState = Record<AdminTabValue, number[]>;
-type PaginationState = Record<AdminTabValue, { page: number; pageSize: number }>;
+type SelectionState = Record<EntityAdminTabValue, number[]>;
+type PaginationState = Record<EntityAdminTabValue, { page: number; pageSize: number }>;
 
 type BulkActionConfig = {
   label: string;
@@ -304,7 +305,7 @@ function sortMembers(members: any[], filters: MemberFilterState) {
 }
 
 function isAdminTabValue(value: string | null): value is AdminTabValue {
-  return value === "posts" || value === "events" || value === "members";
+  return value === "posts" || value === "events" || value === "members" || value === "activity";
 }
 
 function parsePageParam(value: string | null) {
@@ -460,7 +461,7 @@ function parsePresetConfig(configJson: string): PresetConfig | null {
   }
 }
 
-function getPresetConfigForTab(tab: AdminTabValue, postFilters: PostFilterState, eventFilters: EventFilterState, memberFilters: MemberFilterState): PresetConfig {
+function getPresetConfigForTab(tab: EntityAdminTabValue, postFilters: PostFilterState, eventFilters: EventFilterState, memberFilters: MemberFilterState): PresetConfig {
   if (tab === "posts") {
     return {
       query: postFilters.query,
@@ -542,7 +543,7 @@ export default function AdminClub() {
   const [postErrors, setPostErrors] = useState<FormErrors<PostFormField>>({});
   const [eventErrors, setEventErrors] = useState<FormErrors<EventFormField>>({});
   const [memberErrors, setMemberErrors] = useState<FormErrors<MemberFormField>>({});
-  const [presetName, setPresetName] = useState<Record<AdminTabValue, string>>({ posts: "", events: "", members: "" });
+  const [presetName, setPresetName] = useState<Record<EntityAdminTabValue, string>>({ posts: "", events: "", members: "" });
   const [selectedIds, setSelectedIds] = useState<SelectionState>({ posts: [], events: [], members: [] });
   const [pagination, setPagination] = useState<PaginationState>(initialUrlState.pagination);
   const [actionLog, setActionLog] = useState<AdminActionLogEntry[]>([]);
@@ -1075,11 +1076,11 @@ export default function AdminClub() {
     ? Math.max(0, pendingDelete.totalCount - pendingDelete.summaryItems.length)
     : 0;
 
-  const setTabSelection = (tab: AdminTabValue, ids: number[]) => {
+  const setTabSelection = (tab: EntityAdminTabValue, ids: number[]) => {
     setSelectedIds((current) => ({ ...current, [tab]: ids }));
   };
 
-  const toggleSelection = (tab: AdminTabValue, id: number) => {
+  const toggleSelection = (tab: EntityAdminTabValue, id: number) => {
     setSelectedIds((current) => ({
       ...current,
       [tab]: current[tab].includes(id)
@@ -1088,18 +1089,18 @@ export default function AdminClub() {
     }));
   };
 
-  const toggleSelectAllVisible = (tab: AdminTabValue, ids: number[]) => {
+  const toggleSelectAllVisible = (tab: EntityAdminTabValue, ids: number[]) => {
     setSelectedIds((current) => ({
       ...current,
       [tab]: current[tab].length === ids.length && ids.every((id) => current[tab].includes(id)) ? [] : ids,
     }));
   };
 
-  const clearSelection = (tab: AdminTabValue) => {
+  const clearSelection = (tab: EntityAdminTabValue) => {
     setTabSelection(tab, []);
   };
 
-  const setTabPage = (tab: AdminTabValue, page: number) => {
+  const setTabPage = (tab: EntityAdminTabValue, page: number) => {
     setPagination((current) => ({
       ...current,
       [tab]: {
@@ -1109,7 +1110,7 @@ export default function AdminClub() {
     }));
   };
 
-  const setTabPageSize = (tab: AdminTabValue, pageSize: number) => {
+  const setTabPageSize = (tab: EntityAdminTabValue, pageSize: number) => {
     setPagination((current) => ({
       ...current,
       [tab]: {
@@ -1119,7 +1120,7 @@ export default function AdminClub() {
     }));
   };
 
-  const handleSavePreset = async (tab: AdminTabValue) => {
+  const handleSavePreset = async (tab: EntityAdminTabValue) => {
     const name = presetName[tab].trim();
     if (!name) {
       toast.error("Укажите название пресета", {
@@ -1472,10 +1473,11 @@ export default function AdminClub() {
             setActiveTab(value);
           }
         }} className="space-y-6">
-          <TabsList className="grid h-auto w-full grid-cols-1 gap-2 rounded-2xl bg-stone-100 p-1 sm:grid-cols-3 sm:gap-1 md:w-auto">
+          <TabsList className="grid h-auto w-full grid-cols-1 gap-2 rounded-2xl bg-stone-100 p-1 sm:grid-cols-2 sm:gap-1 lg:grid-cols-4 md:w-auto">
             <TabsTrigger value="posts" className="w-full whitespace-normal px-3 py-2 text-center">Посты</TabsTrigger>
             <TabsTrigger value="events" className="w-full whitespace-normal px-3 py-2 text-center">События</TabsTrigger>
             <TabsTrigger value="members" className="w-full whitespace-normal px-3 py-2 text-center">Участники</TabsTrigger>
+            <TabsTrigger value="activity" className="w-full whitespace-normal px-3 py-2 text-center">Журнал действий</TabsTrigger>
           </TabsList>
 
           <TabsContent value="posts" className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
@@ -2274,212 +2276,218 @@ export default function AdminClub() {
               )}
             />
           </TabsContent>
-        </Tabs>
 
-        <Card className="border-stone-200 bg-white/90">
-          <CardHeader>
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div className="space-y-1">
-                <CardTitle>Последние действия администратора</CardTitle>
-                <CardDescription>Короткий локальный журнал последних операций в этой сессии для прозрачности изменений в клубной панели.</CardDescription>
-              </div>
-              <div className="flex flex-wrap items-center justify-end gap-2">
-                <Badge variant="outline" className="rounded-full border-stone-300 bg-stone-50 px-3 py-1 text-xs text-stone-700">
-                  {actionLog.length} записей
-                </Badge>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="rounded-full border-stone-300 px-3 text-stone-700"
-                  onClick={() => setActionLogCollapsed((current) => !current)}
-                >
-                  {actionLogCollapsed ? <ChevronDown className="mr-1.5 h-4 w-4" /> : <ChevronUp className="mr-1.5 h-4 w-4" />}
-                  {actionLogCollapsed ? "Развернуть" : "Свернуть"}
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="rounded-full border-stone-300 px-3 text-stone-700"
-                  onClick={copyCurrentViewLink}
-                >
-                  <Copy className="mr-1.5 h-4 w-4" />
-                  Скопировать ссылку
-                </Button>
-                <Badge variant="outline" className="rounded-full border-stone-300 bg-white px-3 py-1 text-xs text-stone-700">
-                  Видимо сейчас: {filteredActionLog.length}
-                </Badge>
-                <Select value={actionLogExportScope} onValueChange={(value) => setActionLogExportScope(value as "filtered" | "all")}>
-                  <SelectTrigger className="h-9 w-[220px] rounded-full border-stone-300 bg-white text-xs text-stone-700">
-                    <SelectValue placeholder="Глубина экспорта" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="filtered">Экспорт: текущий вид</SelectItem>
-                    <SelectItem value="all">Экспорт: весь журнал сессии</SelectItem>
-                  </SelectContent>
-                </Select>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="rounded-full border-stone-300 px-3 text-stone-700"
-                  onClick={exportActionLogToCsv}
-                  disabled={!exportableActionLog.length}
-                >
-                  <Download className="mr-1.5 h-4 w-4" />
-                  CSV
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="rounded-full border-stone-300 px-3 text-stone-700"
-                  onClick={() => setActionLog([])}
-                  disabled={!actionLog.length}
-                >
-                  <Trash2 className="mr-1.5 h-4 w-4" />
-                  Очистить
-                </Button>
-              </div>
-            </div>
-          </CardHeader>
-          {actionLogCollapsed ? (
-            <CardContent>
-              <p className="text-sm text-stone-500">Журнал свёрнут. Разверните блок, чтобы посмотреть последние действия администратора и применить фильтры.</p>
-            </CardContent>
-          ) : (
-            <CardContent className="space-y-4">
-              <div className="space-y-3">
-                <div className="sticky top-3 z-10 -mx-1 space-y-3 rounded-2xl border border-stone-200 bg-white/95 px-3 py-3 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-white/85">
-                <div className="flex flex-wrap gap-2">
-                  {actionLogFilterPresets.map((preset) => {
-                    const matchesArea = actionLogAreaFilter === preset.area;
-                    const matchesType = preset.actionTypes?.length
-                      ? preset.actionTypes.includes(actionLogTypeFilter as AdminActionType)
-                      : actionLogTypeFilter === (preset.actionType ?? "all");
-                    const isActive = matchesArea && matchesType;
-
-                    return (
-                      <Button
-                        key={preset.id}
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        className={isActive
-                          ? "rounded-full border-stone-900 bg-stone-900 px-3 text-white hover:bg-stone-800"
-                          : "rounded-full border-stone-300 bg-white px-3 text-stone-700 hover:bg-stone-50"}
-                        onClick={() => applyActionLogPreset(preset.id)}
-                      >
-                        {preset.label}
-                      </Button>
-                    );
-                  })}
+          <TabsContent value="activity" className="space-y-6">
+            <Card className="border-stone-200 bg-white/90">
+              <CardHeader>
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div className="space-y-1">
+                    <CardTitle>Последние действия администратора</CardTitle>
+                    <CardDescription>Короткий локальный журнал последних операций в этой сессии для прозрачности изменений в клубной панели.</CardDescription>
+                  </div>
+                  <div className="flex flex-wrap items-center justify-end gap-2">
+                    <Badge variant="outline" className="rounded-full border-stone-300 bg-stone-50 px-3 py-1 text-xs text-stone-700">
+                      {actionLog.length} записей
+                    </Badge>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="rounded-full border-stone-300 px-3 text-stone-700"
+                      onClick={() => setActionLogCollapsed((current) => !current)}
+                    >
+                      {actionLogCollapsed ? <ChevronDown className="mr-1.5 h-4 w-4" /> : <ChevronUp className="mr-1.5 h-4 w-4" />}
+                      {actionLogCollapsed ? "Развернуть" : "Свернуть"}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="rounded-full border-stone-300 px-3 text-stone-700"
+                      onClick={copyCurrentViewLink}
+                    >
+                      <Copy className="mr-1.5 h-4 w-4" />
+                      Скопировать ссылку
+                    </Button>
+                    <Badge variant="outline" className="rounded-full border-stone-300 bg-white px-3 py-1 text-xs text-stone-700">
+                      Видимо сейчас: {filteredActionLog.length}
+                    </Badge>
+                    <Select value={actionLogExportScope} onValueChange={(value) => setActionLogExportScope(value as "filtered" | "all")}>
+                      <SelectTrigger className="h-9 w-[220px] rounded-full border-stone-300 bg-white text-xs text-stone-700">
+                        <SelectValue placeholder="Глубина экспорта" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="filtered">Экспорт: текущий вид</SelectItem>
+                        <SelectItem value="all">Экспорт: весь журнал сессии</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="rounded-full border-stone-300 px-3 text-stone-700"
+                      onClick={exportActionLogToCsv}
+                      disabled={!exportableActionLog.length}
+                    >
+                      <Download className="mr-1.5 h-4 w-4" />
+                      CSV
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="rounded-full border-stone-300 px-3 text-stone-700"
+                      onClick={() => setActionLog([])}
+                      disabled={!actionLog.length}
+                    >
+                      <Trash2 className="mr-1.5 h-4 w-4" />
+                      Очистить
+                    </Button>
+                  </div>
                 </div>
-                <div className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-stone-200 bg-stone-50/70 px-4 py-3 text-sm text-stone-600">
-                  <span>Текущий фильтр показывает {filteredActionLog.length} из {actionLog.length} записей журнала.</span>
-                  <span>Режим экспорта: {actionLogExportScope === "all" ? "весь журнал сессии" : "только текущий вид"}.</span>
-                </div>
-                <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-5">
-                  {actionLogTypeStatsItems.map((item) => (
-                    <div key={item.key} className="rounded-2xl border border-stone-200 bg-white px-3 py-3 text-sm text-stone-600">
-                      <p className="text-xs uppercase tracking-[0.12em] text-stone-400">{item.label}</p>
-                      <p className="mt-2 text-2xl font-semibold text-stone-950">{item.value}</p>
-                    </div>
-                  ))}
-                </div>
-                <div className="grid gap-2 sm:grid-cols-3">
-                  {actionLogAreaStatsItems.map((item) => (
-                    <div key={item.key} className="rounded-2xl border border-dashed border-stone-200 bg-white/80 px-3 py-3 text-sm text-stone-600">
-                      <p className="text-xs uppercase tracking-[0.12em] text-stone-400">{item.label}</p>
-                      <p className="mt-2 text-xl font-semibold text-stone-950">{item.value}</p>
-                    </div>
-                  ))}
-                </div>
-                <div className="grid gap-3 md:grid-cols-2">
-                <Field label="Область журнала">
-                  <select
-                    value={actionLogAreaFilter}
-                    onChange={(event) => setActionLogAreaFilter(event.target.value as "all" | AdminTabValue)}
-                    className="h-11 w-full rounded-xl border border-stone-200 bg-white px-3 text-sm text-stone-700 outline-none transition focus:border-stone-400 focus:ring-2 focus:ring-stone-200"
-                  >
-                    <option value="all">Все области</option>
-                    <option value="posts">Посты</option>
-                    <option value="events">События</option>
-                    <option value="members">Участники</option>
-                  </select>
-                </Field>
-                <Field label="Тип операции">
-                  <select
-                    value={actionLogTypeFilter}
-                    onChange={(event) => setActionLogTypeFilter(event.target.value as "all" | AdminActionType)}
-                    className="h-11 w-full rounded-xl border border-stone-200 bg-white px-3 text-sm text-stone-700 outline-none transition focus:border-stone-400 focus:ring-2 focus:ring-stone-200"
-                  >
-                    <option value="all">Все типы</option>
-                    <option value="create">Создание</option>
-                    <option value="update">Изменение</option>
-                    <option value="delete">Удаление</option>
-                    <option value="bulk">Массовые операции</option>
-                    <option value="preset">Пресеты</option>
-                  </select>
-                </Field>
-              </div>
-              </div>
-              </div>
-              {filteredActionLog.length ? (
-                <div className="space-y-4">
-                  {groupedActionLog.map((group) => (
-                    <div key={group.key} className="space-y-3">
-                      <div className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-dashed border-stone-200 bg-stone-50/70 px-4 py-2">
-                        <p className="text-sm font-semibold text-stone-900">{group.dateLabel}</p>
-                        <div className="flex items-center gap-2 text-xs text-stone-500">
-                          <span className="rounded-full bg-white px-2.5 py-1 text-stone-600">{group.hourLabel}</span>
-                          <span>{group.entries.length} {group.entries.length === 1 ? "запись" : group.entries.length < 5 ? "записи" : "записей"}</span>
-                        </div>
-                      </div>
-                      {group.entries.map((entry) => {
-                        const actionTypeBadge = getActionTypeBadgeConfig(entry.actionType);
-                        const includedInExport = exportableActionLogIds.has(entry.id);
+              </CardHeader>
+              {actionLogCollapsed ? (
+                <CardContent>
+                  <p className="text-sm text-stone-500">Журнал свёрнут. Разверните блок, чтобы посмотреть последние действия администратора и применить фильтры.</p>
+                </CardContent>
+              ) : (
+                <CardContent className="space-y-4">
+                  <div className="space-y-3">
+                    <div className="sticky top-3 z-10 -mx-1 space-y-3 rounded-2xl border border-stone-200 bg-white/95 px-3 py-3 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-white/85">
+                    <div className="flex flex-wrap gap-2">
+                      {actionLogFilterPresets.map((preset) => {
+                        const matchesArea = actionLogAreaFilter === preset.area;
+                        const matchesType = preset.actionTypes?.length
+                          ? preset.actionTypes.includes(actionLogTypeFilter as AdminActionType)
+                          : actionLogTypeFilter === (preset.actionType ?? "all");
+                        const isActive = matchesArea && matchesType;
 
                         return (
-                          <div
-                            key={entry.id}
-                            className={includedInExport
-                              ? "rounded-2xl border border-emerald-200 bg-emerald-50/60 p-3 shadow-[inset_0_0_0_1px_rgba(16,185,129,0.08)]"
-                              : "rounded-2xl border border-stone-200 bg-stone-50/70 p-3"}
+                          <Button
+                            key={preset.id}
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className={isActive
+                              ? "rounded-full border-stone-900 bg-stone-900 px-3 text-white hover:bg-stone-800"
+                              : "rounded-full border-stone-300 bg-white px-3 text-stone-700 hover:bg-stone-50"}
+                            onClick={() => applyActionLogPreset(preset.id)}
                           >
-                            <div className="flex flex-wrap items-start justify-between gap-2">
-                              <div className="space-y-1">
-                                <div className="flex flex-wrap items-center gap-2">
-                                  <p className="text-sm font-semibold text-stone-950">{entry.title}</p>
-                                  <Badge variant="outline" className="rounded-full border-stone-300 bg-white px-2.5 py-0.5 text-[11px] uppercase tracking-[0.12em] text-stone-600">
-                                    {entry.area === "posts" ? "Посты" : entry.area === "events" ? "События" : "Участники"}
-                                  </Badge>
-                                  <Badge variant="outline" className={actionTypeBadge.className}>
-                                    {actionTypeBadge.label}
-                                  </Badge>
-                                  {includedInExport ? (
-                                    <Badge variant="outline" className="rounded-full border-emerald-200 bg-emerald-100 px-2.5 py-0.5 text-[11px] uppercase tracking-[0.12em] text-emerald-700">
-                                      В экспорте
-                                    </Badge>
-                                  ) : null}
-                                </div>
-                                <p className="text-sm text-stone-600">{entry.description}</p>
-                              </div>
-                              <span className="text-xs text-stone-500">{new Date(entry.timestamp).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })}</span>
-                            </div>
-                          </div>
+                            {preset.label}
+                          </Button>
                         );
                       })}
                     </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-sm text-stone-500">По выбранным фильтрам действий пока ничего не найдено. Измените область или тип операции, либо выполните новые действия в панели.</p>
+                    <div className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-stone-200 bg-stone-50/70 px-4 py-3 text-sm text-stone-600">
+                      <span>Текущий фильтр показывает {filteredActionLog.length} из {actionLog.length} записей журнала.</span>
+                      <span>Режим экспорта: {actionLogExportScope === "all" ? "весь журнал сессии" : "только текущий вид"}.</span>
+                    </div>
+                    <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-5">
+                      {actionLogTypeStatsItems.map((item) => (
+                        <div key={item.key} className="rounded-2xl border border-stone-200 bg-white px-3 py-3 text-sm text-stone-600">
+                          <p className="text-xs uppercase tracking-[0.12em] text-stone-400">{item.label}</p>
+                          <p className="mt-2 text-2xl font-semibold text-stone-950">{item.value}</p>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="grid gap-2 sm:grid-cols-3">
+                      {actionLogAreaStatsItems.map((item) => (
+                        <div key={item.key} className="rounded-2xl border border-dashed border-stone-200 bg-white/80 px-3 py-3 text-sm text-stone-600">
+                          <p className="text-xs uppercase tracking-[0.12em] text-stone-400">{item.label}</p>
+                          <p className="mt-2 text-xl font-semibold text-stone-950">{item.value}</p>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="grid gap-3 md:grid-cols-2">
+                    <Field label="Область журнала">
+                      <select
+                        value={actionLogAreaFilter}
+                        onChange={(event) => setActionLogAreaFilter(event.target.value as "all" | AdminTabValue)}
+                        className="h-11 w-full rounded-xl border border-stone-200 bg-white px-3 text-sm text-stone-700 outline-none transition focus:border-stone-400 focus:ring-2 focus:ring-stone-200"
+                      >
+                        <option value="all">Все области</option>
+                        <option value="posts">Посты</option>
+                        <option value="events">События</option>
+                        <option value="members">Участники</option>
+                      </select>
+                    </Field>
+                    <Field label="Тип операции">
+                      <select
+                        value={actionLogTypeFilter}
+                        onChange={(event) => setActionLogTypeFilter(event.target.value as "all" | AdminActionType)}
+                        className="h-11 w-full rounded-xl border border-stone-200 bg-white px-3 text-sm text-stone-700 outline-none transition focus:border-stone-400 focus:ring-2 focus:ring-stone-200"
+                      >
+                        <option value="all">Все типы</option>
+                        <option value="create">Создание</option>
+                        <option value="update">Изменение</option>
+                        <option value="delete">Удаление</option>
+                        <option value="bulk">Массовые операции</option>
+                        <option value="preset">Пресеты</option>
+                      </select>
+                    </Field>
+                  </div>
+                  </div>
+                  </div>
+                  {filteredActionLog.length ? (
+                    <div className="space-y-4">
+                      {groupedActionLog.map((group) => (
+                        <div key={group.key} className="space-y-3">
+                          <div className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-dashed border-stone-200 bg-stone-50/70 px-4 py-2">
+                            <p className="text-sm font-semibold text-stone-900">{group.dateLabel}</p>
+                            <div className="flex items-center gap-2 text-xs text-stone-500">
+                              <span className="rounded-full bg-white px-2.5 py-1 text-stone-600">{group.hourLabel}</span>
+                              <span>{group.entries.length} {group.entries.length === 1 ? "запись" : group.entries.length < 5 ? "записи" : "записей"}</span>
+                            </div>
+                          </div>
+                          {group.entries.map((entry) => {
+                            const actionTypeBadge = getActionTypeBadgeConfig(entry.actionType);
+                            const includedInExport = exportableActionLogIds.has(entry.id);
+
+                            return (
+                              <div
+                                key={entry.id}
+                                className={includedInExport
+                                  ? "rounded-2xl border border-emerald-200 bg-emerald-50/60 p-3 shadow-[inset_0_0_0_1px_rgba(16,185,129,0.08)]"
+                                  : "rounded-2xl border border-stone-200 bg-stone-50/70 p-3"}
+                              >
+                                <div className="flex flex-wrap items-start justify-between gap-3">
+                                  <div className="space-y-1">
+                                    <div className="flex flex-wrap items-center gap-2">
+                                      <p className="text-sm font-semibold text-stone-950">{entry.title}</p>
+                                      <Badge variant="outline" className="rounded-full border-stone-300 bg-white px-2.5 py-0.5 text-[11px] uppercase tracking-[0.12em] text-stone-600">
+                                        {entry.area === "posts" ? "Посты" : entry.area === "events" ? "События" : "Участники"}
+                                      </Badge>
+                                      <Badge variant="outline" className={actionTypeBadge.className}>
+                                        {actionTypeBadge.label}
+                                      </Badge>
+                                      {includedInExport ? (
+                                        <Badge variant="outline" className="rounded-full border-emerald-300 bg-emerald-100/80 px-2.5 py-0.5 text-[11px] text-emerald-800">
+                                          В экспорте
+                                        </Badge>
+                                      ) : null}
+                                    </div>
+                                    <p className="text-sm text-stone-600">{entry.description}</p>
+                                  </div>
+                                  <span className="text-xs text-stone-500">
+                                    {new Date(entry.timestamp).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })}
+                                  </span>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="rounded-2xl border border-dashed border-stone-200 bg-stone-50/60 px-4 py-6 text-sm text-stone-500">
+                      По текущим фильтрам записи журнала не найдены.
+                    </div>
+                  )}
+                </CardContent>
               )}
-            </CardContent>
-          )}
-        </Card>
+            </Card>
+          </TabsContent>
+        </Tabs>
       </div>
     </DashboardLayout>
   );
