@@ -1509,6 +1509,18 @@ function getVisibleActionLogSummary(filteredCount: number, totalCount: number, s
 function getStickyActionLogToolbarClasses() {
   return "sticky top-3 z-10 -mx-1 space-y-3 rounded-2xl border border-stone-200 bg-white/95 px-3 py-3 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-white/85";
 }
+function getActionLogTypeStats(entries: Array<{ actionType: AdminActionType }>) {
+  return entries.reduce<Record<AdminActionType, number>>((accumulator, entry) => {
+    accumulator[entry.actionType] += 1;
+    return accumulator;
+  }, {
+    create: 0,
+    update: 0,
+    delete: 0,
+    bulk: 0,
+    preset: 0,
+  });
+}
 
 
 describe("recordAdminAction", () => {
@@ -1692,6 +1704,24 @@ describe("recordAdminAction", () => {
     ];
 
     expect(getExportableActionLog(entries, "all", "events", "update")).toEqual(entries);
+  });
+
+  it("returns per-type statistics for the current filtered action log selection", () => {
+    expect(getActionLogTypeStats([
+      { actionType: "create" },
+      { actionType: "update" },
+      { actionType: "update" },
+      { actionType: "delete" },
+      { actionType: "bulk" },
+      { actionType: "preset" },
+      { actionType: "preset" },
+    ])).toEqual({
+      create: 1,
+      update: 2,
+      delete: 1,
+      bulk: 1,
+      preset: 2,
+    });
   });
 
   it("returns visible action log counters and export mode labels", () => {

@@ -752,6 +752,23 @@ export default function AdminClub() {
     };
   };
 
+  const actionLogTypeStats = filteredActionLog.reduce<Record<AdminActionType, number>>((accumulator, entry) => {
+    accumulator[entry.actionType] += 1;
+    return accumulator;
+  }, {
+    create: 0,
+    update: 0,
+    delete: 0,
+    bulk: 0,
+    preset: 0,
+  });
+  const actionLogTypeStatsItems = [
+    { key: "create", label: "Создание", value: actionLogTypeStats.create },
+    { key: "update", label: "Изменение", value: actionLogTypeStats.update },
+    { key: "delete", label: "Удаление", value: actionLogTypeStats.delete },
+    { key: "bulk", label: "Массовые", value: actionLogTypeStats.bulk },
+    { key: "preset", label: "Пресеты", value: actionLogTypeStats.preset },
+  ] as const;
   const copyCurrentViewLink = async () => {
     const shareUrl = `${window.location.origin}${buildAdminClubUrl(activeTab, postFilters, eventFilters, memberFilters, pagination, actionLogCollapsed)}`;
 
@@ -2345,6 +2362,14 @@ export default function AdminClub() {
                 <div className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-stone-200 bg-stone-50/70 px-4 py-3 text-sm text-stone-600">
                   <span>Текущий фильтр показывает {filteredActionLog.length} из {actionLog.length} записей журнала.</span>
                   <span>Режим экспорта: {actionLogExportScope === "all" ? "весь журнал сессии" : "только текущий вид"}.</span>
+                </div>
+                <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-5">
+                  {actionLogTypeStatsItems.map((item) => (
+                    <div key={item.key} className="rounded-2xl border border-stone-200 bg-white px-3 py-3 text-sm text-stone-600">
+                      <p className="text-xs uppercase tracking-[0.12em] text-stone-400">{item.label}</p>
+                      <p className="mt-2 text-2xl font-semibold text-stone-950">{item.value}</p>
+                    </div>
+                  ))}
                 </div>
                 <div className="grid gap-3 md:grid-cols-2">
                 <Field label="Область журнала">
