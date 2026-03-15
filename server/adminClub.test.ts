@@ -1136,3 +1136,78 @@ describe("admin club inline quick actions", () => {
     });
   });
 });
+
+
+type PaginationState = {
+  posts: { page: number; pageSize: number };
+  events: { page: number; pageSize: number };
+  members: { page: number; pageSize: number };
+};
+
+function parsePageParam(value: string | null) {
+  const parsed = Number(value ?? "1");
+  return Number.isFinite(parsed) && parsed > 0 ? Math.floor(parsed) : 1;
+}
+
+function parsePageSizeParam(value: string | null) {
+  const parsed = Number(value ?? "10");
+  return [5, 10, 20, 50].includes(parsed) ? parsed : 10;
+}
+
+function readAdminClubPaginationFromSearch(search: string): PaginationState {
+  const params = new URLSearchParams(search);
+
+  return {
+    posts: {
+      page: parsePageParam(params.get("postPage")),
+      pageSize: parsePageSizeParam(params.get("postPageSize")),
+    },
+    events: {
+      page: parsePageParam(params.get("eventPage")),
+      pageSize: parsePageSizeParam(params.get("eventPageSize")),
+    },
+    members: {
+      page: parsePageParam(params.get("memberPage")),
+      pageSize: parsePageSizeParam(params.get("memberPageSize")),
+    },
+  };
+}
+
+function buildAdminClubPaginationQuery(pagination: PaginationState) {
+  const params = new URLSearchParams();
+
+  if (pagination.posts.page !== 1) params.set("postPage", String(pagination.posts.page));
+  if (pagination.posts.pageSize !== 10) params.set("postPageSize", String(pagination.posts.pageSize));
+  if (pagination.events.page !== 1) params.set("eventPage", String(pagination.events.page));
+  if (pagination.events.pageSize !== 10) params.set("eventPageSize", String(pagination.events.pageSize));
+  if (pagination.members.page !== 1) params.set("memberPage", String(pagination.members.page));
+  if (pagination.members.pageSize !== 10) params.set("memberPageSize", String(pagination.members.pageSize));
+
+  return params.toString();
+}
+
+describe("admin club pagination url state", () => {
+  it("reads saved page and page size for each tab from search params", () => {
+    expect(readAdminClubPaginationFromSearch("?postPage=3&postPageSize=20&eventPage=2&memberPageSize=50")).toEqual({
+      posts: { page: 3, pageSize: 20 },
+      events: { page: 2, pageSize: 10 },
+      members: { page: 1, pageSize: 50 },
+    });
+  });
+
+  it("falls back to safe defaults for invalid pagination params", () => {
+    expect(readAdminClubPaginationFromSearch("?postPage=0&postPageSize=999&eventPage=-4&memberPage=abc")).toEqual({
+      posts: { page: 1, pageSize: 10 },
+      events: { page: 1, pageSize: 10 },
+      members: { page: 1, pageSize: 10 },
+    });
+  });
+
+  it("writes only non-default pagination values to the query string", () => {
+    expect(buildAdminClubPaginationQuery({
+      posts: { page: 2, pageSize: 20 },
+      events: { page: 1, pageSize: 10 },
+      members: { page: 4, pageSize: 50 },
+    })).toBe("postPage=2&postPageSize=20&memberPage=4&memberPageSize=50");
+  });
+});

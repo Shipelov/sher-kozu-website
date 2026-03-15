@@ -295,6 +295,16 @@ function isAdminTabValue(value: string | null): value is AdminTabValue {
   return value === "posts" || value === "events" || value === "members";
 }
 
+function parsePageParam(value: string | null) {
+  const parsed = Number(value ?? "1");
+  return Number.isFinite(parsed) && parsed > 0 ? Math.floor(parsed) : 1;
+}
+
+function parsePageSizeParam(value: string | null) {
+  const parsed = Number(value ?? "10");
+  return [5, 10, 20, 50].includes(parsed) ? parsed : 10;
+}
+
 function readAdminClubStateFromUrl() {
   if (typeof window === "undefined") {
     return {
@@ -302,6 +312,11 @@ function readAdminClubStateFromUrl() {
       postFilters: defaultPostFilters(),
       eventFilters: defaultEventFilters(),
       memberFilters: defaultMemberFilters(),
+      pagination: {
+        posts: { page: 1, pageSize: 10 },
+        events: { page: 1, pageSize: 10 },
+        members: { page: 1, pageSize: 10 },
+      },
     };
   }
 
@@ -331,6 +346,20 @@ function readAdminClubStateFromUrl() {
       badge: params.get("memberBadge") ?? "all",
       sortBy: params.get("memberSortBy") === "name" || params.get("memberSortBy") === "badge" ? params.get("memberSortBy") as MemberSortField : "sortOrder",
       sortDirection: (params.get("memberSortDirection") === "desc" ? "desc" : "asc") as SortDirection,
+    },
+    pagination: {
+      posts: {
+        page: parsePageParam(params.get("postPage")),
+        pageSize: parsePageSizeParam(params.get("postPageSize")),
+      },
+      events: {
+        page: parsePageParam(params.get("eventPage")),
+        pageSize: parsePageSizeParam(params.get("eventPageSize")),
+      },
+      members: {
+        page: parsePageParam(params.get("memberPage")),
+        pageSize: parsePageSizeParam(params.get("memberPageSize")),
+      },
     },
   };
 }
@@ -446,7 +475,13 @@ function getPresetConfigForTab(tab: AdminTabValue, postFilters: PostFilterState,
   };
 }
 
-function buildAdminClubUrl(activeTab: AdminTabValue, postFilters: PostFilterState, eventFilters: EventFilterState, memberFilters: MemberFilterState) {
+function buildAdminClubUrl(
+  activeTab: AdminTabValue,
+  postFilters: PostFilterState,
+  eventFilters: EventFilterState,
+  memberFilters: MemberFilterState,
+  pagination: PaginationState,
+) {
   const params = new URLSearchParams();
 
   if (activeTab !== "posts") params.set("tab", activeTab);
@@ -464,6 +499,12 @@ function buildAdminClubUrl(activeTab: AdminTabValue, postFilters: PostFilterStat
   if (memberFilters.badge !== "all") params.set("memberBadge", memberFilters.badge);
   if (memberFilters.sortBy !== "sortOrder") params.set("memberSortBy", memberFilters.sortBy);
   if (memberFilters.sortDirection !== "asc") params.set("memberSortDirection", memberFilters.sortDirection);
+  if (pagination.posts.page !== 1) params.set("postPage", String(pagination.posts.page));
+  if (pagination.posts.pageSize !== 10) params.set("postPageSize", String(pagination.posts.pageSize));
+  if (pagination.events.page !== 1) params.set("eventPage", String(pagination.events.page));
+  if (pagination.events.pageSize !== 10) params.set("eventPageSize", String(pagination.events.pageSize));
+  if (pagination.members.page !== 1) params.set("memberPage", String(pagination.members.page));
+  if (pagination.members.pageSize !== 10) params.set("memberPageSize", String(pagination.members.pageSize));
 
   const query = params.toString();
   return query ? `/admin/club?${query}` : "/admin/club";
@@ -487,11 +528,7 @@ export default function AdminClub() {
   const [memberErrors, setMemberErrors] = useState<FormErrors<MemberFormField>>({});
   const [presetName, setPresetName] = useState<Record<AdminTabValue, string>>({ posts: "", events: "", members: "" });
   const [selectedIds, setSelectedIds] = useState<SelectionState>({ posts: [], events: [], members: [] });
-  const [pagination, setPagination] = useState<PaginationState>({
-    posts: { page: 1, pageSize: 10 },
-    events: { page: 1, pageSize: 10 },
-    members: { page: 1, pageSize: 10 },
-  });
+  const [pagination, setPagination] = useState<PaginationState>(initialUrlState.pagination);
 
   const adminQuery = trpc.adminClub.dashboard.useQuery(undefined, {
     enabled: Boolean(user?.role === "admin"),
@@ -839,11 +876,11 @@ export default function AdminClub() {
   };
 
   useEffect(() => {
-    const nextUrl = buildAdminClubUrl(activeTab, postFilters, eventFilters, memberFilters);
+    const nextUrl = buildAdminClubUrl(activeTab, postFilters, eventFilters, memberFilters, pagination);
     if (location !== nextUrl) {
       setLocation(nextUrl, { replace: true });
     }
-  }, [activeTab, eventFilters, location, memberFilters, postFilters, setLocation]);
+  }, [activeTab, eventFilters, location, memberFilters, pagination, postFilters, setLocation]);
 
   useEffect(() => {
     setPagination((current) => ({
