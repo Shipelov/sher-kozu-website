@@ -625,8 +625,33 @@ export default function AdminClub() {
     const matchesType = actionLogTypeFilter === "all" || entry.actionType === actionLogTypeFilter;
     return matchesArea && matchesType;
   });
-  const exportableActionLog = actionLogExportScope === "all" ? actionLog : filteredActionLog;
+   const exportableActionLog = actionLogExportScope === "all" ? actionLog : filteredActionLog;
+  const groupedActionLog = filteredActionLog.reduce<Array<{ key: string; dateLabel: string; hourLabel: string; entries: AdminActionLogEntry[] }>>((groups, entry) => {
+    const dateLabel = new Date(entry.timestamp).toLocaleDateString("ru-RU", {
+      day: "2-digit",
+      month: "long",
+      year: "numeric",
+    });
+    const hourLabel = new Date(entry.timestamp).toLocaleTimeString("ru-RU", {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+    const key = `${dateLabel}-${hourLabel}`;
+    const currentGroup = groups.at(-1);
 
+    if (currentGroup?.key === key) {
+      currentGroup.entries.push(entry);
+      return groups;
+    }
+
+    groups.push({
+      key,
+      dateLabel,
+      hourLabel,
+      entries: [entry],
+    });
+    return groups;
+  }, []);
   const exportActionLogToCsv = () => {
     if (!exportableActionLog.length) {
       toast.error("Журнал пуст", {
@@ -2298,30 +2323,41 @@ export default function AdminClub() {
                 </Field>
               </div>
               {filteredActionLog.length ? (
-                <div className="space-y-3">
-                  {filteredActionLog.map((entry) => {
-                    const actionTypeBadge = getActionTypeBadgeConfig(entry.actionType);
-
-                    return (
-                      <div key={entry.id} className="rounded-2xl border border-stone-200 bg-stone-50/70 p-3">
-                        <div className="flex flex-wrap items-start justify-between gap-2">
-                          <div className="space-y-1">
-                            <div className="flex flex-wrap items-center gap-2">
-                              <p className="text-sm font-semibold text-stone-950">{entry.title}</p>
-                              <Badge variant="outline" className="rounded-full border-stone-300 bg-white px-2.5 py-0.5 text-[11px] uppercase tracking-[0.12em] text-stone-600">
-                                {entry.area === "posts" ? "Посты" : entry.area === "events" ? "События" : "Участники"}
-                              </Badge>
-                              <Badge variant="outline" className={actionTypeBadge.className}>
-                                {actionTypeBadge.label}
-                              </Badge>
-                            </div>
-                            <p className="text-sm text-stone-600">{entry.description}</p>
-                          </div>
-                          <span className="text-xs text-stone-500">{new Date(entry.timestamp).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })}</span>
+                <div className="space-y-4">
+                  {groupedActionLog.map((group) => (
+                    <div key={group.key} className="space-y-3">
+                      <div className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-dashed border-stone-200 bg-stone-50/70 px-4 py-2">
+                        <p className="text-sm font-semibold text-stone-900">{group.dateLabel}</p>
+                        <div className="flex items-center gap-2 text-xs text-stone-500">
+                          <span className="rounded-full bg-white px-2.5 py-1 text-stone-600">{group.hourLabel}</span>
+                          <span>{group.entries.length} {group.entries.length === 1 ? "запись" : group.entries.length < 5 ? "записи" : "записей"}</span>
                         </div>
                       </div>
-                    );
-                  })}
+                      {group.entries.map((entry) => {
+                        const actionTypeBadge = getActionTypeBadgeConfig(entry.actionType);
+
+                        return (
+                          <div key={entry.id} className="rounded-2xl border border-stone-200 bg-stone-50/70 p-3">
+                            <div className="flex flex-wrap items-start justify-between gap-2">
+                              <div className="space-y-1">
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <p className="text-sm font-semibold text-stone-950">{entry.title}</p>
+                                  <Badge variant="outline" className="rounded-full border-stone-300 bg-white px-2.5 py-0.5 text-[11px] uppercase tracking-[0.12em] text-stone-600">
+                                    {entry.area === "posts" ? "Посты" : entry.area === "events" ? "События" : "Участники"}
+                                  </Badge>
+                                  <Badge variant="outline" className={actionTypeBadge.className}>
+                                    {actionTypeBadge.label}
+                                  </Badge>
+                                </div>
+                                <p className="text-sm text-stone-600">{entry.description}</p>
+                              </div>
+                              <span className="text-xs text-stone-500">{new Date(entry.timestamp).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })}</span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ))}
                 </div>
               ) : (
                 <p className="text-sm text-stone-500">По выбранным фильтрам действий пока ничего не найдено. Измените область или тип операции, либо выполните новые действия в панели.</p>

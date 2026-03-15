@@ -1460,6 +1460,34 @@ function getExportableActionLog(entries: AdminActionLogEntry[], scope: "filtered
 
   return scope === "all" ? entries : filteredEntries;
 }
+function groupActionLogEntries(entries: AdminActionLogEntry[]) {
+  return entries.reduce<Array<{ key: string; dateLabel: string; hourLabel: string; entries: AdminActionLogEntry[] }>>((groups, entry) => {
+    const dateLabel = new Date(entry.timestamp).toLocaleDateString("ru-RU", {
+      day: "2-digit",
+      month: "long",
+      year: "numeric",
+    });
+    const hourLabel = new Date(entry.timestamp).toLocaleTimeString("ru-RU", {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+    const key = `${dateLabel}-${hourLabel}`;
+    const currentGroup = groups.at(-1);
+
+    if (currentGroup?.key === key) {
+      currentGroup.entries.push(entry);
+      return groups;
+    }
+
+    groups.push({
+      key,
+      dateLabel,
+      hourLabel,
+      entries: [entry],
+    });
+    return groups;
+  }, []);
+}
 
 
 describe("recordAdminAction", () => {
@@ -1643,6 +1671,92 @@ describe("recordAdminAction", () => {
     ];
 
     expect(getExportableActionLog(entries, "all", "events", "update")).toEqual(entries);
+  });
+
+  it("groups adjacent journal entries by date and minute", () => {
+    const firstTimestamp = Date.UTC(2026, 2, 15, 9, 5, 40);
+    const secondTimestamp = Date.UTC(2026, 2, 15, 9, 5, 10);
+    const thirdTimestamp = Date.UTC(2026, 2, 15, 8, 45, 0);
+    const sharedDateLabel = new Date(firstTimestamp).toLocaleDateString("ru-RU", {
+      day: "2-digit",
+      month: "long",
+      year: "numeric",
+    });
+    const firstHourLabel = new Date(firstTimestamp).toLocaleTimeString("ru-RU", {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+    const thirdHourLabel = new Date(thirdTimestamp).toLocaleTimeString("ru-RU", {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+    const entries: AdminActionLogEntry[] = [
+      {
+        id: "events-2",
+        timestamp: firstTimestamp,
+        area: "events",
+        actionType: "delete",
+        title: "Событие удалено",
+        description: "Удалено отменённое событие.",
+      },
+      {
+        id: "events-1",
+        timestamp: secondTimestamp,
+        area: "events",
+        actionType: "update",
+        title: "Событие обновлено",
+        description: "Обновлено описание экскурсии.",
+      },
+      {
+        id: "posts-1",
+        timestamp: thirdTimestamp,
+        area: "posts",
+        actionType: "create",
+        title: "Пост добавлен",
+        description: "Добавлен новый пост клуба.",
+      },
+    ];
+
+    expect(groupActionLogEntries(entries)).toEqual([
+      {
+        key: `${sharedDateLabel}-${firstHourLabel}`,
+        dateLabel: sharedDateLabel,
+        hourLabel: firstHourLabel,
+        entries: [
+          {
+            id: "events-2",
+            timestamp: firstTimestamp,
+            area: "events",
+            actionType: "delete",
+            title: "Событие удалено",
+            description: "Удалено отменённое событие.",
+          },
+          {
+            id: "events-1",
+            timestamp: secondTimestamp,
+            area: "events",
+            actionType: "update",
+            title: "Событие обновлено",
+            description: "Обновлено описание экскурсии.",
+          },
+        ],
+      },
+      {
+        key: `${sharedDateLabel}-${thirdHourLabel}`,
+        dateLabel: sharedDateLabel,
+        hourLabel: thirdHourLabel,
+        entries: [
+          {
+            id: "posts-1",
+            timestamp: thirdTimestamp,
+            area: "posts",
+            actionType: "create",
+            title: "Пост добавлен",
+            description: "Добавлен новый пост клуба.",
+          },
+        ],
+      },
+    ]);
   });
 
   it("clears all action log records", () => {
