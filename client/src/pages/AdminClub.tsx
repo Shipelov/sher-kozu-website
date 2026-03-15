@@ -1336,24 +1336,42 @@ export default function AdminClub() {
     }
   }, [actionLogCollapsed, activeTab, eventFilters, location, memberFilters, pagination, postFilters, setLocation]);
   useEffect(() => {
-    setPagination((current) => ({
-      ...current,
-      posts: { ...current.posts, page: Math.min(current.posts.page, Math.max(1, Math.ceil(filteredPosts.length / current.posts.pageSize))) },
-    }));
+    setPagination((current) => {
+      const nextPage = Math.min(current.posts.page, Math.max(1, Math.ceil(filteredPosts.length / current.posts.pageSize)));
+      if (nextPage === current.posts.page) {
+        return current;
+      }
+      return {
+        ...current,
+        posts: { ...current.posts, page: nextPage },
+      };
+    });
   }, [filteredPosts.length]);
 
   useEffect(() => {
-    setPagination((current) => ({
-      ...current,
-      events: { ...current.events, page: Math.min(current.events.page, Math.max(1, Math.ceil(filteredEvents.length / current.events.pageSize))) },
-    }));
+    setPagination((current) => {
+      const nextPage = Math.min(current.events.page, Math.max(1, Math.ceil(filteredEvents.length / current.events.pageSize)));
+      if (nextPage === current.events.page) {
+        return current;
+      }
+      return {
+        ...current,
+        events: { ...current.events, page: nextPage },
+      };
+    });
   }, [filteredEvents.length]);
 
   useEffect(() => {
-    setPagination((current) => ({
-      ...current,
-      members: { ...current.members, page: Math.min(current.members.page, Math.max(1, Math.ceil(filteredMembers.length / current.members.pageSize))) },
-    }));
+    setPagination((current) => {
+      const nextPage = Math.min(current.members.page, Math.max(1, Math.ceil(filteredMembers.length / current.members.pageSize)));
+      if (nextPage === current.members.page) {
+        return current;
+      }
+      return {
+        ...current,
+        members: { ...current.members, page: nextPage },
+      };
+    });
   }, [filteredMembers.length]);
 
   const handlePostSubmit = async () => {

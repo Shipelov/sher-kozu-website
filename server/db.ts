@@ -356,24 +356,36 @@ export async function upsertUser(user: InsertUser) {
   if (!db) {
     throw new Error("Database not available for user upsert");
   }
-
   if (!user.openId) {
     throw new Error("User openId is required for upsert");
   }
-
   try {
     const existing = await db.select().from(users).where(eq(users.openId, user.openId)).limit(1);
-
     if (existing.length) {
-      await db.update(users).set({
-        name: user.name,
-        email: user.email,
-        role: user.role,
-      }).where(eq(users.openId, user.openId));
+      const updatePayload: Partial<InsertUser> = {};
+
+      if (Object.prototype.hasOwnProperty.call(user, "name")) {
+        updatePayload.name = user.name ?? null;
+      }
+      if (Object.prototype.hasOwnProperty.call(user, "email")) {
+        updatePayload.email = user.email ?? null;
+      }
+      if (Object.prototype.hasOwnProperty.call(user, "role")) {
+        updatePayload.role = user.role;
+      }
+      if (Object.prototype.hasOwnProperty.call(user, "loginMethod")) {
+        updatePayload.loginMethod = user.loginMethod ?? null;
+      }
+      if (Object.prototype.hasOwnProperty.call(user, "lastSignedIn") && user.lastSignedIn) {
+        updatePayload.lastSignedIn = user.lastSignedIn;
+      }
+
+      if (Object.keys(updatePayload).length) {
+        await db.update(users).set(updatePayload).where(eq(users.openId, user.openId));
+      }
     } else {
       await db.insert(users).values(user);
     }
-
     const records = await db.select().from(users).where(eq(users.openId, user.openId)).limit(1);
     return records[0] ?? null;
   } catch (error) {
@@ -381,6 +393,7 @@ export async function upsertUser(user: InsertUser) {
     throw error;
   }
 }
+
 
 export async function ensureUserRecord(user: InsertUser) {
   const saved = await upsertUser(user);
