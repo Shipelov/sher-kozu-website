@@ -1,6 +1,6 @@
 export type EntityAdminTabValue = "posts" | "events" | "members";
-export type AdminTabValue = EntityAdminTabValue | "activity";
-export type AdminActionType = "create" | "update" | "delete" | "bulk" | "preset";
+export type AdminTabValue = EntityAdminTabValue | "bitrix" | "activity";
+export type AdminActionType = "create" | "update" | "delete" | "bulk" | "preset" | "sync" | "refresh";
 
 export type AdminActionLogEntry = {
   id: number;
@@ -79,7 +79,7 @@ export function recordAdminAction(
       description,
     },
     ...currentLog,
-  ].slice(0, 6);
+  ].slice(0, 10);
 }
 
 export function shouldSendCriticalNotification(
@@ -90,8 +90,8 @@ export function shouldSendCriticalNotification(
     return { shouldNotify: false, severityLabel: "medium", reason: "Уведомления отключены в настройках." };
   }
 
-  if (candidate.area === "activity") {
-    return { shouldNotify: false, severityLabel: "medium", reason: "Служебная вкладка журнала не порождает отдельные критические уведомления." };
+  if (candidate.area === "activity" || candidate.area === "bitrix") {
+    return { shouldNotify: false, severityLabel: "medium", reason: "Служебные вкладки не порождают отдельные критические уведомления." };
   }
 
   if (candidate.actionType === "delete" && settings.notifyOnDelete) {

@@ -215,3 +215,8 @@
 - [x] Добавить пользовательскую/админскую форму partner lead с отображением статуса синхронизации в CRM
 - [x] Обновить vitest-покрытие для Bitrix24 pilot UI и интеграционных контрактов
 - [ ] Проверить статус проекта, прогнать тесты и подготовить checkpoint по Bitrix24 pilot
+- [x] Добавить отдельную админскую вкладку Bitrix24 с live-списком partner leads, sync status и последними ошибками
+- [ ] Реализовать расширенный detail-view заявки: карточка лида, таймлайн sync attempts и audit trail
+- [x] Добавить ручные действия refresh snapshot и retry sync из Bitrix24 admin UI
+- [x] Обновить и прогнать vitest-покрытие для расширенного Bitrix24 admin monitoring flow
+- [ ] Проверить статус проекта и сохранить checkpoint после второй волны Bitrix24 pilot

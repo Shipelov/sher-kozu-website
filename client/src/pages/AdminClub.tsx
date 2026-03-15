@@ -38,7 +38,7 @@ import {
 } from "@/lib/adminClubActivity";
 import { trpc } from "@/lib/trpc";
 import { NOT_ADMIN_ERR_MSG } from "@shared/const";
-import { ArrowDown, ArrowLeft, CalendarRange, CheckSquare, ChevronDown, ChevronUp, Copy, Crown, Download, Pencil, Pin, Save, Search, ShieldAlert, Square, Trash2, Users, X } from "lucide-react";
+import { ArrowDown, ArrowLeft, CalendarRange, CheckSquare, ChevronDown, ChevronUp, Copy, Crown, Download, Pencil, Pin, RefreshCw, Save, Search, ShieldAlert, Square, Trash2, Users, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import { toast } from "sonner";
@@ -536,7 +536,11 @@ export default function AdminClub() {
   const [location, setLocation] = useLocation();
   const utils = trpc.useUtils();
   const [activeTab, setActiveTab] = useState<AdminTabValue>(initialUrlState.activeTab);
-  const [lastEntityTab, setLastEntityTab] = useState<EntityAdminTabValue>(initialUrlState.activeTab === "activity" ? "posts" : initialUrlState.activeTab);
+  const [lastEntityTab, setLastEntityTab] = useState<EntityAdminTabValue>(
+    initialUrlState.activeTab === "posts" || initialUrlState.activeTab === "events" || initialUrlState.activeTab === "members"
+      ? initialUrlState.activeTab
+      : "posts"
+  );
   const [postForm, setPostForm] = useState<PostFormState>(defaultPostForm);
   const [eventForm, setEventForm] = useState<EventFormState>(defaultEventForm);
   const [memberForm, setMemberForm] = useState<MemberFormState>(defaultMemberForm);
@@ -562,10 +566,15 @@ export default function AdminClub() {
     enabled: Boolean(user?.role === "admin"),
   });
 
+  const bitrixAdminQuery = trpc.bitrix24.adminDashboard.useQuery(undefined, {
+    enabled: Boolean(user?.role === "admin"),
+  });
+
   const refreshAdminData = async () => {
     await Promise.all([
       utils.adminClub.dashboard.invalidate(),
       utils.club.feed.invalidate(),
+      utils.bitrix24.adminDashboard.invalidate(),
     ]);
   };
 
@@ -609,7 +618,7 @@ export default function AdminClub() {
 
     const result = await notifyCriticalAction.mutateAsync(payload);
 
-    if (area !== "activity") {
+    if (area === "posts" || area === "events" || area === "members") {
       setCriticalNotificationHistory((current) => recordCriticalNotificationHistory(current, {
         area,
         actionType,
@@ -708,7 +717,7 @@ export default function AdminClub() {
     return groups;
   }, []);
   useEffect(() => {
-    if (activeTab !== "activity") {
+    if (activeTab === "posts" || activeTab === "events" || activeTab === "members") {
       setLastEntityTab(activeTab);
     }
   }, [activeTab]);
@@ -833,6 +842,8 @@ export default function AdminClub() {
     delete: 0,
     bulk: 0,
     preset: 0,
+    sync: 0,
+    refresh: 0,
   });
   const actionLogTypeStatsItems = [
     { key: "create", label: "Создание", value: actionLogTypeStats.create },
@@ -903,6 +914,35 @@ export default function AdminClub() {
       description: `Из клуба удалено ${count} профилей участников.`,
     };
   };
+
+  const retryLeadSync = trpc.bitrix24.retryLeadSync.useMutation({
+    onSuccess: async ({ lead }) => {
+      await refreshAdminData();
+      setActionLog((current) => recordAdminAction(current, "bitrix", "sync", "Повторная синхронизация Bitrix24", `Заявка #${lead?.id ?? "?"} повторно отправлена в CRM.`));
+      toast.success("Повторная синхронизация запущена", {
+        description: `Заявка #${lead?.id ?? "?"} повторно отправлена в Bitrix24 CRM.`,
+      });
+    },
+    onError: (error) => {
+      toast.error("Не удалось повторить синхронизацию", {
+        description: error.message,
+      });
+    },
+  });
+  const refreshDealSnapshot = trpc.bitrix24.refreshDealSnapshot.useMutation({
+    onSuccess: async ({ lead }) => {
+      await refreshAdminData();
+      setActionLog((current) => recordAdminAction(current, "bitrix", "refresh", "Обновлён snapshot сделки", `Для заявки #${lead?.id ?? "?"} обновлён статус сделки и следующей активности.`));
+      toast.success("Snapshot сделки обновлён", {
+        description: `Bitrix24 snapshot для заявки #${lead?.id ?? "?"} успешно обновлён.`,
+      });
+    },
+    onError: (error) => {
+      toast.error("Не удалось обновить snapshot сделки", {
+        description: error.message,
+      });
+    },
+  });
 
   const createPost = trpc.adminClub.createPost.useMutation({
     onSuccess: async (_, variables) => {
@@ -1063,6 +1103,9 @@ export default function AdminClub() {
   const events = adminQuery.data?.events ?? [];
   const members = adminQuery.data?.members ?? [];
   const presets = (adminQuery.data?.presets ?? []) as ClubAdminPreset[];
+  const bitrixSummary = bitrixAdminQuery.data?.summary;
+  const bitrixLeads = bitrixAdminQuery.data?.leads ?? [];
+  const bitrixAudits = bitrixAdminQuery.data?.audits ?? [];
 
   const counts = useMemo(
     () => ({
@@ -1541,16 +1584,17 @@ export default function AdminClub() {
 
         <Tabs value={activeTab} onValueChange={(value) => {
           if (isAdminTabValue(value)) {
-            if (value !== "activity") {
+            if (value === "posts" || value === "events" || value === "members") {
               setLastEntityTab(value);
             }
             setActiveTab(value);
           }
         }} className="space-y-6">
-          <TabsList className="grid h-auto w-full grid-cols-1 gap-2 rounded-2xl bg-stone-100 p-1 sm:grid-cols-2 sm:gap-1 lg:grid-cols-4 md:w-auto">
+          <TabsList className="grid h-auto w-full grid-cols-1 gap-2 rounded-2xl bg-stone-100 p-1 sm:grid-cols-2 sm:gap-1 lg:grid-cols-5 md:w-auto">
             <TabsTrigger value="posts" className="w-full whitespace-normal px-3 py-2 text-center">Посты</TabsTrigger>
             <TabsTrigger value="events" className="w-full whitespace-normal px-3 py-2 text-center">События</TabsTrigger>
             <TabsTrigger value="members" className="w-full whitespace-normal px-3 py-2 text-center">Участники</TabsTrigger>
+            <TabsTrigger value="bitrix" className="w-full whitespace-normal px-3 py-2 text-center">Bitrix24 CRM</TabsTrigger>
             <TabsTrigger value="activity" className="w-full whitespace-normal px-3 py-2 text-center">Журнал действий</TabsTrigger>
           </TabsList>
 
@@ -2351,6 +2395,146 @@ export default function AdminClub() {
             />
           </TabsContent>
 
+          <TabsContent value="bitrix" className="space-y-6">
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+              <MetricCard label="Всего лидов" value={bitrixSummary?.totalLeads ?? 0} icon={<Users className="h-4 w-4" />} />
+              <MetricCard label="В очереди / retry" value={(bitrixSummary?.pendingLeads ?? 0) + (bitrixSummary?.retriedLeads ?? 0)} icon={<RefreshCw className="h-4 w-4" />} />
+              <MetricCard label="Успешно синхронизировано" value={bitrixSummary?.successfulLeads ?? 0} icon={<CheckSquare className="h-4 w-4" />} />
+              <MetricCard label="Ошибки аудита" value={bitrixSummary?.failedAudits ?? 0} icon={<ShieldAlert className="h-4 w-4" />} />
+            </div>
+
+            <div className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
+              <Card className="border-stone-200 bg-white/90 shadow-none">
+                <CardHeader className="space-y-2">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                      <CardTitle className="text-base text-stone-950">Live-лиды партнёрской воронки</CardTitle>
+                      <CardDescription className="text-stone-600">
+                        Видно CRM-статус, менеджера, stage сделки и действия для ручного retry или refresh snapshot прямо из админ-панели.
+                      </CardDescription>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="rounded-full border-stone-300 bg-white text-stone-700 hover:bg-stone-100"
+                      onClick={() => void refreshAdminData()}
+                      disabled={bitrixAdminQuery.isLoading || bitrixAdminQuery.isRefetching}
+                    >
+                      <RefreshCw className="mr-2 h-4 w-4" />
+                      Обновить CRM-ленту
+                    </Button>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {bitrixLeads.length ? (
+                    <div className="space-y-3">
+                      {bitrixLeads.map((lead: any) => {
+                        const statusTone = lead.syncStatus === "success"
+                          ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+                          : lead.syncStatus === "failed"
+                            ? "border-rose-200 bg-rose-50 text-rose-800"
+                            : lead.syncStatus === "retried"
+                              ? "border-amber-200 bg-amber-50 text-amber-800"
+                              : "border-sky-200 bg-sky-50 text-sky-800";
+
+                        return (
+                          <div key={lead.id} className="rounded-2xl border border-stone-200 bg-stone-50/80 p-4">
+                            <div className="flex flex-wrap items-start justify-between gap-3">
+                              <div className="space-y-2">
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <p className="text-sm font-semibold text-stone-950">#{lead.id} · {lead.companyName}</p>
+                                  <Badge variant="outline" className={`rounded-full px-2.5 py-0.5 text-[11px] uppercase tracking-[0.12em] ${statusTone}`}>
+                                    {lead.syncStatus}
+                                  </Badge>
+                                  {lead.bitrixStageId ? (
+                                    <Badge variant="outline" className="rounded-full border-stone-300 bg-white px-2.5 py-0.5 text-[11px] text-stone-700">
+                                      Stage: {lead.bitrixStageId}
+                                    </Badge>
+                                  ) : null}
+                                </div>
+                                <p className="text-sm text-stone-600">{lead.fullName} · {lead.email}{lead.phone ? ` · ${lead.phone}` : ""}</p>
+                                <div className="flex flex-wrap gap-3 text-xs text-stone-500">
+                                  <span>Интерес: {lead.interestType}</span>
+                                  <span>Источник: {lead.source}</span>
+                                  <span>Попытки sync: {lead.syncAttemptCount}</span>
+                                  <span>Менеджер: {lead.assignedManagerName || "не назначен"}</span>
+                                  <span>Deal ID: {lead.bitrixDealId || "—"}</span>
+                                </div>
+                                {lead.lastSyncError ? (
+                                  <p className="text-xs leading-5 text-rose-700">Ошибка: {lead.lastSyncError}</p>
+                                ) : null}
+                                <p className="text-xs text-stone-500">
+                                  Следующая активность: {lead.nextActivityAt ? new Date(lead.nextActivityAt).toLocaleString("ru-RU") : "ещё не запланирована"}
+                                </p>
+                              </div>
+                              <div className="flex flex-wrap gap-2">
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  className="rounded-full border-stone-300 bg-white text-stone-700 hover:bg-stone-100"
+                                  onClick={() => void retryLeadSync.mutateAsync({ leadId: lead.id })}
+                                  disabled={retryLeadSync.isPending}
+                                >
+                                  Retry sync
+                                </Button>
+                                <Button
+                                  type="button"
+                                  className="rounded-full bg-stone-950 text-white hover:bg-stone-800"
+                                  onClick={() => void refreshDealSnapshot.mutateAsync({ leadId: lead.id })}
+                                  disabled={!lead.bitrixDealId || refreshDealSnapshot.isPending}
+                                >
+                                  Refresh snapshot
+                                </Button>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="rounded-2xl border border-dashed border-stone-200 bg-stone-50/70 px-4 py-5 text-sm text-stone-500">
+                      Пока нет ни одной партнёрской заявки для CRM-мониторинга. После отправки формы с Home лиды появятся здесь автоматически.
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              <Card className="border-stone-200 bg-white/90 shadow-none">
+                <CardHeader>
+                  <CardTitle className="text-base text-stone-950">Audit trail Bitrix24</CardTitle>
+                  <CardDescription className="text-stone-600">
+                    Последние push/pull операции по интеграции: видно статус, entity, внешний ID и ошибки синхронизации.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {bitrixAudits.length ? (
+                    bitrixAudits.slice(0, 12).map((audit: any) => (
+                      <div key={audit.id} className="rounded-2xl border border-stone-200 bg-stone-50/80 px-4 py-3">
+                        <div className="flex flex-wrap items-start justify-between gap-2">
+                          <div className="space-y-1">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <p className="text-sm font-semibold text-stone-950">{audit.operation} · {audit.entityType}</p>
+                              <Badge variant="outline" className={audit.status === "success" ? "rounded-full border-emerald-200 bg-emerald-50 px-2.5 py-0.5 text-[11px] text-emerald-800" : audit.status === "failed" ? "rounded-full border-rose-200 bg-rose-50 px-2.5 py-0.5 text-[11px] text-rose-800" : "rounded-full border-sky-200 bg-sky-50 px-2.5 py-0.5 text-[11px] text-sky-800"}>
+                                {audit.status}
+                              </Badge>
+                            </div>
+                            <p className="text-xs text-stone-500">Lead #{audit.entityId} · External ID: {audit.externalId || "—"}</p>
+                            {audit.errorMessage ? <p className="text-xs leading-5 text-rose-700">{audit.errorMessage}</p> : null}
+                          </div>
+                          <span className="text-xs text-stone-500">{new Date(audit.createdAt).toLocaleString("ru-RU")}</span>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="rounded-2xl border border-dashed border-stone-200 bg-stone-50/70 px-4 py-5 text-sm text-stone-500">
+                      Аудит интеграции пока пуст. После первой отправки или refresh snapshot здесь появятся push/pull записи.
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+
           <TabsContent value="activity" className="space-y-6">
             <Card className="border-stone-200 bg-white/90">
               <CardHeader>
@@ -2430,26 +2614,26 @@ export default function AdminClub() {
                     <div className="sticky top-3 z-10 -mx-1 space-y-3 rounded-2xl border border-stone-200 bg-white/95 px-3 py-3 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-white/85">
                       <div className="flex flex-wrap gap-2">
                         {actionLogFilterPresets.map((preset) => {
-                        const matchesArea = actionLogAreaFilter === preset.area;
-                        const matchesType = preset.actionTypes?.length
-                          ? preset.actionTypes.includes(actionLogTypeFilter as AdminActionType)
-                          : actionLogTypeFilter === (preset.actionType ?? "all");
-                        const isActive = matchesArea && matchesType;
+                          const matchesArea = actionLogAreaFilter === preset.area;
+                          const matchesType = preset.actionTypes?.length
+                            ? preset.actionTypes.includes(actionLogTypeFilter as AdminActionType)
+                            : actionLogTypeFilter === (preset.actionType ?? "all");
+                          const isActive = matchesArea && matchesType;
 
-                        return (
-                          <Button
-                            key={preset.id}
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            className={isActive
-                              ? "rounded-full border-stone-900 bg-stone-900 px-3 text-white hover:bg-stone-800"
-                              : "rounded-full border-stone-300 bg-white px-3 text-stone-700 hover:bg-stone-50"}
-                            onClick={() => applyActionLogPreset(preset.id)}
-                          >
-                            {preset.label}
-                          </Button>
-                        );
+                          return (
+                            <Button
+                              key={preset.id}
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              className={isActive
+                                ? "rounded-full border-stone-900 bg-stone-900 px-3 text-white hover:bg-stone-800"
+                                : "rounded-full border-stone-300 bg-white px-3 text-stone-700 hover:bg-stone-50"}
+                              onClick={() => applyActionLogPreset(preset.id)}
+                            >
+                              {preset.label}
+                            </Button>
+                          );
                         })}
                       </div>
                       <div className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-stone-200 bg-stone-50/70 px-4 py-3 text-sm text-stone-600">
@@ -2674,77 +2858,77 @@ export default function AdminClub() {
                               </div>
                             </div>
                             {group.entries.map((entry) => {
-                            const actionTypeBadge = getActionTypeBadgeConfig(entry.actionType);
-                            const includedInExport = exportableActionLogIds.has(entry.id);
+                              const actionTypeBadge = getActionTypeBadgeConfig(entry.actionType);
+                              const includedInExport = exportableActionLogIds.has(entry.id);
 
-                            return (
-                              <div
-                                key={entry.id}
-                                className={includedInExport
-                                  ? "rounded-2xl border border-emerald-200 bg-emerald-50/60 p-3 shadow-[inset_0_0_0_1px_rgba(16,185,129,0.08)]"
-                                  : "rounded-2xl border border-stone-200 bg-stone-50/70 p-3"}
-                              >
-                                <div className="flex flex-wrap items-start justify-between gap-3">
-                                  <div className="space-y-1">
-                                    <div className="flex flex-wrap items-center gap-2">
-                                      <p className="text-sm font-semibold text-stone-950">{entry.title}</p>
-                                      <Badge variant="outline" className="rounded-full border-stone-300 bg-white px-2.5 py-0.5 text-[11px] uppercase tracking-[0.12em] text-stone-600">
-                                        {entry.area === "posts" ? "Посты" : entry.area === "events" ? "События" : "Участники"}
-                                      </Badge>
-                                      <Badge variant="outline" className={actionTypeBadge.className}>
-                                        {actionTypeBadge.label}
-                                      </Badge>
-                                      {includedInExport ? (
-                                        <Badge variant="outline" className="rounded-full border-emerald-300 bg-emerald-100/80 px-2.5 py-0.5 text-[11px] text-emerald-800">
-                                          В экспорте
+                              return (
+                                <div
+                                  key={entry.id}
+                                  className={includedInExport
+                                    ? "rounded-2xl border border-emerald-200 bg-emerald-50/60 p-3 shadow-[inset_0_0_0_1px_rgba(16,185,129,0.08)]"
+                                    : "rounded-2xl border border-stone-200 bg-stone-50/70 p-3"}
+                                >
+                                  <div className="flex flex-wrap items-start justify-between gap-3">
+                                    <div className="space-y-1">
+                                      <div className="flex flex-wrap items-center gap-2">
+                                        <p className="text-sm font-semibold text-stone-950">{entry.title}</p>
+                                        <Badge variant="outline" className="rounded-full border-stone-300 bg-white px-2.5 py-0.5 text-[11px] uppercase tracking-[0.12em] text-stone-600">
+                                          {entry.area === "posts" ? "Посты" : entry.area === "events" ? "События" : entry.area === "members" ? "Участники" : entry.area === "bitrix" ? "Bitrix24" : "Журнал"}
                                         </Badge>
-                                      ) : null}
+                                        <Badge variant="outline" className={actionTypeBadge.className}>
+                                          {actionTypeBadge.label}
+                                        </Badge>
+                                        {includedInExport ? (
+                                          <Badge variant="outline" className="rounded-full border-emerald-300 bg-emerald-100/80 px-2.5 py-0.5 text-[11px] text-emerald-800">
+                                            В экспорте
+                                          </Badge>
+                                        ) : null}
+                                      </div>
+                                      <p className="text-sm text-stone-600">{entry.description}</p>
                                     </div>
-                                    <p className="text-sm text-stone-600">{entry.description}</p>
+                                    <span className="text-xs text-stone-500">
+                                      {new Date(entry.timestamp).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })}
+                                    </span>
                                   </div>
-                                  <span className="text-xs text-stone-500">
-                                    {new Date(entry.timestamp).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })}
-                                  </span>
                                 </div>
-                              </div>
-                            );
-                          })}
+                              );
+                            })}
                           </div>
                         ))}
                       </div>
                     ) : (
                       <div className="rounded-3xl border border-dashed border-stone-200 bg-stone-50/70 px-5 py-8">
                         <div className="mx-auto flex max-w-2xl flex-col items-start gap-4 text-left">
-                        <div className="rounded-2xl bg-white p-3 text-stone-700 shadow-sm ring-1 ring-stone-200/80">
-                          <ShieldAlert className="h-5 w-5" />
-                        </div>
-                        <div className="space-y-2">
-                          <p className="text-base font-semibold text-stone-950">По текущим фильтрам записи журнала не найдены</p>
-                          <p className="text-sm leading-6 text-stone-500">
-                            Попробуйте сбросить фильтры или вернуться к последней рабочей вкладке, чтобы продолжить управление контентом без лишней навигации.
-                          </p>
-                        </div>
-                        <div className="flex flex-wrap gap-3">
-                          <Button
-                            type="button"
-                            variant="outline"
-                            className="rounded-full border-stone-300 bg-white text-stone-700 hover:bg-stone-100"
-                            onClick={() => {
-                              setActionLogAreaFilter("all");
-                              setActionLogTypeFilter("all");
-                            }}
-                          >
-                            Сбросить фильтры
-                          </Button>
-                          <Button
-                            type="button"
-                            className="rounded-full bg-stone-950 text-white hover:bg-stone-800"
-                            onClick={() => setActiveTab(lastEntityTab)}
-                          >
-                            <ArrowLeft className="mr-2 h-4 w-4" />
-                            Вернуться к вкладке «{lastEntityTab === "posts" ? "Посты" : lastEntityTab === "events" ? "События" : "Участники"}»
-                          </Button>
-                        </div>
+                          <div className="rounded-2xl bg-white p-3 text-stone-700 shadow-sm ring-1 ring-stone-200/80">
+                            <ShieldAlert className="h-5 w-5" />
+                          </div>
+                          <div className="space-y-2">
+                            <p className="text-base font-semibold text-stone-950">По текущим фильтрам записи журнала не найдены</p>
+                            <p className="text-sm leading-6 text-stone-500">
+                              Попробуйте сбросить фильтры или вернуться к последней рабочей вкладке, чтобы продолжить управление контентом без лишней навигации.
+                            </p>
+                          </div>
+                          <div className="flex flex-wrap gap-3">
+                            <Button
+                              type="button"
+                              variant="outline"
+                              className="rounded-full border-stone-300 bg-white text-stone-700 hover:bg-stone-100"
+                              onClick={() => {
+                                setActionLogAreaFilter("all");
+                                setActionLogTypeFilter("all");
+                              }}
+                            >
+                              Сбросить фильтры
+                            </Button>
+                            <Button
+                              type="button"
+                              className="rounded-full bg-stone-950 text-white hover:bg-stone-800"
+                              onClick={() => setActiveTab(lastEntityTab)}
+                            >
+                              <ArrowLeft className="mr-2 h-4 w-4" />
+                              Вернуться к вкладке «{lastEntityTab === "posts" ? "Посты" : lastEntityTab === "events" ? "События" : "Участники"}»
+                            </Button>
+                          </div>
                         </div>
                       </div>
                     )}

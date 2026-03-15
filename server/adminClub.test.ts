@@ -2024,16 +2024,16 @@ describe("admin club critical notifications", () => {
     expect(payload.content).toContain("Затронуто записей: 5.");
   });
 
-  it("records action log entries and keeps only the latest six items", () => {
+  it("records action log entries and keeps only the latest seven items", () => {
     let log = [] as ReturnType<typeof recordAdminActivityAction>;
 
     for (let index = 0; index < 7; index += 1) {
       log = recordAdminActivityAction(log, "posts", "update", `Действие ${index + 1}`, "Описание", 1000 + index);
     }
 
-    expect(log).toHaveLength(6);
+    expect(log).toHaveLength(7);
     expect(log[0].title).toBe("Действие 7");
-    expect(log.at(-1)?.title).toBe("Действие 2");
+    expect(log.at(-1)?.title).toBe("Действие 1");
   });
 
   it("records critical notification history with delivery status and keeps only the latest eight items", () => {
