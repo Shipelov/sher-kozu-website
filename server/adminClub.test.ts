@@ -595,6 +595,78 @@ describe("admin club helpers", () => {
     expect(appliedActionType).toBe("all");
   });
 
+  it("marks only exportable entries for current export scope", () => {
+    const filteredActionLog = [
+      { id: "entry-1", title: "Запись 1" },
+      { id: "entry-2", title: "Запись 2" },
+    ];
+    const fullActionLog = [
+      ...filteredActionLog,
+      { id: "entry-3", title: "Запись 3" },
+    ];
+
+    const filteredExportableIds = new Set(filteredActionLog.map((entry) => entry.id));
+    const fullExportableIds = new Set(fullActionLog.map((entry) => entry.id));
+
+    expect(filteredExportableIds.has("entry-1")).toBe(true);
+    expect(filteredExportableIds.has("entry-2")).toBe(true);
+    expect(filteredExportableIds.has("entry-3")).toBe(false);
+    expect(fullExportableIds.has("entry-3")).toBe(true);
+  });
+
+  it("uses highlighted export badge only for entries included in export", () => {
+    const getExportBadgeLabel = (includedInExport: boolean) => includedInExport ? "В экспорте" : null;
+
+    expect(getExportBadgeLabel(true)).toBe("В экспорте");
+    expect(getExportBadgeLabel(false)).toBeNull();
+  });
+
+  it("uses highlighted export card style only for entries included in export", () => {
+    const getExportCardClassName = (includedInExport: boolean) => includedInExport
+      ? "rounded-2xl border border-emerald-200 bg-emerald-50/60 p-3 shadow-[inset_0_0_0_1px_rgba(16,185,129,0.08)]"
+      : "rounded-2xl border border-stone-200 bg-stone-50/70 p-3";
+
+    expect(getExportCardClassName(true)).toContain("border-emerald-200");
+    expect(getExportCardClassName(true)).toContain("bg-emerald-50/60");
+    expect(getExportCardClassName(false)).toContain("border-stone-200");
+    expect(getExportCardClassName(false)).not.toContain("border-emerald-200");
+  });
+
+  it("builds compact area stats for filtered action log", () => {
+    const filteredActionLog = [
+      { id: "entry-1", area: "posts" },
+      { id: "entry-2", area: "posts" },
+      { id: "entry-3", area: "events" },
+      { id: "entry-4", area: "members" },
+      { id: "entry-5", area: "members" },
+      { id: "entry-6", area: "members" },
+    ];
+
+    const actionLogAreaStatsItems = [
+      { key: "posts", label: "Посты", value: filteredActionLog.filter((entry) => entry.area === "posts").length },
+      { key: "events", label: "События", value: filteredActionLog.filter((entry) => entry.area === "events").length },
+      { key: "members", label: "Участники", value: filteredActionLog.filter((entry) => entry.area === "members").length },
+    ];
+
+    expect(actionLogAreaStatsItems).toEqual([
+      { key: "posts", label: "Посты", value: 2 },
+      { key: "events", label: "События", value: 1 },
+      { key: "members", label: "Участники", value: 3 },
+    ]);
+  });
+
+  it("keeps empty area stats visible when filtered log has no matching entries", () => {
+    const filteredActionLog: Array<{ id: string; area: "posts" | "events" | "members" }> = [];
+
+    const actionLogAreaStatsItems = [
+      { key: "posts", label: "Посты", value: filteredActionLog.filter((entry) => entry.area === "posts").length },
+      { key: "events", label: "События", value: filteredActionLog.filter((entry) => entry.area === "events").length },
+      { key: "members", label: "Участники", value: filteredActionLog.filter((entry) => entry.area === "members").length },
+    ];
+
+    expect(actionLogAreaStatsItems.map((item) => item.value)).toEqual([0, 0, 0]);
+  });
+
   it("builds active filter chips for each admin tab", () => {
     expect({
       posts: ["Поиск: утро", "Категория: Истории", "Тип: только pinned"],

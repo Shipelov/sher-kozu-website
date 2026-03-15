@@ -625,7 +625,12 @@ export default function AdminClub() {
     const matchesType = actionLogTypeFilter === "all" || entry.actionType === actionLogTypeFilter;
     return matchesArea && matchesType;
   });
-   const exportableActionLog = actionLogExportScope === "all" ? actionLog : filteredActionLog;
+  const actionLogAreaStatsItems = [
+    { key: "posts", label: "Посты", value: filteredActionLog.filter((entry) => entry.area === "posts").length },
+    { key: "events", label: "События", value: filteredActionLog.filter((entry) => entry.area === "events").length },
+    { key: "members", label: "Участники", value: filteredActionLog.filter((entry) => entry.area === "members").length },
+  ];
+  const exportableActionLog = actionLogExportScope === "all" ? actionLog : filteredActionLog;
   const groupedActionLog = filteredActionLog.reduce<Array<{ key: string; dateLabel: string; hourLabel: string; entries: AdminActionLogEntry[] }>>((groups, entry) => {
     const dateLabel = new Date(entry.timestamp).toLocaleDateString("ru-RU", {
       day: "2-digit",
@@ -722,6 +727,8 @@ export default function AdminClub() {
         : `Экспортировано ${exportableActionLog.length} записей журнала действий по текущему виду.`,
     });
   };
+
+  const exportableActionLogIds = new Set(exportableActionLog.map((entry) => entry.id));
 
   const getActionTypeBadgeConfig = (actionType: AdminActionType) => {
     if (actionType === "create") {
@@ -2381,6 +2388,14 @@ export default function AdminClub() {
                     </div>
                   ))}
                 </div>
+                <div className="grid gap-2 sm:grid-cols-3">
+                  {actionLogAreaStatsItems.map((item) => (
+                    <div key={item.key} className="rounded-2xl border border-dashed border-stone-200 bg-white/80 px-3 py-3 text-sm text-stone-600">
+                      <p className="text-xs uppercase tracking-[0.12em] text-stone-400">{item.label}</p>
+                      <p className="mt-2 text-xl font-semibold text-stone-950">{item.value}</p>
+                    </div>
+                  ))}
+                </div>
                 <div className="grid gap-3 md:grid-cols-2">
                 <Field label="Область журнала">
                   <select
@@ -2424,9 +2439,15 @@ export default function AdminClub() {
                       </div>
                       {group.entries.map((entry) => {
                         const actionTypeBadge = getActionTypeBadgeConfig(entry.actionType);
+                        const includedInExport = exportableActionLogIds.has(entry.id);
 
                         return (
-                          <div key={entry.id} className="rounded-2xl border border-stone-200 bg-stone-50/70 p-3">
+                          <div
+                            key={entry.id}
+                            className={includedInExport
+                              ? "rounded-2xl border border-emerald-200 bg-emerald-50/60 p-3 shadow-[inset_0_0_0_1px_rgba(16,185,129,0.08)]"
+                              : "rounded-2xl border border-stone-200 bg-stone-50/70 p-3"}
+                          >
                             <div className="flex flex-wrap items-start justify-between gap-2">
                               <div className="space-y-1">
                                 <div className="flex flex-wrap items-center gap-2">
@@ -2437,6 +2458,11 @@ export default function AdminClub() {
                                   <Badge variant="outline" className={actionTypeBadge.className}>
                                     {actionTypeBadge.label}
                                   </Badge>
+                                  {includedInExport ? (
+                                    <Badge variant="outline" className="rounded-full border-emerald-200 bg-emerald-100 px-2.5 py-0.5 text-[11px] uppercase tracking-[0.12em] text-emerald-700">
+                                      В экспорте
+                                    </Badge>
+                                  ) : null}
                                 </div>
                                 <p className="text-sm text-stone-600">{entry.description}</p>
                               </div>
