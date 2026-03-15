@@ -616,3 +616,119 @@ describe("admin club helpers", () => {
     expect(sorted.map((item) => item.name)).toEqual(["Семья А", "Семья Б", "Семья Я"]);
   });
 });
+
+function validateRequiredText(value: string, message: string) {
+  return value.trim() ? undefined : message;
+}
+
+function validatePostForm(form: {
+  category: string;
+  author: string;
+  role: string;
+  timeLabel: string;
+  title: string;
+  text: string;
+}) {
+  return {
+    category: validateRequiredText(form.category, "Укажите категорию поста."),
+    author: validateRequiredText(form.author, "Укажите автора поста."),
+    role: validateRequiredText(form.role, "Укажите роль автора."),
+    timeLabel: validateRequiredText(form.timeLabel, "Укажите время публикации."),
+    title: validateRequiredText(form.title, "Добавьте заголовок поста."),
+    text: validateRequiredText(form.text, "Добавьте текст поста."),
+  };
+}
+
+function validateEventForm(form: {
+  title: string;
+  dateLabel: string;
+  description: string;
+  status: string;
+  tone: string;
+}) {
+  return {
+    title: validateRequiredText(form.title, "Укажите название события."),
+    dateLabel: validateRequiredText(form.dateLabel, "Укажите дату события."),
+    description: validateRequiredText(form.description, "Добавьте описание события."),
+    status: validateRequiredText(form.status, "Укажите статус события."),
+    tone: validateRequiredText(form.tone, "Укажите тон карточки."),
+  };
+}
+
+function validateMemberForm(form: {
+  name: string;
+  animal: string;
+  sinceLabel: string;
+}) {
+  return {
+    name: validateRequiredText(form.name, "Укажите имя участника."),
+    animal: validateRequiredText(form.animal, "Укажите животное участника."),
+    sinceLabel: validateRequiredText(form.sinceLabel, "Укажите дату вступления."),
+  };
+}
+
+describe("admin club inline validation", () => {
+  it("returns errors for empty required post fields", () => {
+    expect(validatePostForm({
+      category: "   ",
+      author: "",
+      role: "",
+      timeLabel: "",
+      title: "",
+      text: "",
+    })).toEqual({
+      category: "Укажите категорию поста.",
+      author: "Укажите автора поста.",
+      role: "Укажите роль автора.",
+      timeLabel: "Укажите время публикации.",
+      title: "Добавьте заголовок поста.",
+      text: "Добавьте текст поста.",
+    });
+  });
+
+  it("returns errors for empty required event fields", () => {
+    expect(validateEventForm({
+      title: "",
+      dateLabel: " ",
+      description: "",
+      status: "",
+      tone: "",
+    })).toEqual({
+      title: "Укажите название события.",
+      dateLabel: "Укажите дату события.",
+      description: "Добавьте описание события.",
+      status: "Укажите статус события.",
+      tone: "Укажите тон карточки.",
+    });
+  });
+
+  it("returns errors for empty required member fields", () => {
+    expect(validateMemberForm({
+      name: "",
+      animal: "",
+      sinceLabel: " ",
+    })).toEqual({
+      name: "Укажите имя участника.",
+      animal: "Укажите животное участника.",
+      sinceLabel: "Укажите дату вступления.",
+    });
+  });
+
+  it("does not return errors when required fields are filled", () => {
+    expect(validatePostForm({
+      category: "journal",
+      author: "Команда фермы",
+      role: "Редакция клуба",
+      timeLabel: "Сегодня",
+      title: "Утренняя дойка",
+      text: "Свежий выпуск дневника",
+    })).toEqual({
+      category: undefined,
+      author: undefined,
+      role: undefined,
+      timeLabel: undefined,
+      title: undefined,
+      text: undefined,
+    });
+  });
+});

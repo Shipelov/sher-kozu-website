@@ -24,6 +24,7 @@ import { trpc } from "@/lib/trpc";
 import { NOT_ADMIN_ERR_MSG } from "@shared/const";
 import { CalendarRange, Crown, Pencil, Search, ShieldAlert, Trash2, Users, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import type { ReactNode } from "react";
 import { toast } from "sonner";
 import { useLocation } from "wouter";
 
@@ -99,6 +100,12 @@ type PendingDeleteState =
   | null;
 
 type AdminTabValue = "posts" | "events" | "members";
+
+type FormErrors<T extends string> = Partial<Record<T, string>>;
+
+type PostFormField = "category" | "author" | "role" | "timeLabel" | "title" | "text";
+type EventFormField = "title" | "dateLabel" | "description" | "status" | "tone";
+type MemberFormField = "name" | "animal" | "sinceLabel";
 
 const defaultPostForm = (): PostFormState => ({
   category: "journal",
@@ -286,6 +293,43 @@ function readAdminClubStateFromUrl() {
   };
 }
 
+function validateRequiredText(value: string, message: string) {
+  return value.trim() ? undefined : message;
+}
+
+function validatePostForm(form: PostFormState): FormErrors<PostFormField> {
+  return {
+    category: validateRequiredText(form.category, "Укажите категорию поста."),
+    author: validateRequiredText(form.author, "Укажите автора поста."),
+    role: validateRequiredText(form.role, "Укажите роль автора."),
+    timeLabel: validateRequiredText(form.timeLabel, "Укажите время публикации."),
+    title: validateRequiredText(form.title, "Добавьте заголовок поста."),
+    text: validateRequiredText(form.text, "Добавьте текст поста."),
+  };
+}
+
+function validateEventForm(form: EventFormState): FormErrors<EventFormField> {
+  return {
+    title: validateRequiredText(form.title, "Укажите название события."),
+    dateLabel: validateRequiredText(form.dateLabel, "Укажите дату события."),
+    description: validateRequiredText(form.description, "Добавьте описание события."),
+    status: validateRequiredText(form.status, "Укажите статус события."),
+    tone: validateRequiredText(form.tone, "Укажите тон карточки."),
+  };
+}
+
+function validateMemberForm(form: MemberFormState): FormErrors<MemberFormField> {
+  return {
+    name: validateRequiredText(form.name, "Укажите имя участника."),
+    animal: validateRequiredText(form.animal, "Укажите животное участника."),
+    sinceLabel: validateRequiredText(form.sinceLabel, "Укажите дату вступления."),
+  };
+}
+
+function hasFormErrors<T extends string>(errors: FormErrors<T>) {
+  return Object.values(errors).some(Boolean);
+}
+
 function buildAdminClubUrl(activeTab: AdminTabValue, postFilters: PostFilterState, eventFilters: EventFilterState, memberFilters: MemberFilterState) {
   const params = new URLSearchParams();
 
@@ -322,6 +366,9 @@ export default function AdminClub() {
   const [eventFilters, setEventFilters] = useState<EventFilterState>(initialUrlState.eventFilters);
   const [memberFilters, setMemberFilters] = useState<MemberFilterState>(initialUrlState.memberFilters);
   const [pendingDelete, setPendingDelete] = useState<PendingDeleteState>(null);
+  const [postErrors, setPostErrors] = useState<FormErrors<PostFormField>>({});
+  const [eventErrors, setEventErrors] = useState<FormErrors<EventFormField>>({});
+  const [memberErrors, setMemberErrors] = useState<FormErrors<MemberFormField>>({});
 
   const adminQuery = trpc.adminClub.dashboard.useQuery(undefined, {
     enabled: Boolean(user?.role === "admin"),
@@ -500,6 +547,69 @@ export default function AdminClub() {
     }
   }, [activeTab, eventFilters, location, memberFilters, postFilters, setLocation]);
 
+  const handlePostSubmit = async () => {
+    const nextErrors = validatePostForm(postForm);
+    setPostErrors(nextErrors);
+
+    if (hasFormErrors(nextErrors)) {
+      toast.error("Заполните обязательные поля поста", {
+        description: "Проверьте подсвеченные поля перед сохранением.",
+      });
+      return;
+    }
+
+    if (postForm.id) {
+      await updatePost.mutateAsync({ ...postForm, id: postForm.id });
+    } else {
+      await createPost.mutateAsync(postForm);
+    }
+
+    setPostForm(defaultPostForm());
+    setPostErrors({});
+  };
+
+  const handleEventSubmit = async () => {
+    const nextErrors = validateEventForm(eventForm);
+    setEventErrors(nextErrors);
+
+    if (hasFormErrors(nextErrors)) {
+      toast.error("Заполните обязательные поля события", {
+        description: "Проверьте подсвеченные поля перед сохранением.",
+      });
+      return;
+    }
+
+    if (eventForm.id) {
+      await updateEvent.mutateAsync({ ...eventForm, id: eventForm.id });
+    } else {
+      await createEvent.mutateAsync(eventForm);
+    }
+
+    setEventForm(defaultEventForm());
+    setEventErrors({});
+  };
+
+  const handleMemberSubmit = async () => {
+    const nextErrors = validateMemberForm(memberForm);
+    setMemberErrors(nextErrors);
+
+    if (hasFormErrors(nextErrors)) {
+      toast.error("Заполните обязательные поля участника", {
+        description: "Проверьте подсвеченные поля перед сохранением.",
+      });
+      return;
+    }
+
+    if (memberForm.id) {
+      await updateMember.mutateAsync({ ...memberForm, id: memberForm.id });
+    } else {
+      await createMember.mutateAsync(memberForm);
+    }
+
+    setMemberForm(defaultMemberForm());
+    setMemberErrors({});
+  };
+
   const confirmDelete = async () => {
     if (!pendingDelete) return;
 
@@ -661,36 +771,56 @@ export default function AdminClub() {
               footer={
                 <div className="flex flex-wrap gap-3">
                   <Button
-                    onClick={async () => {
-                      if (postForm.id) {
-                        await updatePost.mutateAsync({ ...postForm, id: postForm.id });
-                      } else {
-                        await createPost.mutateAsync(postForm);
-                      }
-                      setPostForm(defaultPostForm());
-                    }}
+                    onClick={handlePostSubmit}
                     disabled={createPost.isPending || updatePost.isPending}
                   >
                     {postForm.id ? "Сохранить пост" : "Создать пост"}
                   </Button>
-                  <Button variant="outline" onClick={() => setPostForm(defaultPostForm())}>Очистить</Button>
+                  <Button variant="outline" onClick={() => {
+                    setPostForm(defaultPostForm());
+                    setPostErrors({});
+                  }}>Очистить</Button>
                 </div>
               }
             >
               <div className="grid gap-4 md:grid-cols-2">
-                <Field label="Категория"><Input value={postForm.category} onChange={(e) => setPostForm({ ...postForm, category: e.target.value })} /></Field>
-                <Field label="Автор"><Input value={postForm.author} onChange={(e) => setPostForm({ ...postForm, author: e.target.value })} /></Field>
+                <Field label="Категория" error={postErrors.category}><Input aria-invalid={Boolean(postErrors.category)} value={postForm.category} onChange={(e) => {
+                  const value = e.target.value;
+                  setPostForm({ ...postForm, category: value });
+                  if (postErrors.category) setPostErrors((current) => ({ ...current, category: undefined }));
+                }} /></Field>
+                <Field label="Автор" error={postErrors.author}><Input aria-invalid={Boolean(postErrors.author)} value={postForm.author} onChange={(e) => {
+                  const value = e.target.value;
+                  setPostForm({ ...postForm, author: value });
+                  if (postErrors.author) setPostErrors((current) => ({ ...current, author: undefined }));
+                }} /></Field>
                 <Field label="Аватар"><Input value={postForm.avatar} onChange={(e) => setPostForm({ ...postForm, avatar: e.target.value.slice(0, 8) })} /></Field>
-                <Field label="Роль автора"><Input value={postForm.role} onChange={(e) => setPostForm({ ...postForm, role: e.target.value })} /></Field>
-                <Field label="Время"><Input value={postForm.timeLabel} onChange={(e) => setPostForm({ ...postForm, timeLabel: e.target.value })} /></Field>
+                <Field label="Роль автора" error={postErrors.role}><Input aria-invalid={Boolean(postErrors.role)} value={postForm.role} onChange={(e) => {
+                  const value = e.target.value;
+                  setPostForm({ ...postForm, role: value });
+                  if (postErrors.role) setPostErrors((current) => ({ ...current, role: undefined }));
+                }} /></Field>
+                <Field label="Время" error={postErrors.timeLabel}><Input aria-invalid={Boolean(postErrors.timeLabel)} value={postForm.timeLabel} onChange={(e) => {
+                  const value = e.target.value;
+                  setPostForm({ ...postForm, timeLabel: value });
+                  if (postErrors.timeLabel) setPostErrors((current) => ({ ...current, timeLabel: undefined }));
+                }} /></Field>
                 <Field label="Порядок"><Input type="number" value={postForm.sortOrder} onChange={(e) => setPostForm({ ...postForm, sortOrder: Number(e.target.value) || 0 })} /></Field>
                 <Field label="Лайки"><Input type="number" value={postForm.likes} onChange={(e) => setPostForm({ ...postForm, likes: Number(e.target.value) || 0 })} /></Field>
                 <Field label="Комментарии"><Input type="number" value={postForm.comments} onChange={(e) => setPostForm({ ...postForm, comments: Number(e.target.value) || 0 })} /></Field>
               </div>
-              <Field label="Заголовок"><Input value={postForm.title} onChange={(e) => setPostForm({ ...postForm, title: e.target.value })} /></Field>
+              <Field label="Заголовок" error={postErrors.title}><Input aria-invalid={Boolean(postErrors.title)} value={postForm.title} onChange={(e) => {
+                const value = e.target.value;
+                setPostForm({ ...postForm, title: value });
+                if (postErrors.title) setPostErrors((current) => ({ ...current, title: undefined }));
+              }} /></Field>
               <Field label="Изображение (URL)"><Input value={postForm.imageUrl} onChange={(e) => setPostForm({ ...postForm, imageUrl: e.target.value })} placeholder="https://..." /></Field>
               <Field label="Теги CSV"><Input value={postForm.tagsCsv} onChange={(e) => setPostForm({ ...postForm, tagsCsv: e.target.value })} placeholder="утро,марта,клуб" /></Field>
-              <Field label="Текст поста"><Textarea value={postForm.text} onChange={(e) => setPostForm({ ...postForm, text: e.target.value })} className="min-h-32" /></Field>
+              <Field label="Текст поста" error={postErrors.text}><Textarea aria-invalid={Boolean(postErrors.text)} value={postForm.text} onChange={(e) => {
+                const value = e.target.value;
+                setPostForm({ ...postForm, text: value });
+                if (postErrors.text) setPostErrors((current) => ({ ...current, text: undefined }));
+              }} className="min-h-32" /></Field>
               <div className="flex items-center justify-between rounded-xl border border-stone-200 px-4 py-3">
                 <div>
                   <p className="font-medium text-stone-950">Закрепить пост</p>
@@ -813,30 +943,46 @@ export default function AdminClub() {
               footer={
                 <div className="flex flex-wrap gap-3">
                   <Button
-                    onClick={async () => {
-                      if (eventForm.id) {
-                        await updateEvent.mutateAsync({ ...eventForm, id: eventForm.id });
-                      } else {
-                        await createEvent.mutateAsync(eventForm);
-                      }
-                      setEventForm(defaultEventForm());
-                    }}
+                    onClick={handleEventSubmit}
                     disabled={createEvent.isPending || updateEvent.isPending}
                   >
                     {eventForm.id ? "Сохранить событие" : "Создать событие"}
                   </Button>
-                  <Button variant="outline" onClick={() => setEventForm(defaultEventForm())}>Очистить</Button>
+                  <Button variant="outline" onClick={() => {
+                    setEventForm(defaultEventForm());
+                    setEventErrors({});
+                  }}>Очистить</Button>
                 </div>
               }
             >
               <div className="grid gap-4 md:grid-cols-2">
-                <Field label="Название"><Input value={eventForm.title} onChange={(e) => setEventForm({ ...eventForm, title: e.target.value })} /></Field>
-                <Field label="Дата"><Input value={eventForm.dateLabel} onChange={(e) => setEventForm({ ...eventForm, dateLabel: e.target.value })} /></Field>
-                <Field label="Статус"><Input value={eventForm.status} onChange={(e) => setEventForm({ ...eventForm, status: e.target.value })} /></Field>
-                <Field label="Тон"><Input value={eventForm.tone} onChange={(e) => setEventForm({ ...eventForm, tone: e.target.value })} /></Field>
+                <Field label="Название" error={eventErrors.title}><Input aria-invalid={Boolean(eventErrors.title)} value={eventForm.title} onChange={(e) => {
+                  const value = e.target.value;
+                  setEventForm({ ...eventForm, title: value });
+                  if (eventErrors.title) setEventErrors((current) => ({ ...current, title: undefined }));
+                }} /></Field>
+                <Field label="Дата" error={eventErrors.dateLabel}><Input aria-invalid={Boolean(eventErrors.dateLabel)} value={eventForm.dateLabel} onChange={(e) => {
+                  const value = e.target.value;
+                  setEventForm({ ...eventForm, dateLabel: value });
+                  if (eventErrors.dateLabel) setEventErrors((current) => ({ ...current, dateLabel: undefined }));
+                }} /></Field>
+                <Field label="Статус" error={eventErrors.status}><Input aria-invalid={Boolean(eventErrors.status)} value={eventForm.status} onChange={(e) => {
+                  const value = e.target.value;
+                  setEventForm({ ...eventForm, status: value });
+                  if (eventErrors.status) setEventErrors((current) => ({ ...current, status: undefined }));
+                }} /></Field>
+                <Field label="Тон" error={eventErrors.tone}><Input aria-invalid={Boolean(eventErrors.tone)} value={eventForm.tone} onChange={(e) => {
+                  const value = e.target.value;
+                  setEventForm({ ...eventForm, tone: value });
+                  if (eventErrors.tone) setEventErrors((current) => ({ ...current, tone: undefined }));
+                }} /></Field>
                 <Field label="Порядок"><Input type="number" value={eventForm.sortOrder} onChange={(e) => setEventForm({ ...eventForm, sortOrder: Number(e.target.value) || 0 })} /></Field>
               </div>
-              <Field label="Описание"><Textarea value={eventForm.description} onChange={(e) => setEventForm({ ...eventForm, description: e.target.value })} className="min-h-32" /></Field>
+              <Field label="Описание" error={eventErrors.description}><Textarea aria-invalid={Boolean(eventErrors.description)} value={eventForm.description} onChange={(e) => {
+                const value = e.target.value;
+                setEventForm({ ...eventForm, description: value });
+                if (eventErrors.description) setEventErrors((current) => ({ ...current, description: undefined }));
+              }} className="min-h-32" /></Field>
             </EntityFormCard>
 
             <EntityListCard
@@ -938,26 +1084,34 @@ export default function AdminClub() {
               footer={
                 <div className="flex flex-wrap gap-3">
                   <Button
-                    onClick={async () => {
-                      if (memberForm.id) {
-                        await updateMember.mutateAsync({ ...memberForm, id: memberForm.id });
-                      } else {
-                        await createMember.mutateAsync(memberForm);
-                      }
-                      setMemberForm(defaultMemberForm());
-                    }}
+                    onClick={handleMemberSubmit}
                     disabled={createMember.isPending || updateMember.isPending}
                   >
                     {memberForm.id ? "Сохранить участника" : "Добавить участника"}
                   </Button>
-                  <Button variant="outline" onClick={() => setMemberForm(defaultMemberForm())}>Очистить</Button>
+                  <Button variant="outline" onClick={() => {
+                    setMemberForm(defaultMemberForm());
+                    setMemberErrors({});
+                  }}>Очистить</Button>
                 </div>
               }
             >
               <div className="grid gap-4 md:grid-cols-2">
-                <Field label="Имя"><Input value={memberForm.name} onChange={(e) => setMemberForm({ ...memberForm, name: e.target.value })} /></Field>
-                <Field label="Животное"><Input value={memberForm.animal} onChange={(e) => setMemberForm({ ...memberForm, animal: e.target.value })} /></Field>
-                <Field label="С клубом с"><Input value={memberForm.sinceLabel} onChange={(e) => setMemberForm({ ...memberForm, sinceLabel: e.target.value })} /></Field>
+                <Field label="Имя" error={memberErrors.name}><Input aria-invalid={Boolean(memberErrors.name)} value={memberForm.name} onChange={(e) => {
+                  const value = e.target.value;
+                  setMemberForm({ ...memberForm, name: value });
+                  if (memberErrors.name) setMemberErrors((current) => ({ ...current, name: undefined }));
+                }} /></Field>
+                <Field label="Животное" error={memberErrors.animal}><Input aria-invalid={Boolean(memberErrors.animal)} value={memberForm.animal} onChange={(e) => {
+                  const value = e.target.value;
+                  setMemberForm({ ...memberForm, animal: value });
+                  if (memberErrors.animal) setMemberErrors((current) => ({ ...current, animal: undefined }));
+                }} /></Field>
+                <Field label="С нами с" error={memberErrors.sinceLabel}><Input aria-invalid={Boolean(memberErrors.sinceLabel)} value={memberForm.sinceLabel} onChange={(e) => {
+                  const value = e.target.value;
+                  setMemberForm({ ...memberForm, sinceLabel: value });
+                  if (memberErrors.sinceLabel) setMemberErrors((current) => ({ ...current, sinceLabel: undefined }));
+                }} /></Field>
                 <Field label="Бейдж"><Input value={memberForm.badge} onChange={(e) => setMemberForm({ ...memberForm, badge: e.target.value })} /></Field>
                 <Field label="Порядок"><Input type="number" value={memberForm.sortOrder} onChange={(e) => setMemberForm({ ...memberForm, sortOrder: Number(e.target.value) || 0 })} /></Field>
               </div>
@@ -1070,8 +1224,8 @@ function EntityFormCard({
 }: {
   title: string;
   description: string;
-  children: React.ReactNode;
-  footer: React.ReactNode;
+  children: ReactNode;
+  footer: ReactNode;
 }) {
   return (
     <Card>
@@ -1098,9 +1252,9 @@ function EntityListCard({
 }: {
   title: string;
   description: string;
-  toolbar?: React.ReactNode;
+  toolbar?: ReactNode;
   items: any[];
-  renderItem: (item: any) => React.ReactNode;
+  renderItem: (item: any) => ReactNode;
   emptyText?: string;
 }) {
   return (
@@ -1145,7 +1299,7 @@ function FilterToolbar({
   onSearchChange: (value: string) => void;
   onReset: () => void;
   hasActiveFilters: boolean;
-  children?: React.ReactNode;
+  children?: ReactNode;
 }) {
   return (
     <div className="rounded-2xl border border-stone-200 bg-stone-50/80 p-4 space-y-4">
@@ -1256,11 +1410,12 @@ function ListRow({
   );
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({ label, error, children }: { label: string; error?: string; children: ReactNode }) {
   return (
     <div className="space-y-2">
       <Label>{label}</Label>
       {children}
+      {error ? <p className="text-sm font-medium text-red-600">{error}</p> : null}
     </div>
   );
 }
