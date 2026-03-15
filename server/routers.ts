@@ -26,6 +26,7 @@ import {
   updateClubMember,
   updateClubPost,
 } from "./db";
+import { notifyOwner } from "./_core/notification";
 import { storagePut } from "./storage";
 
 const uploadPhotoInput = z.object({
@@ -128,6 +129,11 @@ const clubAdminPresetInput = z.object({
 
 const updateClubAdminPresetInput = clubAdminPresetInput.extend({
   id: z.number().int().positive(),
+});
+
+const criticalNotificationInput = z.object({
+  title: z.string().min(1).max(1200),
+  content: z.string().min(1).max(20000),
 });
 
 function sanitizeFileName(fileName: string) {
@@ -326,6 +332,16 @@ export const appRouter = router({
         throw new TRPCError({ code: "NOT_FOUND", message: "Пресет не найден." });
       }
       return { success: true, id: input.id } as const;
+    }),
+    notifyCriticalAction: adminProcedure.input(criticalNotificationInput).mutation(async ({ input }) => {
+      const delivered = await notifyOwner({
+        title: input.title,
+        content: input.content,
+      });
+
+      return {
+        delivered,
+      } as const;
     }),
   }),
 });

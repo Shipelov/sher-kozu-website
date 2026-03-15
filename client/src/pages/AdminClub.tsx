@@ -21,6 +21,17 @@ import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  buildCriticalNotificationPayload,
+  defaultCriticalNotificationSettings,
+  recordAdminAction,
+  shouldSendCriticalNotification,
+  type AdminActionLogEntry,
+  type AdminActionType,
+  type AdminTabValue,
+  type CriticalNotificationSettings,
+  type EntityAdminTabValue,
+} from "@/lib/adminClubActivity";
 import { trpc } from "@/lib/trpc";
 import { NOT_ADMIN_ERR_MSG } from "@shared/const";
 import { ArrowDown, CalendarRange, CheckSquare, ChevronDown, ChevronUp, Copy, Crown, Download, Pencil, Pin, Save, Search, ShieldAlert, Square, Trash2, Users, X } from "lucide-react";
@@ -103,8 +114,6 @@ type PendingDeleteState =
   | { entity: "bulk-member"; ids: number[]; title: string; description: string; summaryItems: string[]; totalCount: number }
   | null;
 
-type EntityAdminTabValue = "posts" | "events" | "members";
-type AdminTabValue = EntityAdminTabValue | "activity";
 
 type PresetConfig = {
   query?: string;
@@ -151,16 +160,6 @@ type InlineActionConfig = {
   disabled?: boolean;
 };
 
-type AdminActionType = "create" | "update" | "delete" | "bulk" | "preset";
-
-type AdminActionLogEntry = {
-  id: number;
-  timestamp: number;
-  area: AdminTabValue;
-  actionType: AdminActionType;
-  title: string;
-  description: string;
-};
 
 const defaultPostForm = (): PostFormState => ({
   category: "journal",
@@ -551,6 +550,7 @@ export default function AdminClub() {
   const [actionLogAreaFilter, setActionLogAreaFilter] = useState<"all" | AdminTabValue>("all");
   const [actionLogTypeFilter, setActionLogTypeFilter] = useState<"all" | AdminActionType>("all");
   const [actionLogExportScope, setActionLogExportScope] = useState<"filtered" | "all">("filtered");
+  const [criticalNotificationSettings, setCriticalNotificationSettings] = useState<CriticalNotificationSettings>(defaultCriticalNotificationSettings);
 
   const adminQuery = trpc.adminClub.dashboard.useQuery(undefined, {
     enabled: Boolean(user?.role === "admin"),
@@ -561,6 +561,53 @@ export default function AdminClub() {
       utils.adminClub.dashboard.invalidate(),
       utils.club.feed.invalidate(),
     ]);
+  };
+
+  const notifyCriticalAction = trpc.adminClub.notifyCriticalAction.useMutation({
+    onError: (error) => {
+      toast.error("Критическое уведомление не отправлено", {
+        description: error.message,
+      });
+    },
+  });
+
+  const processCriticalAdminNotification = async (
+    area: AdminTabValue,
+    actionType: AdminActionType,
+    title: string,
+    description: string,
+    affectedCount?: number,
+  ) => {
+    setActionLog((current) => recordAdminAction(current, area, actionType, title, description));
+
+    const decision = shouldSendCriticalNotification({
+      area,
+      actionType,
+      title,
+      description,
+      affectedCount,
+    }, criticalNotificationSettings);
+
+    if (!decision.shouldNotify) {
+      return;
+    }
+
+    const actorLabel = user?.name || user?.email || "Администратор фермы";
+    const payload = buildCriticalNotificationPayload({
+      area,
+      actionType,
+      title,
+      description,
+      affectedCount,
+    }, decision, actorLabel);
+
+    const result = await notifyCriticalAction.mutateAsync(payload);
+
+    toast[decision.severityLabel === "high" ? "warning" : "info"]("Критическое уведомление отправлено", {
+      description: result.delivered
+        ? `Оповещение зафиксировано для действия «${title}».`
+        : `Действие «${title}» помечено как критическое, но канал уведомлений временно недоступен.`,
+    });
   };
 
   const getInlineActionToastCopy = (
@@ -605,20 +652,6 @@ export default function AdminClub() {
         description: `Для профиля «${record.name || "Без имени"}» установлен бейдж «${record.badge || "Без бейджа"}».`,
       },
     };
-  };
-
-  const recordAdminAction = (area: AdminTabValue, actionType: AdminActionType, title: string, description: string) => {
-    setActionLog((current) => [
-      {
-        id: Date.now() + current.length,
-        timestamp: Date.now(),
-        area,
-        actionType,
-        title,
-        description,
-      },
-      ...current,
-    ].slice(0, 6));
   };
 
   const filteredActionLog = actionLog.filter((entry) => {
@@ -1136,6 +1169,13 @@ export default function AdminClub() {
       config: getPresetConfigForTab(tab, postFilters, eventFilters, memberFilters),
       sortOrder: sameTabPresets.length,
     });
+
+    await processCriticalAdminNotification(
+      tab,
+      "preset",
+      `Сохранён пресет «${name}»`,
+      `Администратор сохранил новый пресет для вкладки ${tab}.`,
+    );
   };
 
   const applyPreset = (preset: ClubAdminPreset) => {
@@ -1275,16 +1315,19 @@ export default function AdminClub() {
 
     if (pendingDelete.entity === "post") {
       await deletePost.mutateAsync({ id: pendingDelete.id });
+      await processCriticalAdminNotification("posts", "delete", `Удалён пост «${pendingDelete.title}»`, `Администратор удалил ${pendingDelete.description}.`, 1);
       return;
     }
 
     if (pendingDelete.entity === "event") {
       await deleteEvent.mutateAsync({ id: pendingDelete.id });
+      await processCriticalAdminNotification("events", "delete", `Удалено событие «${pendingDelete.title}»`, `Администратор удалил ${pendingDelete.description}.`, 1);
       return;
     }
 
     if (pendingDelete.entity === "member") {
       await deleteMember.mutateAsync({ id: pendingDelete.id });
+      await processCriticalAdminNotification("members", "delete", `Удалён участник «${pendingDelete.title}»`, `Администратор удалил ${pendingDelete.description}.`, 1);
       return;
     }
 
@@ -1298,6 +1341,7 @@ export default function AdminClub() {
       toast.success(toastCopy.title, {
         description: toastCopy.description,
       });
+      await processCriticalAdminNotification("posts", "bulk", toastCopy.title, toastCopy.description, pendingDelete.ids.length);
 
       return;
     }
@@ -1312,6 +1356,7 @@ export default function AdminClub() {
       toast.success(toastCopy.title, {
         description: toastCopy.description,
       });
+      await processCriticalAdminNotification("events", "bulk", toastCopy.title, toastCopy.description, pendingDelete.ids.length);
 
       return;
     }
@@ -1325,6 +1370,7 @@ export default function AdminClub() {
     toast.success(toastCopy.title, {
       description: toastCopy.description,
     });
+    await processCriticalAdminNotification("members", "bulk", toastCopy.title, toastCopy.description, pendingDelete.ids.length);
 
   };
 
@@ -2014,7 +2060,7 @@ export default function AdminClub() {
                         toast.success(toastCopy.sortOrder.title, {
                           description: toastCopy.sortOrder.description,
                         });
-                        recordAdminAction("events", "update", toastCopy.sortOrder.title, toastCopy.sortOrder.description);
+                        setActionLog((current) => recordAdminAction(current, "events", "update", toastCopy.sortOrder.title, toastCopy.sortOrder.description));
                       },
                     },
                     {
@@ -2037,7 +2083,7 @@ export default function AdminClub() {
                         toast.success(toastCopy.status.title, {
                           description: toastCopy.status.description,
                         });
-                        recordAdminAction("events", "update", toastCopy.status.title, toastCopy.status.description);
+                        setActionLog((current) => recordAdminAction(current, "events", "update", toastCopy.status.title, toastCopy.status.description));
                       },
                     },
                   ]}
@@ -2231,7 +2277,7 @@ export default function AdminClub() {
                         toast.success(toastCopy.sortOrder.title, {
                           description: toastCopy.sortOrder.description,
                         });
-                        recordAdminAction("members", "update", toastCopy.sortOrder.title, toastCopy.sortOrder.description);
+                        setActionLog((current) => recordAdminAction(current, "members", "update", toastCopy.sortOrder.title, toastCopy.sortOrder.description));
                       },
                     },
                     {
@@ -2253,7 +2299,7 @@ export default function AdminClub() {
                         toast.success(toastCopy.status.title, {
                           description: toastCopy.status.description,
                         });
-                        recordAdminAction("members", "update", toastCopy.status.title, toastCopy.status.description);
+                        setActionLog((current) => recordAdminAction(current, "members", "update", toastCopy.status.title, toastCopy.status.description));
                       },
                     },
                   ]}
@@ -2354,8 +2400,8 @@ export default function AdminClub() {
                 <CardContent className="space-y-4">
                   <div className="space-y-3">
                     <div className="sticky top-3 z-10 -mx-1 space-y-3 rounded-2xl border border-stone-200 bg-white/95 px-3 py-3 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-white/85">
-                    <div className="flex flex-wrap gap-2">
-                      {actionLogFilterPresets.map((preset) => {
+                      <div className="flex flex-wrap gap-2">
+                        {actionLogFilterPresets.map((preset) => {
                         const matchesArea = actionLogAreaFilter === preset.area;
                         const matchesType = preset.actionTypes?.length
                           ? preset.actionTypes.includes(actionLogTypeFilter as AdminActionType)
@@ -2376,19 +2422,20 @@ export default function AdminClub() {
                             {preset.label}
                           </Button>
                         );
-                      })}
-                    </div>
-                    <div className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-stone-200 bg-stone-50/70 px-4 py-3 text-sm text-stone-600">
-                      <span>Текущий фильтр показывает {filteredActionLog.length} из {actionLog.length} записей журнала.</span>
-                      <span>Режим экспорта: {actionLogExportScope === "all" ? "весь журнал сессии" : "только текущий вид"}.</span>
-                    </div>
-                    <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-5">
-                      {actionLogTypeStatsItems.map((item) => (
-                        <div key={item.key} className="rounded-2xl border border-stone-200 bg-white px-3 py-3 text-sm text-stone-600">
-                          <p className="text-xs uppercase tracking-[0.12em] text-stone-400">{item.label}</p>
-                          <p className="mt-2 text-2xl font-semibold text-stone-950">{item.value}</p>
-                        </div>
-                      ))}
+                        })}
+                      </div>
+                      <div className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-stone-200 bg-stone-50/70 px-4 py-3 text-sm text-stone-600">
+                        <span>Текущий фильтр показывает {filteredActionLog.length} из {actionLog.length} записей журнала.</span>
+                        <span>Режим экспорта: {actionLogExportScope === "all" ? "весь журнал сессии" : "только текущий вид"}.</span>
+                      </div>
+                      <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-5">
+                        {actionLogTypeStatsItems.map((item) => (
+                          <div key={item.key} className="rounded-2xl border border-stone-200 bg-white px-3 py-3 text-sm text-stone-600">
+                            <p className="text-xs uppercase tracking-[0.12em] text-stone-400">{item.label}</p>
+                            <p className="mt-2 text-2xl font-semibold text-stone-950">{item.value}</p>
+                          </div>
+                        ))}
+                      </div>
                     </div>
                     <div className="grid gap-2 sm:grid-cols-3">
                       {actionLogAreaStatsItems.map((item) => (
@@ -2399,7 +2446,7 @@ export default function AdminClub() {
                       ))}
                     </div>
                     <div className="grid gap-3 md:grid-cols-2">
-                    <Field label="Область журнала">
+                      <Field label="Область журнала">
                       <select
                         value={actionLogAreaFilter}
                         onChange={(event) => setActionLogAreaFilter(event.target.value as "all" | AdminTabValue)}
@@ -2410,8 +2457,8 @@ export default function AdminClub() {
                         <option value="events">События</option>
                         <option value="members">Участники</option>
                       </select>
-                    </Field>
-                    <Field label="Тип операции">
+                      </Field>
+                      <Field label="Тип операции">
                       <select
                         value={actionLogTypeFilter}
                         onChange={(event) => setActionLogTypeFilter(event.target.value as "all" | AdminActionType)}
@@ -2424,9 +2471,102 @@ export default function AdminClub() {
                         <option value="bulk">Массовые операции</option>
                         <option value="preset">Пресеты</option>
                       </select>
-                    </Field>
-                  </div>
-                  </div>
+                      </Field>
+                    </div>
+                    <Card className="border-amber-200 bg-amber-50/70 shadow-none">
+                      <CardHeader className="space-y-2">
+                        <div className="flex items-start gap-3">
+                          <div className="rounded-2xl bg-amber-100 p-2 text-amber-700">
+                            <ShieldAlert className="h-5 w-5" />
+                          </div>
+                          <div>
+                            <CardTitle className="text-base text-stone-950">Критические уведомления для администраторов</CardTitle>
+                            <CardDescription className="text-stone-600">
+                              Отправляйте owner-уведомления при удалениях и массовых действиях, которые требуют быстрого внимания.
+                            </CardDescription>
+                          </div>
+                        </div>
+                      </CardHeader>
+                      <CardContent className="grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
+                        <div className="space-y-4">
+                          <div className="flex items-center justify-between gap-3 rounded-2xl border border-amber-200 bg-white px-4 py-3">
+                            <div>
+                              <p className="text-sm font-medium text-stone-900">Включить критические уведомления</p>
+                              <p className="text-xs text-stone-500">Если выключить, журнал останется локальным без отправки owner-оповещений.</p>
+                            </div>
+                            <Switch
+                              checked={criticalNotificationSettings.enabled}
+                              onCheckedChange={(checked) => setCriticalNotificationSettings((current) => ({ ...current, enabled: checked }))}
+                            />
+                          </div>
+                          <div className="grid gap-3 md:grid-cols-3">
+                            <div className="rounded-2xl border border-stone-200 bg-white px-4 py-3">
+                              <div className="flex items-center justify-between gap-3">
+                                <div>
+                                  <p className="text-sm font-medium text-stone-900">Удаления</p>
+                                  <p className="text-xs text-stone-500">Оповещать о каждом одиночном удалении.</p>
+                                </div>
+                                <Switch
+                                  checked={criticalNotificationSettings.notifyOnDelete}
+                                  onCheckedChange={(checked) => setCriticalNotificationSettings((current) => ({ ...current, notifyOnDelete: checked }))}
+                                  disabled={!criticalNotificationSettings.enabled}
+                                />
+                              </div>
+                            </div>
+                            <div className="rounded-2xl border border-stone-200 bg-white px-4 py-3">
+                              <div className="flex items-center justify-between gap-3">
+                                <div>
+                                  <p className="text-sm font-medium text-stone-900">Массовые действия</p>
+                                  <p className="text-xs text-stone-500">Учитывать порог затронутых записей.</p>
+                                </div>
+                                <Switch
+                                  checked={criticalNotificationSettings.notifyOnBulk}
+                                  onCheckedChange={(checked) => setCriticalNotificationSettings((current) => ({ ...current, notifyOnBulk: checked }))}
+                                  disabled={!criticalNotificationSettings.enabled}
+                                />
+                              </div>
+                            </div>
+                            <div className="rounded-2xl border border-stone-200 bg-white px-4 py-3">
+                              <div className="flex items-center justify-between gap-3">
+                                <div>
+                                  <p className="text-sm font-medium text-stone-900">Пресеты</p>
+                                  <p className="text-xs text-stone-500">Отслеживать рискованные изменения пресетов вручную.</p>
+                                </div>
+                                <Switch
+                                  checked={criticalNotificationSettings.notifyOnPreset}
+                                  onCheckedChange={(checked) => setCriticalNotificationSettings((current) => ({ ...current, notifyOnPreset: checked }))}
+                                  disabled={!criticalNotificationSettings.enabled}
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="space-y-3 rounded-2xl border border-dashed border-amber-200 bg-white px-4 py-4">
+                          <Label htmlFor="critical-bulk-threshold" className="text-sm font-medium text-stone-900">Порог для массовых действий</Label>
+                          <Input
+                            id="critical-bulk-threshold"
+                            type="number"
+                            min={1}
+                            value={criticalNotificationSettings.minBulkCount}
+                            onChange={(event) => {
+                              const nextValue = Math.max(1, Number(event.target.value) || 1);
+                              setCriticalNotificationSettings((current) => ({ ...current, minBulkCount: nextValue }));
+                            }}
+                            disabled={!criticalNotificationSettings.enabled || !criticalNotificationSettings.notifyOnBulk}
+                          />
+                          <p className="text-xs leading-5 text-stone-500">
+                            Сейчас owner-уведомление отправится, если массовое действие затронет не менее {criticalNotificationSettings.minBulkCount} записей.
+                          </p>
+                          <Alert className="border-amber-200 bg-amber-50/80 text-amber-900">
+                            <ShieldAlert className="h-4 w-4" />
+                            <AlertTitle>Критерии критичности</AlertTitle>
+                            <AlertDescription>
+                              Одиночные удаления считаются критическими сразу. Массовые операции сравниваются с порогом, а пресеты уведомляют только при ручном включении.
+                            </AlertDescription>
+                          </Alert>
+                        </div>
+                      </CardContent>
+                    </Card>
                   </div>
                   {filteredActionLog.length ? (
                     <div className="space-y-4">

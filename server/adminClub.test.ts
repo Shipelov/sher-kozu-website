@@ -1966,3 +1966,71 @@ describe("recordAdminAction", () => {
     expect(clearActionLog()).toEqual([]);
   });
 });
+
+import {
+  buildCriticalNotificationPayload,
+  defaultCriticalNotificationSettings,
+  recordAdminAction as recordAdminActivityAction,
+  shouldSendCriticalNotification,
+} from "../client/src/lib/adminClubActivity";
+
+describe("admin club critical notifications", () => {
+  it("marks single deletes as critical when delete notifications are enabled", () => {
+    const decision = shouldSendCriticalNotification({
+      area: "posts",
+      actionType: "delete",
+      title: "Удалён пост",
+      description: "Администратор удалил пост.",
+      affectedCount: 1,
+    }, defaultCriticalNotificationSettings());
+
+    expect(decision).toEqual({
+      shouldNotify: true,
+      severityLabel: "high",
+      reason: "Удаление считается критически важным действием.",
+    });
+  });
+
+  it("does not notify for bulk actions below threshold", () => {
+    const decision = shouldSendCriticalNotification({
+      area: "events",
+      actionType: "bulk",
+      title: "Массовое удаление событий",
+      description: "Удалено 2 события.",
+      affectedCount: 2,
+    }, defaultCriticalNotificationSettings());
+
+    expect(decision.shouldNotify).toBe(false);
+    expect(decision.reason).toContain("ниже порога 3");
+  });
+
+  it("builds notification payload with actor and affected count", () => {
+    const payload = buildCriticalNotificationPayload({
+      area: "members",
+      actionType: "bulk",
+      title: "Массовое удаление участников",
+      description: "Удалено несколько участников.",
+      affectedCount: 5,
+    }, {
+      shouldNotify: true,
+      severityLabel: "high",
+      reason: "Массовая операция затронула 5 записей.",
+    }, "Администратор теста");
+
+    expect(payload.title).toBe("[Admin Club][HIGH] Массовое удаление участников");
+    expect(payload.content).toContain("Администратор: Администратор теста.");
+    expect(payload.content).toContain("Затронуто записей: 5.");
+  });
+
+  it("records action log entries and keeps only the latest six items", () => {
+    let log = [] as ReturnType<typeof recordAdminActivityAction>;
+
+    for (let index = 0; index < 7; index += 1) {
+      log = recordAdminActivityAction(log, "posts", "update", `Действие ${index + 1}`, "Описание", 1000 + index);
+    }
+
+    expect(log).toHaveLength(6);
+    expect(log[0].title).toBe("Действие 7");
+    expect(log.at(-1)?.title).toBe("Действие 2");
+  });
+});
