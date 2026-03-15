@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, sql } from "drizzle-orm";
+import { and, asc, desc, eq, like, or, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import { createPool, type Pool } from "mysql2/promise";
 import {
@@ -58,75 +58,152 @@ async function ensureOwnerExperienceSeed(ownerOpenId: string) {
       {
         animalSlug: "marta",
         ownerOpenId,
-        productName: "Выдержанный шевр Марты",
-        productType: "Сыр",
+        productName: "Сырная партия Марты",
+        productType: "Полутвёрдый сыр",
         stage: "Созревание",
-        routeLabel: "Сыроварня → камера созревания → клубный релиз",
-        detail: "Партия для клубного релиза выдерживается в малой камере и будет открыта после дегустации на ферме.",
-        badge: "Клубный релиз",
-        batchCode: "MRT-2403-CHEVRE",
-        producedAt: new Date("2026-03-08T11:00:00Z"),
-        deliveryWindow: "Самовывоз после дегустации",
+        routeLabel: "Надой → созревание → маркировка",
+        detail: "Партия выдерживается в камере созревания и будет готова к клубному набору следующей недели.",
+        badge: "Семейная сыроварня",
+        batchCode: "MRT-2403-B",
+        producedAt: new Date("2026-03-10T09:10:00Z"),
+        deliveryWindow: "Отгрузка 20 марта",
         sortOrder: 1,
+      },
+      {
+        animalSlug: "zlata",
+        ownerOpenId,
+        productName: "Набор Златы для завтрака",
+        productType: "Йогурт и мягкий сыр",
+        stage: "Упаковка",
+        routeLabel: "Надой → ферментация → упаковка",
+        detail: "Нежный йогурт и мягкий сыр уже фасуются для утренней доставки подписчикам фермы.",
+        badge: "Лёгкий формат",
+        batchCode: "ZLT-2403-A",
+        producedAt: new Date("2026-03-13T06:50:00Z"),
+        deliveryWindow: "Доставка 16 марта",
+        sortOrder: 0,
       },
     ]);
   }
 
-  const existingSnapshots = await db
-    .select({ id: productCompositionSnapshots.id })
-    .from(productCompositionSnapshots)
-    .where(eq(productCompositionSnapshots.ownerOpenId, ownerOpenId))
-    .limit(1);
-  if (!existingSnapshots.length) {
+  const existingCompositions = await db.select({ id: productCompositionSnapshots.id }).from(productCompositionSnapshots).where(eq(productCompositionSnapshots.ownerOpenId, ownerOpenId)).limit(1);
+  if (!existingCompositions.length) {
     await db.insert(productCompositionSnapshots).values([
-      { animalSlug: "marta", ownerOpenId, label: "Белок", value: "3.8%", note: "Выше сезонной нормы", sortOrder: 0 },
-      { animalSlug: "marta", ownerOpenId, label: "Жирность", value: "4.7%", note: "Подходит для мягких сыров", sortOrder: 1 },
-      { animalSlug: "marta", ownerOpenId, label: "Лот", value: "MRT-2403", note: "Отслеживается до коробки", sortOrder: 2 },
-    ]);
-  }
-
-  const existingMetrics = await db
-    .select({ id: productMonthlyMetrics.id })
-    .from(productMonthlyMetrics)
-    .where(eq(productMonthlyMetrics.ownerOpenId, ownerOpenId))
-    .limit(1);
-  if (!existingMetrics.length) {
-    await db.insert(productMonthlyMetrics).values([
-      { animalSlug: "marta", ownerOpenId, monthLabel: "Дек", milkVolumeLiters: 48, proteinPercentTenth: 35, fatPercentTenth: 44, sortOrder: 0 },
-      { animalSlug: "marta", ownerOpenId, monthLabel: "Янв", milkVolumeLiters: 52, proteinPercentTenth: 36, fatPercentTenth: 45, sortOrder: 1 },
-      { animalSlug: "marta", ownerOpenId, monthLabel: "Фев", milkVolumeLiters: 57, proteinPercentTenth: 37, fatPercentTenth: 46, sortOrder: 2 },
-      { animalSlug: "marta", ownerOpenId, monthLabel: "Мар", milkVolumeLiters: 61, proteinPercentTenth: 38, fatPercentTenth: 47, sortOrder: 3 },
-    ]);
-  }
-
-  const existingDeliveries = await db
-    .select({ id: productDeliveries.id })
-    .from(productDeliveries)
-    .where(eq(productDeliveries.ownerOpenId, ownerOpenId))
-    .limit(1);
-  if (!existingDeliveries.length) {
-    await db.insert(productDeliveries).values([
       {
         animalSlug: "marta",
         ownerOpenId,
-        title: "Коробка семьи на выходные",
-        status: "Курьер подтвердил выезд",
-        etaLabel: "Прибытие завтра к 11:00",
-        destination: "Москва, семейный адрес",
-        courierNote: "Холодовая цепь подтверждена, водитель отправит фото вручения.",
-        isActive: 1,
+        title: "Утренний профиль молока",
+        fatPercent: "4.8%",
+        proteinPercent: "3.6%",
+        lactosePercent: "4.3%",
+        dryMatterPercent: "12.5%",
+        note: "Подходит для свежих сыров и мягких семейных десертов.",
+        sortOrder: 0,
+      },
+      {
+        animalSlug: "zlata",
+        ownerOpenId,
+        title: "Нежный профиль для йогурта",
+        fatPercent: "4.2%",
+        proteinPercent: "3.4%",
+        lactosePercent: "4.5%",
+        dryMatterPercent: "11.9%",
+        note: "Даёт мягкую текстуру и хорошую стабильность ферментации.",
+        sortOrder: 0,
+      },
+    ]);
+  }
+
+  const existingMetrics = await db.select({ id: productMonthlyMetrics.id }).from(productMonthlyMetrics).where(eq(productMonthlyMetrics.ownerOpenId, ownerOpenId)).limit(1);
+  if (!existingMetrics.length) {
+    await db.insert(productMonthlyMetrics).values([
+      {
+        animalSlug: "marta",
+        ownerOpenId,
+        label: "Январь",
+        milkLiters: 81,
+        cheeseKg: 12,
+        yogurtKg: 9,
         sortOrder: 0,
       },
       {
         animalSlug: "marta",
         ownerOpenId,
-        title: "Клубный дегустационный набор",
-        status: "Готов к самовывозу",
-        etaLabel: "Окно выдачи в день визита",
-        destination: "Ферма Шерь Козу",
-        courierNote: "Можно объединить с экскурсионным визитом и дегустацией.",
-        isActive: 0,
+        label: "Февраль",
+        milkLiters: 88,
+        cheeseKg: 14,
+        yogurtKg: 10,
         sortOrder: 1,
+      },
+      {
+        animalSlug: "marta",
+        ownerOpenId,
+        label: "Март",
+        milkLiters: 92,
+        cheeseKg: 16,
+        yogurtKg: 11,
+        sortOrder: 2,
+      },
+      {
+        animalSlug: "zlata",
+        ownerOpenId,
+        label: "Январь",
+        milkLiters: 74,
+        cheeseKg: 10,
+        yogurtKg: 13,
+        sortOrder: 0,
+      },
+      {
+        animalSlug: "zlata",
+        ownerOpenId,
+        label: "Февраль",
+        milkLiters: 78,
+        cheeseKg: 11,
+        yogurtKg: 14,
+        sortOrder: 1,
+      },
+      {
+        animalSlug: "zlata",
+        ownerOpenId,
+        label: "Март",
+        milkLiters: 83,
+        cheeseKg: 12,
+        yogurtKg: 15,
+        sortOrder: 2,
+      },
+    ]);
+  }
+
+  const existingDeliveries = await db.select({ id: productDeliveries.id }).from(productDeliveries).where(eq(productDeliveries.ownerOpenId, ownerOpenId)).limit(1);
+  if (!existingDeliveries.length) {
+    await db.insert(productDeliveries).values([
+      {
+        animalSlug: "marta",
+        ownerOpenId,
+        title: "Клубный набор Марты",
+        status: "В пути",
+        etaLabel: "15 марта, 18:00–20:00",
+        destination: "Алматы, Медеуский район",
+        routeLabel: "Ферма → сортировка → курьер",
+        courierName: "Sher Kozu Delivery",
+        trackingCode: "SK-MRT-1503",
+        detail: "Курьер забрал заказ, следующий чекпойнт — сортировка и передача в городскую доставку.",
+        isActive: 1,
+        sortOrder: 0,
+      },
+      {
+        animalSlug: "zlata",
+        ownerOpenId,
+        title: "Завтрак от Златы",
+        status: "Готовится",
+        etaLabel: "16 марта, до 11:00",
+        destination: "Алматы, Бостандыкский район",
+        routeLabel: "Ферма → упаковка → курьер",
+        courierName: "Семейная логистика",
+        trackingCode: "SK-ZLT-1603",
+        detail: "Набор упаковывается и будет передан курьеру завтра утром.",
+        isActive: 1,
+        sortOrder: 0,
       },
     ]);
   }
@@ -136,33 +213,33 @@ async function ensureOwnerExperienceSeed(ownerOpenId: string) {
     await db.insert(clubPosts).values([
       {
         ownerOpenId,
-        category: "journal",
-        author: "Команда фермы",
-        avatar: "SK",
-        role: "Семейная хроника",
-        timeLabel: "Сегодня, 08:15",
-        title: "Утренний круг на дворе Марты",
-        text: "Марта первой вышла на круг, а затем спокойно перешла в доильный блок. Для владельцев это значит, что сегодняшняя партия уже в работе и скоро отразится в трекере.",
+        category: "Дневник фермы",
+        author: "Шерь Козу",
+        avatar: "ШК",
+        role: "семейная ферма",
+        timeLabel: "Сегодня, 08:40",
+        title: "Утро на молочной кухне",
+        text: "У Марты и Златы сегодня особенно мягкое молоко — запускаем малую партию свежего сыра для клубного ужина выходного дня.",
         imageUrl: CLUB_IMAGE,
-        likes: 26,
-        comments: 7,
-        tagsCsv: "утро,марта,дневник",
+        likes: 18,
+        comments: 6,
+        tagsCsv: "сыроварня,утренний надой,семейный ритм",
         pinned: 1,
         sortOrder: 0,
       },
       {
         ownerOpenId,
-        category: "event",
-        author: "Клуб фермы",
-        avatar: "KF",
-        role: "События сообщества",
-        timeLabel: "Вчера, 18:40",
-        title: "Открыт набор на весенний визит с сырной дегустацией",
-        text: "В апреле проведём камерный клубный визит: прогулка по ферме, знакомство с Мартыным маршрутом молока и ужин с семейной дегустацией.",
+        category: "Клуб владельцев",
+        author: "Алия",
+        avatar: "А",
+        role: "владелица Марты",
+        timeLabel: "Вчера, 19:15",
+        title: "Семейный визит на ферму",
+        text: "Дети впервые увидели, как проходит вечерний уход. После этого молоко и сыр ощущаются совсем иначе — как часть живой истории.",
         imageUrl: CLUB_IMAGE,
-        likes: 19,
-        comments: 5,
-        tagsCsv: "визит,дегустация,клуб",
+        likes: 24,
+        comments: 9,
+        tagsCsv: "семья,визит,эмоциональная связь",
         pinned: 0,
         sortOrder: 1,
       },
@@ -174,19 +251,19 @@ async function ensureOwnerExperienceSeed(ownerOpenId: string) {
     await db.insert(clubEvents).values([
       {
         ownerOpenId,
-        title: "Весенний клубный визит",
-        dateLabel: "12 апреля · 13:00",
-        description: "Прогулка по ферме, знакомство с линией Марты и ужин с сырной подачей из свежей партии.",
-        status: "Открыта регистрация",
+        title: "Закрытый ужин владельцев",
+        dateLabel: "22 марта · 18:30",
+        description: "Дегустация сыров весенней партии и обсуждение новых семейных наборов.",
+        status: "Открыта запись",
         tone: "warm",
         sortOrder: 0,
       },
       {
         ownerOpenId,
-        title: "Онлайн-встреча владельцев",
-        dateLabel: "20 апреля · 19:30",
-        description: "Короткий цифровой брифинг по новым партиям, сезонным изменениям молока и летним планам клуба.",
-        status: "Подтвердите участие",
+        title: "Утро на ферме с детьми",
+        dateLabel: "29 марта · 10:00",
+        description: "Небольшая семейная встреча: кормление животных, экскурсия и свежий завтрак на террасе.",
+        status: "Мест осталось мало",
         tone: "soft",
         sortOrder: 1,
       },
@@ -198,19 +275,46 @@ async function ensureOwnerExperienceSeed(ownerOpenId: string) {
     await db.insert(clubMembers).values([
       {
         ownerOpenId,
-        name: "Владелец фермы",
+        name: "Алия и семья",
         animal: "Марта",
-        sinceLabel: "С клубом с января",
-        badge: "Основатель маршрута",
+        sinceLabel: "с ноября 2025",
+        badge: "семейный круг",
         sortOrder: 0,
       },
       {
         ownerOpenId,
-        name: "Семья Ковалёвых",
-        animal: "Белла",
-        sinceLabel: "С клубом с февраля",
-        badge: "Гостевой стол",
+        name: "Тимур",
+        animal: "Злата",
+        sinceLabel: "с января 2026",
+        badge: "городской гастроном",
         sortOrder: 1,
+      },
+    ]);
+  }
+
+  const existingPresets = await db.select({ id: clubAdminPresets.id }).from(clubAdminPresets).where(eq(clubAdminPresets.ownerOpenId, ownerOpenId)).limit(1);
+  if (!existingPresets.length) {
+    await db.insert(clubAdminPresets).values([
+      {
+        ownerOpenId,
+        tab: "posts",
+        name: "Тёплый анонс дневника",
+        configJson: JSON.stringify({ category: "Дневник фермы", role: "семейная ферма" }),
+        sortOrder: 0,
+      },
+      {
+        ownerOpenId,
+        tab: "events",
+        name: "Семейная встреча",
+        configJson: JSON.stringify({ tone: "warm", status: "Открыта запись" }),
+        sortOrder: 1,
+      },
+      {
+        ownerOpenId,
+        tab: "members",
+        name: "Новый владелец",
+        configJson: JSON.stringify({ badge: "новый круг" }),
+        sortOrder: 2,
       },
     ]);
   }
@@ -219,122 +323,97 @@ async function ensureOwnerExperienceSeed(ownerOpenId: string) {
 }
 
 export async function getDb() {
-  const databaseUrl = ENV.databaseUrl || process.env.DATABASE_URL;
+  if (_db) return _db;
 
-  if (!_db && databaseUrl) {
-    try {
-      _pool = createPool({
-        uri: databaseUrl,
-        connectionLimit: 10,
-        enableKeepAlive: true,
-      });
-      _db = drizzle(_pool);
-    } catch (error) {
-      console.error("[Database] Failed to connect:", error);
-      _db = null;
-      _pool = null;
-    }
+  if (!ENV.databaseUrl) {
+    return null;
   }
 
-  return _db;
+  try {
+    _pool = createPool({
+      uri: ENV.databaseUrl,
+      connectionLimit: 10,
+      namedPlaceholders: true,
+      enableKeepAlive: true,
+      timezone: "Z",
+      ssl: {
+        minVersion: "TLSv1.2",
+        rejectUnauthorized: false,
+      },
+    });
+    _db = drizzle(_pool);
+    return _db;
+  } catch (error) {
+    console.error("[Database] Failed to connect:", error);
+    _db = null;
+    _pool = null;
+    return null;
+  }
 }
 
-export async function upsertUser(user: InsertUser): Promise<void> {
+export async function upsertUser(user: InsertUser) {
+  const db = await getDb();
+  if (!db) {
+    throw new Error("Database not available for user upsert");
+  }
+
   if (!user.openId) {
     throw new Error("User openId is required for upsert");
   }
 
-  const db = await getDb();
-  if (!db) {
-    console.warn("[Database] Cannot upsert user: database not available");
-    return;
-  }
-
   try {
-    const values: InsertUser = {
-      openId: user.openId,
-    };
-    const updateSet: Record<string, unknown> = {};
+    const existing = await db.select().from(users).where(eq(users.openId, user.openId)).limit(1);
 
-    const textFields = ["name", "email", "loginMethod"] as const;
-    type TextField = (typeof textFields)[number];
-
-    const assignNullable = (field: TextField) => {
-      const value = user[field];
-      if (value === undefined) return;
-      const normalized = value ?? null;
-      values[field] = normalized;
-      updateSet[field] = normalized;
-    };
-
-    textFields.forEach(assignNullable);
-
-    if (user.lastSignedIn !== undefined) {
-      values.lastSignedIn = user.lastSignedIn;
-      updateSet.lastSignedIn = user.lastSignedIn;
-    }
-    if (user.role !== undefined) {
-      values.role = user.role;
-      updateSet.role = user.role;
-    } else if (user.openId === ENV.ownerOpenId) {
-      values.role = "admin";
-      updateSet.role = "admin";
+    if (existing.length) {
+      await db.update(users).set({
+        name: user.name,
+        email: user.email,
+        role: user.role,
+      }).where(eq(users.openId, user.openId));
+    } else {
+      await db.insert(users).values(user);
     }
 
-    if (!values.lastSignedIn) {
-      values.lastSignedIn = new Date();
-    }
-
-    if (Object.keys(updateSet).length === 0) {
-      updateSet.lastSignedIn = new Date();
-    }
-
-    await db.insert(users).values(values).onDuplicateKeyUpdate({
-      set: updateSet,
-    });
+    const records = await db.select().from(users).where(eq(users.openId, user.openId)).limit(1);
+    return records[0] ?? null;
   } catch (error) {
     console.error("[Database] Failed to upsert user:", error);
     throw error;
   }
 }
 
+export async function ensureUserRecord(user: InsertUser) {
+  const saved = await upsertUser(user);
+  if (saved) {
+    await ensureOwnerExperienceSeed(saved.openId);
+  }
+  return saved;
+}
+
 export async function getUserByOpenId(openId: string) {
   const db = await getDb();
-  if (!db) {
-    console.warn("[Database] Cannot get user: database not available");
-    return undefined;
+  if (!db) return null;
+
+  const records = await db.select().from(users).where(eq(users.openId, openId)).limit(1);
+  const user = records[0] ?? null;
+  if (user) {
+    await ensureOwnerExperienceSeed(user.openId);
   }
-
-  const result = await db.select().from(users).where(eq(users.openId, openId)).limit(1);
-
-  return result.length > 0 ? result[0] : undefined;
+  return user;
 }
 
 export async function listAnimalPhotos(animalSlug: string, ownerOpenId: string) {
   const db = await getDb();
-  if (!db) {
-    console.warn("[Database] Cannot list animal photos: database not available");
-    return [];
-  }
+  if (!db) return [];
 
   try {
-    const rows = await db
+    const items = await db
       .select()
       .from(animalPhotos)
       .where(and(eq(animalPhotos.animalSlug, animalSlug), eq(animalPhotos.ownerOpenId, ownerOpenId)))
       .orderBy(asc(animalPhotos.sortOrder), desc(animalPhotos.createdAt));
 
-    console.info("[AnimalPhotos] list", {
-      animalSlug,
-      ownerOpenId,
-      ordered: rows.map((row: { id: number; sortOrder: number; isCover: number }) => ({
-        id: row.id,
-        sortOrder: row.sortOrder,
-        isCover: row.isCover,
-      })),
-    });
-
-    return rows;
+    return items;
   } catch (error) {
     console.error("[Database] Failed to list animal photos:", error);
     throw error;
@@ -347,43 +426,31 @@ export async function createAnimalPhoto(input: InsertAnimalPhoto) {
     throw new Error("Database not available for photo creation");
   }
 
-  const currentPhotos = await db
+  const existing = await db
     .select({ sortOrder: animalPhotos.sortOrder })
     .from(animalPhotos)
     .where(and(eq(animalPhotos.animalSlug, input.animalSlug), eq(animalPhotos.ownerOpenId, input.ownerOpenId)))
     .orderBy(desc(animalPhotos.sortOrder))
     .limit(1);
 
-  const nextSortOrder = (currentPhotos[0]?.sortOrder ?? -1) + 1;
+  const nextSortOrder = existing[0]?.sortOrder != null ? Number(existing[0].sortOrder) + 1 : 0;
 
-  const values: InsertAnimalPhoto = {
+  await db.insert(animalPhotos).values({
     ...input,
     sortOrder: input.sortOrder ?? nextSortOrder,
-    isCover: input.isCover ?? 0,
-  };
+  });
 
-  const result = await db.insert(animalPhotos).values(values);
-  const insertMeta = Array.isArray(result) ? result[0] : result;
-  const insertedId = Number((insertMeta as { insertId?: number | string }).insertId);
+  const created = await db
+    .select()
+    .from(animalPhotos)
+    .where(and(eq(animalPhotos.ownerOpenId, input.ownerOpenId), eq(animalPhotos.fileKey, input.fileKey)))
+    .orderBy(desc(animalPhotos.id))
+    .limit(1);
 
-  if (!Number.isFinite(insertedId) || insertedId <= 0) {
+  if (!created[0]) {
     throw new Error("Failed to resolve inserted photo id after upload");
   }
 
-  if (values.isCover) {
-    await db
-      .update(animalPhotos)
-      .set({ isCover: 0 })
-      .where(
-        and(
-          eq(animalPhotos.animalSlug, values.animalSlug),
-          eq(animalPhotos.ownerOpenId, values.ownerOpenId),
-          sql`${animalPhotos.id} <> ${insertedId}`,
-        ),
-      );
-  }
-
-  const created = await db.select().from(animalPhotos).where(eq(animalPhotos.id, insertedId)).limit(1);
   return created[0];
 }
 
@@ -393,37 +460,33 @@ export async function deleteAnimalPhoto(photoId: number, ownerOpenId: string) {
     throw new Error("Database not available for photo deletion");
   }
 
-  const rows = await db
+  const existing = await db
     .select()
     .from(animalPhotos)
     .where(and(eq(animalPhotos.id, photoId), eq(animalPhotos.ownerOpenId, ownerOpenId)))
     .limit(1);
 
-  const existing = rows[0];
-  if (!existing) return null;
+  if (!existing[0]) {
+    return null;
+  }
+
+  const isCover = Boolean(existing[0].isCover);
 
   await db.delete(animalPhotos).where(eq(animalPhotos.id, photoId));
 
-  const remaining = await db
-    .select()
-    .from(animalPhotos)
-    .where(and(eq(animalPhotos.animalSlug, existing.animalSlug), eq(animalPhotos.ownerOpenId, ownerOpenId)))
-    .orderBy(asc(animalPhotos.sortOrder), desc(animalPhotos.createdAt));
+  if (isCover) {
+    const fallback = await db
+      .select()
+      .from(animalPhotos)
+      .where(and(eq(animalPhotos.animalSlug, existing[0].animalSlug), eq(animalPhotos.ownerOpenId, ownerOpenId)))
+      .orderBy(asc(animalPhotos.sortOrder), desc(animalPhotos.createdAt));
 
-  if (existing.isCover && remaining.length) {
-    const nextCoverId = remaining[0]?.id;
-    if (nextCoverId) {
-      await db.update(animalPhotos).set({ isCover: 1 }).where(eq(animalPhotos.id, nextCoverId));
+    if (fallback[0]) {
+      await db.update(animalPhotos).set({ isCover: 1 }).where(eq(animalPhotos.id, fallback[0].id));
     }
   }
 
-  await Promise.all(
-    remaining.map((photo: { id: number }, index: number) =>
-      db.update(animalPhotos).set({ sortOrder: index }).where(eq(animalPhotos.id, photo.id)),
-    ),
-  );
-
-  return existing;
+  return existing[0];
 }
 
 export async function setAnimalPhotoCover(photoId: number, ownerOpenId: string) {
@@ -432,19 +495,17 @@ export async function setAnimalPhotoCover(photoId: number, ownerOpenId: string) 
     throw new Error("Database not available for setting photo cover");
   }
 
-  const rows = await db
+  const target = await db
     .select()
     .from(animalPhotos)
     .where(and(eq(animalPhotos.id, photoId), eq(animalPhotos.ownerOpenId, ownerOpenId)))
     .limit(1);
 
-  const target = rows[0];
-  if (!target) return null;
+  if (!target[0]) {
+    return null;
+  }
 
-  await db
-    .update(animalPhotos)
-    .set({ isCover: 0 })
-    .where(and(eq(animalPhotos.animalSlug, target.animalSlug), eq(animalPhotos.ownerOpenId, ownerOpenId)));
+  await db.update(animalPhotos).set({ isCover: 0 }).where(and(eq(animalPhotos.animalSlug, target[0].animalSlug), eq(animalPhotos.ownerOpenId, ownerOpenId)));
 
   await db.update(animalPhotos).set({ isCover: 1 }).where(eq(animalPhotos.id, photoId));
 
@@ -464,34 +525,23 @@ export async function reorderAnimalPhotos(photoIds: number[], ownerOpenId: strin
     .where(and(eq(animalPhotos.animalSlug, animalSlug), eq(animalPhotos.ownerOpenId, ownerOpenId)))
     .orderBy(asc(animalPhotos.sortOrder), desc(animalPhotos.createdAt));
 
-  console.info("[AnimalPhotos] reorder:before", {
-    animalSlug,
-    ownerOpenId,
-    requestedPhotoIds: photoIds,
-    existing: existing.map((photo: { id: number; sortOrder: number; isCover: number }) => ({
-      id: photo.id,
-      sortOrder: photo.sortOrder,
-      isCover: photo.isCover,
-    })),
-  });
-
-  const existingById = new Map(existing.map((photo: { id: number }) => [photo.id, photo] as const));
-
-  if (!photoIds.length) {
-    throw new Error("Photo order payload is empty");
+  if (!existing.length) {
+    return [];
   }
 
-  const hasUnknownIds = photoIds.some((photoId) => !existingById.has(photoId));
-  if (hasUnknownIds) {
+  const existingIds = new Set(existing.map((item: any) => item.id));
+  if (photoIds.some((id) => !existingIds.has(id))) {
     throw new Error("Photo order payload contains unknown gallery items");
   }
 
-  const untouchedPhotos = existing.filter((photo: { id: number }) => !photoIds.includes(photo.id));
-  const finalOrder = [...photoIds.map((photoId) => existingById.get(photoId)!), ...untouchedPhotos];
+  const orderedIds = [...photoIds];
+  const missingIds = existing.map((item: any) => item.id).filter((id: number) => !orderedIds.includes(id));
+  orderedIds.push(...missingIds);
 
-  await Promise.all(
-    finalOrder.map((photo: { id: number }, index: number) => db.update(animalPhotos).set({ sortOrder: index }).where(eq(animalPhotos.id, photo.id))),
-  );
+  for (let index = 0; index < orderedIds.length; index += 1) {
+    const id = orderedIds[index];
+    await db.update(animalPhotos).set({ sortOrder: index }).where(eq(animalPhotos.id, id));
+  }
 
   const updated = await db
     .select()
@@ -499,35 +549,21 @@ export async function reorderAnimalPhotos(photoIds: number[], ownerOpenId: strin
     .where(and(eq(animalPhotos.animalSlug, animalSlug), eq(animalPhotos.ownerOpenId, ownerOpenId)))
     .orderBy(asc(animalPhotos.sortOrder), desc(animalPhotos.createdAt));
 
-  console.info("[AnimalPhotos] reorder:after", {
-    animalSlug,
-    ownerOpenId,
-    ordered: updated.map((photo: { id: number; sortOrder: number; isCover: number }) => ({
-      id: photo.id,
-      sortOrder: photo.sortOrder,
-      isCover: photo.isCover,
-    })),
-  });
-
   return updated;
 }
 
 export async function getProductTrackerData(ownerOpenId: string, animalSlug: string) {
   const db = await getDb();
   if (!db) {
-    console.warn("[Database] Cannot get product tracker data: database not available");
     return {
-      heroBatch: null,
-      batches: [],
-      composition: [],
+      productBatches: [],
+      compositionSnapshots: [],
       monthlyMetrics: [],
       deliveries: [],
     };
   }
 
-  await ensureOwnerExperienceSeed(ownerOpenId);
-
-  const [batches, composition, monthlyMetrics, deliveries] = await Promise.all([
+  const [productBatchesRows, compositionSnapshotsRows, monthlyMetricsRows, deliveriesRows] = await Promise.all([
     db
       .select()
       .from(productBatches)
@@ -551,63 +587,77 @@ export async function getProductTrackerData(ownerOpenId: string, animalSlug: str
   ]);
 
   return {
-    heroBatch: batches[0] ?? null,
-    batches,
-    composition,
-    monthlyMetrics,
-    deliveries,
+    productBatches: productBatchesRows,
+    compositionSnapshots: compositionSnapshotsRows,
+    monthlyMetrics: monthlyMetricsRows,
+    deliveries: deliveriesRows,
   };
 }
 
 export async function getClubFeedData(ownerOpenId: string) {
   const db = await getDb();
   if (!db) {
-    console.warn("[Database] Cannot get club feed data: database not available");
     return {
       posts: [],
       events: [],
       members: [],
+      presets: [],
     };
   }
 
-  await ensureOwnerExperienceSeed(ownerOpenId);
-
-  const [posts, events, members] = await Promise.all([
-    db.select().from(clubPosts).where(eq(clubPosts.ownerOpenId, ownerOpenId)).orderBy(desc(clubPosts.pinned), asc(clubPosts.sortOrder), desc(clubPosts.createdAt)),
+  const [posts, events, members, presets] = await Promise.all([
+    db.select().from(clubPosts).where(eq(clubPosts.ownerOpenId, ownerOpenId)).orderBy(asc(clubPosts.sortOrder), desc(clubPosts.createdAt)),
     db.select().from(clubEvents).where(eq(clubEvents.ownerOpenId, ownerOpenId)).orderBy(asc(clubEvents.sortOrder), desc(clubEvents.createdAt)),
     db.select().from(clubMembers).where(eq(clubMembers.ownerOpenId, ownerOpenId)).orderBy(asc(clubMembers.sortOrder), desc(clubMembers.createdAt)),
+    db.select().from(clubAdminPresets).where(eq(clubAdminPresets.ownerOpenId, ownerOpenId)).orderBy(asc(clubAdminPresets.sortOrder), asc(clubAdminPresets.id)),
   ]);
 
   return {
     posts,
     events,
     members,
-  };
-}
-
-export async function listClubAdminData(ownerOpenId: string) {
-  const feed = await getClubFeedData(ownerOpenId);
-  const presets = await listClubAdminPresets(ownerOpenId);
-  return {
-    ...feed,
     presets,
   };
 }
 
-export async function listClubAdminPresets(ownerOpenId: string) {
+export async function listClubAdminData(ownerOpenId: string) {
   const db = await getDb();
   if (!db) {
-    console.warn("[Database] Cannot get club admin presets: database not available");
-    return [];
+    return {
+      posts: [],
+      events: [],
+      members: [],
+      presets: [],
+      summary: {
+        totalPosts: 0,
+        pinnedPosts: 0,
+        totalEvents: 0,
+        openEvents: 0,
+        totalMembers: 0,
+      },
+    };
   }
 
-  const presets = await db
-    .select()
-    .from(clubAdminPresets)
-    .where(eq(clubAdminPresets.ownerOpenId, ownerOpenId))
-    .orderBy(asc(clubAdminPresets.tab), asc(clubAdminPresets.sortOrder), asc(clubAdminPresets.name));
+  const [posts, events, members, presets] = await Promise.all([
+    db.select().from(clubPosts).where(eq(clubPosts.ownerOpenId, ownerOpenId)).orderBy(asc(clubPosts.sortOrder), desc(clubPosts.createdAt)),
+    db.select().from(clubEvents).where(eq(clubEvents.ownerOpenId, ownerOpenId)).orderBy(asc(clubEvents.sortOrder), desc(clubEvents.createdAt)),
+    db.select().from(clubMembers).where(eq(clubMembers.ownerOpenId, ownerOpenId)).orderBy(asc(clubMembers.sortOrder), desc(clubMembers.createdAt)),
+    db.select().from(clubAdminPresets).where(eq(clubAdminPresets.ownerOpenId, ownerOpenId)).orderBy(asc(clubAdminPresets.sortOrder), asc(clubAdminPresets.id)),
+  ]);
 
-  return presets;
+  return {
+    posts,
+    events,
+    members,
+    presets,
+    summary: {
+      totalPosts: posts.length,
+      pinnedPosts: posts.filter((post: any) => Boolean(post.pinned)).length,
+      totalEvents: events.length,
+      openEvents: events.filter((event: any) => ["Открыта запись", "Мест осталось мало"].includes(event.status)).length,
+      totalMembers: members.length,
+    },
+  };
 }
 
 export async function createClubAdminPreset(input: InsertClubAdminPreset) {
@@ -616,10 +666,8 @@ export async function createClubAdminPreset(input: InsertClubAdminPreset) {
     throw new Error("Database not available for creating club admin preset");
   }
 
-  const result = await db.insert(clubAdminPresets).values(input);
-  const insertMeta = Array.isArray(result) ? result[0] : result;
-  const insertedId = Number((insertMeta as { insertId?: number | string }).insertId);
-  const created = await db.select().from(clubAdminPresets).where(eq(clubAdminPresets.id, insertedId)).limit(1);
+  await db.insert(clubAdminPresets).values(input);
+  const created = await db.select().from(clubAdminPresets).where(and(eq(clubAdminPresets.ownerOpenId, input.ownerOpenId), eq(clubAdminPresets.name, input.name))).orderBy(desc(clubAdminPresets.id)).limit(1);
   return created[0] ?? null;
 }
 
@@ -629,15 +677,12 @@ export async function updateClubAdminPreset(input: InsertClubAdminPreset & { id:
     throw new Error("Database not available for updating club admin preset");
   }
 
-  await db
-    .update(clubAdminPresets)
-    .set({
-      tab: input.tab,
-      name: input.name,
-      configJson: input.configJson,
-      sortOrder: input.sortOrder,
-    })
-    .where(and(eq(clubAdminPresets.id, input.id), eq(clubAdminPresets.ownerOpenId, input.ownerOpenId)));
+  await db.update(clubAdminPresets).set({
+    tab: input.tab,
+    name: input.name,
+    configJson: input.configJson,
+    sortOrder: input.sortOrder,
+  }).where(and(eq(clubAdminPresets.id, input.id), eq(clubAdminPresets.ownerOpenId, input.ownerOpenId)));
 
   const updated = await db.select().from(clubAdminPresets).where(eq(clubAdminPresets.id, input.id)).limit(1);
   return updated[0] ?? null;
@@ -649,13 +694,9 @@ export async function deleteClubAdminPreset(id: number, ownerOpenId: string) {
     throw new Error("Database not available for deleting club admin preset");
   }
 
-  const existing = await db
-    .select()
-    .from(clubAdminPresets)
-    .where(and(eq(clubAdminPresets.id, id), eq(clubAdminPresets.ownerOpenId, ownerOpenId)))
-    .limit(1);
-
+  const existing = await db.select().from(clubAdminPresets).where(and(eq(clubAdminPresets.id, id), eq(clubAdminPresets.ownerOpenId, ownerOpenId))).limit(1);
   if (!existing[0]) return null;
+
   await db.delete(clubAdminPresets).where(and(eq(clubAdminPresets.id, id), eq(clubAdminPresets.ownerOpenId, ownerOpenId)));
   return existing[0];
 }
@@ -666,10 +707,8 @@ export async function createClubPost(input: InsertClubPost) {
     throw new Error("Database not available for creating club post");
   }
 
-  const result = await db.insert(clubPosts).values(input);
-  const insertMeta = Array.isArray(result) ? result[0] : result;
-  const insertedId = Number((insertMeta as { insertId?: number | string }).insertId);
-  const created = await db.select().from(clubPosts).where(eq(clubPosts.id, insertedId)).limit(1);
+  await db.insert(clubPosts).values(input);
+  const created = await db.select().from(clubPosts).where(and(eq(clubPosts.ownerOpenId, input.ownerOpenId), eq(clubPosts.title, input.title))).orderBy(desc(clubPosts.id)).limit(1);
   return created[0] ?? null;
 }
 
@@ -679,24 +718,21 @@ export async function updateClubPost(input: InsertClubPost & { id: number }) {
     throw new Error("Database not available for updating club post");
   }
 
-  await db
-    .update(clubPosts)
-    .set({
-      category: input.category,
-      author: input.author,
-      avatar: input.avatar,
-      role: input.role,
-      timeLabel: input.timeLabel,
-      title: input.title,
-      text: input.text,
-      imageUrl: input.imageUrl,
-      likes: input.likes,
-      comments: input.comments,
-      tagsCsv: input.tagsCsv,
-      pinned: input.pinned,
-      sortOrder: input.sortOrder,
-    })
-    .where(and(eq(clubPosts.id, input.id), eq(clubPosts.ownerOpenId, input.ownerOpenId)));
+  await db.update(clubPosts).set({
+    category: input.category,
+    author: input.author,
+    avatar: input.avatar,
+    role: input.role,
+    timeLabel: input.timeLabel,
+    title: input.title,
+    text: input.text,
+    imageUrl: input.imageUrl,
+    likes: input.likes,
+    comments: input.comments,
+    tagsCsv: input.tagsCsv,
+    pinned: input.pinned,
+    sortOrder: input.sortOrder,
+  }).where(and(eq(clubPosts.id, input.id), eq(clubPosts.ownerOpenId, input.ownerOpenId)));
 
   const updated = await db.select().from(clubPosts).where(eq(clubPosts.id, input.id)).limit(1);
   return updated[0] ?? null;
@@ -720,10 +756,8 @@ export async function createClubEvent(input: InsertClubEvent) {
     throw new Error("Database not available for creating club event");
   }
 
-  const result = await db.insert(clubEvents).values(input);
-  const insertMeta = Array.isArray(result) ? result[0] : result;
-  const insertedId = Number((insertMeta as { insertId?: number | string }).insertId);
-  const created = await db.select().from(clubEvents).where(eq(clubEvents.id, insertedId)).limit(1);
+  await db.insert(clubEvents).values(input);
+  const created = await db.select().from(clubEvents).where(and(eq(clubEvents.ownerOpenId, input.ownerOpenId), eq(clubEvents.title, input.title))).orderBy(desc(clubEvents.id)).limit(1);
   return created[0] ?? null;
 }
 
@@ -733,17 +767,14 @@ export async function updateClubEvent(input: InsertClubEvent & { id: number }) {
     throw new Error("Database not available for updating club event");
   }
 
-  await db
-    .update(clubEvents)
-    .set({
-      title: input.title,
-      dateLabel: input.dateLabel,
-      description: input.description,
-      status: input.status,
-      tone: input.tone,
-      sortOrder: input.sortOrder,
-    })
-    .where(and(eq(clubEvents.id, input.id), eq(clubEvents.ownerOpenId, input.ownerOpenId)));
+  await db.update(clubEvents).set({
+    title: input.title,
+    dateLabel: input.dateLabel,
+    description: input.description,
+    status: input.status,
+    tone: input.tone,
+    sortOrder: input.sortOrder,
+  }).where(and(eq(clubEvents.id, input.id), eq(clubEvents.ownerOpenId, input.ownerOpenId)));
 
   const updated = await db.select().from(clubEvents).where(eq(clubEvents.id, input.id)).limit(1);
   return updated[0] ?? null;
@@ -767,10 +798,8 @@ export async function createClubMember(input: InsertClubMember) {
     throw new Error("Database not available for creating club member");
   }
 
-  const result = await db.insert(clubMembers).values(input);
-  const insertMeta = Array.isArray(result) ? result[0] : result;
-  const insertedId = Number((insertMeta as { insertId?: number | string }).insertId);
-  const created = await db.select().from(clubMembers).where(eq(clubMembers.id, insertedId)).limit(1);
+  await db.insert(clubMembers).values(input);
+  const created = await db.select().from(clubMembers).where(and(eq(clubMembers.ownerOpenId, input.ownerOpenId), eq(clubMembers.name, input.name))).orderBy(desc(clubMembers.id)).limit(1);
   return created[0] ?? null;
 }
 
@@ -780,16 +809,13 @@ export async function updateClubMember(input: InsertClubMember & { id: number })
     throw new Error("Database not available for updating club member");
   }
 
-  await db
-    .update(clubMembers)
-    .set({
-      name: input.name,
-      animal: input.animal,
-      sinceLabel: input.sinceLabel,
-      badge: input.badge,
-      sortOrder: input.sortOrder,
-    })
-    .where(and(eq(clubMembers.id, input.id), eq(clubMembers.ownerOpenId, input.ownerOpenId)));
+  await db.update(clubMembers).set({
+    name: input.name,
+    animal: input.animal,
+    sinceLabel: input.sinceLabel,
+    badge: input.badge,
+    sortOrder: input.sortOrder,
+  }).where(and(eq(clubMembers.id, input.id), eq(clubMembers.ownerOpenId, input.ownerOpenId)));
 
   const updated = await db.select().from(clubMembers).where(eq(clubMembers.id, input.id)).limit(1);
   return updated[0] ?? null;
@@ -813,10 +839,8 @@ export async function createPartnerLead(input: InsertPartnerLead) {
     throw new Error("Database not available for creating partner lead");
   }
 
-  const result = await db.insert(partnerLeads).values(input);
-  const insertMeta = Array.isArray(result) ? result[0] : result;
-  const insertedId = Number((insertMeta as { insertId?: number | string }).insertId);
-  const created = await db.select().from(partnerLeads).where(eq(partnerLeads.id, insertedId)).limit(1);
+  await db.insert(partnerLeads).values(input);
+  const created = await db.select().from(partnerLeads).where(and(eq(partnerLeads.ownerOpenId, input.ownerOpenId), eq(partnerLeads.email, input.email))).orderBy(desc(partnerLeads.id)).limit(1);
   return created[0] ?? null;
 }
 
@@ -826,51 +850,51 @@ export async function getPartnerLeadById(id: number, ownerOpenId: string) {
     throw new Error("Database not available for reading partner lead");
   }
 
-  const rows = await db
+  const records = await db
     .select()
     .from(partnerLeads)
     .where(and(eq(partnerLeads.id, id), eq(partnerLeads.ownerOpenId, ownerOpenId)))
     .limit(1);
 
-  return rows[0] ?? null;
+  return records[0] ?? null;
 }
 
 export async function updatePartnerLeadSyncResult(input: {
   id: number;
   ownerOpenId: string;
   syncStatus: "pending" | "success" | "failed" | "retried";
-  lastSyncError?: string | null;
-  bitrixContactId?: string | null;
-  bitrixCompanyId?: string | null;
-  bitrixDealId?: string | null;
-  bitrixLeadId?: string | null;
-  bitrixStageId?: string | null;
-  assignedManagerId?: string | null;
-  assignedManagerName?: string | null;
-  nextActivityAt?: Date | null;
+  lastSyncError: string | null;
+  bitrixContactId: string | null;
+  bitrixCompanyId: string | null;
+  bitrixDealId: string | null;
+  bitrixLeadId: string | null;
+  bitrixStageId: string | null;
+  assignedManagerId: string | null;
+  assignedManagerName: string | null;
+  nextActivityAt: Date | null;
 }) {
   const db = await getDb();
   if (!db) {
     throw new Error("Database not available for updating partner lead sync result");
   }
 
-  await db
-    .update(partnerLeads)
-    .set({
-      syncStatus: input.syncStatus,
-      syncAttemptCount: sql`${partnerLeads.syncAttemptCount} + 1`,
-      lastSyncAt: new Date(),
-      lastSyncError: input.lastSyncError ?? null,
-      bitrixContactId: input.bitrixContactId ?? null,
-      bitrixCompanyId: input.bitrixCompanyId ?? null,
-      bitrixDealId: input.bitrixDealId ?? null,
-      bitrixLeadId: input.bitrixLeadId ?? null,
-      bitrixStageId: input.bitrixStageId ?? null,
-      assignedManagerId: input.assignedManagerId ?? null,
-      assignedManagerName: input.assignedManagerName ?? null,
-      nextActivityAt: input.nextActivityAt ?? null,
-    })
-    .where(and(eq(partnerLeads.id, input.id), eq(partnerLeads.ownerOpenId, input.ownerOpenId)));
+  const current = await getPartnerLeadById(input.id, input.ownerOpenId);
+  if (!current) return null;
+
+  await db.update(partnerLeads).set({
+    syncStatus: input.syncStatus,
+    syncAttemptCount: Number(current.syncAttemptCount ?? 0) + 1,
+    lastSyncAt: new Date(),
+    lastSyncError: input.lastSyncError,
+    bitrixContactId: input.bitrixContactId,
+    bitrixCompanyId: input.bitrixCompanyId,
+    bitrixDealId: input.bitrixDealId,
+    bitrixLeadId: input.bitrixLeadId,
+    bitrixStageId: input.bitrixStageId,
+    assignedManagerId: input.assignedManagerId,
+    assignedManagerName: input.assignedManagerName,
+    nextActivityAt: input.nextActivityAt,
+  }).where(and(eq(partnerLeads.id, input.id), eq(partnerLeads.ownerOpenId, input.ownerOpenId)));
 
   return getPartnerLeadById(input.id, input.ownerOpenId);
 }
@@ -881,10 +905,8 @@ export async function createIntegrationAudit(input: InsertIntegrationAudit) {
     throw new Error("Database not available for creating integration audit");
   }
 
-  const result = await db.insert(integrationAudits).values(input);
-  const insertMeta = Array.isArray(result) ? result[0] : result;
-  const insertedId = Number((insertMeta as { insertId?: number | string }).insertId);
-  const created = await db.select().from(integrationAudits).where(eq(integrationAudits.id, insertedId)).limit(1);
+  await db.insert(integrationAudits).values(input);
+  const created = await db.select().from(integrationAudits).where(and(eq(integrationAudits.ownerOpenId, input.ownerOpenId), eq(integrationAudits.entityType, input.entityType), eq(integrationAudits.entityId, input.entityId))).orderBy(desc(integrationAudits.id)).limit(1);
   return created[0] ?? null;
 }
 
@@ -892,24 +914,21 @@ export async function updateIntegrationAuditResult(input: {
   id: number;
   ownerOpenId: string;
   status: "pending" | "success" | "failed";
-  responsePayload?: string | null;
-  errorMessage?: string | null;
-  externalId?: string | null;
+  responsePayload: string | null;
+  errorMessage: string | null;
+  externalId: string | null;
 }) {
   const db = await getDb();
   if (!db) {
     throw new Error("Database not available for updating integration audit");
   }
 
-  await db
-    .update(integrationAudits)
-    .set({
-      status: input.status,
-      responsePayload: input.responsePayload ?? null,
-      errorMessage: input.errorMessage ?? null,
-      externalId: input.externalId ?? null,
-    })
-    .where(and(eq(integrationAudits.id, input.id), eq(integrationAudits.ownerOpenId, input.ownerOpenId)));
+  await db.update(integrationAudits).set({
+    status: input.status,
+    responsePayload: input.responsePayload,
+    errorMessage: input.errorMessage,
+    externalId: input.externalId,
+  }).where(and(eq(integrationAudits.id, input.id), eq(integrationAudits.ownerOpenId, input.ownerOpenId)));
 
   const updated = await db.select().from(integrationAudits).where(eq(integrationAudits.id, input.id)).limit(1);
   return updated[0] ?? null;
@@ -921,17 +940,34 @@ export async function getIntegrationAuditById(id: number, ownerOpenId: string) {
     throw new Error("Database not available for reading integration audit");
   }
 
-  const rows = await db
+  const records = await db
     .select()
     .from(integrationAudits)
     .where(and(eq(integrationAudits.id, id), eq(integrationAudits.ownerOpenId, ownerOpenId)))
     .limit(1);
 
-  return rows[0] ?? null;
+  return records[0] ?? null;
 }
 
-export async function listBitrixAdminData(ownerOpenId: string) {
+export async function listBitrixAdminData(
+  ownerOpenId: string,
+  input?: {
+    page?: number;
+    pageSize?: number;
+    query?: string;
+    syncStatus?: "all" | "pending" | "success" | "failed" | "retried";
+    onlyFailed?: boolean;
+    source?: "all" | "website" | "club" | "referral" | "manual";
+  },
+) {
   const db = await getDb();
+  const page = Math.max(1, Number(input?.page ?? 1));
+  const pageSize = Math.min(50, Math.max(5, Number(input?.pageSize ?? 10)));
+  const query = (input?.query ?? "").trim();
+  const syncStatus = input?.syncStatus ?? "all";
+  const onlyFailed = Boolean(input?.onlyFailed);
+  const source = input?.source ?? "all";
+
   if (!db) {
     return {
       leads: [],
@@ -945,27 +981,89 @@ export async function listBitrixAdminData(ownerOpenId: string) {
         totalAudits: 0,
         failedAudits: 0,
       },
+      pagination: {
+        page,
+        pageSize,
+        totalFilteredLeads: 0,
+        pageCount: 0,
+      },
+      retryMonitoring: {
+        retryLeadCount: 0,
+        failedWithoutRetryCount: 0,
+        repeatedAttemptLeadCount: 0,
+        latestFailedLeadId: null,
+      },
     };
   }
 
-  const [leads, audits] = await Promise.all([
+  const filters = [eq(partnerLeads.ownerOpenId, ownerOpenId)];
+
+  if (syncStatus !== "all") {
+    filters.push(eq(partnerLeads.syncStatus, syncStatus));
+  }
+
+  if (onlyFailed) {
+    filters.push(eq(partnerLeads.syncStatus, "failed"));
+  }
+
+  if (source !== "all") {
+    filters.push(eq(partnerLeads.source, source));
+  }
+
+  if (query) {
+    const queryPattern = `%${query}%`;
+    filters.push(
+      or(
+        like(partnerLeads.fullName, queryPattern),
+        like(partnerLeads.companyName, queryPattern),
+        like(partnerLeads.email, queryPattern),
+        like(partnerLeads.phone, queryPattern),
+        like(partnerLeads.telegram, queryPattern),
+      )!,
+    );
+  }
+
+  const whereClause = and(...filters);
+
+  const [allLeads, filteredLeads, audits] = await Promise.all([
     db.select().from(partnerLeads).where(eq(partnerLeads.ownerOpenId, ownerOpenId)).orderBy(desc(partnerLeads.createdAt), desc(partnerLeads.id)),
+    db.select().from(partnerLeads).where(whereClause).orderBy(desc(partnerLeads.createdAt), desc(partnerLeads.id)),
     db.select().from(integrationAudits).where(eq(integrationAudits.ownerOpenId, ownerOpenId)).orderBy(desc(integrationAudits.createdAt), desc(integrationAudits.id)).limit(100),
   ]);
 
+  const totalFilteredLeads = filteredLeads.length;
+  const pageCount = totalFilteredLeads === 0 ? 0 : Math.ceil(totalFilteredLeads / pageSize);
+  const safePage = pageCount === 0 ? 1 : Math.min(page, pageCount);
+  const startIndex = (safePage - 1) * pageSize;
+  const leads = filteredLeads.slice(startIndex, startIndex + pageSize);
+
   const summary = {
-    totalLeads: leads.length,
-    pendingLeads: leads.filter((lead: any) => lead.syncStatus === "pending").length,
-    successfulLeads: leads.filter((lead: any) => lead.syncStatus === "success").length,
-    failedLeads: leads.filter((lead: any) => lead.syncStatus === "failed").length,
-    retriedLeads: leads.filter((lead: any) => lead.syncStatus === "retried").length,
+    totalLeads: allLeads.length,
+    pendingLeads: allLeads.filter((lead: any) => lead.syncStatus === "pending").length,
+    successfulLeads: allLeads.filter((lead: any) => lead.syncStatus === "success").length,
+    failedLeads: allLeads.filter((lead: any) => lead.syncStatus === "failed").length,
+    retriedLeads: allLeads.filter((lead: any) => lead.syncStatus === "retried").length,
     totalAudits: audits.length,
     failedAudits: audits.filter((audit: any) => audit.status === "failed").length,
+  };
+
+  const retryMonitoring = {
+    retryLeadCount: allLeads.filter((lead: any) => lead.syncStatus === "retried").length,
+    failedWithoutRetryCount: allLeads.filter((lead: any) => lead.syncStatus === "failed" && Number(lead.syncAttemptCount ?? 0) <= 1).length,
+    repeatedAttemptLeadCount: allLeads.filter((lead: any) => Number(lead.syncAttemptCount ?? 0) > 1).length,
+    latestFailedLeadId: allLeads.find((lead: any) => lead.syncStatus === "failed")?.id ?? null,
   };
 
   return {
     leads,
     audits,
     summary,
+    pagination: {
+      page: safePage,
+      pageSize,
+      totalFilteredLeads,
+      pageCount,
+    },
+    retryMonitoring,
   };
 }

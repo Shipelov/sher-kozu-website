@@ -225,3 +225,8 @@
 - [x] Добавить фильтры и поиск по статусу синхронизации, ошибкам и источнику заявки во вкладке Bitrix24
 - [x] Обновить и прогнать vitest-покрытие для Bitrix24 detail-view и расширенного CRM-monitoring flow
 - [ ] Проверить статус проекта и сохранить checkpoint после третьей волны Bitrix24 pilot
+- [x] Добавить server-side фильтрацию лидов Bitrix24 по статусу, ошибкам и поисковому запросу
+- [x] Реализовать пагинацию и размер страницы для списка лидов Bitrix24 в AdminClub
+- [x] Расширить detail-view лида историей retry/sync attempts и более глубоким audit monitoring
+- [x] Обновить и прогнать vitest-покрытие для server-side Bitrix24 filtering, pagination и retry-monitoring
+- [ ] Проверить статус проекта и сохранить checkpoint после четвёртой волны Bitrix24 pilot

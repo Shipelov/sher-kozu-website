@@ -162,6 +162,15 @@ const retryPartnerLeadInput = z.object({
   leadId: z.number().int().positive(),
 });
 
+const bitrixAdminDashboardInput = z.object({
+  page: z.number().int().min(1).default(1),
+  pageSize: z.number().int().min(5).max(50).default(10),
+  query: z.string().max(200).default(""),
+  syncStatus: z.enum(["all", "pending", "success", "failed", "retried"]).default("all"),
+  onlyFailed: z.boolean().default(false),
+  source: z.enum(["all", "website", "club", "referral", "manual"]).default("all"),
+});
+
 function sanitizeFileName(fileName: string) {
   return fileName.toLowerCase().replace(/[^a-z0-9.-]+/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "") || "photo";
 }
@@ -219,14 +228,14 @@ async function runBitrixLeadSync(ownerOpenId: string, leadId: number, markAsRetr
       ownerOpenId,
       syncStatus: markAsRetried ? "retried" : "success",
       lastSyncError: null,
-      bitrixContactId: syncResult.contactId,
-      bitrixCompanyId: syncResult.companyId,
-      bitrixDealId: syncResult.dealId,
-      bitrixLeadId: syncResult.leadId,
-      bitrixStageId: syncResult.stageId,
-      assignedManagerId: syncResult.assignedManagerId,
-      assignedManagerName: syncResult.assignedManagerName,
-      nextActivityAt: syncResult.nextActivityAt,
+      bitrixContactId: syncResult.contactId ?? null,
+      bitrixCompanyId: syncResult.companyId ?? null,
+      bitrixDealId: syncResult.dealId ?? null,
+      bitrixLeadId: syncResult.leadId ?? null,
+      bitrixStageId: syncResult.stageId ?? null,
+      assignedManagerId: syncResult.assignedManagerId ?? null,
+      assignedManagerName: syncResult.assignedManagerName ?? null,
+      nextActivityAt: syncResult.nextActivityAt ?? null,
     });
 
     if (audit) {
@@ -440,8 +449,8 @@ export const appRouter = router({
         errorMessage: syncOutcome.errorMessage ?? null,
       } as const;
     }),
-    adminDashboard: adminProcedure.query(async ({ ctx }) => {
-      return listBitrixAdminData(ctx.user.openId);
+    adminDashboard: adminProcedure.input(bitrixAdminDashboardInput).query(async ({ ctx, input }) => {
+      return listBitrixAdminData(ctx.user.openId, input);
     }),
     retryLeadSync: adminProcedure.input(retryPartnerLeadInput).mutation(async ({ ctx, input }) => {
       const outcome = await runBitrixLeadSync(ctx.user.openId, input.leadId, true);

@@ -566,7 +566,23 @@ export default function AdminClub() {
     enabled: Boolean(user?.role === "admin"),
   });
 
-  const bitrixAdminQuery = trpc.bitrix24.adminDashboard.useQuery(undefined, {
+  const [bitrixQuery, setBitrixQuery] = useState<{
+    page: number;
+    pageSize: number;
+    query: string;
+    syncStatus: "all" | "pending" | "success" | "failed" | "retried";
+    onlyFailed: boolean;
+    source: "all" | "website" | "club" | "referral" | "manual";
+  }>({
+    page: 1,
+    pageSize: 10,
+    query: "",
+    syncStatus: "all",
+    onlyFailed: false,
+    source: "all",
+  });
+
+  const bitrixAdminQuery = trpc.bitrix24.adminDashboard.useQuery(bitrixQuery, {
     enabled: Boolean(user?.role === "admin"),
   });
 
@@ -1106,7 +1122,7 @@ export default function AdminClub() {
   const bitrixSummary = bitrixAdminQuery.data?.summary;
   const bitrixLeads = bitrixAdminQuery.data?.leads ?? [];
   const bitrixAudits = bitrixAdminQuery.data?.audits ?? [];
-  const [bitrixStatusFilter, setBitrixStatusFilter] = useState<"all" | "pending" | "success" | "failed" | "retried">("all");
+  const bitrixPagination = bitrixAdminQuery.data?.pagination;
   const [bitrixErrorFilter, setBitrixErrorFilter] = useState<"all" | "with_error" | "without_error">("all");
   const [selectedBitrixLeadId, setSelectedBitrixLeadId] = useState<number | null>(null);
 
@@ -1158,24 +1174,21 @@ export default function AdminClub() {
     pagination.members.pageSize,
   ]);
 
-  const filteredBitrixLeads = useMemo(() => {
+  const visibleBitrixLeads = useMemo(() => {
     return bitrixLeads.filter((lead: any) => {
-      const matchesStatus = bitrixStatusFilter === "all" ? true : lead.syncStatus === bitrixStatusFilter;
       const hasError = Boolean(lead.lastSyncError);
-      const matchesError = bitrixErrorFilter === "all"
+      return bitrixErrorFilter === "all"
         ? true
         : bitrixErrorFilter === "with_error"
           ? hasError
           : !hasError;
-
-      return matchesStatus && matchesError;
     });
-  }, [bitrixErrorFilter, bitrixLeads, bitrixStatusFilter]);
+  }, [bitrixErrorFilter, bitrixLeads]);
 
   const selectedBitrixLead = useMemo(() => {
-    if (!filteredBitrixLeads.length) return null;
-    return filteredBitrixLeads.find((lead: any) => lead.id === selectedBitrixLeadId) ?? filteredBitrixLeads[0] ?? null;
-  }, [filteredBitrixLeads, selectedBitrixLeadId]);
+    if (!visibleBitrixLeads.length) return null;
+    return visibleBitrixLeads.find((lead: any) => lead.id === selectedBitrixLeadId) ?? visibleBitrixLeads[0] ?? null;
+  }, [visibleBitrixLeads, selectedBitrixLeadId]);
 
   const selectedBitrixLeadAudits = useMemo(() => {
     if (!selectedBitrixLead) return [];
@@ -2453,11 +2466,19 @@ export default function AdminClub() {
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="grid gap-3 md:grid-cols-2">
+                  <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+                    <Field label="Поиск по заявке">
+                      <input
+                        value={bitrixQuery.query}
+                        onChange={(event) => setBitrixQuery((current) => ({ ...current, page: 1, query: event.target.value }))}
+                        placeholder="Компания, контакт, email"
+                        className="h-11 w-full rounded-xl border border-stone-200 bg-white px-3 text-sm text-stone-700 outline-none transition focus:border-stone-400 focus:ring-2 focus:ring-stone-200"
+                      />
+                    </Field>
                     <Field label="Sync status">
                       <select
-                        value={bitrixStatusFilter}
-                        onChange={(event) => setBitrixStatusFilter(event.target.value as "all" | "pending" | "success" | "failed" | "retried")}
+                        value={bitrixQuery.syncStatus}
+                        onChange={(event) => setBitrixQuery((current) => ({ ...current, page: 1, syncStatus: event.target.value as "all" | "pending" | "success" | "failed" | "retried" }))}
                         className="h-11 w-full rounded-xl border border-stone-200 bg-white px-3 text-sm text-stone-700 outline-none transition focus:border-stone-400 focus:ring-2 focus:ring-stone-200"
                       >
                         <option value="all">Все статусы</option>
@@ -2467,10 +2488,27 @@ export default function AdminClub() {
                         <option value="retried">retried</option>
                       </select>
                     </Field>
+                    <Field label="Источник">
+                      <select
+                        value={bitrixQuery.source}
+                        onChange={(event) => setBitrixQuery((current) => ({ ...current, page: 1, source: event.target.value as "all" | "website" | "club" | "referral" | "manual" }))}
+                        className="h-11 w-full rounded-xl border border-stone-200 bg-white px-3 text-sm text-stone-700 outline-none transition focus:border-stone-400 focus:ring-2 focus:ring-stone-200"
+                      >
+                        <option value="all">Все источники</option>
+                        <option value="website">website</option>
+                        <option value="club">club</option>
+                        <option value="referral">referral</option>
+                        <option value="manual">manual</option>
+                      </select>
+                    </Field>
                     <Field label="Ошибки синхронизации">
                       <select
                         value={bitrixErrorFilter}
-                        onChange={(event) => setBitrixErrorFilter(event.target.value as "all" | "with_error" | "without_error")}
+                        onChange={(event) => {
+                          const nextValue = event.target.value as "all" | "with_error" | "without_error";
+                          setBitrixErrorFilter(nextValue);
+                          setBitrixQuery((current) => ({ ...current, page: 1, onlyFailed: nextValue === "with_error" }));
+                        }}
                         className="h-11 w-full rounded-xl border border-stone-200 bg-white px-3 text-sm text-stone-700 outline-none transition focus:border-stone-400 focus:ring-2 focus:ring-stone-200"
                       >
                         <option value="all">Все лиды</option>
@@ -2479,9 +2517,25 @@ export default function AdminClub() {
                       </select>
                     </Field>
                   </div>
-                  {filteredBitrixLeads.length ? (
+                  <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-stone-200 bg-stone-50/70 px-4 py-3 text-sm text-stone-600">
+                    <div className="flex flex-wrap items-center gap-3">
+                      <span>Показано лидов: <strong className="text-stone-950">{visibleBitrixLeads.length}</strong></span>
+                      <span>Всего по серверным фильтрам: <strong className="text-stone-950">{bitrixPagination?.totalFilteredLeads ?? visibleBitrixLeads.length}</strong></span>
+                      <span>Страница <strong className="text-stone-950">{bitrixPagination?.page ?? bitrixQuery.page}</strong> / {bitrixPagination?.pageCount ?? 1}</span>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Badge variant="outline" className="rounded-full border-stone-300 bg-white px-2.5 py-0.5 text-[11px] text-stone-700">
+                        Повторные попытки: {bitrixSummary?.retriedLeads ?? 0}
+                      </Badge>
+                      <Badge variant="outline" className="rounded-full border-stone-300 bg-white px-2.5 py-0.5 text-[11px] text-stone-700">
+                        Ошибки: {bitrixSummary?.failedLeads ?? 0}
+                      </Badge>
+                    </div>
+                  </div>
+                    {visibleBitrixLeads.length ? (
+
                     <div className="space-y-3">
-                      {filteredBitrixLeads.map((lead: any) => {
+                      {visibleBitrixLeads.map((lead: any) => {
                         const statusTone = lead.syncStatus === "success"
                           ? "border-emerald-200 bg-emerald-50 text-emerald-800"
                           : lead.syncStatus === "failed"
@@ -2559,9 +2613,34 @@ export default function AdminClub() {
                     </div>
                   ) : (
                     <div className="rounded-2xl border border-dashed border-stone-200 bg-stone-50/70 px-4 py-5 text-sm text-stone-500">
-                      По текущим фильтрам лиды не найдены. Измените статус или режим ошибок, чтобы вернуть заявки в CRM-мониторинг.
+                      По текущим фильтрам лиды не найдены. Измените server-side статус, поиск, источник или режим ошибок, чтобы вернуть заявки в CRM-мониторинг.
                     </div>
                   )}
+                  <div className="flex flex-wrap items-center justify-between gap-3 border-t border-stone-200 pt-2">
+                    <div className="text-sm text-stone-500">
+                      Следующая страница доступна, если сервер вернёт больше лидов по текущему фильтру.
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="rounded-full border-stone-300 bg-white text-stone-700 hover:bg-stone-100"
+                        onClick={() => setBitrixQuery((current) => ({ ...current, page: Math.max(1, current.page - 1) }))}
+                        disabled={(bitrixPagination?.page ?? bitrixQuery.page) <= 1 || bitrixAdminQuery.isFetching}
+                      >
+                        Предыдущая страница
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="rounded-full border-stone-300 bg-white text-stone-700 hover:bg-stone-100"
+                        onClick={() => setBitrixQuery((current) => ({ ...current, page: current.page + 1 }))}
+                        disabled={Boolean(bitrixPagination && (bitrixPagination.page >= bitrixPagination.pageCount)) || bitrixAdminQuery.isFetching}
+                      >
+                        Следующая страница
+                      </Button>
+                    </div>
+                  </div>
                 </CardContent>
               </Card>
 
