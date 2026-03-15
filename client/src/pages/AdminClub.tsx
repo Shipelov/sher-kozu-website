@@ -541,6 +541,85 @@ export default function AdminClub() {
     ]);
   };
 
+  const getInlineActionToastCopy = (
+    entity: "post" | "event" | "member",
+    record: { title?: string; name?: string; sortOrder: number; pinned?: boolean; status?: string; badge?: string },
+  ) => {
+    if (entity === "post") {
+      return {
+        sortOrder: {
+          title: "Порядок поста обновлён",
+          description: `Пост «${record.title || "Без названия"}» перемещён на позицию ${record.sortOrder}.`,
+        },
+        status: {
+          title: record.pinned ? "Пост закреплён" : "Пост откреплён",
+          description: record.pinned
+            ? `Пост «${record.title || "Без названия"}» теперь показывается в закреплённых.`
+            : `Пост «${record.title || "Без названия"}» переведён в обычную ленту.`,
+        },
+      };
+    }
+
+    if (entity === "event") {
+      return {
+        sortOrder: {
+          title: "Порядок события обновлён",
+          description: `Событие «${record.title || "Без названия"}» перемещено на позицию ${record.sortOrder}.`,
+        },
+        status: {
+          title: "Статус события обновлён",
+          description: `Для события «${record.title || "Без названия"}» установлен статус «${record.status || "Без статуса"}».`,
+        },
+      };
+    }
+
+    return {
+      sortOrder: {
+        title: "Порядок участника обновлён",
+        description: `Профиль «${record.name || "Без имени"}» перемещён на позицию ${record.sortOrder}.`,
+      },
+      status: {
+        title: "Бейдж участника обновлён",
+        description: `Для профиля «${record.name || "Без имени"}» установлен бейдж «${record.badge || "Без бейджа"}».`,
+      },
+    };
+  };
+
+  const getBulkActionToastCopy = (entity: "post" | "event" | "member", action: "delete" | "pin" | "unpin", count: number) => {
+    if (entity === "post") {
+      if (action === "pin") {
+        return {
+          title: "Посты закреплены",
+          description: `Закрепление применено к ${count} постам.`,
+        };
+      }
+
+      if (action === "unpin") {
+        return {
+          title: "Посты откреплены",
+          description: `Обычный режим ленты восстановлен для ${count} постов.`,
+        };
+      }
+
+      return {
+        title: "Посты удалены",
+        description: `Из ленты удалено ${count} постов.`,
+      };
+    }
+
+    if (entity === "event") {
+      return {
+        title: "События удалены",
+        description: `Из расписания удалено ${count} событий.`,
+      };
+    }
+
+    return {
+      title: "Участники удалены",
+      description: `Из клуба удалено ${count} профилей участников.`,
+    };
+  };
+
   const createPost = trpc.adminClub.createPost.useMutation({
     onSuccess: async (_, variables) => {
       await refreshAdminData();
@@ -990,9 +1069,11 @@ export default function AdminClub() {
       }
       clearSelection("posts");
       setPendingDelete(null);
-      toast.success("Посты удалены", {
-        description: `Удалено записей: ${pendingDelete.ids.length}.`,
+      const toastCopy = getBulkActionToastCopy("post", "delete", pendingDelete.ids.length);
+      toast.success(toastCopy.title, {
+        description: toastCopy.description,
       });
+
       return;
     }
 
@@ -1002,9 +1083,11 @@ export default function AdminClub() {
       }
       clearSelection("events");
       setPendingDelete(null);
-      toast.success("События удалены", {
-        description: `Удалено записей: ${pendingDelete.ids.length}.`,
+      const toastCopy = getBulkActionToastCopy("event", "delete", pendingDelete.ids.length);
+      toast.success(toastCopy.title, {
+        description: toastCopy.description,
       });
+
       return;
     }
 
@@ -1013,9 +1096,11 @@ export default function AdminClub() {
     }
     clearSelection("members");
     setPendingDelete(null);
-    toast.success("Участники удалены", {
-      description: `Удалено записей: ${pendingDelete.ids.length}.`,
+    const toastCopy = getBulkActionToastCopy("member", "delete", pendingDelete.ids.length);
+    toast.success(toastCopy.title, {
+      description: toastCopy.description,
     });
+
   };
 
   if (loading) {
@@ -1280,9 +1365,11 @@ export default function AdminClub() {
                             });
                           }
                           clearSelection("posts");
-                          toast.success("Посты закреплены", {
-                            description: `Обновлено записей: ${selectedPosts.length}.`,
+                          const toastCopy = getBulkActionToastCopy("post", "pin", selectedPosts.length);
+                          toast.success(toastCopy.title, {
+                            description: toastCopy.description,
                           });
+
                         })();
                       },
                     },
@@ -1312,9 +1399,11 @@ export default function AdminClub() {
                             });
                           }
                           clearSelection("posts");
-                          toast.success("Посты откреплены", {
-                            description: `Обновлено записей: ${selectedPosts.length}.`,
+                          const toastCopy = getBulkActionToastCopy("post", "unpin", selectedPosts.length);
+                          toast.success(toastCopy.title, {
+                            description: toastCopy.description,
                           });
+
                         })();
                       },
                     },
@@ -1430,43 +1519,57 @@ export default function AdminClub() {
                       value: post.sortOrder,
                       icon: <ArrowDown className="h-3.5 w-3.5" />,
                       disabled: updatePost.isPending,
-                      onClick: () => void updatePost.mutateAsync({
-                        id: post.id,
-                        category: post.category,
-                        author: post.author,
-                        avatar: post.avatar,
-                        role: post.role,
-                        timeLabel: post.timeLabel,
-                        title: post.title,
-                        text: post.text,
-                        imageUrl: post.imageUrl,
-                        likes: post.likes,
-                        comments: post.comments,
-                        tagsCsv: post.tagsCsv,
-                        pinned: post.pinned,
-                        sortOrder: post.sortOrder + 1,
-                      }),
+                      onClick: async () => {
+                        const nextSortOrder = post.sortOrder + 1;
+                        await updatePost.mutateAsync({
+                          id: post.id,
+                          category: post.category,
+                          author: post.author,
+                          avatar: post.avatar,
+                          role: post.role,
+                          timeLabel: post.timeLabel,
+                          title: post.title,
+                          text: post.text,
+                          imageUrl: post.imageUrl,
+                          likes: post.likes,
+                          comments: post.comments,
+                          tagsCsv: post.tagsCsv,
+                          pinned: post.pinned,
+                          sortOrder: nextSortOrder,
+                        });
+                        const toastCopy = getInlineActionToastCopy("post", { title: post.title, sortOrder: nextSortOrder, pinned: post.pinned });
+                        toast.success(toastCopy.sortOrder.title, {
+                          description: toastCopy.sortOrder.description,
+                        });
+                      },
                     },
                     {
                       label: post.pinned ? "Pinned" : "Обычный",
                       icon: <Pin className="h-3.5 w-3.5" />,
                       disabled: updatePost.isPending,
-                      onClick: () => void updatePost.mutateAsync({
-                        id: post.id,
-                        category: post.category,
-                        author: post.author,
-                        avatar: post.avatar,
-                        role: post.role,
-                        timeLabel: post.timeLabel,
-                        title: post.title,
-                        text: post.text,
-                        imageUrl: post.imageUrl,
-                        likes: post.likes,
-                        comments: post.comments,
-                        tagsCsv: post.tagsCsv,
-                        pinned: !post.pinned,
-                        sortOrder: post.sortOrder,
-                      }),
+                      onClick: () => void (async () => {
+                        const nextPinned = !post.pinned;
+                        await updatePost.mutateAsync({
+                          id: post.id,
+                          category: post.category,
+                          author: post.author,
+                          avatar: post.avatar,
+                          role: post.role,
+                          timeLabel: post.timeLabel,
+                          title: post.title,
+                          text: post.text,
+                          imageUrl: post.imageUrl,
+                          likes: post.likes,
+                          comments: post.comments,
+                          tagsCsv: post.tagsCsv,
+                          pinned: nextPinned,
+                          sortOrder: post.sortOrder,
+                        });
+                        const toastCopy = getInlineActionToastCopy("post", { title: post.title, sortOrder: post.sortOrder, pinned: nextPinned });
+                        toast.success(toastCopy.status.title, {
+                          description: toastCopy.status.description,
+                        });
+                      })(),
                     },
                   ]}
                   onEdit={() => setPostForm({
@@ -1670,30 +1773,44 @@ export default function AdminClub() {
                       value: event.sortOrder,
                       icon: <ArrowDown className="h-3.5 w-3.5" />,
                       disabled: updateEvent.isPending,
-                      onClick: () => void updateEvent.mutateAsync({
-                        id: event.id,
-                        title: event.title,
-                        dateLabel: event.dateLabel,
-                        description: event.description,
-                        status: event.status,
-                        tone: event.tone,
-                        sortOrder: event.sortOrder + 1,
-                      }),
+                      onClick: () => void (async () => {
+                        const nextSortOrder = event.sortOrder + 1;
+                        await updateEvent.mutateAsync({
+                          id: event.id,
+                          title: event.title,
+                          dateLabel: event.dateLabel,
+                          description: event.description,
+                          status: event.status,
+                          tone: event.tone,
+                          sortOrder: nextSortOrder,
+                        });
+                        const toastCopy = getInlineActionToastCopy("event", { title: event.title, sortOrder: nextSortOrder, status: event.status });
+                        toast.success(toastCopy.sortOrder.title, {
+                          description: toastCopy.sortOrder.description,
+                        });
+                      })(),
                     },
                     {
                       label: "Статус",
                       value: event.status,
                       icon: <CalendarRange className="h-3.5 w-3.5" />,
                       disabled: updateEvent.isPending,
-                      onClick: () => void updateEvent.mutateAsync({
-                        id: event.id,
-                        title: event.title,
-                        dateLabel: event.dateLabel,
-                        description: event.description,
-                        status: event.status === "Открыта регистрация" ? "Мест нет" : "Открыта регистрация",
-                        tone: event.tone,
-                        sortOrder: event.sortOrder,
-                      }),
+                      onClick: () => void (async () => {
+                        const nextStatus = event.status === "Открыта регистрация" ? "Мест нет" : "Открыта регистрация";
+                        await updateEvent.mutateAsync({
+                          id: event.id,
+                          title: event.title,
+                          dateLabel: event.dateLabel,
+                          description: event.description,
+                          status: nextStatus,
+                          tone: event.tone,
+                          sortOrder: event.sortOrder,
+                        });
+                        const toastCopy = getInlineActionToastCopy("event", { title: event.title, sortOrder: event.sortOrder, status: nextStatus });
+                        toast.success(toastCopy.status.title, {
+                          description: toastCopy.status.description,
+                        });
+                      })(),
                     },
                   ]}
                   onEdit={() => setEventForm({
@@ -1872,28 +1989,42 @@ export default function AdminClub() {
                       value: member.sortOrder,
                       icon: <ArrowDown className="h-3.5 w-3.5" />,
                       disabled: updateMember.isPending,
-                      onClick: () => void updateMember.mutateAsync({
-                        id: member.id,
-                        name: member.name,
-                        animal: member.animal,
-                        sinceLabel: member.sinceLabel,
-                        badge: member.badge,
-                        sortOrder: member.sortOrder + 1,
-                      }),
+                      onClick: () => void (async () => {
+                        const nextSortOrder = member.sortOrder + 1;
+                        await updateMember.mutateAsync({
+                          id: member.id,
+                          name: member.name,
+                          animal: member.animal,
+                          sinceLabel: member.sinceLabel,
+                          badge: member.badge,
+                          sortOrder: nextSortOrder,
+                        });
+                        const toastCopy = getInlineActionToastCopy("member", { name: member.name, sortOrder: nextSortOrder, badge: member.badge });
+                        toast.success(toastCopy.sortOrder.title, {
+                          description: toastCopy.sortOrder.description,
+                        });
+                      })(),
                     },
                     {
                       label: "Бейдж",
                       value: member.badge || "без бейджа",
                       icon: <Crown className="h-3.5 w-3.5" />,
                       disabled: updateMember.isPending,
-                      onClick: () => void updateMember.mutateAsync({
-                        id: member.id,
-                        name: member.name,
-                        animal: member.animal,
-                        sinceLabel: member.sinceLabel,
-                        badge: member.badge === "Амбассадор" ? "Гость фермы" : "Амбассадор",
-                        sortOrder: member.sortOrder,
-                      }),
+                      onClick: () => void (async () => {
+                        const nextBadge = member.badge === "Амбассадор" ? "Гость фермы" : "Амбассадор";
+                        await updateMember.mutateAsync({
+                          id: member.id,
+                          name: member.name,
+                          animal: member.animal,
+                          sinceLabel: member.sinceLabel,
+                          badge: nextBadge,
+                          sortOrder: member.sortOrder,
+                        });
+                        const toastCopy = getInlineActionToastCopy("member", { name: member.name, sortOrder: member.sortOrder, badge: nextBadge });
+                        toast.success(toastCopy.status.title, {
+                          description: toastCopy.status.description,
+                        });
+                      })(),
                     },
                   ]}
                   onEdit={() => setMemberForm({

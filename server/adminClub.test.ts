@@ -1211,3 +1211,126 @@ describe("admin club pagination url state", () => {
     })).toBe("postPage=2&postPageSize=20&memberPage=4&memberPageSize=50");
   });
 });
+
+function getInlineActionToastCopy(
+  entity: "post" | "event" | "member",
+  record: { title?: string; name?: string; sortOrder: number; pinned?: boolean; status?: string; badge?: string },
+) {
+  if (entity === "post") {
+    return {
+      sortOrder: {
+        title: "Порядок поста обновлён",
+        description: `Пост «${record.title || "Без названия"}» перемещён на позицию ${record.sortOrder}.`,
+      },
+      status: {
+        title: record.pinned ? "Пост закреплён" : "Пост откреплён",
+        description: record.pinned
+          ? `Пост «${record.title || "Без названия"}» теперь показывается в закреплённых.`
+          : `Пост «${record.title || "Без названия"}» переведён в обычную ленту.`,
+      },
+    };
+  }
+
+  if (entity === "event") {
+    return {
+      sortOrder: {
+        title: "Порядок события обновлён",
+        description: `Событие «${record.title || "Без названия"}» перемещено на позицию ${record.sortOrder}.`,
+      },
+      status: {
+        title: "Статус события обновлён",
+        description: `Для события «${record.title || "Без названия"}» установлен статус «${record.status || "Без статуса"}».`,
+      },
+    };
+  }
+
+  return {
+    sortOrder: {
+      title: "Порядок участника обновлён",
+      description: `Профиль «${record.name || "Без имени"}» перемещён на позицию ${record.sortOrder}.`,
+    },
+    status: {
+      title: "Бейдж участника обновлён",
+      description: `Для профиля «${record.name || "Без имени"}» установлен бейдж «${record.badge || "Без бейджа"}».`,
+    },
+  };
+}
+
+function getBulkActionToastCopy(entity: "post" | "event" | "member", action: "delete" | "pin" | "unpin", count: number) {
+  if (entity === "post") {
+    if (action === "pin") {
+      return {
+        title: "Посты закреплены",
+        description: `Закрепление применено к ${count} постам.`,
+      };
+    }
+
+    if (action === "unpin") {
+      return {
+        title: "Посты откреплены",
+        description: `Обычный режим ленты восстановлен для ${count} постов.`,
+      };
+    }
+
+    return {
+      title: "Посты удалены",
+      description: `Из ленты удалено ${count} постов.`,
+    };
+  }
+
+  if (entity === "event") {
+    return {
+      title: "События удалены",
+      description: `Из расписания удалено ${count} событий.`,
+    };
+  }
+
+  return {
+    title: "Участники удалены",
+    description: `Из клуба удалено ${count} профилей участников.`,
+  };
+}
+
+describe("admin club action toast copy", () => {
+  it("returns explicit toast copy for inline post reorder and pin toggle", () => {
+    expect(getInlineActionToastCopy("post", { title: "Утро с Мартой", sortOrder: 4, pinned: true })).toEqual({
+      sortOrder: {
+        title: "Порядок поста обновлён",
+        description: "Пост «Утро с Мартой» перемещён на позицию 4.",
+      },
+      status: {
+        title: "Пост закреплён",
+        description: "Пост «Утро с Мартой» теперь показывается в закреплённых.",
+      },
+    });
+  });
+
+  it("returns explicit toast copy for inline event and member status actions", () => {
+    expect(getInlineActionToastCopy("event", { title: "Весенний визит", sortOrder: 2, status: "Мест нет" }).status).toEqual({
+      title: "Статус события обновлён",
+      description: "Для события «Весенний визит» установлен статус «Мест нет».",
+    });
+
+    expect(getInlineActionToastCopy("member", { name: "Семья Ивановых", sortOrder: 3, badge: "Амбассадор" }).status).toEqual({
+      title: "Бейдж участника обновлён",
+      description: "Для профиля «Семья Ивановых» установлен бейдж «Амбассадор».",
+    });
+  });
+
+  it("returns explicit toast copy for bulk actions", () => {
+    expect(getBulkActionToastCopy("post", "pin", 3)).toEqual({
+      title: "Посты закреплены",
+      description: "Закрепление применено к 3 постам.",
+    });
+
+    expect(getBulkActionToastCopy("post", "unpin", 2)).toEqual({
+      title: "Посты откреплены",
+      description: "Обычный режим ленты восстановлен для 2 постов.",
+    });
+
+    expect(getBulkActionToastCopy("member", "delete", 5)).toEqual({
+      title: "Участники удалены",
+      description: "Из клуба удалено 5 профилей участников.",
+    });
+  });
+});
