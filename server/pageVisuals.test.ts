@@ -8,6 +8,7 @@ const clubSource = fs.readFileSync("/home/ubuntu/sher-kozu-website/client/src/pa
 const appSource = fs.readFileSync("/home/ubuntu/sher-kozu-website/client/src/App.tsx", "utf8");
 const navbarSource = fs.readFileSync("/home/ubuntu/sher-kozu-website/client/src/components/Navbar.tsx", "utf8");
 const dashboardLayoutSource = fs.readFileSync("/home/ubuntu/sher-kozu-website/client/src/components/DashboardLayout.tsx", "utf8");
+const adminHubSource = fs.readFileSync("/home/ubuntu/sher-kozu-website/client/src/pages/AdminHub.tsx", "utf8");
 const adminAnimalsSource = fs.readFileSync("/home/ubuntu/sher-kozu-website/client/src/pages/AdminAnimals.tsx", "utf8");
 
 describe("page visual integration source smoke", () => {
@@ -41,7 +42,9 @@ describe("page visual integration source smoke", () => {
   it("registers universal animal profile routes in app", () => {
     expect(appSource).toContain('path="/animal/:slug"');
     expect(appSource).toContain('path="/animals/:slug"');
+    expect(appSource).toContain('path="/admin"');
     expect(appSource).toContain("component={AnimalProfile}");
+    expect(appSource).toContain("component={AdminHub}");
   });
 
   it("keeps navbar entry dynamic for the current featured animal", () => {
@@ -51,10 +54,20 @@ describe("page visual integration source smoke", () => {
   });
 
   it("shows admin-only entries and current role in the shared dashboard layout", () => {
+    expect(dashboardLayoutSource).toContain('label: "Admin Overview"');
     expect(dashboardLayoutSource).toContain('label: "Admin Animals"');
     expect(dashboardLayoutSource).toContain('label: "Admin Club"');
     expect(dashboardLayoutSource).toContain('user?.role === "admin"');
     expect(dashboardLayoutSource).toContain('{roleLabel}');
+  });
+
+  it("shows admin overview cards and access statuses on the new admin page", () => {
+    expect(adminHubSource).toContain("Служебный центр управления Sher Kozu");
+    expect(adminHubSource).toContain("Страница `/admin`");
+    expect(adminHubSource).toContain("Admin Animals");
+    expect(adminHubSource).toContain("Admin Club");
+    expect(adminHubSource).toContain("Роль:");
+    expect(adminHubSource).toContain("Доступ открыт");
   });
 
   it("shows explicit auth, role diagnostics and admin fallbacks on admin animals page", () => {
