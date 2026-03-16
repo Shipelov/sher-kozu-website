@@ -158,6 +158,7 @@ type PartnerAttachmentDraft = {
   size: number;
   mimeType: string;
   file: File;
+  previewUrl?: string | null;
 };
 
 const MAX_PARTNER_FILES = 3;
@@ -292,6 +293,8 @@ export default function Home() {
   const [partnerLeadForm, setPartnerLeadForm] = useState<PartnerLeadFormState>(defaultPartnerLeadForm);
   const [partnerAttachments, setPartnerAttachments] = useState<PartnerAttachmentDraft[]>([]);
   const [partnerAttachmentWarning, setPartnerAttachmentWarning] = useState<string | null>(null);
+  const [isPartnerDragActive, setIsPartnerDragActive] = useState(false);
+  const [hasPartnerConsent, setHasPartnerConsent] = useState(false);
   const [latestSubmission, setLatestSubmission] = useState<{
     id: number;
     syncStatus: string | null;
@@ -324,9 +327,15 @@ export default function Home() {
         });
       }
 
+      partnerAttachments.forEach((item) => {
+        if (item.previewUrl) {
+          URL.revokeObjectURL(item.previewUrl);
+        }
+      });
       setPartnerLeadForm(defaultPartnerLeadForm());
       setPartnerAttachments([]);
       setPartnerAttachmentWarning(null);
+      setHasPartnerConsent(false);
     },
     onError: (error) => {
       toast.error("Не удалось отправить партнёрскую заявку", {
@@ -341,8 +350,7 @@ export default function Home() {
   const partnerAttachmentsRemainingSize = Math.max(MAX_PARTNER_TOTAL_SIZE_BYTES - partnerAttachmentsTotalSize, 0);
   const isPartnerAttachmentsNearTotalLimit = partnerAttachmentsTotalSize >= MAX_PARTNER_TOTAL_SIZE_BYTES * 0.8;
 
-  const handlePartnerAttachmentSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const incomingFiles = Array.from(event.target.files ?? []);
+  const appendPartnerAttachments = (incomingFiles: File[]) => {
     if (!incomingFiles.length) return;
 
     let nextWarning: string | null = null;
@@ -391,6 +399,7 @@ export default function Home() {
           size: file.size,
           mimeType: file.type || "application/octet-stream",
           file,
+          previewUrl: detectedKind === "image" ? URL.createObjectURL(file) : null,
         });
       }
 
@@ -398,12 +407,28 @@ export default function Home() {
     });
 
     setPartnerAttachmentWarning(nextWarning);
+  };
+
+  const handlePartnerAttachmentSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    appendPartnerAttachments(Array.from(event.target.files ?? []));
     event.target.value = "";
   };
 
   const removePartnerAttachment = (name: string, size: number) => {
-    setPartnerAttachments((current) => current.filter((item) => !(item.name === name && item.size === size)));
+    setPartnerAttachments((current) => {
+      const target = current.find((item) => item.name === name && item.size === size);
+      if (target?.previewUrl) {
+        URL.revokeObjectURL(target.previewUrl);
+      }
+      return current.filter((item) => !(item.name === name && item.size === size));
+    });
     setPartnerAttachmentWarning(null);
+  };
+
+  const handlePartnerAttachmentDrop = (event: React.DragEvent<HTMLLabelElement>) => {
+    event.preventDefault();
+    setIsPartnerDragActive(false);
+    appendPartnerAttachments(Array.from(event.dataTransfer.files ?? []));
   };
 
   const handlePartnerLeadSubmit = async () => {
@@ -424,6 +449,13 @@ export default function Home() {
     if (payload.fullName.length < 2 || payload.companyName.length < 2 || !payload.email.includes("@")) {
       toast.error("Проверьте обязательные поля", {
         description: "Укажите имя, компанию и корректный email перед отправкой заявки.",
+      });
+      return;
+    }
+
+    if (!hasPartnerConsent) {
+      toast.error("Нужно согласие на обработку данных", {
+        description: "Подтвердите согласие перед отправкой партнёрской заявки.",
       });
       return;
     }
@@ -802,7 +834,21 @@ export default function Home() {
                       </div>
                       <Upload className="mt-0.5 h-5 w-5 text-stone-400" />
                     </div>
-                    <Input id="partner-attachments" type="file" accept={PARTNER_ATTACHMENT_ACCEPT} multiple onChange={handlePartnerAttachmentSelect} className="cursor-pointer bg-white" disabled={createPartnerLead.isPending} />
+                    <label
+                      htmlFor="partner-attachments"
+                      onDragOver={(event) => {
+                        event.preventDefault();
+                        setIsPartnerDragActive(true);
+                      }}
+                      onDragLeave={() => setIsPartnerDragActive(false)}
+                      onDrop={handlePartnerAttachmentDrop}
+                      className={`flex cursor-pointer flex-col items-center justify-center rounded-2xl border border-dashed px-4 py-6 text-center transition-colors ${isPartnerDragActive ? "border-primary bg-primary/5" : "border-stone-300 bg-white"} ${createPartnerLead.isPending ? "pointer-events-none opacity-60" : "hover:border-primary/40 hover:bg-stone-50"}`}
+                    >
+                      <Upload className={`mb-2 h-5 w-5 ${isPartnerDragActive ? "text-primary" : "text-stone-400"}`} />
+                      <span className="text-sm font-medium text-stone-800">Перетащите файлы сюда или нажмите, чтобы выбрать</span>
+                      <span className="mt-1 text-xs text-stone-500">Поддерживаются документы, изображения и архивы. Зона работает и для drag-and-drop.</span>
+                    </label>
+                    <Input id="partner-attachments" type="file" accept={PARTNER_ATTACHMENT_ACCEPT} multiple onChange={handlePartnerAttachmentSelect} className="sr-only" disabled={createPartnerLead.isPending} />
                     <div className="space-y-3">
                       {partnerAttachmentWarning ? (
                         <div className="flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-800">
@@ -863,15 +909,20 @@ export default function Home() {
 
                             return (
                               <div key={`${item.name}-${item.size}`} className="flex items-center justify-between gap-3 rounded-xl border border-stone-200 bg-white px-3 py-2 text-sm">
-                                <div className="min-w-0 flex-1">
-                                  <div className="flex flex-wrap items-center gap-2">
-                                    <p className="truncate font-medium text-stone-800">{item.name}</p>
-                                    <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium ${attachmentBadge.className}`}>
-                                      <AttachmentIcon className="h-3 w-3" />
-                                      {attachmentBadge.label}
-                                    </span>
+                                <div className="flex min-w-0 flex-1 items-center gap-3">
+                                  {item.previewUrl ? (
+                                    <img src={item.previewUrl} alt={`Превью файла ${item.name}`} className="h-12 w-12 rounded-xl border border-stone-200 object-cover" />
+                                  ) : null}
+                                  <div className="min-w-0 flex-1">
+                                    <div className="flex flex-wrap items-center gap-2">
+                                      <p className="truncate font-medium text-stone-800">{item.name}</p>
+                                      <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium ${attachmentBadge.className}`}>
+                                        <AttachmentIcon className="h-3 w-3" />
+                                        {attachmentBadge.label}
+                                      </span>
+                                    </div>
+                                    <p className="text-xs text-stone-500">{formatAttachmentSize(item.size)} · {item.mimeType}</p>
                                   </div>
-                                  <p className="text-xs text-stone-500">{formatAttachmentSize(item.size)} · {item.mimeType}</p>
                                 </div>
                                 <Button type="button" variant="ghost" className="shrink-0 text-rose-600 hover:text-rose-700" onClick={() => removePartnerAttachment(item.name, item.size)} aria-label={`Удалить файл ${item.name}`} disabled={createPartnerLead.isPending}>
                                   Удалить
@@ -887,23 +938,37 @@ export default function Home() {
                       )}
                     </div>
                   </div>
-                  <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                    <div className="space-y-1">
-                      <p className="text-xs leading-6 text-stone-500">
-                        Отправляя форму, вы инициируете pilot-сценарий двусторонней интеграции Sher Kozu ↔ Bitrix24 только для партнёрских заявок.
-                      </p>
-                      {createPartnerLead.isPending ? (
-                        <p className="text-xs font-medium text-primary">Заявка отправляется, пожалуйста не закрывайте страницу и не меняйте список вложений.</p>
-                      ) : null}
+                  <div className="mt-5 space-y-4">
+                    <label className="flex items-start gap-3 rounded-2xl border border-stone-200 bg-stone-50 px-4 py-3 text-sm text-stone-700">
+                      <input
+                        type="checkbox"
+                        className="mt-1 h-4 w-4 rounded border-stone-300 text-primary focus:ring-primary"
+                        checked={hasPartnerConsent}
+                        onChange={(event) => setHasPartnerConsent(event.target.checked)}
+                        disabled={createPartnerLead.isPending}
+                      />
+                      <span className="leading-6">
+                        Подтверждаю согласие на обработку контактных данных для связи по партнёрской заявке и передачи информации в CRM-процесс Sher Kozu.
+                      </span>
+                    </label>
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                      <div className="space-y-1">
+                        <p className="text-xs leading-6 text-stone-500">
+                          Отправляя форму, вы инициируете pilot-сценарий двусторонней интеграции Sher Kozu ↔ Bitrix24 только для партнёрских заявок.
+                        </p>
+                        {createPartnerLead.isPending ? (
+                          <p className="text-xs font-medium text-primary">Заявка отправляется, пожалуйста не закрывайте страницу и не меняйте список вложений.</p>
+                        ) : null}
+                      </div>
+                      <Button type="button" onClick={() => void handlePartnerLeadSubmit()} disabled={createPartnerLead.isPending || !hasPartnerConsent} className="rounded-full px-6">
+                        {createPartnerLead.isPending ? (
+                          <span className="inline-flex items-center gap-2">
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                            Отправляем в CRM...
+                          </span>
+                        ) : "Отправить партнёрскую заявку"}
+                      </Button>
                     </div>
-                    <Button type="button" onClick={() => void handlePartnerLeadSubmit()} disabled={createPartnerLead.isPending} className="rounded-full px-6">
-                      {createPartnerLead.isPending ? (
-                        <span className="inline-flex items-center gap-2">
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                          Отправляем в CRM...
-                        </span>
-                      ) : "Отправить партнёрскую заявку"}
-                    </Button>
                   </div>
                 </div>
               </CardContent>
