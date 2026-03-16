@@ -236,19 +236,28 @@ export default function Home() {
   const latestSubmissionStatus = useMemo(() => getStatusCopy(latestSubmission?.syncStatus), [latestSubmission?.syncStatus]);
 
   const handlePartnerLeadSubmit = async () => {
-    await createPartnerLead.mutateAsync({
-      fullName: partnerLeadForm.fullName,
-      companyName: partnerLeadForm.companyName,
-      email: partnerLeadForm.email,
-      phone: partnerLeadForm.phone || null,
-      telegram: partnerLeadForm.telegram || null,
-      region: partnerLeadForm.region || null,
-      source: "website",
+    const payload = {
+      fullName: partnerLeadForm.fullName.trim(),
+      companyName: partnerLeadForm.companyName.trim(),
+      email: partnerLeadForm.email.trim(),
+      phone: partnerLeadForm.phone.trim() || null,
+      telegram: partnerLeadForm.telegram.trim() || null,
+      region: partnerLeadForm.region.trim() || null,
+      source: "website" as const,
       interestType: partnerLeadForm.interestType,
       preferredContactMethod: partnerLeadForm.preferredContactMethod,
-      interestProducts: partnerLeadForm.interestProducts || null,
-      notes: partnerLeadForm.notes || null,
-    });
+      interestProducts: partnerLeadForm.interestProducts.trim() || null,
+      notes: partnerLeadForm.notes.trim() || null,
+    };
+
+    if (payload.fullName.length < 2 || payload.companyName.length < 2 || !payload.email.includes("@")) {
+      toast.error("Проверьте обязательные поля", {
+        description: "Укажите имя, компанию и корректный email перед отправкой заявки.",
+      });
+      return;
+    }
+
+    await createPartnerLead.mutateAsync(payload);
   };
 
   const LatestStatusIcon = latestSubmissionStatus.icon;
@@ -589,7 +598,7 @@ export default function Home() {
                     <p className="text-xs leading-6 text-stone-500">
                       Отправляя форму, вы инициируете pilot-сценарий двусторонней интеграции Sher Kozu ↔ Bitrix24 только для партнёрских заявок.
                     </p>
-                    <Button onClick={() => void handlePartnerLeadSubmit()} disabled={createPartnerLead.isPending} className="rounded-full px-6">
+                    <Button type="button" onClick={() => void handlePartnerLeadSubmit()} disabled={createPartnerLead.isPending} className="rounded-full px-6">
                       {createPartnerLead.isPending ? "Отправляем в CRM..." : "Отправить партнёрскую заявку"}
                     </Button>
                   </div>
