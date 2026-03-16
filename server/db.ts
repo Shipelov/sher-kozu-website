@@ -1371,57 +1371,50 @@ export async function ensureSprintOneSeed(ownerOpenId: string) {
     return;
   }
 
-  const familyResult = await db.insert(families).values({
-    ownerOpenId,
-    name: "Семья-демо Sher Kozu",
-    slug: `demo-family-${ownerOpenId.toLowerCase().slice(0, 12)}`,
-    status: "active",
-    maxAnimals: 10,
-    notes: "Служебная демо-семья для Sprint 1 каталога животных.",
-  });
-  const familyId = Number(familyResult.insertId);
+  const existingPlans = await db.select({ id: plans.id }).from(plans).where(eq(plans.ownerOpenId, ownerOpenId)).limit(1);
+  if (!existingPlans.length) {
+    const planResult = await db.insert(plans).values({
+      ownerOpenId,
+      code: `core-care-${ownerOpenId.toLowerCase().slice(0, 8)}`,
+      name: "Базовая опека",
+      description: "Стартовый статус для участия семьи в жизни животного и получения продукции.",
+      status: "active",
+      basePriceMinor: 45000,
+      maxOwnersPerAnimal: 3,
+      benefitsSummary: "Доступ к кабинету, клубным обновлениям и базовой продуктовой выдаче.",
+    });
+    const planId = Number(planResult.insertId);
 
-  const planResult = await db.insert(plans).values({
-    ownerOpenId,
-    code: `core-care-${ownerOpenId.toLowerCase().slice(0, 8)}`,
-    name: "Базовая опека",
-    description: "Стартовый статус для участия семьи в жизни животного и получения продукции.",
-    status: "active",
-    basePriceMinor: 45000,
-    maxOwnersPerAnimal: 3,
-    benefitsSummary: "Доступ к кабинету, клубным обновлениям и базовой продуктовой выдаче.",
-  });
-  const planId = Number(planResult.insertId);
-
-  await db.insert(planDurations).values([
-    {
-      planId,
-      months: 1,
-      label: "1 месяц",
-      priceMinor: 45000,
-      isDefault: 1,
-      isActive: 1,
-      sortOrder: 0,
-    },
-    {
-      planId,
-      months: 3,
-      label: "3 месяца",
-      priceMinor: 129000,
-      isDefault: 0,
-      isActive: 1,
-      sortOrder: 1,
-    },
-    {
-      planId,
-      months: 12,
-      label: "12 месяцев",
-      priceMinor: 480000,
-      isDefault: 0,
-      isActive: 1,
-      sortOrder: 2,
-    },
-  ] as InsertPlanDuration[]);
+    await db.insert(planDurations).values([
+      {
+        planId,
+        months: 1,
+        label: "1 месяц",
+        priceMinor: 45000,
+        isDefault: 1,
+        isActive: 1,
+        sortOrder: 0,
+      },
+      {
+        planId,
+        months: 3,
+        label: "3 месяца",
+        priceMinor: 129000,
+        isDefault: 0,
+        isActive: 1,
+        sortOrder: 1,
+      },
+      {
+        planId,
+        months: 12,
+        label: "12 месяцев",
+        priceMinor: 480000,
+        isDefault: 0,
+        isActive: 1,
+        sortOrder: 2,
+      },
+    ] as InsertPlanDuration[]);
+  }
 
   await createAnimalWithMedia({
     ownerOpenId,
@@ -1493,11 +1486,4 @@ export async function ensureSprintOneSeed(ownerOpenId: string) {
     ],
   });
 
-  await db.insert(wallets).values({
-    ownerOpenId,
-    familyId,
-    status: "active",
-    balanceMinor: 150000,
-    currencyCode: "SKC",
-  });
 }
