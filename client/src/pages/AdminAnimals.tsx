@@ -283,7 +283,7 @@ export const formatShareRevenue = (minor: number) =>
     maximumFractionDigits: 0,
   }).format(minor / 100);
 
-const formatPrice = formatShareRevenue;
+export const formatPrice = formatShareRevenue;
 
 export function formatSharePercentLabel(percent: number) {
   return `${percent}%`;
