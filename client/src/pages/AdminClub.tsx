@@ -53,6 +53,14 @@ import {
   AdminClubPostsTabSection,
 } from "./adminClubSections";
 import {
+  AdminClubEventsTabContent,
+  AdminClubMembersTabContent,
+  AdminClubPostsTabContent,
+  buildAdminClubEventsTabProps,
+  buildAdminClubMembersTabProps,
+  buildAdminClubPostsTabProps,
+} from "./adminClubCrudTabs";
+import {
   buildPaginationMeta,
   EntityFormCard,
   EntityListCard,
@@ -1268,801 +1276,136 @@ export default function AdminClub() {
           </TabsList>
 
           <AdminClubPostsTabSection>
-            <EntityFormCard
-              title={postForm.id ? "Редактировать пост" : "Новый пост"}
-              description="Заполняйте только основные поля. Изменения сразу попадут в club feed после сохранения."
-              footer={
-                <div className="flex flex-wrap gap-3">
-                  <Button
-                    onClick={handlePostSubmit}
-                    disabled={createPost.isPending || updatePost.isPending}
-                  >
-                    {postForm.id ? "Сохранить пост" : "Создать пост"}
-                  </Button>
-                  <Button variant="outline" onClick={() => {
-                    setPostForm(defaultPostForm());
-                    setPostErrors({});
-                  }}>Очистить</Button>
-                </div>
-              }
-            >
-              <div className="grid gap-4 md:grid-cols-2">
-                <Field label="Категория" error={postErrors.category}><Input aria-invalid={Boolean(postErrors.category)} value={postForm.category} onChange={(e) => {
-                  const value = e.target.value;
-                  setPostForm({ ...postForm, category: value });
-                  if (postErrors.category) setPostErrors((current: typeof postErrors) => ({ ...current, category: undefined }));
-                }} /></Field>
-                <Field label="Автор" error={postErrors.author}><Input aria-invalid={Boolean(postErrors.author)} value={postForm.author} onChange={(e) => {
-                  const value = e.target.value;
-                  setPostForm({ ...postForm, author: value });
-                  if (postErrors.author) setPostErrors((current: typeof postErrors) => ({ ...current, author: undefined }));
-                }} /></Field>
-                <Field label="Аватар"><Input value={postForm.avatar} onChange={(e) => setPostForm({ ...postForm, avatar: e.target.value.slice(0, 8) })} /></Field>
-                <Field label="Роль автора" error={postErrors.role}><Input aria-invalid={Boolean(postErrors.role)} value={postForm.role} onChange={(e) => {
-                  const value = e.target.value;
-                  setPostForm({ ...postForm, role: value });
-                  if (postErrors.role) setPostErrors((current: typeof postErrors) => ({ ...current, role: undefined }));
-                }} /></Field>
-                <Field label="Время" error={postErrors.timeLabel}><Input aria-invalid={Boolean(postErrors.timeLabel)} value={postForm.timeLabel} onChange={(e) => {
-                  const value = e.target.value;
-                  setPostForm({ ...postForm, timeLabel: value });
-                  if (postErrors.timeLabel) setPostErrors((current: typeof postErrors) => ({ ...current, timeLabel: undefined }));
-                }} /></Field>
-                <Field label="Порядок"><Input type="number" value={postForm.sortOrder} onChange={(e) => setPostForm({ ...postForm, sortOrder: Number(e.target.value) || 0 })} /></Field>
-                <Field label="Лайки"><Input type="number" value={postForm.likes} onChange={(e) => setPostForm({ ...postForm, likes: Number(e.target.value) || 0 })} /></Field>
-                <Field label="Комментарии"><Input type="number" value={postForm.comments} onChange={(e) => setPostForm({ ...postForm, comments: Number(e.target.value) || 0 })} /></Field>
-              </div>
-              <Field label="Заголовок" error={postErrors.title}><Input aria-invalid={Boolean(postErrors.title)} value={postForm.title} onChange={(e) => {
-                const value = e.target.value;
-                setPostForm({ ...postForm, title: value });
-                if (postErrors.title) setPostErrors((current: typeof postErrors) => ({ ...current, title: undefined }));
-              }} /></Field>
-              <Field label="Изображение (URL)"><Input value={postForm.imageUrl} onChange={(e) => setPostForm({ ...postForm, imageUrl: e.target.value })} placeholder="https://..." /></Field>
-              <Field label="Теги CSV"><Input value={postForm.tagsCsv} onChange={(e) => setPostForm({ ...postForm, tagsCsv: e.target.value })} placeholder="утро,марта,клуб" /></Field>
-              <Field label="Текст поста" error={postErrors.text}><Textarea aria-invalid={Boolean(postErrors.text)} value={postForm.text} onChange={(e) => {
-                const value = e.target.value;
-                setPostForm({ ...postForm, text: value });
-                if (postErrors.text) setPostErrors((current: typeof postErrors) => ({ ...current, text: undefined }));
-              }} className="min-h-32" /></Field>
-              <div className="flex items-center justify-between rounded-xl border border-stone-200 px-4 py-3">
-                <div>
-                  <p className="font-medium text-stone-950">Закрепить пост</p>
-                  <p className="text-sm text-stone-500">Закреплённые посты поднимаются вверх в ленте.</p>
-                </div>
-                <Switch checked={postForm.pinned} onCheckedChange={(checked) => setPostForm({ ...postForm, pinned: checked })} />
-              </div>
-            </EntityFormCard>
-
-            <EntityListCard
-              title="Текущие посты"
-              description="Быстрое редактирование, удаление, поиск и фильтрация материалов клуба."
-              sortIndicator={{
-                fieldLabel: postFilters.sortBy === "timeLabel" ? "времени" : postFilters.sortBy === "title" ? "заголовку" : "порядку",
-                directionLabel: postFilters.sortDirection === "asc" ? "↑" : "↓",
-              }}
-              toolbar={
-                <FilterToolbar
-                  searchPlaceholder="Искать по заголовку, тексту, автору или тегам"
-                  selectionCount={selectedPosts.length}
-                  bulkActions={[
-                    {
-                      label: allVisiblePostsSelected ? "Снять выбор со всех" : "Выбрать все видимые",
-                      icon: allVisiblePostsSelected ? <Square className="h-4 w-4" /> : <CheckSquare className="h-4 w-4" />,
-                      variant: "outline",
-                      disabled: filteredPosts.length === 0,
-                      onClick: () => toggleSelectAllVisible("posts", filteredPosts.map((post) => post.id)),
-                    },
-                    {
-                      label: "Закрепить выбранные",
-                      icon: <Pin className="h-4 w-4" />,
-                      variant: "outline",
-                      disabled: selectedPosts.length === 0 || updatePost.isPending,
-                      onClick: () => {
-                        void (async () => {
-                          for (const post of selectedPosts) {
-                            await updatePost.mutateAsync({
-                              id: post.id,
-                              category: post.category,
-                              author: post.author,
-                              avatar: post.avatar,
-                              role: post.role,
-                              timeLabel: post.timeLabel,
-                              title: post.title,
-                              text: post.text,
-                              imageUrl: post.imageUrl,
-                              likes: post.likes,
-                              comments: post.comments,
-                              tagsCsv: post.tagsCsv,
-                              pinned: true,
-                              sortOrder: post.sortOrder,
-                            });
-                          }
-                          clearSelection("posts");
-                          const toastCopy = getBulkActionToastCopy("post", "pin", selectedPosts.length);
-                          toast.success(toastCopy.title, {
-                            description: toastCopy.description,
-                          });
-
-                        })();
-                      },
-                    },
-                    {
-                      label: "Открепить выбранные",
-                      icon: <Pin className="h-4 w-4" />,
-                      variant: "outline",
-                      disabled: selectedPosts.length === 0 || updatePost.isPending,
-                      onClick: () => {
-                        void (async () => {
-                          for (const post of selectedPosts) {
-                            await updatePost.mutateAsync({
-                              id: post.id,
-                              category: post.category,
-                              author: post.author,
-                              avatar: post.avatar,
-                              role: post.role,
-                              timeLabel: post.timeLabel,
-                              title: post.title,
-                              text: post.text,
-                              imageUrl: post.imageUrl,
-                              likes: post.likes,
-                              comments: post.comments,
-                              tagsCsv: post.tagsCsv,
-                              pinned: false,
-                              sortOrder: post.sortOrder,
-                            });
-                          }
-                          clearSelection("posts");
-                          const toastCopy = getBulkActionToastCopy("post", "unpin", selectedPosts.length);
-                          toast.success(toastCopy.title, {
-                            description: toastCopy.description,
-                          });
-
-                        })();
-                      },
-                    },
-                    {
-                      label: "Удалить выбранные",
-                      icon: <Trash2 className="h-4 w-4" />,
-                      variant: "outline",
-                      destructive: true,
-                      disabled: selectedPosts.length === 0 || isDeleting,
-                      onClick: () => setPendingDelete({
-                        entity: "bulk-post",
-                        ids: selectedPosts.map((post) => post.id),
-                        title: `Выбрано постов: ${selectedPosts.length}`,
-                        description: `${selectedPosts.length} постов`,
-                        summaryItems: buildBulkDeleteSummaryItems(selectedPosts),
-                        totalCount: selectedPosts.length,
-                      }),
-                    },
-                  ]}
-                  onClearSelection={() => clearSelection("posts")}
-                  presetPanel={
-                    <PresetToolbar
-                      presetName={presetName.posts}
-                      onPresetNameChange={(value) => setPresetName((current) => ({ ...current, posts: value }))}
-                      onSave={() => void handleSavePreset("posts")}
-                      saveDisabled={createPreset.isPending}
-                      presets={presetsByTab.posts}
-                      onApplyPreset={applyPreset}
-                      onDeletePreset={(presetId) => void deletePreset.mutateAsync({ id: presetId })}
-                      deletePending={deletePreset.isPending}
-                    />
-                  }
-                  searchValue={postFilters.query}
-                  resultCount={filteredPosts.length}
-                  resultLabel="постов"
-                  resetLabel="Сбросить фильтры постов"
-                  activeFilterChips={[
-                    postFilters.query
-                      ? { label: `Поиск: ${postFilters.query}`, onRemove: () => setPostFilters((current) => ({ ...current, query: "" })) }
-                      : null,
-                    postFilters.category !== "all"
-                      ? { label: `Категория: ${postFilters.category}`, onRemove: () => setPostFilters((current) => ({ ...current, category: "all" })) }
-                      : null,
-                    postFilters.pinned === "pinned"
-                      ? { label: "Тип: только pinned", onRemove: () => setPostFilters((current) => ({ ...current, pinned: "all" })) }
-                      : postFilters.pinned === "regular"
-                        ? { label: "Тип: только обычные", onRemove: () => setPostFilters((current) => ({ ...current, pinned: "all" })) }
-                        : null,
-                    postFilters.sortBy !== "sortOrder"
-                      ? { label: `Сортировка: ${postFilters.sortBy === "timeLabel" ? "время" : "заголовок"}`, onRemove: () => setPostFilters((current) => ({ ...current, sortBy: "sortOrder" })) }
-                      : null,
-                    postFilters.sortDirection !== "asc"
-                      ? { label: "Порядок: по убыванию", onRemove: () => setPostFilters((current) => ({ ...current, sortDirection: "asc" })) }
-                      : null,
-                  ].filter(Boolean) as FilterChip[]}
-                  onSearchChange={(value) => setPostFilters((current) => ({ ...current, query: value }))}
-                  onReset={() => setPostFilters(defaultPostFilters())}
-                  hasActiveFilters={postFilters.query !== "" || postFilters.category !== "all" || postFilters.pinned !== "all" || postFilters.sortBy !== "sortOrder" || postFilters.sortDirection !== "asc"}
-                >
-                  <SelectFilter
-                    label="Категория"
-                    value={postFilters.category}
-                    onChange={(value) => setPostFilters((current) => ({ ...current, category: value }))}
-                    options={[{ label: "Все категории", value: "all" }, ...postCategories.map((value) => ({ label: value, value }))]}
-                  />
-                  <SelectFilter
-                    label="Тип"
-                    value={postFilters.pinned}
-                    onChange={(value) => setPostFilters((current) => ({ ...current, pinned: value as PostFilterState["pinned"] }))}
-                    options={[
-                      { label: "Все посты", value: "all" },
-                      { label: "Только pinned", value: "pinned" },
-                      { label: "Только обычные", value: "regular" },
-                    ]}
-                  />
-                  <SelectFilter
-                    label="Сортировать по"
-                    value={postFilters.sortBy}
-                    onChange={(value) => setPostFilters((current) => ({ ...current, sortBy: value as PostSortField }))}
-                    options={[
-                      { label: "Порядок", value: "sortOrder" },
-                      { label: "Время", value: "timeLabel" },
-                      { label: "Заголовок", value: "title" },
-                    ]}
-                  />
-                  <SelectFilter
-                    label="Направление"
-                    value={postFilters.sortDirection}
-                    onChange={(value) => setPostFilters((current) => ({ ...current, sortDirection: value as SortDirection }))}
-                    options={[
-                      { label: "По возрастанию", value: "asc" },
-                      { label: "По убыванию", value: "desc" },
-                    ]}
-                  />
-                </FilterToolbar>
-              }
-              items={paginatedPosts}
-              pagination={buildPaginationMeta(filteredPosts.length, pagination.posts.page, pagination.posts.pageSize, totalPages.posts)}
-              onPageChange={(page) => setTabPage("posts", page)}
-              onPageSizeChange={(pageSize) => setTabPageSize("posts", pageSize)}
-              emptyText="По текущим фильтрам посты не найдены."
-              renderItem={(post: any) => (
-                <ListRow
-                  selected={selectedIds.posts.includes(post.id)}
-                  onToggleSelected={() => toggleSelection("posts", post.id)}
-                  title={post.title}
-                  subtitle={`${post.author} · ${post.timeLabel}`}
-                  meta={`Категория: ${post.category} · Порядок: ${post.sortOrder}`}
-                  badge={post.pinned ? "Pinned" : undefined}
-                  inlineActions={[
-                    {
-                      label: "Порядок",
-                      value: post.sortOrder,
-                      icon: <ArrowDown className="h-3.5 w-3.5" />,
-                      disabled: updatePost.isPending,
-                      onClick: async () => {
-                        const nextSortOrder = post.sortOrder + 1;
-                        await updatePost.mutateAsync({
-                          id: post.id,
-                          category: post.category,
-                          author: post.author,
-                          avatar: post.avatar,
-                          role: post.role,
-                          timeLabel: post.timeLabel,
-                          title: post.title,
-                          text: post.text,
-                          imageUrl: post.imageUrl,
-                          likes: post.likes,
-                          comments: post.comments,
-                          tagsCsv: post.tagsCsv,
-                          pinned: post.pinned,
-                          sortOrder: nextSortOrder,
-                        });
-                        const toastCopy = getInlineActionToastCopy("post", { title: post.title, sortOrder: nextSortOrder, pinned: post.pinned });
-                        toast.success(toastCopy.sortOrder.title, {
-                          description: toastCopy.sortOrder.description,
-                        });
-                      },
-                    },
-                    {
-                      label: post.pinned ? "Pinned" : "Обычный",
-                      icon: <Pin className="h-3.5 w-3.5" />,
-                      disabled: updatePost.isPending,
-                      onClick: async () => {
-                        const nextPinned = !post.pinned;
-                        await updatePost.mutateAsync({
-                          id: post.id,
-                          category: post.category,
-                          author: post.author,
-                          avatar: post.avatar,
-                          role: post.role,
-                          timeLabel: post.timeLabel,
-                          title: post.title,
-                          text: post.text,
-                          imageUrl: post.imageUrl,
-                          likes: post.likes,
-                          comments: post.comments,
-                          tagsCsv: post.tagsCsv,
-                          pinned: nextPinned,
-                          sortOrder: post.sortOrder,
-                        });
-                        const toastCopy = getInlineActionToastCopy("post", { title: post.title, sortOrder: post.sortOrder, pinned: nextPinned });
-                        toast.success(toastCopy.status.title, {
-                          description: toastCopy.status.description,
-                        });
-                      },
-                    },
-                  ]}
-                  onEdit={() => setPostForm({
-                    id: post.id,
-                    category: post.category,
-                    author: post.author,
-                    avatar: post.avatar,
-                    role: post.role,
-                    timeLabel: post.timeLabel,
-                    title: post.title,
-                    text: post.text,
-                    imageUrl: post.imageUrl,
-                    likes: post.likes,
-                    comments: post.comments,
-                    tagsCsv: post.tagsCsv,
-                    pinned: Boolean(post.pinned),
-                    sortOrder: post.sortOrder,
-                  })}
-                  onDelete={() => setPendingDelete({
-                    entity: "post",
-                    id: post.id,
-                    title: post.title,
-                    description: `пост «${post.title}»`,
-                  })}
-                  deleting={isDeleting && pendingDelete?.entity === "post" && pendingDelete.id === post.id}
-                />
-              )}
+            <AdminClubPostsTabContent
+              {...buildAdminClubPostsTabProps({
+                postForm,
+                postErrors,
+                setPostForm,
+                setPostErrors,
+                handlePostSubmit,
+                createPostPending: createPost.isPending,
+                updatePostPending: updatePost.isPending,
+                postFilters,
+                setPostFilters,
+                selectedPosts,
+                allVisiblePostsSelected,
+                filteredPosts,
+                toggleSelectAllVisible,
+                clearSelection,
+                selectedIds,
+                toggleSelection,
+                presetName,
+                setPresetName,
+                handleSavePreset,
+                createPresetPending: createPreset.isPending,
+                presetsByTab,
+                applyPreset,
+                deletePreset,
+                postCategories,
+                paginatedPosts,
+                paginationMeta: buildPaginationMeta(filteredPosts.length, pagination.posts.page, pagination.posts.pageSize, totalPages.posts),
+                setTabPage,
+                setTabPageSize,
+                isDeleting,
+                setPendingDelete,
+                buildBulkDeleteSummaryItems,
+                getBulkActionToastCopy,
+                getInlineActionToastCopy,
+                updatePost,
+                toast,
+                pendingDelete,
+              })}
             />
           </AdminClubPostsTabSection>
 
           <AdminClubEventsTabSection>
-            <EntityFormCard
-              title={eventForm.id ? "Редактировать событие" : "Новое событие"}
-              description="Используйте короткие формулировки, чтобы карточки легко читались в Club Feed."
-              footer={
-                <div className="flex flex-wrap gap-3">
-                  <Button
-                    onClick={handleEventSubmit}
-                    disabled={createEvent.isPending || updateEvent.isPending}
-                  >
-                    {eventForm.id ? "Сохранить событие" : "Создать событие"}
-                  </Button>
-                  <Button variant="outline" onClick={() => {
-                    setEventForm(defaultEventForm());
-                    setEventErrors({});
-                  }}>Очистить</Button>
-                </div>
-              }
-            >
-              <div className="grid gap-4 md:grid-cols-2">
-                <Field label="Название" error={eventErrors.title}><Input aria-invalid={Boolean(eventErrors.title)} value={eventForm.title} onChange={(e) => {
-                  const value = e.target.value;
-                  setEventForm({ ...eventForm, title: value });
-                  if (eventErrors.title) setEventErrors((current: typeof eventErrors) => ({ ...current, title: undefined }));
-                }} /></Field>
-                <Field label="Дата" error={eventErrors.dateLabel}><Input aria-invalid={Boolean(eventErrors.dateLabel)} value={eventForm.dateLabel} onChange={(e) => {
-                  const value = e.target.value;
-                  setEventForm({ ...eventForm, dateLabel: value });
-                  if (eventErrors.dateLabel) setEventErrors((current: typeof eventErrors) => ({ ...current, dateLabel: undefined }));
-                }} /></Field>
-                <Field label="Статус" error={eventErrors.status}><Input aria-invalid={Boolean(eventErrors.status)} value={eventForm.status} onChange={(e) => {
-                  const value = e.target.value;
-                  setEventForm({ ...eventForm, status: value });
-                  if (eventErrors.status) setEventErrors((current: typeof eventErrors) => ({ ...current, status: undefined }));
-                }} /></Field>
-                <Field label="Тон" error={eventErrors.tone}><Input aria-invalid={Boolean(eventErrors.tone)} value={eventForm.tone} onChange={(e) => {
-                  const value = e.target.value;
-                  setEventForm({ ...eventForm, tone: value });
-                  if (eventErrors.tone) setEventErrors((current: typeof eventErrors) => ({ ...current, tone: undefined }));
-                }} /></Field>
-                <Field label="Порядок"><Input type="number" value={eventForm.sortOrder} onChange={(e) => setEventForm({ ...eventForm, sortOrder: Number(e.target.value) || 0 })} /></Field>
-              </div>
-              <Field label="Описание" error={eventErrors.description}><Textarea aria-invalid={Boolean(eventErrors.description)} value={eventForm.description} onChange={(e) => {
-                const value = e.target.value;
-                setEventForm({ ...eventForm, description: value });
-                if (eventErrors.description) setEventErrors((current: typeof eventErrors) => ({ ...current, description: undefined }));
-              }} className="min-h-32" /></Field>
-            </EntityFormCard>
-
-            <EntityListCard
-              title="События клуба"
-              description="Редактируйте даты, статусы и тексты, а также быстро находите нужные записи."
-              sortIndicator={{
-                fieldLabel: eventFilters.sortBy === "dateLabel" ? "дате" : eventFilters.sortBy === "status" ? "статусу" : "порядку",
-                directionLabel: eventFilters.sortDirection === "asc" ? "↑" : "↓",
-              }}
-              toolbar={
-                <FilterToolbar
-                  searchPlaceholder="Искать по названию, описанию или дате"
-                  selectionCount={selectedEvents.length}
-                  bulkActions={[
-                    {
-                      label: allVisibleEventsSelected ? "Снять выбор со всех" : "Выбрать все видимые",
-                      icon: allVisibleEventsSelected ? <Square className="h-4 w-4" /> : <CheckSquare className="h-4 w-4" />,
-                      variant: "outline",
-                      disabled: filteredEvents.length === 0,
-                      onClick: () => toggleSelectAllVisible("events", filteredEvents.map((event) => event.id)),
-                    },
-                    {
-                      label: "Удалить выбранные",
-                      icon: <Trash2 className="h-4 w-4" />,
-                      variant: "outline",
-                      destructive: true,
-                      disabled: selectedEvents.length === 0 || isDeleting,
-                      onClick: () => setPendingDelete({
-                        entity: "bulk-event",
-                        ids: selectedEvents.map((event) => event.id),
-                        title: `Выбрано событий: ${selectedEvents.length}`,
-                        description: `${selectedEvents.length} событий`,
-                        summaryItems: buildBulkDeleteSummaryItems(selectedEvents),
-                        totalCount: selectedEvents.length,
-                      }),
-                    },
-                  ]}
-                  onClearSelection={() => clearSelection("events")}
-                  presetPanel={
-                    <PresetToolbar
-                      presetName={presetName.events}
-                      onPresetNameChange={(value) => setPresetName((current) => ({ ...current, events: value }))}
-                      onSave={() => void handleSavePreset("events")}
-                      saveDisabled={createPreset.isPending}
-                      presets={presetsByTab.events}
-                      onApplyPreset={applyPreset}
-                      onDeletePreset={(presetId) => void deletePreset.mutateAsync({ id: presetId })}
-                      deletePending={deletePreset.isPending}
-                    />
-                  }
-                  searchValue={eventFilters.query}
-                  resultCount={filteredEvents.length}
-                  resultLabel="событий"
-                  resetLabel="Сбросить фильтры событий"
-                  activeFilterChips={[
-                    eventFilters.query
-                      ? { label: `Поиск: ${eventFilters.query}`, onRemove: () => setEventFilters((current) => ({ ...current, query: "" })) }
-                      : null,
-                    eventFilters.status !== "all"
-                      ? { label: `Статус: ${eventFilters.status}`, onRemove: () => setEventFilters((current) => ({ ...current, status: "all" })) }
-                      : null,
-                    eventFilters.tone !== "all"
-                      ? { label: `Тон: ${eventFilters.tone}`, onRemove: () => setEventFilters((current) => ({ ...current, tone: "all" })) }
-                      : null,
-                    eventFilters.sortBy !== "sortOrder"
-                      ? { label: `Сортировка: ${eventFilters.sortBy === "dateLabel" ? "дата" : "статус"}`, onRemove: () => setEventFilters((current) => ({ ...current, sortBy: "sortOrder" })) }
-                      : null,
-                    eventFilters.sortDirection !== "asc"
-                      ? { label: "Порядок: по убыванию", onRemove: () => setEventFilters((current) => ({ ...current, sortDirection: "asc" })) }
-                      : null,
-                  ].filter(Boolean) as FilterChip[]}
-                  onSearchChange={(value) => setEventFilters((current) => ({ ...current, query: value }))}
-                  onReset={() => setEventFilters(defaultEventFilters())}
-                  hasActiveFilters={eventFilters.query !== "" || eventFilters.status !== "all" || eventFilters.tone !== "all" || eventFilters.sortBy !== "sortOrder" || eventFilters.sortDirection !== "asc"}
-                >
-                  <SelectFilter
-                    label="Статус"
-                    value={eventFilters.status}
-                    onChange={(value) => setEventFilters((current) => ({ ...current, status: value }))}
-                    options={[{ label: "Все статусы", value: "all" }, ...eventStatuses.map((value) => ({ label: value, value }))]}
-                  />
-                  <SelectFilter
-                    label="Тон"
-                    value={eventFilters.tone}
-                    onChange={(value) => setEventFilters((current) => ({ ...current, tone: value }))}
-                    options={[{ label: "Все тона", value: "all" }, ...eventTones.map((value) => ({ label: value, value }))]}
-                  />
-                  <SelectFilter
-                    label="Сортировать по"
-                    value={eventFilters.sortBy}
-                    onChange={(value) => setEventFilters((current) => ({ ...current, sortBy: value as EventSortField }))}
-                    options={[
-                      { label: "Порядок", value: "sortOrder" },
-                      { label: "Дату", value: "dateLabel" },
-                      { label: "Статус", value: "status" },
-                    ]}
-                  />
-                  <SelectFilter
-                    label="Направление"
-                    value={eventFilters.sortDirection}
-                    onChange={(value) => setEventFilters((current) => ({ ...current, sortDirection: value as SortDirection }))}
-                    options={[
-                      { label: "По возрастанию", value: "asc" },
-                      { label: "По убыванию", value: "desc" },
-                    ]}
-                  />
-                </FilterToolbar>
-              }
-              items={paginatedEvents}
-              pagination={buildPaginationMeta(filteredEvents.length, pagination.events.page, pagination.events.pageSize, totalPages.events)}
-              onPageChange={(page) => setTabPage("events", page)}
-              onPageSizeChange={(pageSize) => setTabPageSize("events", pageSize)}
-              emptyText="По текущим фильтрам события не найдены."
-              renderItem={(event: any) => (
-                <ListRow
-                  selected={selectedIds.events.includes(event.id)}
-                  onToggleSelected={() => toggleSelection("events", event.id)}
-                  title={event.title}
-                  subtitle={event.dateLabel}
-                  meta={`${event.status} · ${event.tone} · Порядок: ${event.sortOrder}`}
-                  inlineActions={[
-                    {
-                      label: "Порядок",
-                      value: event.sortOrder,
-                      icon: <ArrowDown className="h-3.5 w-3.5" />,
-                      disabled: updateEvent.isPending,
-                      onClick: async () => {
-                        const nextSortOrder = event.sortOrder + 1;
-                        await updateEvent.mutateAsync({
-                          id: event.id,
-                          title: event.title,
-                          dateLabel: event.dateLabel,
-                          description: event.description,
-                          status: event.status,
-                          tone: event.tone,
-                          sortOrder: nextSortOrder,
-                        });
-                        const toastCopy = getInlineActionToastCopy("event", { title: event.title, sortOrder: nextSortOrder, status: event.status });
-                        toast.success(toastCopy.sortOrder.title, {
-                          description: toastCopy.sortOrder.description,
-                        });
-                        setActionLog((current) => recordAdminAction(current, "events", "update", toastCopy.sortOrder.title, toastCopy.sortOrder.description));
-                      },
-                    },
-                    {
-                      label: "Статус",
-                      value: event.status,
-                      icon: <CalendarRange className="h-3.5 w-3.5" />,
-                      disabled: updateEvent.isPending,
-                      onClick: async () => {
-                        const nextStatus = event.status === "Открыта регистрация" ? "Мест нет" : "Открыта регистрация";
-                        await updateEvent.mutateAsync({
-                          id: event.id,
-                          title: event.title,
-                          dateLabel: event.dateLabel,
-                          description: event.description,
-                          status: nextStatus,
-                          tone: event.tone,
-                          sortOrder: event.sortOrder,
-                        });
-                        const toastCopy = getInlineActionToastCopy("event", { title: event.title, sortOrder: event.sortOrder, status: nextStatus });
-                        toast.success(toastCopy.status.title, {
-                          description: toastCopy.status.description,
-                        });
-                        setActionLog((current) => recordAdminAction(current, "events", "update", toastCopy.status.title, toastCopy.status.description));
-                      },
-                    },
-                  ]}
-                  onEdit={() => setEventForm({
-                    id: event.id,
-                    title: event.title,
-                    dateLabel: event.dateLabel,
-                    description: event.description,
-                    status: event.status,
-                    tone: event.tone,
-                    sortOrder: event.sortOrder,
-                  })}
-                  onDelete={() => setPendingDelete({
-                    entity: "event",
-                    id: event.id,
-                    title: event.title,
-                    description: `событие «${event.title}»`,
-                  })}
-                  deleting={isDeleting && pendingDelete?.entity === "event" && pendingDelete.id === event.id}
-                />
-              )}
-            />
-          </AdminClubEventsTabSection>
+          <AdminClubEventsTabContent
+            {...buildAdminClubEventsTabProps({
+              eventForm,
+              eventErrors,
+              setEventForm,
+              setEventErrors,
+              handleEventSubmit,
+              createEventPending: createEvent.isPending,
+              updateEventPending: updateEvent.isPending,
+              eventFilters,
+              setEventFilters,
+              selectedEvents,
+              allVisibleEventsSelected,
+              filteredEvents,
+              toggleSelectAllVisible,
+              clearSelection,
+              selectedIds: { events: selectedIds.events },
+              toggleSelection,
+              presetName,
+              setPresetName,
+              handleSavePreset,
+              createPresetPending: createPreset.isPending,
+              presetsByTab: { events: presetsByTab.events },
+              applyPreset,
+              deletePreset,
+              eventStatuses,
+              eventTones,
+              paginatedEvents,
+              paginationMeta: buildPaginationMeta(filteredEvents.length, pagination.events.page, pagination.events.pageSize, totalPages.events),
+              setTabPage,
+              setTabPageSize,
+              isDeleting,
+              setPendingDelete,
+              buildBulkDeleteSummaryItems,
+              getInlineActionToastCopy,
+              updateEvent,
+              toast,
+              pendingDelete,
+              setActionLog,
+              recordAdminAction,
+            })}
+          />
+        </AdminClubEventsTabSection>
 
           <AdminClubMembersTabSection>
-            <EntityFormCard
-              title={memberForm.id ? "Редактировать участника" : "Новый участник"}
-              description="Поддерживайте клубный список актуальным и аккуратно отсортированным."
-              footer={
-                <div className="flex flex-wrap gap-3">
-                  <Button
-                    onClick={handleMemberSubmit}
-                    disabled={createMember.isPending || updateMember.isPending}
-                  >
-                    {memberForm.id ? "Сохранить участника" : "Добавить участника"}
-                  </Button>
-                  <Button variant="outline" onClick={() => {
-                    setMemberForm(defaultMemberForm());
-                    setMemberErrors({});
-                  }}>Очистить</Button>
-                </div>
-              }
-            >
-              <div className="grid gap-4 md:grid-cols-2">
-                <Field label="Имя" error={memberErrors.name}><Input aria-invalid={Boolean(memberErrors.name)} value={memberForm.name} onChange={(e) => {
-                  const value = e.target.value;
-                  setMemberForm({ ...memberForm, name: value });
-                  if (memberErrors.name) setMemberErrors((current: typeof memberErrors) => ({ ...current, name: undefined }));
-                }} /></Field>
-                <Field label="Животное" error={memberErrors.animal}><Input aria-invalid={Boolean(memberErrors.animal)} value={memberForm.animal} onChange={(e) => {
-                  const value = e.target.value;
-                  setMemberForm({ ...memberForm, animal: value });
-                  if (memberErrors.animal) setMemberErrors((current: typeof memberErrors) => ({ ...current, animal: undefined }));
-                }} /></Field>
-                <Field label="С нами с" error={memberErrors.sinceLabel}><Input aria-invalid={Boolean(memberErrors.sinceLabel)} value={memberForm.sinceLabel} onChange={(e) => {
-                  const value = e.target.value;
-                  setMemberForm({ ...memberForm, sinceLabel: value });
-                  if (memberErrors.sinceLabel) setMemberErrors((current: typeof memberErrors) => ({ ...current, sinceLabel: undefined }));
-                }} /></Field>
-                <Field label="Бейдж"><Input value={memberForm.badge} onChange={(e) => setMemberForm({ ...memberForm, badge: e.target.value })} /></Field>
-                <Field label="Порядок"><Input type="number" value={memberForm.sortOrder} onChange={(e) => setMemberForm({ ...memberForm, sortOrder: Number(e.target.value) || 0 })} /></Field>
-              </div>
-            </EntityFormCard>
-
-            <EntityListCard
-              title="Участники клуба"
-              description="Ищите по имени, животному или бейджу и быстро поддерживайте состав сообщества в порядке."
-              sortIndicator={{
-                fieldLabel: memberFilters.sortBy === "name" ? "имени" : memberFilters.sortBy === "badge" ? "бейджу" : "порядку",
-                directionLabel: memberFilters.sortDirection === "asc" ? "↑" : "↓",
-              }}
-              toolbar={
-                <FilterToolbar
-                  searchPlaceholder="Искать по имени, животному или периоду участия"
-                  selectionCount={selectedMembers.length}
-                  bulkActions={[
-                    {
-                      label: allVisibleMembersSelected ? "Снять выбор со всех" : "Выбрать все видимые",
-                      icon: allVisibleMembersSelected ? <Square className="h-4 w-4" /> : <CheckSquare className="h-4 w-4" />,
-                      variant: "outline",
-                      disabled: filteredMembers.length === 0,
-                      onClick: () => toggleSelectAllVisible("members", filteredMembers.map((member) => member.id)),
-                    },
-                    {
-                      label: "Удалить выбранных",
-                      icon: <Trash2 className="h-4 w-4" />,
-                      variant: "outline",
-                      destructive: true,
-                      disabled: selectedMembers.length === 0 || isDeleting,
-                      onClick: () => setPendingDelete({
-                        entity: "bulk-member",
-                        ids: selectedMembers.map((member) => member.id),
-                        title: `Выбрано участников: ${selectedMembers.length}`,
-                        description: `${selectedMembers.length} участников`,
-                        summaryItems: buildBulkDeleteSummaryItems(selectedMembers),
-                        totalCount: selectedMembers.length,
-                      }),
-                    },
-                  ]}
-                  onClearSelection={() => clearSelection("members")}
-                  presetPanel={
-                    <PresetToolbar
-                      presetName={presetName.members}
-                      onPresetNameChange={(value) => setPresetName((current) => ({ ...current, members: value }))}
-                      onSave={() => void handleSavePreset("members")}
-                      saveDisabled={createPreset.isPending}
-                      presets={presetsByTab.members}
-                      onApplyPreset={applyPreset}
-                      onDeletePreset={(presetId) => void deletePreset.mutateAsync({ id: presetId })}
-                      deletePending={deletePreset.isPending}
-                    />
-                  }
-                  searchValue={memberFilters.query}
-                  resultCount={filteredMembers.length}
-                  resultLabel="участников"
-                  resetLabel="Сбросить фильтры участников"
-                  activeFilterChips={[
-                    memberFilters.query
-                      ? { label: `Поиск: ${memberFilters.query}`, onRemove: () => setMemberFilters((current) => ({ ...current, query: "" })) }
-                      : null,
-                    memberFilters.badge !== "all"
-                      ? { label: `Бейдж: ${memberFilters.badge}`, onRemove: () => setMemberFilters((current) => ({ ...current, badge: "all" })) }
-                      : null,
-                    memberFilters.sortBy !== "sortOrder"
-                      ? { label: `Сортировка: ${memberFilters.sortBy === "name" ? "имя" : "бейдж"}`, onRemove: () => setMemberFilters((current) => ({ ...current, sortBy: "sortOrder" })) }
-                      : null,
-                    memberFilters.sortDirection !== "asc"
-                      ? { label: "Порядок: по убыванию", onRemove: () => setMemberFilters((current) => ({ ...current, sortDirection: "asc" })) }
-                      : null,
-                  ].filter(Boolean) as FilterChip[]}
-                  onSearchChange={(value) => setMemberFilters((current) => ({ ...current, query: value }))}
-                  onReset={() => setMemberFilters(defaultMemberFilters())}
-                  hasActiveFilters={memberFilters.query !== "" || memberFilters.badge !== "all" || memberFilters.sortBy !== "sortOrder" || memberFilters.sortDirection !== "asc"}
-                >
-                  <SelectFilter
-                    label="Бейдж"
-                    value={memberFilters.badge}
-                    onChange={(value) => setMemberFilters((current) => ({ ...current, badge: value }))}
-                    options={[{ label: "Все бейджи", value: "all" }, ...memberBadges.map((value) => ({ label: value, value }))]}
-                  />
-                  <SelectFilter
-                    label="Сортировать по"
-                    value={memberFilters.sortBy}
-                    onChange={(value) => setMemberFilters((current) => ({ ...current, sortBy: value as MemberSortField }))}
-                    options={[
-                      { label: "Порядок", value: "sortOrder" },
-                      { label: "Имени", value: "name" },
-                      { label: "Бейджу", value: "badge" },
-                    ]}
-                  />
-                  <SelectFilter
-                    label="Направление"
-                    value={memberFilters.sortDirection}
-                    onChange={(value) => setMemberFilters((current) => ({ ...current, sortDirection: value as SortDirection }))}
-                    options={[
-                      { label: "По возрастанию", value: "asc" },
-                      { label: "По убыванию", value: "desc" },
-                    ]}
-                  />
-                </FilterToolbar>
-              }
-              items={paginatedMembers}
-              pagination={buildPaginationMeta(filteredMembers.length, pagination.members.page, pagination.members.pageSize, totalPages.members)}
-              onPageChange={(page) => setTabPage("members", page)}
-              onPageSizeChange={(pageSize) => setTabPageSize("members", pageSize)}
-              emptyText="По текущим фильтрам участники не найдены."
-              renderItem={(member: any) => (
-                <ListRow
-                  selected={selectedIds.members.includes(member.id)}
-                  onToggleSelected={() => toggleSelection("members", member.id)}
-                  title={member.name}
-                  subtitle={member.animal}
-                  meta={`${member.sinceLabel} · ${member.badge} · Порядок: ${member.sortOrder}`}
-                  inlineActions={[
-                    {
-                      label: "Порядок",
-                      value: member.sortOrder,
-                      icon: <ArrowDown className="h-3.5 w-3.5" />,
-                      disabled: updateMember.isPending,
-                      onClick: async () => {
-                        const nextSortOrder = member.sortOrder + 1;
-                        await updateMember.mutateAsync({
-                          id: member.id,
-                          name: member.name,
-                          animal: member.animal,
-                          sinceLabel: member.sinceLabel,
-                          badge: member.badge,
-                          sortOrder: nextSortOrder,
-                        });
-                        const toastCopy = getInlineActionToastCopy("member", { name: member.name, sortOrder: nextSortOrder, badge: member.badge });
-                        toast.success(toastCopy.sortOrder.title, {
-                          description: toastCopy.sortOrder.description,
-                        });
-                        setActionLog((current) => recordAdminAction(current, "members", "update", toastCopy.sortOrder.title, toastCopy.sortOrder.description));
-                      },
-                    },
-                    {
-                      label: "Бейдж",
-                      value: member.badge || "без бейджа",
-                      icon: <Crown className="h-3.5 w-3.5" />,
-                      disabled: updateMember.isPending,
-                      onClick: async () => {
-                        const nextBadge = member.badge === "Амбассадор" ? "Гость фермы" : "Амбассадор";
-                        await updateMember.mutateAsync({
-                          id: member.id,
-                          name: member.name,
-                          animal: member.animal,
-                          sinceLabel: member.sinceLabel,
-                          badge: nextBadge,
-                          sortOrder: member.sortOrder,
-                        });
-                        const toastCopy = getInlineActionToastCopy("member", { name: member.name, sortOrder: member.sortOrder, badge: nextBadge });
-                        toast.success(toastCopy.status.title, {
-                          description: toastCopy.status.description,
-                        });
-                        setActionLog((current) => recordAdminAction(current, "members", "update", toastCopy.status.title, toastCopy.status.description));
-                      },
-                    },
-                  ]}
-                  onEdit={() => setMemberForm({
-                    id: member.id,
-                    name: member.name,
-                    animal: member.animal,
-                    sinceLabel: member.sinceLabel,
-                    badge: member.badge,
-                    sortOrder: member.sortOrder,
-                  })}
-                  onDelete={() => setPendingDelete({
-                    entity: "member",
-                    id: member.id,
-                    title: member.name,
-                    description: `участника «${member.name}»`,
-                  })}
-                  deleting={isDeleting && pendingDelete?.entity === "member" && pendingDelete.id === member.id}
-                />
-              )}
-            />
-          </AdminClubMembersTabSection>
+          <AdminClubMembersTabContent
+            {...buildAdminClubMembersTabProps({
+              memberForm,
+              memberErrors,
+              setMemberForm,
+              setMemberErrors,
+              handleMemberSubmit,
+              createMemberPending: createMember.isPending,
+              updateMemberPending: updateMember.isPending,
+              memberFilters,
+              setMemberFilters,
+              selectedMembers,
+              allVisibleMembersSelected,
+              filteredMembers,
+              toggleSelectAllVisible,
+              clearSelection,
+              selectedIds: { members: selectedIds.members },
+              toggleSelection,
+              presetName,
+              setPresetName,
+              handleSavePreset,
+              createPresetPending: createPreset.isPending,
+              presetsByTab: { members: presetsByTab.members },
+              applyPreset,
+              deletePreset,
+              memberBadges,
+              paginatedMembers,
+              paginationMeta: buildPaginationMeta(filteredMembers.length, pagination.members.page, pagination.members.pageSize, totalPages.members),
+              setTabPage,
+              setTabPageSize,
+              isDeleting,
+              setPendingDelete,
+              buildBulkDeleteSummaryItems,
+              getInlineActionToastCopy,
+              updateMember,
+              toast,
+              pendingDelete,
+              setActionLog,
+              recordAdminAction,
+            })}
+          />
+        </AdminClubMembersTabSection>
 
           <AdminClubBitrixTabSection>
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
