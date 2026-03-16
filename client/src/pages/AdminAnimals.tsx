@@ -16,14 +16,42 @@ import {
 } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
 import { trpc } from "@/lib/trpc";
-import { ArrowUpRight, Eye, EyeOff, Leaf, Milk, Pencil, Plus, Search, ShieldCheck, Sparkles } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import {
+  ArrowLeft,
+  ArrowRight,
+  ArrowUpRight,
+  Eye,
+  EyeOff,
+  ImagePlus,
+  Leaf,
+  Loader2,
+  Milk,
+  Pencil,
+  Plus,
+  Search,
+  ShieldCheck,
+  Sparkles,
+  Star,
+  Trash2,
+} from "lucide-react";
+import { type ChangeEvent, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Link } from "wouter";
 
 type AdminAnimalStatus = "public_available" | "public_limited" | "fully_booked" | "hidden" | "archived";
 type AdminAnimalSpecies = "goat" | "sheep";
 type AdminVisibilityMode = "public" | "hidden" | "archived";
+
+type AdminAnimalMediaItem = {
+  kind: "image" | "video" | "document";
+  title: string;
+  alt?: string | null;
+  fileKey: string;
+  url: string;
+  mimeType: string;
+  sortOrder: number;
+  isCover: boolean;
+};
 
 type AdminAnimalRecord = {
   id: number;
@@ -47,16 +75,7 @@ type AdminAnimalRecord = {
   sortOrder?: number;
   coverImageUrl: string | null;
   publishedAt?: string | number | null;
-  media?: Array<{
-    kind: "image" | "video" | "document";
-    title: string;
-    alt?: string | null;
-    fileKey: string;
-    url: string;
-    mimeType: string;
-    sortOrder: number;
-    isCover: boolean;
-  }>;
+  media?: AdminAnimalMediaItem[];
 };
 
 type AnimalFormValues = {
@@ -81,6 +100,22 @@ type AnimalFormValues = {
   publishedAt: string;
 };
 
+type GalleryPhoto = {
+  id: string;
+  photoId: number;
+  src: string;
+  title: string;
+  meta: string;
+  isUploaded: true;
+  ownerOpenId: string;
+  createdAt: string | number | Date;
+  isCover: boolean;
+  sortOrder: number;
+};
+
+const ACCEPTED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"] as const;
+const MAX_UPLOAD_SIZE_BYTES = 8_000_000;
+
 const formatPrice = (minor: number) =>
   new Intl.NumberFormat("ru-RU", {
     style: "currency",
@@ -88,7 +123,7 @@ const formatPrice = (minor: number) =>
     maximumFractionDigits: 0,
   }).format(minor / 100);
 
-const createEmptyAnimalForm = (): AnimalFormValues => ({
+export const createEmptyAnimalForm = (): AnimalFormValues => ({
   name: "",
   slug: "",
   species: "goat",
@@ -109,7 +144,7 @@ const createEmptyAnimalForm = (): AnimalFormValues => ({
   publishedAt: "",
 });
 
-function normalizeAnimalFormValues(animal?: AdminAnimalRecord | null): AnimalFormValues {
+export function normalizeAnimalFormValues(animal?: AdminAnimalRecord | null): AnimalFormValues {
   if (!animal) return createEmptyAnimalForm();
 
   const publishedAtValue = animal.publishedAt
@@ -139,7 +174,7 @@ function normalizeAnimalFormValues(animal?: AdminAnimalRecord | null): AnimalFor
   };
 }
 
-function slugifyAnimalName(value: string) {
+export function slugifyAnimalName(value: string) {
   return value
     .trim()
     .toLowerCase()
@@ -149,16 +184,21 @@ function slugifyAnimalName(value: string) {
     .replace(/^-|-$/g, "");
 }
 
-function buildAnimalMutationPayload(values: AnimalFormValues) {
+function trimToNull(value: string) {
+  const trimmed = value.trim();
+  return trimmed ? trimmed : null;
+}
+
+export function buildAnimalMutationPayload(values: AnimalFormValues, media: AdminAnimalMediaItem[] = []) {
   return {
     name: values.name.trim(),
     slug: values.slug.trim(),
     species: values.species,
-    breed: values.breed.trim() || null,
+    breed: trimToNull(values.breed),
     shortDescription: values.shortDescription.trim(),
-    story: values.story.trim() || null,
-    coverImageUrl: values.coverImageUrl.trim() || null,
-    galleryIntro: values.galleryIntro.trim() || null,
+    story: trimToNull(values.story),
+    coverImageUrl: trimToNull(values.coverImageUrl),
+    galleryIntro: trimToNull(values.galleryIntro),
     status: values.status,
     totalOwnershipSlots: values.totalOwnershipSlots,
     baseMonthlyPriceMinor: values.baseMonthlyPriceMinor,
@@ -169,11 +209,51 @@ function buildAnimalMutationPayload(values: AnimalFormValues) {
     isFeatured: values.isFeatured,
     sortOrder: values.sortOrder,
     publishedAt: values.publishedAt ? new Date(values.publishedAt).getTime() : null,
-    media: [],
+    media: media.map((item, index) => ({
+      kind: "image" as const,
+      title: item.title.trim() || `Фото ${index + 1}`,
+      alt: trimToNull(item.alt ?? ""),
+      fileKey: item.fileKey,
+      url: item.url,
+      mimeType: item.mimeType,
+      sortOrder: index,
+      isCover: Boolean(item.isCover),
+    })),
   };
 }
 
-function getStatusBadge(status: AdminAnimalStatus) {
+export function buildAnimalGalleryMedia(photos: GalleryPhoto[]): AdminAnimalMediaItem[] {
+  return [...photos]
+    .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))
+    .map((photo, index) => ({
+      kind: "image" as const,
+      title: photo.title,
+      alt: photo.title,
+      fileKey: photo.id,
+      url: photo.src,
+      mimeType: "image/jpeg",
+      sortOrder: photo.sortOrder ?? index,
+      isCover: photo.isCover,
+    }));
+}
+
+export function validateGalleryUpload(type: string, sizeBytes: number) {
+  return {
+    hasAllowedType: ACCEPTED_IMAGE_TYPES.includes(type as (typeof ACCEPTED_IMAGE_TYPES)[number]),
+    hasAllowedSize: sizeBytes <= MAX_UPLOAD_SIZE_BYTES,
+  };
+}
+
+export function mergeCoverIntoForm(values: AnimalFormValues, photos: GalleryPhoto[]) {
+  const cover = photos.find((photo) => photo.isCover) ?? photos[0];
+  if (!cover) return values;
+  return {
+    ...values,
+    coverImageUrl: cover.src,
+  };
+}
+
+export function getStatusBadge(status: AdminAnimalStatus) {
   if (status === "public_available") {
     return { label: "Доступно", className: "border-emerald-200 bg-emerald-50 text-emerald-800" };
   }
@@ -193,7 +273,7 @@ function getSpeciesLabel(species: AdminAnimalSpecies) {
   return species === "goat" ? "Коза" : "Овца";
 }
 
-function getNextVisibilityMode(status: AdminAnimalStatus): AdminVisibilityMode {
+export function getNextVisibilityMode(status: AdminAnimalStatus): AdminVisibilityMode {
   if (status === "hidden") return "public";
   return "hidden";
 }
@@ -202,7 +282,7 @@ function getVisibilityActionLabel(status: AdminAnimalStatus) {
   return status === "hidden" ? "Опубликовать" : "Скрыть";
 }
 
-function filterAdminAnimals(
+export function filterAdminAnimals(
   animals: AdminAnimalRecord[],
   query: string,
   status: AdminAnimalStatus | "all",
@@ -218,6 +298,19 @@ function filterAdminAnimals(
     const matchesSpecies = species === "all" || animal.species === species;
 
     return matchesQuery && matchesStatus && matchesSpecies;
+  });
+}
+
+function fileToBase64(file: File) {
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = typeof reader.result === "string" ? reader.result : "";
+      const base64 = result.includes(",") ? result.split(",")[1] : result;
+      resolve(base64);
+    };
+    reader.onerror = () => reject(new Error("Не удалось прочитать файл"));
+    reader.readAsDataURL(file);
   });
 }
 
@@ -290,7 +383,8 @@ function AdminAnimalsTable({
                   </div>
                 </TableCell>
                 <TableCell>
-                  <div className="text-sm font-medium text-foreground">{formatPrice(animal.baseMonthlyPriceMinor)}/мес</div>
+                  <p className="font-medium text-foreground">{formatPrice(animal.baseMonthlyPriceMinor)}</p>
+                  <p className="text-xs text-muted-foreground">sort: {animal.sortOrder ?? 0}</p>
                 </TableCell>
                 <TableCell>
                   <div className="flex justify-end gap-2">
@@ -325,6 +419,242 @@ function AdminAnimalsTable({
   );
 }
 
+function AnimalGalleryManager({
+  animalSlug,
+  values,
+  onCoverChange,
+}: {
+  animalSlug: string;
+  values: AnimalFormValues;
+  onCoverChange: (url: string) => void;
+}) {
+  const utils = trpc.useUtils();
+  const photosQuery = trpc.animalPhotos.list.useQuery(
+    { animalSlug },
+    { enabled: Boolean(animalSlug.trim()) }
+  );
+
+  const galleryImages = useMemo(() => [...(photosQuery.data ?? [])].sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0)), [photosQuery.data]);
+
+  const uploadPhoto = trpc.animalPhotos.upload.useMutation({
+    onSuccess: async (created) => {
+      await utils.animalPhotos.list.invalidate({ animalSlug });
+      if (galleryImages.length === 0) {
+        onCoverChange(created.src);
+      }
+      toast.success("Фото сохранено", {
+        description: "Изображение добавлено в постоянную галерею животного.",
+      });
+    },
+    onError: (error) => {
+      toast.error("Не удалось загрузить фото", {
+        description: error.message,
+      });
+    },
+  });
+
+  const setCoverPhoto = trpc.animalPhotos.setCover.useMutation({
+    onSuccess: async ({ photoId }) => {
+      await utils.animalPhotos.list.invalidate({ animalSlug });
+      const cover = galleryImages.find((item) => item.photoId === photoId);
+      if (cover) {
+        onCoverChange(cover.src);
+      }
+      toast.success("Обложка обновлена", {
+        description: "Главное фото карточки синхронизировано с галереей.",
+      });
+    },
+    onError: (error) => {
+      toast.error("Не удалось обновить обложку", {
+        description: error.message,
+      });
+    },
+  });
+
+  const removePhoto = trpc.animalPhotos.remove.useMutation({
+    onSuccess: async ({ photoId }) => {
+      await utils.animalPhotos.list.invalidate({ animalSlug });
+      const remaining = galleryImages.filter((item) => item.photoId !== photoId);
+      const cover = remaining.find((item) => item.isCover) ?? remaining[0];
+      if (cover) {
+        onCoverChange(cover.src);
+      }
+      toast.success("Фото удалено", {
+        description: "Изображение убрано из постоянной галереи животного.",
+      });
+    },
+    onError: (error) => {
+      toast.error("Не удалось удалить фото", {
+        description: error.message,
+      });
+    },
+  });
+
+  const reorderPhotos = trpc.animalPhotos.reorder.useMutation({
+    onSuccess: async () => {
+      await utils.animalPhotos.list.invalidate({ animalSlug });
+      toast.success("Порядок фото сохранён", {
+        description: "Миниатюры галереи обновлены.",
+      });
+    },
+    onError: (error) => {
+      toast.error("Не удалось сохранить порядок", {
+        description: error.message,
+      });
+    },
+  });
+
+  async function handleUpload(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+
+    const validation = validateGalleryUpload(file.type, file.size);
+    if (!validation.hasAllowedType) {
+      toast.error("Неподдерживаемый формат", {
+        description: "Загрузите JPG, PNG или WebP файл.",
+      });
+      return;
+    }
+    if (!validation.hasAllowedSize) {
+      toast.error("Файл слишком большой", {
+        description: "Максимальный размер изображения — 8 МБ.",
+      });
+      return;
+    }
+
+    try {
+      const base64Data = await fileToBase64(file);
+      await uploadPhoto.mutateAsync({
+        animalSlug,
+        fileName: file.name,
+        mimeType: file.type,
+        sizeBytes: file.size,
+        base64Data,
+      });
+    } catch (error) {
+      toast.error("Не удалось подготовить файл", {
+        description: error instanceof Error ? error.message : "Попробуйте ещё раз.",
+      });
+    }
+  }
+
+  function movePhoto(photoId: number, direction: "left" | "right") {
+    const ids = galleryImages.map((item) => item.photoId);
+    const currentIndex = ids.indexOf(photoId);
+    if (currentIndex === -1) return;
+    const targetIndex = direction === "left" ? currentIndex - 1 : currentIndex + 1;
+    if (targetIndex < 0 || targetIndex >= ids.length) return;
+
+    const reorderedIds = [...ids];
+    const [moved] = reorderedIds.splice(currentIndex, 1);
+    reorderedIds.splice(targetIndex, 0, moved);
+
+    reorderPhotos.mutate({ animalSlug, photoIds: reorderedIds });
+  }
+
+  return (
+    <div className="space-y-4 rounded-[1.75rem] border border-border/70 bg-stone-50/60 p-5">
+      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+        <div>
+          <h3 className="text-base font-semibold text-foreground">Галерея животного</h3>
+          <p className="text-sm text-muted-foreground">
+            Загрузите фотографии, задайте обложку и управляйте порядком показа миниатюр в карточке животного.
+          </p>
+        </div>
+        <Label className="inline-flex cursor-pointer items-center gap-2 rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90">
+          {uploadPhoto.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <ImagePlus className="h-4 w-4" />}
+          {uploadPhoto.isPending ? "Загрузка..." : "Добавить фото"}
+          <input type="file" accept="image/*" className="hidden" onChange={handleUpload} disabled={uploadPhoto.isPending} />
+        </Label>
+      </div>
+
+      {!animalSlug ? (
+        <div className="rounded-2xl border border-dashed border-border bg-background/80 p-4 text-sm text-muted-foreground">
+          Сначала укажите slug животного. Галерея привязывается к нему и становится доступной сразу после редактирования.
+        </div>
+      ) : photosQuery.isLoading ? (
+        <div className="flex items-center gap-2 rounded-2xl border border-border bg-background/80 p-4 text-sm text-muted-foreground">
+          <Loader2 className="h-4 w-4 animate-spin" /> Загружаем фотографии...
+        </div>
+      ) : galleryImages.length === 0 ? (
+        <div className="rounded-2xl border border-dashed border-border bg-background/80 p-5 text-sm text-muted-foreground">
+          Пока нет загруженных изображений. Добавьте первое фото, чтобы сформировать обложку карточки и галерею.
+        </div>
+      ) : (
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {galleryImages.map((image, index) => (
+            <div key={image.id} className="overflow-hidden rounded-[1.5rem] border border-border bg-background shadow-sm">
+              <div className="aspect-square overflow-hidden bg-stone-100">
+                <img src={image.src} alt={image.title} className="h-full w-full object-cover" />
+              </div>
+              <div className="space-y-3 p-4">
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="line-clamp-1 font-medium text-foreground">{image.title}</p>
+                    {image.isCover ? (
+                      <Badge className="rounded-full border border-primary/20 bg-primary/10 text-primary">
+                        <Star className="mr-1 h-3 w-3" /> Обложка
+                      </Badge>
+                    ) : null}
+                  </div>
+                  <p className="text-xs text-muted-foreground">{image.meta}</p>
+                </div>
+
+                <div className="grid gap-2">
+                  <Button
+                    type="button"
+                    variant={image.isCover ? "default" : "outline"}
+                    className="rounded-full"
+                    onClick={() => setCoverPhoto.mutate({ photoId: image.photoId })}
+                    disabled={setCoverPhoto.isPending || image.isCover}
+                  >
+                    <Star className="mr-2 h-4 w-4" />
+                    {image.isCover ? "Текущая обложка" : "Сделать обложкой"}
+                  </Button>
+                  <div className="flex gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="flex-1 rounded-full"
+                      onClick={() => movePhoto(image.photoId, "left")}
+                      disabled={reorderPhotos.isPending || index === 0}
+                    >
+                      <ArrowLeft className="mr-2 h-4 w-4" /> Влево
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="flex-1 rounded-full"
+                      onClick={() => movePhoto(image.photoId, "right")}
+                      disabled={reorderPhotos.isPending || index === galleryImages.length - 1}
+                    >
+                      Вправо <ArrowRight className="ml-2 h-4 w-4" />
+                    </Button>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="rounded-full border-rose-200 text-rose-700 hover:bg-rose-50 hover:text-rose-800"
+                    onClick={() => removePhoto.mutate({ photoId: image.photoId })}
+                    disabled={removePhoto.isPending}
+                  >
+                    <Trash2 className="mr-2 h-4 w-4" /> Удалить
+                  </Button>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div className="rounded-2xl border border-border/70 bg-background/80 px-4 py-3 text-sm text-muted-foreground">
+        Текущее cover image URL карточки: <span className="font-medium text-foreground">{values.coverImageUrl || "будет заполнен после выбора обложки"}</span>
+      </div>
+    </div>
+  );
+}
+
 function AnimalEditorCard({
   mode,
   values,
@@ -340,6 +670,8 @@ function AnimalEditorCard({
   onCancel: () => void;
   isSubmitting: boolean;
 }) {
+  const gallerySlug = values.slug.trim();
+
   return (
     <Card className="rounded-[2rem] border-border/70 shadow-sm">
       <CardHeader>
@@ -348,7 +680,7 @@ function AnimalEditorCard({
           {mode === "create" ? "Создать животное" : "Редактировать животное"}
         </CardTitle>
         <CardDescription>
-          Заполните базовую информацию карточки, чтобы команда могла публиковать, скрывать и дорабатывать каталог без ручного редактирования базы.
+          Заполните базовую информацию карточки, а затем управляйте постоянной галереей прямо из этой формы без ручной вставки URL.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
@@ -450,6 +782,8 @@ function AnimalEditorCard({
           </div>
         </div>
 
+        <AnimalGalleryManager animalSlug={gallerySlug} values={values} onCoverChange={(url) => onChange("coverImageUrl", url)} />
+
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           <div className="space-y-2">
             <Label htmlFor="animal-slots">Ownership slots</Label>
@@ -533,10 +867,11 @@ function AnimalEditorCard({
 
         <div className="flex flex-wrap gap-3">
           <Button type="button" className="rounded-full" onClick={onSubmit} disabled={isSubmitting}>
+            {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : mode === "create" ? <Plus className="mr-2 h-4 w-4" /> : <Pencil className="mr-2 h-4 w-4" />}
             {mode === "create" ? "Создать карточку" : "Сохранить изменения"}
           </Button>
           <Button type="button" variant="outline" className="rounded-full" onClick={onCancel} disabled={isSubmitting}>
-            {mode === "create" ? "Очистить форму" : "Отменить редактирование"}
+            Отменить
           </Button>
         </div>
       </CardContent>
@@ -546,285 +881,246 @@ function AnimalEditorCard({
 
 export default function AdminAnimals() {
   const utils = trpc.useUtils();
-  const { data, isLoading } = trpc.adminAnimals.list.useQuery();
-  const [query, setQuery] = useState("");
-  const [status, setStatus] = useState<AdminAnimalStatus | "all">("all");
-  const [species, setSpecies] = useState<AdminAnimalSpecies | "all">("all");
-  const [editorMode, setEditorMode] = useState<"create" | "edit">("create");
-  const [selectedAnimalId, setSelectedAnimalId] = useState<number | null>(null);
-  const [formValues, setFormValues] = useState<AnimalFormValues>(createEmptyAnimalForm());
+  const animalsQuery = trpc.adminAnimals.list.useQuery();
 
-  const animals = (data ?? []) as AdminAnimalRecord[];
-  const selectedAnimal = useMemo(
-    () => animals.find((animal) => animal.id === selectedAnimalId) ?? null,
-    [animals, selectedAnimalId]
+  const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState<AdminAnimalStatus | "all">("all");
+  const [speciesFilter, setSpeciesFilter] = useState<AdminAnimalSpecies | "all">("all");
+  const [editorMode, setEditorMode] = useState<"create" | "edit">("create");
+  const [formValues, setFormValues] = useState<AnimalFormValues>(createEmptyAnimalForm());
+  const [editingAnimalId, setEditingAnimalId] = useState<number | null>(null);
+
+  const animals = animalsQuery.data ?? [];
+  const filteredAnimals = useMemo(
+    () => filterAdminAnimals(animals as AdminAnimalRecord[], searchQuery, statusFilter, speciesFilter),
+    [animals, searchQuery, statusFilter, speciesFilter]
   );
 
-  useEffect(() => {
-    if (editorMode === "edit" && selectedAnimal) {
-      setFormValues(normalizeAnimalFormValues(selectedAnimal));
-      return;
-    }
-
-    if (editorMode === "create") {
-      setFormValues(createEmptyAnimalForm());
-    }
-  }, [editorMode, selectedAnimal]);
-
-  const createMutation = trpc.adminAnimals.create.useMutation({
+  const createAnimal = trpc.adminAnimals.create.useMutation({
     onSuccess: async () => {
-      toast.success("Животное создано.");
-      setEditorMode("create");
-      setSelectedAnimalId(null);
-      setFormValues(createEmptyAnimalForm());
-      await Promise.all([
-        utils.adminAnimals.list.invalidate(),
-        utils.animals.listPublic.invalidate(),
-      ]);
+      await utils.adminAnimals.list.invalidate();
+      toast.success("Животное создано", {
+        description: "Новая карточка добавлена в каталог и доступна для дальнейшей настройки.",
+      });
+      resetEditor();
     },
     onError: (error) => {
-      toast.error(error.message || "Не удалось создать животное.");
+      toast.error("Не удалось создать карточку", {
+        description: error.message,
+      });
     },
   });
 
-  const updateMutation = trpc.adminAnimals.update.useMutation({
+  const updateAnimal = trpc.adminAnimals.update.useMutation({
     onSuccess: async () => {
-      toast.success("Карточка животного обновлена.");
-      await Promise.all([
-        utils.adminAnimals.list.invalidate(),
-        utils.animals.listPublic.invalidate(),
-      ]);
+      await utils.adminAnimals.list.invalidate();
+      toast.success("Изменения сохранены", {
+        description: "Карточка животного обновлена.",
+      });
     },
     onError: (error) => {
-      toast.error(error.message || "Не удалось сохранить изменения.");
+      toast.error("Не удалось сохранить изменения", {
+        description: error.message,
+      });
     },
   });
 
-  const setVisibilityMutation = trpc.adminAnimals.setVisibility.useMutation({
+  const setVisibility = trpc.adminAnimals.setVisibility.useMutation({
     onSuccess: async () => {
-      await Promise.all([
-        utils.adminAnimals.list.invalidate(),
-        utils.animals.listPublic.invalidate(),
-      ]);
+      await utils.adminAnimals.list.invalidate();
+      toast.success("Статус обновлён", {
+        description: "Видимость карточки животного изменена.",
+      });
     },
     onError: (error) => {
-      toast.error(error.message || "Не удалось изменить видимость.");
+      toast.error("Не удалось изменить статус", {
+        description: error.message,
+      });
     },
   });
 
-  const filteredAnimals = useMemo(() => {
-    return filterAdminAnimals(animals, query, status, species);
-  }, [animals, query, status, species]);
+  function resetEditor() {
+    setEditorMode("create");
+    setEditingAnimalId(null);
+    setFormValues(createEmptyAnimalForm());
+  }
 
-  const publicCount = animals.filter((animal) => animal.status === "public_available" || animal.status === "public_limited").length;
-  const hiddenCount = animals.filter((animal) => animal.status === "hidden").length;
-  const bookedCount = animals.filter((animal) => animal.status === "fully_booked").length;
-  const isSubmitting = createMutation.isPending || updateMutation.isPending;
-
-  const updateFormValue = <K extends keyof AnimalFormValues>(key: K, value: AnimalFormValues[K]) => {
+  function handleFormChange<K extends keyof AnimalFormValues>(key: K, value: AnimalFormValues[K]) {
     setFormValues((current) => ({ ...current, [key]: value }));
-  };
+  }
 
-  const handleSubmit = () => {
-    if (!formValues.name.trim() || !formValues.slug.trim() || !formValues.shortDescription.trim()) {
-      toast.error("Заполните имя, slug и короткое описание.");
-      return;
-    }
+  function handleEdit(animal: AdminAnimalRecord) {
+    setEditorMode("edit");
+    setEditingAnimalId(animal.id);
+    setFormValues(normalizeAnimalFormValues(animal));
+  }
 
+  function handleToggleVisibility(animal: AdminAnimalRecord) {
+    const nextMode = getNextVisibilityMode(animal.status);
+    setVisibility.mutate({ id: animal.id, mode: nextMode });
+  }
+
+  async function handleSubmit() {
     const payload = buildAnimalMutationPayload(formValues);
 
+    if (!payload.name || !payload.slug || payload.shortDescription.length < 10) {
+      toast.error("Проверьте обязательные поля", {
+        description: "Имя, slug и короткое описание должны быть заполнены корректно.",
+      });
+      return;
+    }
+
     if (editorMode === "create") {
-      createMutation.mutate(payload);
+      await createAnimal.mutateAsync(payload);
       return;
     }
 
-    if (!formValues.id) {
-      toast.error("Не найден идентификатор животного для редактирования.");
+    if (!editingAnimalId) {
+      toast.error("Не найдено животное для редактирования");
       return;
     }
 
-    updateMutation.mutate({ id: formValues.id, ...payload });
-  };
+    await updateAnimal.mutateAsync({ id: editingAnimalId, ...payload });
+  }
 
-  const handleCancel = () => {
-    setEditorMode("create");
-    setSelectedAnimalId(null);
-    setFormValues(createEmptyAnimalForm());
-  };
+  useEffect(() => {
+    if (!animals.length || editorMode !== "edit" || !editingAnimalId) return;
+    const freshAnimal = animals.find((animal) => animal.id === editingAnimalId);
+    if (freshAnimal) {
+      setFormValues((current) => ({
+        ...normalizeAnimalFormValues(freshAnimal as AdminAnimalRecord),
+        coverImageUrl: current.coverImageUrl || freshAnimal.coverImageUrl || "",
+      }));
+    }
+  }, [animals, editorMode, editingAnimalId]);
 
   return (
     <DashboardLayout>
-      <div className="space-y-6 bg-[linear-gradient(180deg,rgba(251,246,239,0.82),rgba(255,255,255,0.96))]">
-        <Card className="overflow-hidden rounded-[2rem] border-border/70 shadow-sm">
-          <CardContent className="grid gap-6 p-6 lg:grid-cols-[1.1fr_0.9fr] lg:items-end">
-            <div className="space-y-4">
-              <Badge className="w-fit rounded-full border border-primary/20 bg-primary/10 px-4 py-1.5 text-xs uppercase tracking-[0.2em] text-primary">
-                Admin · каталог животных
-              </Badge>
-              <div>
-                <h1 className="text-4xl font-semibold tracking-tight text-foreground">Управление ядром Sher Kozu начинается с понятного каталога животных.</h1>
-                <p className="mt-3 max-w-3xl text-sm leading-7 text-muted-foreground">
-                  Эта первая админ-панель помогает команде быстро увидеть, что уже опубликовано, сколько слотов свободно и какие карточки требуют наполнения перед публичным запуском каталога.
-                </p>
-              </div>
-            </div>
-            <div className="grid gap-3 sm:grid-cols-3">
-              <div className="rounded-[1.5rem] border border-border/70 bg-white p-4 shadow-sm">
-                <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">Публично</p>
-                <p className="mt-2 text-3xl font-semibold text-foreground">{publicCount}</p>
-              </div>
-              <div className="rounded-[1.5rem] border border-border/70 bg-white p-4 shadow-sm">
-                <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">Скрыто</p>
-                <p className="mt-2 text-3xl font-semibold text-foreground">{hiddenCount}</p>
-              </div>
-              <div className="rounded-[1.5rem] border border-border/70 bg-white p-4 shadow-sm">
-                <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">Полностью занято</p>
-                <p className="mt-2 text-3xl font-semibold text-foreground">{bookedCount}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+      <div className="min-h-screen bg-[radial-gradient(circle_at_top,#f7efe4_0%,#f4ede4_35%,#f9f6f2_100%)] text-foreground">
+        <div className="container py-10">
+          <div className="grid gap-8 xl:grid-cols-[minmax(0,1.15fr)_420px] xl:items-start">
+            <section className="space-y-6">
+              <div className="rounded-[2rem] border border-border/70 bg-white/95 p-6 shadow-sm">
+                <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+                  <div className="max-w-2xl space-y-3">
+                    <Badge className="rounded-full border border-primary/20 bg-primary/10 text-primary">
+                      Операционный каталог
+                    </Badge>
+                    <h1 className="text-3xl font-semibold tracking-tight text-foreground">Управление животными Sprint 1</h1>
+                    <p className="text-sm leading-6 text-muted-foreground">
+                      Команда фермы может управлять каталогом животных, быстро переключать видимость карточек, редактировать
+                      ключевые показатели и наполнять витрину без обращения к базе данных вручную.
+                    </p>
+                  </div>
 
-        <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
-          <AnimalEditorCard
-            mode={editorMode}
-            values={formValues}
-            onChange={updateFormValue}
-            onSubmit={handleSubmit}
-            onCancel={handleCancel}
-            isSubmitting={isSubmitting}
-          />
-
-          <Card className="rounded-[2rem] border-border/70 shadow-sm">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-lg"><ShieldCheck className="h-5 w-5 text-primary" /> Операционные сигналы</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4 text-sm text-muted-foreground">
-              <div className="rounded-2xl bg-secondary/50 p-4">
-                Животные со статусом <strong className="text-foreground">hidden</strong> не попадают в публичный каталог и не отвлекают пользователя до готовности карточки.
+                  <div className="grid gap-3 sm:grid-cols-3">
+                    <Card className="rounded-[1.5rem] border-emerald-100 bg-emerald-50/80 shadow-none">
+                      <CardContent className="flex items-center gap-3 p-4">
+                        <Sparkles className="h-5 w-5 text-emerald-700" />
+                        <div>
+                          <p className="text-xs uppercase tracking-[0.18em] text-emerald-800/80">В каталоге</p>
+                          <p className="text-lg font-semibold text-emerald-900">{animals.length}</p>
+                        </div>
+                      </CardContent>
+                    </Card>
+                    <Card className="rounded-[1.5rem] border-amber-100 bg-amber-50/80 shadow-none">
+                      <CardContent className="flex items-center gap-3 p-4">
+                        <ShieldCheck className="h-5 w-5 text-amber-700" />
+                        <div>
+                          <p className="text-xs uppercase tracking-[0.18em] text-amber-800/80">Featured</p>
+                          <p className="text-lg font-semibold text-amber-900">{animals.filter((animal) => Boolean(animal.isFeatured)).length}</p>
+                        </div>
+                      </CardContent>
+                    </Card>
+                    <Card className="rounded-[1.5rem] border-stone-200 bg-stone-50/90 shadow-none">
+                      <CardContent className="flex items-center gap-3 p-4">
+                        <Milk className="h-5 w-5 text-stone-700" />
+                        <div>
+                          <p className="text-xs uppercase tracking-[0.18em] text-stone-700/80">Доступно</p>
+                          <p className="text-lg font-semibold text-stone-900">{animals.filter((animal) => animal.status === "public_available" || animal.status === "public_limited").length}</p>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </div>
+                </div>
               </div>
-              <div className="rounded-2xl bg-secondary/50 p-4">
-                Статус <strong className="text-foreground">fully_booked</strong> помогает команде видеть дефицит и готовить новые карточки или новые слоты участия.
-              </div>
-              <div className="rounded-2xl bg-secondary/50 p-4">
-                На этом этапе форма покрывает текст, показатели, статус и публикацию. Следующим слоем можно добавить загрузку медиа и редактирование галереи.
-              </div>
-            </CardContent>
-          </Card>
-        </div>
 
-        <Card className="rounded-[2rem] border-border/70 shadow-sm">
-          <CardHeader>
-            <CardTitle>Поиск и операционный фокус</CardTitle>
-            <CardDescription>
-              Фильтры помогают быстро найти животных по имени, slug, статусу публикации и виду, не уходя в SQL или консольные операции.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="grid gap-3 md:grid-cols-[1.2fr_0.4fr_0.4fr]">
-            <div className="relative">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                value={query}
-                onChange={(event) => setQuery(event.target.value)}
-                placeholder="Поиск по имени, slug или породе"
-                className="pl-9"
-              />
-            </div>
-            <Select value={status} onValueChange={(value) => setStatus(value as AdminAnimalStatus | "all")}>
-              <SelectTrigger>
-                <SelectValue placeholder="Статус" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Все статусы</SelectItem>
-                <SelectItem value="public_available">Доступно</SelectItem>
-                <SelectItem value="public_limited">Слотов мало</SelectItem>
-                <SelectItem value="fully_booked">Заполнено</SelectItem>
-                <SelectItem value="hidden">Скрыто</SelectItem>
-                <SelectItem value="archived">Архив</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select value={species} onValueChange={(value) => setSpecies(value as AdminAnimalSpecies | "all")}>
-              <SelectTrigger>
-                <SelectValue placeholder="Вид" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Все виды</SelectItem>
-                <SelectItem value="goat">Козы</SelectItem>
-                <SelectItem value="sheep">Овцы</SelectItem>
-              </SelectContent>
-            </Select>
-          </CardContent>
-        </Card>
-
-        <div className="grid gap-6 xl:grid-cols-[1fr_320px]">
-          <div>
-            {isLoading ? (
               <Card className="rounded-[2rem] border-border/70 shadow-sm">
-                <CardContent className="p-6 text-sm text-muted-foreground">Загружаем каталог животных для admin view…</CardContent>
-              </Card>
-            ) : filteredAnimals.length ? (
-              <AdminAnimalsTable
-                animals={filteredAnimals}
-                onEdit={(animal) => {
-                  setEditorMode("edit");
-                  setSelectedAnimalId(animal.id);
-                  setFormValues(normalizeAnimalFormValues(animal));
-                }}
-                onToggleVisibility={(animal) => {
-                  setVisibilityMutation.mutate({ id: animal.id, mode: getNextVisibilityMode(animal.status) });
-                }}
-                isUpdating={setVisibilityMutation.isPending}
-              />
-            ) : (
-              <Card className="rounded-[2rem] border-border/70 shadow-sm">
-                <CardContent className="p-8 text-center">
-                  <p className="text-lg font-medium text-foreground">По текущим фильтрам животных не найдено.</p>
-                  <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                    Измените фильтры или создайте новую карточку в форме слева, чтобы начать наполнять каталог без консольных операций.
-                  </p>
+                <CardHeader>
+                  <CardTitle>Каталог животных</CardTitle>
+                  <CardDescription>
+                    Используйте поиск и фильтры, чтобы быстро находить карточки и управлять их публичной доступностью.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-5">
+                  <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_220px_220px]">
+                    <div className="relative">
+                      <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                      <Input
+                        value={searchQuery}
+                        onChange={(event) => setSearchQuery(event.target.value)}
+                        placeholder="Поиск по имени, slug или породе"
+                        className="h-11 rounded-full pl-11"
+                      />
+                    </div>
+                    <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value as AdminAnimalStatus | "all")}>
+                      <SelectTrigger className="h-11 rounded-full">
+                        <SelectValue placeholder="Статус" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Все статусы</SelectItem>
+                        <SelectItem value="public_available">Доступно</SelectItem>
+                        <SelectItem value="public_limited">Слотов мало</SelectItem>
+                        <SelectItem value="fully_booked">Заполнено</SelectItem>
+                        <SelectItem value="hidden">Скрыто</SelectItem>
+                        <SelectItem value="archived">Архив</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Select value={speciesFilter} onValueChange={(value) => setSpeciesFilter(value as AdminAnimalSpecies | "all")}>
+                      <SelectTrigger className="h-11 rounded-full">
+                        <SelectValue placeholder="Вид" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Все виды</SelectItem>
+                        <SelectItem value="goat">Козы</SelectItem>
+                        <SelectItem value="sheep">Овцы</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {animalsQuery.isLoading ? (
+                    <div className="flex items-center gap-2 rounded-2xl border border-border/70 bg-secondary/20 p-4 text-sm text-muted-foreground">
+                      <Loader2 className="h-4 w-4 animate-spin" /> Загружаем каталог животных...
+                    </div>
+                  ) : filteredAnimals.length === 0 ? (
+                    <div className="rounded-2xl border border-dashed border-border bg-secondary/20 px-5 py-8 text-center text-sm text-muted-foreground">
+                      По текущим фильтрам карточки не найдены. Попробуйте изменить условия поиска или создать новое животное справа.
+                    </div>
+                  ) : (
+                    <AdminAnimalsTable
+                      animals={filteredAnimals}
+                      onEdit={handleEdit}
+                      onToggleVisibility={handleToggleVisibility}
+                      isUpdating={setVisibility.isPending}
+                    />
+                  )}
                 </CardContent>
               </Card>
-            )}
-          </div>
+            </section>
 
-          <div className="space-y-4">
-            <Card className="rounded-[2rem] border-border/70 shadow-sm">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-lg"><Sparkles className="h-5 w-5 text-primary" /> Быстрые переходы</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <Link href="/animals" className="flex items-center justify-between rounded-2xl border border-border/70 bg-white px-4 py-3 text-sm font-medium text-foreground transition-colors hover:bg-secondary/40">
-                  <span>Открыть публичный каталог</span>
-                  <ArrowUpRight className="h-4 w-4 text-primary" />
-                </Link>
-                <Link href="/dashboard" className="flex items-center justify-between rounded-2xl border border-border/70 bg-white px-4 py-3 text-sm font-medium text-foreground transition-colors hover:bg-secondary/40">
-                  <span>Вернуться в owner dashboard</span>
-                  <ArrowUpRight className="h-4 w-4 text-primary" />
-                </Link>
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="w-full justify-between rounded-2xl bg-white px-4 py-6 text-sm font-medium text-foreground hover:bg-secondary/40"
-                  onClick={handleCancel}
-                >
-                  <span>Переключиться в режим создания</span>
-                  <Plus className="h-4 w-4 text-primary" />
-                </Button>
-              </CardContent>
-            </Card>
+            <aside className="space-y-6 xl:sticky xl:top-6">
+              <AnimalEditorCard
+                mode={editorMode}
+                values={formValues}
+                onChange={handleFormChange}
+                onSubmit={handleSubmit}
+                onCancel={resetEditor}
+                isSubmitting={createAnimal.isPending || updateAnimal.isPending}
+              />
+            </aside>
           </div>
         </div>
       </div>
     </DashboardLayout>
   );
 }
-
-export {
-  buildAnimalMutationPayload,
-  createEmptyAnimalForm,
-  filterAdminAnimals,
-  getNextVisibilityMode,
-  getStatusBadge,
-  normalizeAnimalFormValues,
-  slugifyAnimalName,
-};

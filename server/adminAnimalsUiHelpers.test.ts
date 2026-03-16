@@ -1,12 +1,15 @@
 import { describe, expect, it } from "vitest";
 import {
+  buildAnimalGalleryMedia,
   buildAnimalMutationPayload,
   createEmptyAnimalForm,
   filterAdminAnimals,
   getNextVisibilityMode,
   getStatusBadge,
+  mergeCoverIntoForm,
   normalizeAnimalFormValues,
   slugifyAnimalName,
+  validateGalleryUpload,
 } from "../client/src/pages/AdminAnimals";
 
 const animals = [
@@ -81,6 +84,33 @@ const animals = [
   },
 ] as const;
 
+const uploadedPhotos = [
+  {
+    id: "user-101",
+    photoId: 101,
+    src: "https://cdn.example.com/marta-1.jpg",
+    title: "Марта у сада",
+    meta: "Загружено владельцем · 240 KB",
+    isUploaded: true as const,
+    ownerOpenId: "owner-1",
+    createdAt: "2026-03-16T10:00:00.000Z",
+    isCover: true,
+    sortOrder: 0,
+  },
+  {
+    id: "user-102",
+    photoId: 102,
+    src: "https://cdn.example.com/marta-2.jpg",
+    title: "Утренний портрет",
+    meta: "Загружено владельцем · 198 KB",
+    isUploaded: true as const,
+    ownerOpenId: "owner-1",
+    createdAt: "2026-03-16T10:05:00.000Z",
+    isCover: false,
+    sortOrder: 1,
+  },
+] as const;
+
 describe("Admin animals UI helpers", () => {
   it("creates default empty form values for new animals", () => {
     const form = createEmptyAnimalForm();
@@ -124,6 +154,61 @@ describe("Admin animals UI helpers", () => {
     expect(payload.isFeatured).toBe(true);
     expect(typeof payload.publishedAt).toBe("number");
     expect(payload.media).toEqual([]);
+  });
+
+  it("builds media payload from uploaded gallery photos", () => {
+    const media = buildAnimalGalleryMedia([...uploadedPhotos]);
+
+    expect(media).toEqual([
+      {
+        kind: "image",
+        title: "Марта у сада",
+        alt: "Марта у сада",
+        fileKey: "user-101",
+        url: "https://cdn.example.com/marta-1.jpg",
+        mimeType: "image/jpeg",
+        sortOrder: 0,
+        isCover: true,
+      },
+      {
+        kind: "image",
+        title: "Утренний портрет",
+        alt: "Утренний портрет",
+        fileKey: "user-102",
+        url: "https://cdn.example.com/marta-2.jpg",
+        mimeType: "image/jpeg",
+        sortOrder: 1,
+        isCover: false,
+      },
+    ]);
+  });
+
+  it("builds mutation payload with gallery media", () => {
+    const payload = buildAnimalMutationPayload(
+      {
+        ...createEmptyAnimalForm(),
+        name: "Марта",
+        slug: "marta",
+        shortDescription: "Достаточно длинное описание для витрины.",
+        coverImageUrl: "https://cdn.example.com/marta-1.jpg",
+      },
+      buildAnimalGalleryMedia([...uploadedPhotos])
+    );
+
+    expect(payload.media).toHaveLength(2);
+    expect(payload.media[0]?.isCover).toBe(true);
+    expect(payload.media[1]?.sortOrder).toBe(1);
+  });
+
+  it("validates upload file type and size", () => {
+    expect(validateGalleryUpload("image/jpeg", 200_000)).toEqual({ hasAllowedType: true, hasAllowedSize: true });
+    expect(validateGalleryUpload("application/pdf", 200_000)).toEqual({ hasAllowedType: false, hasAllowedSize: true });
+    expect(validateGalleryUpload("image/png", 9_000_000)).toEqual({ hasAllowedType: true, hasAllowedSize: false });
+  });
+
+  it("syncs cover image url from uploaded gallery", () => {
+    const merged = mergeCoverIntoForm(createEmptyAnimalForm(), [...uploadedPhotos]);
+    expect(merged.coverImageUrl).toBe("https://cdn.example.com/marta-1.jpg");
   });
 
   it("slugifies animal names for quick form autofill", () => {
