@@ -26,6 +26,7 @@ type AdminSectionCard = {
   statusLabel: string;
   adminOnly: boolean;
   countLabel?: string;
+  breakdownLines?: string[];
   quickActionLabel?: string;
   quickActionPath?: string;
 };
@@ -57,6 +58,18 @@ export default function AdminHub() {
     retry: false,
   });
 
+  const animalStatusSummary = (animalsQuery.data ?? []).reduce(
+    (accumulator, animal) => {
+      if (animal.status === "hidden") accumulator.hidden += 1;
+      if (animal.status === "archived") accumulator.archived += 1;
+      if (["public_available", "public_limited", "fully_booked"].includes(animal.status)) {
+        accumulator.published += 1;
+      }
+      return accumulator;
+    },
+    { hidden: 0, published: 0, archived: 0 },
+  );
+
   const adminSections: AdminSectionCard[] = [
     {
       title: "Admin overview",
@@ -79,6 +92,13 @@ export default function AdminHub() {
       countLabel: isAdmin
         ? `${animalsQuery.data?.length ?? 0} животных в каталоге`
         : "Счётчик доступен после роли admin",
+      breakdownLines: isAdmin
+        ? [
+            `Опубликовано: ${animalStatusSummary.published}`,
+            `Скрыто: ${animalStatusSummary.hidden}`,
+            `В архиве: ${animalStatusSummary.archived}`,
+          ]
+        : ["Статусы появятся после подтверждения роли admin"],
       quickActionLabel: "Открыть каталог животных",
       quickActionPath: "/admin/animals",
     },
@@ -258,10 +278,21 @@ export default function AdminHub() {
                       <StatusPill label={section.path} />
                       {section.countLabel ? <StatusPill label={section.countLabel} /> : null}
                     </div>
-                    <div className="rounded-[1.25rem] border border-border/70 bg-stone-50/80 p-4 text-sm leading-6 text-muted-foreground">
-                      {canOpen
-                        ? "Раздел готов к открытию из общего admin overview и sidebar-навигации."
-                        : "Маршрут зарегистрирован, но интерфейс предупредит о нехватке прав до получения роли admin."}
+                    <div className="rounded-[1.25rem] border border-border/70 bg-stone-50/80 p-4 text-sm leading-6 text-muted-foreground space-y-3">
+                      <p>
+                        {canOpen
+                          ? "Раздел готов к открытию из общего admin overview и sidebar-навигации."
+                          : "Маршрут зарегистрирован, но интерфейс предупредит о нехватке прав до получения роли admin."}
+                      </p>
+                      {section.breakdownLines?.length ? (
+                        <div className="grid gap-2 sm:grid-cols-3">
+                          {section.breakdownLines.map((line) => (
+                            <div key={line} className="rounded-2xl border border-border/70 bg-background/80 px-3 py-2 text-xs font-medium text-foreground">
+                              {line}
+                            </div>
+                          ))}
+                        </div>
+                      ) : null}
                     </div>
                   </CardContent>
                   <CardFooter className="flex flex-col gap-3">

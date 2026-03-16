@@ -69,6 +69,9 @@ describe("page visual integration source smoke", () => {
     expect(adminHubSource).toContain("Роль:");
     expect(adminHubSource).toContain("Доступ открыт");
     expect(adminHubSource).toContain("Живой счётчик карточек из adminAnimals.list");
+    expect(adminHubSource).toContain("Опубликовано:");
+    expect(adminHubSource).toContain("Скрыто:");
+    expect(adminHubSource).toContain("В архиве:");
     expect(adminHubSource).toContain("Посты, события и участники из adminClub.dashboard");
     expect(adminHubSource).toContain("Открыть каталог животных");
     expect(adminHubSource).toContain("Открыть управление клубом");
