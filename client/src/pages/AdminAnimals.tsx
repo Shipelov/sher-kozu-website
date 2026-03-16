@@ -1174,9 +1174,14 @@ export default function AdminAnimals() {
               <div className="rounded-[2rem] border border-border/70 bg-white/95 p-6 shadow-sm">
                 <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
                   <div className="max-w-2xl space-y-3">
-                    <Badge className="rounded-full border border-primary/20 bg-primary/10 text-primary">
-                      Операционный каталог
-                    </Badge>
+                    <div className="flex flex-wrap items-center gap-3">
+                      <Badge className="rounded-full border border-primary/20 bg-primary/10 text-primary">
+                        Операционный каталог
+                      </Badge>
+                      <Badge variant="secondary" className="rounded-full px-3 py-1 text-[11px] uppercase tracking-[0.16em]">
+                        Роль: {String((user as { role?: string } | null)?.role ?? "user")}
+                      </Badge>
+                    </div>
                     <h1 className="text-3xl font-semibold tracking-tight text-foreground">Управление животными Sprint 1</h1>
                     <p className="text-sm leading-6 text-muted-foreground">
                       Команда фермы может управлять каталогом животных, быстро переключать видимость карточек, редактировать

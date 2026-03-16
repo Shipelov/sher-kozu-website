@@ -7,6 +7,7 @@ const trackerSource = fs.readFileSync("/home/ubuntu/sher-kozu-website/client/src
 const clubSource = fs.readFileSync("/home/ubuntu/sher-kozu-website/client/src/pages/ClubFeed.tsx", "utf8");
 const appSource = fs.readFileSync("/home/ubuntu/sher-kozu-website/client/src/App.tsx", "utf8");
 const navbarSource = fs.readFileSync("/home/ubuntu/sher-kozu-website/client/src/components/Navbar.tsx", "utf8");
+const dashboardLayoutSource = fs.readFileSync("/home/ubuntu/sher-kozu-website/client/src/components/DashboardLayout.tsx", "utf8");
 const adminAnimalsSource = fs.readFileSync("/home/ubuntu/sher-kozu-website/client/src/pages/AdminAnimals.tsx", "utf8");
 
 describe("page visual integration source smoke", () => {
@@ -49,9 +50,17 @@ describe("page visual integration source smoke", () => {
     expect(navbarSource).toContain("онлайн");
   });
 
-  it("shows explicit auth and admin fallbacks on admin animals page", () => {
+  it("shows admin-only entries and current role in the shared dashboard layout", () => {
+    expect(dashboardLayoutSource).toContain('label: "Admin Animals"');
+    expect(dashboardLayoutSource).toContain('label: "Admin Club"');
+    expect(dashboardLayoutSource).toContain('user?.role === "admin"');
+    expect(dashboardLayoutSource).toContain('{roleLabel}');
+  });
+
+  it("shows explicit auth, role diagnostics and admin fallbacks on admin animals page", () => {
     expect(adminAnimalsSource).toContain("Маршрут `/admin/animals` доступен только после авторизации.");
     expect(adminAnimalsSource).toContain("NOT_ADMIN_ERR_MSG");
     expect(adminAnimalsSource).toContain("Войти и открыть админку животных");
+    expect(adminAnimalsSource).toContain("Роль:");
   });
 });
