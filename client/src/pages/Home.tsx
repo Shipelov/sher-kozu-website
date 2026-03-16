@@ -639,16 +639,85 @@ export default function Home() {
                 {signals.map((signal, index) => (
                   <motion.div
                     key={signal.label}
-                    initial={{ opacity: 0, y: 18 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.28 + index * 0.05 }}
-                    className="rounded-2xl border border-border/70 bg-white/75 p-4 shadow-sm backdrop-blur"
+                    initial={{ opacity: 0, y: 20 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true, amount: 0.5 }}
+                    transition={{ duration: 0.45, delay: 0.15 + index * 0.08 }}
+                    className="rounded-3xl border border-border/60 bg-card/70 p-4 shadow-[0_22px_50px_-38px_rgba(25,35,28,0.45)] backdrop-blur"
                   >
-                    <div className="font-mono-data text-2xl font-semibold text-foreground">{signal.value}</div>
-                    <div className="mt-1 text-xs leading-5 text-muted-foreground">{signal.label}</div>
+                    <div className="text-2xl font-semibold tracking-tight text-foreground">{signal.value}</div>
+                    <div className="mt-2 text-xs uppercase tracking-[0.22em] text-muted-foreground">{signal.label}</div>
                   </motion.div>
                 ))}
               </div>
+
+              <motion.div
+                id="animal-gallery"
+                initial={{ opacity: 0, y: 24 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, amount: 0.35 }}
+                transition={{ duration: 0.55, delay: 0.22 }}
+                className="mt-12 rounded-[2rem] border border-border/65 bg-white/82 p-6 shadow-[0_28px_80px_-50px_rgba(33,29,24,0.45)] backdrop-blur"
+              >
+                <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+                  <div className="max-w-2xl space-y-3">
+                    <div className="inline-flex items-center gap-2 rounded-full border border-primary/15 bg-primary/5 px-4 py-1.5 text-xs font-semibold uppercase tracking-[0.24em] text-primary">
+                      Галерея животных
+                    </div>
+                    <h3 className="text-3xl font-semibold tracking-tight text-foreground md:text-4xl">
+                      Сначала выберите тип животного, затем откройте его профиль так же подробно, как профиль Марты.
+                    </h3>
+                    <p className="text-sm leading-7 text-muted-foreground md:text-base">
+                      Галерея разделена на две понятные зоны: козы и овцы. Внутри каждой — компактные карточки с аватаркой, статусом и именем.
+                      Любая карточка ведёт в полный профиль животного с историей, визуалами и параметрами участия.
+                    </p>
+                  </div>
+                  <Link href="/animals" className="inline-flex items-center justify-center gap-2 rounded-full border border-stone-300 bg-white px-6 py-3 text-sm font-semibold text-stone-900 transition-colors hover:bg-stone-100">
+                    Открыть всю галерею животных
+                    <ArrowRight className="h-4 w-4" />
+                  </Link>
+                </div>
+
+                <div className="mt-6 grid gap-5 lg:grid-cols-2">
+                  <Link href="/animals#goats" className="group rounded-[1.75rem] border border-amber-200 bg-gradient-to-br from-amber-50 via-white to-[#fff5dd] p-5 transition-transform duration-300 hover:-translate-y-1">
+                    <div className="flex items-start gap-4">
+                      <img src={CDN.goat} alt="Козы Sher Kozu" className="h-24 w-20 rounded-2xl object-cover" />
+                      <div className="space-y-2">
+                        <div className="inline-flex items-center rounded-full border border-amber-200 bg-white/80 px-3 py-1 text-xs font-medium text-amber-900">
+                          Козы
+                        </div>
+                        <h4 className="text-2xl font-semibold text-foreground">Энергичные, контактные, с ярким премиальным профилем</h4>
+                        <p className="text-sm leading-6 text-muted-foreground">
+                          Подборка коз для семей, которым важны характер, молочный потенциал и узнаваемая визуальная идентичность профиля.
+                        </p>
+                      </div>
+                    </div>
+                    <div className="mt-4 flex items-center justify-between rounded-2xl bg-white/75 px-4 py-3 text-sm text-stone-700">
+                      <span>Перейти в раздел коз</span>
+                      <ChevronRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
+                    </div>
+                  </Link>
+
+                  <Link href="/animals#sheep" className="group rounded-[1.75rem] border border-emerald-200 bg-gradient-to-br from-emerald-50 via-white to-[#eefbf4] p-5 transition-transform duration-300 hover:-translate-y-1">
+                    <div className="flex items-start gap-4">
+                      <img src={CDN.family} alt="Овцы Sher Kozu" className="h-24 w-20 rounded-2xl object-cover" />
+                      <div className="space-y-2">
+                        <div className="inline-flex items-center rounded-full border border-emerald-200 bg-white/80 px-3 py-1 text-xs font-medium text-emerald-900">
+                          Овцы
+                        </div>
+                        <h4 className="text-2xl font-semibold text-foreground">Спокойные, мягкие, с понятным маршрутом в полный профиль</h4>
+                        <p className="text-sm leading-6 text-muted-foreground">
+                          Отдельная витрина овец помогает быстро увидеть статус, имя и перейти в раскрытый профиль животного без лишних шагов.
+                        </p>
+                      </div>
+                    </div>
+                    <div className="mt-4 flex items-center justify-between rounded-2xl bg-white/75 px-4 py-3 text-sm text-stone-700">
+                      <span>Перейти в раздел овец</span>
+                      <ChevronRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
+                    </div>
+                  </Link>
+                </div>
+              </motion.div>
             </div>
 
             <motion.div
@@ -1357,8 +1426,12 @@ export default function Home() {
               </div>
               <div className="flex flex-col gap-3 sm:flex-row lg:flex-col">
                 <Link href="/animals" className="inline-flex items-center justify-center gap-2 rounded-full bg-amber-300 px-7 py-4 text-sm font-semibold text-stone-950 transition-colors hover:bg-amber-200">
-                  Выбрать животное в каталоге
+                  Открыть галерею животных
                   <Heart className="h-4 w-4" />
+                </Link>
+                <Link href="#animal-gallery" className="inline-flex items-center justify-center gap-2 rounded-full border border-stone-300 bg-white/85 px-7 py-4 text-sm font-semibold text-stone-800 transition-colors hover:bg-stone-100">
+                  Перейти к разделу галереи на странице
+                  <ChevronDown className="h-4 w-4" />
                 </Link>
                 <Link href="/dashboard" className="inline-flex items-center justify-center gap-2 rounded-full bg-white px-7 py-4 text-sm font-semibold text-primary transition-colors hover:bg-white/95">
                   Перейти в кабинет

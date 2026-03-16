@@ -3,63 +3,189 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { trpc } from "@/lib/trpc";
-import { Heart, Milk, ShieldCheck, Sparkles, ArrowRight } from "lucide-react";
+import { ArrowRight, Heart, Sparkles, Waves } from "lucide-react";
 import { Link } from "wouter";
 
-const formatPrice = (minor: number) =>
-  new Intl.NumberFormat("ru-RU", {
-    style: "currency",
-    currency: "RUB",
-    maximumFractionDigits: 0,
-  }).format(minor / 100);
+const speciesConfig = {
+  goat: {
+    title: "Козы",
+    singular: "Коза",
+    description:
+      "Живые профили коз Sher Kozu: эмоциональная связь, молочный потенциал и личная история каждой семьи с конкретным животным.",
+    icon: Heart,
+    tone: "border-amber-200 bg-amber-50 text-amber-900",
+    emptyTitle: "Козы скоро появятся",
+    emptyText: "Как только администратор опубликует новые профили коз, они появятся в этом разделе галереи.",
+  },
+  sheep: {
+    title: "Овцы",
+    singular: "Овца",
+    description:
+      "Раздел с овцами помогает быстро выбрать мягкий характер, статус участия и перейти в полный профиль животного в один клик.",
+    icon: Waves,
+    tone: "border-emerald-200 bg-emerald-50 text-emerald-900",
+    emptyTitle: "Овцы скоро появятся",
+    emptyText: "После публикации первых овец в системе здесь откроется отдельная галерея с карточками и переходом в профиль.",
+  },
+} as const;
 
-const getSpeciesLabel = (species: string) => {
-  if (species === "goat") return "Коза";
-  if (species === "sheep") return "Овца";
-  return "Животное";
-};
+type SupportedSpecies = keyof typeof speciesConfig;
 
 const getAvailabilityTone = (slots: number, total: number) => {
   if (slots <= 0) {
     return {
-      label: "Слоты заняты",
+      label: "Статус: мест нет",
       className: "border-stone-300 bg-stone-100 text-stone-700",
     };
   }
 
   if (slots === 1 || slots < total) {
     return {
-      label: `Осталось ${slots} из ${total}`,
+      label: `Статус: доступно ${slots} из ${total}`,
       className: "border-amber-200 bg-amber-50 text-amber-800",
     };
   }
 
   return {
-    label: `Свободно ${slots} из ${total}`,
+    label: `Статус: открыто ${slots} из ${total}`,
     className: "border-emerald-200 bg-emerald-50 text-emerald-800",
   };
 };
 
 function AnimalsCatalogSkeleton() {
   return (
-    <section className="container py-16 md:py-20">
-      <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
-        {Array.from({ length: 6 }).map((_, index) => (
-          <Card key={index} className="overflow-hidden border-stone-200 shadow-sm">
-            <Skeleton className="h-64 w-full" />
-            <CardContent className="space-y-4 p-6">
-              <Skeleton className="h-4 w-24" />
-              <Skeleton className="h-7 w-40" />
-              <Skeleton className="h-16 w-full" />
-              <div className="grid grid-cols-2 gap-3">
-                <Skeleton className="h-16 w-full" />
-                <Skeleton className="h-16 w-full" />
-              </div>
-              <Skeleton className="h-11 w-full" />
-            </CardContent>
-          </Card>
-        ))}
+    <section className="container space-y-10 py-16 md:py-20">
+      {Array.from({ length: 2 }).map((_, sectionIndex) => (
+        <div key={sectionIndex} className="space-y-6">
+          <div className="space-y-3">
+            <Skeleton className="h-5 w-24" />
+            <Skeleton className="h-10 w-72" />
+            <Skeleton className="h-5 w-full max-w-2xl" />
+          </div>
+          <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+            {Array.from({ length: 3 }).map((__, cardIndex) => (
+              <Card key={cardIndex} className="overflow-hidden border-stone-200 shadow-sm">
+                <Skeleton className="h-56 w-full" />
+                <CardContent className="space-y-4 p-6">
+                  <Skeleton className="h-6 w-40" />
+                  <Skeleton className="h-4 w-32" />
+                  <Skeleton className="h-11 w-full" />
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+      ))}
+    </section>
+  );
+}
+
+function AnimalSpeciesSection({
+  species,
+  animals,
+}: {
+  species: SupportedSpecies;
+  animals: Array<{
+    id: number;
+    slug: string;
+    name: string;
+    species: string;
+    coverImageUrl: string | null;
+    breed: string | null;
+    availableSlots: number;
+    totalOwnershipSlots: number;
+    shortDescription: string;
+    isFeatured: boolean;
+  }>;
+}) {
+  const config = speciesConfig[species];
+  const Icon = config.icon;
+
+  return (
+    <section className="space-y-6">
+      <div className="flex flex-col gap-4 rounded-[2rem] border border-stone-200 bg-white/90 p-6 shadow-sm backdrop-blur md:flex-row md:items-end md:justify-between">
+        <div className="space-y-3">
+          <Badge className={`rounded-full border px-4 py-1.5 text-xs font-medium uppercase tracking-[0.24em] ${config.tone}`}>
+            {config.title}
+          </Badge>
+          <div className="space-y-2">
+            <h2 className="text-3xl font-semibold tracking-tight text-stone-900 md:text-4xl">{config.title}</h2>
+            <p className="max-w-3xl text-sm leading-7 text-stone-600 md:text-base">{config.description}</p>
+          </div>
+        </div>
+        <div className="inline-flex items-center gap-3 rounded-full border border-stone-200 bg-stone-50 px-4 py-3 text-sm text-stone-700">
+          <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-stone-900 text-white">
+            <Icon className="h-4 w-4" />
+          </span>
+          <div>
+            <p className="text-xs uppercase tracking-[0.18em] text-stone-500">В галерее</p>
+            <p className="font-medium text-stone-900">
+              {animals.length} {animals.length === 1 ? config.singular.toLowerCase() : config.title.toLowerCase()}
+            </p>
+          </div>
+        </div>
       </div>
+
+      {animals.length ? (
+        <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+          {animals.map((animal) => {
+            const availability = getAvailabilityTone(animal.availableSlots, animal.totalOwnershipSlots);
+
+            return (
+              <Link key={animal.id} href={`/animals/${animal.slug}`}>
+                <Card className="group h-full cursor-pointer overflow-hidden border-stone-200 bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-lg">
+                  <div className="relative h-56 overflow-hidden bg-stone-100">
+                    {animal.coverImageUrl ? (
+                      <img
+                        src={animal.coverImageUrl}
+                        alt={animal.name}
+                        className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
+                      />
+                    ) : (
+                      <div className="flex h-full items-center justify-center text-stone-400">Аватарка появится после загрузки</div>
+                    )}
+                    <div className="absolute inset-x-0 top-0 flex items-start justify-between p-4">
+                      <Badge className="rounded-full border border-white/20 bg-black/60 px-3 py-1 text-white backdrop-blur">
+                        {config.singular}
+                      </Badge>
+                      {animal.isFeatured ? (
+                        <Badge className="rounded-full border border-white/20 bg-white/90 px-3 py-1 text-stone-900">
+                          Профиль недели
+                        </Badge>
+                      ) : null}
+                    </div>
+                  </div>
+
+                  <CardContent className="space-y-4 p-6">
+                    <div className="space-y-3">
+                      <Badge className={`rounded-full border px-3 py-1 text-xs font-medium ${availability.className}`}>
+                        {availability.label}
+                      </Badge>
+                      <div className="space-y-1">
+                        <h3 className="text-2xl font-semibold text-stone-900">{animal.name}</h3>
+                        <p className="text-sm text-stone-500">{animal.breed ?? `${config.singular} Sher Kozu`}</p>
+                      </div>
+                      <p className="line-clamp-3 text-sm leading-6 text-stone-600">{animal.shortDescription}</p>
+                    </div>
+
+                    <div className="flex items-center justify-between rounded-2xl bg-stone-50 px-4 py-3 text-sm text-stone-700">
+                      <span>Открыть полный профиль</span>
+                      <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
+                    </div>
+                  </CardContent>
+                </Card>
+              </Link>
+            );
+          })}
+        </div>
+      ) : (
+        <Card className="border-dashed border-stone-300 bg-white/80 shadow-sm">
+          <CardContent className="space-y-3 p-8 text-center">
+            <h3 className="text-2xl font-semibold text-stone-900">{config.emptyTitle}</h3>
+            <p className="mx-auto max-w-2xl text-sm leading-6 text-stone-600">{config.emptyText}</p>
+          </CardContent>
+        </Card>
+      )}
     </section>
   );
 }
@@ -72,21 +198,23 @@ export default function AnimalsCatalog() {
   }
 
   const animals = data ?? [];
+  const goats = animals.filter((animal) => animal.species === "goat");
+  const sheep = animals.filter((animal) => animal.species === "sheep");
 
   return (
     <main className="bg-gradient-to-b from-[#fbf6ef] via-white to-[#f7f3ed] text-stone-900">
-      <section className="container grid gap-8 py-16 md:grid-cols-[1.2fr_0.8fr] md:items-end md:py-20">
+      <section className="container grid gap-8 py-16 md:grid-cols-[1.15fr_0.85fr] md:items-end md:py-20">
         <div className="space-y-5">
           <Badge className="rounded-full border border-primary/20 bg-primary/10 px-4 py-1.5 text-xs font-medium uppercase tracking-[0.24em] text-primary">
-            Каталог животных
+            Галерея животных
           </Badge>
           <div className="space-y-4">
             <h1 className="max-w-3xl text-4xl font-semibold tracking-tight text-stone-900 md:text-5xl">
-              Выберите животное, за которым ваша семья будет наблюдать, заботиться и получать продукцию его молока.
+              Выберите раздел, откройте карточку козы или овцы и перейдите в её полноценный профиль так же, как у Марты на главной странице.
             </h1>
             <p className="max-w-2xl text-base leading-7 text-stone-600 md:text-lg">
-              Каждая карточка показывает историю животного, свободные слоты совместного владения и стартовый уровень участия.
-              Это первый шаг в цифровую экосистему Sher Kozu: от выбора до личного кабинета и продуктов.
+              Галерея теперь устроена как понятный маршрут выбора: сначала вид животного, затем компактная карточка с аватаркой, статусом и именем,
+              а после клика — полный профиль с историей, фото и всеми деталями участия.
             </p>
           </div>
         </div>
@@ -94,119 +222,46 @@ export default function AnimalsCatalog() {
         <Card className="border-stone-200 bg-white/85 shadow-sm backdrop-blur">
           <CardContent className="grid gap-4 p-6 text-sm text-stone-700 sm:grid-cols-3">
             <div className="space-y-2 rounded-2xl bg-stone-50 p-4">
-              <p className="text-xs uppercase tracking-[0.2em] text-stone-500">Животных в каталоге</p>
+              <p className="text-xs uppercase tracking-[0.2em] text-stone-500">Всего в галерее</p>
               <p className="text-3xl font-semibold text-stone-900">{animals.length}</p>
             </div>
             <div className="space-y-2 rounded-2xl bg-stone-50 p-4">
-              <p className="text-xs uppercase tracking-[0.2em] text-stone-500">С совместным владением</p>
-              <p className="text-3xl font-semibold text-stone-900">до 3</p>
+              <p className="text-xs uppercase tracking-[0.2em] text-stone-500">Козы</p>
+              <p className="text-3xl font-semibold text-stone-900">{goats.length}</p>
             </div>
             <div className="space-y-2 rounded-2xl bg-stone-50 p-4">
-              <p className="text-xs uppercase tracking-[0.2em] text-stone-500">Длительность статуса</p>
-              <p className="text-3xl font-semibold text-stone-900">1–12 мес.</p>
+              <p className="text-xs uppercase tracking-[0.2em] text-stone-500">Овцы</p>
+              <p className="text-3xl font-semibold text-stone-900">{sheep.length}</p>
             </div>
           </CardContent>
         </Card>
       </section>
 
-      <section className="container pb-20">
-        {animals.length ? (
-          <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
-            {animals.map((animal) => {
-              const availability = getAvailabilityTone(animal.availableSlots, animal.totalOwnershipSlots);
+      <section className="container space-y-10 pb-20">
+        <div className="flex flex-wrap gap-3">
+          <a href="#goats" className="inline-flex items-center gap-2 rounded-full border border-stone-200 bg-white px-5 py-3 text-sm font-medium text-stone-700 transition-colors hover:border-stone-300 hover:text-stone-900">
+            <Heart className="h-4 w-4" />
+            Козы
+          </a>
+          <a href="#sheep" className="inline-flex items-center gap-2 rounded-full border border-stone-200 bg-white px-5 py-3 text-sm font-medium text-stone-700 transition-colors hover:border-stone-300 hover:text-stone-900">
+            <Waves className="h-4 w-4" />
+            Овцы
+          </a>
+          <Link href={animals[0] ? `/animals/${animals[0].slug}` : "/animals"}>
+            <Button variant="outline" className="rounded-full border-stone-300 bg-white">
+              <Sparkles className="mr-2 h-4 w-4" />
+              Открыть профиль недели
+            </Button>
+          </Link>
+        </div>
 
-              return (
-                <Card key={animal.id} className="group overflow-hidden border-stone-200 bg-white shadow-sm transition-transform duration-300 hover:-translate-y-1 hover:shadow-lg">
-                  <div className="relative h-64 overflow-hidden bg-stone-100">
-                    {animal.coverImageUrl ? (
-                      <img
-                        src={animal.coverImageUrl}
-                        alt={animal.name}
-                        className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
-                      />
-                    ) : (
-                      <div className="flex h-full items-center justify-center text-stone-400">Изображение появится после загрузки</div>
-                    )}
-                    <div className="absolute left-4 top-4 flex flex-wrap gap-2">
-                      <Badge className="rounded-full border border-white/20 bg-black/55 px-3 py-1 text-white backdrop-blur">
-                        {getSpeciesLabel(animal.species)}
-                      </Badge>
-                      {animal.isFeatured ? (
-                        <Badge className="rounded-full border border-white/20 bg-white/90 px-3 py-1 text-stone-900">
-                          Рекомендуем
-                        </Badge>
-                      ) : null}
-                    </div>
-                  </div>
+        <div id="goats">
+          <AnimalSpeciesSection species="goat" animals={goats} />
+        </div>
 
-                  <CardContent className="space-y-5 p-6">
-                    <div className="space-y-3">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <Badge className={`rounded-full border px-3 py-1 text-xs font-medium ${availability.className}`}>
-                          {availability.label}
-                        </Badge>
-                        {animal.breed ? (
-                          <span className="text-xs text-stone-500">{animal.breed}</span>
-                        ) : null}
-                      </div>
-                      <div>
-                        <h2 className="text-2xl font-semibold text-stone-900">{animal.name}</h2>
-                        <p className="mt-2 line-clamp-3 text-sm leading-6 text-stone-600">{animal.shortDescription}</p>
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-3 text-sm">
-                      <div className="rounded-2xl bg-stone-50 p-4">
-                        <div className="mb-2 inline-flex h-9 w-9 items-center justify-center rounded-full bg-emerald-100 text-emerald-700">
-                          <ShieldCheck className="h-4 w-4" />
-                        </div>
-                        <p className="text-xs text-stone-500">Здоровье</p>
-                        <p className="text-lg font-semibold text-stone-900">{animal.healthScore}/100</p>
-                      </div>
-                      <div className="rounded-2xl bg-stone-50 p-4">
-                        <div className="mb-2 inline-flex h-9 w-9 items-center justify-center rounded-full bg-rose-100 text-rose-700">
-                          <Heart className="h-4 w-4" />
-                        </div>
-                        <p className="text-xs text-stone-500">Удовлетворённость</p>
-                        <p className="text-lg font-semibold text-stone-900">{animal.happinessScore}/100</p>
-                      </div>
-                      <div className="rounded-2xl bg-stone-50 p-4">
-                        <div className="mb-2 inline-flex h-9 w-9 items-center justify-center rounded-full bg-sky-100 text-sky-700">
-                          <Milk className="h-4 w-4" />
-                        </div>
-                        <p className="text-xs text-stone-500">Потенциал молока</p>
-                        <p className="text-lg font-semibold text-stone-900">{animal.milkPotentialScore}/100</p>
-                      </div>
-                      <div className="rounded-2xl bg-stone-50 p-4">
-                        <div className="mb-2 inline-flex h-9 w-9 items-center justify-center rounded-full bg-amber-100 text-amber-700">
-                          <Sparkles className="h-4 w-4" />
-                        </div>
-                        <p className="text-xs text-stone-500">От</p>
-                        <p className="text-lg font-semibold text-stone-900">{formatPrice(animal.baseMonthlyPriceMinor)}/мес</p>
-                      </div>
-                    </div>
-
-                    <Link href={`/animals/${animal.slug}`}>
-                      <Button className="w-full rounded-full">
-                        Открыть карточку животного
-                        <ArrowRight className="ml-2 h-4 w-4" />
-                      </Button>
-                    </Link>
-                  </CardContent>
-                </Card>
-              );
-            })}
-          </div>
-        ) : (
-          <Card className="border-stone-200 bg-white shadow-sm">
-            <CardContent className="space-y-3 p-8 text-center">
-              <h2 className="text-2xl font-semibold text-stone-900">Каталог пока заполняется</h2>
-              <p className="mx-auto max-w-2xl text-sm leading-6 text-stone-600">
-                Администратор уже получил foundation для Sprint 1. После наполнения базы здесь появятся козы и овцы со свободными слотами участия.
-              </p>
-            </CardContent>
-          </Card>
-        )}
+        <div id="sheep">
+          <AnimalSpeciesSection species="sheep" animals={sheep} />
+        </div>
       </section>
     </main>
   );

@@ -10,6 +10,7 @@ const navbarSource = fs.readFileSync("/home/ubuntu/sher-kozu-website/client/src/
 const dashboardLayoutSource = fs.readFileSync("/home/ubuntu/sher-kozu-website/client/src/components/DashboardLayout.tsx", "utf8");
 const adminHubSource = fs.readFileSync("/home/ubuntu/sher-kozu-website/client/src/pages/AdminHub.tsx", "utf8");
 const adminAnimalsSource = fs.readFileSync("/home/ubuntu/sher-kozu-website/client/src/pages/AdminAnimals.tsx", "utf8");
+const animalsCatalogSource = fs.readFileSync("/home/ubuntu/sher-kozu-website/client/src/pages/AnimalsCatalog.tsx", "utf8");
 
 describe("page visual integration source smoke", () => {
   it("keeps premium hero imagery and dynamic animal CTA on home", () => {
@@ -17,6 +18,9 @@ describe("page visual integration source smoke", () => {
     expect(homeSource).toContain("Открыть дашборд владельца");
     expect(homeSource).toContain("featuredAnimalProfileHref");
     expect(homeSource).toContain("Животное недели");
+    expect(homeSource).toContain("Галерея животных");
+    expect(homeSource).toContain("/animals#goats");
+    expect(homeSource).toContain("/animals#sheep");
   });
 
   it("keeps premium farm and dairy box imagery on dashboard", () => {
@@ -91,5 +95,15 @@ describe("page visual integration source smoke", () => {
     expect(adminAnimalsSource).toContain("Роль:");
     expect(adminAnimalsSource).toContain("new URLSearchParams(window.location.search)");
     expect(adminAnimalsSource).toContain('params.get("status")');
+  });
+
+  it("renders animal gallery with separate goats and sheep sections and links to full profiles", () => {
+    expect(animalsCatalogSource).toContain("Галерея животных");
+    expect(animalsCatalogSource).toContain("Козы");
+    expect(animalsCatalogSource).toContain("Овцы");
+    expect(animalsCatalogSource).toContain('id="goats"');
+    expect(animalsCatalogSource).toContain('id="sheep"');
+    expect(animalsCatalogSource).toContain("Открыть полный профиль");
+    expect(animalsCatalogSource).toContain('href={`/animals/${animal.slug}`}');
   });
 });
