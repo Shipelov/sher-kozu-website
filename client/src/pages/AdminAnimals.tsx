@@ -121,6 +121,134 @@ type GalleryPhoto = {
 
 type GalleryPhotoDrafts = Record<number, { title: string; alt: string }>;
 
+type AnimalProfilePreset = {
+  label: string;
+  values: AnimalFormValues;
+  media: AdminAnimalMediaItem[];
+};
+
+const DEMO_ANIMAL_PRESETS: Record<"goat" | "sheep", AnimalProfilePreset> = {
+  goat: {
+    label: "Демо-профиль козы",
+    values: {
+      name: "Мира",
+      slug: "mira-goat",
+      species: "goat",
+      breed: "Зааненская",
+      shortDescription: "Контактная молочная коза для семейного участия, визитов на ферму и прозрачного пути от ухода до продукции.",
+      story: "Мира любит подходить первой к гостям, спокойно реагирует на детей и лучше всего чувствует себя в ритме регулярных визитов семьи. Её карточка подходит для демонстрации полного сценария Sher Kozu: выбор животного, наблюдение за жизнью на ферме, участие в уходе и получение именной молочной продукции.",
+      coverImageUrl: "https://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/goat_portrait_80fc5726.jpg",
+      galleryIntro: "История Миры через фотогалерею: портрет, прогулка по ферме и контекст семейного персонального фермерства.",
+      status: "public_available",
+      totalOwnershipSlots: 3,
+      baseMonthlyPriceMinor: 135000,
+      healthScore: 94,
+      happinessScore: 92,
+      milkPotentialScore: 96,
+      careLevelScore: 71,
+      isFeatured: true,
+      sortOrder: 0,
+      publishedAt: "2026-03-16T10:30",
+    },
+    media: [
+      {
+        kind: "image",
+        title: "Портрет Миры",
+        alt: "Коза Мира в профиль на фоне фермы",
+        fileKey: "preset/mira-cover",
+        url: "https://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/goat_portrait_80fc5726.jpg",
+        mimeType: "image/jpeg",
+        sortOrder: 0,
+        isCover: true,
+      },
+      {
+        kind: "image",
+        title: "Мира на прогулке",
+        alt: "Коза Мира гуляет по ферме рядом с пастбищем",
+        fileKey: "preset/mira-walk",
+        url: "https://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/hero_farm_ab0d054b.jpg",
+        mimeType: "image/jpeg",
+        sortOrder: 1,
+        isCover: false,
+      },
+      {
+        kind: "image",
+        title: "Продуктовый контекст Миры",
+        alt: "Молочная продукция, связанная с профилем козы Миры",
+        fileKey: "preset/mira-products",
+        url: "https://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/milk_products_d3f8c13d.jpg",
+        mimeType: "image/jpeg",
+        sortOrder: 2,
+        isCover: false,
+      },
+    ],
+  },
+  sheep: {
+    label: "Демо-профиль овцы",
+    values: {
+      name: "Лана",
+      slug: "lana-sheep",
+      species: "sheep",
+      breed: "Романовская",
+      shortDescription: "Спокойная овца для мягкого семейного сценария знакомства с фермой, наблюдения и клубных визитов.",
+      story: "Лана подходит для семей, которым важен более спокойный ритм знакомства с персональным фермерством. В её карточке акцент сделан на доверии, регулярном наблюдении и понятной клиентской навигации: от выбора в каталоге до открытия подробного профиля и дальнейшего участия.",
+      coverImageUrl: "https://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/family_farm_446b395e.jpg",
+      galleryIntro: "Галерея Ланы показывает спокойный семейный сценарий участия: ферма, уход и визуальный контекст выбора животного.",
+      status: "public_available",
+      totalOwnershipSlots: 3,
+      baseMonthlyPriceMinor: 118000,
+      healthScore: 90,
+      happinessScore: 93,
+      milkPotentialScore: 76,
+      careLevelScore: 63,
+      isFeatured: false,
+      sortOrder: 1,
+      publishedAt: "2026-03-16T10:45",
+    },
+    media: [
+      {
+        kind: "image",
+        title: "Лана и семейная ферма",
+        alt: "Овца Лана в атмосфере семейной фермы",
+        fileKey: "preset/lana-cover",
+        url: "https://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/family_farm_446b395e.jpg",
+        mimeType: "image/jpeg",
+        sortOrder: 0,
+        isCover: true,
+      },
+      {
+        kind: "image",
+        title: "Лана в общем пейзаже фермы",
+        alt: "Спокойный ландшафт фермы для профиля овцы Ланы",
+        fileKey: "preset/lana-landscape",
+        url: "https://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/hero_farm_ab0d054b.jpg",
+        mimeType: "image/jpeg",
+        sortOrder: 1,
+        isCover: false,
+      },
+      {
+        kind: "image",
+        title: "Клубный день с Ланой",
+        alt: "Клубный семейный визит на ферму в контексте профиля овцы Ланы",
+        fileKey: "preset/lana-club",
+        url: "https://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/club_event_3bef2b1e.jpg",
+        mimeType: "image/jpeg",
+        sortOrder: 2,
+        isCover: false,
+      },
+    ],
+  },
+};
+
+export function createDemoAnimalPreset(species: "goat" | "sheep"): AnimalProfilePreset {
+  const preset = DEMO_ANIMAL_PRESETS[species];
+  return {
+    label: preset.label,
+    values: { ...preset.values },
+    media: preset.media.map((item) => ({ ...item })),
+  };
+}
+
 export function createPhotoDraft(photo: Pick<GalleryPhoto, "title" | "alt" | "meta">) {
   return {
     title: photo.title,
@@ -782,6 +910,7 @@ function AnimalEditorCard({
   onChange,
   onSubmit,
   onCancel,
+  onApplyPreset,
   isSubmitting,
 }: {
   mode: "create" | "edit";
@@ -789,6 +918,7 @@ function AnimalEditorCard({
   onChange: <K extends keyof AnimalFormValues>(key: K, value: AnimalFormValues[K]) => void;
   onSubmit: () => void;
   onCancel: () => void;
+  onApplyPreset: (species: "goat" | "sheep") => void;
   isSubmitting: boolean;
 }) {
   const gallerySlug = values.slug.trim();
@@ -986,14 +1116,30 @@ function AnimalEditorCard({
           </div>
         </div>
 
-        <div className="flex flex-wrap gap-3">
-          <Button type="button" className="rounded-full" onClick={onSubmit} disabled={isSubmitting}>
-            {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : mode === "create" ? <Plus className="mr-2 h-4 w-4" /> : <Pencil className="mr-2 h-4 w-4" />}
-            {mode === "create" ? "Создать карточку" : "Сохранить изменения"}
-          </Button>
-          <Button type="button" variant="outline" className="rounded-full" onClick={onCancel} disabled={isSubmitting}>
-            Отменить
-          </Button>
+        <div className="space-y-3">
+          <div className="rounded-2xl border border-dashed border-primary/25 bg-primary/5 p-4">
+            <p className="text-sm font-medium text-foreground">Быстрое демо-наполнение</p>
+            <p className="mt-1 text-xs leading-5 text-muted-foreground">
+              Эти шаблоны заполняют форму полностью, чтобы быстро показать путь от админки до публичной галереи выбора животного.
+            </p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <Button type="button" variant="outline" className="rounded-full" onClick={() => onApplyPreset("goat")} disabled={isSubmitting}>
+                Заполнить демо-козу
+              </Button>
+              <Button type="button" variant="outline" className="rounded-full" onClick={() => onApplyPreset("sheep")} disabled={isSubmitting}>
+                Заполнить демо-овцу
+              </Button>
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-3">
+            <Button type="button" className="rounded-full" onClick={onSubmit} disabled={isSubmitting}>
+              {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : mode === "create" ? <Plus className="mr-2 h-4 w-4" /> : <Pencil className="mr-2 h-4 w-4" />}
+              {mode === "create" ? "Создать карточку" : "Сохранить изменения"}
+            </Button>
+            <Button type="button" variant="outline" className="rounded-full" onClick={onCancel} disabled={isSubmitting}>
+              Отменить
+            </Button>
+          </div>
         </div>
       </CardContent>
     </Card>
@@ -1014,6 +1160,7 @@ export default function AdminAnimals() {
   const [location] = useLocation();
   const [editorMode, setEditorMode] = useState<"create" | "edit">("create");
   const [formValues, setFormValues] = useState<AnimalFormValues>(createEmptyAnimalForm());
+  const [galleryImages, setGalleryImages] = useState<GalleryPhoto[]>([]);
   const [editingAnimalId, setEditingAnimalId] = useState<number | null>(null);
 
   useEffect(() => {
@@ -1081,12 +1228,20 @@ export default function AdminAnimals() {
     },
   });
 
-  function resetEditor() {
+   function resetEditor() {
     setEditorMode("create");
     setEditingAnimalId(null);
     setFormValues(createEmptyAnimalForm());
+    setGalleryImages([]);
   }
 
+  function applyDemoPreset(species: "goat" | "sheep") {
+    const preset = createDemoAnimalPreset(species);
+    setEditorMode("create");
+    setEditingAnimalId(null);
+    setFormValues(preset.values);
+    setGalleryImages([]);
+  }
   function handleFormChange<K extends keyof AnimalFormValues>(key: K, value: AnimalFormValues[K]) {
     setFormValues((current) => ({ ...current, [key]: value }));
   }
@@ -1308,6 +1463,7 @@ export default function AdminAnimals() {
                 onChange={handleFormChange}
                 onSubmit={handleSubmit}
                 onCancel={resetEditor}
+                onApplyPreset={applyDemoPreset}
                 isSubmitting={createAnimal.isPending || updateAnimal.isPending}
               />
             </aside>

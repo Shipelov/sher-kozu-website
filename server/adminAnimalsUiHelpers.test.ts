@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildAnimalGalleryMedia,
   buildAnimalMutationPayload,
+  createDemoAnimalPreset,
   createEmptyAnimalForm,
   createPhotoDraft,
   filterAdminAnimals,
@@ -122,6 +123,44 @@ describe("Admin animals UI helpers", () => {
     expect(form.status).toBe("hidden");
     expect(form.totalOwnershipSlots).toBe(3);
     expect(form.name).toBe("");
+  });
+
+  it("creates a complete demo preset for a goat profile", () => {
+    const preset = createDemoAnimalPreset("goat");
+
+    expect(preset.label).toBe("Демо-профиль козы");
+    expect(preset.values.species).toBe("goat");
+    expect(preset.values.status).toBe("public_available");
+    expect(preset.values.name).toBe("Мира");
+    expect(preset.values.coverImageUrl).toContain("cloudfront.net");
+    expect(preset.media).toHaveLength(3);
+    expect(preset.media[0]?.isCover).toBe(true);
+    expect(preset.media.every((item) => item.mimeType === "image/jpeg")).toBe(true);
+  });
+
+  it("creates a complete demo preset for a sheep profile", () => {
+    const preset = createDemoAnimalPreset("sheep");
+
+    expect(preset.label).toBe("Демо-профиль овцы");
+    expect(preset.values.species).toBe("sheep");
+    expect(preset.values.status).toBe("public_available");
+    expect(preset.values.name).toBe("Лана");
+    expect(preset.values.publishedAt).toBeTruthy();
+    expect(preset.media).toHaveLength(3);
+    expect(preset.media[0]?.isCover).toBe(true);
+    expect(preset.media.map((item) => item.title)).toContain("Клубный день с Ланой");
+  });
+
+  it("builds a published payload from a demo preset with complete media", () => {
+    const preset = createDemoAnimalPreset("goat");
+    const payload = buildAnimalMutationPayload(preset.values, preset.media);
+
+    expect(payload.species).toBe("goat");
+    expect(payload.status).toBe("public_available");
+    expect(typeof payload.publishedAt).toBe("number");
+    expect(payload.media).toHaveLength(3);
+    expect(payload.media[0]?.isCover).toBe(true);
+    expect(payload.media[1]?.sortOrder).toBe(1);
   });
 
   it("normalizes existing animal data into editable form values", () => {
