@@ -258,6 +258,10 @@ function sanitizeFileName(fileName: string) {
 export const appRouter = router({
   system: systemRouter,
   auth: router({
+    me: publicProcedure.query(({ ctx }) => ({
+      user: ctx.user,
+      isAuthenticated: Boolean(ctx.user),
+    })),
     logout: publicProcedure.mutation(({ ctx }) => {
       ctx.res.clearCookie(COOKIE_NAME, { ...getSessionCookieOptions(ctx.req), maxAge: -1 });
       return { success: true };

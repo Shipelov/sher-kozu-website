@@ -41,6 +41,22 @@ function createAuthContext(): { ctx: TrpcContext; clearedCookies: CookieCall[] }
   return { ctx, clearedCookies };
 }
 
+describe("auth.me", () => {
+  it("returns the current user and authenticated state", async () => {
+    const { ctx } = createAuthContext();
+    const caller = appRouter.createCaller(ctx);
+
+    const result = await caller.auth.me();
+
+    expect(result.isAuthenticated).toBe(true);
+    expect(result.user).toMatchObject({
+      openId: "sample-user",
+      role: "user",
+      email: "sample@example.com",
+    });
+  });
+});
+
 describe("auth.logout", () => {
   it("clears the session cookie and reports success", async () => {
     const { ctx, clearedCookies } = createAuthContext();

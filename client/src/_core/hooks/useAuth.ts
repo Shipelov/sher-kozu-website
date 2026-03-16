@@ -13,7 +13,7 @@ export function useAuth(options?: UseAuthOptions) {
     options ?? {};
   const utils = trpc.useUtils();
 
-  const meQuery = trpc.system.health.useQuery({ timestamp: Date.now() }, {
+  const meQuery = trpc.auth.me.useQuery(undefined, {
     retry: false,
     refetchOnWindowFocus: false,
   });
@@ -36,15 +36,15 @@ export function useAuth(options?: UseAuthOptions) {
       }
       throw error;
     } finally {
-      await utils.system.health.invalidate({ timestamp: Date.now() });
+      await utils.auth.me.invalidate();
     }
   }, [logoutMutation, utils]);
 
   const state = useMemo(() => ({
-    user: null,
+    user: meQuery.data?.user ?? null,
     loading: meQuery.isLoading || logoutMutation.isPending,
     error: meQuery.error ?? logoutMutation.error ?? null,
-    isAuthenticated: false,
+    isAuthenticated: meQuery.data?.isAuthenticated ?? false,
   }), [
     meQuery.data,
     meQuery.error,
