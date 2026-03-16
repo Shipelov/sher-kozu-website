@@ -1,0 +1,2324 @@
+  1200	                  {deleteSummaryOverflow > 0 ? (
+  1201	                    <p className="text-xs text-stone-500">И ещё {deleteSummaryOverflow} записей будут удалены вместе с показанными выше.</p>
+  1202	                  ) : null}
+  1203	                </>
+  1204	              ) : null}
+  1205	            </div>
+  1206	          ) : null}
+  1207	          <AlertDialogFooter>
+  1208	            <AlertDialogCancel disabled={isDeleting}>Отмена</AlertDialogCancel>
+  1209	            <AlertDialogAction
+  1210	              onClick={(event) => {
+  1211	                event.preventDefault();
+  1212	                void confirmDelete();
+  1213	              }}
+  1214	              disabled={isDeleting}
+  1215	              className="bg-red-600 text-white hover:bg-red-700"
+  1216	            >
+  1217	              {isDeleting ? "Удаляем..." : deleteDialogCopy.actionLabel}
+  1218	            </AlertDialogAction>
+  1219	          </AlertDialogFooter>
+  1220	        </AlertDialogContent>
+  1221	      </AlertDialog>
+  1222	
+  1223	      <div className="container py-6 md:py-8 space-y-6">
+  1224	        <AdminClubOverviewSection counts={counts} user={user} isLoading={adminQuery.isLoading} />
+  1225	
+  1226	        {isForbidden ? (
+  1227	          <Alert variant="destructive">
+  1228	            <ShieldAlert className="h-4 w-4" />
+  1229	            <AlertTitle>Недостаточно прав</AlertTitle>
+  1230	            <AlertDescription>Сервер вернул ограничение по роли. Проверьте, что ваш пользователь имеет роль admin в таблице users.</AlertDescription>
+  1231	          </Alert>
+  1232	        ) : null}
+  1233	
+  1234	        <Tabs value={activeTab} onValueChange={(value) => {
+  1235	          if (isAdminTabValue(value)) {
+  1236	            if (value === "posts" || value === "events" || value === "members") {
+  1237	              setLastEntityTab(value);
+  1238	            }
+  1239	            setActiveTab(value);
+  1240	          }
+  1241	        }} className="space-y-6">
+  1242	          <TabsList className="grid h-auto w-full grid-cols-1 gap-2 rounded-2xl bg-stone-100 p-1 sm:grid-cols-2 sm:gap-1 lg:grid-cols-5 md:w-auto">
+  1243	            <TabsTrigger value="posts" className="w-full whitespace-normal px-3 py-2 text-center">Посты</TabsTrigger>
+  1244	            <TabsTrigger value="events" className="w-full whitespace-normal px-3 py-2 text-center">События</TabsTrigger>
+  1245	            <TabsTrigger value="members" className="w-full whitespace-normal px-3 py-2 text-center">Участники</TabsTrigger>
+  1246	            <TabsTrigger value="bitrix" className="w-full whitespace-normal px-3 py-2 text-center">Bitrix24 CRM</TabsTrigger>
+  1247	            <TabsTrigger value="activity" className="w-full whitespace-normal px-3 py-2 text-center">Журнал действий</TabsTrigger>
+  1248	          </TabsList>
+  1249	
+  1250	          <TabsContent value="posts" className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
+  1251	            <EntityFormCard
+  1252	              title={postForm.id ? "Редактировать пост" : "Новый пост"}
+  1253	              description="Заполняйте только основные поля. Изменения сразу попадут в club feed после сохранения."
+  1254	              footer={
+  1255	                <div className="flex flex-wrap gap-3">
+  1256	                  <Button
+  1257	                    onClick={handlePostSubmit}
+  1258	                    disabled={createPost.isPending || updatePost.isPending}
+  1259	                  >
+  1260	                    {postForm.id ? "Сохранить пост" : "Создать пост"}
+  1261	                  </Button>
+  1262	                  <Button variant="outline" onClick={() => {
+  1263	                    setPostForm(defaultPostForm());
+  1264	                    setPostErrors({});
+  1265	                  }}>Очистить</Button>
+  1266	                </div>
+  1267	              }
+  1268	            >
+  1269	              <div className="grid gap-4 md:grid-cols-2">
+  1270	                <Field label="Категория" error={postErrors.category}><Input aria-invalid={Boolean(postErrors.category)} value={postForm.category} onChange={(e) => {
+  1271	                  const value = e.target.value;
+  1272	                  setPostForm({ ...postForm, category: value });
+  1273	                  if (postErrors.category) setPostErrors((current: typeof postErrors) => ({ ...current, category: undefined }));
+  1274	                }} /></Field>
+  1275	                <Field label="Автор" error={postErrors.author}><Input aria-invalid={Boolean(postErrors.author)} value={postForm.author} onChange={(e) => {
+  1276	                  const value = e.target.value;
+  1277	                  setPostForm({ ...postForm, author: value });
+  1278	                  if (postErrors.author) setPostErrors((current: typeof postErrors) => ({ ...current, author: undefined }));
+  1279	                }} /></Field>
+  1280	                <Field label="Аватар"><Input value={postForm.avatar} onChange={(e) => setPostForm({ ...postForm, avatar: e.target.value.slice(0, 8) })} /></Field>
+  1281	                <Field label="Роль автора" error={postErrors.role}><Input aria-invalid={Boolean(postErrors.role)} value={postForm.role} onChange={(e) => {
+  1282	                  const value = e.target.value;
+  1283	                  setPostForm({ ...postForm, role: value });
+  1284	                  if (postErrors.role) setPostErrors((current: typeof postErrors) => ({ ...current, role: undefined }));
+  1285	                }} /></Field>
+  1286	                <Field label="Время" error={postErrors.timeLabel}><Input aria-invalid={Boolean(postErrors.timeLabel)} value={postForm.timeLabel} onChange={(e) => {
+  1287	                  const value = e.target.value;
+  1288	                  setPostForm({ ...postForm, timeLabel: value });
+  1289	                  if (postErrors.timeLabel) setPostErrors((current: typeof postErrors) => ({ ...current, timeLabel: undefined }));
+  1290	                }} /></Field>
+  1291	                <Field label="Порядок"><Input type="number" value={postForm.sortOrder} onChange={(e) => setPostForm({ ...postForm, sortOrder: Number(e.target.value) || 0 })} /></Field>
+  1292	                <Field label="Лайки"><Input type="number" value={postForm.likes} onChange={(e) => setPostForm({ ...postForm, likes: Number(e.target.value) || 0 })} /></Field>
+  1293	                <Field label="Комментарии"><Input type="number" value={postForm.comments} onChange={(e) => setPostForm({ ...postForm, comments: Number(e.target.value) || 0 })} /></Field>
+  1294	              </div>
+  1295	              <Field label="Заголовок" error={postErrors.title}><Input aria-invalid={Boolean(postErrors.title)} value={postForm.title} onChange={(e) => {
+  1296	                const value = e.target.value;
+  1297	                setPostForm({ ...postForm, title: value });
+  1298	                if (postErrors.title) setPostErrors((current: typeof postErrors) => ({ ...current, title: undefined }));
+  1299	              }} /></Field>
+  1300	              <Field label="Изображение (URL)"><Input value={postForm.imageUrl} onChange={(e) => setPostForm({ ...postForm, imageUrl: e.target.value })} placeholder="https://..." /></Field>
+  1301	              <Field label="Теги CSV"><Input value={postForm.tagsCsv} onChange={(e) => setPostForm({ ...postForm, tagsCsv: e.target.value })} placeholder="утро,марта,клуб" /></Field>
+  1302	              <Field label="Текст поста" error={postErrors.text}><Textarea aria-invalid={Boolean(postErrors.text)} value={postForm.text} onChange={(e) => {
+  1303	                const value = e.target.value;
+  1304	                setPostForm({ ...postForm, text: value });
+  1305	                if (postErrors.text) setPostErrors((current: typeof postErrors) => ({ ...current, text: undefined }));
+  1306	              }} className="min-h-32" /></Field>
+  1307	              <div className="flex items-center justify-between rounded-xl border border-stone-200 px-4 py-3">
+  1308	                <div>
+  1309	                  <p className="font-medium text-stone-950">Закрепить пост</p>
+  1310	                  <p className="text-sm text-stone-500">Закреплённые посты поднимаются вверх в ленте.</p>
+  1311	                </div>
+  1312	                <Switch checked={postForm.pinned} onCheckedChange={(checked) => setPostForm({ ...postForm, pinned: checked })} />
+  1313	              </div>
+  1314	            </EntityFormCard>
+  1315	
+  1316	            <EntityListCard
+  1317	              title="Текущие посты"
+  1318	              description="Быстрое редактирование, удаление, поиск и фильтрация материалов клуба."
+  1319	              sortIndicator={{
+  1320	                fieldLabel: postFilters.sortBy === "timeLabel" ? "времени" : postFilters.sortBy === "title" ? "заголовку" : "порядку",
+  1321	                directionLabel: postFilters.sortDirection === "asc" ? "↑" : "↓",
+  1322	              }}
+  1323	              toolbar={
+  1324	                <FilterToolbar
+  1325	                  searchPlaceholder="Искать по заголовку, тексту, автору или тегам"
+  1326	                  selectionCount={selectedPosts.length}
+  1327	                  bulkActions={[
+  1328	                    {
+  1329	                      label: allVisiblePostsSelected ? "Снять выбор со всех" : "Выбрать все видимые",
+  1330	                      icon: allVisiblePostsSelected ? <Square className="h-4 w-4" /> : <CheckSquare className="h-4 w-4" />,
+  1331	                      variant: "outline",
+  1332	                      disabled: filteredPosts.length === 0,
+  1333	                      onClick: () => toggleSelectAllVisible("posts", filteredPosts.map((post) => post.id)),
+  1334	                    },
+  1335	                    {
+  1336	                      label: "Закрепить выбранные",
+  1337	                      icon: <Pin className="h-4 w-4" />,
+  1338	                      variant: "outline",
+  1339	                      disabled: selectedPosts.length === 0 || updatePost.isPending,
+  1340	                      onClick: () => {
+  1341	                        void (async () => {
+  1342	                          for (const post of selectedPosts) {
+  1343	                            await updatePost.mutateAsync({
+  1344	                              id: post.id,
+  1345	                              category: post.category,
+  1346	                              author: post.author,
+  1347	                              avatar: post.avatar,
+  1348	                              role: post.role,
+  1349	                              timeLabel: post.timeLabel,
+  1350	                              title: post.title,
+  1351	                              text: post.text,
+  1352	                              imageUrl: post.imageUrl,
+  1353	                              likes: post.likes,
+  1354	                              comments: post.comments,
+  1355	                              tagsCsv: post.tagsCsv,
+  1356	                              pinned: true,
+  1357	                              sortOrder: post.sortOrder,
+  1358	                            });
+  1359	                          }
+  1360	                          clearSelection("posts");
+  1361	                          const toastCopy = getBulkActionToastCopy("post", "pin", selectedPosts.length);
+  1362	                          toast.success(toastCopy.title, {
+  1363	                            description: toastCopy.description,
+  1364	                          });
+  1365	
+  1366	                        })();
+  1367	                      },
+  1368	                    },
+  1369	                    {
+  1370	                      label: "Открепить выбранные",
+  1371	                      icon: <Pin className="h-4 w-4" />,
+  1372	                      variant: "outline",
+  1373	                      disabled: selectedPosts.length === 0 || updatePost.isPending,
+  1374	                      onClick: () => {
+  1375	                        void (async () => {
+  1376	                          for (const post of selectedPosts) {
+  1377	                            await updatePost.mutateAsync({
+  1378	                              id: post.id,
+  1379	                              category: post.category,
+  1380	                              author: post.author,
+  1381	                              avatar: post.avatar,
+  1382	                              role: post.role,
+  1383	                              timeLabel: post.timeLabel,
+  1384	                              title: post.title,
+  1385	                              text: post.text,
+  1386	                              imageUrl: post.imageUrl,
+  1387	                              likes: post.likes,
+  1388	                              comments: post.comments,
+  1389	                              tagsCsv: post.tagsCsv,
+  1390	                              pinned: false,
+  1391	                              sortOrder: post.sortOrder,
+  1392	                            });
+  1393	                          }
+  1394	                          clearSelection("posts");
+  1395	                          const toastCopy = getBulkActionToastCopy("post", "unpin", selectedPosts.length);
+  1396	                          toast.success(toastCopy.title, {
+  1397	                            description: toastCopy.description,
+  1398	                          });
+  1399	
+  1400	                        })();
+  1401	                      },
+  1402	                    },
+  1403	                    {
+  1404	                      label: "Удалить выбранные",
+  1405	                      icon: <Trash2 className="h-4 w-4" />,
+  1406	                      variant: "outline",
+  1407	                      destructive: true,
+  1408	                      disabled: selectedPosts.length === 0 || isDeleting,
+  1409	                      onClick: () => setPendingDelete({
+  1410	                        entity: "bulk-post",
+  1411	                        ids: selectedPosts.map((post) => post.id),
+  1412	                        title: `Выбрано постов: ${selectedPosts.length}`,
+  1413	                        description: `${selectedPosts.length} постов`,
+  1414	                        summaryItems: buildBulkDeleteSummaryItems(selectedPosts),
+  1415	                        totalCount: selectedPosts.length,
+  1416	                      }),
+  1417	                    },
+  1418	                  ]}
+  1419	                  onClearSelection={() => clearSelection("posts")}
+  1420	                  presetPanel={
+  1421	                    <PresetToolbar
+  1422	                      presetName={presetName.posts}
+  1423	                      onPresetNameChange={(value) => setPresetName((current) => ({ ...current, posts: value }))}
+  1424	                      onSave={() => void handleSavePreset("posts")}
+  1425	                      saveDisabled={createPreset.isPending}
+  1426	                      presets={presetsByTab.posts}
+  1427	                      onApplyPreset={applyPreset}
+  1428	                      onDeletePreset={(presetId) => void deletePreset.mutateAsync({ id: presetId })}
+  1429	                      deletePending={deletePreset.isPending}
+  1430	                    />
+  1431	                  }
+  1432	                  searchValue={postFilters.query}
+  1433	                  resultCount={filteredPosts.length}
+  1434	                  resultLabel="постов"
+  1435	                  resetLabel="Сбросить фильтры постов"
+  1436	                  activeFilterChips={[
+  1437	                    postFilters.query
+  1438	                      ? { label: `Поиск: ${postFilters.query}`, onRemove: () => setPostFilters((current) => ({ ...current, query: "" })) }
+  1439	                      : null,
+  1440	                    postFilters.category !== "all"
+  1441	                      ? { label: `Категория: ${postFilters.category}`, onRemove: () => setPostFilters((current) => ({ ...current, category: "all" })) }
+  1442	                      : null,
+  1443	                    postFilters.pinned === "pinned"
+  1444	                      ? { label: "Тип: только pinned", onRemove: () => setPostFilters((current) => ({ ...current, pinned: "all" })) }
+  1445	                      : postFilters.pinned === "regular"
+  1446	                        ? { label: "Тип: только обычные", onRemove: () => setPostFilters((current) => ({ ...current, pinned: "all" })) }
+  1447	                        : null,
+  1448	                    postFilters.sortBy !== "sortOrder"
+  1449	                      ? { label: `Сортировка: ${postFilters.sortBy === "timeLabel" ? "время" : "заголовок"}`, onRemove: () => setPostFilters((current) => ({ ...current, sortBy: "sortOrder" })) }
+  1450	                      : null,
+  1451	                    postFilters.sortDirection !== "asc"
+  1452	                      ? { label: "Порядок: по убыванию", onRemove: () => setPostFilters((current) => ({ ...current, sortDirection: "asc" })) }
+  1453	                      : null,
+  1454	                  ].filter(Boolean) as FilterChip[]}
+  1455	                  onSearchChange={(value) => setPostFilters((current) => ({ ...current, query: value }))}
+  1456	                  onReset={() => setPostFilters(defaultPostFilters())}
+  1457	                  hasActiveFilters={postFilters.query !== "" || postFilters.category !== "all" || postFilters.pinned !== "all" || postFilters.sortBy !== "sortOrder" || postFilters.sortDirection !== "asc"}
+  1458	                >
+  1459	                  <SelectFilter
+  1460	                    label="Категория"
+  1461	                    value={postFilters.category}
+  1462	                    onChange={(value) => setPostFilters((current) => ({ ...current, category: value }))}
+  1463	                    options={[{ label: "Все категории", value: "all" }, ...postCategories.map((value) => ({ label: value, value }))]}
+  1464	                  />
+  1465	                  <SelectFilter
+  1466	                    label="Тип"
+  1467	                    value={postFilters.pinned}
+  1468	                    onChange={(value) => setPostFilters((current) => ({ ...current, pinned: value as PostFilterState["pinned"] }))}
+  1469	                    options={[
+  1470	                      { label: "Все посты", value: "all" },
+  1471	                      { label: "Только pinned", value: "pinned" },
+  1472	                      { label: "Только обычные", value: "regular" },
+  1473	                    ]}
+  1474	                  />
+  1475	                  <SelectFilter
+  1476	                    label="Сортировать по"
+  1477	                    value={postFilters.sortBy}
+  1478	                    onChange={(value) => setPostFilters((current) => ({ ...current, sortBy: value as PostSortField }))}
+  1479	                    options={[
+  1480	                      { label: "Порядок", value: "sortOrder" },
+  1481	                      { label: "Время", value: "timeLabel" },
+  1482	                      { label: "Заголовок", value: "title" },
+  1483	                    ]}
+  1484	                  />
+  1485	                  <SelectFilter
+  1486	                    label="Направление"
+  1487	                    value={postFilters.sortDirection}
+  1488	                    onChange={(value) => setPostFilters((current) => ({ ...current, sortDirection: value as SortDirection }))}
+  1489	                    options={[
+  1490	                      { label: "По возрастанию", value: "asc" },
+  1491	                      { label: "По убыванию", value: "desc" },
+  1492	                    ]}
+  1493	                  />
+  1494	                </FilterToolbar>
+  1495	              }
+  1496	              items={paginatedPosts}
+  1497	              pagination={buildPaginationMeta(filteredPosts.length, pagination.posts.page, pagination.posts.pageSize, totalPages.posts)}
+  1498	              onPageChange={(page) => setTabPage("posts", page)}
+  1499	              onPageSizeChange={(pageSize) => setTabPageSize("posts", pageSize)}
+  1500	              emptyText="По текущим фильтрам посты не найдены."
+  1501	              renderItem={(post: any) => (
+  1502	                <ListRow
+  1503	                  selected={selectedIds.posts.includes(post.id)}
+  1504	                  onToggleSelected={() => toggleSelection("posts", post.id)}
+  1505	                  title={post.title}
+  1506	                  subtitle={`${post.author} · ${post.timeLabel}`}
+  1507	                  meta={`Категория: ${post.category} · Порядок: ${post.sortOrder}`}
+  1508	                  badge={post.pinned ? "Pinned" : undefined}
+  1509	                  inlineActions={[
+  1510	                    {
+  1511	                      label: "Порядок",
+  1512	                      value: post.sortOrder,
+  1513	                      icon: <ArrowDown className="h-3.5 w-3.5" />,
+  1514	                      disabled: updatePost.isPending,
+  1515	                      onClick: async () => {
+  1516	                        const nextSortOrder = post.sortOrder + 1;
+  1517	                        await updatePost.mutateAsync({
+  1518	                          id: post.id,
+  1519	                          category: post.category,
+  1520	                          author: post.author,
+  1521	                          avatar: post.avatar,
+  1522	                          role: post.role,
+  1523	                          timeLabel: post.timeLabel,
+  1524	                          title: post.title,
+  1525	                          text: post.text,
+  1526	                          imageUrl: post.imageUrl,
+  1527	                          likes: post.likes,
+  1528	                          comments: post.comments,
+  1529	                          tagsCsv: post.tagsCsv,
+  1530	                          pinned: post.pinned,
+  1531	                          sortOrder: nextSortOrder,
+  1532	                        });
+  1533	                        const toastCopy = getInlineActionToastCopy("post", { title: post.title, sortOrder: nextSortOrder, pinned: post.pinned });
+  1534	                        toast.success(toastCopy.sortOrder.title, {
+  1535	                          description: toastCopy.sortOrder.description,
+  1536	                        });
+  1537	                      },
+  1538	                    },
+  1539	                    {
+  1540	                      label: post.pinned ? "Pinned" : "Обычный",
+  1541	                      icon: <Pin className="h-3.5 w-3.5" />,
+  1542	                      disabled: updatePost.isPending,
+  1543	                      onClick: async () => {
+  1544	                        const nextPinned = !post.pinned;
+  1545	                        await updatePost.mutateAsync({
+  1546	                          id: post.id,
+  1547	                          category: post.category,
+  1548	                          author: post.author,
+  1549	                          avatar: post.avatar,
+  1550	                          role: post.role,
+  1551	                          timeLabel: post.timeLabel,
+  1552	                          title: post.title,
+  1553	                          text: post.text,
+  1554	                          imageUrl: post.imageUrl,
+  1555	                          likes: post.likes,
+  1556	                          comments: post.comments,
+  1557	                          tagsCsv: post.tagsCsv,
+  1558	                          pinned: nextPinned,
+  1559	                          sortOrder: post.sortOrder,
+  1560	                        });
+  1561	                        const toastCopy = getInlineActionToastCopy("post", { title: post.title, sortOrder: post.sortOrder, pinned: nextPinned });
+  1562	                        toast.success(toastCopy.status.title, {
+  1563	                          description: toastCopy.status.description,
+  1564	                        });
+  1565	                      },
+  1566	                    },
+  1567	                  ]}
+  1568	                  onEdit={() => setPostForm({
+  1569	                    id: post.id,
+  1570	                    category: post.category,
+  1571	                    author: post.author,
+  1572	                    avatar: post.avatar,
+  1573	                    role: post.role,
+  1574	                    timeLabel: post.timeLabel,
+  1575	                    title: post.title,
+  1576	                    text: post.text,
+  1577	                    imageUrl: post.imageUrl,
+  1578	                    likes: post.likes,
+  1579	                    comments: post.comments,
+  1580	                    tagsCsv: post.tagsCsv,
+  1581	                    pinned: Boolean(post.pinned),
+  1582	                    sortOrder: post.sortOrder,
+  1583	                  })}
+  1584	                  onDelete={() => setPendingDelete({
+  1585	                    entity: "post",
+  1586	                    id: post.id,
+  1587	                    title: post.title,
+  1588	                    description: `пост «${post.title}»`,
+  1589	                  })}
+  1590	                  deleting={isDeleting && pendingDelete?.entity === "post" && pendingDelete.id === post.id}
+  1591	                />
+  1592	              )}
+  1593	            />
+  1594	          </TabsContent>
+  1595	
+  1596	          <TabsContent value="events" className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
+  1597	            <EntityFormCard
+  1598	              title={eventForm.id ? "Редактировать событие" : "Новое событие"}
+  1599	              description="Используйте короткие формулировки, чтобы карточки легко читались в Club Feed."
+  1600	              footer={
+  1601	                <div className="flex flex-wrap gap-3">
+  1602	                  <Button
+  1603	                    onClick={handleEventSubmit}
+  1604	                    disabled={createEvent.isPending || updateEvent.isPending}
+  1605	                  >
+  1606	                    {eventForm.id ? "Сохранить событие" : "Создать событие"}
+  1607	                  </Button>
+  1608	                  <Button variant="outline" onClick={() => {
+  1609	                    setEventForm(defaultEventForm());
+  1610	                    setEventErrors({});
+  1611	                  }}>Очистить</Button>
+  1612	                </div>
+  1613	              }
+  1614	            >
+  1615	              <div className="grid gap-4 md:grid-cols-2">
+  1616	                <Field label="Название" error={eventErrors.title}><Input aria-invalid={Boolean(eventErrors.title)} value={eventForm.title} onChange={(e) => {
+  1617	                  const value = e.target.value;
+  1618	                  setEventForm({ ...eventForm, title: value });
+  1619	                  if (eventErrors.title) setEventErrors((current: typeof eventErrors) => ({ ...current, title: undefined }));
+  1620	                }} /></Field>
+  1621	                <Field label="Дата" error={eventErrors.dateLabel}><Input aria-invalid={Boolean(eventErrors.dateLabel)} value={eventForm.dateLabel} onChange={(e) => {
+  1622	                  const value = e.target.value;
+  1623	                  setEventForm({ ...eventForm, dateLabel: value });
+  1624	                  if (eventErrors.dateLabel) setEventErrors((current: typeof eventErrors) => ({ ...current, dateLabel: undefined }));
+  1625	                }} /></Field>
+  1626	                <Field label="Статус" error={eventErrors.status}><Input aria-invalid={Boolean(eventErrors.status)} value={eventForm.status} onChange={(e) => {
+  1627	                  const value = e.target.value;
+  1628	                  setEventForm({ ...eventForm, status: value });
+  1629	                  if (eventErrors.status) setEventErrors((current: typeof eventErrors) => ({ ...current, status: undefined }));
+  1630	                }} /></Field>
+  1631	                <Field label="Тон" error={eventErrors.tone}><Input aria-invalid={Boolean(eventErrors.tone)} value={eventForm.tone} onChange={(e) => {
+  1632	                  const value = e.target.value;
+  1633	                  setEventForm({ ...eventForm, tone: value });
+  1634	                  if (eventErrors.tone) setEventErrors((current: typeof eventErrors) => ({ ...current, tone: undefined }));
+  1635	                }} /></Field>
+  1636	                <Field label="Порядок"><Input type="number" value={eventForm.sortOrder} onChange={(e) => setEventForm({ ...eventForm, sortOrder: Number(e.target.value) || 0 })} /></Field>
+  1637	              </div>
+  1638	              <Field label="Описание" error={eventErrors.description}><Textarea aria-invalid={Boolean(eventErrors.description)} value={eventForm.description} onChange={(e) => {
+  1639	                const value = e.target.value;
+  1640	                setEventForm({ ...eventForm, description: value });
+  1641	                if (eventErrors.description) setEventErrors((current: typeof eventErrors) => ({ ...current, description: undefined }));
+  1642	              }} className="min-h-32" /></Field>
+  1643	            </EntityFormCard>
+  1644	
+  1645	            <EntityListCard
+  1646	              title="События клуба"
+  1647	              description="Редактируйте даты, статусы и тексты, а также быстро находите нужные записи."
+  1648	              sortIndicator={{
+  1649	                fieldLabel: eventFilters.sortBy === "dateLabel" ? "дате" : eventFilters.sortBy === "status" ? "статусу" : "порядку",
+  1650	                directionLabel: eventFilters.sortDirection === "asc" ? "↑" : "↓",
+  1651	              }}
+  1652	              toolbar={
+  1653	                <FilterToolbar
+  1654	                  searchPlaceholder="Искать по названию, описанию или дате"
+  1655	                  selectionCount={selectedEvents.length}
+  1656	                  bulkActions={[
+  1657	                    {
+  1658	                      label: allVisibleEventsSelected ? "Снять выбор со всех" : "Выбрать все видимые",
+  1659	                      icon: allVisibleEventsSelected ? <Square className="h-4 w-4" /> : <CheckSquare className="h-4 w-4" />,
+  1660	                      variant: "outline",
+  1661	                      disabled: filteredEvents.length === 0,
+  1662	                      onClick: () => toggleSelectAllVisible("events", filteredEvents.map((event) => event.id)),
+  1663	                    },
+  1664	                    {
+  1665	                      label: "Удалить выбранные",
+  1666	                      icon: <Trash2 className="h-4 w-4" />,
+  1667	                      variant: "outline",
+  1668	                      destructive: true,
+  1669	                      disabled: selectedEvents.length === 0 || isDeleting,
+  1670	                      onClick: () => setPendingDelete({
+  1671	                        entity: "bulk-event",
+  1672	                        ids: selectedEvents.map((event) => event.id),
+  1673	                        title: `Выбрано событий: ${selectedEvents.length}`,
+  1674	                        description: `${selectedEvents.length} событий`,
+  1675	                        summaryItems: buildBulkDeleteSummaryItems(selectedEvents),
+  1676	                        totalCount: selectedEvents.length,
+  1677	                      }),
+  1678	                    },
+  1679	                  ]}
+  1680	                  onClearSelection={() => clearSelection("events")}
+  1681	                  presetPanel={
+  1682	                    <PresetToolbar
+  1683	                      presetName={presetName.events}
+  1684	                      onPresetNameChange={(value) => setPresetName((current) => ({ ...current, events: value }))}
+  1685	                      onSave={() => void handleSavePreset("events")}
+  1686	                      saveDisabled={createPreset.isPending}
+  1687	                      presets={presetsByTab.events}
+  1688	                      onApplyPreset={applyPreset}
+  1689	                      onDeletePreset={(presetId) => void deletePreset.mutateAsync({ id: presetId })}
+  1690	                      deletePending={deletePreset.isPending}
+  1691	                    />
+  1692	                  }
+  1693	                  searchValue={eventFilters.query}
+  1694	                  resultCount={filteredEvents.length}
+  1695	                  resultLabel="событий"
+  1696	                  resetLabel="Сбросить фильтры событий"
+  1697	                  activeFilterChips={[
+  1698	                    eventFilters.query
+  1699	                      ? { label: `Поиск: ${eventFilters.query}`, onRemove: () => setEventFilters((current) => ({ ...current, query: "" })) }
+  1700	                      : null,
+  1701	                    eventFilters.status !== "all"
+  1702	                      ? { label: `Статус: ${eventFilters.status}`, onRemove: () => setEventFilters((current) => ({ ...current, status: "all" })) }
+  1703	                      : null,
+  1704	                    eventFilters.tone !== "all"
+  1705	                      ? { label: `Тон: ${eventFilters.tone}`, onRemove: () => setEventFilters((current) => ({ ...current, tone: "all" })) }
+  1706	                      : null,
+  1707	                    eventFilters.sortBy !== "sortOrder"
+  1708	                      ? { label: `Сортировка: ${eventFilters.sortBy === "dateLabel" ? "дата" : "статус"}`, onRemove: () => setEventFilters((current) => ({ ...current, sortBy: "sortOrder" })) }
+  1709	                      : null,
+  1710	                    eventFilters.sortDirection !== "asc"
+  1711	                      ? { label: "Порядок: по убыванию", onRemove: () => setEventFilters((current) => ({ ...current, sortDirection: "asc" })) }
+  1712	                      : null,
+  1713	                  ].filter(Boolean) as FilterChip[]}
+  1714	                  onSearchChange={(value) => setEventFilters((current) => ({ ...current, query: value }))}
+  1715	                  onReset={() => setEventFilters(defaultEventFilters())}
+  1716	                  hasActiveFilters={eventFilters.query !== "" || eventFilters.status !== "all" || eventFilters.tone !== "all" || eventFilters.sortBy !== "sortOrder" || eventFilters.sortDirection !== "asc"}
+  1717	                >
+  1718	                  <SelectFilter
+  1719	                    label="Статус"
+  1720	                    value={eventFilters.status}
+  1721	                    onChange={(value) => setEventFilters((current) => ({ ...current, status: value }))}
+  1722	                    options={[{ label: "Все статусы", value: "all" }, ...eventStatuses.map((value) => ({ label: value, value }))]}
+  1723	                  />
+  1724	                  <SelectFilter
+  1725	                    label="Тон"
+  1726	                    value={eventFilters.tone}
+  1727	                    onChange={(value) => setEventFilters((current) => ({ ...current, tone: value }))}
+  1728	                    options={[{ label: "Все тона", value: "all" }, ...eventTones.map((value) => ({ label: value, value }))]}
+  1729	                  />
+  1730	                  <SelectFilter
+  1731	                    label="Сортировать по"
+  1732	                    value={eventFilters.sortBy}
+  1733	                    onChange={(value) => setEventFilters((current) => ({ ...current, sortBy: value as EventSortField }))}
+  1734	                    options={[
+  1735	                      { label: "Порядок", value: "sortOrder" },
+  1736	                      { label: "Дату", value: "dateLabel" },
+  1737	                      { label: "Статус", value: "status" },
+  1738	                    ]}
+  1739	                  />
+  1740	                  <SelectFilter
+  1741	                    label="Направление"
+  1742	                    value={eventFilters.sortDirection}
+  1743	                    onChange={(value) => setEventFilters((current) => ({ ...current, sortDirection: value as SortDirection }))}
+  1744	                    options={[
+  1745	                      { label: "По возрастанию", value: "asc" },
+  1746	                      { label: "По убыванию", value: "desc" },
+  1747	                    ]}
+  1748	                  />
+  1749	                </FilterToolbar>
+  1750	              }
+  1751	              items={paginatedEvents}
+  1752	              pagination={buildPaginationMeta(filteredEvents.length, pagination.events.page, pagination.events.pageSize, totalPages.events)}
+  1753	              onPageChange={(page) => setTabPage("events", page)}
+  1754	              onPageSizeChange={(pageSize) => setTabPageSize("events", pageSize)}
+  1755	              emptyText="По текущим фильтрам события не найдены."
+  1756	              renderItem={(event: any) => (
+  1757	                <ListRow
+  1758	                  selected={selectedIds.events.includes(event.id)}
+  1759	                  onToggleSelected={() => toggleSelection("events", event.id)}
+  1760	                  title={event.title}
+  1761	                  subtitle={event.dateLabel}
+  1762	                  meta={`${event.status} · ${event.tone} · Порядок: ${event.sortOrder}`}
+  1763	                  inlineActions={[
+  1764	                    {
+  1765	                      label: "Порядок",
+  1766	                      value: event.sortOrder,
+  1767	                      icon: <ArrowDown className="h-3.5 w-3.5" />,
+  1768	                      disabled: updateEvent.isPending,
+  1769	                      onClick: async () => {
+  1770	                        const nextSortOrder = event.sortOrder + 1;
+  1771	                        await updateEvent.mutateAsync({
+  1772	                          id: event.id,
+  1773	                          title: event.title,
+  1774	                          dateLabel: event.dateLabel,
+  1775	                          description: event.description,
+  1776	                          status: event.status,
+  1777	                          tone: event.tone,
+  1778	                          sortOrder: nextSortOrder,
+  1779	                        });
+  1780	                        const toastCopy = getInlineActionToastCopy("event", { title: event.title, sortOrder: nextSortOrder, status: event.status });
+  1781	                        toast.success(toastCopy.sortOrder.title, {
+  1782	                          description: toastCopy.sortOrder.description,
+  1783	                        });
+  1784	                        setActionLog((current) => recordAdminAction(current, "events", "update", toastCopy.sortOrder.title, toastCopy.sortOrder.description));
+  1785	                      },
+  1786	                    },
+  1787	                    {
+  1788	                      label: "Статус",
+  1789	                      value: event.status,
+  1790	                      icon: <CalendarRange className="h-3.5 w-3.5" />,
+  1791	                      disabled: updateEvent.isPending,
+  1792	                      onClick: async () => {
+  1793	                        const nextStatus = event.status === "Открыта регистрация" ? "Мест нет" : "Открыта регистрация";
+  1794	                        await updateEvent.mutateAsync({
+  1795	                          id: event.id,
+  1796	                          title: event.title,
+  1797	                          dateLabel: event.dateLabel,
+  1798	                          description: event.description,
+  1799	                          status: nextStatus,
+  1800	                          tone: event.tone,
+  1801	                          sortOrder: event.sortOrder,
+  1802	                        });
+  1803	                        const toastCopy = getInlineActionToastCopy("event", { title: event.title, sortOrder: event.sortOrder, status: nextStatus });
+  1804	                        toast.success(toastCopy.status.title, {
+  1805	                          description: toastCopy.status.description,
+  1806	                        });
+  1807	                        setActionLog((current) => recordAdminAction(current, "events", "update", toastCopy.status.title, toastCopy.status.description));
+  1808	                      },
+  1809	                    },
+  1810	                  ]}
+  1811	                  onEdit={() => setEventForm({
+  1812	                    id: event.id,
+  1813	                    title: event.title,
+  1814	                    dateLabel: event.dateLabel,
+  1815	                    description: event.description,
+  1816	                    status: event.status,
+  1817	                    tone: event.tone,
+  1818	                    sortOrder: event.sortOrder,
+  1819	                  })}
+  1820	                  onDelete={() => setPendingDelete({
+  1821	                    entity: "event",
+  1822	                    id: event.id,
+  1823	                    title: event.title,
+  1824	                    description: `событие «${event.title}»`,
+  1825	                  })}
+  1826	                  deleting={isDeleting && pendingDelete?.entity === "event" && pendingDelete.id === event.id}
+  1827	                />
+  1828	              )}
+  1829	            />
+  1830	          </TabsContent>
+  1831	
+  1832	          <TabsContent value="members" className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
+  1833	            <EntityFormCard
+  1834	              title={memberForm.id ? "Редактировать участника" : "Новый участник"}
+  1835	              description="Поддерживайте клубный список актуальным и аккуратно отсортированным."
+  1836	              footer={
+  1837	                <div className="flex flex-wrap gap-3">
+  1838	                  <Button
+  1839	                    onClick={handleMemberSubmit}
+  1840	                    disabled={createMember.isPending || updateMember.isPending}
+  1841	                  >
+  1842	                    {memberForm.id ? "Сохранить участника" : "Добавить участника"}
+  1843	                  </Button>
+  1844	                  <Button variant="outline" onClick={() => {
+  1845	                    setMemberForm(defaultMemberForm());
+  1846	                    setMemberErrors({});
+  1847	                  }}>Очистить</Button>
+  1848	                </div>
+  1849	              }
+  1850	            >
+  1851	              <div className="grid gap-4 md:grid-cols-2">
+  1852	                <Field label="Имя" error={memberErrors.name}><Input aria-invalid={Boolean(memberErrors.name)} value={memberForm.name} onChange={(e) => {
+  1853	                  const value = e.target.value;
+  1854	                  setMemberForm({ ...memberForm, name: value });
+  1855	                  if (memberErrors.name) setMemberErrors((current: typeof memberErrors) => ({ ...current, name: undefined }));
+  1856	                }} /></Field>
+  1857	                <Field label="Животное" error={memberErrors.animal}><Input aria-invalid={Boolean(memberErrors.animal)} value={memberForm.animal} onChange={(e) => {
+  1858	                  const value = e.target.value;
+  1859	                  setMemberForm({ ...memberForm, animal: value });
+  1860	                  if (memberErrors.animal) setMemberErrors((current: typeof memberErrors) => ({ ...current, animal: undefined }));
+  1861	                }} /></Field>
+  1862	                <Field label="С нами с" error={memberErrors.sinceLabel}><Input aria-invalid={Boolean(memberErrors.sinceLabel)} value={memberForm.sinceLabel} onChange={(e) => {
+  1863	                  const value = e.target.value;
+  1864	                  setMemberForm({ ...memberForm, sinceLabel: value });
+  1865	                  if (memberErrors.sinceLabel) setMemberErrors((current: typeof memberErrors) => ({ ...current, sinceLabel: undefined }));
+  1866	                }} /></Field>
+  1867	                <Field label="Бейдж"><Input value={memberForm.badge} onChange={(e) => setMemberForm({ ...memberForm, badge: e.target.value })} /></Field>
+  1868	                <Field label="Порядок"><Input type="number" value={memberForm.sortOrder} onChange={(e) => setMemberForm({ ...memberForm, sortOrder: Number(e.target.value) || 0 })} /></Field>
+  1869	              </div>
+  1870	            </EntityFormCard>
+  1871	
+  1872	            <EntityListCard
+  1873	              title="Участники клуба"
+  1874	              description="Ищите по имени, животному или бейджу и быстро поддерживайте состав сообщества в порядке."
+  1875	              sortIndicator={{
+  1876	                fieldLabel: memberFilters.sortBy === "name" ? "имени" : memberFilters.sortBy === "badge" ? "бейджу" : "порядку",
+  1877	                directionLabel: memberFilters.sortDirection === "asc" ? "↑" : "↓",
+  1878	              }}
+  1879	              toolbar={
+  1880	                <FilterToolbar
+  1881	                  searchPlaceholder="Искать по имени, животному или периоду участия"
+  1882	                  selectionCount={selectedMembers.length}
+  1883	                  bulkActions={[
+  1884	                    {
+  1885	                      label: allVisibleMembersSelected ? "Снять выбор со всех" : "Выбрать все видимые",
+  1886	                      icon: allVisibleMembersSelected ? <Square className="h-4 w-4" /> : <CheckSquare className="h-4 w-4" />,
+  1887	                      variant: "outline",
+  1888	                      disabled: filteredMembers.length === 0,
+  1889	                      onClick: () => toggleSelectAllVisible("members", filteredMembers.map((member) => member.id)),
+  1890	                    },
+  1891	                    {
+  1892	                      label: "Удалить выбранных",
+  1893	                      icon: <Trash2 className="h-4 w-4" />,
+  1894	                      variant: "outline",
+  1895	                      destructive: true,
+  1896	                      disabled: selectedMembers.length === 0 || isDeleting,
+  1897	                      onClick: () => setPendingDelete({
+  1898	                        entity: "bulk-member",
+  1899	                        ids: selectedMembers.map((member) => member.id),
+  1900	                        title: `Выбрано участников: ${selectedMembers.length}`,
+  1901	                        description: `${selectedMembers.length} участников`,
+  1902	                        summaryItems: buildBulkDeleteSummaryItems(selectedMembers),
+  1903	                        totalCount: selectedMembers.length,
+  1904	                      }),
+  1905	                    },
+  1906	                  ]}
+  1907	                  onClearSelection={() => clearSelection("members")}
+  1908	                  presetPanel={
+  1909	                    <PresetToolbar
+  1910	                      presetName={presetName.members}
+  1911	                      onPresetNameChange={(value) => setPresetName((current) => ({ ...current, members: value }))}
+  1912	                      onSave={() => void handleSavePreset("members")}
+  1913	                      saveDisabled={createPreset.isPending}
+  1914	                      presets={presetsByTab.members}
+  1915	                      onApplyPreset={applyPreset}
+  1916	                      onDeletePreset={(presetId) => void deletePreset.mutateAsync({ id: presetId })}
+  1917	                      deletePending={deletePreset.isPending}
+  1918	                    />
+  1919	                  }
+  1920	                  searchValue={memberFilters.query}
+  1921	                  resultCount={filteredMembers.length}
+  1922	                  resultLabel="участников"
+  1923	                  resetLabel="Сбросить фильтры участников"
+  1924	                  activeFilterChips={[
+  1925	                    memberFilters.query
+  1926	                      ? { label: `Поиск: ${memberFilters.query}`, onRemove: () => setMemberFilters((current) => ({ ...current, query: "" })) }
+  1927	                      : null,
+  1928	                    memberFilters.badge !== "all"
+  1929	                      ? { label: `Бейдж: ${memberFilters.badge}`, onRemove: () => setMemberFilters((current) => ({ ...current, badge: "all" })) }
+  1930	                      : null,
+  1931	                    memberFilters.sortBy !== "sortOrder"
+  1932	                      ? { label: `Сортировка: ${memberFilters.sortBy === "name" ? "имя" : "бейдж"}`, onRemove: () => setMemberFilters((current) => ({ ...current, sortBy: "sortOrder" })) }
+  1933	                      : null,
+  1934	                    memberFilters.sortDirection !== "asc"
+  1935	                      ? { label: "Порядок: по убыванию", onRemove: () => setMemberFilters((current) => ({ ...current, sortDirection: "asc" })) }
+  1936	                      : null,
+  1937	                  ].filter(Boolean) as FilterChip[]}
+  1938	                  onSearchChange={(value) => setMemberFilters((current) => ({ ...current, query: value }))}
+  1939	                  onReset={() => setMemberFilters(defaultMemberFilters())}
+  1940	                  hasActiveFilters={memberFilters.query !== "" || memberFilters.badge !== "all" || memberFilters.sortBy !== "sortOrder" || memberFilters.sortDirection !== "asc"}
+  1941	                >
+  1942	                  <SelectFilter
+  1943	                    label="Бейдж"
+  1944	                    value={memberFilters.badge}
+  1945	                    onChange={(value) => setMemberFilters((current) => ({ ...current, badge: value }))}
+  1946	                    options={[{ label: "Все бейджи", value: "all" }, ...memberBadges.map((value) => ({ label: value, value }))]}
+  1947	                  />
+  1948	                  <SelectFilter
+  1949	                    label="Сортировать по"
+  1950	                    value={memberFilters.sortBy}
+  1951	                    onChange={(value) => setMemberFilters((current) => ({ ...current, sortBy: value as MemberSortField }))}
+  1952	                    options={[
+  1953	                      { label: "Порядок", value: "sortOrder" },
+  1954	                      { label: "Имени", value: "name" },
+  1955	                      { label: "Бейджу", value: "badge" },
+  1956	                    ]}
+  1957	                  />
+  1958	                  <SelectFilter
+  1959	                    label="Направление"
+  1960	                    value={memberFilters.sortDirection}
+  1961	                    onChange={(value) => setMemberFilters((current) => ({ ...current, sortDirection: value as SortDirection }))}
+  1962	                    options={[
+  1963	                      { label: "По возрастанию", value: "asc" },
+  1964	                      { label: "По убыванию", value: "desc" },
+  1965	                    ]}
+  1966	                  />
+  1967	                </FilterToolbar>
+  1968	              }
+  1969	              items={paginatedMembers}
+  1970	              pagination={buildPaginationMeta(filteredMembers.length, pagination.members.page, pagination.members.pageSize, totalPages.members)}
+  1971	              onPageChange={(page) => setTabPage("members", page)}
+  1972	              onPageSizeChange={(pageSize) => setTabPageSize("members", pageSize)}
+  1973	              emptyText="По текущим фильтрам участники не найдены."
+  1974	              renderItem={(member: any) => (
+  1975	                <ListRow
+  1976	                  selected={selectedIds.members.includes(member.id)}
+  1977	                  onToggleSelected={() => toggleSelection("members", member.id)}
+  1978	                  title={member.name}
+  1979	                  subtitle={member.animal}
+  1980	                  meta={`${member.sinceLabel} · ${member.badge} · Порядок: ${member.sortOrder}`}
+  1981	                  inlineActions={[
+  1982	                    {
+  1983	                      label: "Порядок",
+  1984	                      value: member.sortOrder,
+  1985	                      icon: <ArrowDown className="h-3.5 w-3.5" />,
+  1986	                      disabled: updateMember.isPending,
+  1987	                      onClick: async () => {
+  1988	                        const nextSortOrder = member.sortOrder + 1;
+  1989	                        await updateMember.mutateAsync({
+  1990	                          id: member.id,
+  1991	                          name: member.name,
+  1992	                          animal: member.animal,
+  1993	                          sinceLabel: member.sinceLabel,
+  1994	                          badge: member.badge,
+  1995	                          sortOrder: nextSortOrder,
+  1996	                        });
+  1997	                        const toastCopy = getInlineActionToastCopy("member", { name: member.name, sortOrder: nextSortOrder, badge: member.badge });
+  1998	                        toast.success(toastCopy.sortOrder.title, {
+  1999	                          description: toastCopy.sortOrder.description,
+  2000	                        });
+  2001	                        setActionLog((current) => recordAdminAction(current, "members", "update", toastCopy.sortOrder.title, toastCopy.sortOrder.description));
+  2002	                      },
+  2003	                    },
+  2004	                    {
+  2005	                      label: "Бейдж",
+  2006	                      value: member.badge || "без бейджа",
+  2007	                      icon: <Crown className="h-3.5 w-3.5" />,
+  2008	                      disabled: updateMember.isPending,
+  2009	                      onClick: async () => {
+  2010	                        const nextBadge = member.badge === "Амбассадор" ? "Гость фермы" : "Амбассадор";
+  2011	                        await updateMember.mutateAsync({
+  2012	                          id: member.id,
+  2013	                          name: member.name,
+  2014	                          animal: member.animal,
+  2015	                          sinceLabel: member.sinceLabel,
+  2016	                          badge: nextBadge,
+  2017	                          sortOrder: member.sortOrder,
+  2018	                        });
+  2019	                        const toastCopy = getInlineActionToastCopy("member", { name: member.name, sortOrder: member.sortOrder, badge: nextBadge });
+  2020	                        toast.success(toastCopy.status.title, {
+  2021	                          description: toastCopy.status.description,
+  2022	                        });
+  2023	                        setActionLog((current) => recordAdminAction(current, "members", "update", toastCopy.status.title, toastCopy.status.description));
+  2024	                      },
+  2025	                    },
+  2026	                  ]}
+  2027	                  onEdit={() => setMemberForm({
+  2028	                    id: member.id,
+  2029	                    name: member.name,
+  2030	                    animal: member.animal,
+  2031	                    sinceLabel: member.sinceLabel,
+  2032	                    badge: member.badge,
+  2033	                    sortOrder: member.sortOrder,
+  2034	                  })}
+  2035	                  onDelete={() => setPendingDelete({
+  2036	                    entity: "member",
+  2037	                    id: member.id,
+  2038	                    title: member.name,
+  2039	                    description: `участника «${member.name}»`,
+  2040	                  })}
+  2041	                  deleting={isDeleting && pendingDelete?.entity === "member" && pendingDelete.id === member.id}
+  2042	                />
+  2043	              )}
+  2044	            />
+  2045	          </TabsContent>
+  2046	
+  2047	          <TabsContent value="bitrix" className="space-y-6">
+  2048	            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+  2049	              <MetricCard label="Всего лидов" value={bitrixSummary?.totalLeads ?? 0} icon={<Users className="h-4 w-4" />} />
+  2050	              <MetricCard label="В очереди / retry" value={(bitrixSummary?.pendingLeads ?? 0) + (bitrixSummary?.retriedLeads ?? 0)} icon={<RefreshCw className="h-4 w-4" />} />
+  2051	              <MetricCard label="Успешно синхронизировано" value={bitrixSummary?.successfulLeads ?? 0} icon={<CheckSquare className="h-4 w-4" />} />
+  2052	              <MetricCard label="Ошибки аудита" value={bitrixSummary?.failedAudits ?? 0} icon={<ShieldAlert className="h-4 w-4" />} />
+  2053	            </div>
+  2054	
+  2055	            <div className="grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
+  2056	              <Card className="border-stone-200 bg-white/90 shadow-none">
+  2057	                <CardHeader className="space-y-2">
+  2058	                  <div className="flex flex-wrap items-start justify-between gap-3">
+  2059	                    <div>
+  2060	                      <CardTitle className="text-base text-stone-950">Операционные уведомления Bitrix24</CardTitle>
+  2061	                      <CardDescription className="text-stone-600">
+  2062	                        Последние сигналы по новым заявкам, failed sync, retry и refresh snapshot. Блок помогает быстро понять, что требует реакции менеджера.
+  2063	                      </CardDescription>
+  2064	                    </div>
+  2065	                    <Badge variant="outline" className="rounded-full border-stone-300 bg-white px-2.5 py-0.5 text-[11px] text-stone-700">
+  2066	                      Health score: {Math.max(0, 100 - ((bitrixSummary?.failedLeads ?? 0) * 12 + (bitrixSummary?.failedAudits ?? 0) * 7 + (bitrixRetryMonitoring?.failedWithoutRetryCount ?? 0) * 9))}%
+  2067	                    </Badge>
+  2068	                  </div>
+  2069	                </CardHeader>
+  2070	                <CardContent className="space-y-4">
+  2071	                  <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+  2072	                    <div className="rounded-2xl border border-stone-200 bg-stone-50/80 p-4">
+  2073	                      <p className="text-xs uppercase tracking-[0.12em] text-stone-400">Новые заявки</p>
+  2074	                      <p className="mt-2 text-2xl font-semibold text-stone-950">{bitrixSummary?.totalLeads ?? 0}</p>
+  2075	                      <p className="mt-1 text-xs text-stone-500">Все лиды, доступные в live CRM-ленте.</p>
+  2076	                    </div>
+  2077	                    <div className="rounded-2xl border border-rose-200 bg-rose-50/80 p-4">
+  2078	                      <p className="text-xs uppercase tracking-[0.12em] text-rose-500">Failed без retry</p>
+  2079	                      <p className="mt-2 text-2xl font-semibold text-rose-900">{bitrixRetryMonitoring?.failedWithoutRetryCount ?? 0}</p>
+  2080	                      <p className="mt-1 text-xs text-rose-700/80">Заявки, которые сейчас сильнее всего требуют ручного действия.</p>
+  2081	                    </div>
+  2082	                    <div className="rounded-2xl border border-amber-200 bg-amber-50/80 p-4">
+  2083	                      <p className="text-xs uppercase tracking-[0.12em] text-amber-600">Повторные попытки</p>
+  2084	                      <p className="mt-2 text-2xl font-semibold text-amber-900">{bitrixRetryMonitoring?.repeatedAttemptLeadCount ?? 0}</p>
+  2085	                      <p className="mt-1 text-xs text-amber-800/80">Лиды, по которым уже шли retry-циклы.</p>
+  2086	                    </div>
+  2087	                    <div className="rounded-2xl border border-emerald-200 bg-emerald-50/80 p-4">
+  2088	                      <p className="text-xs uppercase tracking-[0.12em] text-emerald-600">Snapshot-ready</p>
+  2089	                      <p className="mt-2 text-2xl font-semibold text-emerald-900">{visibleBitrixLeads.filter((lead: any) => Boolean(lead.bitrixDealId)).length}</p>
+  2090	                      <p className="mt-1 text-xs text-emerald-800/80">Лиды на текущей выборке, где уже можно делать refresh snapshot.</p>
+  2091	                    </div>
+  2092	                  </div>
+  2093	
+  2094	                  <div className="grid gap-3 md:grid-cols-2">
+  2095	                    {[
+  2096	                      {
+  2097	                        title: "Новые партнёрские заявки",
+  2098	                        tone: "border-sky-200 bg-sky-50/80 text-sky-900",
+  2099	                        body: `Зафиксировано лидов: ${bitrixSummary?.totalLeads ?? 0}. Последний проблемный lead ID: ${bitrixRetryMonitoring?.latestFailedLeadId ?? "—"}.`,
+  2100	                      },
+  2101	                      {
+  2102	                        title: "Failed sync и delivery risk",
+  2103	                        tone: (bitrixRetryMonitoring?.failedWithoutRetryCount ?? 0) > 0 ? "border-rose-200 bg-rose-50/80 text-rose-900" : "border-emerald-200 bg-emerald-50/80 text-emerald-900",
+  2104	                        body: (bitrixRetryMonitoring?.failedWithoutRetryCount ?? 0) > 0
+  2105	                          ? `Есть ${bitrixRetryMonitoring?.failedWithoutRetryCount ?? 0} заявки без retry. Стоит открыть detail-view и повторить синхронизацию.`
+  2106	                          : "Сейчас нет failed-заявок без retry; ручное вмешательство не требуется.",
+  2107	                      },
+  2108	                      {
+  2109	                        title: "Retry и snapshot активность",
+  2110	                        tone: "border-amber-200 bg-amber-50/80 text-amber-900",
+  2111	                        body: `Retry lead count: ${bitrixRetryMonitoring?.retryLeadCount ?? 0}. Аудитов интеграции: ${bitrixSummary?.totalAudits ?? 0}, из них failed: ${bitrixSummary?.failedAudits ?? 0}.`,
+  2112	                      },
+  2113	                      {
+  2114	                        title: "Операционный совет",
+  2115	                        tone: "border-stone-200 bg-stone-50/80 text-stone-900",
+  2116	                        body: selectedBitrixLead
+  2117	                          ? `Сейчас в фокусе заявка #${selectedBitrixLead.id}. Ниже можно увидеть payload, полную историю retry/snapshot и audit trail по выбранному лиду.`
+  2118	                          : "Выберите лид в live-ленте, чтобы справа открыть full payload, retry/snapshot history и связанный audit trail.",
+  2119	                      },
+  2120	                    ].map((item) => (
+  2121	                      <div key={item.title} className={`rounded-2xl border p-4 ${item.tone}`}>
+  2122	                        <div className="flex items-start justify-between gap-3">
+  2123	                          <div>
+  2124	                            <p className="text-sm font-semibold">{item.title}</p>
+  2125	                            <p className="mt-2 text-sm leading-6">{item.body}</p>
+  2126	                          </div>
+  2127	                          <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0" />
+  2128	                        </div>
+  2129	                      </div>
+  2130	                    ))}
+  2131	                  </div>
+  2132	                </CardContent>
+  2133	              </Card>
+  2134	
+  2135	              <Card className="border-stone-200 bg-white/90 shadow-none">
+  2136	                <CardHeader className="space-y-2">
+  2137	                  <div className="flex flex-wrap items-start justify-between gap-3">
+  2138	                    <div>
+  2139	                      <CardTitle className="text-base text-stone-950">Sync-health мониторинг</CardTitle>
+  2140	                      <CardDescription className="text-stone-600">
+  2141	                        Компактная операционная сводка по failed without retry, repeated attempts и качеству текущей выборки из server-side фильтров.
+  2142	                      </CardDescription>
+  2143	                    </div>
+  2144	                    <Button
+  2145	                      type="button"
+  2146	                      variant="outline"
+  2147	                      className="rounded-full border-stone-300 bg-white text-stone-700 hover:bg-stone-100"
+  2148	                      onClick={() => void refreshAdminData()}
+  2149	                      disabled={bitrixAdminQuery.isLoading || bitrixAdminQuery.isRefetching}
+  2150	                    >
+  2151	                      <RefreshCw className="mr-2 h-4 w-4" />
+  2152	                      Обновить CRM-ленту
+  2153	                    </Button>
+  2154	                  </div>
+  2155	                </CardHeader>
+  2156	                <CardContent className="space-y-4">
+  2157	                  <div className="rounded-2xl border border-stone-200 bg-stone-50/70 p-4">
+  2158	                    <div className="mb-3 flex items-center justify-between gap-3">
+  2159	                      <div>
+  2160	                        <p className="text-sm font-semibold text-stone-950">Ключевые риски синхронизации</p>
+  2161	                        <p className="text-xs text-stone-500">Подходит для ежедневного админ-контроля без перехода в отдельные отчёты.</p>
+  2162	                      </div>
+  2163	                      <Badge variant="outline" className="rounded-full border-stone-300 bg-white px-2.5 py-0.5 text-[11px] text-stone-700">
+  2164	                        {visibleBitrixLeads.length} в текущей выборке
+  2165	                      </Badge>
+  2166	                    </div>
+  2167	                    <div className="space-y-3 text-sm text-stone-700">
+  2168	                      <div className="flex items-center justify-between gap-3 rounded-2xl border border-stone-200 bg-white px-4 py-3">
+  2169	                        <span>Failed without retry</span>
+  2170	                        <strong className="text-stone-950">{bitrixRetryMonitoring?.failedWithoutRetryCount ?? 0}</strong>
+  2171	                      </div>
+  2172	                      <div className="flex items-center justify-between gap-3 rounded-2xl border border-stone-200 bg-white px-4 py-3">
+  2173	                        <span>Repeated attempt leads</span>
+  2174	                        <strong className="text-stone-950">{bitrixRetryMonitoring?.repeatedAttemptLeadCount ?? 0}</strong>
+  2175	                      </div>
+  2176	                      <div className="flex items-center justify-between gap-3 rounded-2xl border border-stone-200 bg-white px-4 py-3">
+  2177	                        <span>Retry lead count</span>
+  2178	                        <strong className="text-stone-950">{bitrixRetryMonitoring?.retryLeadCount ?? 0}</strong>
+  2179	                      </div>
+  2180	                      <div className="flex items-center justify-between gap-3 rounded-2xl border border-stone-200 bg-white px-4 py-3">
+  2181	                        <span>Failed audits</span>
+  2182	                        <strong className="text-stone-950">{bitrixSummary?.failedAudits ?? 0}</strong>
+  2183	                      </div>
+  2184	                    </div>
+  2185	                  </div>
+  2186	                </CardContent>
+  2187	              </Card>
+  2188	            </div>
+  2189	
+  2190	            <div className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
+  2191	              <Card className="border-stone-200 bg-white/90 shadow-none">
+  2192	                <CardHeader className="space-y-2">
+  2193	                  <div className="flex flex-wrap items-start justify-between gap-3">
+  2194	                    <div>
+  2195	                      <CardTitle className="text-base text-stone-950">Live-лиды партнёрской воронки</CardTitle>
+  2196	                      <CardDescription className="text-stone-600">
+  2197	                        Видно CRM-статус, менеджера, stage сделки и действия для ручного retry или refresh snapshot прямо из админ-панели.
+  2198	                      </CardDescription>
+  2199	                    </div>
+  2200	                    <Badge variant="outline" className="rounded-full border-stone-300 bg-white px-2.5 py-0.5 text-[11px] text-stone-700">
+  2201	                      server-side filters active
+  2202	                    </Badge>
+  2203	                  </div>
+  2204	                </CardHeader>
+  2205	                <CardContent className="space-y-4">
+  2206	                  <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+  2207	                    <Field label="Поиск по заявке">
+  2208	                      <input
+  2209	                        value={bitrixQuery.query}
+  2210	                        onChange={(event) => setBitrixQuery((current) => ({ ...current, page: 1, query: event.target.value }))}
+  2211	                        placeholder="Компания, контакт, email"
+  2212	                        className="h-11 w-full rounded-xl border border-stone-200 bg-white px-3 text-sm text-stone-700 outline-none transition focus:border-stone-400 focus:ring-2 focus:ring-stone-200"
+  2213	                      />
+  2214	                    </Field>
+  2215	                    <Field label="Sync status">
+  2216	                      <select
+  2217	                        value={bitrixQuery.syncStatus}
+  2218	                        onChange={(event) => setBitrixQuery((current) => ({ ...current, page: 1, syncStatus: event.target.value as "all" | "pending" | "success" | "failed" | "retried" }))}
+  2219	                        className="h-11 w-full rounded-xl border border-stone-200 bg-white px-3 text-sm text-stone-700 outline-none transition focus:border-stone-400 focus:ring-2 focus:ring-stone-200"
+  2220	                      >
+  2221	                        <option value="all">Все статусы</option>
+  2222	                        <option value="pending">pending</option>
+  2223	                        <option value="success">success</option>
+  2224	                        <option value="failed">failed</option>
+  2225	                        <option value="retried">retried</option>
+  2226	                      </select>
+  2227	                    </Field>
+  2228	                    <Field label="Источник">
+  2229	                      <select
+  2230	                        value={bitrixQuery.source}
+  2231	                        onChange={(event) => setBitrixQuery((current) => ({ ...current, page: 1, source: event.target.value as "all" | "website" | "club" | "referral" | "manual" }))}
+  2232	                        className="h-11 w-full rounded-xl border border-stone-200 bg-white px-3 text-sm text-stone-700 outline-none transition focus:border-stone-400 focus:ring-2 focus:ring-stone-200"
+  2233	                      >
+  2234	                        <option value="all">Все источники</option>
+  2235	                        <option value="website">website</option>
+  2236	                        <option value="club">club</option>
+  2237	                        <option value="referral">referral</option>
+  2238	                        <option value="manual">manual</option>
+  2239	                      </select>
+  2240	                    </Field>
+  2241	                    <Field label="Ошибки синхронизации">
+  2242	                      <select
+  2243	                        value={bitrixErrorFilter}
+  2244	                        onChange={(event) => {
+  2245	                          const nextValue = event.target.value as "all" | "with_error" | "without_error";
+  2246	                          setBitrixErrorFilter(nextValue);
+  2247	                          setBitrixQuery((current) => ({ ...current, page: 1, onlyFailed: nextValue === "with_error" }));
+  2248	                        }}
+  2249	                        className="h-11 w-full rounded-xl border border-stone-200 bg-white px-3 text-sm text-stone-700 outline-none transition focus:border-stone-400 focus:ring-2 focus:ring-stone-200"
+  2250	                      >
+  2251	                        <option value="all">Все лиды</option>
+  2252	                        <option value="with_error">Только с ошибками</option>
+  2253	                        <option value="without_error">Без ошибок</option>
+  2254	                      </select>
+  2255	                    </Field>
+  2256	                  </div>
+  2257	                  <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-stone-200 bg-stone-50/70 px-4 py-3 text-sm text-stone-600">
+  2258	                    <div className="flex flex-wrap items-center gap-3">
+  2259	                      <span>Показано лидов: <strong className="text-stone-950">{visibleBitrixLeads.length}</strong></span>
+  2260	                      <span>Всего по серверным фильтрам: <strong className="text-stone-950">{bitrixPagination?.totalFilteredLeads ?? visibleBitrixLeads.length}</strong></span>
+  2261	                      <span>Страница <strong className="text-stone-950">{bitrixPagination?.page ?? bitrixQuery.page}</strong> / {bitrixPagination?.pageCount ?? 1}</span>
+  2262	                    </div>
+  2263	                    <div className="flex flex-wrap items-center gap-2">
+  2264	                      <Badge variant="outline" className="rounded-full border-stone-300 bg-white px-2.5 py-0.5 text-[11px] text-stone-700">
+  2265	                        Повторные попытки: {bitrixSummary?.retriedLeads ?? 0}
+  2266	                      </Badge>
+  2267	                      <Badge variant="outline" className="rounded-full border-stone-300 bg-white px-2.5 py-0.5 text-[11px] text-stone-700">
+  2268	                        Ошибки: {bitrixSummary?.failedLeads ?? 0}
+  2269	                      </Badge>
+  2270	                    </div>
+  2271	                  </div>
+  2272	                  {visibleBitrixLeads.length ? (
+  2273	                    <div className="space-y-3">
+  2274	                      {visibleBitrixLeads.map((lead: any) => {
+  2275	                        const statusTone = lead.syncStatus === "success"
+  2276	                          ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+  2277	                          : lead.syncStatus === "failed"
+  2278	                            ? "border-rose-200 bg-rose-50 text-rose-800"
+  2279	                            : lead.syncStatus === "retried"
+  2280	                              ? "border-amber-200 bg-amber-50 text-amber-800"
+  2281	                              : "border-sky-200 bg-sky-50 text-sky-800";
+  2282	
+  2283	                        return (
+  2284	                          <div
+  2285	                            key={lead.id}
+  2286	                            className={selectedBitrixLead?.id === lead.id
+  2287	                              ? "rounded-2xl border border-stone-900 bg-stone-100 p-4 shadow-[inset_0_0_0_1px_rgba(28,25,23,0.08)]"
+  2288	                              : "rounded-2xl border border-stone-200 bg-stone-50/80 p-4"}
+  2289	                          >
+  2290	                            <div className="flex flex-wrap items-start justify-between gap-3">
+  2291	                              <div className="space-y-2">
+  2292	                                <div className="flex flex-wrap items-center gap-2">
+  2293	                                  <p className="text-sm font-semibold text-stone-950">#{lead.id} · {lead.companyName}</p>
+  2294	                                  <Badge variant="outline" className={`rounded-full px-2.5 py-0.5 text-[11px] uppercase tracking-[0.12em] ${statusTone}`}>
+  2295	                                    {lead.syncStatus}
+  2296	                                  </Badge>
+  2297	                                  {lead.bitrixStageId ? (
+  2298	                                    <Badge variant="outline" className="rounded-full border-stone-300 bg-white px-2.5 py-0.5 text-[11px] text-stone-700">
+  2299	                                      Stage: {lead.bitrixStageId}
+  2300	                                    </Badge>
+  2301	                                  ) : null}
+  2302	                                </div>
+  2303	                                <p className="text-sm text-stone-600">{lead.fullName} · {lead.email}{lead.phone ? ` · ${lead.phone}` : ""}</p>
+  2304	                                <div className="flex flex-wrap gap-3 text-xs text-stone-500">
+  2305	                                  <span>Интерес: {lead.interestType}</span>
+  2306	                                  <span>Источник: {lead.source}</span>
+  2307	                                  <span>Попытки sync: {lead.syncAttemptCount}</span>
+  2308	                                  <span>Менеджер: {lead.assignedManagerName || "не назначен"}</span>
+  2309	                                  <span>Deal ID: {lead.bitrixDealId || "—"}</span>
+  2310	                                </div>
+  2311	                                {lead.lastSyncError ? (
+  2312	                                  <p className="text-xs leading-5 text-rose-700">Ошибка: {lead.lastSyncError}</p>
+  2313	                                ) : null}
+  2314	                                <p className="text-xs text-stone-500">
+  2315	                                  Следующая активность: {lead.nextActivityAt ? new Date(lead.nextActivityAt).toLocaleString("ru-RU") : "ещё не запланирована"}
+  2316	                                </p>
+  2317	                              </div>
+  2318	                              <div className="flex flex-wrap gap-2">
+  2319	                                <Button
+  2320	                                  type="button"
+  2321	                                  variant="outline"
+  2322	                                  className="rounded-full border-stone-300 bg-white text-stone-700 hover:bg-stone-100"
+  2323	                                  onClick={() => setSelectedBitrixLeadId(lead.id)}
+  2324	                                >
+  2325	                                  {selectedBitrixLead?.id === lead.id ? "Открыто" : "Открыть detail-view"}
+  2326	                                </Button>
+  2327	                                <Button
+  2328	                                  type="button"
+  2329	                                  variant="outline"
+  2330	                                  className="rounded-full border-stone-300 bg-white text-stone-700 hover:bg-stone-100"
+  2331	                                  onClick={() => void retryLeadSync.mutateAsync({ leadId: lead.id })}
+  2332	                                  disabled={retryLeadSync.isPending}
+  2333	                                >
+  2334	                                  Retry sync
+  2335	                                </Button>
+  2336	                                <Button
+  2337	                                  type="button"
+  2338	                                  className="rounded-full bg-stone-950 text-white hover:bg-stone-800"
+  2339	                                  onClick={() => void refreshDealSnapshot.mutateAsync({ leadId: lead.id })}
+  2340	                                  disabled={!lead.bitrixDealId || refreshDealSnapshot.isPending}
+  2341	                                >
+  2342	                                  Refresh snapshot
+  2343	                                </Button>
+  2344	                              </div>
+  2345	                            </div>
+  2346	                          </div>
+  2347	                        );
+  2348	                      })}
+  2349	                    </div>
+  2350	                  ) : (
+  2351	                    <div className="rounded-2xl border border-dashed border-stone-200 bg-stone-50/70 px-4 py-5 text-sm text-stone-500">
+  2352	                      По текущим фильтрам лиды не найдены. Измените server-side статус, поиск, источник или режим ошибок, чтобы вернуть заявки в CRM-мониторинг.
+  2353	                    </div>
+  2354	                  )}
+  2355	                  <div className="flex flex-wrap items-center justify-between gap-3 border-t border-stone-200 pt-2">
+  2356	                    <div className="text-sm text-stone-500">
+  2357	                      Следующая страница доступна, если сервер вернёт больше лидов по текущему фильтру.
+  2358	                    </div>
+  2359	                    <div className="flex flex-wrap gap-2">
+  2360	                      <Button
+  2361	                        type="button"
+  2362	                        variant="outline"
+  2363	                        className="rounded-full border-stone-300 bg-white text-stone-700 hover:bg-stone-100"
+  2364	                        onClick={() => setBitrixQuery((current) => ({ ...current, page: Math.max(1, current.page - 1) }))}
+  2365	                        disabled={(bitrixPagination?.page ?? bitrixQuery.page) <= 1 || bitrixAdminQuery.isFetching}
+  2366	                      >
+  2367	                        Предыдущая страница
+  2368	                      </Button>
+  2369	                      <Button
+  2370	                        type="button"
+  2371	                        variant="outline"
+  2372	                        className="rounded-full border-stone-300 bg-white text-stone-700 hover:bg-stone-100"
+  2373	                        onClick={() => setBitrixQuery((current) => ({ ...current, page: current.page + 1 }))}
+  2374	                        disabled={Boolean(bitrixPagination && (bitrixPagination.page >= bitrixPagination.pageCount)) || bitrixAdminQuery.isFetching}
+  2375	                      >
+  2376	                        Следующая страница
+  2377	                      </Button>
+  2378	                    </div>
+  2379	                  </div>
+  2380	                </CardContent>
+  2381	              </Card>
+  2382	
+  2383	              <div className="space-y-6">
+  2384	                <Card className="border-stone-200 bg-white/90 shadow-none">
+  2385	                  <CardHeader>
+  2386	                    <CardTitle className="text-base text-stone-950">Detail-view заявки</CardTitle>
+  2387	                    <CardDescription className="text-stone-600">
+  2388	                      Карточка выбранного лида: видно контакт, CRM-связки, next activity, ошибки sync, полный payload и ручные действия из текущего контекста.
+  2389	                    </CardDescription>
+  2390	                  </CardHeader>
+  2391	                  <CardContent className="space-y-4">
+  2392	                    {selectedBitrixLead ? (
+  2393	                      <>
+  2394	                        <div className="rounded-2xl border border-stone-200 bg-stone-50/80 p-4">
+  2395	                          <div className="flex flex-wrap items-start justify-between gap-3">
+  2396	                            <div className="space-y-2">
+  2397	                              <div className="flex flex-wrap items-center gap-2">
+  2398	                                <p className="text-base font-semibold text-stone-950">#{selectedBitrixLead.id} · {selectedBitrixLead.companyName}</p>
+  2399	                                <Badge variant="outline" className="rounded-full border-stone-300 bg-white px-2.5 py-0.5 text-[11px] uppercase tracking-[0.12em] text-stone-700">
+  2400	                                  {selectedBitrixLead.syncStatus}
+  2401	                                </Badge>
+  2402	                                {selectedBitrixLead.bitrixStageId ? (
+  2403	                                  <Badge variant="outline" className="rounded-full border-stone-300 bg-white px-2.5 py-0.5 text-[11px] text-stone-700">
+  2404	                                    Stage: {selectedBitrixLead.bitrixStageId}
+  2405	                                  </Badge>
+  2406	                                ) : null}
+  2407	                              </div>
+  2408	                              <p className="text-sm text-stone-600">{selectedBitrixLead.fullName} · {selectedBitrixLead.email}{selectedBitrixLead.phone ? ` · ${selectedBitrixLead.phone}` : ""}</p>
+  2409	                              <div className="grid gap-2 sm:grid-cols-2">
+  2410	                                <div className="rounded-2xl border border-stone-200 bg-white px-3 py-3 text-sm text-stone-600">
+  2411	                                  <p className="text-xs uppercase tracking-[0.12em] text-stone-400">Менеджер</p>
+  2412	                                  <p className="mt-2 font-medium text-stone-950">{selectedBitrixLead.assignedManagerName || "Не назначен"}</p>
+  2413	                                </div>
+  2414	                                <div className="rounded-2xl border border-stone-200 bg-white px-3 py-3 text-sm text-stone-600">
+  2415	                                  <p className="text-xs uppercase tracking-[0.12em] text-stone-400">Следующая активность</p>
+  2416	                                  <p className="mt-2 font-medium text-stone-950">{selectedBitrixLead.nextActivityAt ? new Date(selectedBitrixLead.nextActivityAt).toLocaleString("ru-RU") : "Не запланирована"}</p>
+  2417	                                </div>
+  2418	                                <div className="rounded-2xl border border-stone-200 bg-white px-3 py-3 text-sm text-stone-600">
+  2419	                                  <p className="text-xs uppercase tracking-[0.12em] text-stone-400">CRM IDs</p>
+  2420	                                  <p className="mt-2 leading-6 text-stone-950">Deal: {selectedBitrixLead.bitrixDealId || "—"}<br />Lead: {selectedBitrixLead.bitrixLeadId || "—"}<br />Contact: {selectedBitrixLead.bitrixContactId || "—"}</p>
+  2421	                                </div>
+  2422	                                <div className="rounded-2xl border border-stone-200 bg-white px-3 py-3 text-sm text-stone-600">
+  2423	                                  <p className="text-xs uppercase tracking-[0.12em] text-stone-400">Sync attempts</p>
+  2424	                                  <p className="mt-2 font-medium text-stone-950">{selectedBitrixLead.syncAttemptCount}</p>
+  2425	                                  <p className="mt-1 text-xs text-stone-500">Последний sync: {selectedBitrixLead.lastSyncAt ? new Date(selectedBitrixLead.lastSyncAt).toLocaleString("ru-RU") : "ещё не запускался"}</p>
+  2426	                                </div>
+  2427	                              </div>
+  2428	                            </div>
+  2429	                            <div className="flex flex-wrap gap-2">
+  2430	                              <Button
+  2431	                                type="button"
+  2432	                                variant="outline"
+  2433	                                className="rounded-full border-stone-300 bg-white text-stone-700 hover:bg-stone-100"
+  2434	                                onClick={() => void retryLeadSync.mutateAsync({ leadId: selectedBitrixLead.id })}
+  2435	                                disabled={retryLeadSync.isPending}
+  2436	                              >
+  2437	                                Retry sync
+  2438	                              </Button>
+  2439	                              <Button
+  2440	                                type="button"
+  2441	                                className="rounded-full bg-stone-950 text-white hover:bg-stone-800"
+  2442	                                onClick={() => void refreshDealSnapshot.mutateAsync({ leadId: selectedBitrixLead.id })}
+  2443	                                disabled={!selectedBitrixLead.bitrixDealId || refreshDealSnapshot.isPending}
+  2444	                              >
+  2445	                                Refresh snapshot
+  2446	                              </Button>
+  2447	                            </div>
+  2448	                          </div>
+  2449	                          {selectedBitrixLead.lastSyncError ? (
+  2450	                            <Alert className="mt-4 border-rose-200 bg-rose-50/80 text-rose-900">
+  2451	                              <ShieldAlert className="h-4 w-4" />
+  2452	                              <AlertTitle>Последняя ошибка синхронизации</AlertTitle>
+  2453	                              <AlertDescription>{selectedBitrixLead.lastSyncError}</AlertDescription>
+  2454	                            </Alert>
+  2455	                          ) : null}
+  2456	                        </div>
+  2457	
+  2458	                        <div className="grid gap-4 xl:grid-cols-[0.95fr_1.05fr]">
+  2459	                          <div className="rounded-2xl border border-stone-200 bg-stone-50/70 p-4">
+  2460	                            <div className="mb-3 flex items-center justify-between gap-3">
+  2461	                              <div>
+  2462	                                <p className="text-sm font-semibold text-stone-950">Timeline sync attempts</p>
+  2463	                                <p className="text-xs text-stone-500">Локальная временная шкала строится из CRM-счётчиков и связанных audit-записей по выбранному лиду.</p>
+  2464	                              </div>
+  2465	                              <Badge variant="outline" className="rounded-full border-stone-300 bg-white px-2.5 py-0.5 text-[11px] text-stone-700">
+  2466	                                {selectedBitrixLeadAudits.length} audit events
+  2467	                              </Badge>
+  2468	                            </div>
+  2469	                            <div className="space-y-3">
+  2470	                              <div className="rounded-2xl border border-dashed border-stone-200 bg-white px-4 py-3">
+  2471	                                <p className="text-sm font-medium text-stone-900">Старт лидогенерации</p>
+  2472	                                <p className="text-xs text-stone-500">Создано: {selectedBitrixLead.createdAt ? new Date(selectedBitrixLead.createdAt).toLocaleString("ru-RU") : "дата недоступна"}</p>
+  2473	                              </div>
+  2474	                              {selectedBitrixLeadAudits.slice(0, 6).map((audit: any) => (
+  2475	                                <div key={audit.id} className="rounded-2xl border border-stone-200 bg-white px-4 py-3">
+  2476	                                  <div className="flex flex-wrap items-start justify-between gap-2">
+  2477	                                    <div className="space-y-1">
+  2478	                                      <p className="text-sm font-medium text-stone-950">{audit.operation} · {audit.entityType}</p>
+  2479	                                      <p className="text-xs text-stone-500">{audit.externalId ? `External ID: ${audit.externalId}` : "Без внешнего ID"}</p>
+  2480	                                      {audit.errorMessage ? <p className="text-xs leading-5 text-rose-700">{audit.errorMessage}</p> : null}
+  2481	                                    </div>
+  2482	                                    <Badge variant="outline" className={audit.status === "success" ? "rounded-full border-emerald-200 bg-emerald-50 px-2.5 py-0.5 text-[11px] text-emerald-800" : audit.status === "failed" ? "rounded-full border-rose-200 bg-rose-50 px-2.5 py-0.5 text-[11px] text-rose-800" : "rounded-full border-sky-200 bg-sky-50 px-2.5 py-0.5 text-[11px] text-sky-800"}>
+  2483	                                      {audit.status}
+  2484	                                    </Badge>
+  2485	                                  </div>
+  2486	                                  <p className="mt-2 text-xs text-stone-500">{new Date(audit.createdAt).toLocaleString("ru-RU")}</p>
+  2487	                                </div>
+  2488	                              ))}
+  2489	                              {!selectedBitrixLeadAudits.length ? (
+  2490	                                <div className="rounded-2xl border border-dashed border-stone-200 bg-white px-4 py-4 text-sm text-stone-500">
+  2491	                                  Для этой заявки audit trail пока пуст. После retry sync или refresh snapshot здесь появятся события таймлайна.
+  2492	                                </div>
+  2493	                              ) : null}
+  2494	                            </div>
+  2495	                          </div>
+  2496	
+  2497	                          <div className="space-y-4">
+  2498	                            <div className="rounded-2xl border border-stone-200 bg-stone-50/70 p-4">
+  2499	                              <div className="mb-3 flex items-center justify-between gap-3">
+  2500	                                <div>
+  2501	                                  <p className="text-sm font-semibold text-stone-950">Полный payload и CRM metadata</p>
+  2502	                                  <p className="text-xs text-stone-500">Быстрый просмотр ключевых полей заявки без обращения к базе или вебхуку вручную.</p>
+  2503	                                </div>
+  2504	                                <Badge variant="outline" className="rounded-full border-stone-300 bg-white px-2.5 py-0.5 text-[11px] text-stone-700">
+  2505	                                  Lead #{selectedBitrixLead.id}
+  2506	                                </Badge>
+  2507	                              </div>
+  2508	                              <div className="rounded-2xl border border-stone-200 bg-white p-4">
+  2509	                                <pre className="overflow-x-auto whitespace-pre-wrap break-words text-xs leading-6 text-stone-700">{JSON.stringify({
+  2510	                                  id: selectedBitrixLead.id,
+  2511	                                  companyName: selectedBitrixLead.companyName,
+  2512	                                  fullName: selectedBitrixLead.fullName,
+  2513	                                  email: selectedBitrixLead.email,
+  2514	                                  phone: selectedBitrixLead.phone,
+  2515	                                  telegram: selectedBitrixLead.telegram,
+  2516	                                  region: selectedBitrixLead.region,
+  2517	                                  source: selectedBitrixLead.source,
+  2518	                                  interestType: selectedBitrixLead.interestType,
+  2519	                                  preferredContactMethod: selectedBitrixLead.preferredContactMethod,
+  2520	                                  interestProducts: selectedBitrixLead.interestProducts,
+  2521	                                  notes: selectedBitrixLead.notes,
+  2522	                                  syncStatus: selectedBitrixLead.syncStatus,
+  2523	                                  syncAttemptCount: selectedBitrixLead.syncAttemptCount,
+  2524	                                  lastSyncAt: selectedBitrixLead.lastSyncAt,
+  2525	                                  lastSyncError: selectedBitrixLead.lastSyncError,
+  2526	                                  bitrixStageId: selectedBitrixLead.bitrixStageId,
+  2527	                                  bitrixDealId: selectedBitrixLead.bitrixDealId,
+  2528	                                  bitrixLeadId: selectedBitrixLead.bitrixLeadId,
+  2529	                                  bitrixContactId: selectedBitrixLead.bitrixContactId,
+  2530	                                  assignedManagerId: selectedBitrixLead.assignedManagerId,
+  2531	                                  assignedManagerName: selectedBitrixLead.assignedManagerName,
+  2532	                                  nextActivityAt: selectedBitrixLead.nextActivityAt,
+  2533	                                  createdAt: selectedBitrixLead.createdAt,
+  2534	                                }, null, 2)}</pre>
+  2535	                              </div>
+  2536	                            </div>
+  2537	
+  2538	                            <div className="rounded-2xl border border-stone-200 bg-stone-50/70 p-4">
+  2539	                              <div className="mb-3 flex items-center justify-between gap-3">
+  2540	                                <div>
+  2541	                                  <p className="text-sm font-semibold text-stone-950">Retry / snapshot history</p>
+  2542	                                  <p className="text-xs text-stone-500">Полная история ручных sync-циклов и pull snapshot по выбранной заявке.</p>
+  2543	                                </div>
+  2544	                                <Badge variant="outline" className="rounded-full border-stone-300 bg-white px-2.5 py-0.5 text-[11px] text-stone-700">
+  2545	                                  {selectedBitrixLeadAudits.filter((audit: any) => ["retry", "sync", "pull"].includes(String(audit.operation))).length} relevant events
+  2546	                                </Badge>
+  2547	                              </div>
+  2548	                              <div className="space-y-3">
+  2549	                                {selectedBitrixLeadAudits.filter((audit: any) => ["retry", "sync", "pull"].includes(String(audit.operation))).slice(0, 10).map((audit: any) => (
+  2550	                                  <div key={`history-${audit.id}`} className="rounded-2xl border border-stone-200 bg-white px-4 py-3">
+  2551	                                    <div className="flex flex-wrap items-start justify-between gap-2">
+  2552	                                      <div className="space-y-1">
+  2553	                                        <p className="text-sm font-medium text-stone-950">{audit.operation === "pull" ? "Refresh snapshot" : audit.operation === "retry" ? "Retry sync" : "Первичная sync"}</p>
+  2554	                                        <p className="text-xs text-stone-500">{audit.externalId ? `External ID: ${audit.externalId}` : "Без внешнего ID"}</p>
+  2555	                                        {audit.errorMessage ? <p className="text-xs leading-5 text-rose-700">{audit.errorMessage}</p> : null}
+  2556	                                      </div>
+  2557	                                      <Badge variant="outline" className={audit.status === "success" ? "rounded-full border-emerald-200 bg-emerald-50 px-2.5 py-0.5 text-[11px] text-emerald-800" : audit.status === "failed" ? "rounded-full border-rose-200 bg-rose-50 px-2.5 py-0.5 text-[11px] text-rose-800" : "rounded-full border-sky-200 bg-sky-50 px-2.5 py-0.5 text-[11px] text-sky-800"}>
+  2558	                                        {audit.status}
+  2559	                                      </Badge>
+  2560	                                    </div>
+  2561	                                    {audit.requestPayload ? (
+  2562	                                      <details className="mt-3 rounded-xl border border-stone-200 bg-stone-50 px-3 py-2">
+  2563	                                        <summary className="cursor-pointer text-xs font-medium text-stone-700">Request payload</summary>
+  2564	                                        <pre className="mt-2 overflow-x-auto whitespace-pre-wrap break-words text-[11px] leading-5 text-stone-600">{audit.requestPayload}</pre>
+  2565	                                      </details>
+  2566	                                    ) : null}
+  2567	                                    {audit.responsePayload ? (
+  2568	                                      <details className="mt-2 rounded-xl border border-stone-200 bg-stone-50 px-3 py-2">
+  2569	                                        <summary className="cursor-pointer text-xs font-medium text-stone-700">Response payload</summary>
+  2570	                                        <pre className="mt-2 overflow-x-auto whitespace-pre-wrap break-words text-[11px] leading-5 text-stone-600">{audit.responsePayload}</pre>
+  2571	                                      </details>
+  2572	                                    ) : null}
+  2573	                                    <p className="mt-2 text-xs text-stone-500">{new Date(audit.createdAt).toLocaleString("ru-RU")}</p>
+  2574	                                  </div>
+  2575	                                ))}
+  2576	                                {!selectedBitrixLeadAudits.filter((audit: any) => ["retry", "sync", "pull"].includes(String(audit.operation))).length ? (
+  2577	                                  <div className="rounded-2xl border border-dashed border-stone-200 bg-white px-4 py-4 text-sm text-stone-500">
+  2578	                                    История retry/snapshot для этой заявки пока пустая. После новых ручных операций здесь появятся request/response payload и статусы доставки.
+  2579	                                  </div>
+  2580	                                ) : null}
+  2581	                              </div>
+  2582	                            </div>
+  2583	                          </div>
+  2584	                        </div>
+  2585	                      </>
+  2586	                    ) : (
+  2587	                      <div className="rounded-2xl border border-dashed border-stone-200 bg-stone-50/70 px-4 py-5 text-sm text-stone-500">
+  2588	                        Выберите лид слева, чтобы открыть detail-view, CRM-связки, timeline попыток синхронизации, полный payload и retry/snapshot history.
+  2589	                      </div>
+  2590	                    )}
+  2591	                  </CardContent>
+  2592	                </Card>
+  2593	
+  2594	                <Card className="border-stone-200 bg-white/90 shadow-none">
+  2595	                  <CardHeader>
+  2596	                    <CardTitle className="text-base text-stone-950">Audit trail Bitrix24</CardTitle>
+  2597	                    <CardDescription className="text-stone-600">
+  2598	                      Последние push/pull операции по интеграции: видно статус, entity, внешний ID и ошибки синхронизации.
+  2599	                    </CardDescription>
+  2600	                  </CardHeader>
+  2601	                  <CardContent className="space-y-3">
+  2602	                    {bitrixAudits.length ? (
+  2603	                      bitrixAudits.slice(0, 12).map((audit: any) => (
+  2604	                        <div key={audit.id} className="rounded-2xl border border-stone-200 bg-stone-50/80 px-4 py-3">
+  2605	                          <div className="flex flex-wrap items-start justify-between gap-2">
+  2606	                            <div className="space-y-1">
+  2607	                              <div className="flex flex-wrap items-center gap-2">
+  2608	                                <p className="text-sm font-semibold text-stone-950">{audit.operation} · {audit.entityType}</p>
+  2609	                                <Badge variant="outline" className={audit.status === "success" ? "rounded-full border-emerald-200 bg-emerald-50 px-2.5 py-0.5 text-[11px] text-emerald-800" : audit.status === "failed" ? "rounded-full border-rose-200 bg-rose-50 px-2.5 py-0.5 text-[11px] text-rose-800" : "rounded-full border-sky-200 bg-sky-50 px-2.5 py-0.5 text-[11px] text-sky-800"}>
+  2610	                                  {audit.status}
+  2611	                                </Badge>
+  2612	                              </div>
+  2613	                              <p className="text-xs text-stone-500">Lead #{audit.entityId} · External ID: {audit.externalId || "—"}</p>
+  2614	                              {audit.errorMessage ? <p className="text-xs leading-5 text-rose-700">{audit.errorMessage}</p> : null}
+  2615	                            </div>
+  2616	                            <span className="text-xs text-stone-500">{new Date(audit.createdAt).toLocaleString("ru-RU")}</span>
+  2617	                          </div>
+  2618	                        </div>
+  2619	                      ))
+  2620	                    ) : (
+  2621	                      <div className="rounded-2xl border border-dashed border-stone-200 bg-stone-50/70 px-4 py-5 text-sm text-stone-500">
+  2622	                        Аудит интеграции пока пуст. После первой отправки или refresh snapshot здесь появятся push/pull записи.
+  2623	                      </div>
+  2624	                    )}
+  2625	                  </CardContent>
+  2626	                </Card>
+  2627	              </div>
+  2628	            </div>
+  2629	          </TabsContent>
+  2630	          <TabsContent value="activity" className="space-y-6">
+  2631	            <Card className="border-stone-200 bg-white/90">
+  2632	              <CardHeader>
+  2633	                <div className="flex flex-wrap items-start justify-between gap-3">
+  2634	                  <div className="space-y-1">
+  2635	                    <CardTitle>Последние действия администратора</CardTitle>
+  2636	                    <CardDescription>Короткий локальный журнал последних операций в этой сессии для прозрачности изменений в клубной панели.</CardDescription>
+  2637	                  </div>
+  2638	                  <div className="flex flex-wrap items-center justify-end gap-2">
+  2639	                    <Badge variant="outline" className="rounded-full border-stone-300 bg-stone-50 px-3 py-1 text-xs text-stone-700">
+  2640	                      {actionLog.length} записей
+  2641	                    </Badge>
+  2642	                    <Button
+  2643	                      type="button"
+  2644	                      variant="outline"
+  2645	                      size="sm"
+  2646	                      className="rounded-full border-stone-300 px-3 text-stone-700"
+  2647	                      onClick={() => setActionLogCollapsed((current) => !current)}
+  2648	                    >
+  2649	                      {actionLogCollapsed ? <ChevronDown className="mr-1.5 h-4 w-4" /> : <ChevronUp className="mr-1.5 h-4 w-4" />}
+  2650	                      {actionLogCollapsed ? "Развернуть" : "Свернуть"}
+  2651	                    </Button>
+  2652	                    <Button
+  2653	                      type="button"
+  2654	                      variant="outline"
+  2655	                      size="sm"
+  2656	                      className="rounded-full border-stone-300 px-3 text-stone-700"
+  2657	                      onClick={copyCurrentViewLink}
+  2658	                    >
+  2659	                      <Copy className="mr-1.5 h-4 w-4" />
+  2660	                      Скопировать ссылку
+  2661	                    </Button>
+  2662	                    <Badge variant="outline" className="rounded-full border-stone-300 bg-white px-3 py-1 text-xs text-stone-700">
+  2663	                      Видимо сейчас: {filteredActionLog.length}
+  2664	                    </Badge>
+  2665	                    <Select value={actionLogExportScope} onValueChange={(value) => setActionLogExportScope(value as "filtered" | "all")}>
+  2666	                      <SelectTrigger className="h-9 w-[220px] rounded-full border-stone-300 bg-white text-xs text-stone-700">
+  2667	                        <SelectValue placeholder="Глубина экспорта" />
+  2668	                      </SelectTrigger>
+  2669	                      <SelectContent>
+  2670	                        <SelectItem value="filtered">Экспорт: текущий вид</SelectItem>
+  2671	                        <SelectItem value="all">Экспорт: весь журнал сессии</SelectItem>
+  2672	                      </SelectContent>
+  2673	                    </Select>
+  2674	                    <Button
+  2675	                      type="button"
+  2676	                      variant="outline"
+  2677	                      size="sm"
+  2678	                      className="rounded-full border-stone-300 px-3 text-stone-700"
+  2679	                      onClick={exportActionLogToCsv}
+  2680	                      disabled={!exportableActionLog.length}
+  2681	                    >
+  2682	                      <Download className="mr-1.5 h-4 w-4" />
+  2683	                      CSV
+  2684	                    </Button>
+  2685	                    <Button
+  2686	                      type="button"
+  2687	                      variant="outline"
+  2688	                      size="sm"
+  2689	                      className="rounded-full border-stone-300 px-3 text-stone-700"
+  2690	                      onClick={() => setActionLog([])}
+  2691	                      disabled={!actionLog.length}
+  2692	                    >
+  2693	                      <Trash2 className="mr-1.5 h-4 w-4" />
+  2694	                      Очистить
+  2695	                    </Button>
+  2696	                  </div>
+  2697	                </div>
+  2698	              </CardHeader>
+  2699	              {actionLogCollapsed ? (
+  2700	                <CardContent>
+  2701	                  <p className="text-sm text-stone-500">Журнал свёрнут. Разверните блок, чтобы посмотреть последние действия администратора и применить фильтры.</p>
+  2702	                </CardContent>
+  2703	              ) : (
+  2704	                <CardContent className="space-y-4">
+  2705	                  <div className="space-y-3">
+  2706	                    <div className="sticky top-3 z-10 -mx-1 space-y-3 rounded-2xl border border-stone-200 bg-white/95 px-3 py-3 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-white/85">
+  2707	                      <div className="flex flex-wrap gap-2">
+  2708	                        {actionLogFilterPresets.map((preset) => {
+  2709	                          const matchesArea = actionLogAreaFilter === preset.area;
+  2710	                          const matchesType = preset.actionTypes?.length
+  2711	                            ? preset.actionTypes.includes(actionLogTypeFilter as AdminActionType)
+  2712	                            : actionLogTypeFilter === (preset.actionType ?? "all");
+  2713	                          const isActive = matchesArea && matchesType;
+  2714	
+  2715	                          return (
+  2716	                            <Button
+  2717	                              key={preset.id}
+  2718	                              type="button"
+  2719	                              variant="outline"
+  2720	                              size="sm"
+  2721	                              className={isActive
+  2722	                                ? "rounded-full border-stone-900 bg-stone-900 px-3 text-white hover:bg-stone-800"
+  2723	                                : "rounded-full border-stone-300 bg-white px-3 text-stone-700 hover:bg-stone-50"}
+  2724	                              onClick={() => applyActionLogPreset(preset.id)}
+  2725	                            >
+  2726	                              {preset.label}
+  2727	                            </Button>
+  2728	                          );
+  2729	                        })}
+  2730	                      </div>
+  2731	                      <div className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-stone-200 bg-stone-50/70 px-4 py-3 text-sm text-stone-600">
+  2732	                        <span>Текущий фильтр показывает {filteredActionLog.length} из {actionLog.length} записей журнала.</span>
+  2733	                        <span>Режим экспорта: {actionLogExportScope === "all" ? "весь журнал сессии" : "только текущий вид"}.</span>
+  2734	                      </div>
+  2735	                      <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-5">
+  2736	                        {actionLogTypeStatsItems.map((item) => (
+  2737	                          <div key={item.key} className="rounded-2xl border border-stone-200 bg-white px-3 py-3 text-sm text-stone-600">
+  2738	                            <p className="text-xs uppercase tracking-[0.12em] text-stone-400">{item.label}</p>
+  2739	                            <p className="mt-2 text-2xl font-semibold text-stone-950">{item.value}</p>
+  2740	                          </div>
+  2741	                        ))}
+  2742	                      </div>
+  2743	                    </div>
+  2744	                    <div className="grid gap-2 sm:grid-cols-3">
+  2745	                      {actionLogAreaStatsItems.map((item) => (
+  2746	                        <div key={item.key} className="rounded-2xl border border-dashed border-stone-200 bg-white/80 px-3 py-3 text-sm text-stone-600">
+  2747	                          <p className="text-xs uppercase tracking-[0.12em] text-stone-400">{item.label}</p>
+  2748	                          <p className="mt-2 text-xl font-semibold text-stone-950">{item.value}</p>
+  2749	                        </div>
+  2750	                      ))}
+  2751	                    </div>
+  2752	                    <div className="grid gap-3 md:grid-cols-2">
+  2753	                      <Field label="Область журнала">
+  2754	                        <select
+  2755	                          value={actionLogAreaFilter}
+  2756	                          onChange={(event) => setActionLogAreaFilter(event.target.value as "all" | AdminTabValue)}
+  2757	                          className="h-11 w-full rounded-xl border border-stone-200 bg-white px-3 text-sm text-stone-700 outline-none transition focus:border-stone-400 focus:ring-2 focus:ring-stone-200"
+  2758	                        >
+  2759	                          <option value="all">Все области</option>
+  2760	                          <option value="posts">Посты</option>
+  2761	                          <option value="events">События</option>
+  2762	                          <option value="members">Участники</option>
+  2763	                        </select>
+  2764	                      </Field>
+  2765	                      <Field label="Тип операции">
+  2766	                        <select
+  2767	                          value={actionLogTypeFilter}
+  2768	                          onChange={(event) => setActionLogTypeFilter(event.target.value as "all" | AdminActionType)}
+  2769	                          className="h-11 w-full rounded-xl border border-stone-200 bg-white px-3 text-sm text-stone-700 outline-none transition focus:border-stone-400 focus:ring-2 focus:ring-stone-200"
+  2770	                        >
+  2771	                          <option value="all">Все типы</option>
+  2772	                          <option value="create">Создание</option>
+  2773	                          <option value="update">Изменение</option>
+  2774	                          <option value="delete">Удаление</option>
+  2775	                          <option value="bulk">Массовые операции</option>
+  2776	                          <option value="preset">Пресеты</option>
+  2777	                        </select>
+  2778	                      </Field>
+  2779	                    </div>
+  2780	                    <Card className="border-amber-200 bg-amber-50/70 shadow-none">
+  2781	                      <CardHeader className="space-y-2">
+  2782	                        <div className="flex items-start gap-3">
+  2783	                          <div className="rounded-2xl bg-amber-100 p-2 text-amber-700">
+  2784	                            <ShieldAlert className="h-5 w-5" />
+  2785	                          </div>
+  2786	                          <div>
+  2787	                            <CardTitle className="text-base text-stone-950">Критические уведомления для администраторов</CardTitle>
+  2788	                            <CardDescription className="text-stone-600">
+  2789	                              Отправляйте owner-уведомления при удалениях и массовых действиях, которые требуют быстрого внимания.
+  2790	                            </CardDescription>
+  2791	                          </div>
+  2792	                        </div>
+  2793	                      </CardHeader>
+  2794	                      <CardContent className="grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
+  2795	                        <div className="space-y-4">
+  2796	                          <div className="flex items-center justify-between gap-3 rounded-2xl border border-amber-200 bg-white px-4 py-3">
+  2797	                            <div>
+  2798	                              <p className="text-sm font-medium text-stone-900">Включить критические уведомления</p>
+  2799	                              <p className="text-xs text-stone-500">Если выключить, журнал останется локальным без отправки owner-оповещений.</p>
+  2800	                            </div>
+  2801	                            <Switch
+  2802	                              checked={criticalNotificationSettings.enabled}
+  2803	                              onCheckedChange={(checked) => setCriticalNotificationSettings((current) => ({ ...current, enabled: checked }))}
+  2804	                            />
+  2805	                          </div>
+  2806	                          <div className="grid gap-3 md:grid-cols-3">
+  2807	                            <div className="rounded-2xl border border-stone-200 bg-white px-4 py-3">
+  2808	                              <div className="flex items-center justify-between gap-3">
+  2809	                                <div>
+  2810	                                  <p className="text-sm font-medium text-stone-900">Удаления</p>
+  2811	                                  <p className="text-xs text-stone-500">Оповещать о каждом одиночном удалении.</p>
+  2812	                                </div>
+  2813	                                <Switch
+  2814	                                  checked={criticalNotificationSettings.notifyOnDelete}
+  2815	                                  onCheckedChange={(checked) => setCriticalNotificationSettings((current) => ({ ...current, notifyOnDelete: checked }))}
+  2816	                                  disabled={!criticalNotificationSettings.enabled}
+  2817	                                />
+  2818	                              </div>
+  2819	                            </div>
+  2820	                            <div className="rounded-2xl border border-stone-200 bg-white px-4 py-3">
+  2821	                              <div className="flex items-center justify-between gap-3">
+  2822	                                <div>
+  2823	                                  <p className="text-sm font-medium text-stone-900">Массовые действия</p>
+  2824	                                  <p className="text-xs text-stone-500">Учитывать порог затронутых записей.</p>
+  2825	                                </div>
+  2826	                                <Switch
+  2827	                                  checked={criticalNotificationSettings.notifyOnBulk}
+  2828	                                  onCheckedChange={(checked) => setCriticalNotificationSettings((current) => ({ ...current, notifyOnBulk: checked }))}
+  2829	                                  disabled={!criticalNotificationSettings.enabled}
+  2830	                                />
+  2831	                              </div>
+  2832	                            </div>
+  2833	                            <div className="rounded-2xl border border-stone-200 bg-white px-4 py-3">
+  2834	                              <div className="flex items-center justify-between gap-3">
+  2835	                                <div>
+  2836	                                  <p className="text-sm font-medium text-stone-900">Пресеты</p>
+  2837	                                  <p className="text-xs text-stone-500">Отслеживать рискованные изменения пресетов вручную.</p>
+  2838	                                </div>
+  2839	                                <Switch
+  2840	                                  checked={criticalNotificationSettings.notifyOnPreset}
+  2841	                                  onCheckedChange={(checked) => setCriticalNotificationSettings((current) => ({ ...current, notifyOnPreset: checked }))}
+  2842	                                  disabled={!criticalNotificationSettings.enabled}
+  2843	                                />
+  2844	                              </div>
+  2845	                            </div>
+  2846	                          </div>
+  2847	                        </div>
+  2848	                        <div className="space-y-3 rounded-2xl border border-dashed border-amber-200 bg-white px-4 py-4">
+  2849	                          <Label htmlFor="critical-bulk-threshold" className="text-sm font-medium text-stone-900">Порог для массовых действий</Label>
+  2850	                          <Input
+  2851	                            id="critical-bulk-threshold"
+  2852	                            type="number"
+  2853	                            min={1}
+  2854	                            value={criticalNotificationSettings.minBulkCount}
+  2855	                            onChange={(event) => {
+  2856	                              const nextValue = Math.max(1, Number(event.target.value) || 1);
+  2857	                              setCriticalNotificationSettings((current) => ({ ...current, minBulkCount: nextValue }));
+  2858	                            }}
+  2859	                            disabled={!criticalNotificationSettings.enabled || !criticalNotificationSettings.notifyOnBulk}
+  2860	                          />
+  2861	                          <p className="text-xs leading-5 text-stone-500">
+  2862	                            Сейчас owner-уведомление отправится, если массовое действие затронет не менее {criticalNotificationSettings.minBulkCount} записей.
+  2863	                          </p>
+  2864	                          <Alert className="border-amber-200 bg-amber-50/80 text-amber-900">
+  2865	                            <ShieldAlert className="h-4 w-4" />
+  2866	                            <AlertTitle>Критерии критичности</AlertTitle>
+  2867	                            <AlertDescription>
+  2868	                              Одиночные удаления считаются критическими сразу. Массовые операции сравниваются с порогом, а пресеты уведомляют только при ручном включении.
+  2869	                            </AlertDescription>
+  2870	                          </Alert>
+  2871	                        </div>
+  2872	                      </CardContent>
+  2873	                    </Card>
+  2874	
+  2875	                    <Card className="border-stone-200 bg-white/90 shadow-none">
+  2876	                      <CardHeader className="space-y-2">
+  2877	                        <div className="flex flex-wrap items-start justify-between gap-3">
+  2878	                          <div>
+  2879	                            <CardTitle className="text-base text-stone-950">История критических уведомлений</CardTitle>
+  2880	                            <CardDescription className="text-stone-600">
+  2881	                              Последние owner-уведомления по рискованным действиям: видно severity, статус доставки и связь с операцией журнала.
+  2882	                            </CardDescription>
+  2883	                          </div>
+  2884	                          <div className="flex flex-wrap gap-2">
+  2885	                            <Badge variant="outline" className="rounded-full border-stone-300 bg-stone-50 px-3 py-1 text-xs text-stone-700">
+  2886	                              Всего: {criticalNotificationHistory.length}
+  2887	                            </Badge>
+  2888	                            <Badge variant="outline" className="rounded-full border-emerald-200 bg-emerald-50 px-3 py-1 text-xs text-emerald-800">
+  2889	                              Доставлено: {deliveredCriticalCount}
+  2890	                            </Badge>
+  2891	                            <Badge variant="outline" className="rounded-full border-rose-200 bg-rose-50 px-3 py-1 text-xs text-rose-800">
+  2892	                              Сбой: {failedCriticalCount}
+  2893	                            </Badge>
+  2894	                          </div>
+  2895	                        </div>
+  2896	                      </CardHeader>
+  2897	                      <CardContent>
+  2898	                        {criticalNotificationHistory.length ? (
+  2899	                          <div className="space-y-3">
+  2900	                            {criticalNotificationHistory.map((entry) => {
+  2901	                              const statusBadge = getCriticalNotificationStatusCopy(entry);
+  2902	
+  2903	                              return (
+  2904	                                <div key={entry.id} className="rounded-2xl border border-stone-200 bg-stone-50/80 px-4 py-4">
+  2905	                                  <div className="flex flex-wrap items-start justify-between gap-3">
+  2906	                                    <div className="space-y-2">
+  2907	                                      <div className="flex flex-wrap items-center gap-2">
+  2908	                                        <p className="text-sm font-semibold text-stone-950">{entry.title}</p>
+  2909	                                        <Badge variant="outline" className="rounded-full border-stone-300 bg-white px-2.5 py-0.5 text-[11px] uppercase tracking-[0.12em] text-stone-600">
+  2910	                                          {getCriticalNotificationAreaLabel(entry.area)}
+  2911	                                        </Badge>
+  2912	                                        <Badge variant="outline" className={statusBadge.className}>
+  2913	                                          {statusBadge.label}
+  2914	                                        </Badge>
+  2915	                                      </div>
+  2916	                                      <p className="text-sm text-stone-600">{entry.description}</p>
+  2917	                                      <div className="flex flex-wrap gap-2 text-xs text-stone-500">
+  2918	                                        <span>Действие: {entry.actionType}</span>
+  2919	                                        <span>Severity: {entry.severityLabel}</span>
+  2920	                                        <span>Автор: {entry.actorLabel}</span>
+  2921	                                        {typeof entry.affectedCount === "number" ? <span>Затронуто: {entry.affectedCount}</span> : null}
+  2922	                                      </div>
+  2923	                                      <p className="text-xs leading-5 text-stone-500">Причина: {entry.reason}</p>
+  2924	                                    </div>
+  2925	                                    <span className="text-xs text-stone-500">
+  2926	                                      {new Date(entry.timestamp).toLocaleString("ru-RU", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}
+  2927	                                    </span>
+  2928	                                  </div>
+  2929	                                </div>
+  2930	                              );
+  2931	                            })}
+  2932	                          </div>
+  2933	                        ) : (
+  2934	                          <div className="rounded-2xl border border-dashed border-stone-200 bg-stone-50/70 px-4 py-5 text-sm text-stone-500">
+  2935	                            Пока критические уведомления не отправлялись. Как только администратор выполнит рискованное действие, здесь появится запись со статусом доставки.
+  2936	                          </div>
+  2937	                        )}
+  2938	                      </CardContent>
+  2939	                    </Card>
+  2940	
+  2941	                    {filteredActionLog.length ? (
+  2942	                      <div className="space-y-4">
+  2943	                        {groupedActionLog.map((group) => (
+  2944	                          <div key={group.key} className="space-y-3">
+  2945	                            <div className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-dashed border-stone-200 bg-stone-50/70 px-4 py-2">
+  2946	                              <p className="text-sm font-semibold text-stone-900">{group.dateLabel}</p>
+  2947	                              <div className="flex items-center gap-2 text-xs text-stone-500">
+  2948	                                <span className="rounded-full bg-white px-2.5 py-1 text-stone-600">{group.hourLabel}</span>
+  2949	                                <span>{group.entries.length} {group.entries.length === 1 ? "запись" : group.entries.length < 5 ? "записи" : "записей"}</span>
+  2950	                              </div>
+  2951	                            </div>
+  2952	                            {group.entries.map((entry) => {
+  2953	                              const actionTypeBadge = getActionTypeBadgeConfig(entry.actionType);
+  2954	                              const includedInExport = exportableActionLogIds.has(entry.id);
+  2955	
+  2956	                              return (
+  2957	                                <div
+  2958	                                  key={entry.id}
+  2959	                                  className={includedInExport
+  2960	                                    ? "rounded-2xl border border-emerald-200 bg-emerald-50/60 p-3 shadow-[inset_0_0_0_1px_rgba(16,185,129,0.08)]"
+  2961	                                    : "rounded-2xl border border-stone-200 bg-stone-50/70 p-3"}
+  2962	                                >
+  2963	                                  <div className="flex flex-wrap items-start justify-between gap-3">
+  2964	                                    <div className="space-y-1">
+  2965	                                      <div className="flex flex-wrap items-center gap-2">
+  2966	                                        <p className="text-sm font-semibold text-stone-950">{entry.title}</p>
+  2967	                                        <Badge variant="outline" className="rounded-full border-stone-300 bg-white px-2.5 py-0.5 text-[11px] uppercase tracking-[0.12em] text-stone-600">
+  2968	                                          {entry.area === "posts" ? "Посты" : entry.area === "events" ? "События" : entry.area === "members" ? "Участники" : entry.area === "bitrix" ? "Bitrix24" : "Журнал"}
+  2969	                                        </Badge>
+  2970	                                        <Badge variant="outline" className={actionTypeBadge.className}>
+  2971	                                          {actionTypeBadge.label}
+  2972	                                        </Badge>
+  2973	                                        {includedInExport ? (
+  2974	                                          <Badge variant="outline" className="rounded-full border-emerald-300 bg-emerald-100/80 px-2.5 py-0.5 text-[11px] text-emerald-800">
+  2975	                                            В экспорте
+  2976	                                          </Badge>
+  2977	                                        ) : null}
+  2978	                                      </div>
+  2979	                                      <p className="text-sm text-stone-600">{entry.description}</p>
+  2980	                                    </div>
+  2981	                                    <span className="text-xs text-stone-500">
+  2982	                                      {new Date(entry.timestamp).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })}
+  2983	                                    </span>
+  2984	                                  </div>
+  2985	                                </div>
+  2986	                              );
+  2987	                            })}
+  2988	                          </div>
+  2989	                        ))}
+  2990	                      </div>
+  2991	                    ) : (
+  2992	                      <div className="rounded-3xl border border-dashed border-stone-200 bg-stone-50/70 px-5 py-8">
+  2993	                        <div className="mx-auto flex max-w-2xl flex-col items-start gap-4 text-left">
+  2994	                          <div className="rounded-2xl bg-white p-3 text-stone-700 shadow-sm ring-1 ring-stone-200/80">
+  2995	                            <ShieldAlert className="h-5 w-5" />
+  2996	                          </div>
+  2997	                          <div className="space-y-2">
+  2998	                            <p className="text-base font-semibold text-stone-950">По текущим фильтрам записи журнала не найдены</p>
+  2999	                            <p className="text-sm leading-6 text-stone-500">
+  3000	                              Попробуйте сбросить фильтры или вернуться к последней рабочей вкладке, чтобы продолжить управление контентом без лишней навигации.
+  3001	                            </p>
+  3002	                          </div>
+  3003	                          <div className="flex flex-wrap gap-3">
+  3004	                            <Button
+  3005	                              type="button"
+  3006	                              variant="outline"
+  3007	                              className="rounded-full border-stone-300 bg-white text-stone-700 hover:bg-stone-100"
+  3008	                              onClick={() => {
+  3009	                                setActionLogAreaFilter("all");
+  3010	                                setActionLogTypeFilter("all");
+  3011	                              }}
+  3012	                            >
+  3013	                              Сбросить фильтры
+  3014	                            </Button>
+  3015	                            <Button
+  3016	                              type="button"
+  3017	                              className="rounded-full bg-stone-950 text-white hover:bg-stone-800"
+  3018	                              onClick={() => setActiveTab(lastEntityTab)}
+  3019	                            >
+  3020	                              <ArrowLeft className="mr-2 h-4 w-4" />
+  3021	                              Вернуться к вкладке «{lastEntityTab === "posts" ? "Посты" : lastEntityTab === "events" ? "События" : "Участники"}»
+  3022	                            </Button>
+  3023	                          </div>
+  3024	                        </div>
+  3025	                      </div>
+  3026	                    )}
+  3027	                  </div>
+  3028	                </CardContent>
+  3029	              )}
+  3030	            </Card>
+  3031	          </TabsContent>
+  3032	        </Tabs>
+  3033	      </div>
+  3034	    </DashboardLayout>
+  3035	  );
+  3036	}
+  3037	
+  3038	function MetricCard({ label, value, icon }: { label: string; value: number; icon: React.ReactNode }) {
+  3039	  return (
+  3040	    <div className="rounded-2xl border border-stone-200 bg-white/80 p-4">
+  3041	      <div className="flex items-center justify-between text-stone-500">
+  3042	        <span className="text-sm">{label}</span>
+  3043	        {icon}
+  3044	      </div>
+  3045	      <p className="mt-3 text-3xl font-semibold text-stone-950">{value}</p>
+  3046	    </div>
+  3047	  );
+  3048	}
+  3049	
+  3050	function EntityFormCard({
+  3051	  title,
+  3052	  description,
+  3053	  children,
+  3054	  footer,
+  3055	}: {
+  3056	  title: string;
+  3057	  description: string;
+  3058	  children: ReactNode;
+  3059	  footer: ReactNode;
+  3060	}) {
+  3061	  return (
+  3062	    <Card>
+  3063	      <CardHeader>
+  3064	        <CardTitle>{title}</CardTitle>
+  3065	        <CardDescription>{description}</CardDescription>
+  3066	      </CardHeader>
+  3067	      <CardContent className="space-y-4">
+  3068	        {children}
+  3069	        <Separator />
+  3070	        {footer}
+  3071	      </CardContent>
+  3072	    </Card>
+  3073	  );
+  3074	}
+  3075	
+  3076	function EntityListCard({
+  3077	  title,
+  3078	  description,
+  3079	  toolbar,
+  3080	  items,
+  3081	  renderItem,
+  3082	  emptyText,
+  3083	  sortIndicator,
+  3084	  pagination,
+  3085	  onPageChange,
+  3086	  onPageSizeChange,
+  3087	}: {
+  3088	  title: string;
+  3089	  description: string;
+  3090	  toolbar?: ReactNode;
+  3091	  items: any[];
+  3092	  renderItem: (item: any) => ReactNode;
+  3093	  emptyText?: string;
+  3094	  sortIndicator?: {
+  3095	    fieldLabel: string;
+  3096	    directionLabel: string;
+  3097	  };
+  3098	  pagination?: {
+  3099	    totalItems: number;
+  3100	    page: number;
+  3101	    pageSize: number;
+  3102	    totalPages: number;
+  3103	    startItem: number;
+  3104	    endItem: number;
+  3105	  };
+  3106	  onPageChange?: (page: number) => void;
+  3107	  onPageSizeChange?: (pageSize: number) => void;
+  3108	}) {
+  3109	  return (
+  3110	    <Card>
+  3111	      <CardHeader>
+  3112	        <div className="flex flex-wrap items-start justify-between gap-3">
+  3113	          <div className="space-y-1">
+  3114	            <CardTitle>{title}</CardTitle>
+  3115	            <CardDescription>{description}</CardDescription>
+  3116	          </div>
+  3117	          {sortIndicator ? (
+  3118	            <Badge variant="outline" className="rounded-full border-amber-300 bg-amber-50 px-3 py-1 text-xs font-medium text-amber-800">
+  3119	              Сортировка: по {sortIndicator.fieldLabel} {sortIndicator.directionLabel}
+  3120	            </Badge>
+  3121	          ) : null}
+  3122	        </div>
+  3123	      </CardHeader>
+  3124	      <CardContent className="space-y-4">
+  3125	        {toolbar}
+  3126	        <div className="space-y-3">
+  3127	          {items.length ? items.map((item) => <div key={item.id}>{renderItem(item)}</div>) : <p className="text-sm text-stone-500">{emptyText ?? "Пока нет записей."}</p>}
+  3128	        </div>
+  3129	        {pagination && onPageChange && onPageSizeChange ? (
+  3130	          <PaginationToolbar
+  3131	            totalItems={pagination.totalItems}
+  3132	            page={pagination.page}
+  3133	            pageSize={pagination.pageSize}
+  3134	            totalPages={pagination.totalPages}
+  3135	            startItem={pagination.startItem}
+  3136	            endItem={pagination.endItem}
+  3137	            onPageChange={onPageChange}
+  3138	            onPageSizeChange={onPageSizeChange}
+  3139	          />
+  3140	        ) : null}
+  3141	      </CardContent>
+  3142	    </Card>
+  3143	  );
+  3144	}
+  3145	
+  3146	type FilterChip = {
+  3147	  label: string;
+  3148	  onRemove: () => void;
+  3149	};
+  3150	
+  3151	function buildPaginationMeta(totalItems: number, page: number, pageSize: number, totalPages: number) {
+  3152	  if (!totalItems) {
+  3153	    return {
+  3154	      totalItems,
+  3155	      page: 1,
+  3156	      pageSize,
+  3157	      totalPages: 1,
+  3158	      startItem: 0,
+  3159	      endItem: 0,
+  3160	    };
+  3161	  }
+  3162	
+  3163	  const safePage = Math.min(Math.max(page, 1), totalPages);
+  3164	  const startItem = (safePage - 1) * pageSize + 1;
+  3165	  const endItem = Math.min(totalItems, safePage * pageSize);
+  3166	
+  3167	  return {
+  3168	    totalItems,
+  3169	    page: safePage,
+  3170	    pageSize,
+  3171	    totalPages,
+  3172	    startItem,
+  3173	    endItem,
+  3174	  };
+  3175	}
+  3176	
+  3177	function PaginationToolbar({
+  3178	  totalItems,
+  3179	  page,
+  3180	  pageSize,
+  3181	  totalPages,
+  3182	  startItem,
+  3183	  endItem,
+  3184	  onPageChange,
+  3185	  onPageSizeChange,
+  3186	}: {
+  3187	  totalItems: number;
+  3188	  page: number;
+  3189	  pageSize: number;
+  3190	  totalPages: number;
+  3191	  startItem: number;
+  3192	  endItem: number;
+  3193	  onPageChange: (page: number) => void;
+  3194	  onPageSizeChange: (pageSize: number) => void;
+  3195	}) {
+  3196	  return (
+  3197	    <div className="flex flex-col gap-3 rounded-2xl border border-stone-200 bg-stone-50/70 p-3 lg:flex-row lg:items-center lg:justify-between">
+  3198	      <div className="space-y-1">
+  3199	        <p className="text-sm font-medium text-stone-900">
+  3200	          Показаны записи {startItem}-{endItem} из {totalItems}
+  3201	        </p>
+  3202	        <p className="text-xs text-stone-500">
+  3203	          Страница {page} из {totalPages}
+  3204	        </p>
+  3205	      </div>
+  3206	      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
+  3207	        <div className="flex items-center gap-2">
+  3208	          <Label className="text-xs text-stone-600">На странице</Label>
+  3209	          <select
+  3210	            value={String(pageSize)}
+  3211	            onChange={(e) => onPageSizeChange(Number(e.target.value))}
+  3212	            className="flex h-9 rounded-md border border-stone-200 bg-white px-3 py-2 text-sm text-stone-950 shadow-sm outline-none transition focus-visible:ring-2 focus-visible:ring-stone-300"
+  3213	          >
+  3214	            {[5, 10, 20, 50].map((size) => (
+  3215	              <option key={size} value={size}>{size}</option>
+  3216	            ))}
+  3217	          </select>
+  3218	        </div>
+  3219	        <div className="flex items-center gap-2">
+  3220	          <Button type="button" variant="outline" size="sm" onClick={() => onPageChange(page - 1)} disabled={page <= 1}>
+  3221	            Назад
+  3222	          </Button>
+  3223	          <Button type="button" variant="outline" size="sm" onClick={() => onPageChange(page + 1)} disabled={page >= totalPages}>
+  3224	            Вперёд
+  3225	          </Button>
+  3226	        </div>
+  3227	      </div>
+  3228	    </div>
+  3229	  );
+  3230	}
+  3231	
+  3232	function FilterToolbar({
+  3233	  searchPlaceholder,
+  3234	  searchValue,
+  3235	  resultCount,
+  3236	  resultLabel,
+  3237	  resetLabel,
+  3238	  activeFilterChips,
+  3239	  presetPanel,
+  3240	  onSearchChange,
+  3241	  onReset,
+  3242	  hasActiveFilters,
+  3243	  selectionCount,
+  3244	  bulkActions,
+  3245	  onClearSelection,
+  3246	  children,
+  3247	}: {
+  3248	  searchPlaceholder: string;
+  3249	  searchValue: string;
+  3250	  resultCount: number;
+  3251	  resultLabel: string;
+  3252	  resetLabel: string;
+  3253	  activeFilterChips?: FilterChip[];
+  3254	  presetPanel?: ReactNode;
+  3255	  onSearchChange: (value: string) => void;
+  3256	  onReset: () => void;
+  3257	  hasActiveFilters: boolean;
+  3258	  selectionCount?: number;
+  3259	  bulkActions?: BulkActionConfig[];
+  3260	  onClearSelection?: () => void;
+  3261	  children?: ReactNode;
+  3262	}) {
+  3263	  return (
+  3264	    <div className="rounded-2xl border border-stone-200 bg-stone-50/80 p-4 space-y-4">
+  3265	      <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_auto] md:items-end">
+  3266	        <div className="space-y-2">
+  3267	          <div className="flex flex-wrap items-center justify-between gap-2">
+  3268	            <Label>Поиск</Label>
+  3269	            <span className="inline-flex items-center rounded-full border border-stone-200 bg-white px-2.5 py-1 text-xs font-medium text-stone-600">
+  3270	              Найдено: {resultCount} {resultLabel}
+  3271	            </span>
+  3272	          </div>
+  3273	          <div className="relative">
+  3274	            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400" />
+  3275	            <Input className="pl-9" value={searchValue} onChange={(e) => onSearchChange(e.target.value)} placeholder={searchPlaceholder} />
+  3276	          </div>
+  3277	        </div>
+  3278	        <Button variant="outline" onClick={onReset} disabled={!hasActiveFilters}>
+  3279	          <X className="mr-2 h-4 w-4" />{resetLabel}
+  3280	        </Button>
+  3281	      </div>
+  3282	      {selectionCount ? (
+  3283	        <div className="space-y-3 rounded-2xl border border-amber-200 bg-amber-50/70 p-3">
+  3284	          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+  3285	            <div className="space-y-1">
+  3286	              <p className="text-sm font-medium text-amber-950">Выбрано записей: {selectionCount}</p>
+  3287	              <p className="text-xs text-amber-800">Массовые действия применяются только к текущим выбранным позициям.</p>
+  3288	            </div>
+  3289	            {onClearSelection ? (
+  3290	              <Button type="button" variant="outline" size="sm" onClick={onClearSelection}>
+  3291	                <X className="mr-2 h-4 w-4" />Очистить выбор
+  3292	              </Button>
+  3293	            ) : null}
+  3294	          </div>
+  3295	          {bulkActions?.length ? (
+  3296	            <div className="flex flex-wrap gap-2">
+  3297	              {bulkActions.map((action) => (
+  3298	                <Button
+  3299	                  key={action.label}
+  3300	                  type="button"
+  3301	                  variant={action.variant ?? "outline"}
+  3302	                  size="sm"
+  3303	                  onClick={action.onClick}
+  3304	                  disabled={action.disabled}
+  3305	                  className={action.destructive ? "border-red-200 text-red-700 hover:bg-red-50 hover:text-red-800" : undefined}
+  3306	                >
+  3307	                  {action.icon ? <span className="mr-2">{action.icon}</span> : null}
+  3308	                  {action.label}
+  3309	                </Button>
+  3310	              ))}
+  3311	            </div>
+  3312	          ) : null}
+  3313	        </div>
+  3314	      ) : null}
+  3315	      {presetPanel}
+  3316	      {activeFilterChips?.length ? (
+  3317	        <div className="flex flex-wrap gap-2">
+  3318	          {activeFilterChips.map((chip) => (
+  3319	            <button
+  3320	              key={chip.label}
+  3321	              type="button"
+  3322	              onClick={chip.onRemove}
+  3323	              className="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-900 transition-colors hover:bg-amber-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2"
+  3324	              aria-label={`Убрать фильтр ${chip.label}`}
+  3325	              title="Нажмите, чтобы убрать этот фильтр"
+  3326	            >
+  3327	              <span>{chip.label}</span>
+  3328	              <X className="h-3.5 w-3.5" />
+  3329	            </button>
+  3330	          ))}
+  3331	        </div>
+  3332	      ) : null}
+  3333	      {children ? <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">{children}</div> : null}
+  3334	    </div>
+  3335	  );
+  3336	}
+  3337	
+  3338	function PresetToolbar({
+  3339	  presetName,
+  3340	  onPresetNameChange,
+  3341	  onSave,
+  3342	  saveDisabled,
+  3343	  presets,
+  3344	  onApplyPreset,
+  3345	  onDeletePreset,
+  3346	  deletePending,
+  3347	}: {
+  3348	  presetName: string;
+  3349	  onPresetNameChange: (value: string) => void;
+  3350	  onSave: () => void;
+  3351	  saveDisabled: boolean;
+  3352	  presets: ClubAdminPreset[];
+  3353	  onApplyPreset: (preset: ClubAdminPreset) => void;
+  3354	  onDeletePreset: (presetId: number) => void;
+  3355	  deletePending: boolean;
+  3356	}) {
+  3357	  return (
+  3358	    <div className="space-y-3 rounded-2xl border border-dashed border-amber-200 bg-white/80 p-3">
+  3359	      <div className="flex flex-col gap-3 lg:flex-row lg:items-end">
+  3360	        <div className="flex-1 space-y-2">
+  3361	          <Label>Сохранить текущий набор</Label>
+  3362	          <Input
+  3363	            value={presetName}
+  3364	            onChange={(e) => onPresetNameChange(e.target.value)}
+  3365	            placeholder="Например: Публикации для витрины"
+  3366	          />
+  3367	        </div>
+  3368	        <Button type="button" onClick={onSave} disabled={saveDisabled} className="lg:self-end">
+  3369	          <Save className="mr-2 h-4 w-4" />Сохранить пресет
+  3370	        </Button>
+  3371	      </div>
+  3372	      <div className="space-y-2">
+  3373	        <div className="flex items-center justify-between gap-3">
+  3374	          <Label>Сохранённые пресеты</Label>
+  3375	          <span className="text-xs text-stone-500">{presets.length} шт.</span>
+  3376	        </div>
+  3377	        {presets.length ? (
+  3378	          <div className="flex flex-wrap gap-2">
+  3379	            {presets.map((preset) => (
+  3380	              <div key={preset.id} className="inline-flex items-center gap-1 rounded-full border border-stone-200 bg-stone-50 px-2 py-1">
+  3381	                <button
+  3382	                  type="button"
+  3383	                  onClick={() => onApplyPreset(preset)}
+  3384	                  className="text-xs font-medium text-stone-800 transition-colors hover:text-stone-950"
+  3385	                  title="Применить пресет"
+  3386	                >
+  3387	                  {preset.name}
+  3388	                </button>
+  3389	                <button
+  3390	                  type="button"
+  3391	                  onClick={() => onDeletePreset(preset.id)}
+  3392	                  disabled={deletePending}
+  3393	                  className="rounded-full p-0.5 text-stone-500 transition-colors hover:bg-red-50 hover:text-red-600 disabled:opacity-60"
+  3394	                  aria-label={`Удалить пресет ${preset.name}`}
+  3395	                >
+  3396	                  <X className="h-3.5 w-3.5" />
+  3397	                </button>
+  3398	              </div>
+  3399	            ))}
+  3400	          </div>
+  3401	        ) : (
+  3402	          <p className="text-sm text-stone-500">Пока нет сохранённых пресетов для этой вкладки.</p>
+  3403	        )}
+  3404	      </div>
+  3405	    </div>
+  3406	  );
+  3407	}
+  3408	
+  3409	function SelectFilter({
+  3410	  label,
+  3411	  value,
+  3412	  onChange,
+  3413	  options,
+  3414	}: {
+  3415	  label: string;
+  3416	  value: string;
+  3417	  onChange: (value: string) => void;
+  3418	  options: Array<{ label: string; value: string }>;
+  3419	}) {
+  3420	  return (
+  3421	    <div className="space-y-2">
+  3422	      <Label>{label}</Label>
+  3423	      <select
+  3424	        value={value}
+  3425	        onChange={(e) => onChange(e.target.value)}
+  3426	        className="flex h-10 w-full rounded-md border border-stone-200 bg-white px-3 py-2 text-sm text-stone-950 shadow-sm outline-none transition focus-visible:ring-2 focus-visible:ring-stone-300"
+  3427	      >
+  3428	        {options.map((option) => (
+  3429	          <option key={option.value} value={option.value}>{option.label}</option>
+  3430	        ))}
+  3431	      </select>
+  3432	    </div>
+  3433	  );
+  3434	}
+  3435	
+  3436	function ListRow({
+  3437	  title,
+  3438	  subtitle,
+  3439	  meta,
+  3440	  badge,
+  3441	  selected,
+  3442	  onToggleSelected,
+  3443	  inlineActions,
+  3444	  onEdit,
+  3445	  onDelete,
+  3446	  deleting,
+  3447	}: {
+  3448	  title: string;
+  3449	  subtitle: string;
+  3450	  meta: string;
+  3451	  badge?: string;
+  3452	  selected?: boolean;
+  3453	  onToggleSelected?: () => void;
+  3454	  inlineActions?: InlineActionConfig[];
+  3455	  onEdit: () => void;
+  3456	  onDelete: () => void;
+  3457	  deleting?: boolean;
+  3458	}) {
+  3459	  return (
+  3460	    <div className={`rounded-2xl border p-4 transition-colors ${selected ? "border-amber-300 bg-amber-50/50" : "border-stone-200"}`}>
+  3461	      <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+  3462	        <div className="flex items-start gap-3">
+  3463	          {onToggleSelected ? (
+  3464	            <button
+  3465	              type="button"
+  3466	              onClick={onToggleSelected}
+  3467	              className={`mt-0.5 inline-flex h-5 w-5 items-center justify-center rounded border transition-colors ${selected ? "border-amber-500 bg-amber-500 text-white" : "border-stone-300 bg-white text-stone-400 hover:border-stone-400"}`}
+  3468	              aria-pressed={selected}
+  3469	              aria-label={selected ? `Снять выбор с ${title}` : `Выбрать ${title}`}
+  3470	            >
+  3471	              {selected ? <CheckSquare className="h-3.5 w-3.5" /> : <Square className="h-3.5 w-3.5" />}
+  3472	            </button>
+  3473	          ) : null}
+  3474	          <div className="space-y-2">
+  3475	            <div className="flex flex-wrap items-center gap-2">
+  3476	              <p className="font-medium text-stone-950">{title}</p>
+  3477	              {badge ? <Badge variant="secondary">{badge}</Badge> : null}
+  3478	            </div>
+  3479	            <p className="text-sm text-stone-600">{subtitle}</p>
+  3480	            <p className="text-xs text-stone-500">{meta}</p>
+  3481	            {inlineActions?.length ? (
+  3482	              <div className="flex flex-wrap gap-2 pt-1">
+  3483	                {inlineActions.map((action) => (
+  3484	                  <Button
+  3485	                    key={`${action.label}-${String(action.value ?? "")}`}
+  3486	                    type="button"
+  3487	                    variant="outline"
+  3488	                    size="sm"
+  3489	                    onClick={action.onClick}
+  3490	                    disabled={action.disabled}
+  3491	                    className="h-8 rounded-full border-stone-300 bg-white px-3 text-xs text-stone-700 hover:bg-stone-50"
+  3492	                  >
+  3493	                    {action.icon ? <span className="mr-1.5">{action.icon}</span> : null}
+  3494	                    <span>{action.label}</span>
+  3495	                    {action.value !== undefined ? <span className="ml-1 font-medium text-stone-950">{action.value}</span> : null}
+  3496	                  </Button>
+  3497	                ))}
+  3498	              </div>
+  3499	            ) : null}
+  3500	          </div>
+  3501	        </div>
+  3502	        <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center sm:justify-end">
+  3503	          <Button variant="outline" size="sm" onClick={onEdit} className="w-full justify-center sm:min-w-[132px] sm:w-[132px]">
+  3504	            <Pencil className="mr-2 h-4 w-4" />Править
+  3505	          </Button>
+  3506	          <Button variant="outline" size="sm" onClick={onDelete} disabled={deleting} className="w-full justify-center sm:min-w-[132px] sm:w-[132px]">
+  3507	            <Trash2 className="mr-2 h-4 w-4" />{deleting ? "Удаление..." : "Удалить"}
+  3508	          </Button>
+  3509	        </div>
+  3510	      </div>
+  3511	    </div>
+  3512	  );
+  3513	}
+  3514	
+  3515	function Field({ label, error, children }: { label: string; error?: string; children: ReactNode }) {
+  3516	  return (
+  3517	    <div className="space-y-2">
+  3518	      <Label>{label}</Label>
+  3519	      {children}
+  3520	      {error ? <p className="text-sm font-medium text-red-600">{error}</p> : null}
+  3521	    </div>
+  3522	  );
+  3523	}

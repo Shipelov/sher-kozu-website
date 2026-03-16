@@ -1,6 +1,7 @@
-import type { ReactNode } from "react";
+import type { ComponentProps, ReactNode } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { TabsContent } from "@/components/ui/tabs";
 import { CalendarRange, Crown, Users } from "lucide-react";
 
 export type AdminClubSectionCardProps = {
@@ -21,6 +22,10 @@ export type AdminClubOverviewSectionProps = {
     role: string;
   };
   isLoading: boolean;
+};
+
+type AdminClubTabSectionProps = Omit<ComponentProps<typeof TabsContent>, "value"> & {
+  children: ReactNode;
 };
 
 function MetricCard({
@@ -105,5 +110,45 @@ export function AdminClubOverviewSection({
         </CardContent>
       </Card>
     </section>
+  );
+}
+
+export function AdminClubPostsTabSection({ children, className, ...props }: AdminClubTabSectionProps) {
+  return (
+    <TabsContent value="posts" className={className ?? "grid gap-6 xl:grid-cols-[0.95fr_1.05fr]"} {...props}>
+      {children}
+    </TabsContent>
+  );
+}
+
+export function AdminClubEventsTabSection({ children, className, ...props }: AdminClubTabSectionProps) {
+  return (
+    <TabsContent value="events" className={className ?? "grid gap-6 xl:grid-cols-[0.95fr_1.05fr]"} {...props}>
+      {children}
+    </TabsContent>
+  );
+}
+
+export function AdminClubMembersTabSection({ children, className, ...props }: AdminClubTabSectionProps) {
+  return (
+    <TabsContent value="members" className={className ?? "grid gap-6 xl:grid-cols-[0.95fr_1.05fr]"} {...props}>
+      {children}
+    </TabsContent>
+  );
+}
+
+export function AdminClubBitrixTabSection({ children, className, ...props }: AdminClubTabSectionProps) {
+  return (
+    <TabsContent value="bitrix" className={className ?? "space-y-6"} {...props}>
+      {children}
+    </TabsContent>
+  );
+}
+
+export function AdminClubActivityTabSection({ children, className, ...props }: AdminClubTabSectionProps) {
+  return (
+    <TabsContent value="activity" className={className ?? "space-y-6"} {...props}>
+      {children}
+    </TabsContent>
   );
 }
