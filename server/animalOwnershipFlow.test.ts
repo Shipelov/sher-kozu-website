@@ -8,6 +8,7 @@ type OwnershipRecord = {
   animalId: number;
   slotIndex: number;
   status: OwnershipStatus;
+  priceMinor?: number;
 };
 
 type AnimalRecord = {
@@ -15,29 +16,77 @@ type AnimalRecord = {
   slug: string;
   status: AnimalStatus;
   totalOwnershipSlots: number;
+  baseMonthlyPriceMinor: number;
 };
 
-function countActiveOwnerships(records: OwnershipRecord[], animalId: number) {
-  return records.filter((record) => {
-    return record.animalId === animalId && (record.status === "active" || record.status === "pending_payment");
-  }).length;
+function normalizeOwnershipSlots(totalOwnershipSlots: number | null | undefined) {
+  if (!Number.isFinite(totalOwnershipSlots) || !totalOwnershipSlots || totalOwnershipSlots < 1) {
+    return 10;
+  }
+
+  return Math.round(totalOwnershipSlots);
 }
 
-function getAvailableSlotIndex(animal: AnimalRecord, records: OwnershipRecord[]) {
+function isOccupiedOwnershipStatus(status: OwnershipStatus) {
+  return status === "active" || status === "pending_payment";
+}
+
+function countActiveOwnerships(records: OwnershipRecord[], animalId: number) {
+  return records.filter((record) => record.animalId === animalId && isOccupiedOwnershipStatus(record.status)).length;
+}
+
+function getPercentPerSlot(totalOwnershipSlots: number | null | undefined) {
+  return 100 / normalizeOwnershipSlots(totalOwnershipSlots);
+}
+
+function getOwnedPercentFromCount(activeOwnerships: number, totalOwnershipSlots: number | null | undefined) {
+  return Math.min(100, Math.round(activeOwnerships * getPercentPerSlot(totalOwnershipSlots)));
+}
+
+function getSharePriceMinor(basePriceMinor: number, sharePercent: number) {
+  return Math.round((Math.max(0, basePriceMinor) * sharePercent) / 100);
+}
+
+function getAvailableSharePercents(animal: AnimalRecord, records: OwnershipRecord[]) {
+  const totalSlots = normalizeOwnershipSlots(animal.totalOwnershipSlots);
+  const activeOwnerships = countActiveOwnerships(records, animal.id);
+  const availablePercent = Math.max(0, 100 - getOwnedPercentFromCount(activeOwnerships, totalSlots));
+  const shareUnitPercent = Math.round(getPercentPerSlot(totalSlots));
+  const values: number[] = [];
+
+  for (let sharePercent = shareUnitPercent; sharePercent <= availablePercent; sharePercent += shareUnitPercent) {
+    values.push(sharePercent);
+  }
+
+  return values;
+}
+
+function getFirstFreeSlotIndexes(animal: AnimalRecord, records: OwnershipRecord[], requestedSlots: number) {
+  const totalSlots = normalizeOwnershipSlots(animal.totalOwnershipSlots);
   const usedSlots = new Set(
     records
       .filter((record) => record.animalId === animal.id)
-      .filter((record) => record.status === "active" || record.status === "pending_payment")
+      .filter((record) => isOccupiedOwnershipStatus(record.status))
       .map((record) => record.slotIndex)
   );
 
-  for (let slotIndex = 1; slotIndex <= animal.totalOwnershipSlots; slotIndex += 1) {
+  const freeSlotIndexes: number[] = [];
+  for (let slotIndex = 1; slotIndex <= totalSlots; slotIndex += 1) {
     if (!usedSlots.has(slotIndex)) {
-      return slotIndex;
+      freeSlotIndexes.push(slotIndex);
+    }
+
+    if (freeSlotIndexes.length === requestedSlots) {
+      break;
     }
   }
 
-  return null;
+  return freeSlotIndexes;
+}
+
+function isValidSharePercent(animal: AnimalRecord, sharePercent: number) {
+  const shareUnitPercent = Math.round(getPercentPerSlot(animal.totalOwnershipSlots));
+  return Number.isInteger(sharePercent) && sharePercent >= shareUnitPercent && sharePercent <= 100 && sharePercent % shareUnitPercent === 0;
 }
 
 function recalculateAnimalStatus(animal: AnimalRecord, activeCount: number): AnimalStatus {
@@ -45,11 +94,13 @@ function recalculateAnimalStatus(animal: AnimalRecord, activeCount: number): Ani
     return animal.status;
   }
 
-  if (activeCount >= animal.totalOwnershipSlots) {
+  const totalSlots = normalizeOwnershipSlots(animal.totalOwnershipSlots);
+
+  if (activeCount >= totalSlots) {
     return "fully_booked";
   }
 
-  if (activeCount >= Math.max(1, animal.totalOwnershipSlots - 1)) {
+  if (activeCount >= Math.max(1, totalSlots - 1)) {
     return "public_limited";
   }
 
@@ -57,7 +108,7 @@ function recalculateAnimalStatus(animal: AnimalRecord, activeCount: number): Ani
 }
 
 function getAvailableSlots(animal: AnimalRecord, records: OwnershipRecord[]) {
-  return Math.max(0, animal.totalOwnershipSlots - countActiveOwnerships(records, animal.id));
+  return Math.max(0, normalizeOwnershipSlots(animal.totalOwnershipSlots) - countActiveOwnerships(records, animal.id));
 }
 
 function getAnimalBySlug(animals: AnimalRecord[], slug: string) {
@@ -85,35 +136,107 @@ describe("Sprint 1 ownership flow domain rules", () => {
     expect(countActiveOwnerships(ownerships, 2)).toBe(1);
   });
 
-  it("returns the first free slot index in ascending order", () => {
+  it("returns ascending free slots for requested share size", () => {
     const animal: AnimalRecord = {
       id: 10,
       slug: "marta",
       status: "public_available",
-      totalOwnershipSlots: 3,
+      totalOwnershipSlots: 10,
+      baseMonthlyPriceMinor: 150000,
     };
     const ownerships: OwnershipRecord[] = [
       { animalId: 10, slotIndex: 1, status: "active" },
       { animalId: 10, slotIndex: 3, status: "pending_payment" },
+      { animalId: 10, slotIndex: 4, status: "expired" },
     ];
 
-    expect(getAvailableSlotIndex(animal, ownerships)).toBe(2);
+    expect(getFirstFreeSlotIndexes(animal, ownerships, 3)).toEqual([2, 4, 5]);
   });
 
-  it("returns null when all ownership slots are occupied", () => {
+  it("returns fewer slots when requested share exceeds remaining capacity", () => {
     const animal: AnimalRecord = {
       id: 11,
       slug: "zlata",
       status: "public_limited",
-      totalOwnershipSlots: 2,
+      totalOwnershipSlots: 10,
+      baseMonthlyPriceMinor: 100000,
     };
     const ownerships: OwnershipRecord[] = [
       { animalId: 11, slotIndex: 1, status: "active" },
       { animalId: 11, slotIndex: 2, status: "pending_payment" },
+      { animalId: 11, slotIndex: 3, status: "active" },
+      { animalId: 11, slotIndex: 4, status: "active" },
+      { animalId: 11, slotIndex: 5, status: "active" },
+      { animalId: 11, slotIndex: 6, status: "active" },
+      { animalId: 11, slotIndex: 7, status: "active" },
+      { animalId: 11, slotIndex: 8, status: "active" },
+      { animalId: 11, slotIndex: 9, status: "active" },
     ];
 
-    expect(getAvailableSlotIndex(animal, ownerships)).toBeNull();
-    expect(getAvailableSlots(animal, ownerships)).toBe(0);
+    expect(getFirstFreeSlotIndexes(animal, ownerships, 3)).toEqual([10]);
+    expect(getAvailableSlots(animal, ownerships)).toBe(1);
+  });
+
+  it("computes owned and available percent from active slot count", () => {
+    const animal: AnimalRecord = {
+      id: 12,
+      slug: "luna",
+      status: "public_available",
+      totalOwnershipSlots: 10,
+      baseMonthlyPriceMinor: 200000,
+    };
+    const ownerships: OwnershipRecord[] = [
+      { animalId: 12, slotIndex: 1, status: "active" },
+      { animalId: 12, slotIndex: 2, status: "pending_payment" },
+      { animalId: 12, slotIndex: 3, status: "expired" },
+    ];
+
+    expect(getOwnedPercentFromCount(countActiveOwnerships(ownerships, animal.id), animal.totalOwnershipSlots)).toBe(20);
+    expect(100 - getOwnedPercentFromCount(countActiveOwnerships(ownerships, animal.id), animal.totalOwnershipSlots)).toBe(80);
+  });
+
+  it("calculates share price from the full animal price and selected percent", () => {
+    expect(getSharePriceMinor(135000, 10)).toBe(13500);
+    expect(getSharePriceMinor(135000, 30)).toBe(40500);
+    expect(getSharePriceMinor(135000, 100)).toBe(135000);
+  });
+
+  it("accepts only share percentages with unit step derived from slot count", () => {
+    const animal: AnimalRecord = {
+      id: 13,
+      slug: "alma",
+      status: "public_available",
+      totalOwnershipSlots: 10,
+      baseMonthlyPriceMinor: 135000,
+    };
+
+    expect(isValidSharePercent(animal, 10)).toBe(true);
+    expect(isValidSharePercent(animal, 40)).toBe(true);
+    expect(isValidSharePercent(animal, 100)).toBe(true);
+    expect(isValidSharePercent(animal, 0)).toBe(false);
+    expect(isValidSharePercent(animal, 15)).toBe(false);
+    expect(isValidSharePercent(animal, 105)).toBe(false);
+  });
+
+  it("returns only share percent options up to remaining available capacity", () => {
+    const animal: AnimalRecord = {
+      id: 14,
+      slug: "sakura",
+      status: "public_available",
+      totalOwnershipSlots: 10,
+      baseMonthlyPriceMinor: 180000,
+    };
+    const ownerships: OwnershipRecord[] = [
+      { animalId: 14, slotIndex: 1, status: "active" },
+      { animalId: 14, slotIndex: 2, status: "active" },
+      { animalId: 14, slotIndex: 3, status: "active" },
+      { animalId: 14, slotIndex: 4, status: "active" },
+      { animalId: 14, slotIndex: 5, status: "active" },
+      { animalId: 14, slotIndex: 6, status: "active" },
+      { animalId: 14, slotIndex: 7, status: "active" },
+    ];
+
+    expect(getAvailableSharePercents(animal, ownerships)).toEqual([10, 20, 30]);
   });
 
   it("keeps animal public_available while more than one slot is still open", () => {
@@ -121,11 +244,12 @@ describe("Sprint 1 ownership flow domain rules", () => {
       id: 21,
       slug: "sakura",
       status: "public_available",
-      totalOwnershipSlots: 3,
+      totalOwnershipSlots: 10,
+      baseMonthlyPriceMinor: 170000,
     };
 
     expect(recalculateAnimalStatus(animal, 0)).toBe("public_available");
-    expect(recalculateAnimalStatus(animal, 1)).toBe("public_available");
+    expect(recalculateAnimalStatus(animal, 5)).toBe("public_available");
   });
 
   it("switches animal to public_limited when the last slot is approaching", () => {
@@ -133,10 +257,11 @@ describe("Sprint 1 ownership flow domain rules", () => {
       id: 22,
       slug: "luna",
       status: "public_available",
-      totalOwnershipSlots: 3,
+      totalOwnershipSlots: 10,
+      baseMonthlyPriceMinor: 160000,
     };
 
-    expect(recalculateAnimalStatus(animal, 2)).toBe("public_limited");
+    expect(recalculateAnimalStatus(animal, 9)).toBe("public_limited");
   });
 
   it("switches animal to fully_booked when active ownerships reach slot limit", () => {
@@ -144,10 +269,11 @@ describe("Sprint 1 ownership flow domain rules", () => {
       id: 23,
       slug: "alma",
       status: "public_limited",
-      totalOwnershipSlots: 2,
+      totalOwnershipSlots: 10,
+      baseMonthlyPriceMinor: 160000,
     };
 
-    expect(recalculateAnimalStatus(animal, 2)).toBe("fully_booked");
+    expect(recalculateAnimalStatus(animal, 10)).toBe("fully_booked");
   });
 
   it("preserves hidden and archived statuses during recalculation", () => {
@@ -155,23 +281,25 @@ describe("Sprint 1 ownership flow domain rules", () => {
       id: 24,
       slug: "beta",
       status: "hidden",
-      totalOwnershipSlots: 3,
+      totalOwnershipSlots: 10,
+      baseMonthlyPriceMinor: 150000,
     };
     const archivedAnimal: AnimalRecord = {
       id: 25,
       slug: "gamma",
       status: "archived",
-      totalOwnershipSlots: 3,
+      totalOwnershipSlots: 10,
+      baseMonthlyPriceMinor: 150000,
     };
 
-    expect(recalculateAnimalStatus(hiddenAnimal, 3)).toBe("hidden");
-    expect(recalculateAnimalStatus(archivedAnimal, 3)).toBe("archived");
+    expect(recalculateAnimalStatus(hiddenAnimal, 10)).toBe("hidden");
+    expect(recalculateAnimalStatus(archivedAnimal, 10)).toBe("archived");
   });
 
   it("returns animal by slug for public details page and null for unknown slug", () => {
     const animals: AnimalRecord[] = [
-      { id: 31, slug: "marta", status: "public_available", totalOwnershipSlots: 3 },
-      { id: 32, slug: "zlata", status: "fully_booked", totalOwnershipSlots: 2 },
+      { id: 31, slug: "marta", status: "public_available", totalOwnershipSlots: 10, baseMonthlyPriceMinor: 135000 },
+      { id: 32, slug: "zlata", status: "fully_booked", totalOwnershipSlots: 10, baseMonthlyPriceMinor: 118000 },
     ];
 
     expect(getAnimalBySlug(animals, "marta")?.id).toBe(31);

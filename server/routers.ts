@@ -25,6 +25,7 @@ import {
   getPartnerLeadById,
   getProductTrackerData,
   listActivePlans,
+  purchaseAnimalShare,
   listAdminAnimals,
   listAnimalPhotos,
   listBitrixAdminData,
@@ -205,7 +206,7 @@ const animalUpsertInput = z.object({
   coverImageUrl: z.string().url().optional().nullable(),
   galleryIntro: z.string().max(1000).optional().nullable(),
   status: z.enum(["public_available", "public_limited", "fully_booked", "hidden", "archived"]),
-  totalOwnershipSlots: z.number().int().min(1).max(3),
+  totalOwnershipSlots: z.number().int().min(10).max(10),
   baseMonthlyPriceMinor: z.number().int().min(0).max(1_000_000_000),
   healthScore: z.number().int().min(0).max(100),
   happinessScore: z.number().int().min(0).max(100),
@@ -224,6 +225,16 @@ const animalUpdateInput = animalUpsertInput.extend({
 const animalVisibilityInput = z.object({
   id: z.number().int().positive(),
   mode: z.enum(["public", "hidden", "archived"]),
+});
+
+const purchaseAnimalShareInput = z.object({
+  animalId: z.number().int().positive(),
+  sharePercent: z.number().int().min(10).max(100),
+  planId: z.number().int().positive(),
+  planDurationId: z.number().int().positive(),
+  startsAt: z.number().int().optional(),
+  endsAt: z.number().int().optional(),
+  notes: z.string().max(1000).optional().nullable(),
 });
 
 const bitrixAdminDashboardInput = z.object({
@@ -274,6 +285,32 @@ export const appRouter = router({
     }),
     getBySlug: publicProcedure.input(animalSlugInput).query(async ({ input }) => {
       return getAnimalBySlug(input.slug);
+    }),
+    purchaseShare: protectedProcedure.input(purchaseAnimalShareInput).mutation(async ({ ctx, input }) => {
+      try {
+        return await purchaseAnimalShare({
+          ownerOpenId: ctx.user.openId,
+          animalId: input.animalId,
+          sharePercent: input.sharePercent,
+          planId: input.planId,
+          planDurationId: input.planDurationId,
+          startsAt: input.startsAt ? new Date(input.startsAt) : undefined,
+          endsAt: input.endsAt ? new Date(input.endsAt) : undefined,
+          notes: input.notes ?? null,
+        });
+      } catch (error) {
+        const code = error instanceof Error ? error.message : "PURCHASE_FAILED";
+        if (code === "ANIMAL_NOT_FOUND") {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Животное не найдено." });
+        }
+        if (code === "INVALID_SHARE_PERCENT") {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Доля должна быть выбрана шагом 10%." });
+        }
+        if (code === "INSUFFICIENT_SHARE_AVAILABLE") {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Свободной доли выбранного размера больше нет." });
+        }
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Не удалось оформить долю животного." });
+      }
     }),
   }),
   plans: router({

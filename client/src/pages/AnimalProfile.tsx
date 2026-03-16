@@ -4,6 +4,7 @@ import type { ChangeEvent, DragEvent } from "react";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
 import { Link, useLocation, useRoute } from "wouter";
+import { useAuth } from "@/_core/hooks/useAuth";
 import Navbar from "@/components/Navbar";
 import {
   Heart,
@@ -156,6 +157,22 @@ function getSpeciesLabel(species?: string) {
   return "Животное";
 }
 
+function formatCurrency(minor?: number | null) {
+  return new Intl.NumberFormat("ru-RU", {
+    style: "currency",
+    currency: "KZT",
+    maximumFractionDigits: 0,
+  }).format((minor ?? 0) / 100);
+}
+
+function getAnimalStatusLabel(status?: string | null) {
+  if (status === "fully_booked") return "Выкуплено полностью";
+  if (status === "public_limited") return "Осталось мало долей";
+  if (status === "hidden") return "Скрыто";
+  if (status === "archived") return "Архив";
+  return "Доступно для шеринга";
+}
+
 function formatAnimalName(name?: string) {
   if (!name) return "Животное";
   const speciesName = name.toLowerCase().startsWith("коза ") || name.toLowerCase().startsWith("овца ")
@@ -279,6 +296,7 @@ function useAnimalSlug() {
 export default function AnimalProfile() {
   const [, setLocation] = useLocation();
   const animalSlug = useAnimalSlug();
+  const { isAuthenticated } = useAuth();
   const [activeTab, setActiveTab] = useState<"diary" | "health" | "milk">("diary");
   const [showFullBio, setShowFullBio] = useState(false);
   const [selectedImageId, setSelectedImageId] = useState("cover");
@@ -290,7 +308,28 @@ export default function AnimalProfile() {
 
   const utils = trpc.useUtils();
   const animalQuery = trpc.animals.getBySlug.useQuery({ slug: animalSlug }, { enabled: Boolean(animalSlug) });
-  const photosQuery = trpc.animalPhotos.list.useQuery({ animalSlug }, { enabled: Boolean(animalSlug) });
+  const photosQuery = trpc.animalPhotos.list.useQuery({ animalSlug }, { enabled: Boolean(animalSlug) && isAuthenticated });
+  const [selectedSharePercent, setSelectedSharePercent] = useState(10);
+  const [selectedPlanId, setSelectedPlanId] = useState<number | null>(null);
+  const [selectedPlanDurationId, setSelectedPlanDurationId] = useState<number | null>(null);
+
+  const availableSharePercents = animalQuery.data?.availableSharePercents ?? [];
+  const fullPriceMinor = animalQuery.data?.fullPriceMinor ?? animalQuery.data?.baseMonthlyPriceMinor ?? 0;
+  const shareUnitPercent = animalQuery.data?.shareUnitPercent ?? 10;
+  const ownedPercent = animalQuery.data?.ownedPercent ?? 0;
+  const availablePercent = animalQuery.data?.availablePercent ?? 100;
+  const selectedPlan = useMemo(
+    () => animalQuery.data?.plans?.find((plan: any) => plan.id === selectedPlanId) ?? animalQuery.data?.plans?.[0] ?? null,
+    [animalQuery.data?.plans, selectedPlanId],
+  );
+  const selectedDuration = useMemo(
+    () => selectedPlan?.durations?.find((duration: any) => duration.id === selectedPlanDurationId) ?? selectedPlan?.durations?.[0] ?? null,
+    [selectedPlan, selectedPlanDurationId],
+  );
+  const selectedSharePriceMinor = useMemo(
+    () => Math.round((fullPriceMinor * selectedSharePercent) / 100),
+    [fullPriceMinor, selectedSharePercent],
+  );
 
   const profileContent = useMemo(() => {
     const data = animalQuery.data;
@@ -307,6 +346,19 @@ export default function AnimalProfile() {
       careLevelScore: data?.careLevelScore ?? 89,
     });
   }, [animalQuery.data, animalSlug]);
+
+  const purchaseShare = trpc.animals.purchaseShare.useMutation({
+    onSuccess: async (result) => {
+      await utils.animals.getBySlug.invalidate({ slug: animalSlug });
+      await utils.animals.listPublic.invalidate();
+      toast.success("Доля забронирована", {
+        description: `Вы выбрали ${result.sharePercent}% ${animalQuery.data?.name ?? "животного"} на сумму ${formatCurrency(result.priceMinor)}.`,
+      });
+    },
+    onError: (error) => {
+      toast.error("Не удалось оформить долю", { description: error.message });
+    },
+  });
 
   const uploadPhoto = trpc.animalPhotos.upload.useMutation({
     onSuccess: async (created) => {
@@ -437,6 +489,41 @@ export default function AnimalProfile() {
       setSelectedImageId(photoParam);
     }
   }, [galleryImages]);
+
+  useEffect(() => {
+    if (!availableSharePercents.length) {
+      setSelectedSharePercent(shareUnitPercent);
+      return;
+    }
+
+    if (!availableSharePercents.includes(selectedSharePercent)) {
+      setSelectedSharePercent(availableSharePercents[0]);
+    }
+  }, [availableSharePercents, selectedSharePercent, shareUnitPercent]);
+
+  useEffect(() => {
+    const firstPlanId = animalQuery.data?.plans?.[0]?.id ?? null;
+    if (!selectedPlanId && firstPlanId) {
+      setSelectedPlanId(firstPlanId);
+    }
+  }, [animalQuery.data?.plans, selectedPlanId]);
+
+  useEffect(() => {
+    if (!selectedPlan && selectedPlanId !== null) {
+      setSelectedPlanId(animalQuery.data?.plans?.[0]?.id ?? null);
+      return;
+    }
+
+    const firstDurationId = selectedPlan?.durations?.[0]?.id ?? null;
+    if (!selectedDuration && firstDurationId) {
+      setSelectedPlanDurationId(firstDurationId);
+      return;
+    }
+
+    if (selectedDuration && !selectedPlan?.durations?.some((duration: any) => duration.id === selectedDuration.id)) {
+      setSelectedPlanDurationId(firstDurationId);
+    }
+  }, [animalQuery.data?.plans, selectedDuration, selectedPlan, selectedPlanId]);
 
   const selectedImage = useMemo(() => galleryImages.find((item) => item.id === selectedImageId) ?? galleryImages[0], [galleryImages, selectedImageId]);
   const selectedImageIndex = useMemo(() => galleryImages.findIndex((item) => item.id === selectedImageId), [galleryImages, selectedImageId]);
@@ -632,6 +719,31 @@ export default function AnimalProfile() {
     setLocation(`/animals/${DEFAULT_SLUG}`);
   }
 
+  async function handlePurchaseShare() {
+    if (!animalQuery.data?.id) {
+      toast.error("Профиль ещё загружается", { description: "Дождитесь загрузки данных животного и повторите попытку." });
+      return;
+    }
+
+    if (!isAuthenticated) {
+      toast.error("Нужен вход в аккаунт", { description: "Авторизуйтесь, чтобы выбрать и забронировать долю животного." });
+      return;
+    }
+
+    if (!selectedPlanId || !selectedPlanDurationId) {
+      toast.error("Не выбран тариф", { description: "Выберите план и срок участия перед покупкой доли." });
+      return;
+    }
+
+    await purchaseShare.mutateAsync({
+      animalId: animalQuery.data.id,
+      sharePercent: selectedSharePercent,
+      planId: selectedPlanId,
+      planDurationId: selectedPlanDurationId,
+      notes: `Покупка ${selectedSharePercent}% через профиль животного`,
+    });
+  }
+
   const displayName = animalQuery.data?.name ?? "Марта";
   const selectedLabel = selectedImage?.title ?? displayName;
 
@@ -726,6 +838,121 @@ export default function AnimalProfile() {
                         <div className="rounded-2xl bg-secondary p-3">
                           <div className="text-muted-foreground">Статус ухода</div>
                           <div className="mt-1 font-mono-data text-xl font-semibold text-foreground">{animalQuery.data ? "OK" : "База"}</div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="overflow-hidden rounded-[1.75rem] border border-primary/15 bg-card p-5 shadow-sm">
+                      <div className="flex items-start justify-between gap-4">
+                        <div>
+                          <p className="text-xs uppercase tracking-[0.18em] text-primary">Долевое участие</p>
+                          <h3 className="mt-2 text-2xl font-semibold text-foreground">Цена и занятость {displayName}</h3>
+                          <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                            Полная цена животного показывается в профиле, а покупка доступна только свободными долями шагом {shareUnitPercent}%.
+                          </p>
+                        </div>
+                        <div className="rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
+                          {getAnimalStatusLabel(animalQuery.data?.status)}
+                        </div>
+                      </div>
+
+                      <div className="mt-5 grid gap-3 sm:grid-cols-2">
+                        <div className="rounded-[1.25rem] bg-secondary p-4">
+                          <div className="text-xs uppercase tracking-[0.16em] text-muted-foreground">Полная цена</div>
+                          <div className="mt-2 text-2xl font-semibold text-foreground">{formatCurrency(fullPriceMinor)}</div>
+                          <p className="mt-2 text-sm text-muted-foreground">Отображается в профиле, карточке и админ-учёте как базовая цена животного.</p>
+                        </div>
+                        <div className="rounded-[1.25rem] bg-secondary p-4">
+                          <div className="text-xs uppercase tracking-[0.16em] text-muted-foreground">Доля занятости</div>
+                          <div className="mt-2 flex items-end gap-2">
+                            <span className="text-2xl font-semibold text-foreground">{ownedPercent}%</span>
+                            <span className="pb-1 text-sm text-muted-foreground">занято · {availablePercent}% свободно</span>
+                          </div>
+                          <div className="mt-3 h-2.5 overflow-hidden rounded-full bg-border/60">
+                            <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${ownedPercent}%` }} />
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="mt-5 rounded-[1.25rem] border border-border/70 bg-background/70 p-4">
+                        <div className="flex flex-wrap items-center justify-between gap-3">
+                          <div>
+                            <p className="text-sm font-medium text-foreground">Выбор процента шеринга</p>
+                            <p className="mt-1 text-sm text-muted-foreground">Передвигайте ползунок шагом {shareUnitPercent}% — купить можно только свободную долю.</p>
+                          </div>
+                          <div className="rounded-full bg-primary/10 px-3 py-1 text-sm font-semibold text-primary">
+                            {selectedSharePercent}%
+                          </div>
+                        </div>
+                        <input
+                          type="range"
+                          min={shareUnitPercent}
+                          max={Math.max(shareUnitPercent, availablePercent || shareUnitPercent)}
+                          step={shareUnitPercent}
+                          value={Math.min(selectedSharePercent, Math.max(shareUnitPercent, availablePercent || shareUnitPercent))}
+                          onChange={(event) => setSelectedSharePercent(Number(event.target.value))}
+                          disabled={!availableSharePercents.length || purchaseShare.isPending}
+                          className="mt-4 w-full accent-primary"
+                        />
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          {availableSharePercents.length ? availableSharePercents.map((percent: number) => (
+                            <button
+                              key={percent}
+                              type="button"
+                              onClick={() => setSelectedSharePercent(percent)}
+                              className={`rounded-full px-3 py-1.5 text-xs font-medium transition ${selectedSharePercent === percent ? "bg-primary text-primary-foreground" : "border border-border bg-white text-foreground hover:bg-muted"}`}
+                            >
+                              {percent}%
+                            </button>
+                          )) : (
+                            <span className="rounded-full bg-muted px-3 py-1.5 text-xs text-muted-foreground">Свободных долей сейчас нет</span>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="mt-5 grid gap-3 md:grid-cols-2">
+                        <label className="rounded-[1.25rem] border border-border/70 bg-background/70 p-4 text-sm">
+                          <span className="text-xs uppercase tracking-[0.16em] text-muted-foreground">План участия</span>
+                          <select
+                            value={selectedPlanId ?? ""}
+                            onChange={(event) => setSelectedPlanId(Number(event.target.value))}
+                            className="mt-2 w-full rounded-xl border border-border bg-white px-3 py-2 text-foreground outline-none"
+                          >
+                            {(animalQuery.data?.plans ?? []).map((plan: any) => (
+                              <option key={plan.id} value={plan.id}>{plan.name}</option>
+                            ))}
+                          </select>
+                        </label>
+                        <label className="rounded-[1.25rem] border border-border/70 bg-background/70 p-4 text-sm">
+                          <span className="text-xs uppercase tracking-[0.16em] text-muted-foreground">Срок участия</span>
+                          <select
+                            value={selectedPlanDurationId ?? ""}
+                            onChange={(event) => setSelectedPlanDurationId(Number(event.target.value))}
+                            className="mt-2 w-full rounded-xl border border-border bg-white px-3 py-2 text-foreground outline-none"
+                          >
+                            {(selectedPlan?.durations ?? []).map((duration: any) => (
+                              <option key={duration.id} value={duration.id}>{duration.months} мес. · {duration.label}</option>
+                            ))}
+                          </select>
+                        </label>
+                      </div>
+
+                      <div className="mt-5 rounded-[1.25rem] border border-primary/10 bg-primary/5 p-4">
+                        <div className="flex flex-wrap items-end justify-between gap-3">
+                          <div>
+                            <div className="text-xs uppercase tracking-[0.16em] text-muted-foreground">Стоимость выбранной доли</div>
+                            <div className="mt-2 text-3xl font-semibold text-foreground">{formatCurrency(selectedSharePriceMinor)}</div>
+                            <p className="mt-2 text-sm text-muted-foreground">Оформляется как бронь доли с последующим подтверждением оплаты и учётом занятых слотов.</p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={handlePurchaseShare}
+                            disabled={!availableSharePercents.length || !selectedPlanId || !selectedPlanDurationId || purchaseShare.isPending || !isAuthenticated}
+                            className="inline-flex items-center justify-center gap-2 rounded-full bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground shadow-[0_18px_40px_-20px_rgba(26,58,42,0.65)] transition-all hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60"
+                          >
+                            {purchaseShare.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Package className="h-4 w-4" />}
+                            {isAuthenticated ? "Забронировать долю" : "Войдите для покупки"}
+                          </button>
                         </div>
                       </div>
                     </div>

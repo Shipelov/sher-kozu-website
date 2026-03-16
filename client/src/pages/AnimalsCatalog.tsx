@@ -63,6 +63,12 @@ type CatalogAnimal = {
   shortDescription: string;
   isFeatured: boolean;
   occupiedUntil: string | null;
+  fullPriceMinor?: number;
+  ownedPercent?: number;
+  availablePercent?: number;
+  shareUnitPercent?: number;
+  shareUnitPriceMinor?: number;
+  availableSharePercents?: number[];
 };
 
 const statusFilterOptions: Array<{
@@ -85,6 +91,15 @@ function formatOccupiedUntil(value: string | null) {
     month: "long",
     year: "numeric",
   }).format(date);
+}
+
+function formatCurrency(minor?: number | null) {
+  const safeMinor = Math.max(0, minor ?? 0);
+  return new Intl.NumberFormat("ru-RU", {
+    style: "currency",
+    currency: "RUB",
+    maximumFractionDigits: 0,
+  }).format(safeMinor / 100);
 }
 
 function getRelationshipStatus(slots: number, total: number, occupiedUntil?: string | null) {
@@ -302,12 +317,42 @@ function AnimalSpeciesSection({
                           В отношениях до {availability.occupiedUntilLabel}
                         </div>
                       ) : null}
+                      <div className="grid gap-3 rounded-[1.5rem] bg-stone-50 p-4 sm:grid-cols-2">
+                        <div>
+                          <p className="text-xs uppercase tracking-[0.16em] text-stone-500">Полная цена</p>
+                          <p className="mt-1 text-lg font-semibold text-stone-900">{formatCurrency(animal.fullPriceMinor)}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs uppercase tracking-[0.16em] text-stone-500">Занято сейчас</p>
+                          <p className="mt-1 text-lg font-semibold text-stone-900">{animal.ownedPercent ?? 0}%</p>
+                        </div>
+                        <div>
+                          <p className="text-xs uppercase tracking-[0.16em] text-stone-500">Свободно для шеринга</p>
+                          <p className="mt-1 text-lg font-semibold text-stone-900">{animal.availablePercent ?? 0}%</p>
+                        </div>
+                        <div>
+                          <p className="text-xs uppercase tracking-[0.16em] text-stone-500">Минимальная доля</p>
+                          <p className="mt-1 text-lg font-semibold text-stone-900">{animal.shareUnitPercent ?? 10}% · {formatCurrency(animal.shareUnitPriceMinor)}</p>
+                        </div>
+                      </div>
+                      {animal.availableSharePercents?.length ? (
+                        <div className="rounded-[1.25rem] border border-amber-200 bg-amber-50 px-4 py-3">
+                          <p className="text-xs uppercase tracking-[0.16em] text-amber-700">Доступные доли</p>
+                          <div className="mt-2 flex flex-wrap gap-2">
+                            {animal.availableSharePercents.map((percent) => (
+                              <span key={percent} className="rounded-full bg-white px-3 py-1 text-xs font-medium text-amber-800 ring-1 ring-amber-200">
+                                {percent}%
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      ) : null}
                       <p className="text-xs leading-5 text-stone-500">{availability.helper}</p>
                       <p className="line-clamp-3 text-sm leading-6 text-stone-600">{animal.shortDescription}</p>
                     </div>
 
                     <div className="flex items-center justify-between rounded-2xl bg-stone-50 px-4 py-3 text-sm text-stone-700">
-                      <span>Открыть полный профиль</span>
+                      <span>Открыть полный профиль и выбрать долю</span>
                       <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
                     </div>
                   </CardContent>

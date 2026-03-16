@@ -1120,17 +1120,58 @@ export async function listBitrixAdminData(
   };
 }
 
+function isOccupiedOwnershipStatus(status: string) {
+  return status === "active" || status === "pending_payment";
+}
+
+function normalizeOwnershipSlots(totalOwnershipSlots: number | null | undefined) {
+  return Math.max(1, totalOwnershipSlots ?? 10);
+}
+
+function getPercentPerSlot(totalOwnershipSlots: number | null | undefined) {
+  return 100 / normalizeOwnershipSlots(totalOwnershipSlots);
+}
+
+function getOwnedPercentFromCount(activeOwnerships: number, totalOwnershipSlots: number | null | undefined) {
+  return Math.min(100, Math.round(activeOwnerships * getPercentPerSlot(totalOwnershipSlots)));
+}
+
+function getSharePriceMinor(basePriceMinor: number, sharePercent: number) {
+  return Math.round((Math.max(0, basePriceMinor) * sharePercent) / 100);
+}
+
+function buildAnimalShareMetrics(animal: { totalOwnershipSlots: number; baseMonthlyPriceMinor: number }, activeOwnerships: number) {
+  const totalSlots = normalizeOwnershipSlots(animal.totalOwnershipSlots);
+  const availableSlots = Math.max(0, totalSlots - activeOwnerships);
+  const ownedPercent = getOwnedPercentFromCount(activeOwnerships, totalSlots);
+  const availablePercent = Math.max(0, 100 - ownedPercent);
+  const shareUnitPercent = Math.round(getPercentPerSlot(totalSlots));
+  const shareUnitPriceMinor = getSharePriceMinor(animal.baseMonthlyPriceMinor, shareUnitPercent);
+  const availableSharePercents: number[] = [];
+
+  for (let sharePercent = shareUnitPercent; sharePercent <= availablePercent; sharePercent += shareUnitPercent) {
+    availableSharePercents.push(sharePercent);
+  }
+
+  return {
+    totalSlots,
+    activeOwnerships,
+    availableSlots,
+    ownedPercent,
+    availablePercent,
+    shareUnitPercent,
+    shareUnitPriceMinor,
+    fullPriceMinor: animal.baseMonthlyPriceMinor,
+    availableSharePercents,
+  };
+}
+
 export async function countActiveOwnerships(animalId: number) {
   const db = await getDb();
   const rows = await db
     .select({ count: sql<number>`count(*)` })
     .from(animalOwnerships)
-    .where(
-      and(
-        eq(animalOwnerships.animalId, animalId),
-        or(eq(animalOwnerships.status, "active"), eq(animalOwnerships.status, "pending_payment"))
-      )
-    );
+    .where(and(eq(animalOwnerships.animalId, animalId), or(eq(animalOwnerships.status, "active"), eq(animalOwnerships.status, "pending_payment"))));
   return Number(rows[0]?.count ?? 0);
 }
 
@@ -1139,40 +1180,29 @@ export async function getAnimalOccupiedUntil(animalId: number) {
   const rows = await db
     .select({ endsAt: animalOwnerships.endsAt })
     .from(animalOwnerships)
-    .where(
-      and(
-        eq(animalOwnerships.animalId, animalId),
-        or(eq(animalOwnerships.status, "active"), eq(animalOwnerships.status, "pending_payment"))
-      )
-    )
+    .where(and(eq(animalOwnerships.animalId, animalId), or(eq(animalOwnerships.status, "active"), eq(animalOwnerships.status, "pending_payment"))))
     .orderBy(desc(animalOwnerships.endsAt))
     .limit(1);
 
   return rows[0]?.endsAt ?? null;
 }
 
-
 export async function getAvailableSlotIndex(animalId: number) {
   const db = await getDb();
-  const animalRows = await db
-    .select({ totalOwnershipSlots: animals.totalOwnershipSlots })
-    .from(animals)
-    .where(eq(animals.id, animalId))
-    .limit(1);
-
-  const totalSlots = animalRows[0]?.totalOwnershipSlots ?? 3;
+  const animalRows = await db.select({ totalOwnershipSlots: animals.totalOwnershipSlots }).from(animals).where(eq(animals.id, animalId)).limit(1);
+  const totalSlots = normalizeOwnershipSlots(animalRows[0]?.totalOwnershipSlots ?? 10);
   const slotRows = await db
-    .select({ slotIndex: animalOwnerships.slotIndex })
+    .select({ slotIndex: animalOwnerships.slotIndex, status: animalOwnerships.status })
     .from(animalOwnerships)
-    .where(
-      and(
-        eq(animalOwnerships.animalId, animalId),
-        or(eq(animalOwnerships.status, "active"), eq(animalOwnerships.status, "pending_payment"))
-      )
-    )
+    .where(eq(animalOwnerships.animalId, animalId))
     .orderBy(asc(animalOwnerships.slotIndex));
 
-  const used = new Set(slotRows.map((row: { slotIndex: number }) => row.slotIndex));
+  const used = new Set(
+    slotRows
+      .filter((row: { slotIndex: number; status: string }) => isOccupiedOwnershipStatus(row.status))
+      .map((row: { slotIndex: number }) => row.slotIndex)
+  );
+
   for (let index = 1; index <= totalSlots; index += 1) {
     if (!used.has(index)) {
       return index;
@@ -1205,16 +1235,36 @@ export async function recalculateAnimalStatus(animalId: number) {
   }
 
   const activeCount = await countActiveOwnerships(animalId);
+  const totalSlots = normalizeOwnershipSlots(animal.totalOwnershipSlots);
   let nextStatus: "public_available" | "public_limited" | "fully_booked" = "public_available";
 
-  if (activeCount >= animal.totalOwnershipSlots) {
+  if (activeCount >= totalSlots) {
     nextStatus = "fully_booked";
-  } else if (activeCount >= Math.max(1, animal.totalOwnershipSlots - 1)) {
+  } else if (activeCount >= Math.max(1, totalSlots - 1)) {
     nextStatus = "public_limited";
   }
 
   await db.update(animals).set({ status: nextStatus }).where(eq(animals.id, animalId));
   return nextStatus;
+}
+
+async function enrichAnimalWithShareMetrics(db: any, animal: any) {
+  const activeOwnerships = await countActiveOwnerships(animal.id);
+  const media = await db
+    .select()
+    .from(animalMedia)
+    .where(eq(animalMedia.animalId, animal.id))
+    .orderBy(desc(animalMedia.isCover), asc(animalMedia.sortOrder), asc(animalMedia.id));
+  const occupiedUntil = await getAnimalOccupiedUntil(animal.id);
+  const shareMetrics = buildAnimalShareMetrics(animal, activeOwnerships);
+
+  return {
+    ...animal,
+    ...shareMetrics,
+    occupiedUntil,
+    coverImageUrl: media.find((item: any) => item.isCover)?.url ?? animal.coverImageUrl,
+    media,
+  };
 }
 
 export async function listPublicAnimals() {
@@ -1225,28 +1275,7 @@ export async function listPublicAnimals() {
     .where(or(eq(animals.status, "public_available"), eq(animals.status, "public_limited"), eq(animals.status, "fully_booked")))
     .orderBy(desc(animals.isFeatured), asc(animals.sortOrder), asc(animals.name));
 
-  const enriched = await Promise.all(
-    rows.map(async (animal: any) => {
-      const activeOwnerships = await countActiveOwnerships(animal.id);
-      const media = await db
-        .select()
-        .from(animalMedia)
-        .where(eq(animalMedia.animalId, animal.id))
-        .orderBy(desc(animalMedia.isCover), asc(animalMedia.sortOrder), asc(animalMedia.id));
-
-      const occupiedUntil = await getAnimalOccupiedUntil(animal.id);
-      return {
-        ...animal,
-        activeOwnerships,
-        availableSlots: Math.max(0, animal.totalOwnershipSlots - activeOwnerships),
-        occupiedUntil,
-        coverImageUrl: media.find((item: any) => item.isCover)?.url ?? animal.coverImageUrl,
-        media,
-      };
-    })
-  );
-
-  return enriched;
+  return Promise.all(rows.map((animal: any) => enrichAnimalWithShareMetrics(db, animal)));
 }
 
 export async function getAnimalBySlug(slug: string) {
@@ -1258,29 +1287,121 @@ export async function getAnimalBySlug(slug: string) {
     return null;
   }
 
-  const media = await db
-    .select()
-    .from(animalMedia)
-    .where(eq(animalMedia.animalId, animal.id))
-    .orderBy(desc(animalMedia.isCover), asc(animalMedia.sortOrder), asc(animalMedia.id));
-
-  const activeOwnerships = await countActiveOwnerships(animal.id);
   const linkedPlans = await db.select().from(plans).where(eq(plans.status, "active")).orderBy(asc(plans.id));
   const durations = linkedPlans.length
     ? await db.select().from(planDurations).where(eq(planDurations.isActive, 1)).orderBy(asc(planDurations.sortOrder), asc(planDurations.months))
     : [];
+  const enriched = await enrichAnimalWithShareMetrics(db, animal);
 
-  const occupiedUntil = await getAnimalOccupiedUntil(animal.id);
   return {
-    ...animal,
-    activeOwnerships,
-    availableSlots: Math.max(0, animal.totalOwnershipSlots - activeOwnerships),
-    occupiedUntil,
-    media,
+    ...enriched,
     plans: linkedPlans.map((plan: any) => ({
       ...plan,
       durations: durations.filter((duration: any) => duration.planId === plan.id),
     })),
+  };
+}
+
+export async function purchaseAnimalShare(args: {
+  ownerOpenId: string;
+  animalId: number;
+  sharePercent: number;
+  familyId?: number | null;
+  planId: number;
+  planDurationId: number;
+  startsAt?: Date;
+  endsAt?: Date;
+  notes?: string | null;
+}) {
+  const db = await getDb();
+  const animalRows = await db
+    .select({
+      id: animals.id,
+      ownerOpenId: animals.ownerOpenId,
+      slug: animals.slug,
+      baseMonthlyPriceMinor: animals.baseMonthlyPriceMinor,
+      totalOwnershipSlots: animals.totalOwnershipSlots,
+      status: animals.status,
+    })
+    .from(animals)
+    .where(eq(animals.id, args.animalId))
+    .limit(1);
+
+  const animal = animalRows[0];
+  if (!animal) {
+    throw new Error("ANIMAL_NOT_FOUND");
+  }
+
+  const totalSlots = normalizeOwnershipSlots(animal.totalOwnershipSlots);
+  const shareUnitPercent = Math.round(getPercentPerSlot(totalSlots));
+  const sharePercent = args.sharePercent;
+
+  if (!Number.isInteger(sharePercent) || sharePercent < shareUnitPercent || sharePercent > 100 || sharePercent % shareUnitPercent !== 0) {
+    throw new Error("INVALID_SHARE_PERCENT");
+  }
+
+  const requestedSlots = sharePercent / shareUnitPercent;
+  const occupiedRows = await db
+    .select({ slotIndex: animalOwnerships.slotIndex, status: animalOwnerships.status })
+    .from(animalOwnerships)
+    .where(eq(animalOwnerships.animalId, args.animalId))
+    .orderBy(asc(animalOwnerships.slotIndex));
+
+  const occupiedSlotIndexes = new Set(
+    occupiedRows
+      .filter((row: { slotIndex: number; status: string }) => isOccupiedOwnershipStatus(row.status))
+      .map((row: { slotIndex: number }) => row.slotIndex)
+  );
+
+  const freeSlotIndexes: number[] = [];
+  for (let slotIndex = 1; slotIndex <= totalSlots; slotIndex += 1) {
+    if (!occupiedSlotIndexes.has(slotIndex)) {
+      freeSlotIndexes.push(slotIndex);
+    }
+    if (freeSlotIndexes.length === requestedSlots) {
+      break;
+    }
+  }
+
+  if (freeSlotIndexes.length < requestedSlots) {
+    throw new Error("INSUFFICIENT_SHARE_AVAILABLE");
+  }
+
+  const startsAt = args.startsAt ?? new Date();
+  const endsAt = args.endsAt ?? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+  const priceMinor = getSharePriceMinor(animal.baseMonthlyPriceMinor, sharePercent);
+  const pricePerSlotMinor = Math.round(priceMinor / requestedSlots);
+
+  await db.insert(animalOwnerships).values(
+    freeSlotIndexes.map((slotIndex) => ({
+      ownerOpenId: args.ownerOpenId,
+      animalId: args.animalId,
+      familyId: args.familyId ?? 1,
+      planId: args.planId,
+      planDurationId: args.planDurationId,
+      slotIndex,
+      status: "pending_payment",
+      startsAt,
+      endsAt,
+      priceMinor: pricePerSlotMinor,
+      notes: args.notes ?? `Доля ${sharePercent}%`,
+    }))
+  );
+
+  const status = await recalculateAnimalStatus(args.animalId);
+  const refreshedAnimal = await getAnimalBySlug(animal.slug);
+
+  return {
+    success: true,
+    animalId: args.animalId,
+    sharePercent,
+    requestedSlots,
+    priceMinor,
+    pricePerSlotMinor,
+    slotIndexes: freeSlotIndexes,
+    status,
+    animal: refreshedAnimal,
+    createdRows: freeSlotIndexes.map((slotIndex) => ({ slotIndex })),
   };
 }
 
