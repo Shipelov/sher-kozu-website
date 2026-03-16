@@ -269,6 +269,7 @@ export const appRouter = router({
   }),
   animals: router({
     listPublic: publicProcedure.query(async () => {
+      await ensureSprintOneSeed(process.env.OWNER_OPEN_ID || "owner-demo");
       return listPublicAnimals();
     }),
     getBySlug: publicProcedure.input(animalSlugInput).query(async ({ input }) => {

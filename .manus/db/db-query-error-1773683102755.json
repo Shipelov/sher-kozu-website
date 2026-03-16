@@ -1,0 +1,10 @@
+{
+  "query": "SELECT COUNT(*) AS animalCount FROM animals; SELECT id, slug, name, species, status, publishedAt FROM animals ORDER BY id DESC LIMIT 10;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3J2fXRHx8d1YjF6.root --database mLhmg5VmBsEBpZiYqdnhMQ --execute SELECT COUNT(*) AS animalCount FROM animals; SELECT id, slug, name, species, status, publishedAt FROM animals ORDER BY id DESC LIMIT 10;",
+  "returncode": 1,
+  "logs": [
+    "animalCount",
+    "0",
+    "ERROR 1054 (42S22) at line 1: Unknown column 'species' in 'field list'"
+  ]
+}
