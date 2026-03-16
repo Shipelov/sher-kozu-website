@@ -1332,6 +1332,10 @@ export default function Home() {
                 </p>
               </div>
               <div className="flex flex-col gap-3 sm:flex-row lg:flex-col">
+                <Link href="/animals" className="inline-flex items-center justify-center gap-2 rounded-full bg-amber-300 px-7 py-4 text-sm font-semibold text-stone-950 transition-colors hover:bg-amber-200">
+                  Выбрать животное в каталоге
+                  <Heart className="h-4 w-4" />
+                </Link>
                 <Link href="/dashboard" className="inline-flex items-center justify-center gap-2 rounded-full bg-white px-7 py-4 text-sm font-semibold text-primary transition-colors hover:bg-white/95">
                   Перейти в кабинет
                   <ArrowRight className="h-4 w-4" />

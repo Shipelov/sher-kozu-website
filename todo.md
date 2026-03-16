@@ -27,7 +27,7 @@
 - [x] Создать страницу `client/src/pages/AnimalsCatalog.tsx`
 - [x] Создать страницу `client/src/pages/AnimalDetails.tsx`
 - [x] Зарегистрировать маршруты `/animals` и `/animals/:slug` в `client/src/App.tsx`
-- [ ] Добавить CTA с `Home.tsx` на каталог животных
+- [x] Добавить CTA с `Home.tsx` на каталог животных
 - [x] Показать в каталоге и карточке животного свободные слоты, species, показатели и стартовую цену
 - [x] Добавить Vitest на расчёт доступных слотов
 - [x] Добавить Vitest на `recalculateAnimalStatus()`
@@ -35,6 +35,12 @@
 - [x] Добавить Vitest на `animals.getBySlug`
 - [x] Запустить `pnpm test` и убедиться, что все тесты проходят
 - [x] Проверить статус проекта после изменений
+- [x] Повторно запустить полный `pnpm test` после продолжения Sprint 1 с admin UI
+- [x] Повторно проверить статус проекта после Home CTA и admin UI
 - [ ] Сохранить checkpoint после завершения Sprint 1
 - [x] Исправить текущую JSX-ошибку в `client/src/pages/Home.tsx` перед стартом Sprint 1
 - [x] Подтвердить устранение JSX-ошибки `Home.tsx` по актуальным логам dev server и сборке TypeScript
+- [x] Добавить CTA и навигационный вход из `client/src/pages/Home.tsx` в каталог `/animals`
+- [x] Создать первый admin UI для списка животных и базового управления каталогом
+- [x] Зарегистрировать маршрут admin UI каталога животных в `client/src/App.tsx`
+- [x] Добавить Vitest на новый UI/state helper, если будет вынесена бизнес-логика фильтрации или статусов

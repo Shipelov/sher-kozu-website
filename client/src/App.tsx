@@ -12,6 +12,7 @@ import ClubFeed from "./pages/ClubFeed";
 import AdminClub from "./pages/AdminClub";
 import AnimalsCatalog from "./pages/AnimalsCatalog";
 import AnimalDetails from "./pages/AnimalDetails";
+import AdminAnimals from "./pages/AdminAnimals";
 function Router() {
   // make sure to consider if you need authentication for certain routes
   return (
@@ -24,6 +25,7 @@ function Router() {
       <Route path="/tracker" component={ProductTracker} />
       <Route path="/club" component={ClubFeed} />
       <Route path="/admin/club" component={AdminClub} />
+      <Route path="/admin/animals" component={AdminAnimals} />
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
     </Switch>
