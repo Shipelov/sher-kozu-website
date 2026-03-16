@@ -699,13 +699,19 @@ export default function Home() {
                             variant="ghost"
                             className="h-auto px-2 py-1 text-xs text-stone-500 hover:text-rose-700"
                             onClick={() => {
-                              if (partnerAttachments.length > 1) {
+                              const clearedCount = partnerAttachments.length;
+                              if (clearedCount > 1) {
                                 const confirmed = window.confirm("Удалить все выбранные вложения? Это действие нельзя отменить.");
                                 if (!confirmed) {
                                   return;
                                 }
                               }
                               setPartnerAttachments([]);
+                              toast.success(
+                                clearedCount > 1
+                                  ? `Список вложений очищен: ${clearedCount} файл(ов)`
+                                  : "Вложение удалено из списка",
+                              );
                             }}
                           >
                             Очистить все вложения
