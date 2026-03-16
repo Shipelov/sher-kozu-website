@@ -14,7 +14,6 @@ import {
   getInlineActionToastCopy,
   hasFormErrors,
   isAdminTabValue,
-  readAdminClubStateFromUrl,
   sortEvents,
   sortMembers,
   sortPosts,
@@ -62,6 +61,13 @@ import {
   buildAdminClubMembersTabProps,
   buildAdminClubPostsTabProps,
 } from "./adminClubCrudTabBuilders";
+import {
+  applyPresetToFilters,
+  buildAdminClubUrl,
+  getPresetConfigForTab,
+  parsePresetConfig,
+  readAdminClubStateFromUrl,
+} from "./adminClubUrlState";
 import {
   AdminClubActivityTabContent,
   AdminClubBitrixTabContent,
@@ -159,80 +165,6 @@ function getDeleteDialogCopy(pendingDelete: PendingDeleteState) {
     description: `Вы собираетесь удалить ${pendingDelete.description}. Действие нельзя отменить.`,
     actionLabel: "Удалить запись",
   };
-}
-
-function parsePresetConfig(configJson: string): PresetConfig | null {
-  try {
-    return JSON.parse(configJson) as PresetConfig;
-  } catch {
-    return null;
-  }
-}
-
-function getPresetConfigForTab(tab: EntityAdminTabValue, postFilters: PostFilterState, eventFilters: EventFilterState, memberFilters: MemberFilterState): PresetConfig {
-  if (tab === "posts") {
-    return {
-      query: postFilters.query,
-      category: postFilters.category,
-      pinned: postFilters.pinned,
-      sortBy: postFilters.sortBy,
-      sortDirection: postFilters.sortDirection,
-    };
-  }
-
-  if (tab === "events") {
-    return {
-      query: eventFilters.query,
-      status: eventFilters.status,
-      tone: eventFilters.tone,
-      sortBy: eventFilters.sortBy,
-      sortDirection: eventFilters.sortDirection,
-    };
-  }
-
-  return {
-    query: memberFilters.query,
-    badge: memberFilters.badge,
-    sortBy: memberFilters.sortBy,
-    sortDirection: memberFilters.sortDirection,
-  };
-}
-
-function buildAdminClubUrl(
-  activeTab: AdminTabValue,
-  postFilters: PostFilterState,
-  eventFilters: EventFilterState,
-  memberFilters: MemberFilterState,
-  pagination: PaginationState,
-  actionLogCollapsed: boolean,
-) {
-  const params = new URLSearchParams();
-
-  if (activeTab !== "posts") params.set("tab", activeTab);
-  if (postFilters.query) params.set("postQuery", postFilters.query);
-  if (postFilters.category !== "all") params.set("postCategory", postFilters.category);
-  if (postFilters.pinned !== "all") params.set("postPinned", postFilters.pinned);
-  if (postFilters.sortBy !== "sortOrder") params.set("postSortBy", postFilters.sortBy);
-  if (postFilters.sortDirection !== "asc") params.set("postSortDirection", postFilters.sortDirection);
-  if (eventFilters.query) params.set("eventQuery", eventFilters.query);
-  if (eventFilters.status !== "all") params.set("eventStatus", eventFilters.status);
-  if (eventFilters.tone !== "all") params.set("eventTone", eventFilters.tone);
-  if (eventFilters.sortBy !== "sortOrder") params.set("eventSortBy", eventFilters.sortBy);
-  if (eventFilters.sortDirection !== "asc") params.set("eventSortDirection", eventFilters.sortDirection);
-  if (memberFilters.query) params.set("memberQuery", memberFilters.query);
-  if (memberFilters.badge !== "all") params.set("memberBadge", memberFilters.badge);
-  if (memberFilters.sortBy !== "sortOrder") params.set("memberSortBy", memberFilters.sortBy);
-  if (memberFilters.sortDirection !== "asc") params.set("memberSortDirection", memberFilters.sortDirection);
-  if (pagination.posts.page !== 1) params.set("postPage", String(pagination.posts.page));
-  if (pagination.posts.pageSize !== 10) params.set("postPageSize", String(pagination.posts.pageSize));
-  if (pagination.events.page !== 1) params.set("eventPage", String(pagination.events.page));
-  if (pagination.events.pageSize !== 10) params.set("eventPageSize", String(pagination.events.pageSize));
-  if (pagination.members.page !== 1) params.set("memberPage", String(pagination.members.page));
-  if (pagination.members.pageSize !== 10) params.set("memberPageSize", String(pagination.members.pageSize));
-  if (actionLogCollapsed) params.set("log", "collapsed");
-
-  const query = params.toString();
-  return query ? `/admin/club?${query}` : "/admin/club";
 }
 
 export default function AdminClub() {
@@ -958,37 +890,11 @@ export default function AdminClub() {
       return;
     }
 
-    if (preset.tab === "posts") {
-      setActiveTab("posts");
-      setPostFilters({
-        query: config.query ?? "",
-        category: config.category ?? "all",
-        pinned: config.pinned ?? "all",
-        sortBy: (config.sortBy === "timeLabel" || config.sortBy === "title" ? config.sortBy : "sortOrder") as PostSortField,
-        sortDirection: config.sortDirection === "desc" ? "desc" : "asc",
-      });
-      return;
-    }
-
-    if (preset.tab === "events") {
-      setActiveTab("events");
-      setEventFilters({
-        query: config.query ?? "",
-        status: config.status ?? "all",
-        tone: config.tone ?? "all",
-        sortBy: (config.sortBy === "dateLabel" || config.sortBy === "status" ? config.sortBy : "sortOrder") as EventSortField,
-        sortDirection: config.sortDirection === "desc" ? "desc" : "asc",
-      });
-      return;
-    }
-
-    setActiveTab("members");
-    setMemberFilters({
-      query: config.query ?? "",
-      badge: config.badge ?? "all",
-      sortBy: (config.sortBy === "name" || config.sortBy === "badge" ? config.sortBy : "sortOrder") as MemberSortField,
-      sortDirection: config.sortDirection === "desc" ? "desc" : "asc",
-    });
+    const nextState = applyPresetToFilters(preset.tab, config);
+    setActiveTab(nextState.activeTab);
+    if (nextState.postFilters) setPostFilters(nextState.postFilters);
+    if (nextState.eventFilters) setEventFilters(nextState.eventFilters);
+    if (nextState.memberFilters) setMemberFilters(nextState.memberFilters);
   };
 
   useEffect(() => {
