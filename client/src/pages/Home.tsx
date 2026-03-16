@@ -44,6 +44,7 @@ import {
   BookOpen,
   Bot,
   RefreshCcw,
+  ChevronDown,
 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
@@ -295,6 +296,7 @@ export default function Home() {
   const [partnerAttachmentWarning, setPartnerAttachmentWarning] = useState<string | null>(null);
   const [isPartnerDragActive, setIsPartnerDragActive] = useState(false);
   const [hasPartnerConsent, setHasPartnerConsent] = useState(false);
+  const [openPartnerFaqItem, setOpenPartnerFaqItem] = useState<string | null>("materials");
   const [latestSubmission, setLatestSubmission] = useState<{
     id: number;
     syncStatus: string | null;
@@ -423,6 +425,27 @@ export default function Home() {
     });
 
     setPartnerAttachmentWarning(nextWarning);
+  };
+
+  const formatPartnerPhoneInput = (value: string) => {
+    const digits = value.replace(/\D/g, "").slice(0, 11);
+
+    if (!digits.length) return "";
+
+    const normalized = digits.startsWith("8") ? `7${digits.slice(1)}` : digits;
+    const country = normalized.slice(0, 1);
+    const p1 = normalized.slice(1, 4);
+    const p2 = normalized.slice(4, 7);
+    const p3 = normalized.slice(7, 9);
+    const p4 = normalized.slice(9, 11);
+
+    let formatted = `+${country}`;
+    if (p1) formatted += ` ${p1}`;
+    if (p2) formatted += ` ${p2}`;
+    if (p3) formatted += ` ${p3}`;
+    if (p4) formatted += ` ${p4}`;
+
+    return formatted;
   };
 
   const handlePartnerAttachmentSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -784,7 +807,7 @@ export default function Home() {
                       <Label htmlFor="partner-phone">Телефон</Label>
                       <div className="relative">
                         <Phone className="pointer-events-none absolute left-3 top-3.5 h-4 w-4 text-stone-400" />
-                        <Input id="partner-phone" className="pl-10" value={partnerLeadForm.phone} onChange={(event) => setPartnerLeadForm((current) => ({ ...current, phone: event.target.value }))} placeholder="+7 701 000 00 00" />
+                        <Input id="partner-phone" className="pl-10" value={partnerLeadForm.phone} onChange={(event) => setPartnerLeadForm((current) => ({ ...current, phone: formatPartnerPhoneInput(event.target.value) }))} placeholder="+7 701 000 00 00" />
                       </div>
                       {!isPartnerPhoneValid ? (
                         <p className="text-xs text-rose-600">Телефон должен содержать не меньше 7 символов и состоять из цифр, пробелов или знаков +()-.</p>
@@ -998,10 +1021,14 @@ export default function Home() {
                       </span>
                     </label>
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                      <div className="space-y-1">
+                      <div className="space-y-2">
                         <p className="text-xs leading-6 text-stone-500">
                           Отправляя форму, вы инициируете pilot-сценарий двусторонней интеграции Sher Kozu ↔ Bitrix24 только для партнёрских заявок.
                         </p>
+                        <div className="inline-flex flex-wrap items-center gap-2 rounded-2xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-800">
+                          <Clock3 className="h-3.5 w-3.5" />
+                          Обычно первичный ответ менеджера приходит в течение 1 рабочего дня после квалификации заявки.
+                        </div>
                         {createPartnerLead.isPending ? (
                           <p className="text-xs font-medium text-primary">Заявка отправляется, пожалуйста не закрывайте страницу и не меняйте список вложений.</p>
                         ) : null}
@@ -1029,18 +1056,44 @@ export default function Home() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-3 text-sm text-stone-700">
-                  <div className="rounded-2xl border border-stone-200 bg-stone-50 px-4 py-4">
-                    <p className="font-semibold text-stone-900">Какие материалы лучше приложить?</p>
-                    <p className="mt-2 leading-6 text-stone-600">Лучше всего работают прайс, краткая презентация компании, реквизиты и примеры формата сотрудничества.</p>
-                  </div>
-                  <div className="rounded-2xl border border-stone-200 bg-stone-50 px-4 py-4">
-                    <p className="font-semibold text-stone-900">Обязательно ли прикладывать файлы?</p>
-                    <p className="mt-2 leading-6 text-stone-600">Нет, заявку можно отправить и без вложений. Но документы и визуалы помогают менеджеру быстрее оценить формат пилота.</p>
-                  </div>
-                  <div className="rounded-2xl border border-stone-200 bg-stone-50 px-4 py-4">
-                    <p className="font-semibold text-stone-900">Когда ждать ответ?</p>
-                    <p className="mt-2 leading-6 text-stone-600">После синхронизации с CRM менеджер получает заявку и связывается по выбранному каналу, как правило, после первичной квалификации.</p>
-                  </div>
+                  {[
+                    {
+                      id: "materials",
+                      question: "Какие материалы лучше приложить?",
+                      answer: "Лучше всего работают прайс, краткая презентация компании, реквизиты и примеры формата сотрудничества.",
+                    },
+                    {
+                      id: "files",
+                      question: "Обязательно ли прикладывать файлы?",
+                      answer: "Нет, заявку можно отправить и без вложений. Но документы и визуалы помогают менеджеру быстрее оценить формат пилота.",
+                    },
+                    {
+                      id: "timing",
+                      question: "Когда ждать ответ?",
+                      answer: "После синхронизации с CRM менеджер получает заявку и связывается по выбранному каналу, как правило, после первичной квалификации.",
+                    },
+                  ].map((item) => {
+                    const isOpen = openPartnerFaqItem === item.id;
+
+                    return (
+                      <button
+                        key={item.id}
+                        type="button"
+                        onClick={() => setOpenPartnerFaqItem((current) => (current === item.id ? null : item.id))}
+                        className="w-full rounded-2xl border border-stone-200 bg-stone-50 px-4 py-4 text-left transition-colors hover:bg-stone-100"
+                      >
+                        <div className="flex items-center justify-between gap-3">
+                          <p className="font-semibold text-stone-900">{item.question}</p>
+                          <ChevronDown className={`h-4 w-4 text-stone-500 transition-transform ${isOpen ? "rotate-180" : "rotate-0"}`} />
+                        </div>
+                        <div className={`grid transition-all duration-200 ${isOpen ? "mt-2 grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-70"}`}>
+                          <div className="overflow-hidden">
+                            <p className="leading-6 text-stone-600">{item.answer}</p>
+                          </div>
+                        </div>
+                      </button>
+                    );
+                  })}
                 </CardContent>
               </Card>
               <Card className="border-stone-200 shadow-sm">
