@@ -88,13 +88,15 @@ describe("page visual integration source smoke", () => {
     expect(adminHubSource).toContain("Открыть управление клубом");
   });
 
-  it("shows explicit auth, role diagnostics and admin fallbacks on admin animals page", () => {
+  it("shows explicit auth, role diagnostics, share metrics and admin fallbacks on admin animals page", () => {
     expect(adminAnimalsSource).toContain("Маршрут `/admin/animals` доступен только после авторизации.");
     expect(adminAnimalsSource).toContain("NOT_ADMIN_ERR_MSG");
     expect(adminAnimalsSource).toContain("Войти и открыть админку животных");
     expect(adminAnimalsSource).toContain("Роль:");
-    expect(adminAnimalsSource).toContain("new URLSearchParams(window.location.search)");
-    expect(adminAnimalsSource).toContain('params.get("status")');
+    expect(adminAnimalsSource).toContain("Распределение долей");
+    expect(adminAnimalsSource).toContain("Слоты 10%");
+    expect(adminAnimalsSource).toContain("Шаг продажи:");
+    expect(adminAnimalsSource).toContain("фактическое распределение 10%-долей");
   });
 
   it("renders animal gallery with separate goats and sheep sections, relationship statuses and links to full profiles", () => {

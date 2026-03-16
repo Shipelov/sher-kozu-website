@@ -38,10 +38,11 @@ import {
   Sparkles,
   Star,
   Trash2,
+  Wallet,
 } from "lucide-react";
 import { type ChangeEvent, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { Link, useLocation } from "wouter";
+import { Link } from "wouter";
 
 type AdminAnimalStatus = "public_available" | "public_limited" | "fully_booked" | "hidden" | "archived";
 type AdminAnimalSpecies = "goat" | "sheep";
@@ -71,6 +72,12 @@ type AdminAnimalRecord = {
   totalOwnershipSlots: number;
   activeOwnerships: number;
   availableSlots: number;
+  ownedPercent: number;
+  availablePercent: number;
+  shareUnitPercent: number;
+  shareUnitPriceMinor: number;
+  fullPriceMinor: number;
+  availableSharePercents: number[];
   baseMonthlyPriceMinor: number;
   healthScore: number;
   happinessScore: number;
@@ -140,7 +147,7 @@ const DEMO_ANIMAL_PRESETS: Record<"goat" | "sheep", AnimalProfilePreset> = {
       coverImageUrl: "https://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/goat_portrait_80fc5726.jpg",
       galleryIntro: "История Миры через фотогалерею: портрет, прогулка по ферме и контекст семейного персонального фермерства.",
       status: "public_available",
-      totalOwnershipSlots: 3,
+      totalOwnershipSlots: 10,
       baseMonthlyPriceMinor: 135000,
       healthScore: 94,
       happinessScore: 92,
@@ -191,11 +198,11 @@ const DEMO_ANIMAL_PRESETS: Record<"goat" | "sheep", AnimalProfilePreset> = {
       species: "sheep",
       breed: "Романовская",
       shortDescription: "Спокойная овца для мягкого семейного сценария знакомства с фермой, наблюдения и клубных визитов.",
-      story: "Лана подходит для семей, которым важен более спокойный ритм знакомства с персональным фермерством. В её карточке акцент сделан на доверии, регулярном наблюдении и понятной клиентской навигации: от выбора в каталоге до открытия подробного профиля и дальнейшего участия.",
+      story: "Лана подходит семьям, которым важен более спокойный ритм знакомства с персональным фермерством. В её карточке акцент сделан на доверии, регулярном наблюдении и понятной клиентской навигации: от выбора в каталоге до открытия подробного профиля и дальнейшего участия.",
       coverImageUrl: "https://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/family_farm_446b395e.jpg",
       galleryIntro: "Галерея Ланы показывает спокойный семейный сценарий участия: ферма, уход и визуальный контекст выбора животного.",
       status: "public_available",
-      totalOwnershipSlots: 3,
+      totalOwnershipSlots: 10,
       baseMonthlyPriceMinor: 118000,
       healthScore: 90,
       happinessScore: 93,
@@ -269,12 +276,104 @@ export function hasPhotoDraftChanges(
 const ACCEPTED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"] as const;
 const MAX_UPLOAD_SIZE_BYTES = 8_000_000;
 
-const formatPrice = (minor: number) =>
+export const formatShareRevenue = (minor: number) =>
   new Intl.NumberFormat("ru-RU", {
     style: "currency",
     currency: "RUB",
     maximumFractionDigits: 0,
   }).format(minor / 100);
+
+const formatPrice = formatShareRevenue;
+
+export function formatSharePercentLabel(percent: number) {
+  return `${percent}%`;
+}
+
+export function buildShareSlots(animal: AdminAnimalRecord) {
+  return Array.from({ length: animal.totalOwnershipSlots }, (_, index) => {
+    const filled = index < animal.activeOwnerships;
+    const shareUnitPercent = animal.shareUnitPercent || 10;
+    const percent = (index + 1) * shareUnitPercent;
+    return {
+      index: index + 1,
+      filled,
+      label: filled ? "Занято" : "Свободно",
+      state: filled ? "occupied" as const : "available" as const,
+      percentLabel: formatSharePercentLabel(percent),
+    };
+  });
+}
+
+export function createAdminShareSummary(animals: AdminAnimalRecord[]) {
+  const totalAnimals = animals.length;
+  const totalOwnedPercent = animals.reduce((sum, animal) => sum + animal.ownedPercent, 0);
+  const totalAvailablePercent = animals.reduce((sum, animal) => sum + animal.availablePercent, 0);
+  const totalOwnersCount = animals.reduce((sum, animal) => {
+    const distributionOwners = Array.isArray((animal as { shareDistribution?: unknown[] }).shareDistribution)
+      ? (animal as { shareDistribution?: unknown[] }).shareDistribution?.length ?? 0
+      : 0;
+    return sum + distributionOwners;
+  }, 0);
+  const totalOccupiedValueMinor = animals.reduce((sum, animal) => {
+    const occupiedValueMinor = (animal as { occupiedValueMinor?: number }).occupiedValueMinor;
+    if (typeof occupiedValueMinor === "number") {
+      return sum + occupiedValueMinor;
+    }
+    const fullPriceMinor = animal.fullPriceMinor || 0;
+    const shareUnitPriceMinor = animal.shareUnitPriceMinor
+      || Math.round(fullPriceMinor / Math.max(1, animal.totalOwnershipSlots || 10));
+    return sum + shareUnitPriceMinor * animal.activeOwnerships;
+  }, 0);
+  const totalSlots = animals.reduce((sum, animal) => sum + animal.totalOwnershipSlots, 0);
+  const occupiedSlots = animals.reduce((sum, animal) => sum + animal.activeOwnerships, 0);
+  const freeSlots = Math.max(0, totalSlots - occupiedSlots);
+  const loadedAnimals = animals.filter((animal) => animal.activeOwnerships > 0).length;
+  const fullyBookedAnimals = animals.filter((animal) => animal.availablePercent === 0).length;
+  const averageOccupancy = totalAnimals === 0
+    ? 0
+    : Math.round(animals.reduce((sum, animal) => sum + animal.ownedPercent, 0) / totalAnimals);
+
+  return {
+    totalAnimals,
+    totalOwnedPercent,
+    totalAvailablePercent,
+    totalOwnersCount,
+    totalOccupiedValueMinor,
+    totalSlots,
+    occupiedSlots,
+    freeSlots,
+    loadedAnimals,
+    fullyBookedAnimals,
+    averageOccupancy,
+  };
+}
+
+export function getShareOccupancyTone(percent: number) {
+  if (percent === 0) return "available";
+  if (percent >= 100) return "full";
+  return "partial";
+}
+
+export function getShareStatusTone(animal: AdminAnimalRecord) {
+  if (animal.availablePercent === 0) {
+    return {
+      label: "Полностью распределено",
+      className: "border-stone-300 bg-stone-100 text-stone-700",
+    };
+  }
+
+  if (animal.availablePercent <= animal.shareUnitPercent * 2) {
+    return {
+      label: "Осталось мало долей",
+      className: "border-amber-200 bg-amber-50 text-amber-800",
+    };
+  }
+
+  return {
+    label: "Доли доступны",
+    className: "border-emerald-200 bg-emerald-50 text-emerald-800",
+  };
+}
 
 export const createEmptyAnimalForm = (): AnimalFormValues => ({
   name: "",
@@ -286,7 +385,7 @@ export const createEmptyAnimalForm = (): AnimalFormValues => ({
   coverImageUrl: "",
   galleryIntro: "",
   status: "hidden",
-  totalOwnershipSlots: 3,
+  totalOwnershipSlots: 10,
   baseMonthlyPriceMinor: 120000,
   healthScore: 75,
   happinessScore: 75,
@@ -467,6 +566,124 @@ function fileToBase64(file: File) {
   });
 }
 
+export function ShareSlotsGrid({ animal }: { animal: AdminAnimalRecord }) {
+  const slotItems = buildShareSlots(animal);
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-sm font-medium text-foreground">Слоты по 10%</p>
+        <p className="text-xs text-muted-foreground">{animal.activeOwnerships}/{animal.totalOwnershipSlots} занято</p>
+      </div>
+      <div className="grid grid-cols-5 gap-2">
+        {slotItems.map((slot) => (
+          <div
+            key={slot.index}
+            className={`rounded-xl border px-2 py-2 text-center text-xs font-medium ${slot.filled ? "border-emerald-200 bg-emerald-50 text-emerald-800" : "border-dashed border-stone-300 bg-stone-50 text-stone-500"}`}
+            title={`Слот ${slot.index}: ${slot.label}`}
+          >
+            {slot.index * animal.shareUnitPercent}%
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function ShareDistributionPanel({ animals }: { animals: AdminAnimalRecord[] }) {
+  const summary = useMemo(() => createAdminShareSummary(animals), [animals]);
+
+  return (
+    <Card className="rounded-[2rem] border-border/70 shadow-sm">
+      <CardHeader>
+        <CardTitle>Распределение долей</CardTitle>
+        <CardDescription>
+          Блок показывает, как в каталоге распределяются 10%-доли: сколько уже занято, сколько свободно и где нужно усилить продажи.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-5">
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+          <Card className="rounded-[1.5rem] border-emerald-100 bg-emerald-50/80 shadow-none">
+            <CardContent className="p-4">
+              <p className="text-xs uppercase tracking-[0.18em] text-emerald-800/80">Занято слотов</p>
+              <p className="mt-2 text-2xl font-semibold text-emerald-900">{summary.occupiedSlots}</p>
+              <p className="text-sm text-emerald-800/80">из {summary.totalSlots} доступных долей</p>
+            </CardContent>
+          </Card>
+          <Card className="rounded-[1.5rem] border-stone-200 bg-stone-50/90 shadow-none">
+            <CardContent className="p-4">
+              <p className="text-xs uppercase tracking-[0.18em] text-stone-700/80">Свободно слотов</p>
+              <p className="mt-2 text-2xl font-semibold text-stone-900">{summary.freeSlots}</p>
+              <p className="text-sm text-stone-700/80">готово к продаже в профилях животных</p>
+            </CardContent>
+          </Card>
+          <Card className="rounded-[1.5rem] border-amber-100 bg-amber-50/80 shadow-none">
+            <CardContent className="p-4">
+              <p className="text-xs uppercase tracking-[0.18em] text-amber-800/80">Средняя занятость</p>
+              <p className="mt-2 text-2xl font-semibold text-amber-900">{summary.averageOccupancy}%</p>
+              <p className="text-sm text-amber-800/80">по всем карточкам каталога</p>
+            </CardContent>
+          </Card>
+          <Card className="rounded-[1.5rem] border-primary/15 bg-primary/5 shadow-none">
+            <CardContent className="p-4">
+              <p className="text-xs uppercase tracking-[0.18em] text-primary/80">Полностью занято</p>
+              <p className="mt-2 text-2xl font-semibold text-primary">{summary.fullyBookedAnimals}</p>
+              <p className="text-sm text-primary/80">животных из {summary.totalAnimals}</p>
+            </CardContent>
+          </Card>
+        </div>
+
+        <div className="grid gap-4 lg:grid-cols-2">
+          {animals.map((animal) => {
+            const shareTone = getShareStatusTone(animal);
+            return (
+              <div key={animal.id} className="rounded-[1.5rem] border border-border/70 bg-stone-50/60 p-4">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="space-y-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="font-semibold text-foreground">{animal.name}</p>
+                      <Badge className={`rounded-full border ${shareTone.className}`}>{shareTone.label}</Badge>
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      {animal.ownedPercent}% занято · {animal.availablePercent}% доступно · шаг {animal.shareUnitPercent}%
+                    </p>
+                  </div>
+                  <div className="rounded-2xl border border-border/70 bg-white px-3 py-2 text-right">
+                    <p className="text-xs uppercase tracking-[0.14em] text-muted-foreground">Доля 10%</p>
+                    <p className="text-sm font-semibold text-foreground">{formatPrice(animal.shareUnitPriceMinor)}</p>
+                  </div>
+                </div>
+                <div className="mt-4 space-y-4">
+                  <div className="h-3 overflow-hidden rounded-full bg-stone-200">
+                    <div className="h-full rounded-full bg-emerald-500" style={{ width: `${animal.ownedPercent}%` }} />
+                  </div>
+                  <ShareSlotsGrid animal={animal} />
+                  <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
+                    {(animal.availableSharePercents.length ? animal.availableSharePercents : [0]).map((percent) => (
+                      <Badge
+                        key={`${animal.id}-${percent}`}
+                        variant="secondary"
+                        className="rounded-full border border-border/70 bg-white text-foreground"
+                      >
+                        {percent === 0 ? "Свободных долей нет" : `Можно купить ${percent}%`}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {summary.loadedAnimals === 0 ? (
+          <div className="rounded-2xl border border-dashed border-border bg-background/80 px-5 py-4 text-sm text-muted-foreground">
+            Пока ни у одного животного нет занятых долей. Как только появятся покупки или бронь, здесь отобразится распределение по слотам 10%.
+          </div>
+        ) : null}
+      </CardContent>
+    </Card>
+  );
+}
+
 function AdminAnimalsTable({
   animals,
   onToggleVisibility,
@@ -485,7 +702,8 @@ function AdminAnimalsTable({
           <TableRow className="hover:bg-transparent">
             <TableHead>Животное</TableHead>
             <TableHead>Статус</TableHead>
-            <TableHead>Слоты</TableHead>
+            <TableHead>Доли</TableHead>
+            <TableHead>Слоты 10%</TableHead>
             <TableHead>Показатели</TableHead>
             <TableHead>Цена</TableHead>
             <TableHead className="text-right">Действия</TableHead>
@@ -494,6 +712,7 @@ function AdminAnimalsTable({
         <TableBody>
           {animals.map((animal) => {
             const statusBadge = getStatusBadge(animal.status);
+            const shareTone = getShareStatusTone(animal);
             return (
               <TableRow key={animal.id} className="align-top">
                 <TableCell>
@@ -520,12 +739,32 @@ function AdminAnimalsTable({
                   </div>
                 </TableCell>
                 <TableCell>
-                  <Badge className={`rounded-full border ${statusBadge.className}`}>{statusBadge.label}</Badge>
+                  <div className="space-y-2">
+                    <Badge className={`rounded-full border ${statusBadge.className}`}>{statusBadge.label}</Badge>
+                    <Badge className={`rounded-full border ${shareTone.className}`}>{shareTone.label}</Badge>
+                  </div>
                 </TableCell>
                 <TableCell>
-                  <div className="space-y-1 text-sm">
-                    <p className="font-medium text-foreground">{animal.availableSlots} свободно / {animal.totalOwnershipSlots}</p>
-                    <p className="text-muted-foreground">Активных: {animal.activeOwnerships}</p>
+                  <div className="space-y-2 text-sm">
+                    <p className="font-medium text-foreground">{animal.ownedPercent}% занято</p>
+                    <p className="text-muted-foreground">{animal.availablePercent}% доступно</p>
+                    <p className="text-xs text-muted-foreground">{animal.activeOwnerships} из {animal.totalOwnershipSlots} слотов заняты</p>
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <div className="space-y-2">
+                    <div className="grid grid-cols-5 gap-1.5">
+                      {buildShareSlots(animal).map((slot) => (
+                        <div
+                          key={slot.index}
+                          className={`rounded-lg border px-1 py-1 text-center text-[11px] font-medium ${slot.filled ? "border-emerald-200 bg-emerald-50 text-emerald-800" : "border-dashed border-stone-300 bg-stone-50 text-stone-500"}`}
+                          title={`Слот ${slot.index}: ${slot.label}`}
+                        >
+                          {slot.index}
+                        </div>
+                      ))}
+                    </div>
+                    <p className="text-xs text-muted-foreground">Шаг продажи: {animal.shareUnitPercent}%</p>
                   </div>
                 </TableCell>
                 <TableCell>
@@ -536,8 +775,11 @@ function AdminAnimalsTable({
                   </div>
                 </TableCell>
                 <TableCell>
-                  <p className="font-medium text-foreground">{formatPrice(animal.baseMonthlyPriceMinor)}</p>
-                  <p className="text-xs text-muted-foreground">sort: {animal.sortOrder ?? 0}</p>
+                  <div className="space-y-1.5">
+                    <p className="font-medium text-foreground">{formatPrice(animal.fullPriceMinor)}</p>
+                    <p className="text-xs text-muted-foreground">1 слот: {formatPrice(animal.shareUnitPriceMinor)}</p>
+                    <p className="text-xs text-muted-foreground">sort: {animal.sortOrder ?? 0}</p>
+                  </div>
                 </TableCell>
                 <TableCell>
                   <div className="flex justify-end gap-2">
@@ -604,108 +846,69 @@ function AnimalGalleryManager({
   }, [galleryImages]);
 
   const uploadPhoto = trpc.animalPhotos.upload.useMutation({
-    onSuccess: async (created) => {
+    onSuccess: async () => {
       await utils.animalPhotos.list.invalidate({ animalSlug });
-      if (galleryImages.length === 0) {
-        onCoverChange(created.src);
-      }
-      toast.success("Фото сохранено", {
-        description: "Изображение добавлено в постоянную галерею животного.",
+      toast.success("Фото загружено", {
+        description: "Новое изображение добавлено в галерею животного.",
       });
     },
     onError: (error) => {
-      toast.error("Не удалось загрузить фото", {
-        description: error.message,
-      });
-    },
-  });
-
-  const setCoverPhoto = trpc.animalPhotos.setCover.useMutation({
-    onSuccess: async ({ photoId }) => {
-      await utils.animalPhotos.list.invalidate({ animalSlug });
-      const cover = galleryImages.find((item) => item.photoId === photoId);
-      if (cover) {
-        onCoverChange(cover.src);
-      }
-      toast.success("Обложка обновлена", {
-        description: "Главное фото карточки синхронизировано с галереей.",
-      });
-    },
-    onError: (error) => {
-      toast.error("Не удалось обновить обложку", {
-        description: error.message,
-      });
+      toast.error("Не удалось загрузить фото", { description: error.message });
     },
   });
 
   const removePhoto = trpc.animalPhotos.remove.useMutation({
-    onSuccess: async ({ photoId }) => {
+    onSuccess: async () => {
       await utils.animalPhotos.list.invalidate({ animalSlug });
-      setPhotoDrafts((current) => {
-        const next = { ...current };
-        delete next[photoId];
-        return next;
-      });
-      const remaining = galleryImages.filter((item) => item.photoId !== photoId);
-      const cover = remaining.find((item) => item.isCover) ?? remaining[0];
-      if (cover) {
-        onCoverChange(cover.src);
-      }
-      toast.success("Фото удалено", {
-        description: "Изображение убрано из постоянной галереи животного.",
-      });
+      toast.success("Фото удалено");
     },
     onError: (error) => {
-      toast.error("Не удалось удалить фото", {
-        description: error.message,
-      });
+      toast.error("Не удалось удалить фото", { description: error.message });
+    },
+  });
+
+  const setCoverPhoto = trpc.animalPhotos.setCover.useMutation({
+    onSuccess: async () => {
+      await utils.animalPhotos.list.invalidate({ animalSlug });
+      toast.success("Обложка обновлена");
+    },
+    onError: (error) => {
+      toast.error("Не удалось обновить обложку", { description: error.message });
     },
   });
 
   const updatePhotoMeta = trpc.animalPhotos.updateMeta.useMutation({
     onSuccess: async () => {
       await utils.animalPhotos.list.invalidate({ animalSlug });
-      toast.success("Подписи фото обновлены", {
-        description: "Название и alt-текст сохранены в галерее животного.",
-      });
+      toast.success("Подписи обновлены");
     },
     onError: (error) => {
-      toast.error("Не удалось сохранить подписи фото", {
-        description: error.message,
-      });
+      toast.error("Не удалось сохранить подписи", { description: error.message });
     },
   });
 
   const reorderPhotos = trpc.animalPhotos.reorder.useMutation({
     onSuccess: async () => {
       await utils.animalPhotos.list.invalidate({ animalSlug });
-      toast.success("Порядок фото сохранён", {
-        description: "Миниатюры галереи обновлены.",
-      });
     },
     onError: (error) => {
-      toast.error("Не удалось сохранить порядок", {
-        description: error.message,
-      });
+      toast.error("Не удалось изменить порядок", { description: error.message });
     },
   });
 
   async function handleUpload(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
-    event.target.value = "";
     if (!file) return;
 
     const validation = validateGalleryUpload(file.type, file.size);
     if (!validation.hasAllowedType) {
-      toast.error("Неподдерживаемый формат", {
-        description: "Загрузите JPG, PNG или WebP файл.",
-      });
+      toast.error("Поддерживаются только JPG, PNG и WebP");
+      event.target.value = "";
       return;
     }
     if (!validation.hasAllowedSize) {
-      toast.error("Файл слишком большой", {
-        description: "Максимальный размер изображения — 8 МБ.",
-      });
+      toast.error("Максимальный размер файла — 8 МБ");
+      event.target.value = "";
       return;
     }
 
@@ -718,44 +921,40 @@ function AnimalGalleryManager({
         sizeBytes: file.size,
         base64Data,
       });
-    } catch (error) {
-      toast.error("Не удалось подготовить файл", {
-        description: error instanceof Error ? error.message : "Попробуйте ещё раз.",
-      });
+    } finally {
+      event.target.value = "";
     }
   }
 
   function movePhoto(photoId: number, direction: "left" | "right") {
-    const ids = galleryImages.map((item) => item.photoId);
-    const currentIndex = ids.indexOf(photoId);
+    const currentIndex = galleryImages.findIndex((photo) => photo.photoId === photoId);
     if (currentIndex === -1) return;
-    const targetIndex = direction === "left" ? currentIndex - 1 : currentIndex + 1;
-    if (targetIndex < 0 || targetIndex >= ids.length) return;
 
-    const reorderedIds = [...ids];
-    const [moved] = reorderedIds.splice(currentIndex, 1);
-    reorderedIds.splice(targetIndex, 0, moved);
+    const nextIndex = direction === "left" ? currentIndex - 1 : currentIndex + 1;
+    if (nextIndex < 0 || nextIndex >= galleryImages.length) return;
 
-    reorderPhotos.mutate({ animalSlug, photoIds: reorderedIds });
+    const nextOrder = [...galleryImages];
+    const [item] = nextOrder.splice(currentIndex, 1);
+    nextOrder.splice(nextIndex, 0, item);
+
+    reorderPhotos.mutate({
+      animalSlug,
+      photoIds: nextOrder.map((photo) => photo.photoId),
+    });
   }
 
   function updateDraft(photo: GalleryPhoto, key: "title" | "alt", value: string) {
-    setPhotoDrafts((current) => {
-      const initial = createPhotoDraft(photo);
-      return {
-        ...current,
-        [photo.photoId]: {
-          title: current[photo.photoId]?.title ?? initial.title,
-          alt: current[photo.photoId]?.alt ?? initial.alt,
-          [key]: value,
-        },
-      };
-    });
+    setPhotoDrafts((current) => ({
+      ...current,
+      [photo.photoId]: {
+        ...(current[photo.photoId] ?? createPhotoDraft(photo)),
+        [key]: value,
+      },
+    }));
   }
 
   async function savePhotoMeta(photo: GalleryPhoto) {
     const draft = photoDrafts[photo.photoId] ?? createPhotoDraft(photo);
-
     await updatePhotoMeta.mutateAsync({
       photoId: photo.photoId,
       title: draft.title.trim() || "Фото животного",
@@ -804,53 +1003,52 @@ function AnimalGalleryManager({
               <div className="aspect-square overflow-hidden bg-stone-100">
                 <img src={image.src} alt={image.title} className="h-full w-full object-cover" />
               </div>
-                <div className="space-y-3 p-4">
-                  <div className="space-y-1">
-                    <div className="flex items-center justify-between gap-2">
-                      <p className="line-clamp-1 font-medium text-foreground">{image.title}</p>
-                      {image.isCover ? (
-                        <Badge className="rounded-full border border-primary/20 bg-primary/10 text-primary">
-                          <Star className="mr-1 h-3 w-3" /> Обложка
-                        </Badge>
-                      ) : null}
-                    </div>
-                    <p className="text-xs text-muted-foreground">{image.meta}</p>
+              <div className="space-y-3 p-4">
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="line-clamp-1 font-medium text-foreground">{image.title}</p>
+                    {image.isCover ? (
+                      <Badge className="rounded-full border border-primary/20 bg-primary/10 text-primary">
+                        <Star className="mr-1 h-3 w-3" /> Обложка
+                      </Badge>
+                    ) : null}
                   </div>
+                  <p className="text-xs text-muted-foreground">{image.meta}</p>
+                </div>
 
-                  <div className="grid gap-3 rounded-2xl border border-border/70 bg-stone-50/80 p-3">
-                    <div className="space-y-2">
-                      <Label htmlFor={`photo-title-${image.photoId}`}>Название фото</Label>
-                      <Input
-                        id={`photo-title-${image.photoId}`}
-                        value={photoDrafts[image.photoId]?.title ?? createPhotoDraft(image).title}
-                        onChange={(event) => updateDraft(image, "title", event.target.value)}
-                        placeholder="Утренний портрет"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor={`photo-alt-${image.photoId}`}>Alt-текст</Label>
-                      <Textarea
-                        id={`photo-alt-${image.photoId}`}
-                        value={photoDrafts[image.photoId]?.alt ?? createPhotoDraft(image).alt}
-                        onChange={(event) => updateDraft(image, "alt", event.target.value)}
-                        placeholder="Коза Марта у деревянного загона на утреннем свете"
-                        rows={3}
-                      />
-                    </div>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      className="rounded-full"
-                      onClick={() => void savePhotoMeta(image)}
-                      disabled={updatePhotoMeta.isPending || !hasPhotoDraftChanges(image, photoDrafts[image.photoId])}
-                    >
-                      {updatePhotoMeta.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Pencil className="mr-2 h-4 w-4" />}
-                      Сохранить подписи
-                    </Button>
+                <div className="grid gap-3 rounded-2xl border border-border/70 bg-stone-50/80 p-3">
+                  <div className="space-y-2">
+                    <Label htmlFor={`photo-title-${image.photoId}`}>Название фото</Label>
+                    <Input
+                      id={`photo-title-${image.photoId}`}
+                      value={photoDrafts[image.photoId]?.title ?? createPhotoDraft(image).title}
+                      onChange={(event) => updateDraft(image, "title", event.target.value)}
+                      placeholder="Утренний портрет"
+                    />
                   </div>
+                  <div className="space-y-2">
+                    <Label htmlFor={`photo-alt-${image.photoId}`}>Alt-текст</Label>
+                    <Textarea
+                      id={`photo-alt-${image.photoId}`}
+                      value={photoDrafts[image.photoId]?.alt ?? createPhotoDraft(image).alt}
+                      onChange={(event) => updateDraft(image, "alt", event.target.value)}
+                      placeholder="Коза Марта у деревянного загона на утреннем свете"
+                      rows={3}
+                    />
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="rounded-full"
+                    onClick={() => void savePhotoMeta(image)}
+                    disabled={updatePhotoMeta.isPending || !hasPhotoDraftChanges(image, photoDrafts[image.photoId])}
+                  >
+                    {updatePhotoMeta.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Pencil className="mr-2 h-4 w-4" />}
+                    Сохранить подписи
+                  </Button>
+                </div>
 
-                  <div className="grid gap-2">
-
+                <div className="grid gap-2">
                   <Button
                     type="button"
                     variant={image.isCover ? "default" : "outline"}
@@ -992,7 +1190,7 @@ function AnimalEditorCard({
               id="animal-gallery-intro"
               value={values.galleryIntro}
               onChange={(event) => onChange("galleryIntro", event.target.value)}
-              placeholder="Короткий текст перед блоком фотографий и медиа"
+              placeholder="Короткий вводный текст для блока галереи"
               className="min-h-[96px]"
             />
           </div>
@@ -1000,9 +1198,48 @@ function AnimalEditorCard({
 
         <div className="grid gap-4 md:grid-cols-2">
           <div className="space-y-2">
-            <Label htmlFor="animal-cover">Cover image URL</Label>
-            <Input id="animal-cover" value={values.coverImageUrl} onChange={(event) => onChange("coverImageUrl", event.target.value)} placeholder="https://..." />
+            <Label htmlFor="animal-price">Полная цена в копейках</Label>
+            <Input
+              id="animal-price"
+              type="number"
+              min={0}
+              step={100}
+              value={values.baseMonthlyPriceMinor}
+              onChange={(event) => onChange("baseMonthlyPriceMinor", Number(event.target.value || 0))}
+            />
+            <p className="text-xs text-muted-foreground">Используется как полная цена животного, а 10% рассчитываются автоматически в карточках и профиле.</p>
           </div>
+          <div className="space-y-2">
+            <Label htmlFor="animal-published-at">Дата публикации</Label>
+            <Input
+              id="animal-published-at"
+              type="datetime-local"
+              value={values.publishedAt}
+              onChange={(event) => onChange("publishedAt", event.target.value)}
+            />
+          </div>
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          <div className="space-y-2">
+            <Label htmlFor="animal-health">Здоровье</Label>
+            <Input id="animal-health" type="number" min={0} max={100} value={values.healthScore} onChange={(event) => onChange("healthScore", Number(event.target.value || 0))} />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="animal-happiness">Счастье</Label>
+            <Input id="animal-happiness" type="number" min={0} max={100} value={values.happinessScore} onChange={(event) => onChange("happinessScore", Number(event.target.value || 0))} />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="animal-milk">Молочный потенциал</Label>
+            <Input id="animal-milk" type="number" min={0} max={100} value={values.milkPotentialScore} onChange={(event) => onChange("milkPotentialScore", Number(event.target.value || 0))} />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="animal-care">Уровень ухода</Label>
+            <Input id="animal-care" type="number" min={0} max={100} value={values.careLevelScore} onChange={(event) => onChange("careLevelScore", Number(event.target.value || 0))} />
+          </div>
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           <div className="space-y-2">
             <Label>Статус</Label>
             <Select value={values.status} onValueChange={(value) => onChange("status", value as AdminAnimalStatus)}>
@@ -1017,172 +1254,75 @@ function AnimalEditorCard({
             </Select>
           </div>
           <div className="space-y-2">
-            <Label htmlFor="animal-published-at">Дата публикации</Label>
-            <Input id="animal-published-at" type="datetime-local" value={values.publishedAt} onChange={(event) => onChange("publishedAt", event.target.value)} />
+            <Label htmlFor="animal-sort-order">Порядок</Label>
+            <Input id="animal-sort-order" type="number" min={0} value={values.sortOrder} onChange={(event) => onChange("sortOrder", Number(event.target.value || 0))} />
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="animal-sort-order">Sort order</Label>
-            <Input
-              id="animal-sort-order"
-              type="number"
-              min={0}
-              max={9999}
-              value={values.sortOrder}
-              onChange={(event) => onChange("sortOrder", Number(event.target.value || 0))}
-            />
+          <div className="flex items-end rounded-2xl border border-border/70 bg-stone-50/70 px-4 py-3">
+            <Label className="flex items-center gap-3 text-sm font-medium text-foreground">
+              <Checkbox checked={values.isFeatured} onCheckedChange={(checked) => onChange("isFeatured", Boolean(checked))} />
+              Показать как featured
+            </Label>
           </div>
         </div>
 
-        <AnimalGalleryManager animalSlug={gallerySlug} values={values} onCoverChange={(url) => onChange("coverImageUrl", url)} />
-
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          <div className="space-y-2">
-            <Label htmlFor="animal-slots">Ownership slots</Label>
-            <Input
-              id="animal-slots"
-              type="number"
-              min={1}
-              max={3}
-              value={values.totalOwnershipSlots}
-              onChange={(event) => onChange("totalOwnershipSlots", Number(event.target.value || 1))}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="animal-price">Цена в minor units</Label>
-            <Input
-              id="animal-price"
-              type="number"
-              min={0}
-              max={100000000}
-              value={values.baseMonthlyPriceMinor}
-              onChange={(event) => onChange("baseMonthlyPriceMinor", Number(event.target.value || 0))}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="animal-health">Здоровье</Label>
-            <Input
-              id="animal-health"
-              type="number"
-              min={0}
-              max={100}
-              value={values.healthScore}
-              onChange={(event) => onChange("healthScore", Number(event.target.value || 0))}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="animal-happiness">Счастье</Label>
-            <Input
-              id="animal-happiness"
-              type="number"
-              min={0}
-              max={100}
-              value={values.happinessScore}
-              onChange={(event) => onChange("happinessScore", Number(event.target.value || 0))}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="animal-milk">Потенциал молока</Label>
-            <Input
-              id="animal-milk"
-              type="number"
-              min={0}
-              max={100}
-              value={values.milkPotentialScore}
-              onChange={(event) => onChange("milkPotentialScore", Number(event.target.value || 0))}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="animal-care">Уход</Label>
-            <Input
-              id="animal-care"
-              type="number"
-              min={0}
-              max={100}
-              value={values.careLevelScore}
-              onChange={(event) => onChange("careLevelScore", Number(event.target.value || 0))}
-            />
-          </div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Button type="button" variant="outline" className="rounded-full" onClick={() => onApplyPreset("goat")}>
+            Демо-коза
+          </Button>
+          <Button type="button" variant="outline" className="rounded-full" onClick={() => onApplyPreset("sheep")}>
+            Демо-овца
+          </Button>
         </div>
 
-        <div className="flex items-center gap-3 rounded-2xl border border-border/70 bg-secondary/35 px-4 py-3">
-          <Checkbox
-            id="animal-featured"
-            checked={values.isFeatured}
-            onCheckedChange={(checked) => onChange("isFeatured", Boolean(checked))}
-          />
-          <div>
-            <Label htmlFor="animal-featured" className="text-sm font-medium text-foreground">Показывать как featured</Label>
-            <p className="text-xs text-muted-foreground">Помогает выделять животное в витрине и приоритетных подборках.</p>
-          </div>
-        </div>
+        <AnimalGalleryManager
+          animalSlug={gallerySlug}
+          values={values}
+          onCoverChange={(url) => onChange("coverImageUrl", url)}
+        />
 
-        <div className="space-y-3">
-          <div className="rounded-2xl border border-dashed border-primary/25 bg-primary/5 p-4">
-            <p className="text-sm font-medium text-foreground">Быстрое демо-наполнение</p>
-            <p className="mt-1 text-xs leading-5 text-muted-foreground">
-              Эти шаблоны заполняют форму полностью, чтобы быстро показать путь от админки до публичной галереи выбора животного.
-            </p>
-            <div className="mt-3 flex flex-wrap gap-2">
-              <Button type="button" variant="outline" className="rounded-full" onClick={() => onApplyPreset("goat")} disabled={isSubmitting}>
-                Заполнить демо-козу
-              </Button>
-              <Button type="button" variant="outline" className="rounded-full" onClick={() => onApplyPreset("sheep")} disabled={isSubmitting}>
-                Заполнить демо-овцу
-              </Button>
-            </div>
-          </div>
-          <div className="flex flex-wrap gap-3">
-            <Button type="button" className="rounded-full" onClick={onSubmit} disabled={isSubmitting}>
-              {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : mode === "create" ? <Plus className="mr-2 h-4 w-4" /> : <Pencil className="mr-2 h-4 w-4" />}
-              {mode === "create" ? "Создать карточку" : "Сохранить изменения"}
-            </Button>
-            <Button type="button" variant="outline" className="rounded-full" onClick={onCancel} disabled={isSubmitting}>
-              Отменить
-            </Button>
-          </div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Button type="button" className="rounded-full" onClick={onSubmit} disabled={isSubmitting}>
+            {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+            {mode === "create" ? "Создать карточку" : "Сохранить изменения"}
+          </Button>
+          <Button type="button" variant="outline" className="rounded-full" onClick={onCancel}>
+            Сбросить форму
+          </Button>
         </div>
       </CardContent>
     </Card>
   );
 }
 
-export default function AdminAnimals() {
+export default function AdminAnimalsPage() {
   const { user, loading } = useAuth();
   const utils = trpc.useUtils();
-  const animalsQuery = trpc.adminAnimals.list.useQuery(undefined, {
-    enabled: !loading && Boolean(user),
-    retry: false,
-  });
-
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<AdminAnimalStatus | "all">("all");
   const [speciesFilter, setSpeciesFilter] = useState<AdminAnimalSpecies | "all">("all");
-  const [location] = useLocation();
   const [editorMode, setEditorMode] = useState<"create" | "edit">("create");
-  const [formValues, setFormValues] = useState<AnimalFormValues>(createEmptyAnimalForm());
-  const [galleryImages, setGalleryImages] = useState<GalleryPhoto[]>([]);
   const [editingAnimalId, setEditingAnimalId] = useState<number | null>(null);
+  const [formValues, setFormValues] = useState<AnimalFormValues>(createEmptyAnimalForm());
+  const [, navigate] = useState("");
 
-  useEffect(() => {
-    if (typeof window === "undefined") return;
+  const animalsQuery = trpc.adminAnimals.list.useQuery(undefined, {
+    retry: false,
+  });
 
-    const params = new URLSearchParams(window.location.search);
-    const incomingStatus = params.get("status");
-
-    if (incomingStatus === "published") {
-      setStatusFilter("public_available");
-      return;
-    }
-
-    if (incomingStatus === "hidden" || incomingStatus === "archived") {
-      setStatusFilter(incomingStatus);
-    }
-  }, [location]);
-
-  const animals = animalsQuery.data ?? [];
+  const animals = (animalsQuery.data ?? []) as AdminAnimalRecord[];
   const filteredAnimals = useMemo(
-    () => filterAdminAnimals(animals as AdminAnimalRecord[], searchQuery, statusFilter, speciesFilter),
+    () => filterAdminAnimals(animals, searchQuery, statusFilter, speciesFilter),
     [animals, searchQuery, statusFilter, speciesFilter]
+  );
+
+  const portfolioValueMinor = useMemo(
+    () => animals.reduce((sum, animal) => sum + (animal.fullPriceMinor ?? animal.baseMonthlyPriceMinor), 0),
+    [animals]
+  );
+
+  const monthlyBookedMinor = useMemo(
+    () => animals.reduce((sum, animal) => sum + animal.shareUnitPriceMinor * animal.activeOwnerships, 0),
+    [animals]
   );
 
   const createAnimal = trpc.adminAnimals.create.useMutation({
@@ -1228,11 +1368,10 @@ export default function AdminAnimals() {
     },
   });
 
-   function resetEditor() {
+  function resetEditor() {
     setEditorMode("create");
     setEditingAnimalId(null);
     setFormValues(createEmptyAnimalForm());
-    setGalleryImages([]);
   }
 
   function applyDemoPreset(species: "goat" | "sheep") {
@@ -1240,8 +1379,8 @@ export default function AdminAnimals() {
     setEditorMode("create");
     setEditingAnimalId(null);
     setFormValues(preset.values);
-    setGalleryImages([]);
   }
+
   function handleFormChange<K extends keyof AnimalFormValues>(key: K, value: AnimalFormValues[K]) {
     setFormValues((current) => ({ ...current, [key]: value }));
   }
@@ -1285,11 +1424,17 @@ export default function AdminAnimals() {
     const freshAnimal = animals.find((animal) => animal.id === editingAnimalId);
     if (freshAnimal) {
       setFormValues((current) => ({
-        ...normalizeAnimalFormValues(freshAnimal as AdminAnimalRecord),
+        ...normalizeAnimalFormValues(freshAnimal),
         coverImageUrl: current.coverImageUrl || freshAnimal.coverImageUrl || "",
       }));
     }
   }, [animals, editorMode, editingAnimalId]);
+
+  useEffect(() => {
+    if (user && (user as { role?: string }).role !== "admin") {
+      navigate("/");
+    }
+  }, [navigate, user]);
 
   const isForbidden = animalsQuery.error?.message === NOT_ADMIN_ERR_MSG;
 
@@ -1357,11 +1502,11 @@ export default function AdminAnimals() {
                     <h1 className="text-3xl font-semibold tracking-tight text-foreground">Управление животными Sprint 1</h1>
                     <p className="text-sm leading-6 text-muted-foreground">
                       Команда фермы может управлять каталогом животных, быстро переключать видимость карточек, редактировать
-                      ключевые показатели и наполнять витрину без обращения к базе данных вручную.
+                      ключевые показатели и видеть фактическое распределение 10%-долей по каждому животному без обращения к базе вручную.
                     </p>
                   </div>
 
-                  <div className="grid gap-3 sm:grid-cols-3">
+                  <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
                     <Card className="rounded-[1.5rem] border-emerald-100 bg-emerald-50/80 shadow-none">
                       <CardContent className="flex items-center gap-3 p-4">
                         <Sparkles className="h-5 w-5 text-emerald-700" />
@@ -1384,14 +1529,25 @@ export default function AdminAnimals() {
                       <CardContent className="flex items-center gap-3 p-4">
                         <Milk className="h-5 w-5 text-stone-700" />
                         <div>
-                          <p className="text-xs uppercase tracking-[0.18em] text-stone-700/80">Доступно</p>
-                          <p className="text-lg font-semibold text-stone-900">{animals.filter((animal) => animal.status === "public_available" || animal.status === "public_limited").length}</p>
+                          <p className="text-xs uppercase tracking-[0.18em] text-stone-700/80">Портфель</p>
+                          <p className="text-lg font-semibold text-stone-900">{formatPrice(portfolioValueMinor)}</p>
+                        </div>
+                      </CardContent>
+                    </Card>
+                    <Card className="rounded-[1.5rem] border-primary/15 bg-primary/5 shadow-none">
+                      <CardContent className="flex items-center gap-3 p-4">
+                        <Wallet className="h-5 w-5 text-primary" />
+                        <div>
+                          <p className="text-xs uppercase tracking-[0.18em] text-primary/80">Занято в долях</p>
+                          <p className="text-lg font-semibold text-primary">{formatPrice(monthlyBookedMinor)}</p>
                         </div>
                       </CardContent>
                     </Card>
                   </div>
                 </div>
               </div>
+
+              <ShareDistributionPanel animals={animals} />
 
               <Card className="rounded-[2rem] border-border/70 shadow-sm">
                 <CardHeader>

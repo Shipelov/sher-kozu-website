@@ -2,11 +2,16 @@ import { describe, expect, it } from "vitest";
 import {
   buildAnimalGalleryMedia,
   buildAnimalMutationPayload,
+  buildShareSlots,
+  createAdminShareSummary,
   createDemoAnimalPreset,
   createEmptyAnimalForm,
   createPhotoDraft,
   filterAdminAnimals,
+  formatSharePercentLabel,
+  formatShareRevenue,
   getNextVisibilityMode,
+  getShareOccupancyTone,
   getStatusBadge,
   hasPhotoDraftChanges,
   mergeCoverIntoForm,
@@ -25,10 +30,21 @@ const animals = [
     shortDescription: "Спокойная и очень контактная коза для семейного участия.",
     story: "Любит прогулки у яблоневого сада и легко идёт на контакт с детьми.",
     galleryIntro: "Фотографии из повседневной жизни Марты.",
-    status: "public_available",
-    totalOwnershipSlots: 3,
-    activeOwnerships: 1,
-    availableSlots: 2,
+    status: "public_limited",
+    totalOwnershipSlots: 10,
+    activeOwnerships: 4,
+    availableSlots: 6,
+    ownedPercent: 40,
+    availablePercent: 60,
+    totalPriceMinor: 850000,
+    occupiedValueMinor: 340000,
+    sharePriceMinor: 85000,
+    ownersCount: 2,
+    activeShareReservations: 4,
+    shareDistribution: [
+      { familyName: "Семья Алимовых", percent: 20, slots: [1, 2], planLabel: "6 месяцев" },
+      { familyName: "Семья Орловых", percent: 20, slots: [3, 4], planLabel: "12 месяцев" },
+    ],
     baseMonthlyPriceMinor: 125000,
     healthScore: 92,
     happinessScore: 89,
@@ -49,9 +65,17 @@ const animals = [
     story: null,
     galleryIntro: null,
     status: "hidden",
-    totalOwnershipSlots: 3,
+    totalOwnershipSlots: 10,
     activeOwnerships: 0,
-    availableSlots: 3,
+    availableSlots: 10,
+    ownedPercent: 0,
+    availablePercent: 100,
+    totalPriceMinor: 990000,
+    occupiedValueMinor: 0,
+    sharePriceMinor: 99000,
+    ownersCount: 0,
+    activeShareReservations: 0,
+    shareDistribution: [],
     baseMonthlyPriceMinor: 99000,
     healthScore: 88,
     happinessScore: 90,
@@ -72,9 +96,21 @@ const animals = [
     story: null,
     galleryIntro: null,
     status: "fully_booked",
-    totalOwnershipSlots: 3,
-    activeOwnerships: 3,
+    totalOwnershipSlots: 10,
+    activeOwnerships: 10,
     availableSlots: 0,
+    ownedPercent: 100,
+    availablePercent: 0,
+    totalPriceMinor: 1350000,
+    occupiedValueMinor: 1350000,
+    sharePriceMinor: 135000,
+    ownersCount: 3,
+    activeShareReservations: 10,
+    shareDistribution: [
+      { familyName: "Семья Карповых", percent: 50, slots: [1, 2, 3, 4, 5], planLabel: "12 месяцев" },
+      { familyName: "Семья Мироновых", percent: 30, slots: [6, 7, 8], planLabel: "3 месяца" },
+      { familyName: "Семья Беловых", percent: 20, slots: [9, 10], planLabel: "1 месяц" },
+    ],
     baseMonthlyPriceMinor: 135000,
     healthScore: 96,
     happinessScore: 94,
@@ -121,7 +157,7 @@ describe("Admin animals UI helpers", () => {
 
     expect(form.species).toBe("goat");
     expect(form.status).toBe("hidden");
-    expect(form.totalOwnershipSlots).toBe(3);
+    expect(form.totalOwnershipSlots).toBe(10);
     expect(form.name).toBe("");
   });
 
@@ -300,5 +336,37 @@ describe("Admin animals UI helpers", () => {
     expect(getStatusBadge("public_available").label).toBe("Доступно");
     expect(getStatusBadge("hidden").label).toBe("Скрыто");
     expect(getStatusBadge("archived").label).toBe("Архив");
+  });
+
+  it("builds 10%-share slots for admin visualization", () => {
+    const slots = buildShareSlots(animals[0]);
+
+    expect(slots).toHaveLength(10);
+    expect(slots.filter((slot) => slot.state === "occupied")).toHaveLength(4);
+    expect(slots.filter((slot) => slot.state === "available")).toHaveLength(6);
+    expect(slots[0]).toMatchObject({ index: 1, percentLabel: "10%", state: "occupied" });
+    expect(slots[9]).toMatchObject({ index: 10, percentLabel: "100%", state: "available" });
+  });
+
+  it("creates aggregate share summary for admin dashboard", () => {
+    const summary = createAdminShareSummary([...animals]);
+
+    expect(summary.totalAnimals).toBe(3);
+    expect(summary.totalOwnedPercent).toBe(140);
+    expect(summary.totalAvailablePercent).toBe(160);
+    expect(summary.totalOwnersCount).toBe(5);
+    expect(summary.totalOccupiedValueMinor).toBe(1_690_000);
+  });
+
+  it("formats share percent labels and occupied revenue for admin cards", () => {
+    expect(formatSharePercentLabel(30)).toBe("30%");
+    expect(formatShareRevenue(340000)).toContain("3");
+    expect(formatShareRevenue(340000)).toContain("₽");
+  });
+
+  it("returns tone markers for share occupancy progress", () => {
+    expect(getShareOccupancyTone(0)).toBe("available");
+    expect(getShareOccupancyTone(40)).toBe("partial");
+    expect(getShareOccupancyTone(100)).toBe("full");
   });
 });
