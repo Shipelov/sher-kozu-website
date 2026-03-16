@@ -2,11 +2,17 @@ import { and, asc, desc, eq, like, or, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import { createPool, type Pool } from "mysql2/promise";
 import {
+  animalMedia,
+  animalOwnerships,
   animalPhotos,
+  animals,
   clubAdminPresets,
   clubEvents,
   clubMembers,
   clubPosts,
+  families,
+  InsertAnimal,
+  InsertAnimalMedium,
   InsertAnimalPhoto,
   InsertClubAdminPreset,
   InsertClubEvent,
@@ -15,13 +21,18 @@ import {
   InsertIntegrationAudit,
   InsertPartnerLead,
   InsertUser,
+  InsertPlan,
+  InsertPlanDuration,
   integrationAudits,
   partnerLeads,
+  planDurations,
+  plans,
   productBatches,
   productCompositionSnapshots,
   productDeliveries,
   productMonthlyMetrics,
   users,
+  wallets,
 } from "../drizzle/schema";
 import { ENV } from "./_core/env";
 
@@ -1079,4 +1090,386 @@ export async function listBitrixAdminData(
     },
     retryMonitoring,
   };
+}
+
+export async function countActiveOwnerships(animalId: number) {
+  const db = await getDb();
+  const rows = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(animalOwnerships)
+    .where(
+      and(
+        eq(animalOwnerships.animalId, animalId),
+        or(eq(animalOwnerships.status, "active"), eq(animalOwnerships.status, "pending_payment"))
+      )
+    );
+
+  return Number(rows[0]?.count ?? 0);
+}
+
+export async function getAvailableSlotIndex(animalId: number) {
+  const db = await getDb();
+  const animalRows = await db
+    .select({ totalOwnershipSlots: animals.totalOwnershipSlots })
+    .from(animals)
+    .where(eq(animals.id, animalId))
+    .limit(1);
+
+  const totalSlots = animalRows[0]?.totalOwnershipSlots ?? 3;
+  const slotRows = await db
+    .select({ slotIndex: animalOwnerships.slotIndex })
+    .from(animalOwnerships)
+    .where(
+      and(
+        eq(animalOwnerships.animalId, animalId),
+        or(eq(animalOwnerships.status, "active"), eq(animalOwnerships.status, "pending_payment"))
+      )
+    )
+    .orderBy(asc(animalOwnerships.slotIndex));
+
+  const used = new Set(slotRows.map((row: { slotIndex: number }) => row.slotIndex));
+  for (let index = 1; index <= totalSlots; index += 1) {
+    if (!used.has(index)) {
+      return index;
+    }
+  }
+
+  return null;
+}
+
+export async function recalculateAnimalStatus(animalId: number) {
+  const db = await getDb();
+  const animalRows = await db
+    .select({
+      id: animals.id,
+      status: animals.status,
+      totalOwnershipSlots: animals.totalOwnershipSlots,
+      publishedAt: animals.publishedAt,
+    })
+    .from(animals)
+    .where(eq(animals.id, animalId))
+    .limit(1);
+
+  const animal = animalRows[0];
+  if (!animal) {
+    return null;
+  }
+
+  if (animal.status === "hidden" || animal.status === "archived") {
+    return animal.status;
+  }
+
+  const activeCount = await countActiveOwnerships(animalId);
+  let nextStatus: "public_available" | "public_limited" | "fully_booked" = "public_available";
+
+  if (activeCount >= animal.totalOwnershipSlots) {
+    nextStatus = "fully_booked";
+  } else if (activeCount >= Math.max(1, animal.totalOwnershipSlots - 1)) {
+    nextStatus = "public_limited";
+  }
+
+  await db.update(animals).set({ status: nextStatus }).where(eq(animals.id, animalId));
+  return nextStatus;
+}
+
+export async function listPublicAnimals() {
+  const db = await getDb();
+  const rows = await db
+    .select()
+    .from(animals)
+    .where(or(eq(animals.status, "public_available"), eq(animals.status, "public_limited"), eq(animals.status, "fully_booked")))
+    .orderBy(desc(animals.isFeatured), asc(animals.sortOrder), asc(animals.name));
+
+  const enriched = await Promise.all(
+    rows.map(async (animal: any) => {
+      const activeOwnerships = await countActiveOwnerships(animal.id);
+      const media = await db
+        .select()
+        .from(animalMedia)
+        .where(eq(animalMedia.animalId, animal.id))
+        .orderBy(desc(animalMedia.isCover), asc(animalMedia.sortOrder), asc(animalMedia.id));
+
+      return {
+        ...animal,
+        activeOwnerships,
+        availableSlots: Math.max(0, animal.totalOwnershipSlots - activeOwnerships),
+        coverImageUrl: media.find((item: any) => item.isCover)?.url ?? animal.coverImageUrl,
+        media,
+      };
+    })
+  );
+
+  return enriched;
+}
+
+export async function getAnimalBySlug(slug: string) {
+  const db = await getDb();
+  const rows = await db.select().from(animals).where(eq(animals.slug, slug)).limit(1);
+  const animal = rows[0];
+
+  if (!animal) {
+    return null;
+  }
+
+  const media = await db
+    .select()
+    .from(animalMedia)
+    .where(eq(animalMedia.animalId, animal.id))
+    .orderBy(desc(animalMedia.isCover), asc(animalMedia.sortOrder), asc(animalMedia.id));
+
+  const activeOwnerships = await countActiveOwnerships(animal.id);
+  const linkedPlans = await db.select().from(plans).where(eq(plans.status, "active")).orderBy(asc(plans.id));
+  const durations = linkedPlans.length
+    ? await db.select().from(planDurations).where(eq(planDurations.isActive, 1)).orderBy(asc(planDurations.sortOrder), asc(planDurations.months))
+    : [];
+
+  return {
+    ...animal,
+    activeOwnerships,
+    availableSlots: Math.max(0, animal.totalOwnershipSlots - activeOwnerships),
+    media,
+    plans: linkedPlans.map((plan: any) => ({
+      ...plan,
+      durations: durations.filter((duration: any) => duration.planId === plan.id),
+    })),
+  };
+}
+
+export async function listActivePlans() {
+  const db = await getDb();
+  const activePlans = await db.select().from(plans).where(eq(plans.status, "active")).orderBy(asc(plans.id));
+  const durations = await db
+    .select()
+    .from(planDurations)
+    .where(eq(planDurations.isActive, 1))
+    .orderBy(asc(planDurations.planId), asc(planDurations.sortOrder), asc(planDurations.months));
+
+  return activePlans.map((plan: any) => ({
+    ...plan,
+    durations: durations.filter((duration: any) => duration.planId === plan.id),
+  }));
+}
+
+export async function listAdminAnimals(ownerOpenId: string) {
+  const db = await getDb();
+  const rows = await db
+    .select()
+    .from(animals)
+    .where(eq(animals.ownerOpenId, ownerOpenId))
+    .orderBy(desc(animals.createdAt), asc(animals.sortOrder), asc(animals.name));
+
+  return Promise.all(
+    rows.map(async (animal: any) => ({
+      ...animal,
+      activeOwnerships: await countActiveOwnerships(animal.id),
+    }))
+  );
+}
+
+type UpsertAnimalPayload = Omit<InsertAnimal, "id" | "createdAt" | "updatedAt"> & {
+  media?: Array<Omit<InsertAnimalMedium, "id" | "createdAt" | "updatedAt">>;
+};
+
+export async function createAnimalWithMedia(input: UpsertAnimalPayload) {
+  const db = await getDb();
+  const { media = [], ...animalInput } = input;
+  const result = await db.insert(animals).values(animalInput as InsertAnimal);
+  const animalId = Number(result.insertId);
+
+  if (media.length) {
+    await db.insert(animalMedia).values(
+      media.map((item) => ({
+        ...item,
+        animalId,
+      })) as InsertAnimalMedium[]
+    );
+  }
+
+  await recalculateAnimalStatus(animalId);
+  return getAnimalBySlug(String(animalInput.slug));
+}
+
+export async function updateAnimalWithMedia(
+  animalId: number,
+  ownerOpenId: string,
+  input: Partial<UpsertAnimalPayload>
+) {
+  const db = await getDb();
+  const { media, ...animalPatch } = input;
+
+  await db
+    .update(animals)
+    .set({ ...animalPatch, updatedAt: new Date() })
+    .where(and(eq(animals.id, animalId), eq(animals.ownerOpenId, ownerOpenId)));
+
+  if (media) {
+    await db.delete(animalMedia).where(eq(animalMedia.animalId, animalId));
+    if (media.length) {
+      await db.insert(animalMedia).values(
+        media.map((item) => ({
+          ...item,
+          animalId,
+        })) as InsertAnimalMedium[]
+      );
+    }
+  }
+
+  await recalculateAnimalStatus(animalId);
+
+  const rows = await db.select({ slug: animals.slug }).from(animals).where(eq(animals.id, animalId)).limit(1);
+  return rows[0] ? getAnimalBySlug(rows[0].slug) : null;
+}
+
+export async function setAnimalVisibility(animalId: number, ownerOpenId: string, mode: "public" | "hidden" | "archived") {
+  const db = await getDb();
+  const nextStatus = mode === "hidden" ? "hidden" : mode === "archived" ? "archived" : "public_available";
+  await db
+    .update(animals)
+    .set({ status: nextStatus, publishedAt: mode === "public" ? new Date() : null, updatedAt: new Date() })
+    .where(and(eq(animals.id, animalId), eq(animals.ownerOpenId, ownerOpenId)));
+
+  if (mode === "public") {
+    await recalculateAnimalStatus(animalId);
+  }
+
+  const rows = await db.select({ slug: animals.slug }).from(animals).where(eq(animals.id, animalId)).limit(1);
+  return rows[0] ? getAnimalBySlug(rows[0].slug) : null;
+}
+
+export async function ensureSprintOneSeed(ownerOpenId: string) {
+  const db = await getDb();
+  const existingAnimals = await db.select({ id: animals.id }).from(animals).where(eq(animals.ownerOpenId, ownerOpenId)).limit(1);
+  if (existingAnimals.length) {
+    return;
+  }
+
+  const familyResult = await db.insert(families).values({
+    ownerOpenId,
+    name: "Семья-демо Sher Kozu",
+    slug: `demo-family-${ownerOpenId.toLowerCase().slice(0, 12)}`,
+    status: "active",
+    maxAnimals: 10,
+    notes: "Служебная демо-семья для Sprint 1 каталога животных.",
+  });
+  const familyId = Number(familyResult.insertId);
+
+  const planResult = await db.insert(plans).values({
+    ownerOpenId,
+    code: `core-care-${ownerOpenId.toLowerCase().slice(0, 8)}`,
+    name: "Базовая опека",
+    description: "Стартовый статус для участия семьи в жизни животного и получения продукции.",
+    status: "active",
+    basePriceMinor: 45000,
+    maxOwnersPerAnimal: 3,
+    benefitsSummary: "Доступ к кабинету, клубным обновлениям и базовой продуктовой выдаче.",
+  });
+  const planId = Number(planResult.insertId);
+
+  await db.insert(planDurations).values([
+    {
+      planId,
+      months: 1,
+      label: "1 месяц",
+      priceMinor: 45000,
+      isDefault: 1,
+      isActive: 1,
+      sortOrder: 0,
+    },
+    {
+      planId,
+      months: 3,
+      label: "3 месяца",
+      priceMinor: 129000,
+      isDefault: 0,
+      isActive: 1,
+      sortOrder: 1,
+    },
+    {
+      planId,
+      months: 12,
+      label: "12 месяцев",
+      priceMinor: 480000,
+      isDefault: 0,
+      isActive: 1,
+      sortOrder: 2,
+    },
+  ] as InsertPlanDuration[]);
+
+  await createAnimalWithMedia({
+    ownerOpenId,
+    name: "Марта",
+    slug: `marta-${ownerOpenId.toLowerCase().slice(0, 6)}`,
+    species: "goat",
+    breed: "Зааненская",
+    shortDescription: "Спокойная и общительная коза с выраженным молочным профилем.",
+    story: "Марта быстро идёт на контакт с семьями и хорошо реагирует на регулярные визиты и кормление.",
+    coverImageUrl: "https://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/goat_portrait_80fc5726.jpg",
+    galleryIntro: "Подборка фотографий Марты для витрины и карточки животного.",
+    status: "public_available",
+    totalOwnershipSlots: 3,
+    baseMonthlyPriceMinor: 45000,
+    healthScore: 88,
+    happinessScore: 91,
+    milkPotentialScore: 84,
+    careLevelScore: 67,
+    isFeatured: 1,
+    sortOrder: 0,
+    publishedAt: new Date(),
+    media: [
+      {
+        animalId: 0,
+        kind: "image",
+        title: "Портрет Марты",
+        alt: "Коза Марта на ферме",
+        fileKey: "seed/marta-hero",
+        url: "https://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/goat_portrait_80fc5726.jpg",
+        mimeType: "image/jpeg",
+        sortOrder: 0,
+        isCover: 1,
+      },
+    ],
+  });
+
+  await createAnimalWithMedia({
+    ownerOpenId,
+    name: "Злата",
+    slug: `zlata-${ownerOpenId.toLowerCase().slice(0, 6)}`,
+    species: "sheep",
+    breed: "Казахская тонкорунная",
+    shortDescription: "Мягкий темперамент, ровный ритм ухода и стабильная сезонная отдача.",
+    story: "Злата хорошо подходит семьям, которые хотят мягкое вхождение в формат опеки и регулярных визитов.",
+    coverImageUrl: "https://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/milk_products_d3f8c13d.jpg",
+    galleryIntro: "Подборка фотографий Златы для витрины и карточки животного.",
+    status: "public_available",
+    totalOwnershipSlots: 3,
+    baseMonthlyPriceMinor: 42000,
+    healthScore: 86,
+    happinessScore: 89,
+    milkPotentialScore: 78,
+    careLevelScore: 59,
+    isFeatured: 0,
+    sortOrder: 1,
+    publishedAt: new Date(),
+    media: [
+      {
+        animalId: 0,
+        kind: "image",
+        title: "Образ Златы",
+        alt: "Овца Злата на ферме",
+        fileKey: "seed/zlata-hero",
+        url: "https://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/hero_farm_ab0d054b.jpg",
+        mimeType: "image/jpeg",
+        sortOrder: 0,
+        isCover: 1,
+      },
+    ],
+  });
+
+  await db.insert(wallets).values({
+    ownerOpenId,
+    familyId,
+    status: "active",
+    balanceMinor: 150000,
+    currencyCode: "SKC",
+  });
 }

@@ -6,6 +6,7 @@ import { systemRouter } from "./_core/systemRouter";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import {
   createAnimalPhoto,
+  createAnimalWithMedia,
   createClubAdminPreset,
   createClubEvent,
   createClubMember,
@@ -17,15 +18,22 @@ import {
   deleteClubEvent,
   deleteClubMember,
   deleteClubPost,
+  ensureSprintOneSeed,
+  getAnimalBySlug,
   getClubFeedData,
   getIntegrationAuditById,
   getPartnerLeadById,
   getProductTrackerData,
+  listActivePlans,
+  listAdminAnimals,
   listAnimalPhotos,
   listBitrixAdminData,
   listClubAdminData,
+  listPublicAnimals,
   reorderAnimalPhotos,
   setAnimalPhotoCover,
+  setAnimalVisibility,
+  updateAnimalWithMedia,
   updateClubAdminPreset,
   updateClubEvent,
   updateClubMember,
@@ -168,6 +176,52 @@ const partnerLeadInput = z.object({
 
 const retryPartnerLeadInput = z.object({
   leadId: z.number().int().positive(),
+});
+
+const animalSlugInput = z.object({
+  slug: z.string().min(1).max(160),
+});
+
+const animalMediaInput = z.object({
+  kind: z.enum(["image", "video", "document"]),
+  title: z.string().min(1).max(160),
+  alt: z.string().max(255).optional().nullable(),
+  fileKey: z.string().min(1).max(255),
+  url: z.string().url(),
+  mimeType: z.string().min(1).max(120),
+  sortOrder: z.number().int().min(0).max(999).default(0),
+  isCover: z.boolean().default(false),
+});
+
+const animalUpsertInput = z.object({
+  name: z.string().min(2).max(160),
+  slug: z.string().min(2).max(160),
+  species: z.enum(["goat", "sheep"]),
+  breed: z.string().max(160).optional().nullable(),
+  shortDescription: z.string().min(10).max(500),
+  story: z.string().max(5000).optional().nullable(),
+  coverImageUrl: z.string().url().optional().nullable(),
+  galleryIntro: z.string().max(1000).optional().nullable(),
+  status: z.enum(["public_available", "public_limited", "fully_booked", "hidden", "archived"]),
+  totalOwnershipSlots: z.number().int().min(1).max(3),
+  baseMonthlyPriceMinor: z.number().int().min(0).max(100000000),
+  healthScore: z.number().int().min(0).max(100).default(50),
+  happinessScore: z.number().int().min(0).max(100).default(50),
+  milkPotentialScore: z.number().int().min(0).max(100).default(50),
+  careLevelScore: z.number().int().min(0).max(100).default(50),
+  isFeatured: z.boolean().default(false),
+  sortOrder: z.number().int().min(0).max(9999).default(0),
+  publishedAt: z.number().int().optional().nullable(),
+  media: z.array(animalMediaInput).max(20).default([]),
+});
+
+const animalUpdateInput = animalUpsertInput.extend({
+  id: z.number().int().positive(),
+});
+
+const animalVisibilityInput = z.object({
+  id: z.number().int().positive(),
+  mode: z.enum(["public", "hidden", "archived"]),
 });
 
 const bitrixAdminDashboardInput = z.object({
@@ -362,6 +416,111 @@ export const appRouter = router({
       return {
         success: true,
       } as const;
+    }),
+  }),
+  animals: router({
+    listPublic: publicProcedure.query(async () => {
+      return listPublicAnimals();
+    }),
+    getBySlug: publicProcedure.input(animalSlugInput).query(async ({ input }) => {
+      const animal = await getAnimalBySlug(input.slug);
+      if (!animal) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Животное не найдено." });
+      }
+      return animal;
+    }),
+  }),
+  plans: router({
+    listActive: publicProcedure.query(async () => {
+      return listActivePlans();
+    }),
+  }),
+  adminAnimals: router({
+    list: adminProcedure.query(async ({ ctx }) => {
+      await ensureSprintOneSeed(ctx.user.openId);
+      return listAdminAnimals(ctx.user.openId);
+    }),
+    create: adminProcedure.input(animalUpsertInput).mutation(async ({ ctx, input }) => {
+      const created = await createAnimalWithMedia({
+        ownerOpenId: ctx.user.openId,
+        name: input.name,
+        slug: input.slug,
+        species: input.species,
+        breed: input.breed ?? null,
+        shortDescription: input.shortDescription,
+        story: input.story ?? null,
+        coverImageUrl: input.coverImageUrl ?? null,
+        galleryIntro: input.galleryIntro ?? null,
+        status: input.status,
+        totalOwnershipSlots: input.totalOwnershipSlots,
+        baseMonthlyPriceMinor: input.baseMonthlyPriceMinor,
+        healthScore: input.healthScore,
+        happinessScore: input.happinessScore,
+        milkPotentialScore: input.milkPotentialScore,
+        careLevelScore: input.careLevelScore,
+        isFeatured: input.isFeatured ? 1 : 0,
+        sortOrder: input.sortOrder,
+        publishedAt: input.publishedAt ? new Date(input.publishedAt) : null,
+        media: input.media.map((item) => ({
+          animalId: 0,
+          kind: item.kind,
+          title: item.title,
+          alt: item.alt ?? null,
+          fileKey: item.fileKey,
+          url: item.url,
+          mimeType: item.mimeType,
+          sortOrder: item.sortOrder,
+          isCover: item.isCover ? 1 : 0,
+        })),
+      });
+
+      return created;
+    }),
+    update: adminProcedure.input(animalUpdateInput).mutation(async ({ ctx, input }) => {
+      const updated = await updateAnimalWithMedia(input.id, ctx.user.openId, {
+        name: input.name,
+        slug: input.slug,
+        species: input.species,
+        breed: input.breed ?? null,
+        shortDescription: input.shortDescription,
+        story: input.story ?? null,
+        coverImageUrl: input.coverImageUrl ?? null,
+        galleryIntro: input.galleryIntro ?? null,
+        status: input.status,
+        totalOwnershipSlots: input.totalOwnershipSlots,
+        baseMonthlyPriceMinor: input.baseMonthlyPriceMinor,
+        healthScore: input.healthScore,
+        happinessScore: input.happinessScore,
+        milkPotentialScore: input.milkPotentialScore,
+        careLevelScore: input.careLevelScore,
+        isFeatured: input.isFeatured ? 1 : 0,
+        sortOrder: input.sortOrder,
+        publishedAt: input.publishedAt ? new Date(input.publishedAt) : null,
+        media: input.media.map((item) => ({
+          animalId: 0,
+          kind: item.kind,
+          title: item.title,
+          alt: item.alt ?? null,
+          fileKey: item.fileKey,
+          url: item.url,
+          mimeType: item.mimeType,
+          sortOrder: item.sortOrder,
+          isCover: item.isCover ? 1 : 0,
+        })),
+      });
+
+      if (!updated) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Животное не найдено или недоступно для редактирования." });
+      }
+
+      return updated;
+    }),
+    setVisibility: adminProcedure.input(animalVisibilityInput).mutation(async ({ ctx, input }) => {
+      const updated = await setAnimalVisibility(input.id, ctx.user.openId, input.mode);
+      if (!updated) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Животное не найдено или недоступно для изменения статуса." });
+      }
+      return updated;
     }),
   }),
   animalPhotos: router({

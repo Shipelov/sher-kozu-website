@@ -22,6 +22,142 @@ export const users = mysqlTable("users", {
   lastSignedIn: timestamp("lastSignedIn").defaultNow().notNull(),
 });
 
+export const animalSpeciesEnum = mysqlEnum("animalSpecies", ["goat", "sheep"]);
+export const animalStatusEnum = mysqlEnum("animalStatus", ["public_available", "public_limited", "fully_booked", "hidden", "archived"]);
+export const familyStatusEnum = mysqlEnum("familyStatus", ["active", "paused", "archived"]);
+export const ownershipStatusEnum = mysqlEnum("ownershipStatus", ["pending_payment", "active", "expired", "cancelled"]);
+export const planStatusEnum = mysqlEnum("planStatus", ["draft", "active", "archived"]);
+export const walletStatusEnum = mysqlEnum("walletStatus", ["active", "frozen", "archived"]);
+export const walletTransactionTypeEnum = mysqlEnum("walletTransactionType", ["topup", "spend", "reward", "admin_grant", "admin_adjustment", "refund", "expiry"]);
+export const walletTransactionDirectionEnum = mysqlEnum("walletTransactionDirection", ["credit", "debit"]);
+
+export const families = mysqlTable("families", {
+  id: int("id").autoincrement().primaryKey(),
+  ownerOpenId: varchar("ownerOpenId", { length: 64 }).notNull(),
+  name: varchar("name", { length: 180 }).notNull(),
+  slug: varchar("slug", { length: 120 }).notNull().unique(),
+  status: familyStatusEnum.default("active").notNull(),
+  maxAnimals: int("maxAnimals").default(10).notNull(),
+  notes: text("notes"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export const animals = mysqlTable("animals", {
+  id: int("id").autoincrement().primaryKey(),
+  ownerOpenId: varchar("ownerOpenId", { length: 64 }).notNull(),
+  name: varchar("name", { length: 160 }).notNull(),
+  slug: varchar("slug", { length: 120 }).notNull().unique(),
+  species: animalSpeciesEnum.notNull(),
+  breed: varchar("breed", { length: 160 }),
+  birthDate: timestamp("birthDate"),
+  shortDescription: varchar("shortDescription", { length: 255 }),
+  story: text("story"),
+  coverImageUrl: text("coverImageUrl"),
+  galleryIntro: text("galleryIntro"),
+  status: animalStatusEnum.default("public_available").notNull(),
+  totalOwnershipSlots: int("totalOwnershipSlots").default(3).notNull(),
+  baseMonthlyPriceMinor: int("baseMonthlyPriceMinor").default(0).notNull(),
+  healthScore: int("healthScore").default(50).notNull(),
+  happinessScore: int("happinessScore").default(50).notNull(),
+  milkPotentialScore: int("milkPotentialScore").default(50).notNull(),
+  careLevelScore: int("careLevelScore").default(0).notNull(),
+  isFeatured: int("isFeatured").default(0).notNull(),
+  sortOrder: int("sortOrder").default(0).notNull(),
+  publishedAt: timestamp("publishedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export const animalMedia = mysqlTable("animalMedia", {
+  id: int("id").autoincrement().primaryKey(),
+  animalId: int("animalId").notNull(),
+  kind: mysqlEnum("animalMediaKind", ["image", "video", "document"]).default("image").notNull(),
+  title: varchar("title", { length: 160 }).notNull(),
+  alt: varchar("alt", { length: 255 }),
+  fileKey: varchar("fileKey", { length: 255 }),
+  url: text("url").notNull(),
+  mimeType: varchar("mimeType", { length: 120 }),
+  sortOrder: int("sortOrder").default(0).notNull(),
+  isCover: int("isCover").default(0).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export const plans = mysqlTable("plans", {
+  id: int("id").autoincrement().primaryKey(),
+  ownerOpenId: varchar("ownerOpenId", { length: 64 }).notNull(),
+  code: varchar("code", { length: 64 }).notNull().unique(),
+  name: varchar("name", { length: 160 }).notNull(),
+  description: text("description"),
+  status: planStatusEnum.default("draft").notNull(),
+  basePriceMinor: int("basePriceMinor").default(0).notNull(),
+  maxOwnersPerAnimal: int("maxOwnersPerAnimal").default(3).notNull(),
+  benefitsSummary: text("benefitsSummary"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export const planDurations = mysqlTable("planDurations", {
+  id: int("id").autoincrement().primaryKey(),
+  planId: int("planId").notNull(),
+  months: int("months").notNull(),
+  label: varchar("label", { length: 80 }).notNull(),
+  priceMinor: int("priceMinor").notNull(),
+  isDefault: int("isDefault").default(0).notNull(),
+  isActive: int("isActive").default(1).notNull(),
+  sortOrder: int("sortOrder").default(0).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export const animalOwnerships = mysqlTable("animalOwnerships", {
+  id: int("id").autoincrement().primaryKey(),
+  ownerOpenId: varchar("ownerOpenId", { length: 64 }).notNull(),
+  animalId: int("animalId").notNull(),
+  familyId: int("familyId").notNull(),
+  planId: int("planId").notNull(),
+  planDurationId: int("planDurationId").notNull(),
+  slotIndex: int("slotIndex").notNull(),
+  status: ownershipStatusEnum.default("pending_payment").notNull(),
+  startsAt: timestamp("startsAt").notNull(),
+  endsAt: timestamp("endsAt").notNull(),
+  priceMinor: int("priceMinor").default(0).notNull(),
+  paidAt: timestamp("paidAt"),
+  cancelledAt: timestamp("cancelledAt"),
+  notes: text("notes"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export const wallets = mysqlTable("wallets", {
+  id: int("id").autoincrement().primaryKey(),
+  ownerOpenId: varchar("ownerOpenId", { length: 64 }).notNull(),
+  familyId: int("familyId").notNull(),
+  status: walletStatusEnum.default("active").notNull(),
+  balanceMinor: int("balanceMinor").default(0).notNull(),
+  currencyCode: varchar("currencyCode", { length: 12 }).default("SKC").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export const walletTransactions = mysqlTable("walletTransactions", {
+  id: int("id").autoincrement().primaryKey(),
+  ownerOpenId: varchar("ownerOpenId", { length: 64 }).notNull(),
+  walletId: int("walletId").notNull(),
+  familyId: int("familyId").notNull(),
+  transactionType: walletTransactionTypeEnum.notNull(),
+  direction: walletTransactionDirectionEnum.notNull(),
+  amountMinor: int("amountMinor").notNull(),
+  balanceAfterMinor: int("balanceAfterMinor").default(0).notNull(),
+  memo: varchar("memo", { length: 255 }),
+  referenceType: varchar("referenceType", { length: 64 }),
+  referenceId: varchar("referenceId", { length: 64 }),
+  emittedByOpenId: varchar("emittedByOpenId", { length: 64 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
 export const animalPhotos = mysqlTable("animalPhotos", {
   id: int("id").autoincrement().primaryKey(),
   animalSlug: varchar("animalSlug", { length: 64 }).notNull(),
@@ -202,6 +338,30 @@ export const integrationAudits = mysqlTable("integrationAudits", {
 
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
+
+export type Family = typeof families.$inferSelect;
+export type InsertFamily = typeof families.$inferInsert;
+
+export type Animal = typeof animals.$inferSelect;
+export type InsertAnimal = typeof animals.$inferInsert;
+
+export type AnimalMedium = typeof animalMedia.$inferSelect;
+export type InsertAnimalMedium = typeof animalMedia.$inferInsert;
+
+export type Plan = typeof plans.$inferSelect;
+export type InsertPlan = typeof plans.$inferInsert;
+
+export type PlanDuration = typeof planDurations.$inferSelect;
+export type InsertPlanDuration = typeof planDurations.$inferInsert;
+
+export type AnimalOwnership = typeof animalOwnerships.$inferSelect;
+export type InsertAnimalOwnership = typeof animalOwnerships.$inferInsert;
+
+export type Wallet = typeof wallets.$inferSelect;
+export type InsertWallet = typeof wallets.$inferInsert;
+
+export type WalletTransaction = typeof walletTransactions.$inferSelect;
+export type InsertWalletTransaction = typeof walletTransactions.$inferInsert;
 
 export type AnimalPhoto = typeof animalPhotos.$inferSelect;
 export type InsertAnimalPhoto = typeof animalPhotos.$inferInsert;
