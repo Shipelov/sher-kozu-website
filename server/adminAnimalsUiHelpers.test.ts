@@ -3,9 +3,11 @@ import {
   buildAnimalGalleryMedia,
   buildAnimalMutationPayload,
   createEmptyAnimalForm,
+  createPhotoDraft,
   filterAdminAnimals,
   getNextVisibilityMode,
   getStatusBadge,
+  hasPhotoDraftChanges,
   mergeCoverIntoForm,
   normalizeAnimalFormValues,
   slugifyAnimalName,
@@ -91,6 +93,7 @@ const uploadedPhotos = [
     src: "https://cdn.example.com/marta-1.jpg",
     title: "Марта у сада",
     meta: "Загружено владельцем · 240 KB",
+    alt: "Марта у сада на прогулке",
     isUploaded: true as const,
     ownerOpenId: "owner-1",
     createdAt: "2026-03-16T10:00:00.000Z",
@@ -163,7 +166,7 @@ describe("Admin animals UI helpers", () => {
       {
         kind: "image",
         title: "Марта у сада",
-        alt: "Марта у сада",
+        alt: "Марта у сада на прогулке",
         fileKey: "user-101",
         url: "https://cdn.example.com/marta-1.jpg",
         mimeType: "image/jpeg",
@@ -173,7 +176,7 @@ describe("Admin animals UI helpers", () => {
       {
         kind: "image",
         title: "Утренний портрет",
-        alt: "Утренний портрет",
+        alt: "Загружено владельцем · 198 KB",
         fileKey: "user-102",
         url: "https://cdn.example.com/marta-2.jpg",
         mimeType: "image/jpeg",
@@ -204,6 +207,25 @@ describe("Admin animals UI helpers", () => {
     expect(validateGalleryUpload("image/jpeg", 200_000)).toEqual({ hasAllowedType: true, hasAllowedSize: true });
     expect(validateGalleryUpload("application/pdf", 200_000)).toEqual({ hasAllowedType: false, hasAllowedSize: true });
     expect(validateGalleryUpload("image/png", 9_000_000)).toEqual({ hasAllowedType: true, hasAllowedSize: false });
+  });
+
+  it("creates draft metadata from explicit alt or falls back to meta", () => {
+    expect(createPhotoDraft(uploadedPhotos[0])).toEqual({
+      title: "Марта у сада",
+      alt: "Марта у сада на прогулке",
+    });
+
+    expect(createPhotoDraft(uploadedPhotos[1])).toEqual({
+      title: "Утренний портрет",
+      alt: "Загружено владельцем · 198 KB",
+    });
+  });
+
+  it("detects whether photo draft values changed after trimming", () => {
+    expect(hasPhotoDraftChanges(uploadedPhotos[0], undefined)).toBe(false);
+    expect(hasPhotoDraftChanges(uploadedPhotos[0], { title: "  Марта у сада  ", alt: "Марта у сада на прогулке" })).toBe(false);
+    expect(hasPhotoDraftChanges(uploadedPhotos[0], { title: "Марта у сада", alt: "Новый alt" })).toBe(true);
+    expect(hasPhotoDraftChanges(uploadedPhotos[1], { title: "Утренний портрет 2", alt: "Загружено владельцем · 198 KB" })).toBe(true);
   });
 
   it("syncs cover image url from uploaded gallery", () => {

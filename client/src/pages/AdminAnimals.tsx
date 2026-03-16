@@ -116,6 +116,23 @@ type GalleryPhoto = {
 
 type GalleryPhotoDrafts = Record<number, { title: string; alt: string }>;
 
+export function createPhotoDraft(photo: Pick<GalleryPhoto, "title" | "alt" | "meta">) {
+  return {
+    title: photo.title,
+    alt: photo.alt ?? photo.meta ?? "",
+  };
+}
+
+export function hasPhotoDraftChanges(
+  photo: Pick<GalleryPhoto, "title" | "alt" | "meta">,
+  draft?: { title: string; alt: string }
+) {
+  if (!draft) return false;
+
+  const initial = createPhotoDraft(photo);
+  return draft.title.trim() !== initial.title.trim() || draft.alt.trim() !== initial.alt.trim();
+}
+
 const ACCEPTED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"] as const;
 const MAX_UPLOAD_SIZE_BYTES = 8_000_000;
 
@@ -231,7 +248,7 @@ export function buildAnimalGalleryMedia(photos: GalleryPhoto[]): AdminAnimalMedi
     .map((photo, index) => ({
       kind: "image" as const,
       title: photo.title,
-      alt: photo.title,
+      alt: trimToNull(photo.alt ?? photo.meta ?? "") ?? photo.title,
       fileKey: photo.id,
       url: photo.src,
       mimeType: "image/jpeg",
@@ -589,25 +606,33 @@ function AnimalGalleryManager({
     reorderPhotos.mutate({ animalSlug, photoIds: reorderedIds });
   }
 
-  function updateDraft(photoId: number, key: "title" | "alt", value: string) {
-    setPhotoDrafts((current) => ({
-      ...current,
-      [photoId]: {
-        title: current[photoId]?.title ?? "",
-        alt: current[photoId]?.alt ?? "",
-        [key]: value,
-      },
-    }));
+  function updateDraft(photo: GalleryPhoto, key: "title" | "alt", value: string) {
+    setPhotoDrafts((current) => {
+      const initial = createPhotoDraft(photo);
+      return {
+        ...current,
+        [photo.photoId]: {
+          title: current[photo.photoId]?.title ?? initial.title,
+          alt: current[photo.photoId]?.alt ?? initial.alt,
+          [key]: value,
+        },
+      };
+    });
   }
 
-  async function savePhotoMeta(photoId: number) {
-    const draft = photoDrafts[photoId];
-    if (!draft) return;
+  async function savePhotoMeta(photo: GalleryPhoto) {
+    const draft = photoDrafts[photo.photoId] ?? createPhotoDraft(photo);
 
     await updatePhotoMeta.mutateAsync({
-      photoId,
+      photoId: photo.photoId,
       title: draft.title.trim() || "Фото животного",
       alt: draft.alt.trim() || null,
+    });
+
+    setPhotoDrafts((current) => {
+      const next = { ...current };
+      delete next[photo.photoId];
+      return next;
     });
   }
 
@@ -664,8 +689,8 @@ function AnimalGalleryManager({
                       <Label htmlFor={`photo-title-${image.photoId}`}>Название фото</Label>
                       <Input
                         id={`photo-title-${image.photoId}`}
-                        value={photoDrafts[image.photoId]?.title ?? image.title}
-                        onChange={(event) => updateDraft(image.photoId, "title", event.target.value)}
+                        value={photoDrafts[image.photoId]?.title ?? createPhotoDraft(image).title}
+                        onChange={(event) => updateDraft(image, "title", event.target.value)}
                         placeholder="Утренний портрет"
                       />
                     </div>
@@ -673,8 +698,8 @@ function AnimalGalleryManager({
                       <Label htmlFor={`photo-alt-${image.photoId}`}>Alt-текст</Label>
                       <Textarea
                         id={`photo-alt-${image.photoId}`}
-                        value={photoDrafts[image.photoId]?.alt ?? image.alt ?? image.meta ?? ""}
-                        onChange={(event) => updateDraft(image.photoId, "alt", event.target.value)}
+                        value={photoDrafts[image.photoId]?.alt ?? createPhotoDraft(image).alt}
+                        onChange={(event) => updateDraft(image, "alt", event.target.value)}
                         placeholder="Коза Марта у деревянного загона на утреннем свете"
                         rows={3}
                       />
@@ -683,8 +708,8 @@ function AnimalGalleryManager({
                       type="button"
                       variant="outline"
                       className="rounded-full"
-                      onClick={() => void savePhotoMeta(image.photoId)}
-                      disabled={updatePhotoMeta.isPending}
+                      onClick={() => void savePhotoMeta(image)}
+                      disabled={updatePhotoMeta.isPending || !hasPhotoDraftChanges(image, photoDrafts[image.photoId])}
                     >
                       {updatePhotoMeta.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Pencil className="mr-2 h-4 w-4" />}
                       Сохранить подписи
