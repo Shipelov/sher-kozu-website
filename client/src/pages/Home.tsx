@@ -158,6 +158,74 @@ type PartnerAttachmentDraft = {
 const MAX_PARTNER_FILES = 3;
 const MAX_PARTNER_FILE_SIZE_BYTES = 10 * 1024 * 1024;
 
+type PartnerAttachmentKind = "document" | "image" | "archive" | "other";
+
+function getPartnerAttachmentKind(mimeType: string, fileName: string): PartnerAttachmentKind {
+  const normalizedMimeType = mimeType.toLowerCase();
+  const normalizedName = fileName.toLowerCase();
+
+  if (
+    normalizedMimeType.startsWith("image/") ||
+    /\.(jpg|jpeg|png|gif|webp|svg|bmp|tiff|heic)$/i.test(normalizedName)
+  ) {
+    return "image";
+  }
+
+  if (
+    normalizedMimeType.includes("zip") ||
+    normalizedMimeType.includes("rar") ||
+    normalizedMimeType.includes("7z") ||
+    normalizedMimeType.includes("tar") ||
+    /\.(zip|rar|7z|tar|gz|tgz)$/i.test(normalizedName)
+  ) {
+    return "archive";
+  }
+
+  if (
+    normalizedMimeType.includes("pdf") ||
+    normalizedMimeType.includes("word") ||
+    normalizedMimeType.includes("document") ||
+    normalizedMimeType.includes("sheet") ||
+    normalizedMimeType.includes("excel") ||
+    normalizedMimeType.includes("presentation") ||
+    normalizedMimeType.includes("powerpoint") ||
+    normalizedMimeType.startsWith("text/") ||
+    /\.(pdf|doc|docx|xls|xlsx|ppt|pptx|txt|rtf|csv)$/i.test(normalizedName)
+  ) {
+    return "document";
+  }
+
+  return "other";
+}
+
+function getPartnerAttachmentBadge(kind: PartnerAttachmentKind) {
+  if (kind === "image") {
+    return {
+      label: "Изображение",
+      className: "border-emerald-200 bg-emerald-50 text-emerald-700",
+    };
+  }
+
+  if (kind === "archive") {
+    return {
+      label: "Архив",
+      className: "border-amber-200 bg-amber-50 text-amber-700",
+    };
+  }
+
+  if (kind === "document") {
+    return {
+      label: "Документ",
+      className: "border-sky-200 bg-sky-50 text-sky-700",
+    };
+  }
+
+  return {
+    label: "Файл",
+    className: "border-stone-200 bg-stone-100 text-stone-700",
+  };
+}
+
 function formatAttachmentSize(bytes: number) {
   if (bytes < 1024) return `${bytes} Б`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} КБ`;
@@ -723,17 +791,27 @@ export default function Home() {
                       </div>
                       {partnerAttachments.length ? (
                         <div className="space-y-2">
-                          {partnerAttachments.map((item) => (
-                            <div key={`${item.name}-${item.size}`} className="flex items-center justify-between gap-3 rounded-xl border border-stone-200 bg-white px-3 py-2 text-sm">
-                              <div className="min-w-0 flex-1">
-                                <p className="truncate font-medium text-stone-800">{item.name}</p>
-                                <p className="text-xs text-stone-500">{formatAttachmentSize(item.size)} · {item.mimeType}</p>
+                          {partnerAttachments.map((item) => {
+                            const attachmentKind = getPartnerAttachmentKind(item.mimeType, item.name);
+                            const attachmentBadge = getPartnerAttachmentBadge(attachmentKind);
+
+                            return (
+                              <div key={`${item.name}-${item.size}`} className="flex items-center justify-between gap-3 rounded-xl border border-stone-200 bg-white px-3 py-2 text-sm">
+                                <div className="min-w-0 flex-1">
+                                  <div className="flex flex-wrap items-center gap-2">
+                                    <p className="truncate font-medium text-stone-800">{item.name}</p>
+                                    <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium ${attachmentBadge.className}`}>
+                                      {attachmentBadge.label}
+                                    </span>
+                                  </div>
+                                  <p className="text-xs text-stone-500">{formatAttachmentSize(item.size)} · {item.mimeType}</p>
+                                </div>
+                                <Button type="button" variant="ghost" className="shrink-0 text-rose-600 hover:text-rose-700" onClick={() => removePartnerAttachment(item.name, item.size)} aria-label={`Удалить файл ${item.name}`}>
+                                  Удалить
+                                </Button>
                               </div>
-                              <Button type="button" variant="ghost" className="shrink-0 text-rose-600 hover:text-rose-700" onClick={() => removePartnerAttachment(item.name, item.size)} aria-label={`Удалить файл ${item.name}`}>
-                                Удалить
-                              </Button>
-                            </div>
-                          ))}
+                            );
+                          })}
                         </div>
                       ) : (
                         <div className="rounded-xl border border-dashed border-stone-200 bg-stone-50 px-3 py-3 text-sm text-stone-500">
