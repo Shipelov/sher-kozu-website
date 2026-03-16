@@ -687,23 +687,31 @@ export default function Home() {
                       <Upload className="mt-0.5 h-5 w-5 text-stone-400" />
                     </div>
                     <Input id="partner-attachments" type="file" multiple onChange={handlePartnerAttachmentSelect} className="cursor-pointer bg-white" />
-                    {partnerAttachments.length ? (
-                      <div className="space-y-2">
-                        {partnerAttachments.map((item) => (
-                          <div key={`${item.name}-${item.size}`} className="flex items-center justify-between gap-3 rounded-xl border border-stone-200 bg-white px-3 py-2 text-sm">
-                            <div className="min-w-0">
-                              <p className="truncate font-medium text-stone-800">{item.name}</p>
-                              <p className="text-xs text-stone-500">{formatAttachmentSize(item.size)} · {item.mimeType}</p>
-                            </div>
-                            <Button type="button" variant="ghost" className="shrink-0 text-stone-500 hover:text-stone-900" onClick={() => removePartnerAttachment(item.name, item.size)}>
-                              Удалить
-                            </Button>
-                          </div>
-                        ))}
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between gap-3">
+                        <p className="text-sm font-medium text-stone-800">Выбранные вложения</p>
+                        <span className="text-xs text-stone-500">{partnerAttachments.length} шт.</span>
                       </div>
-                    ) : (
-                      <p className="text-sm text-stone-500">Файлы пока не выбраны.</p>
-                    )}
+                      {partnerAttachments.length ? (
+                        <div className="space-y-2">
+                          {partnerAttachments.map((item) => (
+                            <div key={`${item.name}-${item.size}`} className="flex items-center justify-between gap-3 rounded-xl border border-stone-200 bg-white px-3 py-2 text-sm">
+                              <div className="min-w-0 flex-1">
+                                <p className="truncate font-medium text-stone-800">{item.name}</p>
+                                <p className="text-xs text-stone-500">{formatAttachmentSize(item.size)} · {item.mimeType}</p>
+                              </div>
+                              <Button type="button" variant="ghost" className="shrink-0 text-rose-600 hover:text-rose-700" onClick={() => removePartnerAttachment(item.name, item.size)} aria-label={`Удалить файл ${item.name}`}>
+                                Удалить
+                              </Button>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="rounded-xl border border-dashed border-stone-200 bg-stone-50 px-3 py-3 text-sm text-stone-500">
+                          Файлы пока не выбраны. После выбора они появятся в списке ниже, и каждый файл можно будет удалить до отправки заявки.
+                        </div>
+                      )}
+                    </div>
                   </div>
                   <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <p className="text-xs leading-6 text-stone-500">
