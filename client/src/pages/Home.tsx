@@ -748,9 +748,16 @@ export default function Home() {
                     <div className="flex items-start justify-between gap-4">
                       <div>
                         <Label htmlFor="partner-attachments" className="text-sm font-medium text-stone-900">Файлы для заявки</Label>
-                        <p className="mt-1 text-xs leading-5 text-stone-500">
-                          Можно приложить до {MAX_PARTNER_FILES} файлов размером до {formatAttachmentSize(MAX_PARTNER_FILE_SIZE_BYTES)} каждый: реквизиты, презентацию, прайс или PDF-коммерческое предложение.
-                        </p>
+                        <div className="mt-2 space-y-2 text-xs leading-5 text-stone-500">
+                          <p>
+                            Можно приложить до {MAX_PARTNER_FILES} файлов размером до {formatAttachmentSize(MAX_PARTNER_FILE_SIZE_BYTES)} каждый: реквизиты, презентацию, прайс или PDF-коммерческое предложение.
+                          </p>
+                          <div className="flex flex-wrap gap-2">
+                            <span className="rounded-full border border-sky-200 bg-sky-50 px-2.5 py-1 text-sky-700">Документы: PDF, DOC, DOCX, XLS, XLSX, PPT, PPTX, TXT, CSV</span>
+                            <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-emerald-700">Изображения: JPG, PNG, WEBP, SVG</span>
+                            <span className="rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-amber-700">Архивы: ZIP, RAR, 7Z</span>
+                          </div>
+                        </div>
                       </div>
                       <Upload className="mt-0.5 h-5 w-5 text-stone-400" />
                     </div>
