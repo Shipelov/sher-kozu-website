@@ -45,6 +45,9 @@ describe("page visual integration source smoke", () => {
     expect(appSource).toContain('path="/admin"');
     expect(appSource).toContain("component={AnimalProfile}");
     expect(appSource).toContain("component={AdminHub}");
+    expect(appSource).toContain("function normalizeRoutePath");
+    expect(appSource).toContain("pathname.replace(/%20+$/g");
+    expect(appSource).toContain("<RouteNormalizer />");
   });
 
   it("keeps navbar entry dynamic for the current featured animal", () => {
