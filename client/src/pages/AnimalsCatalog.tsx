@@ -16,8 +16,15 @@ const speciesConfig = {
     tone: "border-amber-200 bg-amber-50 text-amber-900",
     emptyTitle: "Козы скоро появятся",
     emptyText: "Как только администратор опубликует новые профили коз, они появятся в этом разделе галереи.",
-    soldEmptyTitle: "Проданных коз пока нет",
-    soldEmptyText: "Когда в разделе коз появятся уже закреплённые за семьями животные, они отобразятся здесь как проданные.",
+    relationshipEmptyTitle: "Коз в отношениях пока нет",
+    relationshipEmptyText:
+      "Когда у коз появится временный владелец на все доли, они отобразятся здесь со статусом «в отношениях».",
+    sharedEmptyTitle: "Коз для совместного статуса пока нет",
+    sharedEmptyText:
+      "Как только у коз появится частичная занятость, они отобразятся здесь со статусом «можно шерить».",
+    availableEmptyTitle: "Свободных коз пока нет",
+    availableEmptyText:
+      "Когда в разделе коз появятся полностью свободные профили, они будут показаны здесь со статусом «на выданье».",
     icon: Heart,
   },
   sheep: {
@@ -28,14 +35,21 @@ const speciesConfig = {
     tone: "border-emerald-200 bg-emerald-50 text-emerald-900",
     emptyTitle: "Овцы скоро появятся",
     emptyText: "После публикации первых овец в системе здесь откроется отдельная галерея с карточками и переходом в профиль.",
-    soldEmptyTitle: "Проданных овец пока нет",
-    soldEmptyText: "Как только все слоты у овцы будут заняты, она появится в этом фильтре как проданная.",
+    relationshipEmptyTitle: "Овец в отношениях пока нет",
+    relationshipEmptyText:
+      "Когда у овцы все доли будут заняты временным владельцем, она появится здесь со статусом «в отношениях».",
+    sharedEmptyTitle: "Овец для шеринг-статуса пока нет",
+    sharedEmptyText:
+      "Когда у овцы появится частичная занятость, она будет показана здесь со статусом «можно шерить».",
+    availableEmptyTitle: "Свободных овец пока нет",
+    availableEmptyText:
+      "Как только овца будет полностью свободна и готова к сделке, она появится здесь со статусом «на выданье».",
     icon: Waves,
   },
 } as const;
 
 type SupportedSpecies = keyof typeof speciesConfig;
-type StatusFilter = "available" | "sold";
+type StatusFilter = "relationship" | "available" | "shared";
 
 type CatalogAnimal = {
   id: number;
@@ -54,33 +68,40 @@ const statusFilterOptions: Array<{
   value: StatusFilter;
   label: string;
 }> = [
-  { value: "available", label: "В наличии" },
-  { value: "sold", label: "Продано" },
+  { value: "relationship", label: "В отношениях" },
+  { value: "available", label: "На выданье" },
+  { value: "shared", label: "Можно шерить" },
 ];
 
-const getAvailabilityTone = (slots: number, total: number) => {
+function getRelationshipStatus(slots: number, total: number) {
   if (slots <= 0) {
     return {
-      label: "Статус: продано",
-      className: "border-stone-300 bg-stone-100 text-stone-700",
-      filter: "sold" as const,
+      filter: "relationship" as const,
+      label: "Статус: в отношениях",
+      helper: "На 100% есть временный владелец. Можно указать срок действия статуса до конкретной даты в профиле сделки.",
+      className: "border-rose-200 bg-rose-50 text-rose-800",
+      compactLabel: "В отношениях",
     };
   }
 
-  if (slots === 1 || slots < total) {
+  if (slots >= total) {
     return {
-      label: `Статус: в наличии ${slots} из ${total}`,
-      className: "border-amber-200 bg-amber-50 text-amber-800",
       filter: "available" as const,
+      label: "Статус: на выданье",
+      helper: "Профиль полностью свободен и готов к сделке.",
+      className: "border-emerald-200 bg-emerald-50 text-emerald-800",
+      compactLabel: "На выданье",
     };
   }
 
   return {
-    label: `Статус: в наличии ${slots} из ${total}`,
-    className: "border-emerald-200 bg-emerald-50 text-emerald-800",
-    filter: "available" as const,
+    filter: "shared" as const,
+    label: `Статус: можно шерить · свободно ${slots} из ${total}`,
+    helper: "Есть временный владелец, но не на 100%: можно рассмотреть совместный статус.",
+    className: "border-amber-200 bg-amber-50 text-amber-800",
+    compactLabel: "Можно шерить",
   };
-};
+}
 
 function AnimalsCatalogSkeleton() {
   return (
@@ -93,8 +114,9 @@ function AnimalsCatalogSkeleton() {
             <Skeleton className="h-5 w-full max-w-2xl" />
           </div>
           <div className="flex gap-3">
-            <Skeleton className="h-11 w-32" />
-            <Skeleton className="h-11 w-32" />
+            <Skeleton className="h-11 w-36" />
+            <Skeleton className="h-11 w-36" />
+            <Skeleton className="h-11 w-36" />
           </div>
           <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
             {Array.from({ length: 3 }).map((__, cardIndex) => (
@@ -129,14 +151,28 @@ function AnimalSpeciesSection({
   const Icon = config.icon;
 
   const filteredAnimals = useMemo(
-    () => animals.filter((animal) => getAvailabilityTone(animal.availableSlots, animal.totalOwnershipSlots).filter === filter),
+    () => animals.filter((animal) => getRelationshipStatus(animal.availableSlots, animal.totalOwnershipSlots).filter === filter),
     [animals, filter]
   );
 
-  const availableCount = animals.filter((animal) => animal.availableSlots > 0).length;
-  const soldCount = animals.filter((animal) => animal.availableSlots <= 0).length;
-  const emptyTitle = filter === "available" ? config.emptyTitle : config.soldEmptyTitle;
-  const emptyText = filter === "available" ? config.emptyText : config.soldEmptyText;
+  const relationshipCount = animals.filter((animal) => getRelationshipStatus(animal.availableSlots, animal.totalOwnershipSlots).filter === "relationship").length;
+  const availableCount = animals.filter((animal) => getRelationshipStatus(animal.availableSlots, animal.totalOwnershipSlots).filter === "available").length;
+  const sharedCount = animals.filter((animal) => getRelationshipStatus(animal.availableSlots, animal.totalOwnershipSlots).filter === "shared").length;
+
+  const emptyState = {
+    relationship: {
+      title: config.relationshipEmptyTitle,
+      text: config.relationshipEmptyText,
+    },
+    available: {
+      title: config.availableEmptyTitle,
+      text: config.availableEmptyText,
+    },
+    shared: {
+      title: config.sharedEmptyTitle,
+      text: config.sharedEmptyText,
+    },
+  }[filter];
 
   return (
     <section className="space-y-6">
@@ -164,9 +200,10 @@ function AnimalSpeciesSection({
           </div>
           <div className="rounded-[1.5rem] border border-stone-200 bg-stone-50 p-3 text-sm text-stone-700">
             <p className="text-xs uppercase tracking-[0.18em] text-stone-500">По статусам</p>
-            <div className="mt-2 flex items-center gap-2 text-stone-900">
-              <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-medium text-emerald-800">В наличии: {availableCount}</span>
-              <span className="rounded-full bg-stone-200 px-3 py-1 text-xs font-medium text-stone-700">Продано: {soldCount}</span>
+            <div className="mt-2 flex flex-wrap items-center gap-2 text-stone-900">
+              <span className="rounded-full bg-rose-100 px-3 py-1 text-xs font-medium text-rose-800">В отношениях: {relationshipCount}</span>
+              <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-medium text-emerald-800">На выданье: {availableCount}</span>
+              <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-medium text-amber-800">Можно шерить: {sharedCount}</span>
             </div>
           </div>
         </div>
@@ -197,7 +234,7 @@ function AnimalSpeciesSection({
       {filteredAnimals.length ? (
         <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
           {filteredAnimals.map((animal) => {
-            const availability = getAvailabilityTone(animal.availableSlots, animal.totalOwnershipSlots);
+            const availability = getRelationshipStatus(animal.availableSlots, animal.totalOwnershipSlots);
 
             return (
               <Link key={animal.id} href={`/animals/${animal.slug}`}>
@@ -233,6 +270,7 @@ function AnimalSpeciesSection({
                         <h3 className="text-2xl font-semibold text-stone-900">{animal.name}</h3>
                         <p className="text-sm text-stone-500">{animal.breed ?? `${config.singular} Sher Kozu`}</p>
                       </div>
+                      <p className="text-xs leading-5 text-stone-500">{availability.helper}</p>
                       <p className="line-clamp-3 text-sm leading-6 text-stone-600">{animal.shortDescription}</p>
                     </div>
 
@@ -249,8 +287,8 @@ function AnimalSpeciesSection({
       ) : (
         <Card className="border-dashed border-stone-300 bg-white/80 shadow-sm">
           <CardContent className="space-y-3 p-8 text-center">
-            <h3 className="text-2xl font-semibold text-stone-900">{emptyTitle}</h3>
-            <p className="mx-auto max-w-2xl text-sm leading-6 text-stone-600">{emptyText}</p>
+            <h3 className="text-2xl font-semibold text-stone-900">{emptyState.title}</h3>
+            <p className="mx-auto max-w-2xl text-sm leading-6 text-stone-600">{emptyState.text}</p>
           </CardContent>
         </Card>
       )}
@@ -270,75 +308,84 @@ export default function AnimalsCatalog() {
   const animals = data ?? [];
   const goats = animals.filter((animal) => animal.species === "goat");
   const sheep = animals.filter((animal) => animal.species === "sheep");
-  const totalAvailable = animals.filter((animal) => animal.availableSlots > 0).length;
-  const totalSold = animals.filter((animal) => animal.availableSlots <= 0).length;
+  const totalRelationship = animals.filter((animal) => getRelationshipStatus(animal.availableSlots, animal.totalOwnershipSlots).filter === "relationship").length;
+  const totalAvailable = animals.filter((animal) => getRelationshipStatus(animal.availableSlots, animal.totalOwnershipSlots).filter === "available").length;
+  const totalShared = animals.filter((animal) => getRelationshipStatus(animal.availableSlots, animal.totalOwnershipSlots).filter === "shared").length;
 
   return (
-    <main className="bg-gradient-to-b from-[#fbf6ef] via-white to-[#f7f3ed] text-stone-900">
-      <section className="container grid gap-8 py-16 md:grid-cols-[1.15fr_0.85fr] md:items-end md:py-20">
-        <div className="space-y-5">
-          <Badge className="rounded-full border border-primary/20 bg-primary/10 px-4 py-1.5 text-xs font-medium uppercase tracking-[0.24em] text-primary">
-            Галерея животных
-          </Badge>
-          <div className="space-y-4">
-            <h1 className="max-w-3xl text-4xl font-semibold tracking-tight text-stone-900 md:text-5xl">
-              Выберите раздел, затем отфильтруйте животных по статусу и откройте карточку козы или овцы с переходом в полноценный профиль.
-            </h1>
-            <p className="max-w-2xl text-base leading-7 text-stone-600 md:text-lg">
-              Галерея теперь устроена как понятный маршрут выбора: сначала вид животного, затем фильтр по наличию или продаже,
-              после чего остаётся компактная подборка карточек с аватаркой, статусом и именем.
-            </p>
+    <div className="bg-[#f7f1e8] pb-20 pt-10 text-stone-900 md:pt-14">
+      <section className="container space-y-8">
+        <div className="overflow-hidden rounded-[2.5rem] border border-stone-200 bg-white/95 shadow-xl shadow-stone-200/50">
+          <div className="grid gap-8 px-6 py-8 md:grid-cols-[1.35fr_0.95fr] md:px-10 md:py-10">
+            <div className="space-y-5">
+              <Badge className="rounded-full border border-stone-300 bg-stone-100 px-4 py-1.5 text-xs font-medium uppercase tracking-[0.28em] text-stone-700">
+                Галерея животных
+              </Badge>
+              <div className="space-y-4">
+                <h1 className="max-w-3xl text-4xl font-semibold tracking-tight text-stone-900 md:text-5xl">
+                  Выбирайте животное по типу отношений, а не только по виду.
+                </h1>
+                <p className="max-w-3xl text-base leading-8 text-stone-600 md:text-lg">
+                  Вкладка разделена на коз и овец, а внутри каждого раздела можно фильтровать профили по статусу участия: полностью занято, полностью свободно или доступно для совместного статуса.
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-3">
+                <Button asChild className="rounded-full bg-stone-900 px-6 text-white hover:bg-stone-800">
+                  <a href="#goats">Смотреть коз</a>
+                </Button>
+                <Button asChild variant="outline" className="rounded-full border-stone-300 bg-white text-stone-800 hover:bg-stone-50">
+                  <a href="#sheep">Смотреть овец</a>
+                </Button>
+              </div>
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-3">
+              <div className="space-y-2 rounded-2xl bg-stone-50 p-4">
+                <p className="text-xs uppercase tracking-[0.2em] text-stone-500">В отношениях</p>
+                <p className="text-3xl font-semibold text-stone-900">{totalRelationship}</p>
+              </div>
+              <div className="space-y-2 rounded-2xl bg-stone-50 p-4">
+                <p className="text-xs uppercase tracking-[0.2em] text-stone-500">На выданье</p>
+                <p className="text-3xl font-semibold text-stone-900">{totalAvailable}</p>
+              </div>
+              <div className="space-y-2 rounded-2xl bg-stone-50 p-4">
+                <p className="text-xs uppercase tracking-[0.2em] text-stone-500">Можно шерить</p>
+                <p className="text-3xl font-semibold text-stone-900">{totalShared}</p>
+              </div>
+            </div>
           </div>
         </div>
 
-        <Card className="border-stone-200 bg-white/85 shadow-sm backdrop-blur">
-          <CardContent className="grid gap-4 p-6 text-sm text-stone-700 sm:grid-cols-4">
-            <div className="space-y-2 rounded-2xl bg-stone-50 p-4">
-              <p className="text-xs uppercase tracking-[0.2em] text-stone-500">Всего в галерее</p>
-              <p className="text-3xl font-semibold text-stone-900">{animals.length}</p>
-            </div>
-            <div className="space-y-2 rounded-2xl bg-stone-50 p-4">
-              <p className="text-xs uppercase tracking-[0.2em] text-stone-500">Козы</p>
-              <p className="text-3xl font-semibold text-stone-900">{goats.length}</p>
-            </div>
-            <div className="space-y-2 rounded-2xl bg-stone-50 p-4">
-              <p className="text-xs uppercase tracking-[0.2em] text-stone-500">В наличии</p>
-              <p className="text-3xl font-semibold text-stone-900">{totalAvailable}</p>
-            </div>
-            <div className="space-y-2 rounded-2xl bg-stone-50 p-4">
-              <p className="text-xs uppercase tracking-[0.2em] text-stone-500">Продано</p>
-              <p className="text-3xl font-semibold text-stone-900">{totalSold}</p>
-            </div>
-          </CardContent>
-        </Card>
-      </section>
-
-      <section className="container space-y-10 pb-20">
-        <div className="flex flex-wrap gap-3">
-          <a href="#goats" className="inline-flex items-center gap-2 rounded-full border border-stone-200 bg-white px-5 py-3 text-sm font-medium text-stone-700 transition-colors hover:border-stone-300 hover:text-stone-900">
-            <Heart className="h-4 w-4" />
-            Козы
-          </a>
-          <a href="#sheep" className="inline-flex items-center gap-2 rounded-full border border-stone-200 bg-white px-5 py-3 text-sm font-medium text-stone-700 transition-colors hover:border-stone-300 hover:text-stone-900">
-            <Waves className="h-4 w-4" />
-            Овцы
-          </a>
-          <Link href={animals[0] ? `/animals/${animals[0].slug}` : "/animals"}>
-            <Button variant="outline" className="rounded-full border-stone-300 bg-white">
-              <Sparkles className="mr-2 h-4 w-4" />
-              Открыть профиль недели
-            </Button>
-          </Link>
+        <div className="grid gap-4 rounded-[2rem] border border-stone-200 bg-white/90 p-6 text-sm leading-7 text-stone-600 shadow-sm md:grid-cols-3">
+          <div className="space-y-2 rounded-[1.5rem] bg-rose-50 p-4">
+            <p className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.2em] text-rose-700">
+              <Sparkles className="h-4 w-4" /> В отношениях
+            </p>
+            <p>На 100% есть временный владелец. Для такого статуса логично показывать срок, до какой даты животное закреплено.</p>
+          </div>
+          <div className="space-y-2 rounded-[1.5rem] bg-emerald-50 p-4">
+            <p className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.2em] text-emerald-700">
+              <Heart className="h-4 w-4" /> На выданье
+            </p>
+            <p>Профиль полностью свободен и готов к сделке: временного владельца нет, все доли доступны.</p>
+          </div>
+          <div className="space-y-2 rounded-[1.5rem] bg-amber-50 p-4">
+            <p className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.2em] text-amber-700">
+              <Waves className="h-4 w-4" /> Можно шерить
+            </p>
+            <p>Есть временный владелец, но не на 100%. Животное можно рассматривать для совместного статуса или совместной сделки.</p>
+          </div>
         </div>
 
-        <div id="goats">
-          <AnimalSpeciesSection species="goat" animals={goats} filter={goatFilter} onFilterChange={setGoatFilter} />
-        </div>
-
-        <div id="sheep">
-          <AnimalSpeciesSection species="sheep" animals={sheep} filter={sheepFilter} onFilterChange={setSheepFilter} />
+        <div className="space-y-12">
+          <div id="goats">
+            <AnimalSpeciesSection species="goat" animals={goats} filter={goatFilter} onFilterChange={setGoatFilter} />
+          </div>
+          <div id="sheep">
+            <AnimalSpeciesSection species="sheep" animals={sheep} filter={sheepFilter} onFilterChange={setSheepFilter} />
+          </div>
         </div>
       </section>
-    </main>
+    </div>
   );
 }

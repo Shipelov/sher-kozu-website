@@ -97,16 +97,18 @@ describe("page visual integration source smoke", () => {
     expect(adminAnimalsSource).toContain('params.get("status")');
   });
 
-  it("renders animal gallery with separate goats and sheep sections, status filters and links to full profiles", () => {
+  it("renders animal gallery with separate goats and sheep sections, relationship statuses and links to full profiles", () => {
     expect(animalsCatalogSource).toContain("Галерея животных");
     expect(animalsCatalogSource).toContain("Козы");
     expect(animalsCatalogSource).toContain("Овцы");
     expect(animalsCatalogSource).toContain('id="goats"');
     expect(animalsCatalogSource).toContain('id="sheep"');
-    expect(animalsCatalogSource).toContain("В наличии");
-    expect(animalsCatalogSource).toContain("Продано");
+    expect(animalsCatalogSource).toContain("В отношениях");
+    expect(animalsCatalogSource).toContain("На выданье");
+    expect(animalsCatalogSource).toContain("Можно шерить");
     expect(animalsCatalogSource).toContain("goatFilter");
     expect(animalsCatalogSource).toContain("sheepFilter");
+    expect(animalsCatalogSource).toContain("getRelationshipStatus");
     expect(animalsCatalogSource).toContain("Открыть полный профиль");
     expect(animalsCatalogSource).toContain('href={`/animals/${animal.slug}`}');
   });
