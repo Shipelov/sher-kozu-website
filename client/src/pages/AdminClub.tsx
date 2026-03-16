@@ -61,6 +61,10 @@ import {
   buildAdminClubPostsTabProps,
 } from "./adminClubCrudTabs";
 import {
+  AdminClubActivityTabContent,
+  AdminClubBitrixTabContent,
+} from "./adminClubRemainingTabs";
+import {
   buildPaginationMeta,
   EntityFormCard,
   EntityListCard,
