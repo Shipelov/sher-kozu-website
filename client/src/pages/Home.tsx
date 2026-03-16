@@ -17,13 +17,17 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import {
   ArrowRight,
+  Archive,
   Building2,
   Calendar,
   CheckCircle2,
   ChevronRight,
   Clock3,
+  FileText,
   Heart,
+  ImageIcon,
   Leaf,
+  Loader2,
   Mail,
   MapPin,
   Milk,
@@ -32,6 +36,7 @@ import {
   ShieldCheck,
   Sparkles,
   Star,
+  TriangleAlert,
   Upload,
   UserRound,
   Users,
@@ -157,6 +162,8 @@ type PartnerAttachmentDraft = {
 
 const MAX_PARTNER_FILES = 3;
 const MAX_PARTNER_FILE_SIZE_BYTES = 10 * 1024 * 1024;
+const MAX_PARTNER_TOTAL_SIZE_BYTES = 20 * 1024 * 1024;
+const PARTNER_ATTACHMENT_ACCEPT = ".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.jpg,.jpeg,.png,.webp,.svg,.zip,.rar,.7z";
 
 type PartnerAttachmentKind = "document" | "image" | "archive" | "other";
 
@@ -203,6 +210,7 @@ function getPartnerAttachmentBadge(kind: PartnerAttachmentKind) {
     return {
       label: "Изображение",
       className: "border-emerald-200 bg-emerald-50 text-emerald-700",
+      icon: ImageIcon,
     };
   }
 
@@ -210,6 +218,7 @@ function getPartnerAttachmentBadge(kind: PartnerAttachmentKind) {
     return {
       label: "Архив",
       className: "border-amber-200 bg-amber-50 text-amber-700",
+      icon: Archive,
     };
   }
 
@@ -217,12 +226,14 @@ function getPartnerAttachmentBadge(kind: PartnerAttachmentKind) {
     return {
       label: "Документ",
       className: "border-sky-200 bg-sky-50 text-sky-700",
+      icon: FileText,
     };
   }
 
   return {
     label: "Файл",
     className: "border-stone-200 bg-stone-100 text-stone-700",
+    icon: FileText,
   };
 }
 
@@ -280,6 +291,7 @@ function getStatusCopy(status: string | null | undefined) {
 export default function Home() {
   const [partnerLeadForm, setPartnerLeadForm] = useState<PartnerLeadFormState>(defaultPartnerLeadForm);
   const [partnerAttachments, setPartnerAttachments] = useState<PartnerAttachmentDraft[]>([]);
+  const [partnerAttachmentWarning, setPartnerAttachmentWarning] = useState<string | null>(null);
   const [latestSubmission, setLatestSubmission] = useState<{
     id: number;
     syncStatus: string | null;
@@ -303,9 +315,8 @@ export default function Home() {
       });
 
       if (result.synced) {
-        toast.success("Заявка отправлена в Bitrix24", {
-                          description: "Партнёрская заявка создана, синхронизирована с CRM пилота и включает ссылки на прикреплённые файлы.",
-
+        toast.success("Партнёрская заявка отправлена", {
+          description: "Заявка синхронизирована с Bitrix24. Следующий шаг — менеджер получит материалы, зафиксирует детали и свяжется с вами по выбранному каналу.",
         });
       } else {
         toast.error("Заявка сохранена, но CRM требует повторной синхронизации", {
@@ -315,6 +326,7 @@ export default function Home() {
 
       setPartnerLeadForm(defaultPartnerLeadForm());
       setPartnerAttachments([]);
+      setPartnerAttachmentWarning(null);
     },
     onError: (error) => {
       toast.error("Не удалось отправить партнёрскую заявку", {
@@ -324,16 +336,33 @@ export default function Home() {
   });
 
   const latestSubmissionStatus = useMemo(() => getStatusCopy(latestSubmission?.syncStatus), [latestSubmission?.syncStatus]);
+  const partnerAttachmentsTotalSize = useMemo(() => partnerAttachments.reduce((total, item) => total + item.size, 0), [partnerAttachments]);
+  const partnerAttachmentsRemainingSlots = MAX_PARTNER_FILES - partnerAttachments.length;
+  const partnerAttachmentsRemainingSize = Math.max(MAX_PARTNER_TOTAL_SIZE_BYTES - partnerAttachmentsTotalSize, 0);
+  const isPartnerAttachmentsNearTotalLimit = partnerAttachmentsTotalSize >= MAX_PARTNER_TOTAL_SIZE_BYTES * 0.8;
 
   const handlePartnerAttachmentSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const incomingFiles = Array.from(event.target.files ?? []);
     if (!incomingFiles.length) return;
 
+    let nextWarning: string | null = null;
+
     setPartnerAttachments((current) => {
       const next = [...current];
 
       for (const file of incomingFiles) {
+        const detectedKind = getPartnerAttachmentKind(file.type || "application/octet-stream", file.name);
+
+        if (detectedKind === "other") {
+          nextWarning = `Файл ${file.name} пропущен: формат не поддерживается.`;
+          toast.error("Неподдерживаемый формат файла", {
+            description: "Разрешены документы, изображения и архивы из списка рядом с полем загрузки.",
+          });
+          continue;
+        }
+
         if (next.length >= MAX_PARTNER_FILES) {
+          nextWarning = `Достигнут лимит: не более ${MAX_PARTNER_FILES} файлов в одной заявке.`;
           toast.error("Достигнут лимит файлов", {
             description: `Можно приложить не более ${MAX_PARTNER_FILES} файлов к одной заявке.`,
           });
@@ -341,8 +370,18 @@ export default function Home() {
         }
 
         if (file.size > MAX_PARTNER_FILE_SIZE_BYTES) {
+          nextWarning = `${file.name} превышает лимит ${formatAttachmentSize(MAX_PARTNER_FILE_SIZE_BYTES)} на один файл.`;
           toast.error("Файл слишком большой", {
             description: `${file.name} превышает лимит ${formatAttachmentSize(MAX_PARTNER_FILE_SIZE_BYTES)}.`,
+          });
+          continue;
+        }
+
+        const nextTotalSize = next.reduce((total, item) => total + item.size, 0) + file.size;
+        if (nextTotalSize > MAX_PARTNER_TOTAL_SIZE_BYTES) {
+          nextWarning = `Суммарный объём вложений не должен превышать ${formatAttachmentSize(MAX_PARTNER_TOTAL_SIZE_BYTES)}.`;
+          toast.error("Превышен суммарный объём вложений", {
+            description: `Общий размер файлов должен быть не больше ${formatAttachmentSize(MAX_PARTNER_TOTAL_SIZE_BYTES)}.`,
           });
           continue;
         }
@@ -358,11 +397,13 @@ export default function Home() {
       return next;
     });
 
+    setPartnerAttachmentWarning(nextWarning);
     event.target.value = "";
   };
 
   const removePartnerAttachment = (name: string, size: number) => {
     setPartnerAttachments((current) => current.filter((item) => !(item.name === name && item.size === size)));
+    setPartnerAttachmentWarning(null);
   };
 
   const handlePartnerLeadSubmit = async () => {
@@ -761,15 +802,27 @@ export default function Home() {
                       </div>
                       <Upload className="mt-0.5 h-5 w-5 text-stone-400" />
                     </div>
-                    <Input id="partner-attachments" type="file" multiple onChange={handlePartnerAttachmentSelect} className="cursor-pointer bg-white" />
+                    <Input id="partner-attachments" type="file" accept={PARTNER_ATTACHMENT_ACCEPT} multiple onChange={handlePartnerAttachmentSelect} className="cursor-pointer bg-white" disabled={createPartnerLead.isPending} />
                     <div className="space-y-3">
+                      {partnerAttachmentWarning ? (
+                        <div className="flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-800">
+                          <TriangleAlert className="mt-0.5 h-4 w-4 shrink-0" />
+                          <p>{partnerAttachmentWarning}</p>
+                        </div>
+                      ) : null}
+                      {isPartnerAttachmentsNearTotalLimit && partnerAttachments.length ? (
+                        <div className="flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-800">
+                          <TriangleAlert className="mt-0.5 h-4 w-4 shrink-0" />
+                          <p>Вы близки к суммарному лимиту вложений: осталось {formatAttachmentSize(partnerAttachmentsRemainingSize)}.</p>
+                        </div>
+                      ) : null}
                       <div className="flex items-center justify-between gap-3">
-                        <div className="flex items-center gap-3">
+                        <div className="flex flex-wrap items-center gap-3">
                           <p className="text-sm font-medium text-stone-800">Выбранные вложения</p>
                           <span className="text-xs text-stone-500">{partnerAttachments.length} шт.</span>
-                          <span className="text-xs text-stone-400">
-                            {`${(partnerAttachments.reduce((total, item) => total + item.size, 0) / (1024 * 1024)).toFixed(2)} МБ`}
-                          </span>
+                          <span className="text-xs text-stone-400">{formatAttachmentSize(partnerAttachmentsTotalSize)}</span>
+                          <span className="text-xs text-stone-400">Осталось файлов: {partnerAttachmentsRemainingSlots}</span>
+                          <span className="text-xs text-stone-400">Осталось объёма: {formatAttachmentSize(partnerAttachmentsRemainingSize)}</span>
                         </div>
                         {partnerAttachments.length ? (
                           <Button
@@ -784,11 +837,16 @@ export default function Home() {
                                   return;
                                 }
                               }
+                              const clearedSize = partnerAttachments.reduce((total, item) => total + item.size, 0);
                               setPartnerAttachments([]);
+                              setPartnerAttachmentWarning(null);
                               toast.success(
                                 clearedCount > 1
                                   ? `Список вложений очищен: ${clearedCount} файл(ов)`
                                   : "Вложение удалено из списка",
+                                {
+                                  description: `Удалено ${formatAttachmentSize(clearedSize)} материалов из черновика заявки.`,
+                                }
                               );
                             }}
                           >
@@ -801,19 +859,21 @@ export default function Home() {
                           {partnerAttachments.map((item) => {
                             const attachmentKind = getPartnerAttachmentKind(item.mimeType, item.name);
                             const attachmentBadge = getPartnerAttachmentBadge(attachmentKind);
+                            const AttachmentIcon = attachmentBadge.icon;
 
                             return (
                               <div key={`${item.name}-${item.size}`} className="flex items-center justify-between gap-3 rounded-xl border border-stone-200 bg-white px-3 py-2 text-sm">
                                 <div className="min-w-0 flex-1">
                                   <div className="flex flex-wrap items-center gap-2">
                                     <p className="truncate font-medium text-stone-800">{item.name}</p>
-                                    <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium ${attachmentBadge.className}`}>
+                                    <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium ${attachmentBadge.className}`}>
+                                      <AttachmentIcon className="h-3 w-3" />
                                       {attachmentBadge.label}
                                     </span>
                                   </div>
                                   <p className="text-xs text-stone-500">{formatAttachmentSize(item.size)} · {item.mimeType}</p>
                                 </div>
-                                <Button type="button" variant="ghost" className="shrink-0 text-rose-600 hover:text-rose-700" onClick={() => removePartnerAttachment(item.name, item.size)} aria-label={`Удалить файл ${item.name}`}>
+                                <Button type="button" variant="ghost" className="shrink-0 text-rose-600 hover:text-rose-700" onClick={() => removePartnerAttachment(item.name, item.size)} aria-label={`Удалить файл ${item.name}`} disabled={createPartnerLead.isPending}>
                                   Удалить
                                 </Button>
                               </div>
@@ -828,11 +888,21 @@ export default function Home() {
                     </div>
                   </div>
                   <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                    <p className="text-xs leading-6 text-stone-500">
-                      Отправляя форму, вы инициируете pilot-сценарий двусторонней интеграции Sher Kozu ↔ Bitrix24 только для партнёрских заявок.
-                    </p>
+                    <div className="space-y-1">
+                      <p className="text-xs leading-6 text-stone-500">
+                        Отправляя форму, вы инициируете pilot-сценарий двусторонней интеграции Sher Kozu ↔ Bitrix24 только для партнёрских заявок.
+                      </p>
+                      {createPartnerLead.isPending ? (
+                        <p className="text-xs font-medium text-primary">Заявка отправляется, пожалуйста не закрывайте страницу и не меняйте список вложений.</p>
+                      ) : null}
+                    </div>
                     <Button type="button" onClick={() => void handlePartnerLeadSubmit()} disabled={createPartnerLead.isPending} className="rounded-full px-6">
-                      {createPartnerLead.isPending ? "Отправляем в CRM..." : "Отправить партнёрскую заявку"}
+                      {createPartnerLead.isPending ? (
+                        <span className="inline-flex items-center gap-2">
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          Отправляем в CRM...
+                        </span>
+                      ) : "Отправить партнёрскую заявку"}
                     </Button>
                   </div>
                 </div>
