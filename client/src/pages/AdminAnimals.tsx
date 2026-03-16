@@ -106,12 +106,15 @@ type GalleryPhoto = {
   src: string;
   title: string;
   meta: string;
+  alt?: string | null;
   isUploaded: true;
   ownerOpenId: string;
   createdAt: string | number | Date;
   isCover: boolean;
   sortOrder: number;
 };
+
+type GalleryPhotoDrafts = Record<number, { title: string; alt: string }>;
 
 const ACCEPTED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"] as const;
 const MAX_UPLOAD_SIZE_BYTES = 8_000_000;
@@ -429,12 +432,26 @@ function AnimalGalleryManager({
   onCoverChange: (url: string) => void;
 }) {
   const utils = trpc.useUtils();
+  const [photoDrafts, setPhotoDrafts] = useState<GalleryPhotoDrafts>({});
   const photosQuery = trpc.animalPhotos.list.useQuery(
     { animalSlug },
     { enabled: Boolean(animalSlug.trim()) }
   );
 
   const galleryImages = useMemo(() => [...(photosQuery.data ?? [])].sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0)), [photosQuery.data]);
+
+  useEffect(() => {
+    setPhotoDrafts((current) => {
+      const next: GalleryPhotoDrafts = {};
+      for (const image of galleryImages) {
+        next[image.photoId] = current[image.photoId] ?? {
+          title: image.title,
+          alt: image.alt ?? image.meta ?? "",
+        };
+      }
+      return next;
+    });
+  }, [galleryImages]);
 
   const uploadPhoto = trpc.animalPhotos.upload.useMutation({
     onSuccess: async (created) => {
@@ -474,6 +491,11 @@ function AnimalGalleryManager({
   const removePhoto = trpc.animalPhotos.remove.useMutation({
     onSuccess: async ({ photoId }) => {
       await utils.animalPhotos.list.invalidate({ animalSlug });
+      setPhotoDrafts((current) => {
+        const next = { ...current };
+        delete next[photoId];
+        return next;
+      });
       const remaining = galleryImages.filter((item) => item.photoId !== photoId);
       const cover = remaining.find((item) => item.isCover) ?? remaining[0];
       if (cover) {
@@ -485,6 +507,20 @@ function AnimalGalleryManager({
     },
     onError: (error) => {
       toast.error("Не удалось удалить фото", {
+        description: error.message,
+      });
+    },
+  });
+
+  const updatePhotoMeta = trpc.animalPhotos.updateMeta.useMutation({
+    onSuccess: async () => {
+      await utils.animalPhotos.list.invalidate({ animalSlug });
+      toast.success("Подписи фото обновлены", {
+        description: "Название и alt-текст сохранены в галерее животного.",
+      });
+    },
+    onError: (error) => {
+      toast.error("Не удалось сохранить подписи фото", {
         description: error.message,
       });
     },
@@ -553,6 +589,28 @@ function AnimalGalleryManager({
     reorderPhotos.mutate({ animalSlug, photoIds: reorderedIds });
   }
 
+  function updateDraft(photoId: number, key: "title" | "alt", value: string) {
+    setPhotoDrafts((current) => ({
+      ...current,
+      [photoId]: {
+        title: current[photoId]?.title ?? "",
+        alt: current[photoId]?.alt ?? "",
+        [key]: value,
+      },
+    }));
+  }
+
+  async function savePhotoMeta(photoId: number) {
+    const draft = photoDrafts[photoId];
+    if (!draft) return;
+
+    await updatePhotoMeta.mutateAsync({
+      photoId,
+      title: draft.title.trim() || "Фото животного",
+      alt: draft.alt.trim() || null,
+    });
+  }
+
   return (
     <div className="space-y-4 rounded-[1.75rem] border border-border/70 bg-stone-50/60 p-5">
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
@@ -588,20 +646,53 @@ function AnimalGalleryManager({
               <div className="aspect-square overflow-hidden bg-stone-100">
                 <img src={image.src} alt={image.title} className="h-full w-full object-cover" />
               </div>
-              <div className="space-y-3 p-4">
-                <div className="space-y-1">
-                  <div className="flex items-center justify-between gap-2">
-                    <p className="line-clamp-1 font-medium text-foreground">{image.title}</p>
-                    {image.isCover ? (
-                      <Badge className="rounded-full border border-primary/20 bg-primary/10 text-primary">
-                        <Star className="mr-1 h-3 w-3" /> Обложка
-                      </Badge>
-                    ) : null}
+                <div className="space-y-3 p-4">
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="line-clamp-1 font-medium text-foreground">{image.title}</p>
+                      {image.isCover ? (
+                        <Badge className="rounded-full border border-primary/20 bg-primary/10 text-primary">
+                          <Star className="mr-1 h-3 w-3" /> Обложка
+                        </Badge>
+                      ) : null}
+                    </div>
+                    <p className="text-xs text-muted-foreground">{image.meta}</p>
                   </div>
-                  <p className="text-xs text-muted-foreground">{image.meta}</p>
-                </div>
 
-                <div className="grid gap-2">
+                  <div className="grid gap-3 rounded-2xl border border-border/70 bg-stone-50/80 p-3">
+                    <div className="space-y-2">
+                      <Label htmlFor={`photo-title-${image.photoId}`}>Название фото</Label>
+                      <Input
+                        id={`photo-title-${image.photoId}`}
+                        value={photoDrafts[image.photoId]?.title ?? image.title}
+                        onChange={(event) => updateDraft(image.photoId, "title", event.target.value)}
+                        placeholder="Утренний портрет"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor={`photo-alt-${image.photoId}`}>Alt-текст</Label>
+                      <Textarea
+                        id={`photo-alt-${image.photoId}`}
+                        value={photoDrafts[image.photoId]?.alt ?? image.alt ?? image.meta ?? ""}
+                        onChange={(event) => updateDraft(image.photoId, "alt", event.target.value)}
+                        placeholder="Коза Марта у деревянного загона на утреннем свете"
+                        rows={3}
+                      />
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="rounded-full"
+                      onClick={() => void savePhotoMeta(image.photoId)}
+                      disabled={updatePhotoMeta.isPending}
+                    >
+                      {updatePhotoMeta.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Pencil className="mr-2 h-4 w-4" />}
+                      Сохранить подписи
+                    </Button>
+                  </div>
+
+                  <div className="grid gap-2">
+
                   <Button
                     type="button"
                     variant={image.isCover ? "default" : "outline"}

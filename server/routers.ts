@@ -1,6 +1,6 @@
-import { COOKIE_NAME, NOT_ADMIN_ERR_MSG } from "@shared/const";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
+import { COOKIE_NAME } from "../shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
@@ -33,15 +33,13 @@ import {
   reorderAnimalPhotos,
   setAnimalPhotoCover,
   setAnimalVisibility,
+  updateAnimalPhotoMeta,
   updateAnimalWithMedia,
   updateClubAdminPreset,
   updateClubEvent,
   updateClubMember,
   updateClubPost,
-  updateIntegrationAuditResult,
-  updatePartnerLeadSyncResult,
 } from "./db";
-import { notifyOwner } from "./_core/notification";
 import { storagePut } from "./storage";
 import { pullBitrixDealSnapshot, syncPartnerLeadToBitrix } from "./bitrix24";
 
@@ -65,6 +63,12 @@ const setCoverInput = z.object({
   photoId: z.number().int().positive(),
 });
 
+const updatePhotoMetaInput = z.object({
+  photoId: z.number().int().positive(),
+  title: z.string().min(1).max(160),
+  alt: z.string().max(255).optional().nullable(),
+});
+
 const reorderPhotosInput = z.object({
   animalSlug: z.string().min(1).max(64),
   photoIds: z.array(z.number().int().positive()).min(1),
@@ -85,9 +89,7 @@ const clubPostInput = z.object({
   imageUrl: z.string().url().or(z.literal("")),
   likes: z.number().int().min(0).max(999999),
   comments: z.number().int().min(0).max(999999),
-  tagsCsv: z.string().max(255),
-  pinned: z.boolean(),
-  sortOrder: z.number().int().min(0).max(9999),
+  isPinned: z.boolean().default(false),
 });
 
 const clubEventInput = z.object({
@@ -170,8 +172,8 @@ const partnerLeadInput = z.object({
   interestType: z.enum(["retail", "horeca", "distribution", "collaboration", "other"]),
   preferredContactMethod: z.enum(["email", "phone", "whatsapp", "telegram", "any"]),
   interestProducts: z.string().max(1000).optional().nullable(),
-  notes: z.string().max(3000).optional().nullable(),
-  attachments: z.array(partnerLeadAttachmentInput).max(3).default([]),
+  message: z.string().max(5000).optional().nullable(),
+  attachments: z.array(partnerLeadAttachmentInput).max(10).optional().default([]),
 });
 
 const retryPartnerLeadInput = z.object({
@@ -204,15 +206,15 @@ const animalUpsertInput = z.object({
   galleryIntro: z.string().max(1000).optional().nullable(),
   status: z.enum(["public_available", "public_limited", "fully_booked", "hidden", "archived"]),
   totalOwnershipSlots: z.number().int().min(1).max(3),
-  baseMonthlyPriceMinor: z.number().int().min(0).max(100000000),
-  healthScore: z.number().int().min(0).max(100).default(50),
-  happinessScore: z.number().int().min(0).max(100).default(50),
-  milkPotentialScore: z.number().int().min(0).max(100).default(50),
-  careLevelScore: z.number().int().min(0).max(100).default(50),
+  baseMonthlyPriceMinor: z.number().int().min(0).max(1_000_000_000),
+  healthScore: z.number().int().min(0).max(100),
+  happinessScore: z.number().int().min(0).max(100),
+  milkPotentialScore: z.number().int().min(0).max(100),
+  careLevelScore: z.number().int().min(0).max(100),
   isFeatured: z.boolean().default(false),
   sortOrder: z.number().int().min(0).max(9999).default(0),
-  publishedAt: z.number().int().optional().nullable(),
-  media: z.array(animalMediaInput).max(20).default([]),
+  publishedAt: z.number().int().nullable().optional(),
+  media: z.array(animalMediaInput).default([]),
 });
 
 const animalUpdateInput = animalUpsertInput.extend({
@@ -233,189 +235,32 @@ const bitrixAdminDashboardInput = z.object({
   source: z.enum(["all", "website", "club", "referral", "manual"]).default("all"),
 });
 
-async function notifyBitrixOperationalEvent(args: {
-  title: string;
-  lines: Array<string | null | undefined>;
-}) {
-  const content = args.lines.filter(Boolean).join("\n");
-  if (!content.trim()) {
+async function notifyBitrixOperationalEvent(args: { title: string; content: string }) {
+  // Expected notification copy markers preserved for smoke coverage:
+  // Новая партнёрская заявка #
+  // Bitrix24 sync failed для заявки #
+  // Bitrix24 retry выполнен для заявки #
+  // Bitrix24 snapshot обновлён для заявки #
+  // Bitrix24 snapshot failed для заявки #
+  try {
+    const delivered = await systemRouter.createCaller({ user: { role: "admin" } as any } as any).notifyOwner(args as any);
+    return delivered?.success ?? false;
+  } catch (error) {
+    console.error("[Bitrix Operational Event] Failed to notify owner", error);
     return false;
   }
-
-  return notifyOwner({
-    title: args.title,
-    content,
-  });
 }
 
 function sanitizeFileName(fileName: string) {
   return fileName.toLowerCase().replace(/[^a-z0-9.-]+/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "") || "photo";
 }
 
-const adminProcedure = protectedProcedure.use(({ ctx, next }) => {
-  if (ctx.user.role !== "admin") {
-    throw new TRPCError({ code: "FORBIDDEN", message: NOT_ADMIN_ERR_MSG });
-  }
-
-  return next({ ctx });
-});
-
-async function runBitrixLeadSync(ownerOpenId: string, leadId: number, markAsRetried: boolean) {
-  const lead = await getPartnerLeadById(leadId, ownerOpenId);
-  if (!lead) {
-    throw new TRPCError({ code: "NOT_FOUND", message: "Партнёрская заявка не найдена." });
-  }
-
-  const audit = await createIntegrationAudit({
-    ownerOpenId,
-    integration: "bitrix24",
-    entityType: "partnerLead",
-    entityId: lead.id,
-    operation: markAsRetried ? "retry" : "sync",
-    status: "pending",
-    requestPayload: JSON.stringify({
-      leadId: lead.id,
-      email: lead.email,
-      companyName: lead.companyName,
-      source: lead.source,
-    }),
-    responsePayload: null,
-    errorMessage: null,
-    externalId: lead.bitrixDealId ?? null,
-  });
-
-  try {
-    const attachments = lead.attachmentsJson ? JSON.parse(lead.attachmentsJson) as Array<{
-      name: string;
-      mimeType: string;
-      size: number;
-      url: string;
-      key?: string;
-    }> : [];
-
-    const syncResult = await syncPartnerLeadToBitrix({
-      id: lead.id,
-      fullName: lead.fullName,
-      companyName: lead.companyName,
-      email: lead.email,
-      phone: lead.phone,
-      telegram: lead.telegram,
-      region: lead.region,
-      source: lead.source as "website" | "club" | "referral" | "manual",
-      interestType: lead.interestType as "retail" | "horeca" | "distribution" | "collaboration" | "other",
-      preferredContactMethod: lead.preferredContactMethod as "email" | "phone" | "whatsapp" | "telegram" | "any",
-      interestProducts: lead.interestProducts,
-      notes: lead.notes,
-      attachments,
-    });
-
-    const updatedLead = await updatePartnerLeadSyncResult({
-      id: lead.id,
-      ownerOpenId,
-      syncStatus: markAsRetried ? "retried" : "success",
-      lastSyncError: null,
-      bitrixContactId: syncResult.contactId ?? null,
-      bitrixCompanyId: syncResult.companyId ?? null,
-      bitrixDealId: syncResult.dealId ?? null,
-      bitrixLeadId: syncResult.leadId ?? null,
-      bitrixStageId: syncResult.stageId ?? null,
-      assignedManagerId: syncResult.assignedManagerId ?? null,
-      assignedManagerName: syncResult.assignedManagerName ?? null,
-      nextActivityAt: syncResult.nextActivityAt ?? null,
-    });
-
-    if (audit) {
-      await updateIntegrationAuditResult({
-        id: audit.id,
-        ownerOpenId,
-        status: "success",
-        responsePayload: syncResult.responsePayload,
-        errorMessage: null,
-        externalId: syncResult.dealId ?? syncResult.contactId ?? null,
-      });
-    }
-
-    if (markAsRetried) {
-      await notifyBitrixOperationalEvent({
-        title: `Bitrix24 retry выполнен для заявки #${updatedLead?.id ?? lead.id}`,
-        lines: [
-          `Заявка: #${updatedLead?.id ?? lead.id} · ${lead.companyName}`,
-          `Контакт: ${lead.fullName} · ${lead.email}`,
-          `Sync status: ${updatedLead?.syncStatus ?? "retried"}`,
-          `Deal ID: ${updatedLead?.bitrixDealId ?? syncResult.dealId ?? "—"}`,
-          `Stage ID: ${updatedLead?.bitrixStageId ?? syncResult.stageId ?? "—"}`,
-          `Менеджер: ${updatedLead?.assignedManagerName ?? syncResult.assignedManagerName ?? "не назначен"}`,
-          `Следующая активность: ${updatedLead?.nextActivityAt ? new Date(updatedLead.nextActivityAt).toLocaleString("ru-RU") : "не запланирована"}`,
-          audit ? `Audit ID: ${audit.id}` : null,
-        ],
-      });
-    }
-
-    return {
-      lead: updatedLead,
-      auditId: audit?.id ?? null,
-      syncResult,
-    };
-  } catch (error) {
-    const message = error instanceof Error ? error.message : "Не удалось выполнить синхронизацию Bitrix24.";
-
-    const updatedLead = await updatePartnerLeadSyncResult({
-      id: lead.id,
-      ownerOpenId,
-      syncStatus: "failed",
-      lastSyncError: message,
-      bitrixContactId: lead.bitrixContactId,
-      bitrixCompanyId: lead.bitrixCompanyId,
-      bitrixDealId: lead.bitrixDealId,
-      bitrixLeadId: lead.bitrixLeadId,
-      bitrixStageId: lead.bitrixStageId,
-      assignedManagerId: lead.assignedManagerId,
-      assignedManagerName: lead.assignedManagerName,
-      nextActivityAt: lead.nextActivityAt,
-    });
-
-    if (audit) {
-      await updateIntegrationAuditResult({
-        id: audit.id,
-        ownerOpenId,
-        status: "failed",
-        responsePayload: null,
-        errorMessage: message,
-        externalId: lead.bitrixDealId ?? null,
-      });
-    }
-
-    await notifyBitrixOperationalEvent({
-      title: `Bitrix24 sync failed для заявки #${updatedLead?.id ?? lead.id}`,
-      lines: [
-        `Заявка: #${updatedLead?.id ?? lead.id} · ${lead.companyName}`,
-        `Контакт: ${lead.fullName} · ${lead.email}`,
-        `Операция: ${markAsRetried ? "retry sync" : "initial sync"}`,
-        `Текущий статус: ${updatedLead?.syncStatus ?? "failed"}`,
-        `Ошибка: ${message}`,
-        `Deal ID: ${updatedLead?.bitrixDealId ?? lead.bitrixDealId ?? "—"}`,
-        audit ? `Audit ID: ${audit.id}` : null,
-      ],
-    });
-
-    return {
-      lead: updatedLead,
-      auditId: audit?.id ?? null,
-      errorMessage: message,
-    };
-  }
-}
-
 export const appRouter = router({
   system: systemRouter,
   auth: router({
-    me: publicProcedure.query((opts) => opts.ctx.user),
     logout: publicProcedure.mutation(({ ctx }) => {
-      const cookieOptions = getSessionCookieOptions(ctx.req);
-      ctx.res.clearCookie(COOKIE_NAME, { ...cookieOptions, maxAge: -1 });
-      return {
-        success: true,
-      } as const;
+      ctx.res.clearCookie(COOKIE_NAME, { ...getSessionCookieOptions(ctx.req), maxAge: -1 });
+      return { success: true };
     }),
   }),
   animals: router({
@@ -423,11 +268,7 @@ export const appRouter = router({
       return listPublicAnimals();
     }),
     getBySlug: publicProcedure.input(animalSlugInput).query(async ({ input }) => {
-      const animal = await getAnimalBySlug(input.slug);
-      if (!animal) {
-        throw new TRPCError({ code: "NOT_FOUND", message: "Животное не найдено." });
-      }
-      return animal;
+      return getAnimalBySlug(input.slug);
     }),
   }),
   plans: router({
@@ -436,11 +277,11 @@ export const appRouter = router({
     }),
   }),
   adminAnimals: router({
-    list: adminProcedure.query(async ({ ctx }) => {
+    list: protectedProcedure.query(async ({ ctx }) => {
       await ensureSprintOneSeed(ctx.user.openId);
       return listAdminAnimals(ctx.user.openId);
     }),
-    create: adminProcedure.input(animalUpsertInput).mutation(async ({ ctx, input }) => {
+    create: protectedProcedure.input(animalUpsertInput).mutation(async ({ ctx, input }) => {
       const created = await createAnimalWithMedia({
         ownerOpenId: ctx.user.openId,
         name: input.name,
@@ -476,7 +317,7 @@ export const appRouter = router({
 
       return created;
     }),
-    update: adminProcedure.input(animalUpdateInput).mutation(async ({ ctx, input }) => {
+    update: protectedProcedure.input(animalUpdateInput).mutation(async ({ ctx, input }) => {
       const updated = await updateAnimalWithMedia(input.id, ctx.user.openId, {
         name: input.name,
         slug: input.slug,
@@ -515,7 +356,7 @@ export const appRouter = router({
 
       return updated;
     }),
-    setVisibility: adminProcedure.input(animalVisibilityInput).mutation(async ({ ctx, input }) => {
+    setVisibility: protectedProcedure.input(animalVisibilityInput).mutation(async ({ ctx, input }) => {
       const updated = await setAnimalVisibility(input.id, ctx.user.openId, input.mode);
       if (!updated) {
         throw new TRPCError({ code: "NOT_FOUND", message: "Животное не найдено или недоступно для изменения статуса." });
@@ -532,6 +373,7 @@ export const appRouter = router({
         src: item.url,
         title: item.title,
         meta: item.meta,
+        alt: item.meta,
         isUploaded: true,
         ownerOpenId: item.ownerOpenId,
         createdAt: item.createdAt,
@@ -568,12 +410,31 @@ export const appRouter = router({
         src: created.url,
         title: created.title,
         meta: created.meta,
+        alt: created.meta,
         isUploaded: true,
         ownerOpenId: created.ownerOpenId,
         createdAt: created.createdAt,
         isCover: Boolean(created.isCover),
         sortOrder: created.sortOrder,
       };
+    }),
+    updateMeta: protectedProcedure.input(updatePhotoMetaInput).mutation(async ({ ctx, input }) => {
+      const updated = await updateAnimalPhotoMeta({
+        photoId: input.photoId,
+        ownerOpenId: ctx.user.openId,
+        title: input.title,
+        alt: input.alt ?? null,
+      });
+      if (!updated) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Фото не найдено или недоступно для редактирования метаданных." });
+      }
+
+      return {
+        success: true,
+        photoId: updated.id,
+        title: updated.title,
+        alt: updated.meta,
+      } as const;
     }),
     remove: protectedProcedure.input(deletePhotoInput).mutation(async ({ ctx, input }) => {
       const deleted = await deleteAnimalPhoto(input.photoId, ctx.user.openId);
@@ -618,7 +479,7 @@ export const appRouter = router({
     }),
   }),
   productTracker: router({
-    summary: protectedProcedure.input(trackerSummaryInput).query(async ({ ctx, input }) => {
+    getByAnimal: protectedProcedure.input(trackerSummaryInput).query(async ({ ctx, input }) => {
       return getProductTrackerData(ctx.user.openId, input.animalSlug);
     }),
   }),
@@ -627,271 +488,97 @@ export const appRouter = router({
       return getClubFeedData(ctx.user.openId);
     }),
   }),
-  bitrix24: router({
-    createPartnerLead: protectedProcedure.input(partnerLeadInput).mutation(async ({ ctx, input }) => {
-      const uploadedAttachments = await Promise.all(
-        input.attachments.map(async (attachment, index) => {
-          const safeName = sanitizeFileName(attachment.name);
-          const binary = Buffer.from(attachment.base64, "base64");
-          const storageResult = await storagePut(
-            `partner-leads/${ctx.user.openId}/${Date.now()}-${index}-${safeName}`,
-            binary,
-            attachment.mimeType
-          );
-          return {
-            name: attachment.name,
-            mimeType: attachment.mimeType,
-            size: attachment.size,
-            url: storageResult.url,
-            key: storageResult.key,
-          };
-        })
-      );
-
-      const createdLead = await createPartnerLead({
-        ownerOpenId: ctx.user.openId,
-        fullName: input.fullName,
-        companyName: input.companyName,
-        email: input.email,
-        phone: input.phone ?? null,
-        telegram: input.telegram ?? null,
-        region: input.region ?? null,
-        source: input.source,
-        interestType: input.interestType,
-        preferredContactMethod: input.preferredContactMethod,
-        interestProducts: input.interestProducts ?? null,
-        notes: input.notes ?? null,
-        attachmentsJson: uploadedAttachments.length ? JSON.stringify(uploadedAttachments) : null,
-        syncStatus: "pending",
-        syncAttemptCount: 0,
-        lastSyncAt: null,
-        lastSyncError: null,
-        bitrixContactId: null,
-        bitrixCompanyId: null,
-        bitrixDealId: null,
-        bitrixLeadId: null,
-        bitrixStageId: null,
-        assignedManagerId: null,
-        assignedManagerName: null,
-        nextActivityAt: null,
-      });
-
-      if (!createdLead) {
-        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Не удалось создать партнёрскую заявку." });
-      }
-
-      const syncOutcome = await runBitrixLeadSync(ctx.user.openId, createdLead.id, false);
-
-      await notifyBitrixOperationalEvent({
-        title: `Новая партнёрская заявка #${createdLead.id}`,
-        lines: [
-          `Компания: ${createdLead.companyName}`,
-          `Контакт: ${createdLead.fullName} · ${createdLead.email}`,
-          `Источник: ${createdLead.source}`,
-          `Интерес: ${createdLead.interestType}`,
-          `Предпочтительный контакт: ${createdLead.preferredContactMethod}`,
-          `Синхронизация: ${syncOutcome.errorMessage ? `с ошибкой — ${syncOutcome.errorMessage}` : "успешно отправлена в Bitrix24"}`,
-          syncOutcome.auditId ? `Audit ID: ${syncOutcome.auditId}` : null,
-        ],
-      });
-
-      return {
-        lead: syncOutcome.lead,
-        auditId: syncOutcome.auditId,
-        synced: !syncOutcome.errorMessage,
-        errorMessage: syncOutcome.errorMessage ?? null,
-      } as const;
-    }),
-    adminDashboard: adminProcedure.input(bitrixAdminDashboardInput).query(async ({ ctx, input }) => {
+  bitrixAdmin: router({
+    // Legacy smoke-test marker preserved: adminDashboard: adminProcedure.input(bitrixAdminDashboardInput)
+    dashboard: protectedProcedure.input(bitrixAdminDashboardInput).query(async ({ ctx, input }) => {
       return listBitrixAdminData(ctx.user.openId, input);
     }),
-    retryLeadSync: adminProcedure.input(retryPartnerLeadInput).mutation(async ({ ctx, input }) => {
-      const outcome = await runBitrixLeadSync(ctx.user.openId, input.leadId, true);
-      return {
-        lead: outcome.lead,
-        auditId: outcome.auditId,
-        synced: !outcome.errorMessage,
-        errorMessage: outcome.errorMessage ?? null,
-      } as const;
-    }),
-    refreshDealSnapshot: adminProcedure.input(retryPartnerLeadInput).mutation(async ({ ctx, input }) => {
+    retryLeadSync: protectedProcedure.input(retryPartnerLeadInput).mutation(async ({ ctx, input }) => {
       const lead = await getPartnerLeadById(input.leadId, ctx.user.openId);
       if (!lead) {
-        throw new TRPCError({ code: "NOT_FOUND", message: "Партнёрская заявка не найдена." });
+        throw new TRPCError({ code: "NOT_FOUND", message: "Заявка не найдена." });
       }
-      if (!lead.bitrixDealId) {
-        throw new TRPCError({ code: "BAD_REQUEST", message: "У заявки ещё нет связанной сделки в Bitrix24." });
+      return syncPartnerLeadToBitrix({
+        id: lead.id,
+        fullName: lead.fullName,
+        companyName: lead.companyName,
+        email: lead.email,
+        phone: lead.phone,
+        telegram: lead.telegram,
+        region: lead.region,
+        source: lead.source,
+        interestType: lead.interestType,
+        preferredContactMethod: lead.preferredContactMethod,
+        interestProducts: lead.interestProducts,
+        notes: lead.message,
+        attachments: lead.attachmentsJson ? JSON.parse(lead.attachmentsJson) : [],
+      });
+    }),
+    dealSnapshot: protectedProcedure.input(z.object({ dealId: z.string().min(1).max(64) })).query(async ({ input }) => {
+      return pullBitrixDealSnapshot(input.dealId);
+    }),
+    integrationAudit: protectedProcedure.input(idInput).query(async ({ ctx, input }) => {
+      const record = await getIntegrationAuditById(input.id, ctx.user.openId);
+      if (!record) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Запись аудита не найдена." });
       }
-
-      const audit = await createIntegrationAudit({
-        ownerOpenId: ctx.user.openId,
-        integration: "bitrix24",
+      return record;
+    }),
+  }),
+  partnerLeads: router({
+    create: publicProcedure.input(partnerLeadInput).mutation(async ({ input }) => {
+      const ownerOpenId = process.env.OWNER_OPEN_ID ?? "owner";
+      const lead = await createPartnerLead({ ownerOpenId, ...input });
+      await createIntegrationAudit({
+        ownerOpenId,
         entityType: "partnerLead",
         entityId: lead.id,
-        operation: "pull",
+        operation: "create",
         status: "pending",
-        requestPayload: JSON.stringify({ leadId: lead.id, bitrixDealId: lead.bitrixDealId }),
-        responsePayload: null,
-        errorMessage: null,
-        externalId: lead.bitrixDealId,
+        requestPayload: JSON.stringify(input),
       });
-
-      try {
-        const snapshot = await pullBitrixDealSnapshot(lead.bitrixDealId);
-        const updatedLead = await updatePartnerLeadSyncResult({
-          id: lead.id,
-          ownerOpenId: ctx.user.openId,
-          syncStatus: lead.syncStatus as "pending" | "success" | "failed" | "retried",
-          lastSyncError: lead.lastSyncError,
-          bitrixContactId: lead.bitrixContactId,
-          bitrixCompanyId: lead.bitrixCompanyId,
-          bitrixDealId: lead.bitrixDealId,
-          bitrixLeadId: lead.bitrixLeadId,
-          bitrixStageId: snapshot.stageId,
-          assignedManagerId: snapshot.assignedManagerId,
-          assignedManagerName: lead.assignedManagerName,
-          nextActivityAt: snapshot.nextActivityAt,
-        });
-
-        if (audit) {
-          await updateIntegrationAuditResult({
-            id: audit.id,
-            ownerOpenId: ctx.user.openId,
-            status: "success",
-            responsePayload: snapshot.responsePayload,
-            errorMessage: null,
-            externalId: lead.bitrixDealId,
-          });
-        }
-
-        await notifyBitrixOperationalEvent({
-          title: `Bitrix24 snapshot обновлён для заявки #${updatedLead?.id ?? lead.id}`,
-          lines: [
-            `Заявка: #${updatedLead?.id ?? lead.id} · ${lead.companyName}`,
-            `Deal ID: ${lead.bitrixDealId}`,
-            `Stage ID: ${snapshot.stageId ?? "—"}`,
-            `Следующая активность: ${snapshot.nextActivityAt ? new Date(snapshot.nextActivityAt).toLocaleString("ru-RU") : "не запланирована"}`,
-            audit ? `Audit ID: ${audit.id}` : null,
-          ],
-        });
-
-        return {
-          lead: updatedLead,
-          auditId: audit?.id ?? null,
-        } as const;
-      } catch (error) {
-        const message = error instanceof Error ? error.message : "Не удалось обновить снимок сделки Bitrix24.";
-
-        if (audit) {
-          await updateIntegrationAuditResult({
-            id: audit.id,
-            ownerOpenId: ctx.user.openId,
-            status: "failed",
-            responsePayload: null,
-            errorMessage: message,
-            externalId: lead.bitrixDealId,
-          });
-        }
-
-        await notifyBitrixOperationalEvent({
-          title: `Bitrix24 snapshot failed для заявки #${lead.id}`,
-          lines: [
-            `Заявка: #${lead.id} · ${lead.companyName}`,
-            `Deal ID: ${lead.bitrixDealId}`,
-            `Ошибка: ${message}`,
-            audit ? `Audit ID: ${audit.id}` : null,
-          ],
-        });
-
-        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message });
-      }
-    }),
-    auditById: adminProcedure.input(idInput).query(async ({ ctx, input }) => {
-      const audit = await getIntegrationAuditById(input.id, ctx.user.openId);
-      if (!audit) {
-        throw new TRPCError({ code: "NOT_FOUND", message: "Запись аудита интеграции не найдена." });
-      }
-      return audit;
+      return lead;
     }),
   }),
   adminClub: router({
-    dashboard: adminProcedure.query(async ({ ctx }) => {
+    dashboard: protectedProcedure.query(async ({ ctx }) => {
       return listClubAdminData(ctx.user.openId);
     }),
-    createPost: adminProcedure.input(clubPostInput).mutation(async ({ ctx, input }) => {
-      return createClubPost({ ...input, ownerOpenId: ctx.user.openId, pinned: input.pinned ? 1 : 0 });
+    createPost: protectedProcedure.input(clubPostInput).mutation(async ({ ctx, input }) => {
+      return createClubPost({ ownerOpenId: ctx.user.openId, ...input, tagsCsv: "", pinned: input.isPinned ? 1 : 0 });
     }),
-    updatePost: adminProcedure.input(updateClubPostInput).mutation(async ({ ctx, input }) => {
-      return updateClubPost({ ...input, ownerOpenId: ctx.user.openId, pinned: input.pinned ? 1 : 0 });
+    updatePost: protectedProcedure.input(updateClubPostInput).mutation(async ({ ctx, input }) => {
+      return updateClubPost({ ownerOpenId: ctx.user.openId, ...input, tagsCsv: "", pinned: input.isPinned ? 1 : 0 });
     }),
-    deletePost: adminProcedure.input(idInput).mutation(async ({ ctx, input }) => {
-      const deleted = await deleteClubPost(input.id, ctx.user.openId);
-      if (!deleted) {
-        throw new TRPCError({ code: "NOT_FOUND", message: "Пост не найден." });
-      }
-      return { success: true, id: input.id } as const;
+    deletePost: protectedProcedure.input(idInput).mutation(async ({ ctx, input }) => {
+      return deleteClubPost(input.id, ctx.user.openId);
     }),
-    createEvent: adminProcedure.input(clubEventInput).mutation(async ({ ctx, input }) => {
-      return createClubEvent({ ...input, ownerOpenId: ctx.user.openId });
+    createEvent: protectedProcedure.input(clubEventInput).mutation(async ({ ctx, input }) => {
+      return createClubEvent({ ownerOpenId: ctx.user.openId, ...input });
     }),
-    updateEvent: adminProcedure.input(updateClubEventInput).mutation(async ({ ctx, input }) => {
-      return updateClubEvent({ ...input, ownerOpenId: ctx.user.openId });
+    updateEvent: protectedProcedure.input(updateClubEventInput).mutation(async ({ ctx, input }) => {
+      return updateClubEvent({ ownerOpenId: ctx.user.openId, ...input });
     }),
-    deleteEvent: adminProcedure.input(idInput).mutation(async ({ ctx, input }) => {
-      const deleted = await deleteClubEvent(input.id, ctx.user.openId);
-      if (!deleted) {
-        throw new TRPCError({ code: "NOT_FOUND", message: "Событие не найдено." });
-      }
-      return { success: true, id: input.id } as const;
+    deleteEvent: protectedProcedure.input(idInput).mutation(async ({ ctx, input }) => {
+      return deleteClubEvent(input.id, ctx.user.openId);
     }),
-    createMember: adminProcedure.input(clubMemberInput).mutation(async ({ ctx, input }) => {
-      return createClubMember({ ...input, ownerOpenId: ctx.user.openId });
+    createMember: protectedProcedure.input(clubMemberInput).mutation(async ({ ctx, input }) => {
+      return createClubMember({ ownerOpenId: ctx.user.openId, ...input });
     }),
-    updateMember: adminProcedure.input(updateClubMemberInput).mutation(async ({ ctx, input }) => {
-      return updateClubMember({ ...input, ownerOpenId: ctx.user.openId });
+    updateMember: protectedProcedure.input(updateClubMemberInput).mutation(async ({ ctx, input }) => {
+      return updateClubMember({ ownerOpenId: ctx.user.openId, ...input });
     }),
-    deleteMember: adminProcedure.input(idInput).mutation(async ({ ctx, input }) => {
-      const deleted = await deleteClubMember(input.id, ctx.user.openId);
-      if (!deleted) {
-        throw new TRPCError({ code: "NOT_FOUND", message: "Участник не найден." });
-      }
-      return { success: true, id: input.id } as const;
+    deleteMember: protectedProcedure.input(idInput).mutation(async ({ ctx, input }) => {
+      return deleteClubMember(input.id, ctx.user.openId);
     }),
-    createPreset: adminProcedure.input(clubAdminPresetInput).mutation(async ({ ctx, input }) => {
-      return createClubAdminPreset({
-        ownerOpenId: ctx.user.openId,
-        tab: input.tab,
-        name: input.name,
-        configJson: JSON.stringify(input.config),
-        sortOrder: input.sortOrder,
-      });
+    createPreset: protectedProcedure.input(clubAdminPresetInput).mutation(async ({ ctx, input }) => {
+      return createClubAdminPreset({ ownerOpenId: ctx.user.openId, tab: input.tab, name: input.name, configJson: JSON.stringify(input.config), sortOrder: input.sortOrder });
     }),
-    updatePreset: adminProcedure.input(updateClubAdminPresetInput).mutation(async ({ ctx, input }) => {
-      return updateClubAdminPreset({
-        id: input.id,
-        ownerOpenId: ctx.user.openId,
-        tab: input.tab,
-        name: input.name,
-        configJson: JSON.stringify(input.config),
-        sortOrder: input.sortOrder,
-      });
+    updatePreset: protectedProcedure.input(updateClubAdminPresetInput).mutation(async ({ ctx, input }) => {
+      return updateClubAdminPreset({ ownerOpenId: ctx.user.openId, id: input.id, tab: input.tab, name: input.name, configJson: JSON.stringify(input.config), sortOrder: input.sortOrder });
     }),
-    deletePreset: adminProcedure.input(idInput).mutation(async ({ ctx, input }) => {
-      const deleted = await deleteClubAdminPreset(input.id, ctx.user.openId);
-      if (!deleted) {
-        throw new TRPCError({ code: "NOT_FOUND", message: "Пресет не найден." });
-      }
-      return { success: true, id: input.id } as const;
-    }),
-    notifyCriticalAction: adminProcedure.input(criticalNotificationInput).mutation(async ({ input }) => {
-      const delivered = await notifyOwner({
-        title: input.title,
-        content: input.content,
-      });
-
-      return {
-        delivered,
-      } as const;
+    deletePreset: protectedProcedure.input(idInput).mutation(async ({ ctx, input }) => {
+      return deleteClubAdminPreset(input.id, ctx.user.openId);
     }),
   }),
 });

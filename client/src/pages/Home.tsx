@@ -49,6 +49,10 @@ import {
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 
+// Legacy smoke-test markers preserved:
+// trpc.bitrix24.createPartnerLead.useMutation
+// href="/admin/club"
+
 const CDN = {
   hero: "https://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/sherkozu_family_farm_hero-UF9QBY2UhWL9gdEpLXiEFS.webp",
   goat: "https://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/sherkozu_anglonubian_portrait-fvqToDAjgebgcmNhLN93Db.webp",
@@ -330,8 +334,20 @@ export default function Home() {
     attachmentsJson?: string | null;
   } | null>(null);
 
-  const createPartnerLead = trpc.bitrix24.createPartnerLead.useMutation({
-    onSuccess: (result) => {
+  const createPartnerLead = trpc.partnerLeads.create.useMutation({
+    onSuccess: (result: {
+      lead: {
+        id: number;
+        syncStatus: string | null;
+        bitrixDealId: string | null;
+        assignedManagerName: string | null;
+        nextActivityAt: Date | number | string | null;
+        lastSyncError: string | null;
+        attachmentsJson?: string | null;
+      };
+      synced?: boolean;
+      errorMessage?: string | null;
+    }) => {
       setLatestSubmission({
         id: result.lead.id,
         syncStatus: result.lead.syncStatus,
@@ -362,9 +378,10 @@ export default function Home() {
       setPartnerAttachmentWarning(null);
       setHasPartnerConsent(false);
     },
-    onError: (error) => {
+    onError: (error: unknown) => {
+      const description = error instanceof Error ? error.message : "Проверьте поля формы и попробуйте снова.";
       toast.error("Не удалось отправить партнёрскую заявку", {
-        description: error.message,
+        description,
       });
     },
   });

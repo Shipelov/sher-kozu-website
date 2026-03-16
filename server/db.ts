@@ -537,6 +537,34 @@ export async function setAnimalPhotoCover(photoId: number, ownerOpenId: string) 
   return updated[0] ?? null;
 }
 
+export async function updateAnimalPhotoMeta(input: { photoId: number; ownerOpenId: string; title: string; alt: string | null }) {
+  const db = await getDb();
+  if (!db) {
+    throw new Error("Database not available for updating photo metadata");
+  }
+
+  const existing = await db
+    .select()
+    .from(animalPhotos)
+    .where(and(eq(animalPhotos.id, input.photoId), eq(animalPhotos.ownerOpenId, input.ownerOpenId)))
+    .limit(1);
+
+  if (!existing[0]) {
+    return null;
+  }
+
+  await db
+    .update(animalPhotos)
+    .set({
+      title: input.title,
+      meta: input.alt?.trim() || input.title,
+    })
+    .where(and(eq(animalPhotos.id, input.photoId), eq(animalPhotos.ownerOpenId, input.ownerOpenId)));
+
+  const updated = await db.select().from(animalPhotos).where(eq(animalPhotos.id, input.photoId)).limit(1);
+  return updated[0] ?? null;
+}
+
 export async function reorderAnimalPhotos(photoIds: number[], ownerOpenId: string, animalSlug: string) {
   const db = await getDb();
   if (!db) {

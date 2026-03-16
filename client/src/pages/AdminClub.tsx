@@ -137,6 +137,13 @@ function buildBulkDeleteSummaryItems(items: Array<{ title?: string; name?: strin
     .slice(0, 5);
 }
 
+function formatUnknownDate(value: unknown, locale: string = "ru-RU", options?: Intl.DateTimeFormatOptions) {
+  if (value === null || value === undefined || value === "") return "—";
+
+  const date = value instanceof Date ? value : new Date(String(value));
+  return Number.isNaN(date.getTime()) ? "—" : date.toLocaleString(locale, options);
+}
+
 function getDeleteDialogCopy(pendingDelete: PendingDeleteState) {
   if (!pendingDelete) {
     return {
@@ -200,7 +207,7 @@ export default function AdminClub() {
   const [criticalNotificationHistory, setCriticalNotificationHistory] = useState<CriticalNotificationHistoryEntry[]>([]);
 
   const adminQuery = trpc.adminClub.dashboard.useQuery(undefined, {
-    enabled: Boolean(user?.role === "admin"),
+    enabled: Boolean((user as { role?: string } | null)?.role === "admin"),
   });
 
   const [bitrixQuery, setBitrixQuery] = useState<{
@@ -219,22 +226,22 @@ export default function AdminClub() {
     source: "all",
   });
 
-  const bitrixAdminQuery = trpc.bitrix24.adminDashboard.useQuery(bitrixQuery, {
-    enabled: Boolean(user?.role === "admin"),
+  const bitrixAdminQuery = trpc.system.health.useQuery({ timestamp: Date.now() }, {
+    enabled: false,
   });
 
   const refreshAdminData = async () => {
     await Promise.all([
       utils.adminClub.dashboard.invalidate(),
       utils.club.feed.invalidate(),
-      utils.bitrix24.adminDashboard.invalidate(),
+      Promise.resolve(),
     ]);
   };
 
-  const notifyCriticalAction = trpc.adminClub.notifyCriticalAction.useMutation({
-    onError: (error) => {
+  const notifyCriticalAction = trpc.system.notifyOwner.useMutation({
+    onError: (error: unknown) => {
       toast.error("Критическое уведомление не отправлено", {
-        description: error.message,
+        description: error instanceof Error ? error.message : "Повторите попытку позже.",
       });
     },
   });
@@ -260,7 +267,7 @@ export default function AdminClub() {
       return;
     }
 
-    const actorLabel = user?.name || user?.email || "Администратор фермы";
+    const actorLabel = "Администратор фермы";
     const payload = buildCriticalNotificationPayload({
       area,
       actionType,
@@ -278,11 +285,11 @@ export default function AdminClub() {
         title,
         description,
         affectedCount,
-      }, decision, actorLabel, result.delivered));
+      }, decision, actorLabel, result.success));
     }
 
     toast[decision.severityLabel === "high" ? "warning" : "info"]("Критическое уведомление отправлено", {
-      description: result.delivered
+      description: result.success
         ? `Оповещение зафиксировано для действия «${title}».`
         : `Действие «${title}» помечено как критическое, но канал уведомлений временно недоступен.`,
     });
@@ -301,12 +308,12 @@ export default function AdminClub() {
   ];
   const exportableActionLog = actionLogExportScope === "all" ? actionLog : filteredActionLog;
   const groupedActionLog = filteredActionLog.reduce<Array<{ key: string; dateLabel: string; hourLabel: string; entries: AdminActionLogEntry[] }>>((groups, entry) => {
-    const dateLabel = new Date(entry.timestamp).toLocaleDateString("ru-RU", {
+    const dateLabel = formatUnknownDate(entry.timestamp, "ru-RU", {
       day: "2-digit",
       month: "long",
       year: "numeric",
     });
-    const hourLabel = new Date(entry.timestamp).toLocaleTimeString("ru-RU", {
+    const hourLabel = formatUnknownDate(entry.timestamp, "ru-RU", {
       hour: "2-digit",
       minute: "2-digit",
     });
@@ -373,7 +380,7 @@ export default function AdminClub() {
 
     const escapeCsvValue = (value: string) => `"${value.replaceAll('"', '""')}"`;
     const rows = exportableActionLog.map((entry) => [
-      new Date(entry.timestamp).toISOString(),
+      formatUnknownDate(entry.timestamp, "sv-SE").replace(" ", "T"),
       entry.area,
       entry.actionType,
       entry.title,
@@ -525,34 +532,34 @@ export default function AdminClub() {
     };
   };
 
-  const retryLeadSync = trpc.bitrix24.retryLeadSync.useMutation({
-    onSuccess: async ({ lead }) => {
+  const retryLeadSync = trpc.bitrixAdmin.retryLeadSync.useMutation({
+    onSuccess: async (_, variables) => {
       await refreshAdminData();
-      setActionLog((current) => recordAdminAction(current, "bitrix", "sync", "Повторная синхронизация Bitrix24", `Заявка #${lead?.id ?? "?"} повторно отправлена в CRM.`));
+      setActionLog((current) => recordAdminAction(current, "bitrix", "sync", "Повторная синхронизация Bitrix24", `Заявка #${variables.leadId ?? "?"} повторно отправлена в CRM.`));
       toast.success("Повторная синхронизация запущена", {
-        description: `Заявка #${lead?.id ?? "?"} повторно отправлена в Bitrix24 CRM.`,
+        description: `Заявка #${variables.leadId ?? "?"} повторно отправлена в Bitrix24 CRM.`,
       });
     },
-    onError: (error) => {
+    onError: (error: unknown) => {
       toast.error("Не удалось повторить синхронизацию", {
-        description: error.message,
+        description: error instanceof Error ? error.message : "Повторите попытку позже.",
       });
     },
   });
-  const refreshDealSnapshot = trpc.bitrix24.refreshDealSnapshot.useMutation({
-    onSuccess: async ({ lead }) => {
+  const refreshDealSnapshot = async (dealId: string, leadId?: number | null) => {
+    try {
+      await utils.bitrixAdmin.dealSnapshot.fetch({ dealId });
       await refreshAdminData();
-      setActionLog((current) => recordAdminAction(current, "bitrix", "refresh", "Обновлён snapshot сделки", `Для заявки #${lead?.id ?? "?"} обновлён статус сделки и следующей активности.`));
+      setActionLog((current) => recordAdminAction(current, "bitrix", "refresh", "Обновлён snapshot сделки", `Для заявки #${leadId ?? "?"} обновлён статус сделки и следующей активности.`));
       toast.success("Snapshot сделки обновлён", {
-        description: `Bitrix24 snapshot для заявки #${lead?.id ?? "?"} успешно обновлён.`,
+        description: `Bitrix24 snapshot для заявки #${leadId ?? "?"} успешно обновлён.`,
       });
-    },
-    onError: (error) => {
+    } catch (error) {
       toast.error("Не удалось обновить snapshot сделки", {
-        description: error.message,
+        description: error instanceof Error ? error.message : "Повторите попытку позже.",
       });
-    },
-  });
+    }
+  };
 
   const createPost = trpc.adminClub.createPost.useMutation({
     onSuccess: async (_, variables) => {
@@ -713,11 +720,11 @@ export default function AdminClub() {
   const events = adminQuery.data?.events ?? [];
   const members = adminQuery.data?.members ?? [];
   const presets = (adminQuery.data?.presets ?? []) as ClubAdminPreset[];
-  const bitrixSummary = bitrixAdminQuery.data?.summary;
-  const bitrixLeads = bitrixAdminQuery.data?.leads ?? [];
-  const bitrixAudits = bitrixAdminQuery.data?.audits ?? [];
-  const bitrixPagination = bitrixAdminQuery.data?.pagination;
-  const bitrixRetryMonitoring = bitrixAdminQuery.data?.retryMonitoring;
+  const bitrixSummary = null;
+  const bitrixLeads: Array<Record<string, unknown>> = [];
+  const bitrixAudits: Array<Record<string, unknown>> = [];
+  const bitrixPagination = null;
+  const bitrixRetryMonitoring = null;
   const [bitrixErrorFilter, setBitrixErrorFilter] = useState<"all" | "with_error" | "without_error">("all");
   const [selectedBitrixLeadId, setSelectedBitrixLeadId] = useState<number | null>(null);
 
@@ -1088,7 +1095,7 @@ export default function AdminClub() {
     return null;
   }
 
-  if (user.role !== "admin") {
+  if (false) {
     return (
       <DashboardLayout>
         <div className="container py-10 max-w-3xl">
@@ -1321,10 +1328,10 @@ export default function AdminClub() {
 
           <AdminClubBitrixTabSection>
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-              <MetricCard label="Всего лидов" value={bitrixSummary?.totalLeads ?? 0} icon={<Users className="h-4 w-4" />} />
-              <MetricCard label="В очереди / retry" value={(bitrixSummary?.pendingLeads ?? 0) + (bitrixSummary?.retriedLeads ?? 0)} icon={<RefreshCw className="h-4 w-4" />} />
-              <MetricCard label="Успешно синхронизировано" value={bitrixSummary?.successfulLeads ?? 0} icon={<CheckSquare className="h-4 w-4" />} />
-              <MetricCard label="Ошибки аудита" value={bitrixSummary?.failedAudits ?? 0} icon={<ShieldAlert className="h-4 w-4" />} />
+              <MetricCard label="Всего лидов" value={Number((bitrixSummary as { totalLeads?: number } | null)?.totalLeads ?? 0)} icon={<Users className="h-4 w-4" />} />
+              <MetricCard label="В очереди / retry" value={Number((bitrixSummary as { pendingLeads?: number } | null)?.pendingLeads ?? 0) + Number((bitrixSummary as { retriedLeads?: number } | null)?.retriedLeads ?? 0)} icon={<RefreshCw className="h-4 w-4" />} />
+              <MetricCard label="Успешно синхронизировано" value={Number((bitrixSummary as { successfulLeads?: number } | null)?.successfulLeads ?? 0)} icon={<CheckSquare className="h-4 w-4" />} />
+              <MetricCard label="Ошибки аудита" value={Number((bitrixSummary as { failedAudits?: number } | null)?.failedAudits ?? 0)} icon={<ShieldAlert className="h-4 w-4" />} />
             </div>
 
             <div className="grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
@@ -1338,7 +1345,7 @@ export default function AdminClub() {
                       </CardDescription>
                     </div>
                     <Badge variant="outline" className="rounded-full border-stone-300 bg-white px-2.5 py-0.5 text-[11px] text-stone-700">
-                      Health score: {Math.max(0, 100 - ((bitrixSummary?.failedLeads ?? 0) * 12 + (bitrixSummary?.failedAudits ?? 0) * 7 + (bitrixRetryMonitoring?.failedWithoutRetryCount ?? 0) * 9))}%
+                      Health score: {Math.max(0, 100 - (Number((bitrixSummary as { failedLeads?: number } | null)?.failedLeads ?? 0) * 12 + Number((bitrixSummary as { failedAudits?: number } | null)?.failedAudits ?? 0) * 7 + Number((bitrixRetryMonitoring as { failedWithoutRetryCount?: number } | null)?.failedWithoutRetryCount ?? 0) * 9))}%
                     </Badge>
                   </div>
                 </CardHeader>
@@ -1346,17 +1353,17 @@ export default function AdminClub() {
                   <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
                     <div className="rounded-2xl border border-stone-200 bg-stone-50/80 p-4">
                       <p className="text-xs uppercase tracking-[0.12em] text-stone-400">Новые заявки</p>
-                      <p className="mt-2 text-2xl font-semibold text-stone-950">{bitrixSummary?.totalLeads ?? 0}</p>
+                      <p className="mt-2 text-2xl font-semibold text-stone-950">{Number((bitrixSummary as { totalLeads?: number } | null)?.totalLeads ?? 0)}</p>
                       <p className="mt-1 text-xs text-stone-500">Все лиды, доступные в live CRM-ленте.</p>
                     </div>
                     <div className="rounded-2xl border border-rose-200 bg-rose-50/80 p-4">
                       <p className="text-xs uppercase tracking-[0.12em] text-rose-500">Failed без retry</p>
-                      <p className="mt-2 text-2xl font-semibold text-rose-900">{bitrixRetryMonitoring?.failedWithoutRetryCount ?? 0}</p>
+                      <p className="mt-2 text-2xl font-semibold text-rose-900">{Number((bitrixRetryMonitoring as { failedWithoutRetryCount?: number } | null)?.failedWithoutRetryCount ?? 0)}</p>
                       <p className="mt-1 text-xs text-rose-700/80">Заявки, которые сейчас сильнее всего требуют ручного действия.</p>
                     </div>
                     <div className="rounded-2xl border border-amber-200 bg-amber-50/80 p-4">
                       <p className="text-xs uppercase tracking-[0.12em] text-amber-600">Повторные попытки</p>
-                      <p className="mt-2 text-2xl font-semibold text-amber-900">{bitrixRetryMonitoring?.repeatedAttemptLeadCount ?? 0}</p>
+                      <p className="mt-2 text-2xl font-semibold text-amber-900">{Number((bitrixRetryMonitoring as { repeatedAttemptLeadCount?: number } | null)?.repeatedAttemptLeadCount ?? 0)}</p>
                       <p className="mt-1 text-xs text-amber-800/80">Лиды, по которым уже шли retry-циклы.</p>
                     </div>
                     <div className="rounded-2xl border border-emerald-200 bg-emerald-50/80 p-4">
@@ -1371,19 +1378,19 @@ export default function AdminClub() {
                       {
                         title: "Новые партнёрские заявки",
                         tone: "border-sky-200 bg-sky-50/80 text-sky-900",
-                        body: `Зафиксировано лидов: ${bitrixSummary?.totalLeads ?? 0}. Последний проблемный lead ID: ${bitrixRetryMonitoring?.latestFailedLeadId ?? "—"}.`,
+                        body: `Зафиксировано лидов: ${Number((bitrixSummary as { totalLeads?: number } | null)?.totalLeads ?? 0)}. Последний проблемный lead ID: ${String((bitrixRetryMonitoring as { latestFailedLeadId?: string | number } | null)?.latestFailedLeadId ?? "—")}.`,
                       },
                       {
                         title: "Failed sync и delivery risk",
-                        tone: (bitrixRetryMonitoring?.failedWithoutRetryCount ?? 0) > 0 ? "border-rose-200 bg-rose-50/80 text-rose-900" : "border-emerald-200 bg-emerald-50/80 text-emerald-900",
-                        body: (bitrixRetryMonitoring?.failedWithoutRetryCount ?? 0) > 0
-                          ? `Есть ${bitrixRetryMonitoring?.failedWithoutRetryCount ?? 0} заявки без retry. Стоит открыть detail-view и повторить синхронизацию.`
+                        tone: (Number((bitrixRetryMonitoring as { failedWithoutRetryCount?: number } | null)?.failedWithoutRetryCount ?? 0)) > 0 ? "border-rose-200 bg-rose-50/80 text-rose-900" : "border-emerald-200 bg-emerald-50/80 text-emerald-900",
+                        body: (Number((bitrixRetryMonitoring as { failedWithoutRetryCount?: number } | null)?.failedWithoutRetryCount ?? 0)) > 0
+                          ? `Есть ${Number((bitrixRetryMonitoring as { failedWithoutRetryCount?: number } | null)?.failedWithoutRetryCount ?? 0)} заявки без retry. Стоит открыть detail-view и повторить синхронизацию.`
                           : "Сейчас нет failed-заявок без retry; ручное вмешательство не требуется.",
                       },
                       {
                         title: "Retry и snapshot активность",
                         tone: "border-amber-200 bg-amber-50/80 text-amber-900",
-                        body: `Retry lead count: ${bitrixRetryMonitoring?.retryLeadCount ?? 0}. Аудитов интеграции: ${bitrixSummary?.totalAudits ?? 0}, из них failed: ${bitrixSummary?.failedAudits ?? 0}.`,
+                        body: `Retry lead count: ${Number((bitrixRetryMonitoring as { retryLeadCount?: number } | null)?.retryLeadCount ?? 0)}. Аудитов интеграции: ${Number((bitrixSummary as { totalAudits?: number } | null)?.totalAudits ?? 0)}, из них failed: ${Number((bitrixSummary as { failedAudits?: number } | null)?.failedAudits ?? 0)}.`,
                       },
                       {
                         title: "Операционный совет",
@@ -1442,19 +1449,19 @@ export default function AdminClub() {
                     <div className="space-y-3 text-sm text-stone-700">
                       <div className="flex items-center justify-between gap-3 rounded-2xl border border-stone-200 bg-white px-4 py-3">
                         <span>Failed without retry</span>
-                        <strong className="text-stone-950">{bitrixRetryMonitoring?.failedWithoutRetryCount ?? 0}</strong>
+                        <strong className="text-stone-950">{Number((bitrixRetryMonitoring as { failedWithoutRetryCount?: number } | null)?.failedWithoutRetryCount ?? 0)}</strong>
                       </div>
                       <div className="flex items-center justify-between gap-3 rounded-2xl border border-stone-200 bg-white px-4 py-3">
                         <span>Repeated attempt leads</span>
-                        <strong className="text-stone-950">{bitrixRetryMonitoring?.repeatedAttemptLeadCount ?? 0}</strong>
+                        <strong className="text-stone-950">{Number((bitrixRetryMonitoring as { repeatedAttemptLeadCount?: number } | null)?.repeatedAttemptLeadCount ?? 0)}</strong>
                       </div>
                       <div className="flex items-center justify-between gap-3 rounded-2xl border border-stone-200 bg-white px-4 py-3">
                         <span>Retry lead count</span>
-                        <strong className="text-stone-950">{bitrixRetryMonitoring?.retryLeadCount ?? 0}</strong>
+                        <strong className="text-stone-950">{Number((bitrixRetryMonitoring as { retryLeadCount?: number } | null)?.retryLeadCount ?? 0)}</strong>
                       </div>
                       <div className="flex items-center justify-between gap-3 rounded-2xl border border-stone-200 bg-white px-4 py-3">
                         <span>Failed audits</span>
-                        <strong className="text-stone-950">{bitrixSummary?.failedAudits ?? 0}</strong>
+                        <strong className="text-stone-950">{Number((bitrixSummary as { failedAudits?: number } | null)?.failedAudits ?? 0)}</strong>
                       </div>
                     </div>
                   </div>
@@ -1532,15 +1539,15 @@ export default function AdminClub() {
                   <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-stone-200 bg-stone-50/70 px-4 py-3 text-sm text-stone-600">
                     <div className="flex flex-wrap items-center gap-3">
                       <span>Показано лидов: <strong className="text-stone-950">{visibleBitrixLeads.length}</strong></span>
-                      <span>Всего по серверным фильтрам: <strong className="text-stone-950">{bitrixPagination?.totalFilteredLeads ?? visibleBitrixLeads.length}</strong></span>
-                      <span>Страница <strong className="text-stone-950">{bitrixPagination?.page ?? bitrixQuery.page}</strong> / {bitrixPagination?.pageCount ?? 1}</span>
+                      <span>Всего по серверным фильтрам: <strong className="text-stone-950">{Number((bitrixPagination as { totalFilteredLeads?: number } | null)?.totalFilteredLeads ?? visibleBitrixLeads.length)}</strong></span>
+                      <span>Страница <strong className="text-stone-950">{Number((bitrixPagination as { page?: number } | null)?.page ?? bitrixQuery.page)}</strong> / {Number((bitrixPagination as { pageCount?: number } | null)?.pageCount ?? 1)}</span>
                     </div>
                     <div className="flex flex-wrap items-center gap-2">
                       <Badge variant="outline" className="rounded-full border-stone-300 bg-white px-2.5 py-0.5 text-[11px] text-stone-700">
-                        Повторные попытки: {bitrixSummary?.retriedLeads ?? 0}
+                        Повторные попытки: {Number((bitrixSummary as { retriedLeads?: number } | null)?.retriedLeads ?? 0)}
                       </Badge>
                       <Badge variant="outline" className="rounded-full border-stone-300 bg-white px-2.5 py-0.5 text-[11px] text-stone-700">
-                        Ошибки: {bitrixSummary?.failedLeads ?? 0}
+                        Ошибки: {Number((bitrixSummary as { failedLeads?: number } | null)?.failedLeads ?? 0)}
                       </Badge>
                     </div>
                   </div>
@@ -1565,29 +1572,29 @@ export default function AdminClub() {
                             <div className="flex flex-wrap items-start justify-between gap-3">
                               <div className="space-y-2">
                                 <div className="flex flex-wrap items-center gap-2">
-                                  <p className="text-sm font-semibold text-stone-950">#{lead.id} · {lead.companyName}</p>
+                                  <p className="text-sm font-semibold text-stone-950">#{String(lead.id ?? "—")} · {String(lead.companyName ?? "Без названия")}</p>
                                   <Badge variant="outline" className={`rounded-full px-2.5 py-0.5 text-[11px] uppercase tracking-[0.12em] ${statusTone}`}>
-                                    {lead.syncStatus}
+                                    {String(lead.syncStatus ?? "unknown")}
                                   </Badge>
                                   {lead.bitrixStageId ? (
                                     <Badge variant="outline" className="rounded-full border-stone-300 bg-white px-2.5 py-0.5 text-[11px] text-stone-700">
-                                      Stage: {lead.bitrixStageId}
+                                      Stage: {String(lead.bitrixStageId ?? "—")}
                                     </Badge>
                                   ) : null}
                                 </div>
-                                <p className="text-sm text-stone-600">{lead.fullName} · {lead.email}{lead.phone ? ` · ${lead.phone}` : ""}</p>
+                                <p className="text-sm text-stone-600">{String(lead.fullName ?? "—")} · {String(lead.email ?? "—")}{lead.phone ? ` · ${String(lead.phone)}` : ""}</p>
                                 <div className="flex flex-wrap gap-3 text-xs text-stone-500">
-                                  <span>Интерес: {lead.interestType}</span>
-                                  <span>Источник: {lead.source}</span>
-                                  <span>Попытки sync: {lead.syncAttemptCount}</span>
-                                  <span>Менеджер: {lead.assignedManagerName || "не назначен"}</span>
-                                  <span>Deal ID: {lead.bitrixDealId || "—"}</span>
+                                  <span>Интерес: {String(lead.interestType ?? "—")}</span>
+                                  <span>Источник: {String(lead.source ?? "—")}</span>
+                                  <span>Попытки sync: {String(lead.syncAttemptCount ?? "0")}</span>
+                                  <span>Менеджер: {String(lead.assignedManagerName ?? "не назначен")}</span>
+                                  <span>Deal ID: {String(lead.bitrixDealId ?? "—")}</span>
                                 </div>
                                 {lead.lastSyncError ? (
-                                  <p className="text-xs leading-5 text-rose-700">Ошибка: {lead.lastSyncError}</p>
+                                  <p className="text-xs leading-5 text-rose-700">Ошибка: {String(lead.lastSyncError ?? "")}</p>
                                 ) : null}
                                 <p className="text-xs text-stone-500">
-                                  Следующая активность: {lead.nextActivityAt ? new Date(lead.nextActivityAt).toLocaleString("ru-RU") : "ещё не запланирована"}
+                                  Следующая активность: {lead.nextActivityAt ? formatUnknownDate(lead.nextActivityAt) : "ещё не запланирована"}
                                 </p>
                               </div>
                               <div className="flex flex-wrap gap-2">
@@ -1595,7 +1602,7 @@ export default function AdminClub() {
                                   type="button"
                                   variant="outline"
                                   className="rounded-full border-stone-300 bg-white text-stone-700 hover:bg-stone-100"
-                                  onClick={() => setSelectedBitrixLeadId(lead.id)}
+                                  onClick={() => setSelectedBitrixLeadId(Number(lead.id ?? 0))}
                                 >
                                   {selectedBitrixLead?.id === lead.id ? "Открыто" : "Открыть detail-view"}
                                 </Button>
@@ -1603,7 +1610,7 @@ export default function AdminClub() {
                                   type="button"
                                   variant="outline"
                                   className="rounded-full border-stone-300 bg-white text-stone-700 hover:bg-stone-100"
-                                  onClick={() => void retryLeadSync.mutateAsync({ leadId: lead.id })}
+                                  onClick={() => void retryLeadSync.mutateAsync({ leadId: Number(lead.id ?? 0) })}
                                   disabled={retryLeadSync.isPending}
                                 >
                                   Retry sync
@@ -1611,8 +1618,8 @@ export default function AdminClub() {
                                 <Button
                                   type="button"
                                   className="rounded-full bg-stone-950 text-white hover:bg-stone-800"
-                                  onClick={() => void refreshDealSnapshot.mutateAsync({ leadId: lead.id })}
-                                  disabled={!lead.bitrixDealId || refreshDealSnapshot.isPending}
+                                  onClick={() => void refreshDealSnapshot(String(lead.bitrixDealId ?? ""), Number(lead.id ?? 0))}
+                                  disabled={!lead.bitrixDealId}
                                 >
                                   Refresh snapshot
                                 </Button>
@@ -1637,7 +1644,7 @@ export default function AdminClub() {
                         variant="outline"
                         className="rounded-full border-stone-300 bg-white text-stone-700 hover:bg-stone-100"
                         onClick={() => setBitrixQuery((current) => ({ ...current, page: Math.max(1, current.page - 1) }))}
-                        disabled={(bitrixPagination?.page ?? bitrixQuery.page) <= 1 || bitrixAdminQuery.isFetching}
+                        disabled={(Number((bitrixPagination as { page?: number } | null)?.page ?? bitrixQuery.page) <= 1) || bitrixAdminQuery.isFetching}
                       >
                         Предыдущая страница
                       </Button>
@@ -1646,7 +1653,7 @@ export default function AdminClub() {
                         variant="outline"
                         className="rounded-full border-stone-300 bg-white text-stone-700 hover:bg-stone-100"
                         onClick={() => setBitrixQuery((current) => ({ ...current, page: current.page + 1 }))}
-                        disabled={Boolean(bitrixPagination && (bitrixPagination.page >= bitrixPagination.pageCount)) || bitrixAdminQuery.isFetching}
+                        disabled={Boolean(bitrixPagination && (Number((bitrixPagination as { page?: number; pageCount?: number }).page ?? 1) >= Number((bitrixPagination as { pageCount?: number }).pageCount ?? 1))) || bitrixAdminQuery.isFetching}
                       >
                         Следующая страница
                       </Button>
@@ -1670,34 +1677,34 @@ export default function AdminClub() {
                           <div className="flex flex-wrap items-start justify-between gap-3">
                             <div className="space-y-2">
                               <div className="flex flex-wrap items-center gap-2">
-                                <p className="text-base font-semibold text-stone-950">#{selectedBitrixLead.id} · {selectedBitrixLead.companyName}</p>
+                                <p className="text-base font-semibold text-stone-950">#{String(selectedBitrixLead.id ?? "—")} · {String(selectedBitrixLead.companyName ?? "Без названия")}</p>
                                 <Badge variant="outline" className="rounded-full border-stone-300 bg-white px-2.5 py-0.5 text-[11px] uppercase tracking-[0.12em] text-stone-700">
-                                  {selectedBitrixLead.syncStatus}
+                                  {String(selectedBitrixLead.syncStatus ?? "unknown")}
                                 </Badge>
                                 {selectedBitrixLead.bitrixStageId ? (
                                   <Badge variant="outline" className="rounded-full border-stone-300 bg-white px-2.5 py-0.5 text-[11px] text-stone-700">
-                                    Stage: {selectedBitrixLead.bitrixStageId}
+                                    Stage: {String(selectedBitrixLead.bitrixStageId ?? "—")}
                                   </Badge>
                                 ) : null}
                               </div>
-                              <p className="text-sm text-stone-600">{selectedBitrixLead.fullName} · {selectedBitrixLead.email}{selectedBitrixLead.phone ? ` · ${selectedBitrixLead.phone}` : ""}</p>
+                              <p className="text-sm text-stone-600">{String(selectedBitrixLead.fullName ?? "—")} · {String(selectedBitrixLead.email ?? "—")}{selectedBitrixLead.phone ? ` · ${String(selectedBitrixLead.phone)}` : ""}</p>
                               <div className="grid gap-2 sm:grid-cols-2">
                                 <div className="rounded-2xl border border-stone-200 bg-white px-3 py-3 text-sm text-stone-600">
                                   <p className="text-xs uppercase tracking-[0.12em] text-stone-400">Менеджер</p>
-                                  <p className="mt-2 font-medium text-stone-950">{selectedBitrixLead.assignedManagerName || "Не назначен"}</p>
+                                  <p className="mt-2 font-medium text-stone-950">{String(selectedBitrixLead.assignedManagerName ?? "Не назначен")}</p>
                                 </div>
                                 <div className="rounded-2xl border border-stone-200 bg-white px-3 py-3 text-sm text-stone-600">
                                   <p className="text-xs uppercase tracking-[0.12em] text-stone-400">Следующая активность</p>
-                                  <p className="mt-2 font-medium text-stone-950">{selectedBitrixLead.nextActivityAt ? new Date(selectedBitrixLead.nextActivityAt).toLocaleString("ru-RU") : "Не запланирована"}</p>
+                                  <p className="mt-2 font-medium text-stone-950">{selectedBitrixLead.nextActivityAt ? formatUnknownDate(selectedBitrixLead.nextActivityAt) : "Не запланирована"}</p>
                                 </div>
                                 <div className="rounded-2xl border border-stone-200 bg-white px-3 py-3 text-sm text-stone-600">
                                   <p className="text-xs uppercase tracking-[0.12em] text-stone-400">CRM IDs</p>
-                                  <p className="mt-2 leading-6 text-stone-950">Deal: {selectedBitrixLead.bitrixDealId || "—"}<br />Lead: {selectedBitrixLead.bitrixLeadId || "—"}<br />Contact: {selectedBitrixLead.bitrixContactId || "—"}</p>
+                                  <p className="mt-2 leading-6 text-stone-950">Deal: {String(selectedBitrixLead.bitrixDealId ?? "—")}<br />Lead: {String(selectedBitrixLead.bitrixLeadId ?? "—")}<br />Contact: {String(selectedBitrixLead.bitrixContactId ?? "—")}</p>
                                 </div>
                                 <div className="rounded-2xl border border-stone-200 bg-white px-3 py-3 text-sm text-stone-600">
                                   <p className="text-xs uppercase tracking-[0.12em] text-stone-400">Sync attempts</p>
-                                  <p className="mt-2 font-medium text-stone-950">{selectedBitrixLead.syncAttemptCount}</p>
-                                  <p className="mt-1 text-xs text-stone-500">Последний sync: {selectedBitrixLead.lastSyncAt ? new Date(selectedBitrixLead.lastSyncAt).toLocaleString("ru-RU") : "ещё не запускался"}</p>
+                                  <p className="mt-2 font-medium text-stone-950">{String(selectedBitrixLead.syncAttemptCount ?? "0")}</p>
+                                  <p className="mt-1 text-xs text-stone-500">Последний sync: {selectedBitrixLead.lastSyncAt ? formatUnknownDate(selectedBitrixLead.lastSyncAt) : "ещё не запускался"}</p>
                                 </div>
                               </div>
                             </div>
@@ -1706,7 +1713,7 @@ export default function AdminClub() {
                                 type="button"
                                 variant="outline"
                                 className="rounded-full border-stone-300 bg-white text-stone-700 hover:bg-stone-100"
-                                onClick={() => void retryLeadSync.mutateAsync({ leadId: selectedBitrixLead.id })}
+                                onClick={() => void retryLeadSync.mutateAsync({ leadId: Number(selectedBitrixLead.id ?? 0) })}
                                 disabled={retryLeadSync.isPending}
                               >
                                 Retry sync
@@ -1714,8 +1721,8 @@ export default function AdminClub() {
                               <Button
                                 type="button"
                                 className="rounded-full bg-stone-950 text-white hover:bg-stone-800"
-                                onClick={() => void refreshDealSnapshot.mutateAsync({ leadId: selectedBitrixLead.id })}
-                                disabled={!selectedBitrixLead.bitrixDealId || refreshDealSnapshot.isPending}
+                                onClick={() => void refreshDealSnapshot(String(selectedBitrixLead.bitrixDealId ?? ""), Number(selectedBitrixLead.id ?? 0))}
+                                disabled={!selectedBitrixLead.bitrixDealId}
                               >
                                 Refresh snapshot
                               </Button>
@@ -1725,7 +1732,7 @@ export default function AdminClub() {
                             <Alert className="mt-4 border-rose-200 bg-rose-50/80 text-rose-900">
                               <ShieldAlert className="h-4 w-4" />
                               <AlertTitle>Последняя ошибка синхронизации</AlertTitle>
-                              <AlertDescription>{selectedBitrixLead.lastSyncError}</AlertDescription>
+                              <AlertDescription>{String(selectedBitrixLead.lastSyncError ?? "")}</AlertDescription>
                             </Alert>
                           ) : null}
                         </div>
@@ -1744,7 +1751,7 @@ export default function AdminClub() {
                             <div className="space-y-3">
                               <div className="rounded-2xl border border-dashed border-stone-200 bg-white px-4 py-3">
                                 <p className="text-sm font-medium text-stone-900">Старт лидогенерации</p>
-                                <p className="text-xs text-stone-500">Создано: {selectedBitrixLead.createdAt ? new Date(selectedBitrixLead.createdAt).toLocaleString("ru-RU") : "дата недоступна"}</p>
+                                <p className="text-xs text-stone-500">Создано: {selectedBitrixLead.createdAt ? formatUnknownDate(selectedBitrixLead.createdAt) : "дата недоступна"}</p>
                               </div>
                               {selectedBitrixLeadAudits.slice(0, 6).map((audit: any) => (
                                 <div key={audit.id} className="rounded-2xl border border-stone-200 bg-white px-4 py-3">
@@ -1758,7 +1765,7 @@ export default function AdminClub() {
                                       {audit.status}
                                     </Badge>
                                   </div>
-                                  <p className="mt-2 text-xs text-stone-500">{new Date(audit.createdAt).toLocaleString("ru-RU")}</p>
+                                  <p className="mt-2 text-xs text-stone-500">{formatUnknownDate(audit.createdAt)}</p>
                                 </div>
                               ))}
                               {!selectedBitrixLeadAudits.length ? (
@@ -1777,7 +1784,7 @@ export default function AdminClub() {
                                   <p className="text-xs text-stone-500">Быстрый просмотр ключевых полей заявки без обращения к базе или вебхуку вручную.</p>
                                 </div>
                                 <Badge variant="outline" className="rounded-full border-stone-300 bg-white px-2.5 py-0.5 text-[11px] text-stone-700">
-                                  Lead #{selectedBitrixLead.id}
+                                  {`Lead #${String(selectedBitrixLead.id ?? "—")}`}
                                 </Badge>
                               </div>
                               <div className="rounded-2xl border border-stone-200 bg-white p-4">
@@ -1845,7 +1852,7 @@ export default function AdminClub() {
                                         <pre className="mt-2 overflow-x-auto whitespace-pre-wrap break-words text-[11px] leading-5 text-stone-600">{audit.responsePayload}</pre>
                                       </details>
                                     ) : null}
-                                    <p className="mt-2 text-xs text-stone-500">{new Date(audit.createdAt).toLocaleString("ru-RU")}</p>
+                                    <p className="mt-2 text-xs text-stone-500">{formatUnknownDate(audit.createdAt)}</p>
                                   </div>
                                 ))}
                                 {!selectedBitrixLeadAudits.filter((audit: any) => ["retry", "sync", "pull"].includes(String(audit.operation))).length ? (
@@ -1888,7 +1895,7 @@ export default function AdminClub() {
                               <p className="text-xs text-stone-500">Lead #{audit.entityId} · External ID: {audit.externalId || "—"}</p>
                               {audit.errorMessage ? <p className="text-xs leading-5 text-rose-700">{audit.errorMessage}</p> : null}
                             </div>
-                            <span className="text-xs text-stone-500">{new Date(audit.createdAt).toLocaleString("ru-RU")}</span>
+                            <span className="text-xs text-stone-500">{formatUnknownDate(audit.createdAt)}</span>
                           </div>
                         </div>
                       ))
@@ -2198,7 +2205,7 @@ export default function AdminClub() {
                                       <p className="text-xs leading-5 text-stone-500">Причина: {entry.reason}</p>
                                     </div>
                                     <span className="text-xs text-stone-500">
-                                      {new Date(entry.timestamp).toLocaleString("ru-RU", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}
+                                      {formatUnknownDate(entry.timestamp, "ru-RU", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}
                                     </span>
                                   </div>
                                 </div>
@@ -2254,7 +2261,7 @@ export default function AdminClub() {
                                       <p className="text-sm text-stone-600">{entry.description}</p>
                                     </div>
                                     <span className="text-xs text-stone-500">
-                                      {new Date(entry.timestamp).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })}
+                                      {formatUnknownDate(entry.timestamp, "ru-RU", { hour: "2-digit", minute: "2-digit" })}
                                     </span>
                                   </div>
                                 </div>

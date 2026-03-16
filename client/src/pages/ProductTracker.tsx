@@ -112,7 +112,7 @@ function iconForStat(icon: TrackerSummary["stats"][number]["icon"]) {
 }
 
 export default function ProductTracker() {
-  const trackerQuery = trpc.productTracker.summary.useQuery({ animalSlug: "marta" });
+  const trackerQuery = trpc.productTracker.getByAnimal.useQuery({ animalSlug: "marta" });
   const summary = trackerQuery.data as TrackerSummary | undefined;
 
   const deliveries = summary?.deliveries ?? [];

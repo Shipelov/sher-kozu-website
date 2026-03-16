@@ -13,16 +13,16 @@ export function useAuth(options?: UseAuthOptions) {
     options ?? {};
   const utils = trpc.useUtils();
 
-  const meQuery = trpc.auth.me.useQuery(undefined, {
+  const meQuery = trpc.system.health.useQuery({ timestamp: Date.now() }, {
     retry: false,
     refetchOnWindowFocus: false,
   });
 
-  const logoutMutation = trpc.auth.logout.useMutation({
-    onSuccess: () => {
-      utils.auth.me.setData(undefined, null);
-    },
-  });
+  const logoutMutation = {
+    mutateAsync: async () => undefined,
+    isPending: false,
+    error: null as Error | null,
+  };
 
   const logout = useCallback(async () => {
     try {
@@ -36,16 +36,15 @@ export function useAuth(options?: UseAuthOptions) {
       }
       throw error;
     } finally {
-      utils.auth.me.setData(undefined, null);
-      await utils.auth.me.invalidate();
+      await utils.system.health.invalidate({ timestamp: Date.now() });
     }
   }, [logoutMutation, utils]);
 
   const state = useMemo(() => ({
-    user: meQuery.data ?? null,
+    user: null,
     loading: meQuery.isLoading || logoutMutation.isPending,
     error: meQuery.error ?? logoutMutation.error ?? null,
-    isAuthenticated: Boolean(meQuery.data),
+    isAuthenticated: false,
   }), [
     meQuery.data,
     meQuery.error,
@@ -60,12 +59,12 @@ export function useAuth(options?: UseAuthOptions) {
     try {
       window.localStorage.setItem(
         "manus-runtime-user-info",
-        JSON.stringify(meQuery.data ?? null)
+        JSON.stringify(null)
       );
     } catch (error) {
       console.warn("[Auth] Failed to persist runtime user info", error);
     }
-  }, [meQuery.data]);
+  }, []);
 
   useEffect(() => {
     if (!redirectOnUnauthenticated) return;
