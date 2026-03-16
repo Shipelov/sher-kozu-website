@@ -245,6 +245,29 @@ function formatAttachmentSize(bytes: number) {
   return `${(bytes / (1024 * 1024)).toFixed(1)} МБ`;
 }
 
+const partnerAttachmentRecommendations: Record<PartnerLeadFormState["interestType"], { title: string; items: string[] }> = {
+  retail: {
+    title: "Для retail-заявки лучше всего приложить:",
+    items: ["актуальный прайс-лист", "карточку компании или реквизиты", "план по полке, формату выкладки или пилотным SKU"],
+  },
+  horeca: {
+    title: "Для HoReCa-партнёрства особенно полезны:",
+    items: ["меню или матрица закупки", "ожидаемые объёмы и частота поставок", "бриф по формату кухни, отеля или кофейни"],
+  },
+  distribution: {
+    title: "Для дистрибуции рекомендуем приложить:",
+    items: ["географию покрытия и каналы продаж", "операционный профиль склада или логистики", "коммерческие условия или план запуска региона"],
+  },
+  collaboration: {
+    title: "Для коллаборации лучше подготовить:",
+    items: ["креативный бриф или концепцию партнёрства", "референсы по совместному продукту или кампании", "черновой таймлайн и ожидания по ролям сторон"],
+  },
+  other: {
+    title: "Для нестандартного запроса подойдут:",
+    items: ["короткое описание идеи", "любые материалы, помогающие быстро понять формат сотрудничества", "контактные данные ответственного лица и следующий желаемый шаг"],
+  },
+};
+
 const defaultPartnerLeadForm = (): PartnerLeadFormState => ({
   fullName: "",
   companyName: "",
@@ -367,6 +390,7 @@ export default function Home() {
   ];
   const partnerFormReadyCount = partnerFormReadyItems.filter(Boolean).length;
   const partnerFormProgressPercent = Math.round((partnerFormReadyCount / partnerFormReadyItems.length) * 100);
+  const partnerAttachmentRecommendation = partnerAttachmentRecommendations[partnerLeadForm.interestType];
 
   const appendPartnerAttachments = (incomingFiles: File[]) => {
     if (!incomingFiles.length) return;
@@ -898,6 +922,16 @@ export default function Home() {
                             <span className="rounded-full border border-sky-200 bg-sky-50 px-2.5 py-1 text-sky-700">Документы: PDF, DOC, DOCX, XLS, XLSX, PPT, PPTX, TXT, CSV</span>
                             <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-emerald-700">Изображения: JPG, PNG, WEBP, SVG</span>
                             <span className="rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-amber-700">Архивы: ZIP, RAR, 7Z</span>
+                          </div>
+                          <div className="rounded-2xl border border-primary/15 bg-primary/5 px-3 py-3 text-xs leading-5 text-stone-700">
+                            <p className="font-semibold text-stone-900">{partnerAttachmentRecommendation.title}</p>
+                            <div className="mt-2 flex flex-wrap gap-2">
+                              {partnerAttachmentRecommendation.items.map((item) => (
+                                <span key={item} className="rounded-full border border-primary/15 bg-white px-2.5 py-1 text-stone-700">
+                                  {item}
+                                </span>
+                              ))}
+                            </div>
                           </div>
                         </div>
                       </div>
