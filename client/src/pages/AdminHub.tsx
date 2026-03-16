@@ -5,6 +5,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
 import {
   ArrowRight,
@@ -24,34 +25,10 @@ type AdminSectionCard = {
   icon: typeof PawPrint;
   statusLabel: string;
   adminOnly: boolean;
+  countLabel?: string;
+  quickActionLabel?: string;
+  quickActionPath?: string;
 };
-
-const adminSections: AdminSectionCard[] = [
-  {
-    title: "Admin overview",
-    description: "Единая точка входа в служебные разделы фермы с быстрым переходом к каталогам, операциям и ручным проверкам доступа.",
-    path: "/admin",
-    icon: ShieldCheck,
-    statusLabel: "Маршрут активен",
-    adminOnly: true,
-  },
-  {
-    title: "Admin Animals",
-    description: "Управление каталогом животных, статусами карточек, метаданными и визуальной витриной профилей.",
-    path: "/admin/animals",
-    icon: PawPrint,
-    statusLabel: "CRUD и галерея",
-    adminOnly: true,
-  },
-  {
-    title: "Admin Club",
-    description: "Операции клуба, события, посты, участники и служебные процессы контентной и CRM-команды.",
-    path: "/admin/club",
-    icon: Crown,
-    statusLabel: "Контент и CRM",
-    adminOnly: true,
-  },
-];
 
 function StatusPill({ label, tone = "neutral" }: { label: string; tone?: "neutral" | "success" | "warning" }) {
   const className = tone === "success"
@@ -71,6 +48,54 @@ export default function AdminHub() {
   const { user, loading } = useAuth();
   const [, setLocation] = useLocation();
   const isAdmin = user?.role === "admin";
+  const animalsQuery = trpc.adminAnimals.list.useQuery(undefined, {
+    enabled: isAdmin,
+    retry: false,
+  });
+  const clubQuery = trpc.adminClub.dashboard.useQuery(undefined, {
+    enabled: isAdmin,
+    retry: false,
+  });
+
+  const adminSections: AdminSectionCard[] = [
+    {
+      title: "Admin overview",
+      description: "Единая точка входа в служебные разделы фермы с быстрым переходом к каталогам, операциям и ручным проверкам доступа.",
+      path: "/admin",
+      icon: ShieldCheck,
+      statusLabel: "Маршрут активен",
+      adminOnly: true,
+      countLabel: "3 модуля в обзоре",
+      quickActionLabel: "Перейти в dashboard",
+      quickActionPath: "/dashboard",
+    },
+    {
+      title: "Admin Animals",
+      description: "Управление каталогом животных, статусами карточек, метаданными и визуальной витриной профилей.",
+      path: "/admin/animals",
+      icon: PawPrint,
+      statusLabel: "CRUD и галерея",
+      adminOnly: true,
+      countLabel: isAdmin
+        ? `${animalsQuery.data?.length ?? 0} животных в каталоге`
+        : "Счётчик доступен после роли admin",
+      quickActionLabel: "Открыть каталог животных",
+      quickActionPath: "/admin/animals",
+    },
+    {
+      title: "Admin Club",
+      description: "Операции клуба, события, посты, участники и служебные процессы контентной и CRM-команды.",
+      path: "/admin/club",
+      icon: Crown,
+      statusLabel: "Контент и CRM",
+      adminOnly: true,
+      countLabel: isAdmin
+        ? `${clubQuery.data?.summary.totalPosts ?? 0} постов · ${clubQuery.data?.summary.totalEvents ?? 0} событий · ${clubQuery.data?.summary.totalMembers ?? 0} участников`
+        : "Счётчик доступен после роли admin",
+      quickActionLabel: "Открыть управление клубом",
+      quickActionPath: "/admin/club",
+    },
+  ];
 
   if (loading) {
     return (
@@ -179,6 +204,20 @@ export default function AdminHub() {
                     <p className="mt-1 text-xs text-muted-foreground">Admin-модули требуют роль `admin`.</p>
                   </CardContent>
                 </Card>
+                <Card className="rounded-[1.5rem] border-border/70 bg-stone-50/80 shadow-none">
+                  <CardContent className="p-4">
+                    <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Animals</p>
+                    <p className="mt-2 text-lg font-semibold text-foreground">{isAdmin ? (animalsQuery.data?.length ?? 0) : "—"}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">Живой счётчик карточек из adminAnimals.list.</p>
+                  </CardContent>
+                </Card>
+                <Card className="rounded-[1.5rem] border-border/70 bg-stone-50/80 shadow-none">
+                  <CardContent className="p-4">
+                    <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Club</p>
+                    <p className="mt-2 text-lg font-semibold text-foreground">{isAdmin ? `${clubQuery.data?.summary.totalPosts ?? 0}/${clubQuery.data?.summary.totalEvents ?? 0}/${clubQuery.data?.summary.totalMembers ?? 0}` : "—"}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">Посты, события и участники из adminClub.dashboard.</p>
+                  </CardContent>
+                </Card>
               </div>
             </div>
           </section>
@@ -217,6 +256,7 @@ export default function AdminHub() {
                     <div className="flex flex-wrap items-center gap-2">
                       <StatusPill label={section.statusLabel} />
                       <StatusPill label={section.path} />
+                      {section.countLabel ? <StatusPill label={section.countLabel} /> : null}
                     </div>
                     <div className="rounded-[1.25rem] border border-border/70 bg-stone-50/80 p-4 text-sm leading-6 text-muted-foreground">
                       {canOpen
@@ -224,7 +264,7 @@ export default function AdminHub() {
                         : "Маршрут зарегистрирован, но интерфейс предупредит о нехватке прав до получения роли admin."}
                     </div>
                   </CardContent>
-                  <CardFooter>
+                  <CardFooter className="flex flex-col gap-3">
                     <Button
                       className="w-full rounded-full"
                       variant={canOpen ? "default" : "outline"}
@@ -233,6 +273,15 @@ export default function AdminHub() {
                       {canOpen ? "Открыть раздел" : "Посмотреть статус доступа"}
                       <ArrowRight className="ml-2 h-4 w-4" />
                     </Button>
+                    {section.quickActionPath ? (
+                      <Button
+                        className="w-full rounded-full"
+                        variant="ghost"
+                        onClick={() => setLocation(section.quickActionPath!)}
+                      >
+                        {section.quickActionLabel}
+                      </Button>
+                    ) : null}
                   </CardFooter>
                 </Card>
               );

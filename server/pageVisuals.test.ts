@@ -61,13 +61,17 @@ describe("page visual integration source smoke", () => {
     expect(dashboardLayoutSource).toContain('{roleLabel}');
   });
 
-  it("shows admin overview cards and access statuses on the new admin page", () => {
+  it("shows admin overview cards, live counters and quick actions on the admin page", () => {
     expect(adminHubSource).toContain("Служебный центр управления Sher Kozu");
     expect(adminHubSource).toContain("Страница `/admin`");
     expect(adminHubSource).toContain("Admin Animals");
     expect(adminHubSource).toContain("Admin Club");
     expect(adminHubSource).toContain("Роль:");
     expect(adminHubSource).toContain("Доступ открыт");
+    expect(adminHubSource).toContain("Живой счётчик карточек из adminAnimals.list");
+    expect(adminHubSource).toContain("Посты, события и участники из adminClub.dashboard");
+    expect(adminHubSource).toContain("Открыть каталог животных");
+    expect(adminHubSource).toContain("Открыть управление клубом");
   });
 
   it("shows explicit auth, role diagnostics and admin fallbacks on admin animals page", () => {
