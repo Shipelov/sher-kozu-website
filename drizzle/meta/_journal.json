@@ -43,6 +43,13 @@
       "when": 1773596845939,
       "tag": "0005_cooing_squirrel_girl",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "5",
+      "when": 1773667259873,
+      "tag": "0006_goofy_epoch",
+      "breakpoints": true
     }
   ]
 }

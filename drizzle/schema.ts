@@ -166,6 +166,7 @@ export const partnerLeads = mysqlTable("partnerLeads", {
   preferredContactMethod: mysqlEnum("preferredContactMethod", ["email", "phone", "whatsapp", "telegram", "any"]).default("any").notNull(),
   interestProducts: text("interestProducts"),
   notes: text("notes"),
+  attachmentsJson: text("attachmentsJson"),
   syncStatus: mysqlEnum("syncStatus", ["pending", "success", "failed", "retried"]).default("pending").notNull(),
   syncAttemptCount: int("syncAttemptCount").default(0).notNull(),
   lastSyncAt: timestamp("lastSyncAt"),

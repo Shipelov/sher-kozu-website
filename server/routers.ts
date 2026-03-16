@@ -144,6 +144,13 @@ const criticalNotificationInput = z.object({
   content: z.string().min(1).max(20000),
 });
 
+const partnerLeadAttachmentInput = z.object({
+  name: z.string().min(1).max(180),
+  mimeType: z.string().min(1).max(120),
+  size: z.number().int().positive().max(10_000_000),
+  base64: z.string().min(1),
+});
+
 const partnerLeadInput = z.object({
   fullName: z.string().min(2).max(160),
   companyName: z.string().min(2).max(160),
@@ -156,6 +163,7 @@ const partnerLeadInput = z.object({
   preferredContactMethod: z.enum(["email", "phone", "whatsapp", "telegram", "any"]),
   interestProducts: z.string().max(1000).optional().nullable(),
   notes: z.string().max(3000).optional().nullable(),
+  attachments: z.array(partnerLeadAttachmentInput).max(3).default([]),
 });
 
 const retryPartnerLeadInput = z.object({
@@ -223,6 +231,14 @@ async function runBitrixLeadSync(ownerOpenId: string, leadId: number, markAsRetr
   });
 
   try {
+    const attachments = lead.attachmentsJson ? JSON.parse(lead.attachmentsJson) as Array<{
+      name: string;
+      mimeType: string;
+      size: number;
+      url: string;
+      key?: string;
+    }> : [];
+
     const syncResult = await syncPartnerLeadToBitrix({
       id: lead.id,
       fullName: lead.fullName,
@@ -236,6 +252,7 @@ async function runBitrixLeadSync(ownerOpenId: string, leadId: number, markAsRetr
       preferredContactMethod: lead.preferredContactMethod as "email" | "phone" | "whatsapp" | "telegram" | "any",
       interestProducts: lead.interestProducts,
       notes: lead.notes,
+      attachments,
     });
 
     const updatedLead = await updatePartnerLeadSyncResult({
@@ -453,6 +470,25 @@ export const appRouter = router({
   }),
   bitrix24: router({
     createPartnerLead: protectedProcedure.input(partnerLeadInput).mutation(async ({ ctx, input }) => {
+      const uploadedAttachments = await Promise.all(
+        input.attachments.map(async (attachment, index) => {
+          const safeName = sanitizeFileName(attachment.name);
+          const binary = Buffer.from(attachment.base64, "base64");
+          const storageResult = await storagePut(
+            `partner-leads/${ctx.user.openId}/${Date.now()}-${index}-${safeName}`,
+            binary,
+            attachment.mimeType
+          );
+          return {
+            name: attachment.name,
+            mimeType: attachment.mimeType,
+            size: attachment.size,
+            url: storageResult.url,
+            key: storageResult.key,
+          };
+        })
+      );
+
       const createdLead = await createPartnerLead({
         ownerOpenId: ctx.user.openId,
         fullName: input.fullName,
@@ -466,6 +502,7 @@ export const appRouter = router({
         preferredContactMethod: input.preferredContactMethod,
         interestProducts: input.interestProducts ?? null,
         notes: input.notes ?? null,
+        attachmentsJson: uploadedAttachments.length ? JSON.stringify(uploadedAttachments) : null,
         syncStatus: "pending",
         syncAttemptCount: 0,
         lastSyncAt: null,

@@ -1,5 +1,13 @@
 import { ENV } from "./_core/env";
 
+export type PartnerLeadAttachment = {
+  name: string;
+  mimeType: string;
+  size: number;
+  url: string;
+  key?: string;
+};
+
 export type PartnerLeadSyncPayload = {
   id: number;
   fullName: string;
@@ -13,6 +21,7 @@ export type PartnerLeadSyncPayload = {
   preferredContactMethod: "email" | "phone" | "whatsapp" | "telegram" | "any";
   interestProducts?: string | null;
   notes?: string | null;
+  attachments?: PartnerLeadAttachment[];
 };
 
 export type BitrixEntitySyncResult = {
@@ -72,6 +81,10 @@ export function mapLeadSource(source: PartnerLeadSyncPayload["source"]) {
 }
 
 export function formatLeadComment(input: PartnerLeadSyncPayload) {
+  const attachmentLines = (input.attachments ?? []).map((attachment, index) => (
+    `Файл ${index + 1}: ${attachment.name} (${attachment.mimeType}, ${attachment.size} bytes) — ${attachment.url}`
+  ));
+
   return [
     `Sher Kozu Partner Lead #${input.id}`,
     `Источник: ${input.source}`,
@@ -81,6 +94,8 @@ export function formatLeadComment(input: PartnerLeadSyncPayload) {
     input.telegram ? `Telegram: ${input.telegram}` : null,
     input.interestProducts ? `Интересующие продукты: ${input.interestProducts}` : null,
     input.notes ? `Комментарий: ${input.notes}` : null,
+    attachmentLines.length ? "Вложения:" : null,
+    ...attachmentLines,
   ].filter(Boolean).join("\n");
 }
 

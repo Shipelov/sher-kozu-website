@@ -1,0 +1,1 @@
+ALTER TABLE `partnerLeads` ADD `attachmentsJson` text;

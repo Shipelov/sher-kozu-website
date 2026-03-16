@@ -32,6 +32,7 @@ import {
   ShieldCheck,
   Sparkles,
   Star,
+  Upload,
   UserRound,
   Users,
   Camera,
@@ -147,6 +148,22 @@ type PartnerLeadFormState = {
   notes: string;
 };
 
+type PartnerAttachmentDraft = {
+  name: string;
+  size: number;
+  mimeType: string;
+  file: File;
+};
+
+const MAX_PARTNER_FILES = 3;
+const MAX_PARTNER_FILE_SIZE_BYTES = 10 * 1024 * 1024;
+
+function formatAttachmentSize(bytes: number) {
+  if (bytes < 1024) return `${bytes} Б`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} КБ`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} МБ`;
+}
+
 const defaultPartnerLeadForm = (): PartnerLeadFormState => ({
   fullName: "",
   companyName: "",
@@ -194,6 +211,7 @@ function getStatusCopy(status: string | null | undefined) {
 
 export default function Home() {
   const [partnerLeadForm, setPartnerLeadForm] = useState<PartnerLeadFormState>(defaultPartnerLeadForm);
+  const [partnerAttachments, setPartnerAttachments] = useState<PartnerAttachmentDraft[]>([]);
   const [latestSubmission, setLatestSubmission] = useState<{
     id: number;
     syncStatus: string | null;
@@ -201,6 +219,7 @@ export default function Home() {
     assignedManagerName: string | null;
     nextActivityAt: Date | number | string | null;
     lastSyncError: string | null;
+    attachmentsJson?: string | null;
   } | null>(null);
 
   const createPartnerLead = trpc.bitrix24.createPartnerLead.useMutation({
@@ -212,11 +231,13 @@ export default function Home() {
         assignedManagerName: result.lead.assignedManagerName,
         nextActivityAt: result.lead.nextActivityAt,
         lastSyncError: result.errorMessage ?? result.lead.lastSyncError ?? null,
+        attachmentsJson: result.lead.attachmentsJson ?? null,
       });
 
       if (result.synced) {
         toast.success("Заявка отправлена в Bitrix24", {
-          description: "Партнёрская заявка создана и сразу синхронизирована с CRM пилота.",
+                          description: "Партнёрская заявка создана, синхронизирована с CRM пилота и включает ссылки на прикреплённые файлы.",
+
         });
       } else {
         toast.error("Заявка сохранена, но CRM требует повторной синхронизации", {
@@ -225,6 +246,7 @@ export default function Home() {
       }
 
       setPartnerLeadForm(defaultPartnerLeadForm());
+      setPartnerAttachments([]);
     },
     onError: (error) => {
       toast.error("Не удалось отправить партнёрскую заявку", {
@@ -234,6 +256,46 @@ export default function Home() {
   });
 
   const latestSubmissionStatus = useMemo(() => getStatusCopy(latestSubmission?.syncStatus), [latestSubmission?.syncStatus]);
+
+  const handlePartnerAttachmentSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const incomingFiles = Array.from(event.target.files ?? []);
+    if (!incomingFiles.length) return;
+
+    setPartnerAttachments((current) => {
+      const next = [...current];
+
+      for (const file of incomingFiles) {
+        if (next.length >= MAX_PARTNER_FILES) {
+          toast.error("Достигнут лимит файлов", {
+            description: `Можно приложить не более ${MAX_PARTNER_FILES} файлов к одной заявке.`,
+          });
+          break;
+        }
+
+        if (file.size > MAX_PARTNER_FILE_SIZE_BYTES) {
+          toast.error("Файл слишком большой", {
+            description: `${file.name} превышает лимит ${formatAttachmentSize(MAX_PARTNER_FILE_SIZE_BYTES)}.`,
+          });
+          continue;
+        }
+
+        next.push({
+          name: file.name,
+          size: file.size,
+          mimeType: file.type || "application/octet-stream",
+          file,
+        });
+      }
+
+      return next;
+    });
+
+    event.target.value = "";
+  };
+
+  const removePartnerAttachment = (name: string, size: number) => {
+    setPartnerAttachments((current) => current.filter((item) => !(item.name === name && item.size === size)));
+  };
 
   const handlePartnerLeadSubmit = async () => {
     const payload = {
@@ -257,7 +319,28 @@ export default function Home() {
       return;
     }
 
-    await createPartnerLead.mutateAsync(payload);
+    const attachments = await Promise.all(
+      partnerAttachments.map(async (item) => {
+        const buffer = await item.file.arrayBuffer();
+        const bytes = new Uint8Array(buffer);
+        let binary = "";
+        for (let index = 0; index < bytes.length; index += 1) {
+          binary += String.fromCharCode(bytes[index]);
+        }
+
+        return {
+          name: item.name,
+          size: item.size,
+          mimeType: item.mimeType,
+          base64: btoa(binary),
+        };
+      })
+    );
+
+    await createPartnerLead.mutateAsync({
+      ...payload,
+      attachments,
+    });
   };
 
   const LatestStatusIcon = latestSubmissionStatus.icon;
@@ -589,11 +672,39 @@ export default function Home() {
                     <Input id="partner-products" value={partnerLeadForm.interestProducts} onChange={(event) => setPartnerLeadForm((current) => ({ ...current, interestProducts: event.target.value }))} placeholder="Молоко A2, крафтовые сыры, branded boxes" />
                   </div>
 
-                  <div className="mt-4 space-y-2">
+                   <div className="mt-4 space-y-2">
                     <Label htmlFor="partner-notes">Комментарий</Label>
                     <Textarea id="partner-notes" className="min-h-28" value={partnerLeadForm.notes} onChange={(event) => setPartnerLeadForm((current) => ({ ...current, notes: event.target.value }))} placeholder="Опишите формат поставки, объёмы или совместную идею." />
                   </div>
-
+                  <div className="mt-4 space-y-3 rounded-2xl border border-dashed border-stone-300 bg-stone-50/70 p-4">
+                    <div className="flex items-start justify-between gap-4">
+                      <div>
+                        <Label htmlFor="partner-attachments" className="text-sm font-medium text-stone-900">Файлы для заявки</Label>
+                        <p className="mt-1 text-xs leading-5 text-stone-500">
+                          Можно приложить до {MAX_PARTNER_FILES} файлов размером до {formatAttachmentSize(MAX_PARTNER_FILE_SIZE_BYTES)} каждый: реквизиты, презентацию, прайс или PDF-коммерческое предложение.
+                        </p>
+                      </div>
+                      <Upload className="mt-0.5 h-5 w-5 text-stone-400" />
+                    </div>
+                    <Input id="partner-attachments" type="file" multiple onChange={handlePartnerAttachmentSelect} className="cursor-pointer bg-white" />
+                    {partnerAttachments.length ? (
+                      <div className="space-y-2">
+                        {partnerAttachments.map((item) => (
+                          <div key={`${item.name}-${item.size}`} className="flex items-center justify-between gap-3 rounded-xl border border-stone-200 bg-white px-3 py-2 text-sm">
+                            <div className="min-w-0">
+                              <p className="truncate font-medium text-stone-800">{item.name}</p>
+                              <p className="text-xs text-stone-500">{formatAttachmentSize(item.size)} · {item.mimeType}</p>
+                            </div>
+                            <Button type="button" variant="ghost" className="shrink-0 text-stone-500 hover:text-stone-900" onClick={() => removePartnerAttachment(item.name, item.size)}>
+                              Удалить
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-stone-500">Файлы пока не выбраны.</p>
+                    )}
+                  </div>
                   <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <p className="text-xs leading-6 text-stone-500">
                       Отправляя форму, вы инициируете pilot-сценарий двусторонней интеграции Sher Kozu ↔ Bitrix24 только для партнёрских заявок.
@@ -650,6 +761,11 @@ export default function Home() {
                           <p className="font-semibold">Последняя ошибка синхронизации</p>
                           <p className="mt-2 leading-6">{latestSubmission.lastSyncError}</p>
                           <p className="mt-2 text-xs leading-5 text-rose-700/80">Администратор может повторить отправку и обновить snapshot сделки в панели управления CRM.</p>
+                        </div>
+                      ) : null}
+                      {latestSubmission.attachmentsJson ? (
+                        <div className="rounded-2xl border border-stone-200 bg-stone-50 px-4 py-4 text-sm text-stone-700">
+                          К этой заявке прикреплены файлы: ссылки на них сохранены и передаются в Bitrix24 вместе с CRM-комментарием.
                         </div>
                       ) : null}
                     </div>
