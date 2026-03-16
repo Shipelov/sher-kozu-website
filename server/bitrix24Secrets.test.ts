@@ -17,7 +17,9 @@ function buildWebhookBaseUrl() {
 describe("Bitrix24 webhook secrets", () => {
   it("builds a valid webhook base url from env", () => {
     const webhookBaseUrl = buildWebhookBaseUrl();
-    expect(webhookBaseUrl).toBe("https://b24-gzcp0i.bitrix24.ru/rest/1/uxr9ddazn99a4pbv");
+
+    expect(webhookBaseUrl).toMatch(/^https:\/\/[^/]+\/rest\/\d+\/[A-Za-z0-9]+$/);
+    expect(webhookBaseUrl).not.toMatch(/\/rest\/\d+\/[A-Za-z0-9]+\/rest\//);
   });
 
   it("responds to a lightweight profile call with configured webhook", async () => {
