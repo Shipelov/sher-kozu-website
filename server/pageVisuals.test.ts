@@ -106,6 +106,8 @@ describe("page visual integration source smoke", () => {
     expect(animalsCatalogSource).toContain("В отношениях");
     expect(animalsCatalogSource).toContain("На выданье");
     expect(animalsCatalogSource).toContain("Можно шерить");
+    expect(animalsCatalogSource).toContain("В отношениях до");
+    expect(animalsCatalogSource).toContain("occupiedUntil");
     expect(animalsCatalogSource).toContain("goatFilter");
     expect(animalsCatalogSource).toContain("sheepFilter");
     expect(animalsCatalogSource).toContain("getRelationshipStatus");

@@ -1131,9 +1131,26 @@ export async function countActiveOwnerships(animalId: number) {
         or(eq(animalOwnerships.status, "active"), eq(animalOwnerships.status, "pending_payment"))
       )
     );
-
   return Number(rows[0]?.count ?? 0);
 }
+
+export async function getAnimalOccupiedUntil(animalId: number) {
+  const db = await getDb();
+  const rows = await db
+    .select({ endsAt: animalOwnerships.endsAt })
+    .from(animalOwnerships)
+    .where(
+      and(
+        eq(animalOwnerships.animalId, animalId),
+        or(eq(animalOwnerships.status, "active"), eq(animalOwnerships.status, "pending_payment"))
+      )
+    )
+    .orderBy(desc(animalOwnerships.endsAt))
+    .limit(1);
+
+  return rows[0]?.endsAt ?? null;
+}
+
 
 export async function getAvailableSlotIndex(animalId: number) {
   const db = await getDb();
@@ -1217,10 +1234,12 @@ export async function listPublicAnimals() {
         .where(eq(animalMedia.animalId, animal.id))
         .orderBy(desc(animalMedia.isCover), asc(animalMedia.sortOrder), asc(animalMedia.id));
 
+      const occupiedUntil = await getAnimalOccupiedUntil(animal.id);
       return {
         ...animal,
         activeOwnerships,
         availableSlots: Math.max(0, animal.totalOwnershipSlots - activeOwnerships),
+        occupiedUntil,
         coverImageUrl: media.find((item: any) => item.isCover)?.url ?? animal.coverImageUrl,
         media,
       };
@@ -1251,10 +1270,12 @@ export async function getAnimalBySlug(slug: string) {
     ? await db.select().from(planDurations).where(eq(planDurations.isActive, 1)).orderBy(asc(planDurations.sortOrder), asc(planDurations.months))
     : [];
 
+  const occupiedUntil = await getAnimalOccupiedUntil(animal.id);
   return {
     ...animal,
     activeOwnerships,
     availableSlots: Math.max(0, animal.totalOwnershipSlots - activeOwnerships),
+    occupiedUntil,
     media,
     plans: linkedPlans.map((plan: any) => ({
       ...plan,

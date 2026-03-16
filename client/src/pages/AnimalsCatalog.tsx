@@ -62,6 +62,7 @@ type CatalogAnimal = {
   totalOwnershipSlots: number;
   shortDescription: string;
   isFeatured: boolean;
+  occupiedUntil: string | null;
 };
 
 const statusFilterOptions: Array<{
@@ -73,14 +74,32 @@ const statusFilterOptions: Array<{
   { value: "shared", label: "Можно шерить" },
 ];
 
-function getRelationshipStatus(slots: number, total: number) {
+function formatOccupiedUntil(value: string | null) {
+  if (!value) return null;
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+
+  return new Intl.DateTimeFormat("ru-RU", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  }).format(date);
+}
+
+function getRelationshipStatus(slots: number, total: number, occupiedUntil?: string | null) {
+  const occupiedUntilLabel = formatOccupiedUntil(occupiedUntil ?? null);
+
   if (slots <= 0) {
     return {
       filter: "relationship" as const,
       label: "Статус: в отношениях",
-      helper: "На 100% есть временный владелец. Можно указать срок действия статуса до конкретной даты в профиле сделки.",
+      helper: occupiedUntilLabel
+        ? `На 100% есть временный владелец. Занято до ${occupiedUntilLabel}.`
+        : "На 100% есть временный владелец. Можно указать срок действия статуса до конкретной даты в профиле сделки.",
       className: "border-rose-200 bg-rose-50 text-rose-800",
       compactLabel: "В отношениях",
+      occupiedUntilLabel,
     };
   }
 
@@ -91,6 +110,7 @@ function getRelationshipStatus(slots: number, total: number) {
       helper: "Профиль полностью свободен и готов к сделке.",
       className: "border-emerald-200 bg-emerald-50 text-emerald-800",
       compactLabel: "На выданье",
+      occupiedUntilLabel: null,
     };
   }
 
@@ -100,6 +120,7 @@ function getRelationshipStatus(slots: number, total: number) {
     helper: "Есть временный владелец, но не на 100%: можно рассмотреть совместный статус.",
     className: "border-amber-200 bg-amber-50 text-amber-800",
     compactLabel: "Можно шерить",
+    occupiedUntilLabel: null,
   };
 }
 
@@ -151,13 +172,19 @@ function AnimalSpeciesSection({
   const Icon = config.icon;
 
   const filteredAnimals = useMemo(
-    () => animals.filter((animal) => getRelationshipStatus(animal.availableSlots, animal.totalOwnershipSlots).filter === filter),
+    () => animals.filter((animal) => getRelationshipStatus(animal.availableSlots, animal.totalOwnershipSlots, animal.occupiedUntil).filter === filter),
     [animals, filter]
   );
 
-  const relationshipCount = animals.filter((animal) => getRelationshipStatus(animal.availableSlots, animal.totalOwnershipSlots).filter === "relationship").length;
-  const availableCount = animals.filter((animal) => getRelationshipStatus(animal.availableSlots, animal.totalOwnershipSlots).filter === "available").length;
-  const sharedCount = animals.filter((animal) => getRelationshipStatus(animal.availableSlots, animal.totalOwnershipSlots).filter === "shared").length;
+  const relationshipCount = animals.filter(
+    (animal) => getRelationshipStatus(animal.availableSlots, animal.totalOwnershipSlots, animal.occupiedUntil).filter === "relationship"
+  ).length;
+  const availableCount = animals.filter(
+    (animal) => getRelationshipStatus(animal.availableSlots, animal.totalOwnershipSlots, animal.occupiedUntil).filter === "available"
+  ).length;
+  const sharedCount = animals.filter(
+    (animal) => getRelationshipStatus(animal.availableSlots, animal.totalOwnershipSlots, animal.occupiedUntil).filter === "shared"
+  ).length;
 
   const emptyState = {
     relationship: {
@@ -234,7 +261,7 @@ function AnimalSpeciesSection({
       {filteredAnimals.length ? (
         <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
           {filteredAnimals.map((animal) => {
-            const availability = getRelationshipStatus(animal.availableSlots, animal.totalOwnershipSlots);
+            const availability = getRelationshipStatus(animal.availableSlots, animal.totalOwnershipSlots, animal.occupiedUntil);
 
             return (
               <Link key={animal.id} href={`/animals/${animal.slug}`}>
@@ -261,7 +288,7 @@ function AnimalSpeciesSection({
                     </div>
                   </div>
 
-                  <CardContent className="space-y-4 p-6">
+                  <CardContent className="space-y-5 p-6">
                     <div className="space-y-3">
                       <Badge className={`rounded-full border px-3 py-1 text-xs font-medium ${availability.className}`}>
                         {availability.label}
@@ -270,6 +297,11 @@ function AnimalSpeciesSection({
                         <h3 className="text-2xl font-semibold text-stone-900">{animal.name}</h3>
                         <p className="text-sm text-stone-500">{animal.breed ?? `${config.singular} Sher Kozu`}</p>
                       </div>
+                      {availability.occupiedUntilLabel ? (
+                        <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-800">
+                          В отношениях до {availability.occupiedUntilLabel}
+                        </div>
+                      ) : null}
                       <p className="text-xs leading-5 text-stone-500">{availability.helper}</p>
                       <p className="line-clamp-3 text-sm leading-6 text-stone-600">{animal.shortDescription}</p>
                     </div>
@@ -308,9 +340,15 @@ export default function AnimalsCatalog() {
   const animals = data ?? [];
   const goats = animals.filter((animal) => animal.species === "goat");
   const sheep = animals.filter((animal) => animal.species === "sheep");
-  const totalRelationship = animals.filter((animal) => getRelationshipStatus(animal.availableSlots, animal.totalOwnershipSlots).filter === "relationship").length;
-  const totalAvailable = animals.filter((animal) => getRelationshipStatus(animal.availableSlots, animal.totalOwnershipSlots).filter === "available").length;
-  const totalShared = animals.filter((animal) => getRelationshipStatus(animal.availableSlots, animal.totalOwnershipSlots).filter === "shared").length;
+  const totalRelationship = animals.filter(
+    (animal) => getRelationshipStatus(animal.availableSlots, animal.totalOwnershipSlots, animal.occupiedUntil).filter === "relationship"
+  ).length;
+  const totalAvailable = animals.filter(
+    (animal) => getRelationshipStatus(animal.availableSlots, animal.totalOwnershipSlots, animal.occupiedUntil).filter === "available"
+  ).length;
+  const totalShared = animals.filter(
+    (animal) => getRelationshipStatus(animal.availableSlots, animal.totalOwnershipSlots, animal.occupiedUntil).filter === "shared"
+  ).length;
 
   return (
     <div className="bg-[#f7f1e8] pb-20 pt-10 text-stone-900 md:pt-14">
