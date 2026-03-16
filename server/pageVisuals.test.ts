@@ -7,6 +7,7 @@ const trackerSource = fs.readFileSync("/home/ubuntu/sher-kozu-website/client/src
 const clubSource = fs.readFileSync("/home/ubuntu/sher-kozu-website/client/src/pages/ClubFeed.tsx", "utf8");
 const appSource = fs.readFileSync("/home/ubuntu/sher-kozu-website/client/src/App.tsx", "utf8");
 const navbarSource = fs.readFileSync("/home/ubuntu/sher-kozu-website/client/src/components/Navbar.tsx", "utf8");
+const adminAnimalsSource = fs.readFileSync("/home/ubuntu/sher-kozu-website/client/src/pages/AdminAnimals.tsx", "utf8");
 
 describe("page visual integration source smoke", () => {
   it("keeps premium hero imagery and dynamic animal CTA on home", () => {
@@ -46,5 +47,11 @@ describe("page visual integration source smoke", () => {
     expect(navbarSource).toContain("trpc.animals.listPublic.useQuery");
     expect(navbarSource).toContain("featuredAnimalHref");
     expect(navbarSource).toContain("онлайн");
+  });
+
+  it("shows explicit auth and admin fallbacks on admin animals page", () => {
+    expect(adminAnimalsSource).toContain("Маршрут `/admin/animals` доступен только после авторизации.");
+    expect(adminAnimalsSource).toContain("NOT_ADMIN_ERR_MSG");
+    expect(adminAnimalsSource).toContain("Войти и открыть админку животных");
   });
 });

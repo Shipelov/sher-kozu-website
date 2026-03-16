@@ -1,4 +1,3 @@
-import DashboardLayout from "@/components/DashboardLayout";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -15,7 +14,12 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
+import { useAuth } from "@/_core/hooks/useAuth";
+import { getLoginUrl } from "@/const";
+import DashboardLayout from "@/components/DashboardLayout";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { trpc } from "@/lib/trpc";
+import { NOT_ADMIN_ERR_MSG } from "@shared/const";
 import {
   ArrowLeft,
   ArrowRight,
@@ -29,6 +33,7 @@ import {
   Pencil,
   Plus,
   Search,
+  ShieldAlert,
   ShieldCheck,
   Sparkles,
   Star,
@@ -996,8 +1001,12 @@ function AnimalEditorCard({
 }
 
 export default function AdminAnimals() {
+  const { user, loading } = useAuth();
   const utils = trpc.useUtils();
-  const animalsQuery = trpc.adminAnimals.list.useQuery();
+  const animalsQuery = trpc.adminAnimals.list.useQuery(undefined, {
+    enabled: !loading && Boolean(user),
+    retry: false,
+  });
 
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<AdminAnimalStatus | "all">("all");
@@ -1110,12 +1119,58 @@ export default function AdminAnimals() {
     }
   }, [animals, editorMode, editingAnimalId]);
 
+  const isForbidden = animalsQuery.error?.message === NOT_ADMIN_ERR_MSG;
+
+  if (loading) {
+    return (
+      <DashboardLayout>
+        <div className="container py-10">
+          <Card className="rounded-[2rem] border-border/70 shadow-sm">
+            <CardContent className="flex items-center gap-3 p-6 text-sm text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Проверяем доступ к админке животных…
+            </CardContent>
+          </Card>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  if (!user) {
+    return (
+      <DashboardLayout>
+        <div className="container py-10">
+          <Alert className="rounded-[2rem] border-amber-200 bg-amber-50 text-amber-900">
+            <ShieldAlert className="h-4 w-4" />
+            <AlertTitle>Нужен вход в аккаунт</AlertTitle>
+            <AlertDescription className="mt-2 space-y-3">
+              <p>Маршрут `/admin/animals` доступен только после авторизации.</p>
+              <Button asChild className="mt-1 rounded-full">
+                <a href={getLoginUrl("/admin/animals")}>Войти и открыть админку животных</a>
+              </Button>
+            </AlertDescription>
+          </Alert>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
   return (
     <DashboardLayout>
       <div className="min-h-screen bg-[radial-gradient(circle_at_top,#f7efe4_0%,#f4ede4_35%,#f9f6f2_100%)] text-foreground">
         <div className="container py-10">
           <div className="grid gap-8 xl:grid-cols-[minmax(0,1.15fr)_420px] xl:items-start">
             <section className="space-y-6">
+              {isForbidden ? (
+                <Alert variant="destructive" className="rounded-[2rem]">
+                  <ShieldAlert className="h-4 w-4" />
+                  <AlertTitle>Недостаточно прав</AlertTitle>
+                  <AlertDescription>
+                    Сервер вернул ограничение по роли. Проверьте, что у вашего пользователя в таблице `user` установлена роль `admin`.
+                  </AlertDescription>
+                </Alert>
+              ) : null}
+
               <div className="rounded-[2rem] border border-border/70 bg-white/95 p-6 shadow-sm">
                 <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
                   <div className="max-w-2xl space-y-3">
