@@ -692,6 +692,9 @@ export default function Home() {
                         <div className="flex items-center gap-3">
                           <p className="text-sm font-medium text-stone-800">Выбранные вложения</p>
                           <span className="text-xs text-stone-500">{partnerAttachments.length} шт.</span>
+                          <span className="text-xs text-stone-400">
+                            {`${(partnerAttachments.reduce((total, item) => total + item.size, 0) / (1024 * 1024)).toFixed(2)} МБ`}
+                          </span>
                         </div>
                         {partnerAttachments.length ? (
                           <Button
