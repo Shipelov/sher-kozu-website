@@ -171,10 +171,14 @@ function PostCard({ post }: { post: ClubPost }) {
 export default function ClubFeed() {
   const [activeFilter, setActiveFilter] = useState<FilterKey>("all");
   const clubQuery = trpc.club.feed.useQuery();
+  const animalsQuery = trpc.animals.listPublic.useQuery();
 
   const posts = (clubQuery.data?.posts ?? []) as ClubPost[];
   const events = (clubQuery.data?.events ?? []) as ClubEvent[];
   const members = (clubQuery.data?.members ?? []) as ClubMember[];
+  const featuredAnimalSlug = animalsQuery.data?.[0]?.slug ?? "marta";
+  const featuredAnimalName = animalsQuery.data?.[0]?.name ?? "животного";
+  const featuredAnimalProfileHref = featuredAnimalSlug ? `/animals/${featuredAnimalSlug}` : "/animals";
 
   const visiblePosts = useMemo(() => {
     if (activeFilter === "all") return posts;
@@ -197,7 +201,7 @@ export default function ClubFeed() {
     { value: posts.length ? "live" : "0", label: "ритм сообщества" },
   ];
 
-  const ritualTitle = events[0]?.title ? `${events[0].title} уже в календаре семьи.` : "День рождения Марты уже в календаре семьи.";
+  const ritualTitle = events[0]?.title ? `${events[0].title} уже в календаре семьи.` : `День ${featuredAnimalName} уже в календаре семьи.`;
   const ritualDescription = events[0]?.description ?? "Связь здесь строится на личных и эмоционально значимых событиях, а не только на скидках.";
 
   return (
@@ -326,7 +330,7 @@ export default function ClubFeed() {
                 transition={{ delay: 0.12 }}
                 className="min-w-0 overflow-hidden rounded-[2rem] border border-border/70 bg-card shadow-sm"
               >
-                <img src={CDN.goat} alt="Марта" className="h-56 w-full object-cover object-top" />
+                <img src={CDN.goat} alt={featuredAnimalName} className="h-56 w-full object-cover object-top" />
                 <div className="p-5">
                   <p className="text-sm uppercase tracking-[0.22em] text-primary">Персональный ритуал</p>
                   <h2 className="mt-3 text-2xl font-semibold text-foreground">{ritualTitle}</h2>
@@ -395,9 +399,9 @@ export default function ClubFeed() {
                   ))}
                 </div>
                 <div className="mt-6 grid gap-3">
-                  <Link href="/animal/marta" className="group flex flex-col items-start gap-3 rounded-2xl border border-white/12 bg-white/8 px-4 py-3 text-sm transition-colors hover:bg-white/12 sm:flex-row sm:items-center sm:justify-between">
+                  <Link href={featuredAnimalProfileHref} className="group flex flex-col items-start gap-3 rounded-2xl border border-white/12 bg-white/8 px-4 py-3 text-sm transition-colors hover:bg-white/12 sm:flex-row sm:items-center sm:justify-between">
                     <div>
-                      <div className="font-semibold text-white">К профилю Марты</div>
+                      <div className="font-semibold text-white">К профилю {featuredAnimalName}</div>
                       <div className="mt-1 text-xs text-white/60">Вернуться к животному, вокруг которого строится клубная история</div>
                     </div>
                     <ChevronRight className="h-5 w-5 text-amber-300 transition-transform group-hover:translate-x-0.5" />
@@ -449,8 +453,8 @@ export default function ClubFeed() {
                       Уведомления помогают возвращать пользователя в ритм клуба.
                     </div>
                     <div className="mt-4 grid gap-3 sm:grid-cols-3">
-                      <Link href="/animal/marta" className="inline-flex items-center justify-center rounded-full bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/92">
-                        К профилю Марты
+                      <Link href={featuredAnimalProfileHref} className="inline-flex items-center justify-center rounded-full bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/92">
+                        К профилю {featuredAnimalName}
                       </Link>
                       <Link href="/tracker" className="inline-flex items-center justify-center rounded-full border border-border px-4 py-3 text-sm font-semibold text-foreground transition-colors hover:bg-muted">
                         К трекеру продуктов

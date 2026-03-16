@@ -8,6 +8,7 @@ Must feel like a living bridge between animal, products, club and future AI cura
 import { motion } from "framer-motion";
 import { Link } from "wouter";
 import Navbar from "@/components/Navbar";
+import { trpc } from "@/lib/trpc";
 import {
   BookOpen,
   Bot,
@@ -70,6 +71,11 @@ const atmosphereSignals = [
 ];
 
 export default function Dashboard() {
+  const animalsQuery = trpc.animals.listPublic.useQuery();
+  const featuredAnimal = animalsQuery.data?.[0] ?? null;
+  const featuredAnimalName = featuredAnimal?.name ?? "животное";
+  const featuredAnimalProfileHref = featuredAnimal ? `/animals/${featuredAnimal.slug}` : "/animals";
+
   return (
     <div className="min-h-screen bg-background text-foreground">
       <Navbar />
@@ -110,7 +116,7 @@ export default function Dashboard() {
               <div className="bg-[linear-gradient(180deg,rgba(255,250,244,0.98),rgba(250,245,237,0.92))] p-5 md:p-6">
                 <div className="grid gap-3 sm:grid-cols-2">
                   {[
-                    { label: "Марта", value: "в хорошем ритме", icon: Heart },
+                    { label: featuredAnimal?.name ?? "Животное", value: "в хорошем ритме", icon: Heart },
                     { label: "Активная доставка", value: "ДСТ-2026-031", icon: Package },
                     { label: "Следующее событие", value: "Клубный ужин", icon: Calendar },
                     { label: "Прозрачность партии", value: "подтверждена", icon: ShieldCheck },
@@ -132,7 +138,7 @@ export default function Dashboard() {
                   <img src={CDN.dairyBox} alt="Именная продуктовая коробка" className="h-44 w-full object-cover" />
                   <div className="p-4">
                     <p className="text-xs uppercase tracking-[0.18em] text-primary">Продукт в фокусе</p>
-                    <h2 className="mt-2 text-xl font-semibold text-foreground">Именная коробка уже собрана как продолжение истории Марты.</h2>
+                    <h2 className="mt-2 text-xl font-semibold text-foreground">Именная коробка уже собрана как продолжение истории {featuredAnimalName}.</h2>
                     <p className="mt-2 text-sm leading-6 text-muted-foreground">
                       Визуальный слой кабинета показывает, что продукт — это не отдельная покупка, а материализованное продолжение связи с животным.
                     </p>
@@ -200,7 +206,8 @@ export default function Dashboard() {
               className="col-span-12 overflow-hidden rounded-[2rem] border border-border/70 bg-card shadow-sm md:col-span-5"
             >
               <div className="relative">
-                <img src={CDN.liveCam} alt="Портрет Марты" className="h-72 w-full object-cover object-top" />
+                  <img src={CDN.liveCam} alt={`Портрет ${featuredAnimalName}`} className="h-72 w-full object-cover object-top" />
+
                 <div className="absolute inset-0 bg-gradient-to-t from-dark-oak/80 via-dark-oak/10 to-transparent" />
                 <div className="absolute top-4 right-4 inline-flex items-center gap-1 rounded-full bg-red-50 px-3 py-1 text-xs font-semibold text-red-600">
                   <span className="h-2 w-2 rounded-full bg-red-500 animate-pulse" /> LIVE
@@ -220,9 +227,9 @@ export default function Dashboard() {
                   Live-слой должен работать как эмоциональный мост между продуктом, заботой о животном и клубными визитами.
                 </div>
 
-                <Link href="/animal/marta" className="group mt-4 flex flex-col items-start gap-3 rounded-2xl border border-border bg-white px-4 py-3 text-sm transition-colors hover:bg-muted/40 sm:flex-row sm:items-center sm:justify-between">
+                <Link href={featuredAnimalProfileHref} className="group mt-4 flex flex-col items-start gap-3 rounded-2xl border border-border bg-white px-4 py-3 text-sm transition-colors hover:bg-muted/40 sm:flex-row sm:items-center sm:justify-between">
                   <div>
-                    <div className="font-semibold text-foreground">Перейти к профилю Марты</div>
+                    <div className="font-semibold text-foreground">Перейти к профилю {featuredAnimalName}</div>
                     <div className="mt-1 text-xs text-muted-foreground">Открыть галерею, историю и профиль животного</div>
                   </div>
                   <ChevronRight className="h-5 w-5 text-primary transition-transform group-hover:translate-x-0.5" />
@@ -239,7 +246,7 @@ export default function Dashboard() {
               <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <p className="text-xs uppercase tracking-[0.18em] text-primary">Дневник</p>
-                  <h3 className="mt-2 text-xl font-semibold text-foreground">Последние события из жизни Марты</h3>
+                  <h3 className="mt-2 text-xl font-semibold text-foreground">Последние события из жизни {featuredAnimalName}</h3>
                 </div>
                 <BookOpen className="h-5 w-5 text-primary" />
               </div>
@@ -256,9 +263,9 @@ export default function Dashboard() {
                 ))}
               </div>
 
-              <Link href="/animal/marta" className="group mt-4 flex flex-col items-start gap-3 rounded-2xl border border-border bg-white px-4 py-3 text-sm transition-colors hover:bg-muted/40 sm:flex-row sm:items-center sm:justify-between">
+              <Link href={featuredAnimalProfileHref} className="group mt-4 flex flex-col items-start gap-3 rounded-2xl border border-border bg-white px-4 py-3 text-sm transition-colors hover:bg-muted/40 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                  <div className="font-semibold text-foreground">Продолжить в профиле Марты</div>
+                  <div className="font-semibold text-foreground">Продолжить в профиле {featuredAnimalName}</div>
                   <div className="mt-1 text-xs text-muted-foreground">Открыть полную биографию, галерею и фотопоток</div>
                 </div>
                 <ChevronRight className="h-5 w-5 text-primary transition-transform group-hover:translate-x-0.5" />

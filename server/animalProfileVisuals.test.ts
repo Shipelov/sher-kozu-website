@@ -5,16 +5,16 @@ const source = readFileSync(new URL("../client/src/pages/AnimalProfile.tsx", imp
 
 describe("AnimalProfile visual integration", () => {
   it("contains premium hero storytelling and key route CTAs", () => {
-    expect(source).toContain("Марта — не карточка товара");
-    expect(source).toContain("Открыть трекер продукта");
-    expect(source).toContain("Перейти в клуб Марты");
+    expect(source).toContain("— не карточка товара");
+    expect(source).toContain("Открыть трекер продукции");
+    expect(source).toContain("Перейти в клуб");
     expect(source).toContain("Вернуться в кабинет");
   });
 
-  it("contains new visual sections and image references", () => {
-    expect(source).toContain("Визуальная история Марты");
-    expect(source).toContain("Живое присутствие делает профиль убедительным");
-    expect(source).toContain("Профиль Марты не должен заканчиваться тупиком");
+  it("contains dynamic visual sections and image references", () => {
+    expect(source).toContain("Профиль животного как эмоциональное ядро экосистемы");
+    expect(source).toContain("точкой ежедневного контакта между семьёй, фермой и продуктовым маршрутом");
+    expect(source).toContain("Продолжить эмоциональную связь через события, визиты и контент вокруг фермы");
     expect(source).toContain("sherkozu_anglonubian_portrait");
     expect(source).toContain("sherkozu_named_dairy_box");
     expect(source).toContain("sherkozu_club_visit");

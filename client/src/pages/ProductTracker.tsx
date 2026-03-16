@@ -112,8 +112,12 @@ function iconForStat(icon: TrackerSummary["stats"][number]["icon"]) {
 }
 
 export default function ProductTracker() {
-  const trackerQuery = trpc.productTracker.getByAnimal.useQuery({ animalSlug: "marta" });
+  const animalsQuery = trpc.animals.listPublic.useQuery();
+  const featuredAnimalSlug = animalsQuery.data?.[0]?.slug ?? "marta";
+  const trackerQuery = trpc.productTracker.getByAnimal.useQuery({ animalSlug: featuredAnimalSlug });
   const summary = trackerQuery.data as TrackerSummary | undefined;
+  const featuredAnimalName = summary?.currentAnimal.name ?? animalsQuery.data?.[0]?.name ?? "животного";
+  const featuredAnimalProfileHref = featuredAnimalSlug ? `/animals/${featuredAnimalSlug}` : "/animals";
 
   const deliveries = summary?.deliveries ?? [];
   const [activeDelivery, setActiveDelivery] = useState(0);
@@ -183,7 +187,7 @@ export default function ProductTracker() {
                 </div>
 
                 <div className="mt-4 overflow-hidden rounded-[1.75rem] border border-border/70 bg-card shadow-sm">
-                  <img src={CDN.goat} alt={summary?.currentAnimal.name ?? "Марта"} className="h-44 w-full object-cover object-top" />
+                  <img src={CDN.goat} alt={summary?.currentAnimal.name ?? featuredAnimalName} className="h-44 w-full object-cover object-top" />
                   <div className="p-4">
                     <p className="text-xs uppercase tracking-[0.18em] text-primary">Источник маршрута</p>
                     <h2 className="mt-2 text-xl font-semibold text-foreground">
@@ -214,7 +218,7 @@ export default function ProductTracker() {
               <div className="space-y-4 p-5">
                 <div>
                   <p className="text-sm uppercase tracking-[0.22em] text-primary">Состав партии</p>
-                  <h2 className="mt-3 text-2xl font-semibold text-foreground">Состав молока от {summary?.currentAnimal.name ?? "Марты"}</h2>
+                  <h2 className="mt-3 text-2xl font-semibold text-foreground">Состав молока от {summary?.currentAnimal.name ?? featuredAnimalName}</h2>
                   <p className="mt-2 text-sm leading-7 text-muted-foreground">
                     Качество партии видно прямо в интерфейсе, а не обещается абстрактно. Новый визуальный слой усиливает ощущение премиального, но прозрачного продукта.
                   </p>
@@ -408,9 +412,9 @@ export default function ProductTracker() {
               </p>
 
               <div className="mt-6 grid gap-3">
-                <Link href="/animal/marta" className="group flex flex-col items-start gap-3 rounded-2xl border border-white/12 bg-white/8 px-4 py-3 text-sm transition-colors hover:bg-white/12 sm:flex-row sm:items-center sm:justify-between">
+                <Link href={featuredAnimalProfileHref} className="group flex flex-col items-start gap-3 rounded-2xl border border-white/12 bg-white/8 px-4 py-3 text-sm transition-colors hover:bg-white/12 sm:flex-row sm:items-center sm:justify-between">
                   <div>
-                    <div className="font-semibold text-white">К профилю Марты</div>
+                    <div className="font-semibold text-white">К профилю {featuredAnimalName}</div>
                     <div className="mt-1 text-xs text-white/60">Вернуться к животному, от которого начинается продуктовый путь</div>
                   </div>
                   <ChevronRight className="h-5 w-5 text-amber-300 transition-transform group-hover:translate-x-0.5" />
@@ -464,8 +468,8 @@ export default function ProductTracker() {
                   </div>
 
                   <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-1">
-                    <Link href="/animal/marta" className="inline-flex items-center justify-center rounded-full bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/92">
-                      К профилю Марты
+                    <Link href={featuredAnimalProfileHref} className="inline-flex items-center justify-center rounded-full bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/92">
+                      К профилю {featuredAnimalName}
                     </Link>
                     <Link href="/club" className="inline-flex items-center justify-center rounded-full border border-border px-4 py-3 text-sm font-semibold text-foreground transition-colors hover:bg-muted">
                       К клубной ленте

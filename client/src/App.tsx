@@ -11,7 +11,6 @@ import ProductTracker from "./pages/ProductTracker";
 import ClubFeed from "./pages/ClubFeed";
 import AdminClub from "./pages/AdminClub";
 import AnimalsCatalog from "./pages/AnimalsCatalog";
-import AnimalDetails from "./pages/AnimalDetails";
 import AdminAnimals from "./pages/AdminAnimals";
 function Router() {
   // make sure to consider if you need authentication for certain routes
@@ -19,9 +18,9 @@ function Router() {
     <Switch>
       <Route path="/" component={Home} />
       <Route path="/dashboard" component={Dashboard} />
-      <Route path="/animal/:id" component={AnimalProfile} />
+      <Route path="/animal/:slug" component={AnimalProfile} />
       <Route path="/animals" component={AnimalsCatalog} />
-      <Route path="/animals/:slug" component={AnimalDetails} />
+      <Route path="/animals/:slug" component={AnimalProfile} />
       <Route path="/tracker" component={ProductTracker} />
       <Route path="/club" component={ClubFeed} />
       <Route path="/admin/club" component={AdminClub} />
