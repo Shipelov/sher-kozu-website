@@ -689,8 +689,20 @@ export default function Home() {
                     <Input id="partner-attachments" type="file" multiple onChange={handlePartnerAttachmentSelect} className="cursor-pointer bg-white" />
                     <div className="space-y-3">
                       <div className="flex items-center justify-between gap-3">
-                        <p className="text-sm font-medium text-stone-800">Выбранные вложения</p>
-                        <span className="text-xs text-stone-500">{partnerAttachments.length} шт.</span>
+                        <div className="flex items-center gap-3">
+                          <p className="text-sm font-medium text-stone-800">Выбранные вложения</p>
+                          <span className="text-xs text-stone-500">{partnerAttachments.length} шт.</span>
+                        </div>
+                        {partnerAttachments.length ? (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            className="h-auto px-2 py-1 text-xs text-stone-500 hover:text-rose-700"
+                            onClick={() => setPartnerAttachments([])}
+                          >
+                            Очистить все вложения
+                          </Button>
+                        ) : null}
                       </div>
                       {partnerAttachments.length ? (
                         <div className="space-y-2">
