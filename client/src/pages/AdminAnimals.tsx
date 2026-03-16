@@ -285,15 +285,64 @@ export const formatShareRevenue = (minor: number) =>
 
 export const formatPrice = formatShareRevenue;
 
+function normalizeAdminAnimal(animal: AdminAnimalRecord): AdminAnimalRecord {
+  const totalOwnershipSlots = Number.isFinite(animal.totalOwnershipSlots) && animal.totalOwnershipSlots > 0
+    ? animal.totalOwnershipSlots
+    : 10;
+  const activeOwnerships = Number.isFinite(animal.activeOwnerships)
+    ? Math.min(totalOwnershipSlots, Math.max(0, animal.activeOwnerships))
+    : 0;
+  const shareUnitPercent = Number.isFinite(animal.shareUnitPercent) && animal.shareUnitPercent > 0
+    ? animal.shareUnitPercent
+    : Math.round(100 / totalOwnershipSlots);
+  const ownedPercent = Number.isFinite(animal.ownedPercent)
+    ? animal.ownedPercent
+    : activeOwnerships * shareUnitPercent;
+  const availablePercent = Number.isFinite(animal.availablePercent)
+    ? animal.availablePercent
+    : Math.max(0, 100 - ownedPercent);
+  const fullPriceMinor = Number.isFinite(animal.fullPriceMinor)
+    ? animal.fullPriceMinor
+    : Number.isFinite(animal.baseMonthlyPriceMinor)
+      ? animal.baseMonthlyPriceMinor
+      : 0;
+  const shareUnitPriceMinor = Number.isFinite(animal.shareUnitPriceMinor)
+    ? animal.shareUnitPriceMinor
+    : Math.round(fullPriceMinor / Math.max(1, totalOwnershipSlots));
+  const availableSharePercents = Array.isArray(animal.availableSharePercents)
+    ? animal.availableSharePercents
+    : availablePercent > 0
+      ? Array.from(
+          { length: Math.max(1, Math.floor(availablePercent / shareUnitPercent)) },
+          (_, index) => (index + 1) * shareUnitPercent,
+        )
+      : [];
+
+  return {
+    ...animal,
+    totalOwnershipSlots,
+    activeOwnerships,
+    availableSlots: Number.isFinite(animal.availableSlots)
+      ? animal.availableSlots
+      : Math.max(0, totalOwnershipSlots - activeOwnerships),
+    shareUnitPercent,
+    ownedPercent,
+    availablePercent,
+    fullPriceMinor,
+    shareUnitPriceMinor,
+    availableSharePercents,
+  };
+}
+
 export function formatSharePercentLabel(percent: number) {
   return `${percent}%`;
 }
 
 export function buildShareSlots(animal: AdminAnimalRecord) {
-  return Array.from({ length: animal.totalOwnershipSlots }, (_, index) => {
-    const filled = index < animal.activeOwnerships;
-    const shareUnitPercent = animal.shareUnitPercent || 10;
-    const percent = (index + 1) * shareUnitPercent;
+  const safeAnimal = normalizeAdminAnimal(animal);
+  return Array.from({ length: safeAnimal.totalOwnershipSlots }, (_, index) => {
+    const filled = index < safeAnimal.activeOwnerships;
+    const percent = (index + 1) * safeAnimal.shareUnitPercent;
     return {
       index: index + 1,
       filled,
@@ -305,9 +354,10 @@ export function buildShareSlots(animal: AdminAnimalRecord) {
 }
 
 export function createAdminShareSummary(animals: AdminAnimalRecord[]) {
-  const totalAnimals = animals.length;
-  const totalOwnedPercent = animals.reduce((sum, animal) => sum + animal.ownedPercent, 0);
-  const totalAvailablePercent = animals.reduce((sum, animal) => sum + animal.availablePercent, 0);
+  const safeAnimals = animals.map(normalizeAdminAnimal);
+  const totalAnimals = safeAnimals.length;
+  const totalOwnedPercent = safeAnimals.reduce((sum, animal) => sum + animal.ownedPercent, 0);
+  const totalAvailablePercent = safeAnimals.reduce((sum, animal) => sum + animal.availablePercent, 0);
   const totalOwnersCount = animals.reduce((sum, animal) => {
     const distributionOwners = Array.isArray((animal as { shareDistribution?: unknown[] }).shareDistribution)
       ? (animal as { shareDistribution?: unknown[] }).shareDistribution?.length ?? 0
@@ -658,7 +708,7 @@ function ShareDistributionPanel({ animals }: { animals: AdminAnimalRecord[] }) {
                   </div>
                   <ShareSlotsGrid animal={animal} />
                   <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
-                    {(animal.availableSharePercents.length ? animal.availableSharePercents : [0]).map((percent) => (
+                    {((animal.availableSharePercents?.length ? animal.availableSharePercents : [0])).map((percent) => (
                       <Badge
                         key={`${animal.id}-${percent}`}
                         variant="secondary"
@@ -1309,14 +1359,17 @@ export default function AdminAnimalsPage() {
     retry: false,
   });
 
-  const animals = (animalsQuery.data ?? []) as AdminAnimalRecord[];
+  const animals = useMemo(
+    () => ((animalsQuery.data ?? []) as AdminAnimalRecord[]).map(normalizeAdminAnimal),
+    [animalsQuery.data]
+  );
   const filteredAnimals = useMemo(
     () => filterAdminAnimals(animals, searchQuery, statusFilter, speciesFilter),
     [animals, searchQuery, statusFilter, speciesFilter]
   );
 
   const portfolioValueMinor = useMemo(
-    () => animals.reduce((sum, animal) => sum + (animal.fullPriceMinor ?? animal.baseMonthlyPriceMinor), 0),
+    () => animals.reduce((sum, animal) => sum + animal.fullPriceMinor, 0),
     [animals]
   );
 

@@ -364,6 +364,34 @@ describe("Admin animals UI helpers", () => {
     expect(formatShareRevenue(340000)).toContain("₽");
   });
 
+  it("normalizes incomplete share data without NaN or crashes", () => {
+    const sparseAnimal = {
+      ...animals[0],
+      totalOwnershipSlots: undefined,
+      activeOwnerships: undefined,
+      availableSlots: undefined,
+      ownedPercent: undefined,
+      availablePercent: undefined,
+      shareUnitPercent: undefined,
+      shareUnitPriceMinor: undefined,
+      fullPriceMinor: undefined,
+      availableSharePercents: undefined,
+      baseMonthlyPriceMinor: 120000,
+    } as unknown as typeof animals[number];
+
+    const slots = buildShareSlots(sparseAnimal);
+    const summary = createAdminShareSummary([sparseAnimal]);
+
+    expect(slots).toHaveLength(10);
+    expect(slots[0]?.percentLabel).toBe("10%");
+    expect(summary.totalAnimals).toBe(1);
+    expect(summary.totalOwnedPercent).toBe(0);
+    expect(summary.totalAvailablePercent).toBe(100);
+    expect(Number.isNaN(summary.totalOccupiedValueMinor)).toBe(false);
+    expect(summary.totalOccupiedValueMinor).toBeGreaterThanOrEqual(0);
+    expect(summary.averageOccupancy).toBe(0);
+  });
+
   it("returns tone markers for share occupancy progress", () => {
     expect(getShareOccupancyTone(0)).toBe("available");
     expect(getShareOccupancyTone(40)).toBe("partial");
