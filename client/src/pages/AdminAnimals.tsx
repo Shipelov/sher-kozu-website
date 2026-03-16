@@ -374,14 +374,14 @@ export function createAdminShareSummary(animals: AdminAnimalRecord[]) {
       || Math.round(fullPriceMinor / Math.max(1, animal.totalOwnershipSlots || 10));
     return sum + shareUnitPriceMinor * animal.activeOwnerships;
   }, 0);
-  const totalSlots = animals.reduce((sum, animal) => sum + animal.totalOwnershipSlots, 0);
-  const occupiedSlots = animals.reduce((sum, animal) => sum + animal.activeOwnerships, 0);
+  const totalSlots = safeAnimals.reduce((sum, animal) => sum + animal.totalOwnershipSlots, 0);
+  const occupiedSlots = safeAnimals.reduce((sum, animal) => sum + animal.activeOwnerships, 0);
   const freeSlots = Math.max(0, totalSlots - occupiedSlots);
-  const loadedAnimals = animals.filter((animal) => animal.activeOwnerships > 0).length;
-  const fullyBookedAnimals = animals.filter((animal) => animal.availablePercent === 0).length;
+  const loadedAnimals = safeAnimals.filter((animal) => animal.activeOwnerships > 0).length;
+  const fullyBookedAnimals = safeAnimals.filter((animal) => animal.availablePercent === 0).length;
   const averageOccupancy = totalAnimals === 0
     ? 0
-    : Math.round(animals.reduce((sum, animal) => sum + animal.ownedPercent, 0) / totalAnimals);
+    : Math.round(safeAnimals.reduce((sum, animal) => sum + animal.ownedPercent, 0) / totalAnimals);
 
   return {
     totalAnimals,

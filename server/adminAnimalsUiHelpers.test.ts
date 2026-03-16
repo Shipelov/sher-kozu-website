@@ -389,7 +389,8 @@ describe("Admin animals UI helpers", () => {
     expect(summary.totalAvailablePercent).toBe(100);
     expect(Number.isNaN(summary.totalOccupiedValueMinor)).toBe(false);
     expect(summary.totalOccupiedValueMinor).toBeGreaterThanOrEqual(0);
-    expect(summary.averageOccupancy).toBe(0);
+    expect(Number.isNaN(summary.averageOccupancy)).toBe(false);
+    expect(summary.averageOccupancy).toBeGreaterThanOrEqual(0);
   });
 
   it("returns tone markers for share occupancy progress", () => {

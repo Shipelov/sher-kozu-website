@@ -599,37 +599,42 @@ export default function Home() {
                 initial={{ opacity: 0, y: 24 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.08 }}
-                className="mt-6 max-w-xl font-display text-5xl leading-[0.95] text-foreground md:text-7xl"
+                className="mt-6 max-w-2xl font-display text-5xl leading-[0.95] text-foreground md:text-7xl"
               >
-                Не подписка на молоко,
-                <span className="block text-primary">а личная фермерская история.</span>
+                Выберите животное,
+                <span className="block text-primary">а потом войдите в его фермерскую историю.</span>
               </motion.h1>
 
               <motion.p
                 initial={{ opacity: 0, y: 24 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.15 }}
-                className="mt-6 max-w-xl text-lg leading-8 text-muted-foreground"
+                className="mt-6 max-w-2xl text-lg leading-8 text-muted-foreground"
               >
-                <strong className="text-foreground">Шерь Козу</strong> соединяет семью с конкретным животным, фермой и именными продуктами.
-                Вы входите в одну экосистему: профиль питомца, дашборд владельца, трекер происхождения и клубную жизнь.
+                <strong className="text-foreground">Шерь Козу</strong> помогает сначала понять идею персонального фермерства,
+                затем открыть галерею животных, выбрать конкретную козу или овцу и только после этого перейти к профилю,
+                долям, продуктам и клубному опыту без лишнего шума на первом экране.
               </motion.p>
 
               <motion.div
                 initial={{ opacity: 0, y: 22 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.22 }}
-                className="mt-8 flex flex-col gap-3 sm:flex-row"
+                className="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap"
               >
-                <Link href="/dashboard" className="group inline-flex items-center justify-center gap-2 rounded-full bg-primary px-7 py-4 text-sm font-semibold text-primary-foreground shadow-[0_18px_40px_-20px_rgba(26,58,42,0.65)] transition-all duration-300 hover:-translate-y-0.5 hover:bg-primary/95">
-                  Открыть дашборд владельца
+                <Link href="/animals" className="group inline-flex items-center justify-center gap-2 rounded-full bg-primary px-7 py-4 text-sm font-semibold text-primary-foreground shadow-[0_18px_40px_-20px_rgba(26,58,42,0.65)] transition-all duration-300 hover:-translate-y-0.5 hover:bg-primary/95">
+                  Открыть галерею животных
                   <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
                 </Link>
                 <Link href={featuredAnimalProfileHref} className="inline-flex items-center justify-center gap-2 rounded-full border border-border bg-white/80 px-7 py-4 text-sm font-semibold text-foreground backdrop-blur transition-colors hover:bg-white">
                   Открыть профиль {featuredAnimalName}
                   <ChevronRight className="h-4 w-4" />
                 </Link>
-                <a href="#partner-pilot" className="inline-flex items-center justify-center gap-2 rounded-full border border-primary/15 bg-secondary/70 px-7 py-4 text-sm font-semibold text-primary transition-colors hover:bg-secondary">
+                <Link href="/dashboard" className="inline-flex items-center justify-center gap-2 rounded-full border border-primary/15 bg-secondary/70 px-7 py-4 text-sm font-semibold text-primary transition-colors hover:bg-secondary">
+                  Открыть дашборд владельца
+                  <Sparkles className="h-4 w-4" />
+                </Link>
+                <a href="#partner-pilot" className="inline-flex items-center justify-center gap-2 rounded-full border border-stone-300 bg-white/70 px-7 py-4 text-sm font-semibold text-stone-700 backdrop-blur transition-colors hover:bg-white">
                   Стать партнёром
                   <Building2 className="h-4 w-4" />
                 </a>
@@ -786,12 +791,23 @@ export default function Home() {
           <div className="grid gap-10 lg:grid-cols-[0.85fr_1.15fr] lg:items-start">
             <div>
               <p className="text-sm font-semibold uppercase tracking-[0.22em] text-primary">Как это работает</p>
-              <h2 className="mt-4 max-w-md font-display text-4xl text-foreground md:text-5xl">
-                Новая категория между фермерством, сервисом и клубом.
+              <h2 className="mt-4 max-w-xl font-display text-4xl text-foreground md:text-5xl">
+                Сначала вы понимаете механику, затем открываете галерею и выбираете своё животное.
               </h2>
-              <p className="mt-5 max-w-md text-base leading-7 text-muted-foreground">
-                Пользователь выбирает животное, наблюдает за ним и получает продукты как материальный результат этой связи.
+              <p className="mt-5 max-w-xl text-base leading-7 text-muted-foreground">
+                Главный consumer flow на этом этапе простой: увидеть модель персонального фермерства, перейти в галерею,
+                сравнить животных и только потом принимать решение о профиле, доле и следующем шаге.
               </p>
+              <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+                <Link href="#animal-gallery" className="inline-flex items-center justify-center gap-2 rounded-full bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground shadow-[0_16px_32px_-20px_rgba(26,58,42,0.55)] transition-all duration-300 hover:-translate-y-0.5 hover:bg-primary/95">
+                  Перейти к галерее на странице
+                  <ArrowRight className="h-4 w-4" />
+                </Link>
+                <Link href="/animals" className="inline-flex items-center justify-center gap-2 rounded-full border border-border bg-white/80 px-6 py-3 text-sm font-semibold text-foreground backdrop-blur transition-colors hover:bg-white">
+                  Открыть весь каталог животных
+                  <ChevronRight className="h-4 w-4" />
+                </Link>
+              </div>
             </div>
 
             <div className="space-y-4">
@@ -831,8 +847,8 @@ export default function Home() {
             </div>
             <div>
               <div className="max-w-2xl">
-                <p className="text-sm font-semibold uppercase tracking-[0.22em] text-primary">Почему это ценно</p>
-                <h2 className="mt-4 font-display text-4xl text-foreground md:text-5xl">Шерь Козу соединяет сердце, прозрачность и продукт.</h2>
+                <p className="text-sm font-semibold uppercase tracking-[0.22em] text-primary">Почему это усиливает выбор</p>
+                <h2 className="mt-4 font-display text-4xl text-foreground md:text-5xl">После выбора животного пользователь получает не абстракцию, а понятную личную ценность.</h2>
               </div>
 
               <div className="mt-8 grid gap-4 sm:grid-cols-2">

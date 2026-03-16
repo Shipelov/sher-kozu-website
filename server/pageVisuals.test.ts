@@ -13,15 +13,18 @@ const adminAnimalsSource = fs.readFileSync("/home/ubuntu/sher-kozu-website/clien
 const animalsCatalogSource = fs.readFileSync("/home/ubuntu/sher-kozu-website/client/src/pages/AnimalsCatalog.tsx", "utf8");
 
 describe("page visual integration source smoke", () => {
-  it("keeps premium hero imagery, featured animal CTA and the in-page animal gallery on home", () => {
+  it("keeps consumer-first hero narrative, gallery CTA and the in-page animal gallery on home", () => {
     expect(homeSource).toContain("sherkozu_family_farm_hero");
-    expect(homeSource).toContain("Открыть дашборд владельца");
+    expect(homeSource).toContain("Выберите животное,");
+    expect(homeSource).toContain("Открыть галерею животных");
+    expect(homeSource).toContain("Сначала вы понимаете механику, затем открываете галерею и выбираете своё животное.");
     expect(homeSource).toContain("featuredAnimalProfileHref");
     expect(homeSource).toContain("Животное недели");
     expect(homeSource).toContain('id="animal-gallery"');
     expect(homeSource).toContain("Галерея животных");
     expect(homeSource).toContain("Открыть всю галерею животных");
-    expect(homeSource).toContain("Перейти к разделу галереи на странице");
+    expect(homeSource).toContain("Перейти к галерее на странице");
+    expect(homeSource).toContain("Открыть весь каталог животных");
     expect(homeSource).toContain("/animals#goats");
     expect(homeSource).toContain("/animals#sheep");
   });
