@@ -6,12 +6,14 @@ const dashboardSource = fs.readFileSync("/home/ubuntu/sher-kozu-website/client/s
 const trackerSource = fs.readFileSync("/home/ubuntu/sher-kozu-website/client/src/pages/ProductTracker.tsx", "utf8");
 const clubSource = fs.readFileSync("/home/ubuntu/sher-kozu-website/client/src/pages/ClubFeed.tsx", "utf8");
 const appSource = fs.readFileSync("/home/ubuntu/sher-kozu-website/client/src/App.tsx", "utf8");
+const navbarSource = fs.readFileSync("/home/ubuntu/sher-kozu-website/client/src/components/Navbar.tsx", "utf8");
 
 describe("page visual integration source smoke", () => {
-  it("keeps premium hero imagery and dashboard CTA on home", () => {
+  it("keeps premium hero imagery and dynamic animal CTA on home", () => {
     expect(homeSource).toContain("sherkozu_family_farm_hero");
     expect(homeSource).toContain("Открыть дашборд владельца");
-    expect(homeSource).toContain('href="/dashboard"');
+    expect(homeSource).toContain("featuredAnimalProfileHref");
+    expect(homeSource).toContain("Животное недели");
   });
 
   it("keeps premium farm and dairy box imagery on dashboard", () => {
@@ -38,5 +40,11 @@ describe("page visual integration source smoke", () => {
     expect(appSource).toContain('path="/animal/:slug"');
     expect(appSource).toContain('path="/animals/:slug"');
     expect(appSource).toContain("component={AnimalProfile}");
+  });
+
+  it("keeps navbar entry dynamic for the current featured animal", () => {
+    expect(navbarSource).toContain("trpc.animals.listPublic.useQuery");
+    expect(navbarSource).toContain("featuredAnimalHref");
+    expect(navbarSource).toContain("онлайн");
   });
 });

@@ -5,32 +5,39 @@ Core: clear routes, mobile continuity, premium calmness.
 Every nav state must reinforce that the product is one connected ecosystem.
 */
 
+import { trpc } from "@/lib/trpc";
 import { Link, useLocation } from "wouter";
 import { motion } from "framer-motion";
 import { Leaf, Home, LayoutDashboard, Menu, Milk, Users, X, ChevronRight } from "lucide-react";
-import { useState } from "react";
-
-const navItems = [
-  { href: "/", label: "Главная", icon: Home },
-  { href: "/dashboard", label: "Мой кабинет", icon: LayoutDashboard },
-  { href: "/animal/marta", label: "Моя коза", icon: Leaf },
-  { href: "/tracker", label: "Трекер продуктов", icon: Milk },
-  { href: "/club", label: "Клуб", icon: Users },
-];
+import { useMemo, useState } from "react";
 
 export default function Navbar() {
   const [location] = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const animalsQuery = trpc.animals.listPublic.useQuery();
+
+  const featuredAnimal = animalsQuery.data?.[0] ?? null;
+  const featuredAnimalName = featuredAnimal?.name ?? "животное";
+  const featuredAnimalHref = featuredAnimal ? `/animals/${featuredAnimal.slug}` : "/animals";
+  const navItems = useMemo(
+    () => [
+      { href: "/", label: "Главная", icon: Home },
+      { href: "/dashboard", label: "Мой кабинет", icon: LayoutDashboard },
+      { href: featuredAnimalHref, label: featuredAnimal ? `Профиль ${featuredAnimalName}` : "Профиль животного", icon: Leaf },
+      { href: "/tracker", label: "Трекер продуктов", icon: Milk },
+      { href: "/club", label: "Клуб", icon: Users },
+    ],
+    [featuredAnimal, featuredAnimalHref, featuredAnimalName],
+  );
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50 border-b border-border bg-white/90 shadow-sm backdrop-blur-md">
       <div className="container flex h-16 items-center justify-between">
-        {/* Logo */}
-        <Link href="/" className="flex items-center gap-2 group">
-          <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center">
-            <Leaf className="w-4 h-4 text-white" />
+        <Link href="/" className="group flex items-center gap-2">
+          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary">
+            <Leaf className="h-4 w-4 text-white" />
           </div>
-          <span className="font-bold text-lg text-foreground tracking-tight">
+          <span className="text-lg font-bold tracking-tight text-foreground">
             Шерь <span className="text-primary">Козу</span>
           </span>
         </Link>
@@ -60,7 +67,7 @@ export default function Navbar() {
         <div className="flex items-center gap-2 md:gap-3">
           <div className="hidden items-center gap-1.5 text-sm text-muted-foreground sm:flex">
             <span className="pulse-dot" />
-            <span className="font-mono-data text-xs">Марта онлайн</span>
+            <span className="font-mono-data text-xs">{featuredAnimalName} онлайн</span>
           </div>
           <Link href="/dashboard">
             <motion.button

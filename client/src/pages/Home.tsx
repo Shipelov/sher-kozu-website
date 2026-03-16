@@ -115,7 +115,7 @@ const ecosystemRoutes = [
   {
     title: "Профиль животного",
     text: "История, настроение, дневник и биография конкретной козы или овцы как ядро удержания.",
-    href: "/animal/marta",
+    href: "/animals",
     icon: BookOpen,
   },
   {
@@ -318,6 +318,13 @@ function getStatusCopy(status: string | null | undefined) {
 }
 
 export default function Home() {
+  const animalsQuery = trpc.animals.listPublic.useQuery();
+  const featuredAnimal = animalsQuery.data?.[0] ?? null;
+  const featuredAnimalName = featuredAnimal?.name ?? "животное недели";
+  const featuredAnimalBreed = featuredAnimal?.breed ?? "породный профиль уточняется";
+  const featuredAnimalSpeciesLabel = featuredAnimal?.species === "sheep" ? "Овца" : featuredAnimal?.species === "cow" ? "Корова" : "Коза";
+  const featuredAnimalAgeLabel = typeof featuredAnimal?.ageYears === "number" ? `${featuredAnimal.ageYears} года` : "возраст уточняется";
+  const featuredAnimalProfileHref = featuredAnimal ? `/animals/${featuredAnimal.slug}` : "/animals";
   const [partnerLeadForm, setPartnerLeadForm] = useState<PartnerLeadFormState>(defaultPartnerLeadForm);
   const [partnerAttachments, setPartnerAttachments] = useState<PartnerAttachmentDraft[]>([]);
   const [partnerAttachmentWarning, setPartnerAttachmentWarning] = useState<string | null>(null);
@@ -618,8 +625,8 @@ export default function Home() {
                   Открыть дашборд владельца
                   <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
                 </Link>
-                <Link href="/animal/marta" className="inline-flex items-center justify-center gap-2 rounded-full border border-border bg-white/80 px-7 py-4 text-sm font-semibold text-foreground backdrop-blur transition-colors hover:bg-white">
-                  Открыть профиль Марты
+                <Link href={featuredAnimalProfileHref} className="inline-flex items-center justify-center gap-2 rounded-full border border-border bg-white/80 px-7 py-4 text-sm font-semibold text-foreground backdrop-blur transition-colors hover:bg-white">
+                  Открыть профиль {featuredAnimalName}
                   <ChevronRight className="h-4 w-4" />
                 </Link>
                 <a href="#partner-pilot" className="inline-flex items-center justify-center gap-2 rounded-full border border-primary/15 bg-secondary/70 px-7 py-4 text-sm font-semibold text-primary transition-colors hover:bg-secondary">
@@ -669,11 +676,11 @@ export default function Home() {
                 <div className="flex flex-col gap-4">
                   <div className="overflow-hidden rounded-[1.75rem] border border-border/70 bg-card p-4 shadow-sm">
                     <div className="flex items-start gap-4">
-                      <img src={CDN.goat} alt="Коза Марта" className="h-28 w-24 rounded-2xl object-cover object-center" />
+                      <img src={CDN.goat} alt={`${featuredAnimalSpeciesLabel} ${featuredAnimalName}`} className="h-28 w-24 rounded-2xl object-cover object-center" />
                       <div>
                         <p className="text-xs uppercase tracking-[0.18em] text-primary">Животное недели</p>
-                        <h3 className="mt-2 text-2xl font-semibold text-foreground">Коза Марта</h3>
-                        <p className="mt-1 text-sm leading-6 text-muted-foreground">Англо-нубийская, 3 года, мягкий темперамент, выразительный профиль и высокий премиальный потенциал продуктовой линии.</p>
+                        <h3 className="mt-2 text-2xl font-semibold text-foreground">{featuredAnimalSpeciesLabel} {featuredAnimalName}</h3>
+                        <p className="mt-1 text-sm leading-6 text-muted-foreground">{featuredAnimalBreed}, {featuredAnimalAgeLabel}, мягкий темперамент, выразительный профиль и высокий премиальный потенциал продуктовой линии.</p>
                       </div>
                     </div>
                     <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
