@@ -46,7 +46,8 @@ describe("page visual integration source smoke", () => {
     expect(appSource).toContain("component={AnimalProfile}");
     expect(appSource).toContain("component={AdminHub}");
     expect(appSource).toContain("function normalizeRoutePath");
-    expect(appSource).toContain("pathname.replace(/%20+$/g");
+    expect(appSource).toContain("pathname\n    .split(\"/\")");
+    expect(appSource).toContain("segment.replace(/%20+$/g");
     expect(appSource).toContain("<RouteNormalizer />");
   });
 

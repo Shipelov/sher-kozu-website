@@ -17,7 +17,15 @@ import AdminHub from "./pages/AdminHub";
 
 function normalizeRoutePath(path: string) {
   const [pathname, query = ""] = path.split("?");
-  const normalizedPathname = pathname.replace(/%20+$/g, "").replace(/\s+$/g, "") || "/";
+  const normalizedSegments = pathname
+    .split("/")
+    .map((segment, index) => {
+      if (index === 0) return segment;
+      return segment.replace(/%20+$/g, "").replace(/\s+$/g, "");
+    })
+    .filter((segment, index) => index === 0 || segment.length > 0);
+
+  const normalizedPathname = normalizedSegments.join("/") || "/";
 
   return query ? `${normalizedPathname}?${query}` : normalizedPathname;
 }
