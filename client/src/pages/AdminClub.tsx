@@ -1,6 +1,51 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import DashboardLayout from "@/components/DashboardLayout";
 import {
+  defaultEventFilters,
+  defaultEventForm,
+  defaultMemberFilters,
+  defaultMemberForm,
+  defaultPostFilters,
+  defaultPostForm,
+  filterEvents,
+  filterMembers,
+  filterPosts,
+  getCrudToastCopy,
+  getInlineActionToastCopy,
+  hasFormErrors,
+  isAdminTabValue,
+  readAdminClubStateFromUrl,
+  sortEvents,
+  sortMembers,
+  sortPosts,
+  uniqueValues,
+  validateEventForm,
+  validateMemberForm,
+  validatePostForm,
+  type BulkActionConfig,
+  type ClubAdminPreset,
+  type EventFilterState,
+  type EventFormField,
+  type EventFormState,
+  type FormErrors,
+  type EventSortField,
+  type InlineActionConfig,
+  type MemberFilterState,
+  type MemberFormField,
+  type MemberFormState,
+  type MemberSortField,
+  type PaginationState,
+  type PendingDeleteState,
+  type PostFilterState,
+  type PostSortField,
+  type PostFormField,
+  type PostFormState,
+  type PresetConfig,
+  type SelectionState,
+  type SortDirection,
+} from "./adminClubShared";
+import { AdminClubOverviewSection } from "./adminClubSections";
+import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -44,380 +89,6 @@ import type { ReactNode } from "react";
 import { toast } from "sonner";
 import { useLocation } from "wouter";
 
-type PostFormState = {
-  id?: number;
-  category: string;
-  author: string;
-  avatar: string;
-  role: string;
-  timeLabel: string;
-  title: string;
-  text: string;
-  imageUrl: string;
-  likes: number;
-  comments: number;
-  tagsCsv: string;
-  pinned: boolean;
-  sortOrder: number;
-};
-
-type EventFormState = {
-  id?: number;
-  title: string;
-  dateLabel: string;
-  description: string;
-  status: string;
-  tone: string;
-  sortOrder: number;
-};
-
-type MemberFormState = {
-  id?: number;
-  name: string;
-  animal: string;
-  sinceLabel: string;
-  badge: string;
-  sortOrder: number;
-};
-
-type SortDirection = "asc" | "desc";
-
-type PostSortField = "sortOrder" | "timeLabel" | "title";
-type EventSortField = "sortOrder" | "dateLabel" | "status";
-type MemberSortField = "sortOrder" | "name" | "badge";
-
-type PostFilterState = {
-  query: string;
-  category: string;
-  pinned: "all" | "pinned" | "regular";
-  sortBy: PostSortField;
-  sortDirection: SortDirection;
-};
-
-type EventFilterState = {
-  query: string;
-  status: string;
-  tone: string;
-  sortBy: EventSortField;
-  sortDirection: SortDirection;
-};
-
-type MemberFilterState = {
-  query: string;
-  badge: string;
-  sortBy: MemberSortField;
-  sortDirection: SortDirection;
-};
-
-type PendingDeleteState =
-  | { entity: "post"; id: number; title: string; description: string }
-  | { entity: "event"; id: number; title: string; description: string }
-  | { entity: "member"; id: number; title: string; description: string }
-  | { entity: "bulk-post"; ids: number[]; title: string; description: string; summaryItems: string[]; totalCount: number }
-  | { entity: "bulk-event"; ids: number[]; title: string; description: string; summaryItems: string[]; totalCount: number }
-  | { entity: "bulk-member"; ids: number[]; title: string; description: string; summaryItems: string[]; totalCount: number }
-  | null;
-
-
-type PresetConfig = {
-  query?: string;
-  category?: string;
-  pinned?: "all" | "pinned" | "regular";
-  status?: string;
-  tone?: string;
-  badge?: string;
-  sortBy: string;
-  sortDirection: SortDirection;
-};
-
-type ClubAdminPreset = {
-  id: number;
-  tab: EntityAdminTabValue;
-  name: string;
-  configJson: string;
-  sortOrder: number;
-};
-
-type FormErrors<T extends string> = Partial<Record<T, string>>;
-
-type PostFormField = "category" | "author" | "role" | "timeLabel" | "title" | "text";
-type EventFormField = "title" | "dateLabel" | "description" | "status" | "tone";
-type MemberFormField = "name" | "animal" | "sinceLabel";
-
-type SelectionState = Record<EntityAdminTabValue, number[]>;
-type PaginationState = Record<EntityAdminTabValue, { page: number; pageSize: number }>;
-
-type BulkActionConfig = {
-  label: string;
-  icon?: ReactNode;
-  variant?: "default" | "outline";
-  destructive?: boolean;
-  disabled?: boolean;
-  onClick: () => void;
-};
-
-type InlineActionConfig = {
-  label: string;
-  icon?: ReactNode;
-  value?: string | number;
-  onClick: () => void;
-  disabled?: boolean;
-};
-
-
-const defaultPostForm = (): PostFormState => ({
-  category: "journal",
-  author: "Команда фермы",
-  avatar: "SK",
-  role: "Редакция клуба",
-  timeLabel: "Сегодня, 10:00",
-  title: "",
-  text: "",
-  imageUrl: "",
-  likes: 0,
-  comments: 0,
-  tagsCsv: "",
-  pinned: false,
-  sortOrder: 0,
-});
-
-const defaultEventForm = (): EventFormState => ({
-  title: "",
-  dateLabel: "",
-  description: "",
-  status: "Открыта регистрация",
-  tone: "warm",
-  sortOrder: 0,
-});
-
-const defaultMemberForm = (): MemberFormState => ({
-  name: "",
-  animal: "",
-  sinceLabel: "",
-  badge: "",
-  sortOrder: 0,
-});
-
-const defaultPostFilters = (): PostFilterState => ({
-  query: "",
-  category: "all",
-  pinned: "all",
-  sortBy: "sortOrder",
-  sortDirection: "asc",
-});
-
-const defaultEventFilters = (): EventFilterState => ({
-  query: "",
-  status: "all",
-  tone: "all",
-  sortBy: "sortOrder",
-  sortDirection: "asc",
-});
-
-const defaultMemberFilters = (): MemberFilterState => ({
-  query: "",
-  badge: "all",
-  sortBy: "sortOrder",
-  sortDirection: "asc",
-});
-
-function normalizeSearchValue(value: string) {
-  return value.trim().toLowerCase();
-}
-
-function includesQuery(fields: Array<string | number | null | undefined>, query: string) {
-  if (!query) return true;
-  return fields.some((field) => String(field ?? "").toLowerCase().includes(query));
-}
-
-function filterPosts(posts: any[], filters: PostFilterState) {
-  const query = normalizeSearchValue(filters.query);
-  return posts.filter((post) => {
-    const matchesQuery = includesQuery([
-      post.title,
-      post.text,
-      post.author,
-      post.category,
-      post.tagsCsv,
-      post.timeLabel,
-    ], query);
-    const matchesCategory = filters.category === "all" || post.category === filters.category;
-    const matchesPinned = filters.pinned === "all"
-      || (filters.pinned === "pinned" && Boolean(post.pinned))
-      || (filters.pinned === "regular" && !Boolean(post.pinned));
-
-    return matchesQuery && matchesCategory && matchesPinned;
-  });
-}
-
-function filterEvents(events: any[], filters: EventFilterState) {
-  const query = normalizeSearchValue(filters.query);
-  return events.filter((event) => {
-    const matchesQuery = includesQuery([
-      event.title,
-      event.description,
-      event.dateLabel,
-      event.status,
-      event.tone,
-    ], query);
-    const matchesStatus = filters.status === "all" || event.status === filters.status;
-    const matchesTone = filters.tone === "all" || event.tone === filters.tone;
-
-    return matchesQuery && matchesStatus && matchesTone;
-  });
-}
-
-function filterMembers(members: any[], filters: MemberFilterState) {
-  const query = normalizeSearchValue(filters.query);
-  return members.filter((member) => {
-    const matchesQuery = includesQuery([
-      member.name,
-      member.animal,
-      member.sinceLabel,
-      member.badge,
-    ], query);
-    const matchesBadge = filters.badge === "all" || member.badge === filters.badge;
-
-    return matchesQuery && matchesBadge;
-  });
-}
-
-function uniqueValues(items: any[], key: string) {
-  return Array.from(new Set(items.map((item) => String(item[key] ?? "")).filter(Boolean)));
-}
-
-function compareValues(left: string | number | null | undefined, right: string | number | null | undefined, direction: SortDirection) {
-  const leftValue = typeof left === "number" ? left : String(left ?? "").toLowerCase();
-  const rightValue = typeof right === "number" ? right : String(right ?? "").toLowerCase();
-
-  if (leftValue < rightValue) return direction === "asc" ? -1 : 1;
-  if (leftValue > rightValue) return direction === "asc" ? 1 : -1;
-  return 0;
-}
-
-function sortPosts(posts: any[], filters: PostFilterState) {
-  return [...posts].sort((left, right) => compareValues(left[filters.sortBy], right[filters.sortBy], filters.sortDirection));
-}
-
-function sortEvents(events: any[], filters: EventFilterState) {
-  return [...events].sort((left, right) => compareValues(left[filters.sortBy], right[filters.sortBy], filters.sortDirection));
-}
-
-function sortMembers(members: any[], filters: MemberFilterState) {
-  return [...members].sort((left, right) => compareValues(left[filters.sortBy], right[filters.sortBy], filters.sortDirection));
-}
-
-function isAdminTabValue(value: string | null): value is AdminTabValue {
-  return value === "posts" || value === "events" || value === "members" || value === "activity";
-}
-
-function parsePageParam(value: string | null) {
-  const parsed = Number(value ?? "1");
-  return Number.isFinite(parsed) && parsed > 0 ? Math.floor(parsed) : 1;
-}
-
-function parsePageSizeParam(value: string | null) {
-  const parsed = Number(value ?? "10");
-  return [5, 10, 20, 50].includes(parsed) ? parsed : 10;
-}
-
-function readAdminClubStateFromUrl() {
-  if (typeof window === "undefined") {
-    return {
-      activeTab: "posts" as AdminTabValue,
-      postFilters: defaultPostFilters(),
-      eventFilters: defaultEventFilters(),
-      memberFilters: defaultMemberFilters(),
-      pagination: {
-        posts: { page: 1, pageSize: 10 },
-        events: { page: 1, pageSize: 10 },
-        members: { page: 1, pageSize: 10 },
-      },
-      actionLogCollapsed: false,
-    };
-  }
-
-  const params = new URLSearchParams(window.location.search);
-  const tabParam = params.get("tab");
-
-  return {
-    activeTab: isAdminTabValue(tabParam) ? tabParam : "posts",
-    postFilters: {
-      query: params.get("postQuery") ?? "",
-      category: params.get("postCategory") ?? "all",
-      pinned: params.get("postPinned") === "pinned" || params.get("postPinned") === "regular"
-        ? params.get("postPinned") as PostFilterState["pinned"]
-        : "all",
-      sortBy: params.get("postSortBy") === "timeLabel" || params.get("postSortBy") === "title" ? params.get("postSortBy") as PostSortField : "sortOrder",
-      sortDirection: (params.get("postSortDirection") === "desc" ? "desc" : "asc") as SortDirection,
-    },
-    eventFilters: {
-      query: params.get("eventQuery") ?? "",
-      status: params.get("eventStatus") ?? "all",
-      tone: params.get("eventTone") ?? "all",
-      sortBy: params.get("eventSortBy") === "dateLabel" || params.get("eventSortBy") === "status" ? params.get("eventSortBy") as EventSortField : "sortOrder",
-      sortDirection: (params.get("eventSortDirection") === "desc" ? "desc" : "asc") as SortDirection,
-    },
-    memberFilters: {
-      query: params.get("memberQuery") ?? "",
-      badge: params.get("memberBadge") ?? "all",
-      sortBy: params.get("memberSortBy") === "name" || params.get("memberSortBy") === "badge" ? params.get("memberSortBy") as MemberSortField : "sortOrder",
-      sortDirection: (params.get("memberSortDirection") === "desc" ? "desc" : "asc") as SortDirection,
-    },
-    pagination: {
-      posts: {
-        page: parsePageParam(params.get("postPage")),
-        pageSize: parsePageSizeParam(params.get("postPageSize")),
-      },
-      events: {
-        page: parsePageParam(params.get("eventPage")),
-        pageSize: parsePageSizeParam(params.get("eventPageSize")),
-      },
-      members: {
-        page: parsePageParam(params.get("memberPage")),
-        pageSize: parsePageSizeParam(params.get("memberPageSize")),
-      },
-    },
-    actionLogCollapsed: params.get("log") === "collapsed",
-  };
-}
-
-function validateRequiredText(value: string, message: string) {
-  return value.trim() ? undefined : message;
-}
-
-function validatePostForm(form: PostFormState): FormErrors<PostFormField> {
-  return {
-    category: validateRequiredText(form.category, "Укажите категорию поста."),
-    author: validateRequiredText(form.author, "Укажите автора поста."),
-    role: validateRequiredText(form.role, "Укажите роль автора."),
-    timeLabel: validateRequiredText(form.timeLabel, "Укажите время публикации."),
-    title: validateRequiredText(form.title, "Добавьте заголовок поста."),
-    text: validateRequiredText(form.text, "Добавьте текст поста."),
-  };
-}
-
-function validateEventForm(form: EventFormState): FormErrors<EventFormField> {
-  return {
-    title: validateRequiredText(form.title, "Укажите название события."),
-    dateLabel: validateRequiredText(form.dateLabel, "Укажите дату события."),
-    description: validateRequiredText(form.description, "Добавьте описание события."),
-    status: validateRequiredText(form.status, "Укажите статус события."),
-    tone: validateRequiredText(form.tone, "Укажите тон карточки."),
-  };
-}
-
-function validateMemberForm(form: MemberFormState): FormErrors<MemberFormField> {
-  return {
-    name: validateRequiredText(form.name, "Укажите имя участника."),
-    animal: validateRequiredText(form.animal, "Укажите животное участника."),
-    sinceLabel: validateRequiredText(form.sinceLabel, "Укажите дату вступления."),
-  };
-}
-
-function hasFormErrors<T extends string>(errors: FormErrors<T>) {
-  return Object.values(errors).some(Boolean);
-}
 
 function buildBulkDeleteSummaryItems(items: Array<{ title?: string; name?: string }>) {
   return items
@@ -651,50 +322,7 @@ export default function AdminClub() {
     });
   };
 
-  const getInlineActionToastCopy = (
-    entity: "post" | "event" | "member",
-    record: { title?: string; name?: string; sortOrder: number; pinned?: boolean; status?: string; badge?: string },
-  ) => {
-    if (entity === "post") {
-      return {
-        sortOrder: {
-          title: "Порядок поста обновлён",
-          description: `Пост «${record.title || "Без названия"}» перемещён на позицию ${record.sortOrder}.`,
-        },
-        status: {
-          title: record.pinned ? "Пост закреплён" : "Пост откреплён",
-          description: record.pinned
-            ? `Пост «${record.title || "Без названия"}» теперь показывается в закреплённых.`
-            : `Пост «${record.title || "Без названия"}» переведён в обычную ленту.`,
-        },
-      };
-    }
-
-    if (entity === "event") {
-      return {
-        sortOrder: {
-          title: "Порядок события обновлён",
-          description: `Событие «${record.title || "Без названия"}» перемещено на позицию ${record.sortOrder}.`,
-        },
-        status: {
-          title: "Статус события обновлён",
-          description: `Для события «${record.title || "Без названия"}» установлен статус «${record.status || "Без статуса"}».`,
-        },
-      };
-    }
-
-    return {
-      sortOrder: {
-        title: "Порядок участника обновлён",
-        description: `Профиль «${record.name || "Без имени"}» перемещён на позицию ${record.sortOrder}.`,
-      },
-      status: {
-        title: "Бейдж участника обновлён",
-        description: `Для профиля «${record.name || "Без имени"}» установлен бейдж «${record.badge || "Без бейджа"}».`,
-      },
-    };
-  };
-
+  
   const filteredActionLog = actionLog.filter((entry) => {
     const matchesArea = actionLogAreaFilter === "all" || entry.area === actionLogAreaFilter;
     const matchesType = actionLogTypeFilter === "all" || entry.actionType === actionLogTypeFilter;
@@ -1593,45 +1221,7 @@ export default function AdminClub() {
       </AlertDialog>
 
       <div className="container py-6 md:py-8 space-y-6">
-        <section className="grid gap-4 lg:grid-cols-[1.35fr_0.65fr]">
-          <Card className="border-stone-200 bg-gradient-to-br from-amber-50 via-white to-stone-50 shadow-sm">
-            <CardHeader className="space-y-3">
-              <Badge variant="outline" className="w-fit border-amber-300 bg-white/80 text-amber-900">
-                Простая админ-панель клуба
-              </Badge>
-              <CardTitle className="text-3xl text-stone-950">Управление клубными постами, событиями и участниками</CardTitle>
-              <CardDescription className="max-w-2xl text-base text-stone-600">
-                Панель помогает быстро обновлять клубную ленту без редактирования базы вручную: можно создавать, править, удалять, искать и фильтровать ключевые сущности клуба.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="grid gap-3 sm:grid-cols-3">
-              <MetricCard label="Посты" value={counts.posts} icon={<Crown className="h-4 w-4" />} />
-              <MetricCard label="События" value={counts.events} icon={<CalendarRange className="h-4 w-4" />} />
-              <MetricCard label="Участники" value={counts.members} icon={<Users className="h-4 w-4" />} />
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Состояние</CardTitle>
-              <CardDescription>Текущий пользователь и статус загрузки данных.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3 text-sm text-stone-600">
-              <div className="flex items-center justify-between gap-4 rounded-xl bg-stone-50 px-4 py-3">
-                <span>Администратор</span>
-                <span className="font-medium text-stone-950">{user.name || "Без имени"}</span>
-              </div>
-              <div className="flex items-center justify-between gap-4 rounded-xl bg-stone-50 px-4 py-3">
-                <span>Роль</span>
-                <Badge>{user.role}</Badge>
-              </div>
-              <div className="flex items-center justify-between gap-4 rounded-xl bg-stone-50 px-4 py-3">
-                <span>Данные</span>
-                <span className="font-medium text-stone-950">{adminQuery.isLoading ? "Загружаются" : "Готово"}</span>
-              </div>
-            </CardContent>
-          </Card>
-        </section>
+        <AdminClubOverviewSection counts={counts} user={user} isLoading={adminQuery.isLoading} />
 
         {isForbidden ? (
           <Alert variant="destructive">
@@ -1680,23 +1270,23 @@ export default function AdminClub() {
                 <Field label="Категория" error={postErrors.category}><Input aria-invalid={Boolean(postErrors.category)} value={postForm.category} onChange={(e) => {
                   const value = e.target.value;
                   setPostForm({ ...postForm, category: value });
-                  if (postErrors.category) setPostErrors((current) => ({ ...current, category: undefined }));
+                  if (postErrors.category) setPostErrors((current: typeof postErrors) => ({ ...current, category: undefined }));
                 }} /></Field>
                 <Field label="Автор" error={postErrors.author}><Input aria-invalid={Boolean(postErrors.author)} value={postForm.author} onChange={(e) => {
                   const value = e.target.value;
                   setPostForm({ ...postForm, author: value });
-                  if (postErrors.author) setPostErrors((current) => ({ ...current, author: undefined }));
+                  if (postErrors.author) setPostErrors((current: typeof postErrors) => ({ ...current, author: undefined }));
                 }} /></Field>
                 <Field label="Аватар"><Input value={postForm.avatar} onChange={(e) => setPostForm({ ...postForm, avatar: e.target.value.slice(0, 8) })} /></Field>
                 <Field label="Роль автора" error={postErrors.role}><Input aria-invalid={Boolean(postErrors.role)} value={postForm.role} onChange={(e) => {
                   const value = e.target.value;
                   setPostForm({ ...postForm, role: value });
-                  if (postErrors.role) setPostErrors((current) => ({ ...current, role: undefined }));
+                  if (postErrors.role) setPostErrors((current: typeof postErrors) => ({ ...current, role: undefined }));
                 }} /></Field>
                 <Field label="Время" error={postErrors.timeLabel}><Input aria-invalid={Boolean(postErrors.timeLabel)} value={postForm.timeLabel} onChange={(e) => {
                   const value = e.target.value;
                   setPostForm({ ...postForm, timeLabel: value });
-                  if (postErrors.timeLabel) setPostErrors((current) => ({ ...current, timeLabel: undefined }));
+                  if (postErrors.timeLabel) setPostErrors((current: typeof postErrors) => ({ ...current, timeLabel: undefined }));
                 }} /></Field>
                 <Field label="Порядок"><Input type="number" value={postForm.sortOrder} onChange={(e) => setPostForm({ ...postForm, sortOrder: Number(e.target.value) || 0 })} /></Field>
                 <Field label="Лайки"><Input type="number" value={postForm.likes} onChange={(e) => setPostForm({ ...postForm, likes: Number(e.target.value) || 0 })} /></Field>
@@ -1705,14 +1295,14 @@ export default function AdminClub() {
               <Field label="Заголовок" error={postErrors.title}><Input aria-invalid={Boolean(postErrors.title)} value={postForm.title} onChange={(e) => {
                 const value = e.target.value;
                 setPostForm({ ...postForm, title: value });
-                if (postErrors.title) setPostErrors((current) => ({ ...current, title: undefined }));
+                if (postErrors.title) setPostErrors((current: typeof postErrors) => ({ ...current, title: undefined }));
               }} /></Field>
               <Field label="Изображение (URL)"><Input value={postForm.imageUrl} onChange={(e) => setPostForm({ ...postForm, imageUrl: e.target.value })} placeholder="https://..." /></Field>
               <Field label="Теги CSV"><Input value={postForm.tagsCsv} onChange={(e) => setPostForm({ ...postForm, tagsCsv: e.target.value })} placeholder="утро,марта,клуб" /></Field>
               <Field label="Текст поста" error={postErrors.text}><Textarea aria-invalid={Boolean(postErrors.text)} value={postForm.text} onChange={(e) => {
                 const value = e.target.value;
                 setPostForm({ ...postForm, text: value });
-                if (postErrors.text) setPostErrors((current) => ({ ...current, text: undefined }));
+                if (postErrors.text) setPostErrors((current: typeof postErrors) => ({ ...current, text: undefined }));
               }} className="min-h-32" /></Field>
               <div className="flex items-center justify-between rounded-xl border border-stone-200 px-4 py-3">
                 <div>
@@ -2026,29 +1616,29 @@ export default function AdminClub() {
                 <Field label="Название" error={eventErrors.title}><Input aria-invalid={Boolean(eventErrors.title)} value={eventForm.title} onChange={(e) => {
                   const value = e.target.value;
                   setEventForm({ ...eventForm, title: value });
-                  if (eventErrors.title) setEventErrors((current) => ({ ...current, title: undefined }));
+                  if (eventErrors.title) setEventErrors((current: typeof eventErrors) => ({ ...current, title: undefined }));
                 }} /></Field>
                 <Field label="Дата" error={eventErrors.dateLabel}><Input aria-invalid={Boolean(eventErrors.dateLabel)} value={eventForm.dateLabel} onChange={(e) => {
                   const value = e.target.value;
                   setEventForm({ ...eventForm, dateLabel: value });
-                  if (eventErrors.dateLabel) setEventErrors((current) => ({ ...current, dateLabel: undefined }));
+                  if (eventErrors.dateLabel) setEventErrors((current: typeof eventErrors) => ({ ...current, dateLabel: undefined }));
                 }} /></Field>
                 <Field label="Статус" error={eventErrors.status}><Input aria-invalid={Boolean(eventErrors.status)} value={eventForm.status} onChange={(e) => {
                   const value = e.target.value;
                   setEventForm({ ...eventForm, status: value });
-                  if (eventErrors.status) setEventErrors((current) => ({ ...current, status: undefined }));
+                  if (eventErrors.status) setEventErrors((current: typeof eventErrors) => ({ ...current, status: undefined }));
                 }} /></Field>
                 <Field label="Тон" error={eventErrors.tone}><Input aria-invalid={Boolean(eventErrors.tone)} value={eventForm.tone} onChange={(e) => {
                   const value = e.target.value;
                   setEventForm({ ...eventForm, tone: value });
-                  if (eventErrors.tone) setEventErrors((current) => ({ ...current, tone: undefined }));
+                  if (eventErrors.tone) setEventErrors((current: typeof eventErrors) => ({ ...current, tone: undefined }));
                 }} /></Field>
                 <Field label="Порядок"><Input type="number" value={eventForm.sortOrder} onChange={(e) => setEventForm({ ...eventForm, sortOrder: Number(e.target.value) || 0 })} /></Field>
               </div>
               <Field label="Описание" error={eventErrors.description}><Textarea aria-invalid={Boolean(eventErrors.description)} value={eventForm.description} onChange={(e) => {
                 const value = e.target.value;
                 setEventForm({ ...eventForm, description: value });
-                if (eventErrors.description) setEventErrors((current) => ({ ...current, description: undefined }));
+                if (eventErrors.description) setEventErrors((current: typeof eventErrors) => ({ ...current, description: undefined }));
               }} className="min-h-32" /></Field>
             </EntityFormCard>
 
@@ -2262,17 +1852,17 @@ export default function AdminClub() {
                 <Field label="Имя" error={memberErrors.name}><Input aria-invalid={Boolean(memberErrors.name)} value={memberForm.name} onChange={(e) => {
                   const value = e.target.value;
                   setMemberForm({ ...memberForm, name: value });
-                  if (memberErrors.name) setMemberErrors((current) => ({ ...current, name: undefined }));
+                  if (memberErrors.name) setMemberErrors((current: typeof memberErrors) => ({ ...current, name: undefined }));
                 }} /></Field>
                 <Field label="Животное" error={memberErrors.animal}><Input aria-invalid={Boolean(memberErrors.animal)} value={memberForm.animal} onChange={(e) => {
                   const value = e.target.value;
                   setMemberForm({ ...memberForm, animal: value });
-                  if (memberErrors.animal) setMemberErrors((current) => ({ ...current, animal: undefined }));
+                  if (memberErrors.animal) setMemberErrors((current: typeof memberErrors) => ({ ...current, animal: undefined }));
                 }} /></Field>
                 <Field label="С нами с" error={memberErrors.sinceLabel}><Input aria-invalid={Boolean(memberErrors.sinceLabel)} value={memberForm.sinceLabel} onChange={(e) => {
                   const value = e.target.value;
                   setMemberForm({ ...memberForm, sinceLabel: value });
-                  if (memberErrors.sinceLabel) setMemberErrors((current) => ({ ...current, sinceLabel: undefined }));
+                  if (memberErrors.sinceLabel) setMemberErrors((current: typeof memberErrors) => ({ ...current, sinceLabel: undefined }));
                 }} /></Field>
                 <Field label="Бейдж"><Input value={memberForm.badge} onChange={(e) => setMemberForm({ ...memberForm, badge: e.target.value })} /></Field>
                 <Field label="Порядок"><Input type="number" value={memberForm.sortOrder} onChange={(e) => setMemberForm({ ...memberForm, sortOrder: Number(e.target.value) || 0 })} /></Field>
