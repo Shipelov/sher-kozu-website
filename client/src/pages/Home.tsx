@@ -349,6 +349,22 @@ export default function Home() {
   const partnerAttachmentsRemainingSlots = MAX_PARTNER_FILES - partnerAttachments.length;
   const partnerAttachmentsRemainingSize = Math.max(MAX_PARTNER_TOTAL_SIZE_BYTES - partnerAttachmentsTotalSize, 0);
   const isPartnerAttachmentsNearTotalLimit = partnerAttachmentsTotalSize >= MAX_PARTNER_TOTAL_SIZE_BYTES * 0.8;
+  const normalizedPartnerEmail = partnerLeadForm.email.trim();
+  const normalizedPartnerPhone = partnerLeadForm.phone.trim();
+  const isPartnerEmailValid = !normalizedPartnerEmail || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedPartnerEmail);
+  const isPartnerPhoneValid = !normalizedPartnerPhone || /^[+0-9()\-\s]{7,}$/.test(normalizedPartnerPhone);
+  const partnerRequiredFieldsFilled =
+    partnerLeadForm.fullName.trim().length >= 2 &&
+    partnerLeadForm.companyName.trim().length >= 2 &&
+    normalizedPartnerEmail.length > 0 &&
+    isPartnerEmailValid;
+  const partnerFormReadyItems = [
+    partnerRequiredFieldsFilled,
+    isPartnerPhoneValid,
+    hasPartnerConsent,
+  ];
+  const partnerFormReadyCount = partnerFormReadyItems.filter(Boolean).length;
+  const partnerFormProgressPercent = Math.round((partnerFormReadyCount / partnerFormReadyItems.length) * 100);
 
   const appendPartnerAttachments = (incomingFiles: File[]) => {
     if (!incomingFiles.length) return;
@@ -760,6 +776,9 @@ export default function Home() {
                         <Mail className="pointer-events-none absolute left-3 top-3.5 h-4 w-4 text-stone-400" />
                         <Input id="partner-email" type="email" className="pl-10" value={partnerLeadForm.email} onChange={(event) => setPartnerLeadForm((current) => ({ ...current, email: event.target.value }))} placeholder="buyer@company.kz" />
                       </div>
+                      {!isPartnerEmailValid ? (
+                        <p className="text-xs text-rose-600">Укажите email в формате name@company.com.</p>
+                      ) : null}
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="partner-phone">Телефон</Label>
@@ -767,6 +786,9 @@ export default function Home() {
                         <Phone className="pointer-events-none absolute left-3 top-3.5 h-4 w-4 text-stone-400" />
                         <Input id="partner-phone" className="pl-10" value={partnerLeadForm.phone} onChange={(event) => setPartnerLeadForm((current) => ({ ...current, phone: event.target.value }))} placeholder="+7 701 000 00 00" />
                       </div>
+                      {!isPartnerPhoneValid ? (
+                        <p className="text-xs text-rose-600">Телефон должен содержать не меньше 7 символов и состоять из цифр, пробелов или знаков +()-.</p>
+                      ) : null}
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="partner-region">Регион</Label>
@@ -805,6 +827,30 @@ export default function Home() {
                           <SelectItem value="any">Любой канал</SelectItem>
                         </SelectContent>
                       </Select>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 rounded-2xl border border-stone-200 bg-stone-50 px-4 py-4">
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-semibold text-stone-900">Готовность заявки</p>
+                        <p className="mt-1 text-xs leading-5 text-stone-500">Показывает, можно ли отправлять форму без дополнительных исправлений.</p>
+                      </div>
+                      <span className="rounded-full border border-stone-200 bg-white px-3 py-1 text-xs font-medium text-stone-700">{partnerFormProgressPercent}%</span>
+                    </div>
+                    <div className="mt-3 h-2 overflow-hidden rounded-full bg-stone-200">
+                      <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${partnerFormProgressPercent}%` }} />
+                    </div>
+                    <div className="mt-3 grid gap-2 sm:grid-cols-3">
+                      <div className={`rounded-xl px-3 py-2 text-xs ${partnerRequiredFieldsFilled ? "bg-emerald-50 text-emerald-700" : "bg-stone-100 text-stone-600"}`}>
+                        Имя, компания и email заполнены корректно
+                      </div>
+                      <div className={`rounded-xl px-3 py-2 text-xs ${isPartnerPhoneValid ? "bg-emerald-50 text-emerald-700" : "bg-rose-50 text-rose-700"}`}>
+                        Телефон соответствует базовому формату
+                      </div>
+                      <div className={`rounded-xl px-3 py-2 text-xs ${hasPartnerConsent ? "bg-emerald-50 text-emerald-700" : "bg-stone-100 text-stone-600"}`}>
+                        Согласие на обработку данных подтверждено
+                      </div>
                     </div>
                   </div>
 
@@ -975,6 +1021,28 @@ export default function Home() {
             </Card>
 
             <div className="grid gap-6">
+              <Card className="border-stone-200 shadow-sm">
+                <CardHeader>
+                  <CardTitle className="text-2xl text-stone-950">FAQ для партнёров</CardTitle>
+                  <CardDescription className="text-stone-600">
+                    Короткие ответы на вопросы, которые чаще всего тормозят отправку первой заявки.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-3 text-sm text-stone-700">
+                  <div className="rounded-2xl border border-stone-200 bg-stone-50 px-4 py-4">
+                    <p className="font-semibold text-stone-900">Какие материалы лучше приложить?</p>
+                    <p className="mt-2 leading-6 text-stone-600">Лучше всего работают прайс, краткая презентация компании, реквизиты и примеры формата сотрудничества.</p>
+                  </div>
+                  <div className="rounded-2xl border border-stone-200 bg-stone-50 px-4 py-4">
+                    <p className="font-semibold text-stone-900">Обязательно ли прикладывать файлы?</p>
+                    <p className="mt-2 leading-6 text-stone-600">Нет, заявку можно отправить и без вложений. Но документы и визуалы помогают менеджеру быстрее оценить формат пилота.</p>
+                  </div>
+                  <div className="rounded-2xl border border-stone-200 bg-stone-50 px-4 py-4">
+                    <p className="font-semibold text-stone-900">Когда ждать ответ?</p>
+                    <p className="mt-2 leading-6 text-stone-600">После синхронизации с CRM менеджер получает заявку и связывается по выбранному каналу, как правило, после первичной квалификации.</p>
+                  </div>
+                </CardContent>
+              </Card>
               <Card className="border-stone-200 shadow-sm">
                 <CardHeader>
                   <CardTitle className="text-2xl text-stone-950">Последняя заявка и статус pilot-синхронизации</CardTitle>
