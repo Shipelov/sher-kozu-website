@@ -56,10 +56,12 @@ import {
   AdminClubEventsTabContent,
   AdminClubMembersTabContent,
   AdminClubPostsTabContent,
+} from "./adminClubCrudTabs";
+import {
   buildAdminClubEventsTabProps,
   buildAdminClubMembersTabProps,
   buildAdminClubPostsTabProps,
-} from "./adminClubCrudTabs";
+} from "./adminClubCrudTabBuilders";
 import {
   AdminClubActivityTabContent,
   AdminClubBitrixTabContent,
