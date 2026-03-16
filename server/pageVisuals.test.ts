@@ -72,6 +72,9 @@ describe("page visual integration source smoke", () => {
     expect(adminHubSource).toContain("Опубликовано:");
     expect(adminHubSource).toContain("Скрыто:");
     expect(adminHubSource).toContain("В архиве:");
+    expect(adminHubSource).toContain("/admin/animals?status=published");
+    expect(adminHubSource).toContain("/admin/animals?status=hidden");
+    expect(adminHubSource).toContain("/admin/animals?status=archived");
     expect(adminHubSource).toContain("Посты, события и участники из adminClub.dashboard");
     expect(adminHubSource).toContain("Открыть каталог животных");
     expect(adminHubSource).toContain("Открыть управление клубом");
@@ -82,5 +85,7 @@ describe("page visual integration source smoke", () => {
     expect(adminAnimalsSource).toContain("NOT_ADMIN_ERR_MSG");
     expect(adminAnimalsSource).toContain("Войти и открыть админку животных");
     expect(adminAnimalsSource).toContain("Роль:");
+    expect(adminAnimalsSource).toContain("new URLSearchParams(window.location.search)");
+    expect(adminAnimalsSource).toContain('params.get("status")');
   });
 });

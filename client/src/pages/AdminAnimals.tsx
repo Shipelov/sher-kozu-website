@@ -41,7 +41,7 @@ import {
 } from "lucide-react";
 import { type ChangeEvent, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 
 type AdminAnimalStatus = "public_available" | "public_limited" | "fully_booked" | "hidden" | "archived";
 type AdminAnimalSpecies = "goat" | "sheep";
@@ -1011,9 +1011,26 @@ export default function AdminAnimals() {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<AdminAnimalStatus | "all">("all");
   const [speciesFilter, setSpeciesFilter] = useState<AdminAnimalSpecies | "all">("all");
+  const [location] = useLocation();
   const [editorMode, setEditorMode] = useState<"create" | "edit">("create");
   const [formValues, setFormValues] = useState<AnimalFormValues>(createEmptyAnimalForm());
   const [editingAnimalId, setEditingAnimalId] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const params = new URLSearchParams(window.location.search);
+    const incomingStatus = params.get("status");
+
+    if (incomingStatus === "published") {
+      setStatusFilter("public_available");
+      return;
+    }
+
+    if (incomingStatus === "hidden" || incomingStatus === "archived") {
+      setStatusFilter(incomingStatus);
+    }
+  }, [location]);
 
   const animals = animalsQuery.data ?? [];
   const filteredAnimals = useMemo(

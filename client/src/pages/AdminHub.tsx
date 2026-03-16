@@ -18,6 +18,11 @@ import {
 } from "lucide-react";
 import { useLocation } from "wouter";
 
+type BreakdownItem = {
+  label: string;
+  href?: string;
+};
+
 type AdminSectionCard = {
   title: string;
   description: string;
@@ -26,7 +31,7 @@ type AdminSectionCard = {
   statusLabel: string;
   adminOnly: boolean;
   countLabel?: string;
-  breakdownLines?: string[];
+  breakdownItems?: BreakdownItem[];
   quickActionLabel?: string;
   quickActionPath?: string;
 };
@@ -92,13 +97,13 @@ export default function AdminHub() {
       countLabel: isAdmin
         ? `${animalsQuery.data?.length ?? 0} животных в каталоге`
         : "Счётчик доступен после роли admin",
-      breakdownLines: isAdmin
+      breakdownItems: isAdmin
         ? [
-            `Опубликовано: ${animalStatusSummary.published}`,
-            `Скрыто: ${animalStatusSummary.hidden}`,
-            `В архиве: ${animalStatusSummary.archived}`,
+            { label: `Опубликовано: ${animalStatusSummary.published}`, href: "/admin/animals?status=published" },
+            { label: `Скрыто: ${animalStatusSummary.hidden}`, href: "/admin/animals?status=hidden" },
+            { label: `В архиве: ${animalStatusSummary.archived}`, href: "/admin/animals?status=archived" },
           ]
-        : ["Статусы появятся после подтверждения роли admin"],
+        : [{ label: "Статусы появятся после подтверждения роли admin" }],
       quickActionLabel: "Открыть каталог животных",
       quickActionPath: "/admin/animals",
     },
@@ -284,12 +289,23 @@ export default function AdminHub() {
                           ? "Раздел готов к открытию из общего admin overview и sidebar-навигации."
                           : "Маршрут зарегистрирован, но интерфейс предупредит о нехватке прав до получения роли admin."}
                       </p>
-                      {section.breakdownLines?.length ? (
+                      {section.breakdownItems?.length ? (
                         <div className="grid gap-2 sm:grid-cols-3">
-                          {section.breakdownLines.map((line) => (
-                            <div key={line} className="rounded-2xl border border-border/70 bg-background/80 px-3 py-2 text-xs font-medium text-foreground">
-                              {line}
-                            </div>
+                          {section.breakdownItems.map((item) => (
+                            item.href && canOpen ? (
+                              <button
+                                key={item.label}
+                                type="button"
+                                onClick={() => setLocation(item.href!)}
+                                className="rounded-2xl border border-border/70 bg-background/80 px-3 py-2 text-left text-xs font-medium text-foreground transition hover:border-primary/40 hover:bg-primary/5"
+                              >
+                                {item.label}
+                              </button>
+                            ) : (
+                              <div key={item.label} className="rounded-2xl border border-border/70 bg-background/80 px-3 py-2 text-xs font-medium text-foreground">
+                                {item.label}
+                              </div>
+                            )
                           ))}
                         </div>
                       ) : null}
