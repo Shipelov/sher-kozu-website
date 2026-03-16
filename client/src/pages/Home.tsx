@@ -698,7 +698,15 @@ export default function Home() {
                             type="button"
                             variant="ghost"
                             className="h-auto px-2 py-1 text-xs text-stone-500 hover:text-rose-700"
-                            onClick={() => setPartnerAttachments([])}
+                            onClick={() => {
+                              if (partnerAttachments.length > 1) {
+                                const confirmed = window.confirm("Удалить все выбранные вложения? Это действие нельзя отменить.");
+                                if (!confirmed) {
+                                  return;
+                                }
+                              }
+                              setPartnerAttachments([]);
+                            }}
                           >
                             Очистить все вложения
                           </Button>
