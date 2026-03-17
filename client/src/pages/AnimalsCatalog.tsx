@@ -139,6 +139,26 @@ function getRelationshipStatus(slots: number, total: number, occupiedUntil?: str
   };
 }
 
+function getShareBlockSummary(animal: CatalogAnimal) {
+  const shareUnitPercent = animal.shareUnitPercent ?? 10;
+  const availablePercent = animal.availablePercent ?? 0;
+  const ownedPercent = animal.ownedPercent ?? 0;
+  const availableSharePercents = animal.availableSharePercents ?? [];
+  const primarySharePercent = availableSharePercents[0] ?? shareUnitPercent;
+  const primarySharePriceMinor = animal.fullPriceMinor
+    ? Math.round((animal.fullPriceMinor * primarySharePercent) / 100)
+    : animal.shareUnitPriceMinor ?? 0;
+
+  return {
+    shareUnitPercent,
+    availablePercent,
+    ownedPercent,
+    availableSharePercents,
+    primarySharePercent,
+    primarySharePriceMinor,
+  };
+}
+
 function AnimalsCatalogSkeleton() {
   return (
     <section className="container space-y-10 py-16 md:py-20">
@@ -277,6 +297,7 @@ function AnimalSpeciesSection({
         <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
           {filteredAnimals.map((animal) => {
             const availability = getRelationshipStatus(animal.availableSlots, animal.totalOwnershipSlots, animal.occupiedUntil);
+            const shareSummary = getShareBlockSummary(animal);
 
             return (
               <Link key={animal.id} href={`/animals/${animal.slug}`}>
@@ -324,35 +345,48 @@ function AnimalSpeciesSection({
                         </div>
                         <div>
                           <p className="text-xs uppercase tracking-[0.16em] text-stone-500">Занято сейчас</p>
-                          <p className="mt-1 text-lg font-semibold text-stone-900">{animal.ownedPercent ?? 0}%</p>
+                          <p className="mt-1 text-lg font-semibold text-stone-900">{shareSummary.ownedPercent}%</p>
                         </div>
                         <div>
                           <p className="text-xs uppercase tracking-[0.16em] text-stone-500">Свободно для шеринга</p>
-                          <p className="mt-1 text-lg font-semibold text-stone-900">{animal.availablePercent ?? 0}%</p>
+                          <p className="mt-1 text-lg font-semibold text-stone-900">{shareSummary.availablePercent}%</p>
                         </div>
                         <div>
-                          <p className="text-xs uppercase tracking-[0.16em] text-stone-500">Минимальная доля</p>
-                          <p className="mt-1 text-lg font-semibold text-stone-900">{animal.shareUnitPercent ?? 10}% · {formatCurrency(animal.shareUnitPriceMinor)}</p>
+                          <p className="text-xs uppercase tracking-[0.16em] text-stone-500">Шаг выбора</p>
+                          <p className="mt-1 text-lg font-semibold text-stone-900">{shareSummary.shareUnitPercent}%</p>
                         </div>
                       </div>
-                      {animal.availableSharePercents?.length ? (
-                        <div className="rounded-[1.25rem] border border-amber-200 bg-amber-50 px-4 py-3">
-                          <p className="text-xs uppercase tracking-[0.16em] text-amber-700">Доступные доли</p>
-                          <div className="mt-2 flex flex-wrap gap-2">
-                            {animal.availableSharePercents.map((percent) => (
-                              <span key={percent} className="rounded-full bg-white px-3 py-1 text-xs font-medium text-amber-800 ring-1 ring-amber-200">
-                                {percent}%
-                              </span>
-                            ))}
+
+                      <div className="rounded-[1.25rem] border border-stone-200 bg-white px-4 py-4">
+                        <div className="flex flex-wrap items-start justify-between gap-3">
+                          <div>
+                            <p className="text-xs uppercase tracking-[0.16em] text-stone-500">Единый сценарий выбора доли</p>
+                            <h4 className="mt-2 text-base font-semibold text-stone-900">Сначала выбираете процент, затем переходите в профиль без лишних развилок.</h4>
+                            <p className="mt-2 text-sm leading-6 text-stone-600">{availability.helper} В профиле откроется тот же сценарий: свободные доли шагом {shareSummary.shareUnitPercent}% и один основной CTA.</p>
+                          </div>
+                          <div className="rounded-2xl bg-stone-50 px-4 py-3 text-sm text-stone-700">
+                            <div className="text-xs uppercase tracking-[0.16em] text-stone-500">Стартовая доля</div>
+                            <div className="mt-1 font-semibold text-stone-900">{shareSummary.primarySharePercent}% · {formatCurrency(shareSummary.primarySharePriceMinor)}</div>
+                            <div className="mt-1 text-xs text-stone-500">Первый доступный вариант для следующего шага</div>
                           </div>
                         </div>
-                      ) : null}
-                      <p className="text-xs leading-5 text-stone-500">{availability.helper}</p>
+
+                        <div className="mt-4 flex flex-wrap gap-2">
+                          {shareSummary.availableSharePercents.length ? shareSummary.availableSharePercents.map((percent) => (
+                            <span key={percent} className={`rounded-full px-3 py-1.5 text-xs font-medium ring-1 ${percent === shareSummary.primarySharePercent ? "bg-stone-900 text-white ring-stone-900" : "bg-stone-50 text-stone-700 ring-stone-200"}`}>
+                              {percent}%
+                            </span>
+                          )) : (
+                            <span className="rounded-full bg-stone-100 px-3 py-1.5 text-xs text-stone-500 ring-1 ring-stone-200">Свободных долей сейчас нет</span>
+                          )}
+                        </div>
+                      </div>
+
                       <p className="line-clamp-3 text-sm leading-6 text-stone-600">{animal.shortDescription}</p>
                     </div>
 
-                    <div className="flex items-center justify-between rounded-2xl bg-stone-50 px-4 py-3 text-sm text-stone-700">
-                      <span>Открыть полный профиль и выбрать долю</span>
+                    <div className="flex items-center justify-between rounded-2xl bg-stone-900 px-4 py-3 text-sm text-white">
+                      <span>Открыть профиль и продолжить с выбранной долей</span>
                       <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
                     </div>
                   </CardContent>

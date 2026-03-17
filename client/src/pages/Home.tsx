@@ -325,6 +325,14 @@ export default function Home() {
   const featuredAnimalSpeciesLabel = featuredAnimal?.species === "sheep" ? "Овца" : featuredAnimal?.species === "cow" ? "Корова" : "Коза";
   const featuredAnimalAgeLabel = typeof featuredAnimal?.ageYears === "number" ? `${featuredAnimal.ageYears} года` : "возраст уточняется";
   const featuredAnimalProfileHref = featuredAnimal ? `/animals/${featuredAnimal.slug}` : "/animals";
+  const featuredAnimalOwnedPercent = featuredAnimal?.ownedPercent ?? 0;
+  const featuredAnimalAvailablePercent = featuredAnimal?.availablePercent ?? 0;
+  const featuredAnimalShareUnitPercent = featuredAnimal?.shareUnitPercent ?? 10;
+  const featuredAnimalAvailableSharePercents = featuredAnimal?.availableSharePercents ?? [];
+  const featuredAnimalPrimarySharePercent = featuredAnimalAvailableSharePercents[0] ?? featuredAnimalShareUnitPercent;
+  const featuredAnimalPrimarySharePriceMinor = featuredAnimal?.fullPriceMinor
+    ? Math.round((featuredAnimal.fullPriceMinor * featuredAnimalPrimarySharePercent) / 100)
+    : featuredAnimal?.shareUnitPriceMinor ?? 0;
   const [partnerLeadForm, setPartnerLeadForm] = useState<PartnerLeadFormState>(defaultPartnerLeadForm);
   const [partnerAttachments, setPartnerAttachments] = useState<PartnerAttachmentDraft[]>([]);
   const [partnerAttachmentWarning, setPartnerAttachmentWarning] = useState<string | null>(null);
@@ -757,19 +765,59 @@ export default function Home() {
                         <p className="mt-1 text-sm leading-6 text-muted-foreground">{featuredAnimalBreed}, {featuredAnimalAgeLabel}, мягкий темперамент, выразительный профиль и высокий премиальный потенциал продуктовой линии.</p>
                       </div>
                     </div>
+
                     <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
                       <div className="rounded-2xl bg-secondary p-3">
-                        <div className="text-muted-foreground">Счастье</div>
-                        <div className="mt-1 font-mono-data text-xl font-semibold text-foreground">87%</div>
+                        <div className="text-muted-foreground">Полная цена</div>
+                        <div className="mt-1 text-xl font-semibold text-foreground">{new Intl.NumberFormat("ru-RU", { style: "currency", currency: "RUB", maximumFractionDigits: 0 }).format((featuredAnimal?.fullPriceMinor ?? 0) / 100)}</div>
                       </div>
                       <div className="rounded-2xl bg-accent/15 p-3">
-                        <div className="text-muted-foreground">Надой сегодня</div>
-                        <div className="mt-1 font-mono-data text-xl font-semibold text-foreground">1.8 л</div>
+                        <div className="text-muted-foreground">Шаг выбора</div>
+                        <div className="mt-1 text-xl font-semibold text-foreground">{featuredAnimalShareUnitPercent}%</div>
                       </div>
+                      <div className="rounded-2xl bg-secondary p-3">
+                        <div className="text-muted-foreground">Занято сейчас</div>
+                        <div className="mt-1 text-xl font-semibold text-foreground">{featuredAnimalOwnedPercent}%</div>
+                      </div>
+                      <div className="rounded-2xl bg-accent/15 p-3">
+                        <div className="text-muted-foreground">Свободно для шеринга</div>
+                        <div className="mt-1 text-xl font-semibold text-foreground">{featuredAnimalAvailablePercent}%</div>
+                      </div>
+                    </div>
+
+                    <div className="mt-4 rounded-[1.25rem] border border-border/70 bg-background/70 p-4">
+                      <div className="flex flex-wrap items-start justify-between gap-3">
+                        <div>
+                          <p className="text-xs uppercase tracking-[0.16em] text-primary/70">Единый сценарий выбора доли</p>
+                          <h4 className="mt-2 text-lg font-semibold text-foreground">Сначала выбираете процент, затем переходите в профиль без лишних развилок.</h4>
+                          <p className="mt-2 text-sm leading-6 text-muted-foreground">Карточка на главной теперь ведёт в тот же сценарий, что и в каталоге: свободные доли шагом {featuredAnimalShareUnitPercent}% и один основной CTA в профиле животного.</p>
+                        </div>
+                        <div className="rounded-2xl bg-secondary px-4 py-3 text-sm text-foreground">
+                          <div className="text-xs uppercase tracking-[0.16em] text-muted-foreground">Стартовая доля</div>
+                          <div className="mt-1 font-semibold">{featuredAnimalPrimarySharePercent}% · {new Intl.NumberFormat("ru-RU", { style: "currency", currency: "RUB", maximumFractionDigits: 0 }).format(featuredAnimalPrimarySharePriceMinor / 100)}</div>
+                          <div className="mt-1 text-xs text-muted-foreground">Первый доступный вариант для следующего шага</div>
+                        </div>
+                      </div>
+
+                      <div className="mt-4 flex flex-wrap gap-2">
+                        {featuredAnimalAvailableSharePercents.length ? featuredAnimalAvailableSharePercents.map((percent: number) => (
+                          <span key={percent} className={`rounded-full px-3 py-1.5 text-xs font-medium ${percent === featuredAnimalPrimarySharePercent ? "bg-primary text-primary-foreground" : "border border-border bg-white text-foreground"}`}>
+                            {percent}%
+                          </span>
+                        )) : (
+                          <span className="rounded-full bg-muted px-3 py-1.5 text-xs text-muted-foreground">Свободных долей сейчас нет</span>
+                        )}
+                      </div>
+
+                      <Link href={featuredAnimalProfileHref} className="mt-4 inline-flex w-full items-center justify-between rounded-2xl bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground shadow-[0_18px_40px_-20px_rgba(26,58,42,0.65)] transition-all hover:-translate-y-0.5 hover:bg-primary/95">
+                        <span>Открыть профиль и продолжить с выбранной долей</span>
+                        <ArrowRight className="h-4 w-4" />
+                      </Link>
                     </div>
                   </div>
 
                   <div className="overflow-hidden rounded-[1.75rem] border border-border/70 bg-card shadow-sm">
+
                     <img src={CDN.milk} alt="Именные молочные продукты" className="h-48 w-full object-cover" />
                     <div className="p-4">
                       <p className="text-xs uppercase tracking-[0.18em] text-primary">Продуктовый слой</p>

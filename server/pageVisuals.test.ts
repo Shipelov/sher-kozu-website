@@ -124,7 +124,7 @@ describe("page visual integration source smoke", () => {
     expect(animalsCatalogSource).toContain("goatFilter");
     expect(animalsCatalogSource).toContain("sheepFilter");
     expect(animalsCatalogSource).toContain("getRelationshipStatus");
-    expect(animalsCatalogSource).toContain("Открыть полный профиль");
+    expect(animalsCatalogSource).toContain("Открыть профиль и продолжить с выбранной долей");
     expect(animalsCatalogSource).toContain('href={`/animals/${animal.slug}`}');
   });
 
