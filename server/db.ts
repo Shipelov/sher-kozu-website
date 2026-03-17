@@ -1459,8 +1459,24 @@ type UpsertAnimalPayload = Omit<InsertAnimal, "id" | "createdAt" | "updatedAt"> 
 export async function createAnimalWithMedia(input: UpsertAnimalPayload) {
   const db = await getDb();
   const { media = [], ...animalInput } = input;
-  const result = await db.insert(animals).values(animalInput as InsertAnimal);
-  const animalId = Number(result.insertId);
+
+  const insertResult = await db.insert(animals).values(animalInput as InsertAnimal);
+
+  let animalId = Number((insertResult as { insertId?: number | string }).insertId);
+
+  if (!Number.isFinite(animalId) || animalId <= 0) {
+    const createdRows = await db
+      .select({ id: animals.id })
+      .from(animals)
+      .where(and(eq(animals.slug, String(animalInput.slug)), eq(animals.ownerOpenId, String(animalInput.ownerOpenId))))
+      .limit(1);
+
+    animalId = Number(createdRows[0]?.id);
+  }
+
+  if (!Number.isFinite(animalId) || animalId <= 0) {
+    throw new Error(`Failed to resolve created animal id for slug ${String(animalInput.slug)}`);
+  }
 
   if (media.length) {
     await db.insert(animalMedia).values(
