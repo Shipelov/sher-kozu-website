@@ -1286,14 +1286,14 @@ function AnimalEditorCard({
           </div>
         </div>
 
-        <div className="grid gap-4 xl:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)]">
+        <div className="space-y-4">
           <div className="rounded-[1.5rem] border border-border/70 bg-background/80 p-4 shadow-sm">
-            <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:gap-4">
-              <div className="min-w-0 flex-1 space-y-1 xl:max-w-[240px]">
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:gap-4">
+              <div className="min-w-0 lg:w-[260px] lg:flex-none">
                 <Label htmlFor="animal-price">Полная цена животного в рублях</Label>
-                <p className="text-sm font-medium text-primary">Enter price in ₽</p>
+                <p className="mt-1 text-sm font-medium text-primary">Enter price in ₽</p>
               </div>
-              <div className="min-w-0 flex-[1.2]">
+              <div className="min-w-0 flex-1">
                 <div className="flex h-12 items-center overflow-hidden rounded-2xl border border-primary/20 bg-white shadow-sm focus-within:border-primary/40 focus-within:ring-2 focus-within:ring-primary/10">
                   <Input
                     id="animal-price"
@@ -1312,6 +1312,7 @@ function AnimalEditorCard({
             </div>
             <p className="mt-3 text-xs text-muted-foreground">Вводите стоимость в ₽. Система автоматически переведёт её во внутренний формат и рассчитает цену доли 10%.</p>
           </div>
+
           <div className="rounded-[1.75rem] border border-primary/15 bg-primary/5 p-4 shadow-sm">
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary/80">Предпросмотр цены</p>
             <div className="mt-3 grid gap-3 sm:grid-cols-2">
