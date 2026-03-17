@@ -22,6 +22,7 @@ import {
   ensureSprintOneSeed,
   getAnimalBySlug,
   getClubFeedData,
+  getOwnerDashboardData,
   getIntegrationAuditById,
   getPartnerLeadById,
   getProductTrackerData,
@@ -287,6 +288,9 @@ export const appRouter = router({
     }),
     getBySlug: publicProcedure.input(animalSlugInput).query(async ({ input }) => {
       return getAnimalBySlug(input.slug);
+    }),
+    ownerDashboard: protectedProcedure.query(async ({ ctx }) => {
+      return getOwnerDashboardData(ctx.user.openId);
     }),
     purchaseShare: protectedProcedure.input(purchaseAnimalShareInput).mutation(async ({ ctx, input }) => {
       try {

@@ -604,6 +604,218 @@ export async function reorderAnimalPhotos(photoIds: number[], ownerOpenId: strin
   return updated;
 }
 
+export async function getOwnerDashboardData(ownerOpenId: string) {
+  await ensureSprintOneSeed(ownerOpenId);
+  await ensureOwnerExperienceSeed(ownerOpenId);
+
+  const db = await getDb();
+  if (!db) {
+    return {
+      ownership: null,
+      animal: null,
+      productSummary: null,
+      clubSummary: null,
+      quickLinks: [
+        { label: "Открыть галерею животных", href: "/animals", description: "Выберите животное и начните маршрут участия." },
+      ],
+      nextSteps: [
+        {
+          id: "explore-animals",
+          title: "Выберите животное для участия",
+          description: "Откройте галерею, сравните профили и начните путь от выбора животного к личному кабинету владельца.",
+          href: "/animals",
+          kind: "explore",
+        },
+      ],
+    } as const;
+  }
+
+  const ownershipRows = await db
+    .select({
+      ownershipId: animalOwnerships.id,
+      animalId: animalOwnerships.animalId,
+      slotIndex: animalOwnerships.slotIndex,
+      status: animalOwnerships.status,
+      startsAt: animalOwnerships.startsAt,
+      endsAt: animalOwnerships.endsAt,
+      priceMinor: animalOwnerships.priceMinor,
+      notes: animalOwnerships.notes,
+      animalName: animals.name,
+      animalSlug: animals.slug,
+      animalStatus: animals.status,
+      species: animals.species,
+      breed: animals.breed,
+      shortDescription: animals.shortDescription,
+      baseMonthlyPriceMinor: animals.baseMonthlyPriceMinor,
+      totalOwnershipSlots: animals.totalOwnershipSlots,
+      coverImageUrl: animals.coverImageUrl,
+      healthScore: animals.healthScore,
+      happinessScore: animals.happinessScore,
+      milkPotentialScore: animals.milkPotentialScore,
+      careLevelScore: animals.careLevelScore,
+    })
+    .from(animalOwnerships)
+    .innerJoin(animals, eq(animalOwnerships.animalId, animals.id))
+    .where(and(eq(animalOwnerships.ownerOpenId, ownerOpenId), or(eq(animalOwnerships.status, "active"), eq(animalOwnerships.status, "pending_payment"))))
+    .orderBy(desc(animalOwnerships.status), desc(animalOwnerships.startsAt), desc(animalOwnerships.id));
+
+  const groupedByAnimal = new Map<number, any[]>();
+  for (const row of ownershipRows) {
+    const current = groupedByAnimal.get(row.animalId) ?? [];
+    current.push(row);
+    groupedByAnimal.set(row.animalId, current);
+  }
+
+  const primaryOwnershipGroup = Array.from(groupedByAnimal.values()).sort((left, right) => {
+    const leftPending = left.some((item) => item.status === "pending_payment") ? 1 : 0;
+    const rightPending = right.some((item) => item.status === "pending_payment") ? 1 : 0;
+    if (leftPending !== rightPending) return rightPending - leftPending;
+    return right.length - left.length;
+  })[0] ?? null;
+
+  const primaryOwnership = primaryOwnershipGroup?.[0] ?? null;
+  const currentAnimal = primaryOwnership ? await getAnimalBySlug(primaryOwnership.animalSlug) : null;
+  const mySharePercent = currentAnimal?.mySharePercent ?? (primaryOwnershipGroup ? primaryOwnershipGroup.length * Math.round(getPercentPerSlot(normalizeOwnershipSlots(primaryOwnership.totalOwnershipSlots ?? 10))) : 0);
+  const trackerData = primaryOwnership ? await getProductTrackerData(ownerOpenId, primaryOwnership.animalSlug) : { productBatches: [], compositionSnapshots: [], monthlyMetrics: [], deliveries: [] };
+  const clubData = await getClubFeedData(ownerOpenId);
+
+  const currentDelivery = trackerData.deliveries.find((item: any) => Boolean(item.isActive)) ?? trackerData.deliveries[0] ?? null;
+  const currentBatch = trackerData.productBatches[0] ?? null;
+  const nextEvent = clubData.events.find((item: any) => ["Открыта запись", "Мест осталось мало", "Скоро"].includes(String(item.status ?? ""))) ?? clubData.events[0] ?? null;
+
+  const statusLabel = primaryOwnershipGroup?.some((item) => item.status === "pending_payment")
+    ? "Ожидает подтверждения"
+    : primaryOwnershipGroup?.some((item) => item.status === "active")
+      ? "Активное участие"
+      : "Без активного участия";
+
+  const animalHref = currentAnimal ? `/animals/${currentAnimal.slug}` : "/animals";
+  const trackerHref = currentAnimal ? `/tracker?animal=${currentAnimal.slug}` : "/tracker";
+  const clubHref = currentAnimal ? `/club?animal=${currentAnimal.slug}` : "/club";
+
+  const quickLinks = currentAnimal
+    ? [
+        { label: `Дневник ${currentAnimal.name}`, href: `${animalHref}#profile-diary`, description: "Открыть последние записи, ритм дня и заметки по уходу." },
+        { label: "Трекер продукции", href: trackerHref, description: "Посмотреть текущую партию, доставку и происхождение семейного набора." },
+        { label: "Клуб владельцев", href: clubHref, description: "Проверить ближайшие события, визиты и закрытые форматы сообщества." },
+      ]
+    : [{ label: "Открыть галерею животных", href: "/animals", description: "Начните с выбора животного и понятного сценария участия." }];
+
+  const nextSteps = currentAnimal
+    ? [
+        primaryOwnershipGroup?.some((item) => item.status === "pending_payment")
+          ? {
+              id: "confirm-participation",
+              title: "Подтвердить участие и перейти в полный режим владельца",
+              description: `У вас уже забронировано ${mySharePercent}% участия в ${currentAnimal.name}. Следующий шаг — подтвердить участие и сохранить маршрут в кабинете владельца.`,
+              href: animalHref,
+              kind: "confirm",
+            }
+          : {
+              id: "open-diary",
+              title: `Проверить, как проходит день у ${currentAnimal.name}`,
+              description: "Откройте дневник и галерею, чтобы быстро вернуться в живой ритм фермы между поставками и визитами.",
+              href: `${animalHref}#profile-diary`,
+              kind: "diary",
+            },
+        currentDelivery
+          ? {
+              id: "track-delivery",
+              title: "Проверить текущую доставку и именную коробку",
+              description: `${currentDelivery.title ?? currentDelivery.batchCode ?? "Текущая партия"} сейчас находится на этапе «${currentDelivery.status ?? "в пути"}».`,
+              href: trackerHref,
+              kind: "tracker",
+            }
+          : {
+              id: "open-tracker",
+              title: "Открыть трекер продукта",
+              description: "Даже если активная доставка ещё не сформирована, трекер показывает происхождение продукта и прозрачность следующей партии.",
+              href: trackerHref,
+              kind: "tracker",
+            },
+        nextEvent
+          ? {
+              id: "open-club-event",
+              title: `Посмотреть ближайшее событие: ${nextEvent.title}`,
+              description: nextEvent.teaser ?? nextEvent.description ?? "Клубный маршрут поддерживает личную связь семьи с фермой.",
+              href: clubHref,
+              kind: "club",
+            }
+          : {
+              id: "open-club",
+              title: "Заглянуть в клуб владельцев",
+              description: "Проверьте новые встречи, закрытые ужины и форматы, которые удерживают связь с фермой между доставками.",
+              href: clubHref,
+              kind: "club",
+            },
+      ].filter(Boolean)
+    : [
+        {
+          id: "explore-animals",
+          title: "Выберите животное для участия",
+          description: "Кабинет владельца оживает после выбора доли: сначала откройте каталог и найдите животное, с которым хотите выстроить личную связь.",
+          href: "/animals",
+          kind: "explore",
+        },
+      ];
+
+  return {
+    ownership: primaryOwnership
+      ? {
+          animalId: primaryOwnership.animalId,
+          animalSlug: primaryOwnership.animalSlug,
+          animalName: primaryOwnership.animalName,
+          sharePercent: mySharePercent,
+          slotsCount: primaryOwnershipGroup?.length ?? 0,
+          status: primaryOwnershipGroup?.some((item) => item.status === "pending_payment") ? "pending_payment" : "active",
+          statusLabel,
+          startsAt: primaryOwnership.startsAt,
+          endsAt: primaryOwnership.endsAt,
+          priceMinorTotal: (primaryOwnershipGroup ?? []).reduce((sum, item) => sum + Number(item.priceMinor ?? 0), 0),
+          slotIndexes: (primaryOwnershipGroup ?? []).map((item) => item.slotIndex).sort((a, b) => a - b),
+        }
+      : null,
+    animal: currentAnimal
+      ? {
+          id: currentAnimal.id,
+          slug: currentAnimal.slug,
+          name: currentAnimal.name,
+          species: currentAnimal.species,
+          breed: currentAnimal.breed,
+          coverImageUrl: currentAnimal.coverImageUrl,
+          shortDescription: currentAnimal.shortDescription,
+          status: currentAnimal.status,
+          healthScore: currentAnimal.healthScore,
+          happinessScore: currentAnimal.happinessScore,
+          milkPotentialScore: currentAnimal.milkPotentialScore,
+          careLevelScore: currentAnimal.careLevelScore,
+          availablePercent: currentAnimal.availablePercent,
+          ownedPercent: currentAnimal.ownedPercent,
+          shareUnitPercent: currentAnimal.shareUnitPercent,
+          mySharePercent: currentAnimal.mySharePercent,
+        }
+      : null,
+    productSummary: currentAnimal
+      ? {
+          currentBatch,
+          currentDelivery,
+          deliveryCount: trackerData.deliveries.length,
+          batchCount: trackerData.productBatches.length,
+          compositionCount: trackerData.compositionSnapshots.length,
+          monthlyMetricCount: trackerData.monthlyMetrics.length,
+        }
+      : null,
+    clubSummary: {
+      nextEvent,
+      postCount: clubData.posts.length,
+      eventCount: clubData.events.length,
+      memberCount: clubData.members.length,
+    },
+    quickLinks,
+    nextSteps,
+  } as const;
+}
+
 export async function getProductTrackerData(ownerOpenId: string, animalSlug: string) {
   const db = await getDb();
   if (!db) {
