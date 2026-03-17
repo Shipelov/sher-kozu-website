@@ -719,9 +719,9 @@ export default function Home() {
                         <div className="inline-flex items-center rounded-full border border-emerald-200 bg-white/80 px-3 py-1 text-xs font-medium text-emerald-900">
                           Овцы
                         </div>
-                        <h4 className="text-2xl font-semibold text-foreground">Спокойные, мягкие, с понятным маршрутом в полный профиль</h4>
+                        <h4 className="text-2xl font-semibold text-foreground">Овцы как более спокойный и рациональный путь в выбор</h4>
                         <p className="text-sm leading-6 text-muted-foreground">
-                          Отдельная витрина овец помогает быстро увидеть статус, имя и перейти в раскрытый профиль животного без лишних шагов.
+                          Отдельная витрина помогает сравнить животных без визуального шума и быстро открыть полный профиль там, где решение строится на статусе, доле и маршруте владения.
                         </p>
                       </div>
                     </div>
@@ -805,13 +805,13 @@ export default function Home() {
         <div className="container">
           <div className="grid gap-10 lg:grid-cols-[0.85fr_1.15fr] lg:items-start">
             <div>
-              <p className="text-sm font-semibold uppercase tracking-[0.22em] text-primary">Как это работает</p>
+              <p className="text-sm font-semibold uppercase tracking-[0.22em] text-primary">Core conversion spine</p>
               <h2 className="mt-4 max-w-xl font-display text-4xl text-foreground md:text-5xl">
-                Сначала вы понимаете механику, затем открываете галерею и выбираете своё животное.
+                Главная теперь объясняет не «всё обо всём», а один ясный сценарий: понять продукт, выбрать животное, увидеть долю, войти во владение.
               </h2>
               <p className="mt-5 max-w-xl text-base leading-7 text-muted-foreground">
-                Главный consumer flow на этом этапе простой: увидеть модель персонального фермерства, перейти в галерею,
-                сравнить животных и только потом принимать решение о профиле, доле и следующем шаге.
+                Это и есть основной consumer flow Sher Kozu на текущем этапе. Пользователь должен пройти его последовательно, не смешивая вдохновляющий слой бренда,
+                decision layer каталога и ownership-layer после выбора животного.
               </p>
               <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
                 <Link href="#animal-gallery" className="inline-flex items-center justify-center gap-2 rounded-full bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground shadow-[0_16px_32px_-20px_rgba(26,58,42,0.55)] transition-all duration-300 hover:-translate-y-0.5 hover:bg-primary/95">
@@ -862,8 +862,8 @@ export default function Home() {
             </div>
             <div>
               <div className="max-w-2xl">
-                <p className="text-sm font-semibold uppercase tracking-[0.22em] text-primary">Почему это усиливает выбор</p>
-                <h2 className="mt-4 font-display text-4xl text-foreground md:text-5xl">После выбора животного пользователь получает не абстракцию, а понятную личную ценность.</h2>
+                <p className="text-sm font-semibold uppercase tracking-[0.22em] text-primary">Почему пользователь доходит до решения</p>
+                <h2 className="mt-4 font-display text-4xl text-foreground md:text-5xl">Решение о доле становится легче, когда ценность считывается как личная, прозрачная и продолжимая после оплаты.</h2>
               </div>
 
               <div className="mt-8 grid gap-4 sm:grid-cols-2">
@@ -1388,11 +1388,11 @@ export default function Home() {
         <div className="container">
           <div className="grid gap-10 lg:grid-cols-[1fr_0.9fr] lg:items-center">
             <div>
-              <p className="text-sm font-semibold uppercase tracking-[0.22em] text-primary">Маршруты внутри продукта</p>
-              <h2 className="mt-4 max-w-2xl font-display text-4xl text-foreground md:text-5xl">Лендинг не заканчивает историю, а открывает вход в экосистему.</h2>
+              <p className="text-sm font-semibold uppercase tracking-[0.22em] text-primary">Что происходит после выбора</p>
+              <h2 className="mt-4 max-w-2xl font-display text-4xl text-foreground md:text-5xl">Лендинг должен не обрывать интерес, а направлять его в правильный следующий слой продукта.</h2>
               <p className="mt-5 max-w-xl text-base leading-7 text-muted-foreground">
-                Смысл Day 2 — превратить главную страницу в объясняющий интерфейс и маршрутизатор. Отсюда пользователь должен
-                естественно переходить в кабинет владельца, профиль животного, трекер продукта и клубную ленту.
+                После каталога и профиля пользователь может пойти в разные сценарии: кабинет владельца, трекер происхождения продукта, клубный слой или обратно в профиль животного.
+                Главная страница должна заранее объяснять эти маршруты, чтобы внутри продукта не возникало тупиков.
               </p>
 
               <div className="mt-8 grid gap-4">
@@ -1448,10 +1448,10 @@ export default function Home() {
                   <Bot className="h-5 w-5" />
                   <span className="text-sm font-medium">Следующий слой ценности</span>
                 </div>
-                <h3 className="mt-4 font-display text-3xl">AI-куратор владельца</h3>
+                <h3 className="mt-4 font-display text-3xl">Следующий слой после стабилизации конверсии</h3>
                 <p className="mt-3 text-sm leading-7 text-white/75">
-                  В Sprint 2 продукт расширяется за счёт умного куратора, storyteller-логики и голоса животного.
-                  Уже сейчас архитектура сайта готовит для этого естественные точки входа, не перегружая первую версию MVP лишней сложностью.
+                  AI-куратор, storyteller-логика и голос животного остаются сильным следующим шагом, но теперь они показаны как надстройка над уже понятным conversion spine,
+                  а не как конкурирующая идея на первом экране.
                 </p>
                 <div className="mt-5 flex flex-wrap items-center gap-3 text-xs text-white/60">
                   <span className="inline-flex items-center gap-1 rounded-full border border-white/15 px-3 py-1">
@@ -1464,7 +1464,7 @@ export default function Home() {
                   </span>
                 </div>
                 <div className="mt-5 rounded-[1.5rem] border border-white/10 bg-white/8 p-4 text-sm text-white/78">
-                  Первая версия MVP уже ведёт в рабочие слои продукта: владелец может понять модель, увидеть животное, проследить продукт и почувствовать клубную среду без разрывов маршрута.
+                  Первая версия MVP должна прежде всего доводить до понятного выбора животного и доли, а затем уже мягко расширять опыт в клуб, трекер и кабинет владельца без разрывов маршрута.
                 </div>
               </div>
             </motion.div>
@@ -1477,11 +1477,11 @@ export default function Home() {
           <div className="overflow-hidden rounded-[2.25rem] border border-border/70 bg-[linear-gradient(135deg,rgba(26,58,42,0.96),rgba(45,70,54,0.92))] px-6 py-8 text-white shadow-[0_34px_80px_-45px_rgba(26,58,42,0.8)] md:px-10 md:py-12">
             <div className="grid gap-8 lg:grid-cols-[1fr_auto] lg:items-center">
               <div>
-                <p className="text-sm uppercase tracking-[0.22em] text-amber-300">Следующий шаг</p>
-                <h2 className="mt-3 max-w-2xl font-display text-4xl md:text-5xl">Войдите в цифровое сердце фермы и посмотрите, как выглядит персональное фермерство на практике.</h2>
+                <p className="text-sm uppercase tracking-[0.22em] text-amber-300">Выберите свой сценарий продолжения</p>
+                <h2 className="mt-3 max-w-2xl font-display text-4xl md:text-5xl">Если вы уже поняли механику, следующий шаг должен быть предельно конкретным: каталог, профиль, кабинет или клуб.</h2>
                 <p className="mt-4 max-w-2xl text-sm leading-7 text-white/75">
-                  Дальше пользователь должен не теряться, а сразу попадать в рабочее ядро продукта: дашборд владельца,
-                  профиль животного, прозрачность продукции и клубную жизнь.
+                  Финальный блок теперь работает как развилка после понимания модели: перейти к выбору животного, вернуться к галерее на странице,
+                  открыть кабинет владельца или посмотреть клубный слой как продолжение membership-опыта.
                 </p>
               </div>
               <div className="flex flex-col gap-3 sm:flex-row lg:flex-col">

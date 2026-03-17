@@ -19,7 +19,7 @@ describe("page visual integration source smoke", () => {
     expect(homeSource).toContain("sherkozu_family_farm_hero");
     expect(homeSource).toContain("Выберите животное,");
     expect(homeSource).toContain("Открыть галерею животных");
-    expect(homeSource).toContain("Сначала вы понимаете механику, затем открываете галерею и выбираете своё животное.");
+    expect(homeSource).toContain("Главная теперь объясняет не «всё обо всём», а один ясный сценарий: понять продукт, выбрать животное, увидеть долю, войти во владение.");
     expect(homeSource).toContain("featuredAnimalProfileHref");
     expect(homeSource).toContain("Животное недели");
     expect(homeSource).toContain("ShareSelectionPreviewCard");
