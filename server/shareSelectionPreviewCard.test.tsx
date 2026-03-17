@@ -112,4 +112,35 @@ describe("ShareSelectionPreviewCard", () => {
     expect(markup).not.toContain("animate-spin");
     expect(markup).toContain("lucide-package");
   });
+
+  it("renders selectable mode with range control and active share chips", () => {
+    const markup = renderToStaticMarkup(
+      <ShareSelectionPreviewCard
+        {...baseProps}
+        selectable
+        selectedSharePercent={40}
+      />
+    );
+
+    expect(markup).toContain('type="range"');
+    expect(markup).toContain('value="40"');
+    expect(markup).toContain("Выбор процента шеринга");
+    expect(markup).toContain(">20%</button>");
+    expect(markup).toContain(">40%</button>");
+    expect(markup).toContain(">60%</button>");
+  });
+
+  it("shows fallback empty-state copy when there are no available share percents", () => {
+    const markup = renderToStaticMarkup(
+      <ShareSelectionPreviewCard
+        {...baseProps}
+        availablePercent={0}
+        availableSharePercents={[]}
+        selectable
+      />
+    );
+
+    expect(markup).toContain("Свободных долей сейчас нет");
+    expect(markup).toContain('disabled=""');
+  });
 });
