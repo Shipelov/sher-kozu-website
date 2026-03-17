@@ -14,6 +14,7 @@ type ShareSelectionPreviewCardProps = {
   ctaLabel: string;
   onCtaClick?: () => void;
   ctaHref?: string;
+  ctaAsButton?: boolean;
   ctaDisabled?: boolean;
   ctaPending?: boolean;
   ctaLoginRequired?: boolean;
@@ -94,6 +95,7 @@ export default function ShareSelectionPreviewCard({
   ctaLabel,
   onCtaClick,
   ctaHref,
+  ctaAsButton = false,
   ctaDisabled,
   ctaPending,
   ctaLoginRequired,
@@ -209,7 +211,7 @@ export default function ShareSelectionPreviewCard({
 
       {footer ? <div className="mt-4">{footer}</div> : null}
 
-      {ctaHref ? (
+      {ctaHref && !ctaAsButton ? (
         <a href={ctaHref} className={tone.cta} aria-disabled={ctaDisabled ? "true" : "false"}>
           {ctaContent}
         </a>

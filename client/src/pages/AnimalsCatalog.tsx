@@ -364,6 +364,7 @@ function AnimalSpeciesSection({
                         description={`${availability.helper} В профиле откроется тот же сценарий: свободные доли шагом ${shareSummary.shareUnitPercent}% и один основной CTA.`}
                         ctaLabel="Открыть профиль и продолжить с выбранной долей"
                         ctaHref={`/animals/${animal.slug}?share=${shareSummary.primarySharePercent}`}
+                        ctaAsButton
                         theme="stone"
                       />
 

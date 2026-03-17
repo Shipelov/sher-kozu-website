@@ -133,6 +133,8 @@ describe("page visual integration source smoke", () => {
     expect(animalsCatalogSource).toContain('const matchesSelectedShare = hasSelectedShare && shareSummary.availableSharePercents.includes(selectedSharePercent)');
     expect(animalsCatalogSource).toContain('Выбрано {selectedSharePercent}%');
     expect(animalsCatalogSource).toContain('ctaHref={`/animals/${animal.slug}?share=${shareSummary.primarySharePercent}`}');
+    expect(animalsCatalogSource).toContain('ctaAsButton');
+    expect(shareSelectionPreviewCardSource).toContain('ctaHref && !ctaAsButton');
   });
 
   it("keeps animal profile focused on one share-selection flow without plan and duration branching", () => {
