@@ -1288,25 +1288,25 @@ function AnimalEditorCard({
 
         <div className="space-y-4">
           <div className="rounded-[1.5rem] border border-border/70 bg-background/80 p-4 shadow-sm">
-            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:gap-4">
-              <div className="min-w-0 lg:w-[260px] lg:flex-none">
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:gap-6">
+              <div className="min-w-0 lg:w-[220px] lg:flex-none">
                 <Label htmlFor="animal-price">Полная цена животного в рублях</Label>
                 <p className="mt-1 text-sm font-medium text-primary">Enter price in ₽</p>
               </div>
-              <div className="min-w-0 flex-1">
-                <div className="flex h-12 items-center overflow-hidden rounded-2xl border border-primary/20 bg-white shadow-sm focus-within:border-primary/40 focus-within:ring-2 focus-within:ring-primary/10">
+              <div className="min-w-0 lg:flex-[0_1_440px]">
+                <div className="flex h-14 items-center overflow-hidden rounded-2xl border border-primary/20 bg-white shadow-sm focus-within:border-primary/40 focus-within:ring-2 focus-within:ring-primary/10">
                   <Input
                     id="animal-price"
                     type="text"
                     inputMode="numeric"
                     pattern="[0-9 ]*"
                     autoComplete="off"
-                    className="h-full border-0 bg-transparent px-4 text-base shadow-none focus-visible:ring-0"
+                    className="h-full min-w-0 flex-1 border-0 bg-transparent px-5 text-lg tabular-nums shadow-none focus-visible:ring-0"
                     value={toRublesInputValue(values.baseMonthlyPriceMinor)}
                     onChange={(event) => onChange("baseMonthlyPriceMinor", parseRublesToMinor(event.target.value))}
                     placeholder="1500"
                   />
-                  <div className="flex h-full items-center border-l border-border/70 px-4 text-sm font-semibold text-muted-foreground">₽</div>
+                  <div className="flex h-full shrink-0 items-center border-l border-border/70 px-5 text-base font-semibold text-muted-foreground">₽</div>
                 </div>
               </div>
             </div>
