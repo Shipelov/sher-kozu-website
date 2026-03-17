@@ -778,7 +778,7 @@ export default function Home() {
                         availableSharePercents={featuredAnimalAvailableSharePercents}
                         helperText={`Карточка на главной теперь ведёт в тот же сценарий, что и в каталоге: свободные доли шагом ${featuredAnimalShareUnitPercent}% и один основной CTA в профиле животного.`}
                         ctaLabel="Открыть профиль и продолжить с выбранной долей"
-                        ctaHref={featuredAnimalProfileHref}
+                        ctaHref={`${featuredAnimalProfileHref}?share=${featuredAnimalPrimarySharePercent}`}
                       />
                     </div>
                   </div>

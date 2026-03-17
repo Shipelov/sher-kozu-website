@@ -310,7 +310,12 @@ export default function AnimalProfile() {
   const utils = trpc.useUtils();
   const animalQuery = trpc.animals.getBySlug.useQuery({ slug: animalSlug }, { enabled: Boolean(animalSlug) });
   const photosQuery = trpc.animalPhotos.list.useQuery({ animalSlug }, { enabled: Boolean(animalSlug) && isAuthenticated });
-  const [selectedSharePercent, setSelectedSharePercent] = useState(10);
+  const initialSharePercent = useMemo(() => {
+    if (typeof window === "undefined") return 10;
+    const value = Number(new URLSearchParams(window.location.search).get("share"));
+    return Number.isFinite(value) && value > 0 ? value : 10;
+  }, []);
+  const [selectedSharePercent, setSelectedSharePercent] = useState(initialSharePercent);
 
   const availableSharePercents = animalQuery.data?.availableSharePercents ?? [];
   const fullPriceMinor = animalQuery.data?.fullPriceMinor ?? animalQuery.data?.baseMonthlyPriceMinor ?? 0;
@@ -492,6 +497,13 @@ export default function AnimalProfile() {
     }
   }, [availableSharePercents, selectedSharePercent, shareUnitPercent]);
 
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    params.set("share", String(selectedSharePercent));
+    const nextUrl = `${window.location.pathname}?${params.toString()}`;
+    window.history.replaceState({}, "", nextUrl);
+  }, [selectedSharePercent]);
 
   const selectedImage = useMemo(() => galleryImages.find((item) => item.id === selectedImageId) ?? galleryImages[0], [galleryImages, selectedImageId]);
   const selectedImageIndex = useMemo(() => galleryImages.findIndex((item) => item.id === selectedImageId), [galleryImages, selectedImageId]);

@@ -23,6 +23,7 @@ describe("page visual integration source smoke", () => {
     expect(homeSource).toContain("featuredAnimalProfileHref");
     expect(homeSource).toContain("Животное недели");
     expect(homeSource).toContain("ShareSelectionPreviewCard");
+    expect(homeSource).toContain('ctaHref={`${featuredAnimalProfileHref}?share=${featuredAnimalPrimarySharePercent}`}');
     expect(homeSource).toContain('id="animal-gallery"');
     expect(homeSource).toContain("Галерея животных");
     expect(homeSource).toContain("Открыть всю галерею животных");
@@ -128,7 +129,7 @@ describe("page visual integration source smoke", () => {
     expect(animalsCatalogSource).toContain("getRelationshipStatus");
     expect(animalsCatalogSource).toContain("Открыть профиль и продолжить с выбранной долей");
     expect(animalsCatalogSource).toContain("ShareSelectionPreviewCard");
-    expect(animalsCatalogSource).toContain('ctaHref={`/animals/${animal.slug}`}');
+    expect(animalsCatalogSource).toContain('ctaHref={`/animals/${animal.slug}?share=${shareSummary.primarySharePercent}`}');
   });
 
   it("keeps animal profile focused on one share-selection flow without plan and duration branching", () => {
@@ -136,6 +137,8 @@ describe("page visual integration source smoke", () => {
     expect(animalProfileSource).toContain("Вы выбираете только долю, а базовый формат участия подставляется автоматически.");
     expect(animalProfileSource).toContain("Продолжить с выбранной долей");
     expect(animalProfileSource).toContain("Бронь ${selectedSharePercent}% через единый сценарий профиля животного");
+    expect(animalProfileSource).toContain('new URLSearchParams(window.location.search).get("share")');
+    expect(animalProfileSource).toContain('params.set("share", String(selectedSharePercent))');
     expect(animalProfileSource).not.toContain("План участия");
     expect(animalProfileSource).not.toContain("Срок участия");
     expect(animalProfileSource).not.toContain("setSelectedPlanId");
