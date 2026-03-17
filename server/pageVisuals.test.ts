@@ -164,4 +164,25 @@ describe("page visual integration source smoke", () => {
     expect(shareSelectionPreviewCardSource).toContain("Выбор доли участия");
     expect(shareSelectionPreviewCardSource).toContain("Свободных долей сейчас нет");
   });
+
+  it("preserves the full consumer path from home to gallery, animal profile and share selection", () => {
+    expect(homeSource).toContain('id="animal-gallery"');
+    expect(homeSource).toContain("Открыть всю галерею животных");
+    expect(homeSource).toContain("AnimalShareCard");
+    expect(homeSource).toContain('ctaHref={`${featuredAnimalProfileHref}?share=${featuredAnimalPrimarySharePercent}`}');
+
+    expect(animalsCatalogSource).toContain("Галерея животных");
+    expect(animalsCatalogSource).toContain("Открыть профиль и продолжить с выбранной долей");
+    expect(animalsCatalogSource).toContain('new URLSearchParams(window.location.search).get("share")');
+    expect(animalsCatalogSource).toContain('ctaHref={`/animals/${animal.slug}?share=${shareSummary.primarySharePercent}`}');
+
+    expect(animalProfileSource).toContain('new URLSearchParams(window.location.search).get("share")');
+    expect(animalProfileSource).toContain('params.set("share", String(selectedSharePercent))');
+    expect(animalProfileSource).toContain("Продолжить с выбранной долей");
+    expect(animalProfileSource).toContain("Бронь ${selectedSharePercent}% через единый сценарий профиля животного");
+
+    expect(shareSelectionPreviewCardSource).toContain("Выбор доли участия");
+    expect(shareSelectionPreviewCardSource).toContain("Передвигайте ползунок шагом");
+    expect(shareSelectionPreviewCardSource).toContain("Свободных долей сейчас нет");
+  });
 });
