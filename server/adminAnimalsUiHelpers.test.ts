@@ -161,6 +161,20 @@ describe("Admin animals UI helpers", () => {
     expect(form.name).toBe("");
   });
 
+  it("keeps the standard 10-slot sharing model with 10% increments", () => {
+    const slots = buildShareSlots(animals[0] as any);
+
+    expect(slots).toHaveLength(10);
+    expect(slots[0]?.percentLabel).toBe("10%");
+    expect(slots[4]?.percentLabel).toBe("50%");
+    expect(slots[9]?.percentLabel).toBe("100%");
+  });
+
+  it("formats animal prices in Russian rubles for admin surfaces", () => {
+    expect(formatShareRevenue(135000)).toBe("1 350 ₽");
+    expect(formatShareRevenue(118000)).toBe("1 180 ₽");
+  });
+
   it("creates a complete demo preset for a goat profile", () => {
     const preset = createDemoAnimalPreset("goat");
 

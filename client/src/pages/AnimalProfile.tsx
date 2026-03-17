@@ -158,10 +158,10 @@ function getSpeciesLabel(species?: string) {
   return "Животное";
 }
 
-function formatCurrency(minor?: number | null) {
+function formatCurrency(minor?: number | null, currencyCode: string = "RUB") {
   return new Intl.NumberFormat("ru-RU", {
     style: "currency",
-    currency: "KZT",
+    currency: currencyCode,
     maximumFractionDigits: 0,
   }).format((minor ?? 0) / 100);
 }
@@ -322,6 +322,7 @@ export default function AnimalProfile() {
   const shareUnitPercent = animalQuery.data?.shareUnitPercent ?? 10;
   const ownedPercent = animalQuery.data?.ownedPercent ?? 0;
   const availablePercent = animalQuery.data?.availablePercent ?? 100;
+  const currencyCode = animalQuery.data?.currencyCode ?? "RUB";
   const selectedSharePriceMinor = useMemo(
     () => Math.round((fullPriceMinor * selectedSharePercent) / 100),
     [fullPriceMinor, selectedSharePercent],
@@ -348,7 +349,7 @@ export default function AnimalProfile() {
       await utils.animals.getBySlug.invalidate({ slug: animalSlug });
       await utils.animals.listPublic.invalidate();
       toast.success("Доля забронирована", {
-        description: `Вы выбрали ${result.sharePercent}% ${animalQuery.data?.name ?? "животного"} на сумму ${formatCurrency(result.priceMinor)}.`,
+        description: `Вы выбрали ${result.sharePercent}% ${animalQuery.data?.name ?? "животного"} на сумму ${formatCurrency(result.priceMinor, currencyCode)}.`,
       });
     },
     onError: (error) => {
@@ -841,12 +842,12 @@ export default function AnimalProfile() {
 
                       <div className="mt-5">
                         <ShareSelectionPreviewCard
-                          priceLabel={formatCurrency(fullPriceMinor)}
+                          priceLabel={formatCurrency(fullPriceMinor, currencyCode)}
                           occupiedPercent={ownedPercent}
                           availablePercent={availablePercent}
                           shareUnitPercent={shareUnitPercent}
                           primarySharePercent={availableSharePercents[0] ?? shareUnitPercent}
-                          primarySharePriceLabel={formatCurrency(Math.round((fullPriceMinor * (availableSharePercents[0] ?? shareUnitPercent)) / 100))}
+                          primarySharePriceLabel={formatCurrency(animalQuery.data?.primarySharePriceMinor ?? Math.round((fullPriceMinor * (availableSharePercents[0] ?? shareUnitPercent)) / 100), currencyCode)}
                           availableSharePercents={availableSharePercents}
                           helperText={`Следующий шаг всегда один: забронировать выбранный процент ${displayName} и перейти к подтверждению участия без лишних развилок.`}
                           description="Вы выбираете только долю, а базовый формат участия подставляется автоматически."
@@ -863,7 +864,7 @@ export default function AnimalProfile() {
                           footer={
                             <div className="rounded-[1.25rem] border border-primary/10 bg-primary/5 p-4">
                               <div className="text-xs uppercase tracking-[0.16em] text-muted-foreground">Стоимость выбранной доли</div>
-                              <div className="mt-2 text-3xl font-semibold text-foreground">{formatCurrency(selectedSharePriceMinor)}</div>
+                              <div className="mt-2 text-3xl font-semibold text-foreground">{formatCurrency(selectedSharePriceMinor, currencyCode)}</div>
                               <p className="mt-2 text-sm text-muted-foreground">Оформляется как бронь доли с последующим подтверждением оплаты и учётом занятых слотов.</p>
                             </div>
                           }

@@ -1140,28 +1140,49 @@ function getSharePriceMinor(basePriceMinor: number, sharePercent: number) {
   return Math.round((Math.max(0, basePriceMinor) * sharePercent) / 100);
 }
 
-function buildAnimalShareMetrics(animal: { totalOwnershipSlots: number; baseMonthlyPriceMinor: number }, activeOwnerships: number) {
-  const totalSlots = normalizeOwnershipSlots(animal.totalOwnershipSlots);
-  const availableSlots = Math.max(0, totalSlots - activeOwnerships);
-  const ownedPercent = getOwnedPercentFromCount(activeOwnerships, totalSlots);
-  const availablePercent = Math.max(0, 100 - ownedPercent);
-  const shareUnitPercent = Math.round(getPercentPerSlot(totalSlots));
-  const shareUnitPriceMinor = getSharePriceMinor(animal.baseMonthlyPriceMinor, shareUnitPercent);
-  const availableSharePercents: number[] = [];
+function normalizeSharePercentValue(value: number) {
+  return Math.max(0, Math.min(100, Math.round(value / 10) * 10));
+}
 
-  for (let sharePercent = shareUnitPercent; sharePercent <= availablePercent; sharePercent += shareUnitPercent) {
-    availableSharePercents.push(sharePercent);
+function getStandardizedOwnershipSlots() {
+  return 10;
+}
+
+function getAvailableSharePercents(availablePercent: number, shareUnitPercent: number) {
+  const values: number[] = [];
+  const safeAvailablePercent = normalizeSharePercentValue(availablePercent);
+
+  for (let sharePercent = shareUnitPercent; sharePercent <= safeAvailablePercent; sharePercent += shareUnitPercent) {
+    values.push(sharePercent);
   }
+
+  return values;
+}
+
+function buildAnimalShareMetrics(animal: { totalOwnershipSlots: number; baseMonthlyPriceMinor: number }, activeOwnerships: number) {
+  const totalSlots = getStandardizedOwnershipSlots();
+  const normalizedActiveOwnerships = Math.max(0, Math.min(totalSlots, Math.round(activeOwnerships)));
+  const availableSlots = Math.max(0, totalSlots - normalizedActiveOwnerships);
+  const ownedPercent = normalizeSharePercentValue(getOwnedPercentFromCount(normalizedActiveOwnerships, totalSlots));
+  const availablePercent = normalizeSharePercentValue(100 - ownedPercent);
+  const shareUnitPercent = 10;
+  const shareUnitPriceMinor = getSharePriceMinor(animal.baseMonthlyPriceMinor, shareUnitPercent);
+  const availableSharePercents = getAvailableSharePercents(availablePercent, shareUnitPercent);
+  const primarySharePercent = availableSharePercents[0] ?? shareUnitPercent;
 
   return {
     totalSlots,
-    activeOwnerships,
+    totalOwnershipSlots: totalSlots,
+    activeOwnerships: normalizedActiveOwnerships,
     availableSlots,
     ownedPercent,
     availablePercent,
     shareUnitPercent,
     shareUnitPriceMinor,
     fullPriceMinor: animal.baseMonthlyPriceMinor,
+    currencyCode: "RUB",
+    primarySharePercent,
+    primarySharePriceMinor: getSharePriceMinor(animal.baseMonthlyPriceMinor, primarySharePercent),
     availableSharePercents,
   };
 }
@@ -1428,12 +1449,7 @@ export async function listAdminAnimals(ownerOpenId: string) {
     .where(eq(animals.ownerOpenId, ownerOpenId))
     .orderBy(desc(animals.createdAt), asc(animals.sortOrder), asc(animals.name));
 
-  return Promise.all(
-    rows.map(async (animal: any) => ({
-      ...animal,
-      activeOwnerships: await countActiveOwnerships(animal.id),
-    }))
-  );
+  return Promise.all(rows.map((animal: any) => enrichAnimalWithShareMetrics(db, animal)));
 }
 
 type UpsertAnimalPayload = Omit<InsertAnimal, "id" | "createdAt" | "updatedAt"> & {
@@ -1569,8 +1585,8 @@ export async function ensureSprintOneSeed(ownerOpenId: string) {
     coverImageUrl: "https://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/goat_portrait_80fc5726.jpg",
     galleryIntro: "Подборка фотографий Марты для витрины и карточки животного.",
     status: "public_available",
-    totalOwnershipSlots: 3,
-    baseMonthlyPriceMinor: 45000,
+    totalOwnershipSlots: 10,
+    baseMonthlyPriceMinor: 135000,
     healthScore: 88,
     happinessScore: 91,
     milkPotentialScore: 84,
@@ -1604,8 +1620,8 @@ export async function ensureSprintOneSeed(ownerOpenId: string) {
     coverImageUrl: "https://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/milk_products_d3f8c13d.jpg",
     galleryIntro: "Подборка фотографий Златы для витрины и карточки животного.",
     status: "public_available",
-    totalOwnershipSlots: 3,
-    baseMonthlyPriceMinor: 42000,
+    totalOwnershipSlots: 10,
+    baseMonthlyPriceMinor: 118000,
     healthScore: 86,
     happinessScore: 89,
     milkPotentialScore: 78,
