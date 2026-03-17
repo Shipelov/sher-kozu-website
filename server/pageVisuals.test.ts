@@ -122,7 +122,7 @@ describe("page visual integration source smoke", () => {
     expect(animalsCatalogSource).toContain('id="sheep"');
     expect(animalsCatalogSource).toContain("В отношениях");
     expect(animalsCatalogSource).toContain("На выданье");
-    expect(animalsCatalogSource).toContain("Можно шерить");
+    expect(animalsCatalogSource).toContain("Доступно для участия");
     expect(animalsCatalogSource).toContain("occupiedUntilLabel={availability.occupiedUntilLabel}");
     expect(animalsCatalogSource).toContain("occupiedUntil");
     expect(animalsCatalogSource).toContain("goatFilter");
@@ -157,11 +157,11 @@ describe("page visual integration source smoke", () => {
     expect(animalShareCardSource).toContain("Статус, доля и цена");
     expect(animalShareCardSource).toContain("occupiedUntilLabel");
     expect(animalShareCardSource).toContain("Стартовая доля");
-    expect(shareSelectionPreviewCardSource).toContain("Единый сценарий выбора доли");
-    expect(shareSelectionPreviewCardSource).toContain("Сначала выбираете процент, затем переходите в профиль без лишних развилок.");
+    expect(shareSelectionPreviewCardSource).toContain("Выбор доли участия");
+    expect(shareSelectionPreviewCardSource).toContain("Передвигайте ползунок шагом");
     expect(shareSelectionPreviewCardSource).toContain("Стартовая доля");
     expect(shareSelectionPreviewCardSource).toContain("Формат по умолчанию");
-    expect(shareSelectionPreviewCardSource).toContain("Выбор процента шеринга");
+    expect(shareSelectionPreviewCardSource).toContain("Выбор доли участия");
     expect(shareSelectionPreviewCardSource).toContain("Свободных долей сейчас нет");
   });
 });

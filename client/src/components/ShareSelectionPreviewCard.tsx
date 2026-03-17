@@ -102,8 +102,9 @@ export default function ShareSelectionPreviewCard({
   selectedSharePercent,
   onShareSelect,
   selectable = false,
-  title = "Сначала выбираете процент, затем переходите в профиль без лишних развилок.",
-  eyebrow = "Единый сценарий выбора доли",
+      title = "Сначала выбираете долю участия, затем переходите к следующему шагу без лишних развилок.",
+      eyebrow = "Понятный выбор доли участия",
+
   defaultPlanLabel,
   defaultPlanMeta,
   className = "",
@@ -135,7 +136,7 @@ export default function ShareSelectionPreviewCard({
           <p className={tone.metricValue}>{occupiedPercent}%</p>
         </div>
         <div>
-          <p className={tone.metricLabel}>Свободно для шеринга</p>
+          <p className={tone.metricLabel}>Свободно для участия</p>
           <p className={tone.metricValue}>{availablePercent}%</p>
         </div>
       </div>
@@ -166,8 +167,8 @@ export default function ShareSelectionPreviewCard({
         <div className="mt-4 rounded-[1.25rem] border border-border/70 bg-background/70 p-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <p className="text-sm font-medium text-foreground">Выбор процента шеринга</p>
-              <p className="mt-1 text-sm text-muted-foreground">Передвигайте ползунок шагом {shareUnitPercent}% — купить можно только свободную долю.</p>
+              <p className="text-sm font-medium text-foreground">Выбор доли участия</p>
+              <p className="mt-1 text-sm text-muted-foreground">Передвигайте ползунок шагом {shareUnitPercent}% — выбрать можно только свободную долю.</p>
             </div>
             <div className={tone.selectedBadge}>{activeSharePercent}%</div>
           </div>

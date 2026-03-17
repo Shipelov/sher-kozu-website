@@ -20,9 +20,9 @@ const speciesConfig = {
     relationshipEmptyTitle: "Коз в отношениях пока нет",
     relationshipEmptyText:
       "Когда у коз появится временный владелец на все доли, они отобразятся здесь со статусом «в отношениях».",
-    sharedEmptyTitle: "Коз для совместного статуса пока нет",
+    sharedEmptyTitle: "Коз с доступными долями пока нет",
     sharedEmptyText:
-      "Как только у коз появится частичная занятость, они отобразятся здесь со статусом «можно шерить».",
+      "Как только у коз появится частичная занятость, они отобразятся здесь со статусом «доступно для участия».",
     availableEmptyTitle: "Свободных коз пока нет",
     availableEmptyText:
       "Когда в разделе коз появятся полностью свободные профили, они будут показаны здесь со статусом «на выданье».",
@@ -39,9 +39,9 @@ const speciesConfig = {
     relationshipEmptyTitle: "Овец в отношениях пока нет",
     relationshipEmptyText:
       "Когда у овцы все доли будут заняты временным владельцем, она появится здесь со статусом «в отношениях».",
-    sharedEmptyTitle: "Овец для шеринг-статуса пока нет",
+    sharedEmptyTitle: "Овец с доступными долями пока нет",
     sharedEmptyText:
-      "Когда у овцы появится частичная занятость, она будет показана здесь со статусом «можно шерить».",
+      "Когда у овцы появится частичная занятость, она будет показана здесь со статусом «доступно для участия».",
     availableEmptyTitle: "Свободных овец пока нет",
     availableEmptyText:
       "Как только овца будет полностью свободна и готова к сделке, она появится здесь со статусом «на выданье».",
@@ -78,7 +78,7 @@ const statusFilterOptions: Array<{
 }> = [
   { value: "relationship", label: "В отношениях" },
   { value: "available", label: "На выданье" },
-  { value: "shared", label: "Можно шерить" },
+  { value: "shared", label: "Доступно для участия" },
 ];
 
 function formatOccupiedUntil(value: string | null) {
@@ -132,10 +132,11 @@ function getRelationshipStatus(slots: number, total: number, occupiedUntil?: str
 
   return {
     filter: "shared" as const,
-    label: `Статус: можно шерить · свободно ${slots} из ${total}`,
-    helper: "Есть временный владелец, но не на 100%: можно рассмотреть совместный статус.",
-    className: "border-amber-200 bg-amber-50 text-amber-800",
-    compactLabel: "Можно шерить",
+      label: `Статус: доступно для участия · свободно ${slots} из ${total}`,
+      helper: "Часть долей уже занята, а оставшаяся часть доступна для участия.",
+      className: "border-amber-200 bg-amber-50 text-amber-800",
+      compactLabel: "Доступно для участия",
+
     occupiedUntilLabel: null,
   };
 }
@@ -268,7 +269,7 @@ function AnimalSpeciesSection({
             <div className="mt-2 flex flex-wrap items-center gap-2 text-stone-900">
               <span className="rounded-full bg-rose-100 px-3 py-1 text-xs font-medium text-rose-800">В отношениях: {relationshipCount}</span>
               <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-medium text-emerald-800">На выданье: {availableCount}</span>
-              <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-medium text-amber-800">Можно шерить: {sharedCount}</span>
+              <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-medium text-amber-800">Доступно для участия: {sharedCount}</span>
             </div>
           </div>
         </div>
@@ -432,7 +433,7 @@ export default function AnimalsCatalog() {
                   Выбирайте животное по типу отношений, а не только по виду.
                 </h1>
                 <p className="max-w-3xl text-base leading-8 text-stone-600 md:text-lg">
-                  Вкладка разделена на коз и овец, а внутри каждого раздела можно фильтровать профили по статусу участия: полностью занято, полностью свободно или доступно для совместного статуса.
+                  Вкладка разделена на коз и овец, а внутри каждого раздела можно фильтровать профили по статусу участия: полностью занято, полностью свободно или доступно для участия.
                 </p>
               </div>
               <div className="flex flex-wrap gap-3">
@@ -455,7 +456,7 @@ export default function AnimalsCatalog() {
                 <p className="text-3xl font-semibold text-stone-900">{totalAvailable}</p>
               </div>
               <div className="space-y-2 rounded-2xl bg-stone-50 p-4">
-                <p className="text-xs uppercase tracking-[0.2em] text-stone-500">Можно шерить</p>
+                <p className="text-xs uppercase tracking-[0.2em] text-stone-500">Доступно для участия</p>
                 <p className="text-3xl font-semibold text-stone-900">{totalShared}</p>
               </div>
             </div>
@@ -477,9 +478,9 @@ export default function AnimalsCatalog() {
           </div>
           <div className="space-y-2 rounded-[1.5rem] bg-amber-50 p-4">
             <p className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.2em] text-amber-700">
-              <Waves className="h-4 w-4" /> Можно шерить
+              <Waves className="h-4 w-4" /> Доступно для участия
             </p>
-            <p>Есть временный владелец, но не на 100%. Животное можно рассматривать для совместного статуса или совместной сделки.</p>
+            <p>Часть долей уже занята, а оставшаяся часть доступна для участия другой семьи.</p>
           </div>
         </div>
 

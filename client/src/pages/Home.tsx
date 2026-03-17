@@ -818,7 +818,7 @@ export default function Home() {
               </h2>
               <p className="mt-5 max-w-xl text-base leading-7 text-muted-foreground">
                 Это и есть основной consumer flow Sher Kozu на текущем этапе. Пользователь должен пройти его последовательно, не смешивая вдохновляющий слой бренда,
-                decision layer каталога и ownership-layer после выбора животного.
+                логику выбора в каталоге и следующий шаг участия после выбора животного.
               </p>
               <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
                 <Link href="#animal-gallery" className="inline-flex items-center justify-center gap-2 rounded-full bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground shadow-[0_16px_32px_-20px_rgba(26,58,42,0.55)] transition-all duration-300 hover:-translate-y-0.5 hover:bg-primary/95">

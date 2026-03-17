@@ -171,7 +171,7 @@ function getAnimalStatusLabel(status?: string | null) {
   if (status === "public_limited") return "Осталось мало долей";
   if (status === "hidden") return "Скрыто";
   if (status === "archived") return "Архив";
-  return "Доступно для шеринга";
+  return "Доступно для участия";
 }
 
 function formatAnimalName(name?: string) {
@@ -866,7 +866,7 @@ export default function AnimalProfile() {
                             <div className="rounded-[1.25rem] border border-primary/10 bg-primary/5 p-4">
                               <div className="text-xs uppercase tracking-[0.16em] text-muted-foreground">Стоимость выбранной доли</div>
                               <div className="mt-2 text-3xl font-semibold text-foreground">{formatCurrency(selectedSharePriceMinor, currencyCode)}</div>
-                              <p className="mt-2 text-sm text-muted-foreground">Оформляется как бронь доли с последующим подтверждением оплаты и учётом занятых слотов.</p>
+                              <p className="mt-2 text-sm text-muted-foreground">Оформляется как бронь доли с последующим подтверждением оплаты и учётом уже занятых долей.</p>
                             </div>
                           }
                         />
@@ -1054,7 +1054,7 @@ export default function AnimalProfile() {
                   <div>
                     <p className="text-xs uppercase tracking-[0.22em] text-primary">Галерея профиля</p>
                     <h3 className="mt-2 text-2xl font-semibold text-foreground">Все действия профиля животного</h3>
-                    <p className="mt-2 max-w-xl text-sm leading-7 text-muted-foreground">Здесь повторён весь рабочий слой кабинета: загрузка, удаление, смена обложки, reorder, lightbox и share-сценарии.</p>
+                    <p className="mt-2 max-w-xl text-sm leading-7 text-muted-foreground">Здесь собран весь рабочий слой кабинета: загрузка, удаление, смена обложки, порядок фото, просмотр и сценарии участия.</p>
                   </div>
                   <div className="inline-flex items-center gap-2 rounded-full border border-border bg-background px-3 py-1.5 text-xs text-muted-foreground">
                     <Images className="h-3.5 w-3.5" />
