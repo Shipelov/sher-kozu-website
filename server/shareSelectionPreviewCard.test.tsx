@@ -56,4 +56,44 @@ describe("ShareSelectionPreviewCard", () => {
     expect(anchorCount).toBe(1);
     expect(markup).toContain("<button");
   });
+
+  it("marks link CTA as aria-disabled when disabled state is enabled", () => {
+    const markup = renderToStaticMarkup(
+      <ShareSelectionPreviewCard
+        {...baseProps}
+        ctaHref="/animals/marta?share=20"
+        ctaDisabled
+      />
+    );
+
+    expect(markup).toContain('aria-disabled="true"');
+    expect(markup).toContain('<a href="/animals/marta?share=20"');
+  });
+
+  it("disables button CTA when rendered in button mode", () => {
+    const markup = renderToStaticMarkup(
+      <ShareSelectionPreviewCard
+        {...baseProps}
+        ctaHref="/animals/marta?share=20"
+        ctaAsButton
+        ctaDisabled
+      />
+    );
+
+    expect(markup).toContain("<button");
+    expect(markup).toContain("disabled");
+  });
+
+  it("shows pending state copy and loader marker when ctaPending is enabled", () => {
+    const markup = renderToStaticMarkup(
+      <ShareSelectionPreviewCard
+        {...baseProps}
+        ctaHref="/animals/marta?share=20"
+        ctaPending
+      />
+    );
+
+    expect(markup).toContain("Подготавливаем следующий шаг");
+    expect(markup).toContain("animate-spin");
+  });
 });
