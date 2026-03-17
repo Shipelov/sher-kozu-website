@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Link, useLocation, useRoute } from "wouter";
 import { useAuth } from "@/_core/hooks/useAuth";
 import Navbar from "@/components/Navbar";
-import ShareSelectionPreviewCard from "@/components/ShareSelectionPreviewCard";
+import AnimalShareCard from "@/components/AnimalShareCard";
 import {
   Heart,
   Thermometer,
@@ -827,21 +827,20 @@ export default function AnimalProfile() {
                     </div>
 
                     <div className="overflow-hidden rounded-[1.75rem] border border-primary/15 bg-card p-5 shadow-sm">
-                      <div className="flex items-start justify-between gap-4">
-                        <div>
-                          <p className="text-xs uppercase tracking-[0.18em] text-primary">Долевое участие</p>
-                          <h3 className="mt-2 text-2xl font-semibold text-foreground">Цена и занятость {displayName}</h3>
-                          <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                            Полная цена животного показывается в профиле, а покупка доступна только свободными долями шагом {shareUnitPercent}%.
-                          </p>
-                        </div>
-                        <div className="rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
-                          {getAnimalStatusLabel(animalQuery.data?.status)}
-                        </div>
+                      <div>
+                        <p className="text-xs uppercase tracking-[0.18em] text-primary">Долевое участие</p>
+                        <h3 className="mt-2 text-2xl font-semibold text-foreground">Цена и занятость {displayName}</h3>
+                        <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                          Полная цена животного показывается в профиле, а покупка доступна только свободными долями шагом {shareUnitPercent}%.
+                        </p>
                       </div>
 
                       <div className="mt-5">
-                        <ShareSelectionPreviewCard
+                        <AnimalShareCard
+                          statusLabel={getAnimalStatusLabel(animalQuery.data?.status)}
+                          statusClassName="border-primary/20 bg-primary/10 text-primary"
+                          name={displayName}
+                          breedLabel={profileContent.breedLabel}
                           priceLabel={formatCurrency(fullPriceMinor, currencyCode)}
                           occupiedPercent={ownedPercent}
                           availablePercent={availablePercent}
@@ -861,6 +860,8 @@ export default function AnimalProfile() {
                           selectable
                           defaultPlanLabel={animalQuery.data?.plans?.[0]?.name ?? "Базовый план"}
                           defaultPlanMeta={animalQuery.data?.plans?.[0]?.durations?.[0] ? `${animalQuery.data.plans[0].durations[0].months} мес. · ${animalQuery.data.plans[0].durations[0].label}` : "Срок будет подтверждён фермером"}
+                          title="Один и тот же сценарий выбора доли на всей витрине"
+                          eyebrow="Статус, доля и цена"
                           footer={
                             <div className="rounded-[1.25rem] border border-primary/10 bg-primary/5 p-4">
                               <div className="text-xs uppercase tracking-[0.16em] text-muted-foreground">Стоимость выбранной доли</div>

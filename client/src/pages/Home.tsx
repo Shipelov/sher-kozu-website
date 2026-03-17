@@ -9,7 +9,7 @@ import { trpc } from "@/lib/trpc";
 import { motion } from "framer-motion";
 import { Link } from "wouter";
 import Navbar from "@/components/Navbar";
-import ShareSelectionPreviewCard from "@/components/ShareSelectionPreviewCard";
+import AnimalShareCard from "@/components/AnimalShareCard";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -768,7 +768,11 @@ export default function Home() {
                     </div>
 
                     <div className="mt-4">
-                      <ShareSelectionPreviewCard
+                      <AnimalShareCard
+                        statusLabel={featuredAnimal ? (featuredAnimalAvailablePercent === 0 ? "Полностью распределено" : featuredAnimalAvailablePercent <= featuredAnimalShareUnitPercent * 2 ? "Осталось мало долей" : "Доступно для выбора") : "Выбор доли"}
+                        statusClassName={featuredAnimalAvailablePercent === 0 ? "border-stone-300 bg-stone-100 text-stone-700" : featuredAnimalAvailablePercent <= featuredAnimalShareUnitPercent * 2 ? "border-amber-200 bg-amber-50 text-amber-800" : "border-emerald-200 bg-emerald-50 text-emerald-800"}
+                        name={featuredAnimal?.name ?? "Животное недели"}
+                        breedLabel={featuredAnimal?.breed ?? "Sher Kozu"}
                         priceLabel={new Intl.NumberFormat("ru-RU", { style: "currency", currency: "RUB", maximumFractionDigits: 0 }).format((featuredAnimal?.fullPriceMinor ?? 0) / 100)}
                         occupiedPercent={featuredAnimalOwnedPercent}
                         availablePercent={featuredAnimalAvailablePercent}
@@ -777,8 +781,11 @@ export default function Home() {
                         primarySharePriceLabel={new Intl.NumberFormat("ru-RU", { style: "currency", currency: "RUB", maximumFractionDigits: 0 }).format(featuredAnimalPrimarySharePriceMinor / 100)}
                         availableSharePercents={featuredAnimalAvailableSharePercents}
                         helperText={`Карточка на главной теперь ведёт в тот же сценарий, что и в каталоге: свободные доли шагом ${featuredAnimalShareUnitPercent}% и один основной CTA в профиле животного.`}
+                        description={`Сначала вы видите статус и стартовую долю ${featuredAnimal?.name ?? "животного"}, затем переходите в профиль с теми же ценой, доступностью и следующим шагом.`}
                         ctaLabel="Открыть профиль и продолжить с выбранной долей"
                         ctaHref={`${featuredAnimalProfileHref}?share=${featuredAnimalPrimarySharePercent}`}
+                        title="Один и тот же сценарий выбора доли на всей витрине"
+                        eyebrow="Статус, доля и цена"
                       />
                     </div>
                   </div>

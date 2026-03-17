@@ -6,7 +6,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { trpc } from "@/lib/trpc";
 import { ArrowRight, Heart, Sparkles, Waves } from "lucide-react";
 import { Link } from "wouter";
-import ShareSelectionPreviewCard from "@/components/ShareSelectionPreviewCard";
+import AnimalShareCard from "@/components/AnimalShareCard";
 
 const speciesConfig = {
   goat: {
@@ -347,12 +347,11 @@ function AnimalSpeciesSection({
                         <h3 className="text-2xl font-semibold text-stone-900">{animal.name}</h3>
                         <p className="text-sm text-stone-500">{animal.breed ?? `${config.singular} Sher Kozu`}</p>
                       </div>
-                      {availability.occupiedUntilLabel ? (
-                        <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-800">
-                          В отношениях до {availability.occupiedUntilLabel}
-                        </div>
-                      ) : null}
-                      <ShareSelectionPreviewCard
+                      <AnimalShareCard
+                        statusLabel={availability.label}
+                        statusClassName={availability.className}
+                        name={animal.name}
+                        breedLabel={animal.breed ?? `${config.singular} Sher Kozu`}
                         priceLabel={formatCurrency(animal.fullPriceMinor)}
                         occupiedPercent={shareSummary.ownedPercent}
                         availablePercent={shareSummary.availablePercent}
@@ -366,6 +365,10 @@ function AnimalSpeciesSection({
                         ctaHref={`/animals/${animal.slug}?share=${shareSummary.primarySharePercent}`}
                         ctaAsButton
                         theme="stone"
+                        occupiedUntilLabel={availability.occupiedUntilLabel}
+                        title="Один и тот же сценарий выбора доли на всей витрине"
+                        eyebrow="Статус, доля и цена"
+                        compact
                       />
 
                       <p className="line-clamp-3 text-sm leading-6 text-stone-600">{animal.shortDescription}</p>

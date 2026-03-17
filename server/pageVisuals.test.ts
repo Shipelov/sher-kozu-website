@@ -12,6 +12,7 @@ const adminHubSource = fs.readFileSync("/home/ubuntu/sher-kozu-website/client/sr
 const adminAnimalsSource = fs.readFileSync("/home/ubuntu/sher-kozu-website/client/src/pages/AdminAnimals.tsx", "utf8");
 const animalsCatalogSource = fs.readFileSync("/home/ubuntu/sher-kozu-website/client/src/pages/AnimalsCatalog.tsx", "utf8");
 const animalProfileSource = fs.readFileSync("/home/ubuntu/sher-kozu-website/client/src/pages/AnimalProfile.tsx", "utf8");
+const animalShareCardSource = fs.readFileSync("/home/ubuntu/sher-kozu-website/client/src/components/AnimalShareCard.tsx", "utf8");
 const shareSelectionPreviewCardSource = fs.readFileSync("/home/ubuntu/sher-kozu-website/client/src/components/ShareSelectionPreviewCard.tsx", "utf8");
 
 describe("page visual integration source smoke", () => {
@@ -22,7 +23,7 @@ describe("page visual integration source smoke", () => {
     expect(homeSource).toContain("Главная теперь объясняет не «всё обо всём», а один ясный сценарий: понять продукт, выбрать животное, увидеть долю, войти во владение.");
     expect(homeSource).toContain("featuredAnimalProfileHref");
     expect(homeSource).toContain("Животное недели");
-    expect(homeSource).toContain("ShareSelectionPreviewCard");
+    expect(homeSource).toContain("AnimalShareCard");
     expect(homeSource).toContain('ctaHref={`${featuredAnimalProfileHref}?share=${featuredAnimalPrimarySharePercent}`}');
     expect(homeSource).toContain('id="animal-gallery"');
     expect(homeSource).toContain("Галерея животных");
@@ -122,13 +123,14 @@ describe("page visual integration source smoke", () => {
     expect(animalsCatalogSource).toContain("В отношениях");
     expect(animalsCatalogSource).toContain("На выданье");
     expect(animalsCatalogSource).toContain("Можно шерить");
-    expect(animalsCatalogSource).toContain("В отношениях до");
+    expect(animalsCatalogSource).toContain("occupiedUntilLabel={availability.occupiedUntilLabel}");
     expect(animalsCatalogSource).toContain("occupiedUntil");
     expect(animalsCatalogSource).toContain("goatFilter");
     expect(animalsCatalogSource).toContain("sheepFilter");
     expect(animalsCatalogSource).toContain("getRelationshipStatus");
     expect(animalsCatalogSource).toContain("Открыть профиль и продолжить с выбранной долей");
-    expect(animalsCatalogSource).toContain("ShareSelectionPreviewCard");
+    expect(animalsCatalogSource).toContain("AnimalShareCard");
+    expect(animalsCatalogSource).toContain("occupiedUntilLabel={availability.occupiedUntilLabel}");
     expect(animalsCatalogSource).toContain('new URLSearchParams(window.location.search).get("share")');
     expect(animalsCatalogSource).toContain('const matchesSelectedShare = hasSelectedShare && shareSummary.availableSharePercents.includes(selectedSharePercent)');
     expect(animalsCatalogSource).toContain('Выбрано {selectedSharePercent}%');
@@ -138,7 +140,8 @@ describe("page visual integration source smoke", () => {
   });
 
   it("keeps animal profile focused on one share-selection flow without plan and duration branching", () => {
-    expect(animalProfileSource).toContain("ShareSelectionPreviewCard");
+    expect(animalProfileSource).toContain("AnimalShareCard");
+    expect(animalProfileSource).toContain("Статус, доля и цена");
     expect(animalProfileSource).toContain("Вы выбираете только долю, а базовый формат участия подставляется автоматически.");
     expect(animalProfileSource).toContain("Продолжить с выбранной долей");
     expect(animalProfileSource).toContain("Бронь ${selectedSharePercent}% через единый сценарий профиля животного");
@@ -150,7 +153,10 @@ describe("page visual integration source smoke", () => {
     expect(animalProfileSource).not.toContain("setSelectedPlanDurationId");
   });
 
-  it("keeps a shared share-selection preview component as the single source of UI for home, catalog and animal profile", () => {
+  it("keeps a shared animal share card and share-selection preview component as the single source of UI for home, catalog and animal profile", () => {
+    expect(animalShareCardSource).toContain("Статус, доля и цена");
+    expect(animalShareCardSource).toContain("occupiedUntilLabel");
+    expect(animalShareCardSource).toContain("Стартовая доля");
     expect(shareSelectionPreviewCardSource).toContain("Единый сценарий выбора доли");
     expect(shareSelectionPreviewCardSource).toContain("Сначала выбираете процент, затем переходите в профиль без лишних развилок.");
     expect(shareSelectionPreviewCardSource).toContain("Стартовая доля");
