@@ -63,3 +63,4 @@
 - [x] Добавить unit-тест для ShareSelectionPreviewCard на состояние ctaLoginRequired
 - [x] Добавить unit-тесты для ShareSelectionPreviewCard на selectable-режим с выбором доли через chips и range
 - [x] Добавить unit-тест для ShareSelectionPreviewCard на fallback-состояние при пустом списке availableSharePercents
+- [x] Вынести общие тестовые фабрики в отдельный helper для будущих компонентных тестов
