@@ -1297,10 +1297,10 @@ function AnimalEditorCard({
                 <div className="flex h-12 items-center overflow-hidden rounded-2xl border border-primary/20 bg-white shadow-sm focus-within:border-primary/40 focus-within:ring-2 focus-within:ring-primary/10">
                   <Input
                     id="animal-price"
-                    type="number"
+                    type="text"
                     inputMode="numeric"
-                    min={0}
-                    step={100}
+                    pattern="[0-9 ]*"
+                    autoComplete="off"
                     className="h-full border-0 bg-transparent px-4 text-base shadow-none focus-visible:ring-0"
                     value={toRublesInputValue(values.baseMonthlyPriceMinor)}
                     onChange={(event) => onChange("baseMonthlyPriceMinor", parseRublesToMinor(event.target.value))}
