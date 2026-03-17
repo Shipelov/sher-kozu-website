@@ -1517,9 +1517,33 @@ export async function updateAnimalWithMedia(
   }
 
   await recalculateAnimalStatus(animalId);
-
   const rows = await db.select({ slug: animals.slug }).from(animals).where(eq(animals.id, animalId)).limit(1);
   return rows[0] ? getAnimalBySlug(rows[0].slug) : null;
+}
+
+export async function deleteAnimalProfile(animalId: number, ownerOpenId: string) {
+  const db = await getDb();
+  if (!db) {
+    throw new Error("Database not available for animal deletion");
+  }
+
+  const existingRows = await db
+    .select({ id: animals.id, slug: animals.slug, name: animals.name })
+    .from(animals)
+    .where(and(eq(animals.id, animalId), eq(animals.ownerOpenId, ownerOpenId)))
+    .limit(1);
+
+  const existing = existingRows[0];
+  if (!existing) {
+    return null;
+  }
+
+  await db.delete(animalOwnerships).where(eq(animalOwnerships.animalId, animalId));
+  await db.delete(animalMedia).where(eq(animalMedia.animalId, animalId));
+  await db.delete(animalPhotos).where(and(eq(animalPhotos.animalSlug, existing.slug), eq(animalPhotos.ownerOpenId, ownerOpenId)));
+  await db.delete(animals).where(and(eq(animals.id, animalId), eq(animals.ownerOpenId, ownerOpenId)));
+
+  return existing;
 }
 
 export async function setAnimalVisibility(animalId: number, ownerOpenId: string, mode: "public" | "hidden" | "archived") {

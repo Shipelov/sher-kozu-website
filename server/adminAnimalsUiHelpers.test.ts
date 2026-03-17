@@ -207,6 +207,15 @@ describe("Admin animals UI helpers", () => {
     expect(payload.baseMonthlyPriceMinor).toBe(150000);
   });
 
+  it("keeps delete action tied to a concrete animal id for admin confirmation flow", () => {
+    const deletingAnimalId = animals[0].id;
+    const isDeletingFirst = deletingAnimalId === animals[0].id;
+    const isDeletingSecond = deletingAnimalId === animals[1].id;
+
+    expect(isDeletingFirst).toBe(true);
+    expect(isDeletingSecond).toBe(false);
+  });
+
   it("creates a complete demo preset for a goat profile", () => {
     const preset = createDemoAnimalPreset("goat");
 

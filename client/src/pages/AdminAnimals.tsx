@@ -18,6 +18,16 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { getLoginUrl } from "@/const";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { trpc } from "@/lib/trpc";
 import { NOT_ADMIN_ERR_MSG } from "@shared/const";
 import {
@@ -759,12 +769,16 @@ function AdminAnimalsTable({
   animals,
   onToggleVisibility,
   onEdit,
+  onDelete,
   isUpdating,
+  deletingAnimalId,
 }: {
   animals: AdminAnimalRecord[];
   onToggleVisibility: (animal: AdminAnimalRecord) => void;
   onEdit: (animal: AdminAnimalRecord) => void;
+  onDelete: (animal: AdminAnimalRecord) => void;
   isUpdating: boolean;
+  deletingAnimalId: number | null;
 }) {
   return (
     <div className="overflow-hidden rounded-[1.75rem] border border-border/70 bg-white shadow-sm">
@@ -873,6 +887,16 @@ function AdminAnimalsTable({
                     >
                       {animal.status === "hidden" ? <Eye className="mr-2 h-4 w-4" /> : <EyeOff className="mr-2 h-4 w-4" />}
                       {getVisibilityActionLabel(animal.status)}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="rounded-full border-rose-200 text-rose-700 hover:bg-rose-50 hover:text-rose-800"
+                      onClick={() => onDelete(animal)}
+                      disabled={deletingAnimalId === animal.id}
+                    >
+                      {deletingAnimalId === animal.id ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}
+                      Удалить
                     </Button>
                   </div>
                 </TableCell>
@@ -1445,6 +1469,7 @@ export default function AdminAnimalsPage() {
   const [editorMode, setEditorMode] = useState<"create" | "edit">("create");
   const [editingAnimalId, setEditingAnimalId] = useState<number | null>(null);
   const [formValues, setFormValues] = useState<AnimalFormValues>(createEmptyAnimalForm());
+  const [animalPendingDelete, setAnimalPendingDelete] = useState<AdminAnimalRecord | null>(null);
   const [, navigate] = useState("");
 
   const animalsQuery = trpc.adminAnimals.list.useQuery(undefined, {
@@ -1519,6 +1544,24 @@ export default function AdminAnimalsPage() {
     },
   });
 
+  const deleteAnimal = trpc.adminAnimals.delete.useMutation({
+    onSuccess: async (deleted) => {
+      await utils.adminAnimals.list.invalidate();
+      if (editingAnimalId === deleted?.id) {
+        resetEditor();
+      }
+      setAnimalPendingDelete(null);
+      toast.success("Профиль удалён", {
+        description: `Карточка «${deleted?.name ?? "животного"}» удалена из admin-каталога.`,
+      });
+    },
+    onError: (error) => {
+      toast.error("Не удалось удалить профиль", {
+        description: error.message,
+      });
+    },
+  });
+
   function resetEditor() {
     setEditorMode("create");
     setEditingAnimalId(null);
@@ -1545,6 +1588,15 @@ export default function AdminAnimalsPage() {
   function handleToggleVisibility(animal: AdminAnimalRecord) {
     const nextMode = getNextVisibilityMode(animal.status);
     setVisibility.mutate({ id: animal.id, mode: nextMode });
+  }
+
+  function handleDeleteRequest(animal: AdminAnimalRecord) {
+    setAnimalPendingDelete(animal);
+  }
+
+  async function confirmDeleteAnimal() {
+    if (!animalPendingDelete) return;
+    await deleteAnimal.mutateAsync({ id: animalPendingDelete.id });
   }
 
   async function handleSubmit() {
@@ -1756,7 +1808,9 @@ export default function AdminAnimalsPage() {
                       animals={filteredAnimals}
                       onEdit={handleEdit}
                       onToggleVisibility={handleToggleVisibility}
+                      onDelete={handleDeleteRequest}
                       isUpdating={setVisibility.isPending}
+                      deletingAnimalId={deleteAnimal.isPending ? animalPendingDelete?.id ?? null : null}
                     />
                   )}
                 </CardContent>
@@ -1777,6 +1831,32 @@ export default function AdminAnimalsPage() {
           </div>
         </div>
       </div>
+      <AlertDialog open={Boolean(animalPendingDelete)} onOpenChange={(open) => !open && setAnimalPendingDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Удалить профиль животного?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {animalPendingDelete
+                ? `Карточка «${animalPendingDelete.name}» будет удалена из admin-панели вместе со связанными фото, медиа и долями владения. Действие необратимо.`
+                : "Действие необратимо."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleteAnimal.isPending}>Отмена</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(event) => {
+                event.preventDefault();
+                void confirmDeleteAnimal();
+              }}
+              disabled={deleteAnimal.isPending}
+              className="bg-rose-600 hover:bg-rose-700"
+            >
+              {deleteAnimal.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}
+              Удалить профиль
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </DashboardLayout>
   );
 }

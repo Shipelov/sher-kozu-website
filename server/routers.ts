@@ -14,6 +14,7 @@ import {
   createIntegrationAudit,
   createPartnerLead,
   deleteAnimalPhoto,
+  deleteAnimalProfile,
   deleteClubAdminPreset,
   deleteClubEvent,
   deleteClubMember,
@@ -404,6 +405,13 @@ export const appRouter = router({
         throw new TRPCError({ code: "NOT_FOUND", message: "Животное не найдено или недоступно для изменения статуса." });
       }
       return updated;
+    }),
+    delete: protectedProcedure.input(idInput).mutation(async ({ ctx, input }) => {
+      const deleted = await deleteAnimalProfile(input.id, ctx.user.openId);
+      if (!deleted) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Животное не найдено или уже удалено." });
+      }
+      return deleted;
     }),
   }),
   animalPhotos: router({
