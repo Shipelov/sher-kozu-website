@@ -7,7 +7,7 @@ Must connect milk, delivery, named products and animal origin in one readable ro
 
 import { useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import Navbar from "@/components/Navbar";
 import { trpc } from "@/lib/trpc";
 import {
@@ -17,12 +17,13 @@ import {
   ChevronRight,
   FlaskConical,
   Leaf,
+  Loader2,
   Milk,
   Package,
   Sparkles,
+  Star,
   Truck,
   Users,
-  Star,
 } from "lucide-react";
 
 const CDN = {
@@ -72,9 +73,11 @@ type TrackerSummary = {
   originSteps: OriginStep[];
   routeNotes: string[];
   currentAnimal: {
+    slug?: string;
     name: string;
     title: string;
     description: string;
+    coverImageUrl?: string | null;
   };
   productStory: {
     title: string;
@@ -111,13 +114,29 @@ function iconForStat(icon: TrackerSummary["stats"][number]["icon"]) {
   }
 }
 
+function getRequestedAnimalSlug() {
+  if (typeof window === "undefined") return null;
+  return new URLSearchParams(window.location.search).get("animal");
+}
+
 export default function ProductTracker() {
-  const animalsQuery = trpc.animals.listPublic.useQuery();
-  const featuredAnimalSlug = animalsQuery.data?.[0]?.slug ?? "marta";
-  const trackerQuery = trpc.productTracker.getByAnimal.useQuery({ animalSlug: featuredAnimalSlug });
+  const [location] = useLocation();
+  const ownerDashboardQuery = trpc.animals.ownerDashboard.useQuery();
+  const requestedAnimalSlug = getRequestedAnimalSlug();
+  const ownerAnimalSlug = ownerDashboardQuery.data?.animal?.slug ?? ownerDashboardQuery.data?.ownership?.animalSlug ?? null;
+  const fallbackAnimalSlug = ownerAnimalSlug ?? requestedAnimalSlug ?? "marta";
+
+  const trackerQuery = trpc.productTracker.getByAnimal.useQuery(
+    { animalSlug: fallbackAnimalSlug },
+    { enabled: Boolean(fallbackAnimalSlug) }
+  );
+
   const summary = trackerQuery.data as TrackerSummary | undefined;
-  const featuredAnimalName = summary?.currentAnimal.name ?? animalsQuery.data?.[0]?.name ?? "животного";
-  const featuredAnimalProfileHref = featuredAnimalSlug ? `/animals/${featuredAnimalSlug}` : "/animals";
+  const currentAnimalSlug = summary?.currentAnimal.slug ?? requestedAnimalSlug ?? ownerAnimalSlug ?? fallbackAnimalSlug;
+  const featuredAnimalName = summary?.currentAnimal.name ?? ownerDashboardQuery.data?.animal?.name ?? "вашего животного";
+  const featuredAnimalProfileHref = currentAnimalSlug ? `/animals/${currentAnimalSlug}` : "/animals";
+  const dashboardHref = currentAnimalSlug ? `/dashboard?animal=${currentAnimalSlug}` : "/dashboard";
+  const clubHref = currentAnimalSlug ? `/club?animal=${currentAnimalSlug}` : "/club";
 
   const deliveries = summary?.deliveries ?? [];
   const [activeDelivery, setActiveDelivery] = useState(0);
@@ -128,9 +147,15 @@ export default function ProductTracker() {
     }
   }, [activeDelivery, deliveries.length]);
 
+  useEffect(() => {
+    setActiveDelivery(0);
+  }, [location, currentAnimalSlug]);
+
   const currentDelivery = deliveries[activeDelivery] ?? deliveries[0];
   const monthlyData = summary?.monthlyData ?? [];
   const maxLiters = useMemo(() => Math.max(1, ...monthlyData.map((item) => item.liters)), [monthlyData]);
+  const ownerStatusLabel = ownerDashboardQuery.data?.ownership?.statusLabel ?? "Маршрут владельца";
+  const ownerSharePercent = ownerDashboardQuery.data?.ownership?.sharePercent ?? 0;
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -145,7 +170,7 @@ export default function ProductTracker() {
           >
             <div className="grid gap-0 lg:grid-cols-[1.05fr_0.95fr] lg:items-stretch">
               <div className="relative min-h-[360px] overflow-hidden">
-                <img src={CDN.milk} alt="Именная молочная коробка" className="h-full w-full object-cover" />
+                <img src={summary?.currentAnimal.coverImageUrl ?? CDN.milk} alt="Именная молочная коробка" className="h-full w-full object-cover" />
                 <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(25,22,20,0.84),rgba(25,22,20,0.42),rgba(25,22,20,0.14))]" />
                 <div className="absolute inset-0 flex flex-col justify-between p-6 text-white md:p-8">
                   <div className="flex flex-wrap items-center gap-2">
@@ -156,15 +181,19 @@ export default function ProductTracker() {
                     <div className="rounded-full bg-green-500 px-3 py-1 text-xs font-semibold">
                       {summary?.headline.organicLabel ?? "Органик"}
                     </div>
+                    <div className="rounded-full bg-white/12 px-3 py-1 text-xs font-medium backdrop-blur">
+                      {ownerStatusLabel}
+                    </div>
                   </div>
 
                   <div className="max-w-2xl">
                     <p className="text-sm uppercase tracking-[0.22em] text-amber-300">Трекер продукта</p>
                     <h1 className="mt-3 font-display text-4xl text-white md:text-5xl">
-                      {summary?.headline.title ?? "Трекер показывает, как Марта превращается в семейный продуктовый маршрут."}
+                      {summary?.headline.title ?? `Трекер показывает, как история ${featuredAnimalName} превращается в личный продуктовый маршрут.`}
                     </h1>
                     <p className="mt-4 max-w-xl text-sm leading-7 text-white/76 md:text-base">
-                      {summary?.headline.description ?? "Здесь пользователь видит происхождение молока, параметры партии, ход доставки и связь с конкретным животным."}
+                      {summary?.headline.description ??
+                        "Здесь пользователь видит происхождение молока, параметры партии, ход доставки и связь с конкретным животным."}
                     </p>
                   </div>
                 </div>
@@ -187,14 +216,19 @@ export default function ProductTracker() {
                 </div>
 
                 <div className="mt-4 overflow-hidden rounded-[1.75rem] border border-border/70 bg-card shadow-sm">
-                  <img src={CDN.goat} alt={summary?.currentAnimal.name ?? featuredAnimalName} className="h-44 w-full object-cover object-top" />
+                  <img
+                    src={summary?.currentAnimal.coverImageUrl ?? CDN.goat}
+                    alt={summary?.currentAnimal.name ?? featuredAnimalName}
+                    className="h-44 w-full object-cover object-top"
+                  />
                   <div className="p-4">
                     <p className="text-xs uppercase tracking-[0.18em] text-primary">Источник маршрута</p>
                     <h2 className="mt-2 text-xl font-semibold text-foreground">
                       {summary?.currentAnimal.title ?? "Любой продукт в системе начинается с конкретного животного."}
                     </h2>
                     <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                      {summary?.currentAnimal.description ?? "Трекер не отрывается от живого профиля животного и всегда оставляет маршрут обратно к источнику продукта."}
+                      {summary?.currentAnimal.description ??
+                        "Трекер не отрывается от живого профиля животного и всегда оставляет маршрут обратно к источнику продукта."}
                     </p>
                   </div>
                 </div>
@@ -202,9 +236,12 @@ export default function ProductTracker() {
             </div>
           </motion.section>
 
-          {trackerQuery.isLoading ? (
+          {trackerQuery.isLoading || ownerDashboardQuery.isLoading ? (
             <div className="mb-5 rounded-[2rem] border border-border/70 bg-card p-6 text-sm text-muted-foreground shadow-sm">
-              Загружаем реальные данные продуктового маршрута…
+              <div className="inline-flex items-center gap-2">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Загружаем реальные данные продуктового маршрута и текущего участия владельца…
+              </div>
             </div>
           ) : null}
 
@@ -220,7 +257,7 @@ export default function ProductTracker() {
                   <p className="text-sm uppercase tracking-[0.22em] text-primary">Состав партии</p>
                   <h2 className="mt-3 text-2xl font-semibold text-foreground">Состав молока от {summary?.currentAnimal.name ?? featuredAnimalName}</h2>
                   <p className="mt-2 text-sm leading-7 text-muted-foreground">
-                    Качество партии видно прямо в интерфейсе, а не обещается абстрактно. Новый визуальный слой усиливает ощущение премиального, но прозрачного продукта.
+                    Качество партии видно прямо в интерфейсе, а не обещается абстрактно. Теперь этот слой следует не за первым публичным животным, а за текущим owner-journey пользователя.
                   </p>
                 </div>
 
@@ -237,7 +274,9 @@ export default function ProductTracker() {
                 ))}
 
                 <div className="rounded-2xl bg-secondary/55 p-4 text-sm leading-7 text-muted-foreground">
-                  Сертификат качества подтверждает партию и делает прозрачность наблюдаемой и эмоционально убедительной.
+                  {ownerSharePercent > 0
+                    ? `В вашем маршруте закреплено ${ownerSharePercent}% участия. Поэтому продуктовый трекер показывает не абстрактный пример, а персональный слой происхождения и доставки.`
+                    : "Сертификат качества подтверждает партию и делает прозрачность наблюдаемой и эмоционально убедительной."}
                 </div>
               </div>
             </motion.section>
@@ -257,9 +296,7 @@ export default function ProductTracker() {
                   </p>
                 </div>
                 <div className="text-left sm:text-right">
-                  <div className="font-mono-data text-3xl font-semibold text-foreground">
-                    {monthlyData[monthlyData.length - 1]?.liters ?? 0} л
-                  </div>
+                  <div className="font-mono-data text-3xl font-semibold text-foreground">{monthlyData[monthlyData.length - 1]?.liters ?? 0} л</div>
                   <div className="text-xs text-green-600">Последний доступный месяц</div>
                 </div>
               </div>
@@ -386,7 +423,8 @@ export default function ProductTracker() {
                   {summary?.productStory.title ?? "Именной продукт завершает цикл от фермы до стола."}
                 </h2>
                 <p className="mt-3 text-sm leading-7 text-muted-foreground">
-                  {summary?.productStory.description ?? "Продуктовый слой должен быть личным и премиальным: не безликий сыр, а конкретный результат связи владельца с животным."}
+                  {summary?.productStory.description ??
+                    "Продуктовый слой должен быть личным и премиальным: не безликий сыр, а конкретный результат связи владельца с животным."}
                 </p>
                 <div className="mt-5 space-y-2">
                   {(summary?.routeNotes ?? []).map((note) => (
@@ -406,30 +444,39 @@ export default function ProductTracker() {
               className="col-span-12 rounded-[2rem] border border-primary/15 bg-[linear-gradient(135deg,rgba(26,58,42,0.97),rgba(46,77,59,0.94))] p-6 text-white shadow-[0_34px_80px_-42px_rgba(26,58,42,0.72)] lg:col-span-6"
             >
               <p className="text-sm uppercase tracking-[0.22em] text-amber-300">Связанные маршруты</p>
-              <h2 className="mt-3 font-display text-3xl">Трекер не должен быть тупиком.</h2>
+              <h2 className="mt-3 font-display text-3xl">Трекер больше не тупик.</h2>
               <p className="mt-3 text-sm leading-7 text-white/75">
-                Пользователь должен естественно возвращаться к животному, кабинету и клубной жизни, чтобы рациональная прозрачность работала вместе с эмоциональной связью и клубной средой.
+                Теперь ProductTracker подхватывает текущее участие владельца и возвращает пользователя к животному, клубной жизни и кабинету как к единой системе без случайного ухода на неактуальное животное.
               </p>
 
               <div className="mt-6 grid gap-3">
-                <Link href={featuredAnimalProfileHref} className="group flex flex-col items-start gap-3 rounded-2xl border border-white/12 bg-white/8 px-4 py-3 text-sm transition-colors hover:bg-white/12 sm:flex-row sm:items-center sm:justify-between">
+                <Link
+                  href={featuredAnimalProfileHref}
+                  className="group flex flex-col items-start gap-3 rounded-2xl border border-white/12 bg-white/8 px-4 py-3 text-sm transition-colors hover:bg-white/12 sm:flex-row sm:items-center sm:justify-between"
+                >
                   <div>
                     <div className="font-semibold text-white">К профилю {featuredAnimalName}</div>
                     <div className="mt-1 text-xs text-white/60">Вернуться к животному, от которого начинается продуктовый путь</div>
                   </div>
                   <ChevronRight className="h-5 w-5 text-amber-300 transition-transform group-hover:translate-x-0.5" />
                 </Link>
-                <Link href="/club" className="group flex flex-col items-start gap-3 rounded-2xl border border-white/12 bg-white/8 px-4 py-3 text-sm transition-colors hover:bg-white/12 sm:flex-row sm:items-center sm:justify-between">
+                <Link
+                  href={clubHref}
+                  className="group flex flex-col items-start gap-3 rounded-2xl border border-white/12 bg-white/8 px-4 py-3 text-sm transition-colors hover:bg-white/12 sm:flex-row sm:items-center sm:justify-between"
+                >
                   <div>
                     <div className="font-semibold text-white">К клубной ленте</div>
                     <div className="mt-1 text-xs text-white/60">Перейти к событиям, отзывам и семейным ритуалам вокруг продукта</div>
                   </div>
                   <Users className="h-5 w-5 text-amber-300" />
                 </Link>
-                <Link href="/dashboard" className="group flex flex-col items-start gap-3 rounded-2xl border border-white/12 bg-white/8 px-4 py-3 text-sm transition-colors hover:bg-white/12 sm:flex-row sm:items-center sm:justify-between">
+                <Link
+                  href={dashboardHref}
+                  className="group flex flex-col items-start gap-3 rounded-2xl border border-white/12 bg-white/8 px-4 py-3 text-sm transition-colors hover:bg-white/12 sm:flex-row sm:items-center sm:justify-between"
+                >
                   <div>
                     <div className="font-semibold text-white">В кабинет</div>
-                    <div className="mt-1 text-xs text-white/60">Вернуться к статусам подписки и быстрым действиям семьи</div>
+                    <div className="mt-1 text-xs text-white/60">Вернуться к ownership-state, следующим шагам и быстрым действиям семьи</div>
                   </div>
                   <ChevronRight className="h-5 w-5 text-amber-300 transition-transform group-hover:translate-x-0.5" />
                 </Link>
@@ -459,22 +506,29 @@ export default function ProductTracker() {
                             {currentDelivery.id} · {currentDelivery.date}
                           </div>
                         </div>
-                        <div className="rounded-full bg-accent/20 px-4 py-2 text-xs font-semibold text-amber-800">
-                          {currentDelivery.status}
-                        </div>
+                        <div className="rounded-full bg-accent/20 px-4 py-2 text-xs font-semibold text-amber-800">{currentDelivery.status}</div>
                       </div>
                       <p className="mt-3 text-sm leading-7 text-muted-foreground">{currentDelivery.story}</p>
                     </div>
                   </div>
 
                   <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-1">
-                    <Link href={featuredAnimalProfileHref} className="inline-flex items-center justify-center rounded-full bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/92">
+                    <Link
+                      href={featuredAnimalProfileHref}
+                      className="inline-flex items-center justify-center rounded-full bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/92"
+                    >
                       К профилю {featuredAnimalName}
                     </Link>
-                    <Link href="/club" className="inline-flex items-center justify-center rounded-full border border-border px-4 py-3 text-sm font-semibold text-foreground transition-colors hover:bg-muted">
+                    <Link
+                      href={clubHref}
+                      className="inline-flex items-center justify-center rounded-full border border-border px-4 py-3 text-sm font-semibold text-foreground transition-colors hover:bg-muted"
+                    >
                       К клубной ленте
                     </Link>
-                    <Link href="/dashboard" className="inline-flex items-center justify-center rounded-full border border-border px-4 py-3 text-sm font-semibold text-foreground transition-colors hover:bg-muted">
+                    <Link
+                      href={dashboardHref}
+                      className="inline-flex items-center justify-center rounded-full border border-border px-4 py-3 text-sm font-semibold text-foreground transition-colors hover:bg-muted"
+                    >
                       В кабинет
                     </Link>
                   </div>
