@@ -52,3 +52,4 @@
 - [x] Зафиксировать narrative-аудит секций Home и целевую section map для Sprint 1 / Execution Step 1 — Home Narrative Lock
 - [x] Внести первую фактическую правку Sprint 1 / Execution Step 1 — Home Narrative Lock: переписать hero copy и CTA под путь `понять идею → открыть галерею → открыть профиль животного`
 - [x] Усилить мост `Как это работает → галерея животных` и понизить роль вторичных value-блоков в рамках Sprint 1 / Execution Step 1 — Home Narrative Lock
+- [x] Упростить и понизить B2B partner-block на главной, чтобы он не перебивал consumer funnel

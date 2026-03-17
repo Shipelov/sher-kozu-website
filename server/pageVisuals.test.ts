@@ -27,6 +27,10 @@ describe("page visual integration source smoke", () => {
     expect(homeSource).toContain("Открыть весь каталог животных");
     expect(homeSource).toContain("/animals#goats");
     expect(homeSource).toContain("/animals#sheep");
+    expect(homeSource).toContain("B2B и партнёрства");
+    expect(homeSource).toContain("Открыть партнёрскую форму");
+    expect(homeSource).toContain("Короткая партнёрская заявка");
+    expect(homeSource).toContain("вторичн");
   });
 
   it("keeps premium farm and dairy box imagery on dashboard", () => {

@@ -8,10 +8,10 @@ const routerSource = fs.readFileSync("/home/ubuntu/sher-kozu-website/server/rout
 const dbSource = fs.readFileSync("/home/ubuntu/sher-kozu-website/server/db.ts", "utf8");
 
 describe("Bitrix24 pilot UI source smoke", () => {
-  it("keeps partner lead section on home with CRM mutation and admin route", () => {
-    expect(homeSource).toContain("Стать партнёром Sher Kozu");
+  it("keeps a secondary partner lead section on home with CRM mutation and admin route", () => {
+    expect(homeSource).toContain("B2B и партнёрства");
     expect(homeSource).toContain("trpc.bitrix24.createPartnerLead.useMutation");
-    expect(homeSource).toContain("Последняя заявка и статус pilot-синхронизации");
+    expect(homeSource).toContain("Короткая партнёрская заявка");
     expect(homeSource).toContain('href="/admin/club"');
   });
 

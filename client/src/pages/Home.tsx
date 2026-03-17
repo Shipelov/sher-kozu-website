@@ -877,40 +877,69 @@ export default function Home() {
         </div>
       </section>
 
-      <section id="partner-pilot" className="py-18 md:py-24">
-        <div className="container">
-          <div className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
-            <Card className="border-stone-200 bg-[linear-gradient(135deg,rgba(255,250,244,0.96),rgba(247,242,234,0.9))] shadow-sm">
-              <CardHeader className="space-y-4">
-                <div className="inline-flex w-fit items-center gap-2 rounded-full border border-amber-200 bg-white/80 px-3 py-1 text-xs font-medium uppercase tracking-[0.18em] text-amber-900">
+      <section id="partner-pilot" className="py-14 md:py-18">
+        <div className="container max-w-5xl">
+          <div className="mb-6 flex flex-col gap-3 rounded-[2rem] border border-stone-200/80 bg-stone-50/70 px-5 py-5 text-sm text-stone-600 shadow-sm md:flex-row md:items-center md:justify-between md:px-7">
+            <div className="max-w-2xl space-y-2">
+              <div className="inline-flex w-fit items-center gap-2 rounded-full border border-stone-200 bg-white px-3 py-1 text-[11px] font-medium uppercase tracking-[0.18em] text-stone-600">
+                <Building2 className="h-3.5 w-3.5" />
+                B2B и партнёрства
+              </div>
+              <p className="text-base font-semibold text-stone-900">Для retail, HoReCa и дистрибуции мы оставили отдельный компактный вход.</p>
+              <p className="leading-6 text-stone-600">
+                Этот блок вторичен по отношению к consumer-сценарию: он нужен тем, кто уже пришёл с коммерческим запросом и хочет быстро отправить материалы команде Sher Kozu.
+              </p>
+            </div>
+            <a href="#partner-lead-form" className="inline-flex items-center justify-center gap-2 rounded-full border border-stone-300 bg-white px-5 py-3 text-sm font-semibold text-stone-700 transition-colors hover:border-stone-400 hover:bg-stone-100">
+              Открыть партнёрскую форму
+              <ChevronDown className="h-4 w-4" />
+            </a>
+          </div>
+
+          <div className="grid gap-5 xl:grid-cols-[0.82fr_1.18fr]">
+            <Card className="border-stone-200 bg-stone-50/80 shadow-none xl:self-start">
+              <CardHeader className="space-y-3 pb-4">
+                <div className="inline-flex w-fit items-center gap-2 rounded-full border border-stone-200 bg-white/90 px-3 py-1 text-[11px] font-medium uppercase tracking-[0.18em] text-stone-600">
                   <Building2 className="h-3.5 w-3.5" />
-                  Pilot Bitrix24 CRM
+                  Партнёрский вход
                 </div>
-                <CardTitle className="text-3xl text-stone-950">Стать партнёром Sher Kozu</CardTitle>
-                <CardDescription className="max-w-xl text-base leading-7 text-stone-600">
-                  Для дистрибуции, horeca, розницы и специальных коллабораций мы уже подключили пилотную CRM-синхронизацию.
-                  Заявка с этой страницы создаётся в системе Sher Kozu и сразу отправляется в Bitrix24.
+                <CardTitle className="text-2xl text-stone-900">Коммерческий запрос для Sher Kozu</CardTitle>
+                <CardDescription className="max-w-lg text-sm leading-6 text-stone-600">
+                  Если вам нужен опт, ресторанный формат или коллаборация, оставьте короткую заявку. Мы сохранили эту точку входа компактной, чтобы она не конкурировала с выбором животного на главной.
                 </CardDescription>
               </CardHeader>
-              <CardContent className="space-y-4 text-sm text-stone-700">
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <div className="rounded-2xl border border-white/70 bg-white/80 p-4">
-                    <div className="flex items-center gap-2 text-stone-950">
-                      <CheckCircle2 className="h-4 w-4 text-emerald-600" />
-                      <span className="font-semibold">Что уже в pilot</span>
+              <CardContent className="space-y-3 pt-0 text-sm text-stone-700">
+                <div className="space-y-3 rounded-2xl border border-white/80 bg-white/90 p-4">
+                  <div className="flex items-start gap-3">
+                    <CheckCircle2 className="mt-0.5 h-4 w-4 text-emerald-600" />
+                    <div>
+                      <p className="font-semibold text-stone-900">Что происходит после отправки</p>
+                      <p className="mt-1 leading-6 text-stone-600">Заявка создаётся в системе Sher Kozu и уходит в CRM, чтобы менеджер быстро забрал её в работу.</p>
                     </div>
-                    <p className="mt-2 leading-6 text-stone-600">Приём заявок, синхронизация сделки в Bitrix24, аудит событий интеграции и повторная отправка при ошибке.</p>
                   </div>
-                  <div className="rounded-2xl border border-white/70 bg-white/80 p-4">
-                    <div className="flex items-center gap-2 text-stone-950">
-                      <Clock3 className="h-4 w-4 text-amber-700" />
-                      <span className="font-semibold">Что вернётся обратно</span>
+                  <div className="flex items-start gap-3">
+                    <Clock3 className="mt-0.5 h-4 w-4 text-amber-700" />
+                    <div>
+                      <p className="font-semibold text-stone-900">Когда ждать ответ</p>
+                      <p className="mt-1 leading-6 text-stone-600">Обычно первичный ответ приходит в течение одного рабочего дня после квалификации запроса.</p>
                     </div>
-                    <p className="mt-2 leading-6 text-stone-600">Стадия сделки, назначенный менеджер и ближайшая активность подтягиваются обратно в Sher Kozu для мониторинга.</p>
                   </div>
                 </div>
+                <div className="rounded-2xl border border-dashed border-stone-300 bg-white/80 p-4 text-xs leading-6 text-stone-500">
+                  Для быстрого старта достаточно имени, компании, email и короткого описания запроса. Остальные материалы можно приложить сразу или дослать позже.
+                </div>
+              </CardContent>
+            </Card>
 
-                <div className="rounded-[1.75rem] border border-stone-200 bg-white/90 p-5">
+            <Card className="border-stone-200 bg-white/95 shadow-sm">
+              <CardHeader className="space-y-3 pb-4">
+                <CardTitle className="text-2xl text-stone-950">Короткая партнёрская заявка</CardTitle>
+                <CardDescription className="text-sm leading-6 text-stone-600">
+                  Форма остаётся доступной для коммерческих запросов, но оформлена как вторичный инструмент после consumer-сценария выбора животного.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div id="partner-lead-form" className="rounded-[1.75rem] border border-stone-200 bg-white/90 p-5 shadow-sm">
                   <div className="grid gap-4 md:grid-cols-2">
                     <div className="space-y-2">
                       <Label htmlFor="partner-full-name">Имя и фамилия</Label>
