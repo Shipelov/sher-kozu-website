@@ -11,6 +11,7 @@ const dashboardLayoutSource = fs.readFileSync("/home/ubuntu/sher-kozu-website/cl
 const adminHubSource = fs.readFileSync("/home/ubuntu/sher-kozu-website/client/src/pages/AdminHub.tsx", "utf8");
 const adminAnimalsSource = fs.readFileSync("/home/ubuntu/sher-kozu-website/client/src/pages/AdminAnimals.tsx", "utf8");
 const animalsCatalogSource = fs.readFileSync("/home/ubuntu/sher-kozu-website/client/src/pages/AnimalsCatalog.tsx", "utf8");
+const animalProfileSource = fs.readFileSync("/home/ubuntu/sher-kozu-website/client/src/pages/AnimalProfile.tsx", "utf8");
 
 describe("page visual integration source smoke", () => {
   it("keeps consumer-first hero narrative, gallery CTA and the in-page animal gallery on home", () => {
@@ -125,5 +126,16 @@ describe("page visual integration source smoke", () => {
     expect(animalsCatalogSource).toContain("getRelationshipStatus");
     expect(animalsCatalogSource).toContain("Открыть полный профиль");
     expect(animalsCatalogSource).toContain('href={`/animals/${animal.slug}`}');
+  });
+
+  it("keeps animal profile focused on one share-selection flow without plan and duration branching", () => {
+    expect(animalProfileSource).toContain("Единый сценарий участия");
+    expect(animalProfileSource).toContain("Вы выбираете только долю, а базовый формат участия подставляется автоматически.");
+    expect(animalProfileSource).toContain("Продолжить с выбранной долей");
+    expect(animalProfileSource).toContain("Бронь ${selectedSharePercent}% через единый сценарий профиля животного");
+    expect(animalProfileSource).not.toContain("План участия");
+    expect(animalProfileSource).not.toContain("Срок участия");
+    expect(animalProfileSource).not.toContain("setSelectedPlanId");
+    expect(animalProfileSource).not.toContain("setSelectedPlanDurationId");
   });
 });
