@@ -1304,7 +1304,7 @@ export async function getAnimalBySlug(slug: string) {
   const rows = await db.select().from(animals).where(eq(animals.slug, slug)).limit(1);
   const animal = rows[0];
 
-  if (!animal) {
+  if (!animal || animal.status === "archived") {
     return null;
   }
 
@@ -1521,14 +1521,19 @@ export async function updateAnimalWithMedia(
   return rows[0] ? getAnimalBySlug(rows[0].slug) : null;
 }
 
-export async function deleteAnimalProfile(animalId: number, ownerOpenId: string) {
+export async function archiveAnimalProfile(animalId: number, ownerOpenId: string) {
   const db = await getDb();
   if (!db) {
-    throw new Error("Database not available for animal deletion");
+    throw new Error("Database not available for animal archiving");
   }
 
   const existingRows = await db
-    .select({ id: animals.id, slug: animals.slug, name: animals.name })
+    .select({
+      id: animals.id,
+      slug: animals.slug,
+      name: animals.name,
+      status: animals.status,
+    })
     .from(animals)
     .where(and(eq(animals.id, animalId), eq(animals.ownerOpenId, ownerOpenId)))
     .limit(1);
@@ -1538,12 +1543,53 @@ export async function deleteAnimalProfile(animalId: number, ownerOpenId: string)
     return null;
   }
 
-  await db.delete(animalOwnerships).where(eq(animalOwnerships.animalId, animalId));
-  await db.delete(animalMedia).where(eq(animalMedia.animalId, animalId));
-  await db.delete(animalPhotos).where(and(eq(animalPhotos.animalSlug, existing.slug), eq(animalPhotos.ownerOpenId, ownerOpenId)));
-  await db.delete(animals).where(and(eq(animals.id, animalId), eq(animals.ownerOpenId, ownerOpenId)));
+  await db
+    .update(animals)
+    .set({
+      status: "archived",
+      publishedAt: null,
+      updatedAt: new Date(),
+    })
+    .where(and(eq(animals.id, animalId), eq(animals.ownerOpenId, ownerOpenId)));
 
-  return existing;
+  return {
+    ...existing,
+    status: "archived" as const,
+  };
+}
+
+export async function restoreAnimalProfile(animalId: number, ownerOpenId: string) {
+  const db = await getDb();
+  if (!db) {
+    throw new Error("Database not available for animal restore");
+  }
+
+  const existingRows = await db
+    .select({
+      id: animals.id,
+      slug: animals.slug,
+      name: animals.name,
+      status: animals.status,
+    })
+    .from(animals)
+    .where(and(eq(animals.id, animalId), eq(animals.ownerOpenId, ownerOpenId)))
+    .limit(1);
+
+  const existing = existingRows[0];
+  if (!existing) {
+    return null;
+  }
+
+  await db
+    .update(animals)
+    .set({
+      status: "hidden",
+      updatedAt: new Date(),
+    })
+    .where(and(eq(animals.id, animalId), eq(animals.ownerOpenId, ownerOpenId)));
+
+  const rows = await db.select({ slug: animals.slug }).from(animals).where(eq(animals.id, animalId)).limit(1);
+  return rows[0] ? getAnimalBySlug(rows[0].slug) : null;
 }
 
 export async function setAnimalVisibility(animalId: number, ownerOpenId: string, mode: "public" | "hidden" | "archived") {

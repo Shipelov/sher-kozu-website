@@ -769,16 +769,20 @@ function AdminAnimalsTable({
   animals,
   onToggleVisibility,
   onEdit,
-  onDelete,
+  onArchive,
+  onRestore,
   isUpdating,
-  deletingAnimalId,
+  archivingAnimalId,
+  restoringAnimalId,
 }: {
   animals: AdminAnimalRecord[];
   onToggleVisibility: (animal: AdminAnimalRecord) => void;
   onEdit: (animal: AdminAnimalRecord) => void;
-  onDelete: (animal: AdminAnimalRecord) => void;
+  onArchive: (animal: AdminAnimalRecord) => void;
+  onRestore: (animal: AdminAnimalRecord) => void;
   isUpdating: boolean;
-  deletingAnimalId: number | null;
+  archivingAnimalId: number | null;
+  restoringAnimalId: number | null;
 }) {
   return (
     <div className="overflow-hidden rounded-[1.75rem] border border-border/70 bg-white shadow-sm">
@@ -888,16 +892,29 @@ function AdminAnimalsTable({
                       {animal.status === "hidden" ? <Eye className="mr-2 h-4 w-4" /> : <EyeOff className="mr-2 h-4 w-4" />}
                       {getVisibilityActionLabel(animal.status)}
                     </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="rounded-full border-rose-200 text-rose-700 hover:bg-rose-50 hover:text-rose-800"
-                      onClick={() => onDelete(animal)}
-                      disabled={deletingAnimalId === animal.id}
-                    >
-                      {deletingAnimalId === animal.id ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}
-                      Удалить
-                    </Button>
+                    {animal.status === "archived" ? (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="rounded-full border-emerald-200 text-emerald-700 hover:bg-emerald-50 hover:text-emerald-800"
+                        onClick={() => onRestore(animal)}
+                        disabled={restoringAnimalId === animal.id}
+                      >
+                        {restoringAnimalId === animal.id ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ArrowLeft className="mr-2 h-4 w-4" />}
+                        Восстановить
+                      </Button>
+                    ) : (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="rounded-full border-rose-200 text-rose-700 hover:bg-rose-50 hover:text-rose-800"
+                        onClick={() => onArchive(animal)}
+                        disabled={archivingAnimalId === animal.id}
+                      >
+                        {archivingAnimalId === animal.id ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}
+                        Архивировать
+                      </Button>
+                    )}
                   </div>
                 </TableCell>
               </TableRow>
@@ -1469,7 +1486,8 @@ export default function AdminAnimalsPage() {
   const [editorMode, setEditorMode] = useState<"create" | "edit">("create");
   const [editingAnimalId, setEditingAnimalId] = useState<number | null>(null);
   const [formValues, setFormValues] = useState<AnimalFormValues>(createEmptyAnimalForm());
-  const [animalPendingDelete, setAnimalPendingDelete] = useState<AdminAnimalRecord | null>(null);
+  const [animalPendingArchive, setAnimalPendingArchive] = useState<AdminAnimalRecord | null>(null);
+  const [restoringAnimalId, setRestoringAnimalId] = useState<number | null>(null);
   const [, navigate] = useState("");
 
   const animalsQuery = trpc.adminAnimals.list.useQuery(undefined, {
@@ -1545,20 +1563,34 @@ export default function AdminAnimalsPage() {
   });
 
   const deleteAnimal = trpc.adminAnimals.delete.useMutation({
-    onSuccess: async (deleted) => {
+    onSuccess: async (archived) => {
       await utils.adminAnimals.list.invalidate();
-      if (editingAnimalId === deleted?.id) {
+      if (editingAnimalId === archived?.id) {
         resetEditor();
       }
-      setAnimalPendingDelete(null);
-      toast.success("Профиль удалён", {
-        description: `Карточка «${deleted?.name ?? "животного"}» удалена из admin-каталога.`,
+      setAnimalPendingArchive(null);
+      toast.success("Карточка архивирована", {
+        description: archived?.name
+          ? `Профиль «${archived.name}» скрыт из каталога и доступен для восстановления в админ-панели.`
+          : "Профиль животного перемещён в архив.",
       });
     },
     onError: (error) => {
-      toast.error("Не удалось удалить профиль", {
-        description: error.message,
+      toast.error("Не удалось архивировать профиль", { description: error.message });
+    },
+  });
+
+  const restoreAnimal = trpc.adminAnimals.restore.useMutation({
+    onSuccess: async (restored) => {
+      await utils.adminAnimals.list.invalidate();
+      toast.success("Карточка восстановлена", {
+        description: restored?.name
+          ? `Профиль «${restored.name}» возвращён в админ-панель со статусом «Скрыто».`
+          : "Профиль животного восстановлен из архива.",
       });
+    },
+    onError: (error) => {
+      toast.error("Не удалось восстановить профиль", { description: error.message });
     },
   });
 
@@ -1590,13 +1622,22 @@ export default function AdminAnimalsPage() {
     setVisibility.mutate({ id: animal.id, mode: nextMode });
   }
 
-  function handleDeleteRequest(animal: AdminAnimalRecord) {
-    setAnimalPendingDelete(animal);
+  function handleArchiveRequest(animal: AdminAnimalRecord) {
+    setAnimalPendingArchive(animal);
   }
 
-  async function confirmDeleteAnimal() {
-    if (!animalPendingDelete) return;
-    await deleteAnimal.mutateAsync({ id: animalPendingDelete.id });
+  async function handleRestore(animal: AdminAnimalRecord) {
+    setRestoringAnimalId(animal.id);
+    try {
+      await restoreAnimal.mutateAsync({ id: animal.id });
+    } finally {
+      setRestoringAnimalId(null);
+    }
+  }
+
+  async function confirmArchiveAnimal() {
+    if (!animalPendingArchive) return;
+    await deleteAnimal.mutateAsync({ id: animalPendingArchive.id });
   }
 
   async function handleSubmit() {
@@ -1804,14 +1845,17 @@ export default function AdminAnimalsPage() {
                       По текущим фильтрам карточки не найдены. Попробуйте изменить условия поиска или создать новое животное справа.
                     </div>
                   ) : (
-                    <AdminAnimalsTable
-                      animals={filteredAnimals}
-                      onEdit={handleEdit}
-                      onToggleVisibility={handleToggleVisibility}
-                      onDelete={handleDeleteRequest}
-                      isUpdating={setVisibility.isPending}
-                      deletingAnimalId={deleteAnimal.isPending ? animalPendingDelete?.id ?? null : null}
-                    />
+                      <AdminAnimalsTable
+                        animals={filteredAnimals}
+                        onEdit={handleEdit}
+                        onToggleVisibility={handleToggleVisibility}
+                        onArchive={handleArchiveRequest}
+                        onRestore={handleRestore}
+                        isUpdating={setVisibility.isPending}
+                        archivingAnimalId={deleteAnimal.isPending ? animalPendingArchive?.id ?? null : null}
+                        restoringAnimalId={restoringAnimalId}
+                      />
+
                   )}
                 </CardContent>
               </Card>
@@ -1831,14 +1875,14 @@ export default function AdminAnimalsPage() {
           </div>
         </div>
       </div>
-      <AlertDialog open={Boolean(animalPendingDelete)} onOpenChange={(open) => !open && setAnimalPendingDelete(null)}>
+      <AlertDialog open={Boolean(animalPendingArchive)} onOpenChange={(open) => !open && setAnimalPendingArchive(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Удалить профиль животного?</AlertDialogTitle>
+            <AlertDialogTitle>Архивировать профиль животного?</AlertDialogTitle>
             <AlertDialogDescription>
-              {animalPendingDelete
-                ? `Карточка «${animalPendingDelete.name}» будет удалена из admin-панели вместе со связанными фото, медиа и долями владения. Действие необратимо.`
-                : "Действие необратимо."}
+              {animalPendingArchive
+                ? `Карточка «${animalPendingArchive.name}» будет скрыта из публичного каталога и страницы животного, но все связанные фото, медиа и доли сохранятся. При необходимости профиль можно будет восстановить из архива.`
+                : "Профиль будет перемещён в архив с возможностью восстановления."}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -1846,13 +1890,13 @@ export default function AdminAnimalsPage() {
             <AlertDialogAction
               onClick={(event) => {
                 event.preventDefault();
-                void confirmDeleteAnimal();
+                void confirmArchiveAnimal();
               }}
               disabled={deleteAnimal.isPending}
               className="bg-rose-600 hover:bg-rose-700"
             >
               {deleteAnimal.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}
-              Удалить профиль
+              Архивировать
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

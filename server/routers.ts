@@ -13,8 +13,8 @@ import {
   createClubPost,
   createIntegrationAudit,
   createPartnerLead,
+  archiveAnimalProfile,
   deleteAnimalPhoto,
-  deleteAnimalProfile,
   deleteClubAdminPreset,
   deleteClubEvent,
   deleteClubMember,
@@ -33,6 +33,7 @@ import {
   listClubAdminData,
   listPublicAnimals,
   reorderAnimalPhotos,
+  restoreAnimalProfile,
   setAnimalPhotoCover,
   setAnimalVisibility,
   updateAnimalPhotoMeta,
@@ -407,11 +408,18 @@ export const appRouter = router({
       return updated;
     }),
     delete: protectedProcedure.input(idInput).mutation(async ({ ctx, input }) => {
-      const deleted = await deleteAnimalProfile(input.id, ctx.user.openId);
-      if (!deleted) {
-        throw new TRPCError({ code: "NOT_FOUND", message: "Животное не найдено или уже удалено." });
+      const archived = await archiveAnimalProfile(input.id, ctx.user.openId);
+      if (!archived) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Животное не найдено или уже архивировано." });
       }
-      return deleted;
+      return archived;
+    }),
+    restore: protectedProcedure.input(idInput).mutation(async ({ ctx, input }) => {
+      const restored = await restoreAnimalProfile(input.id, ctx.user.openId);
+      if (!restored) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Животное не найдено или недоступно для восстановления." });
+      }
+      return restored;
     }),
   }),
   animalPhotos: router({

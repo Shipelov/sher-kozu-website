@@ -112,7 +112,21 @@ function getAvailableSlots(animal: AnimalRecord, records: OwnershipRecord[]) {
 }
 
 function getAnimalBySlug(animals: AnimalRecord[], slug: string) {
-  return animals.find((animal) => animal.slug === slug) ?? null;
+  return animals.find((animal) => animal.slug === slug && animal.status !== "archived") ?? null;
+}
+
+function archiveAnimal(animal: AnimalRecord): AnimalRecord {
+  return {
+    ...animal,
+    status: "archived",
+  };
+}
+
+function restoreAnimal(animal: AnimalRecord): AnimalRecord {
+  return {
+    ...animal,
+    status: "hidden",
+  };
 }
 
 function assertAdminRole(role: UserRole) {
@@ -304,6 +318,39 @@ describe("Sprint 1 ownership flow domain rules", () => {
 
     expect(getAnimalBySlug(animals, "marta")?.id).toBe(31);
     expect(getAnimalBySlug(animals, "unknown")).toBeNull();
+  });
+
+  it("hides archived animals from the public slug lookup", () => {
+    const animals: AnimalRecord[] = [
+      { id: 33, slug: "mira", status: "archived", totalOwnershipSlots: 10, baseMonthlyPriceMinor: 142000 },
+      { id: 34, slug: "lana", status: "hidden", totalOwnershipSlots: 10, baseMonthlyPriceMinor: 121000 },
+    ];
+
+    expect(getAnimalBySlug(animals, "mira")).toBeNull();
+    expect(getAnimalBySlug(animals, "lana")?.id).toBe(34);
+  });
+
+  it("archives animal without touching slot model and allows restore to hidden status", () => {
+    const animal: AnimalRecord = {
+      id: 35,
+      slug: "vesna",
+      status: "public_limited",
+      totalOwnershipSlots: 10,
+      baseMonthlyPriceMinor: 150000,
+    };
+    const ownerships: OwnershipRecord[] = [
+      { animalId: 35, slotIndex: 1, status: "active" },
+      { animalId: 35, slotIndex: 2, status: "pending_payment" },
+    ];
+
+    const archived = archiveAnimal(animal);
+    const restored = restoreAnimal(archived);
+
+    expect(archived.status).toBe("archived");
+    expect(countActiveOwnerships(ownerships, animal.id)).toBe(2);
+    expect(getAvailableSharePercents(archived, ownerships)).toEqual([10, 20, 30, 40, 50, 60, 70, 80]);
+    expect(restored.status).toBe("hidden");
+    expect(recalculateAnimalStatus(restored, countActiveOwnerships(ownerships, animal.id))).toBe("hidden");
   });
 
   it("blocks non-admin users from admin animal CRUD flow", () => {
