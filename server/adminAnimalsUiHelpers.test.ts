@@ -8,6 +8,7 @@ import {
   createEmptyAnimalForm,
   createPhotoDraft,
   filterAdminAnimals,
+  formatRublesFromMinor,
   formatSharePercentLabel,
   formatShareRevenue,
   getNextVisibilityMode,
@@ -16,7 +17,9 @@ import {
   hasPhotoDraftChanges,
   mergeCoverIntoForm,
   normalizeAnimalFormValues,
+  parseRublesToMinor,
   slugifyAnimalName,
+  toRublesInputValue,
   validateGalleryUpload,
 } from "../client/src/pages/AdminAnimals";
 
@@ -173,6 +176,35 @@ describe("Admin animals UI helpers", () => {
   it("formats animal prices in Russian rubles for admin surfaces", () => {
     expect(formatShareRevenue(135000)).toBe("1 350 ₽");
     expect(formatShareRevenue(118000)).toBe("1 180 ₽");
+    expect(formatRublesFromMinor(150000)).toBe("1 500 ₽");
+  });
+
+  it("converts ruble input into internal minor units for create form", () => {
+    expect(toRublesInputValue(150000)).toBe("1500");
+    expect(parseRublesToMinor("1500")).toBe(150000);
+    expect(parseRublesToMinor("1 750")).toBe(175000);
+    expect(parseRublesToMinor("0")).toBe(0);
+  });
+
+  it("keeps price preview consistent between full animal cost and one 10 percent share", () => {
+    const fullPriceMinor = parseRublesToMinor("1500");
+    const sharePriceMinor = Math.round(fullPriceMinor / 10);
+
+    expect(formatRublesFromMinor(fullPriceMinor)).toBe("1 500 ₽");
+    expect(formatRublesFromMinor(sharePriceMinor)).toBe("150 ₽");
+  });
+
+  it("preserves slug so create flow can continue into gallery management after first save", () => {
+    const payload = buildAnimalMutationPayload({
+      ...createEmptyAnimalForm(),
+      name: "Тестовая Руби",
+      slug: "testovaya-rubi",
+      shortDescription: "Достаточно длинное описание для сохранения и следующего шага с галереей.",
+      baseMonthlyPriceMinor: parseRublesToMinor("1500"),
+    });
+
+    expect(payload.slug).toBe("testovaya-rubi");
+    expect(payload.baseMonthlyPriceMinor).toBe(150000);
   });
 
   it("creates a complete demo preset for a goat profile", () => {

@@ -425,26 +425,47 @@ export function getShareStatusTone(animal: AdminAnimalRecord) {
   };
 }
 
-export const createEmptyAnimalForm = (): AnimalFormValues => ({
-  name: "",
-  slug: "",
-  species: "goat",
-  breed: "",
-  shortDescription: "",
-  story: "",
-  coverImageUrl: "",
-  galleryIntro: "",
-  status: "hidden",
-  totalOwnershipSlots: 10,
-  baseMonthlyPriceMinor: 120000,
-  healthScore: 75,
-  happinessScore: 75,
-  milkPotentialScore: 75,
-  careLevelScore: 75,
-  isFeatured: false,
-  sortOrder: 0,
-  publishedAt: "",
-});
+export function createEmptyAnimalForm(): AnimalFormValues {
+  return {
+    name: "",
+    slug: "",
+    species: "goat",
+    breed: "",
+    shortDescription: "",
+    story: "",
+    coverImageUrl: "",
+    galleryIntro: "",
+    status: "hidden",
+    totalOwnershipSlots: 10,
+    baseMonthlyPriceMinor: 120000,
+    healthScore: 75,
+    happinessScore: 75,
+    milkPotentialScore: 75,
+    careLevelScore: 75,
+    isFeatured: false,
+    sortOrder: 0,
+    publishedAt: "",
+  };
+}
+
+export function formatRublesFromMinor(minor: number) {
+  return new Intl.NumberFormat("ru-RU", {
+    style: "currency",
+    currency: "RUB",
+    maximumFractionDigits: 0,
+  }).format((Number.isFinite(minor) ? minor : 0) / 100);
+}
+
+export function toRublesInputValue(minor: number) {
+  const rubles = Math.round((Number.isFinite(minor) ? minor : 0) / 100);
+  return String(Math.max(0, rubles));
+}
+
+export function parseRublesToMinor(value: string) {
+  const normalized = Number(value.replace(/[^\d.,-]/g, "").replace(",", "."));
+  if (!Number.isFinite(normalized) || normalized < 0) return 0;
+  return Math.round(normalized * 100);
+}
 
 export function normalizeAnimalFormValues(animal?: AdminAnimalRecord | null): AnimalFormValues {
   if (!animal) return createEmptyAnimalForm();
@@ -868,10 +889,12 @@ function AnimalGalleryManager({
   animalSlug,
   values,
   onCoverChange,
+  isCreateMode,
 }: {
   animalSlug: string;
   values: AnimalFormValues;
   onCoverChange: (url: string) => void;
+  isCreateMode: boolean;
 }) {
   const utils = trpc.useUtils();
   const [photoDrafts, setPhotoDrafts] = useState<GalleryPhotoDrafts>({});
@@ -1036,7 +1059,21 @@ function AnimalGalleryManager({
 
       {!animalSlug ? (
         <div className="rounded-2xl border border-dashed border-border bg-background/80 p-4 text-sm text-muted-foreground">
-          Сначала укажите slug животного. Галерея привязывается к нему и становится доступной сразу после редактирования.
+          Сначала укажите slug животного. Галерея привязывается к нему и становится доступной сразу после сохранения карточки.
+        </div>
+      ) : isCreateMode ? (
+        <div className="grid gap-3 rounded-2xl border border-dashed border-border bg-background/80 p-4 lg:grid-cols-[minmax(0,1fr)_280px] lg:items-start">
+          <div className="space-y-2">
+            <p className="font-medium text-foreground">Сначала создайте карточку, затем загружайте фотографии</p>
+            <p className="text-sm text-muted-foreground">
+              После первого сохранения галерея привяжется к slug и здесь появятся загрузка, выбор обложки и управление порядком фото без поломки формы.
+            </p>
+          </div>
+          <div className="rounded-2xl border border-border/70 bg-stone-50/70 p-4">
+            <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">Текущая цена</p>
+            <p className="mt-2 text-2xl font-semibold text-foreground">{formatRublesFromMinor(values.baseMonthlyPriceMinor)}</p>
+            <p className="mt-2 text-sm text-muted-foreground">Один слот 10% будет рассчитан автоматически после сохранения карточки.</p>
+          </div>
         </div>
       ) : photosQuery.isLoading ? (
         <div className="flex items-center gap-2 rounded-2xl border border-border bg-background/80 p-4 text-sm text-muted-foreground">
@@ -1170,6 +1207,9 @@ function AnimalEditorCard({
   isSubmitting: boolean;
 }) {
   const gallerySlug = values.slug.trim();
+  const sharePriceMinor = Math.round(values.baseMonthlyPriceMinor / 10);
+  const hasSlug = gallerySlug.length > 0;
+  const isCreateMode = mode === "create";
 
   return (
     <Card className="rounded-[2rem] border-border/70 shadow-sm">
@@ -1246,19 +1286,38 @@ function AnimalEditorCard({
           </div>
         </div>
 
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="grid gap-4 xl:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)]">
           <div className="space-y-2">
-            <Label htmlFor="animal-price">Полная цена в копейках</Label>
+            <Label htmlFor="animal-price">Полная цена животного в рублях</Label>
             <Input
               id="animal-price"
               type="number"
               min={0}
               step={100}
-              value={values.baseMonthlyPriceMinor}
-              onChange={(event) => onChange("baseMonthlyPriceMinor", Number(event.target.value || 0))}
+              value={toRublesInputValue(values.baseMonthlyPriceMinor)}
+              onChange={(event) => onChange("baseMonthlyPriceMinor", parseRublesToMinor(event.target.value))}
             />
-            <p className="text-xs text-muted-foreground">Используется как полная цена животного, а 10% рассчитываются автоматически в карточках и профиле.</p>
+            <p className="text-xs text-muted-foreground">Вводите стоимость в ₽. Система автоматически переведёт её во внутренний формат и рассчитает цену доли 10%.</p>
           </div>
+          <div className="rounded-[1.75rem] border border-primary/15 bg-primary/5 p-4 shadow-sm">
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary/80">Предпросмотр цены</p>
+            <div className="mt-3 grid gap-3 sm:grid-cols-2">
+              <div className="rounded-2xl border border-white/60 bg-white px-4 py-3">
+                <p className="text-xs uppercase tracking-[0.14em] text-muted-foreground">100% животного</p>
+                <p className="mt-2 text-xl font-semibold text-foreground">{formatRublesFromMinor(values.baseMonthlyPriceMinor)}</p>
+                <p className="mt-1 text-xs text-muted-foreground">Эта сумма увидится в admin и в карточке животного как полная цена.</p>
+              </div>
+              <div className="rounded-2xl border border-white/60 bg-white px-4 py-3">
+                <p className="text-xs uppercase tracking-[0.14em] text-muted-foreground">1 доля · 10%</p>
+                <p className="mt-2 text-xl font-semibold text-foreground">{formatRublesFromMinor(sharePriceMinor)}</p>
+                <p className="mt-1 text-xs text-muted-foreground">Эту цену увидит семья при выборе одной доли в каталоге и профиле.</p>
+              </div>
+            </div>
+            <p className="mt-3 text-xs text-muted-foreground">Модель шеринга фиксирована: 10 слотов по 10%, поэтому изменение полной цены сразу обновляет весь customer-facing сценарий.</p>
+          </div>
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-2">
           <div className="space-y-2">
             <Label htmlFor="animal-published-at">Дата публикации</Label>
             <Input
@@ -1324,10 +1383,29 @@ function AnimalEditorCard({
           </Button>
         </div>
 
+        <div className={`rounded-[1.75rem] border px-4 py-4 ${isCreateMode ? "border-amber-200 bg-amber-50/80" : "border-emerald-200 bg-emerald-50/70"}`}>
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+            <div className="space-y-1">
+              <p className="text-sm font-semibold text-foreground">
+                {isCreateMode ? "Следующий шаг после сохранения" : "Галерея подключена к карточке"}
+              </p>
+              <p className="text-sm text-muted-foreground">
+                {isCreateMode
+                  ? "Сначала сохраните карточку. После этого форма автоматически останется в режиме редактирования, и вы сможете сразу загружать фотографии, выбирать обложку и редактировать подписи."
+                  : "Карточка уже сохранена. Загружайте новые фотографии, меняйте обложку и редактируйте подписи — изменения сразу синхронизируются с публичным профилем животного."}
+              </p>
+            </div>
+            <Badge className={`w-fit rounded-full border ${isCreateMode ? "border-amber-200 bg-white text-amber-800" : "border-emerald-200 bg-white text-emerald-800"}`}>
+              {isCreateMode ? (hasSlug ? "1. Сохранить карточку" : "Добавьте slug и сохраните") : "2. Управлять галереей"}
+            </Badge>
+          </div>
+        </div>
+
         <AnimalGalleryManager
           animalSlug={gallerySlug}
           values={values}
           onCoverChange={(url) => onChange("coverImageUrl", url)}
+          isCreateMode={isCreateMode}
         />
 
         <div className="grid gap-3 sm:grid-cols-2">
@@ -1379,12 +1457,18 @@ export default function AdminAnimalsPage() {
   );
 
   const createAnimal = trpc.adminAnimals.create.useMutation({
-    onSuccess: async () => {
+    onSuccess: async (created) => {
       await utils.adminAnimals.list.invalidate();
+      if (created?.id) {
+        setEditorMode("edit");
+        setEditingAnimalId(created.id);
+        setFormValues(normalizeAnimalFormValues(created));
+      } else {
+        resetEditor();
+      }
       toast.success("Животное создано", {
         description: "Новая карточка добавлена в каталог и доступна для дальнейшей настройки.",
       });
-      resetEditor();
     },
     onError: (error) => {
       toast.error("Не удалось создать карточку", {
