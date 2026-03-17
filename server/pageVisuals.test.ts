@@ -129,6 +129,9 @@ describe("page visual integration source smoke", () => {
     expect(animalsCatalogSource).toContain("getRelationshipStatus");
     expect(animalsCatalogSource).toContain("Открыть профиль и продолжить с выбранной долей");
     expect(animalsCatalogSource).toContain("ShareSelectionPreviewCard");
+    expect(animalsCatalogSource).toContain('new URLSearchParams(window.location.search).get("share")');
+    expect(animalsCatalogSource).toContain('const matchesSelectedShare = hasSelectedShare && shareSummary.availableSharePercents.includes(selectedSharePercent)');
+    expect(animalsCatalogSource).toContain('Выбрано {selectedSharePercent}%');
     expect(animalsCatalogSource).toContain('ctaHref={`/animals/${animal.slug}?share=${shareSummary.primarySharePercent}`}');
   });
 

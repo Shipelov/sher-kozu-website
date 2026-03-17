@@ -198,11 +198,13 @@ function AnimalSpeciesSection({
   animals,
   filter,
   onFilterChange,
+  selectedSharePercent,
 }: {
   species: SupportedSpecies;
   animals: CatalogAnimal[];
   filter: StatusFilter;
   onFilterChange: (value: StatusFilter) => void;
+  selectedSharePercent: number | null;
 }) {
   const config = speciesConfig[species];
   const Icon = config.icon;
@@ -299,10 +301,14 @@ function AnimalSpeciesSection({
           {filteredAnimals.map((animal) => {
             const availability = getRelationshipStatus(animal.availableSlots, animal.totalOwnershipSlots, animal.occupiedUntil);
             const shareSummary = getShareBlockSummary(animal);
+            const hasSelectedShare = selectedSharePercent !== null;
+            const matchesSelectedShare = hasSelectedShare && shareSummary.availableSharePercents.includes(selectedSharePercent);
 
             return (
-              <Link key={animal.id} href={`/animals/${animal.slug}`}>
-                <Card className="group h-full cursor-pointer overflow-hidden border-stone-200 bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-lg">
+              <Link key={animal.id} href={`/animals/${animal.slug}?share=${shareSummary.primarySharePercent}`}>
+                <Card
+                  className={`group h-full cursor-pointer overflow-hidden bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-lg ${matchesSelectedShare ? "border-amber-400 ring-2 ring-amber-200 shadow-[0_18px_45px_-28px_rgba(217,119,6,0.55)]" : "border-stone-200"}`}
+                >
                   <div className="relative h-56 overflow-hidden bg-stone-100">
                     {animal.coverImageUrl ? (
                       <img
@@ -317,11 +323,18 @@ function AnimalSpeciesSection({
                       <Badge className="rounded-full border border-white/20 bg-black/60 px-3 py-1 text-white backdrop-blur">
                         {config.singular}
                       </Badge>
-                      {animal.isFeatured ? (
-                        <Badge className="rounded-full border border-white/20 bg-white/90 px-3 py-1 text-stone-900">
-                          Профиль недели
-                        </Badge>
-                      ) : null}
+                      <div className="flex flex-col items-end gap-2">
+                        {matchesSelectedShare ? (
+                          <Badge className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-amber-900 shadow-sm">
+                            Выбрано {selectedSharePercent}%
+                          </Badge>
+                        ) : null}
+                        {animal.isFeatured ? (
+                          <Badge className="rounded-full border border-white/20 bg-white/90 px-3 py-1 text-stone-900">
+                            Профиль недели
+                          </Badge>
+                        ) : null}
+                      </div>
                     </div>
                   </div>
 
@@ -378,6 +391,11 @@ export default function AnimalsCatalog() {
   const { data, isLoading } = trpc.animals.listPublic.useQuery();
   const [goatFilter, setGoatFilter] = useState<StatusFilter>("available");
   const [sheepFilter, setSheepFilter] = useState<StatusFilter>("available");
+  const selectedSharePercent = useMemo(() => {
+    if (typeof window === "undefined") return null;
+    const value = Number(new URLSearchParams(window.location.search).get("share"));
+    return Number.isFinite(value) && value > 0 ? value : null;
+  }, []);
 
   if (isLoading) {
     return <AnimalsCatalogSkeleton />;
@@ -463,10 +481,22 @@ export default function AnimalsCatalog() {
 
         <div className="space-y-12">
           <div id="goats">
-            <AnimalSpeciesSection species="goat" animals={goats} filter={goatFilter} onFilterChange={setGoatFilter} />
+            <AnimalSpeciesSection
+              species="goat"
+              animals={goats}
+              filter={goatFilter}
+              onFilterChange={setGoatFilter}
+              selectedSharePercent={selectedSharePercent}
+            />
           </div>
           <div id="sheep">
-            <AnimalSpeciesSection species="sheep" animals={sheep} filter={sheepFilter} onFilterChange={setSheepFilter} />
+            <AnimalSpeciesSection
+              species="sheep"
+              animals={sheep}
+              filter={sheepFilter}
+              onFilterChange={setSheepFilter}
+              selectedSharePercent={selectedSharePercent}
+            />
           </div>
         </div>
       </section>
