@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Link, useLocation, useRoute } from "wouter";
 import { useAuth } from "@/_core/hooks/useAuth";
 import Navbar from "@/components/Navbar";
+import ShareSelectionPreviewCard from "@/components/ShareSelectionPreviewCard";
 import {
   Heart,
   Thermometer,
@@ -826,94 +827,35 @@ export default function AnimalProfile() {
                         </div>
                       </div>
 
-                      <div className="mt-5 grid gap-3 sm:grid-cols-2">
-                        <div className="rounded-[1.25rem] bg-secondary p-4">
-                          <div className="text-xs uppercase tracking-[0.16em] text-muted-foreground">Полная цена</div>
-                          <div className="mt-2 text-2xl font-semibold text-foreground">{formatCurrency(fullPriceMinor)}</div>
-                          <p className="mt-2 text-sm text-muted-foreground">Отображается в профиле, карточке и админ-учёте как базовая цена животного.</p>
-                        </div>
-                        <div className="rounded-[1.25rem] bg-secondary p-4">
-                          <div className="text-xs uppercase tracking-[0.16em] text-muted-foreground">Доля занятости</div>
-                          <div className="mt-2 flex items-end gap-2">
-                            <span className="text-2xl font-semibold text-foreground">{ownedPercent}%</span>
-                            <span className="pb-1 text-sm text-muted-foreground">занято · {availablePercent}% свободно</span>
-                          </div>
-                          <div className="mt-3 h-2.5 overflow-hidden rounded-full bg-border/60">
-                            <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${ownedPercent}%` }} />
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="mt-5 rounded-[1.25rem] border border-border/70 bg-background/70 p-4">
-                        <div className="flex flex-wrap items-center justify-between gap-3">
-                          <div>
-                            <p className="text-sm font-medium text-foreground">Выбор процента шеринга</p>
-                            <p className="mt-1 text-sm text-muted-foreground">Передвигайте ползунок шагом {shareUnitPercent}% — купить можно только свободную долю.</p>
-                          </div>
-                          <div className="rounded-full bg-primary/10 px-3 py-1 text-sm font-semibold text-primary">
-                            {selectedSharePercent}%
-                          </div>
-                        </div>
-                        <input
-                          type="range"
-                          min={shareUnitPercent}
-                          max={Math.max(shareUnitPercent, availablePercent || shareUnitPercent)}
-                          step={shareUnitPercent}
-                          value={Math.min(selectedSharePercent, Math.max(shareUnitPercent, availablePercent || shareUnitPercent))}
-                          onChange={(event) => setSelectedSharePercent(Number(event.target.value))}
-                          disabled={!availableSharePercents.length || purchaseShare.isPending}
-                          className="mt-4 w-full accent-primary"
+                      <div className="mt-5">
+                        <ShareSelectionPreviewCard
+                          priceLabel={formatCurrency(fullPriceMinor)}
+                          occupiedPercent={ownedPercent}
+                          availablePercent={availablePercent}
+                          shareUnitPercent={shareUnitPercent}
+                          primarySharePercent={availableSharePercents[0] ?? shareUnitPercent}
+                          primarySharePriceLabel={formatCurrency(Math.round((fullPriceMinor * (availableSharePercents[0] ?? shareUnitPercent)) / 100))}
+                          availableSharePercents={availableSharePercents}
+                          helperText={`Следующий шаг всегда один: забронировать выбранный процент ${displayName} и перейти к подтверждению участия без лишних развилок.`}
+                          description="Вы выбираете только долю, а базовый формат участия подставляется автоматически."
+                          ctaLabel={isAuthenticated ? "Продолжить с выбранной долей" : "Войдите, чтобы продолжить"}
+                          onCtaClick={handlePurchaseShare}
+                          ctaDisabled={!availableSharePercents.length || purchaseShare.isPending || !isAuthenticated}
+                          ctaPending={purchaseShare.isPending}
+                          ctaLoginRequired={!isAuthenticated}
+                          selectedSharePercent={selectedSharePercent}
+                          onShareSelect={setSelectedSharePercent}
+                          selectable
+                          defaultPlanLabel={animalQuery.data?.plans?.[0]?.name ?? "Базовый план"}
+                          defaultPlanMeta={animalQuery.data?.plans?.[0]?.durations?.[0] ? `${animalQuery.data.plans[0].durations[0].months} мес. · ${animalQuery.data.plans[0].durations[0].label}` : "Срок будет подтверждён фермером"}
+                          footer={
+                            <div className="rounded-[1.25rem] border border-primary/10 bg-primary/5 p-4">
+                              <div className="text-xs uppercase tracking-[0.16em] text-muted-foreground">Стоимость выбранной доли</div>
+                              <div className="mt-2 text-3xl font-semibold text-foreground">{formatCurrency(selectedSharePriceMinor)}</div>
+                              <p className="mt-2 text-sm text-muted-foreground">Оформляется как бронь доли с последующим подтверждением оплаты и учётом занятых слотов.</p>
+                            </div>
+                          }
                         />
-                        <div className="mt-3 flex flex-wrap gap-2">
-                          {availableSharePercents.length ? availableSharePercents.map((percent: number) => (
-                            <button
-                              key={percent}
-                              type="button"
-                              onClick={() => setSelectedSharePercent(percent)}
-                              className={`rounded-full px-3 py-1.5 text-xs font-medium transition ${selectedSharePercent === percent ? "bg-primary text-primary-foreground" : "border border-border bg-white text-foreground hover:bg-muted"}`}
-                            >
-                              {percent}%
-                            </button>
-                          )) : (
-                            <span className="rounded-full bg-muted px-3 py-1.5 text-xs text-muted-foreground">Свободных долей сейчас нет</span>
-                          )}
-                        </div>
-                      </div>
-
-                      <div className="mt-5 rounded-[1.25rem] border border-border/70 bg-background/70 p-4">
-                        <div className="flex flex-wrap items-start justify-between gap-3">
-                          <div>
-                            <div className="text-xs uppercase tracking-[0.16em] text-muted-foreground">Единый сценарий участия</div>
-                            <div className="mt-2 text-lg font-semibold text-foreground">Вы выбираете только долю, а базовый формат участия подставляется автоматически.</div>
-                            <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                              Следующий шаг всегда один: забронировать выбранный процент {displayName} и перейти к подтверждению участия без лишних развилок.
-                            </p>
-                          </div>
-                          <div className="rounded-2xl bg-secondary px-4 py-3 text-sm text-foreground">
-                            <div className="text-xs uppercase tracking-[0.16em] text-muted-foreground">Формат по умолчанию</div>
-                            <div className="mt-1 font-semibold">{animalQuery.data?.plans?.[0]?.name ?? "Базовый план"}</div>
-                            <div className="mt-1 text-xs text-muted-foreground">{animalQuery.data?.plans?.[0]?.durations?.[0] ? `${animalQuery.data.plans[0].durations[0].months} мес. · ${animalQuery.data.plans[0].durations[0].label}` : "Срок будет подтверждён фермером"}</div>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="mt-5 rounded-[1.25rem] border border-primary/10 bg-primary/5 p-4">
-                        <div className="flex flex-wrap items-end justify-between gap-3">
-                          <div>
-                            <div className="text-xs uppercase tracking-[0.16em] text-muted-foreground">Стоимость выбранной доли</div>
-                            <div className="mt-2 text-3xl font-semibold text-foreground">{formatCurrency(selectedSharePriceMinor)}</div>
-                            <p className="mt-2 text-sm text-muted-foreground">Оформляется как бронь доли с последующим подтверждением оплаты и учётом занятых слотов.</p>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={handlePurchaseShare}
-                            disabled={!availableSharePercents.length || purchaseShare.isPending || !isAuthenticated}
-                            className="inline-flex items-center justify-center gap-2 rounded-full bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground shadow-[0_18px_40px_-20px_rgba(26,58,42,0.65)] transition-all hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60"
-                          >
-                            {purchaseShare.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Package className="h-4 w-4" />}
-                            {isAuthenticated ? "Продолжить с выбранной долей" : "Войдите, чтобы продолжить"}
-                          </button>
-                        </div>
                       </div>
                     </div>
 

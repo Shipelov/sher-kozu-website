@@ -6,6 +6,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { trpc } from "@/lib/trpc";
 import { ArrowRight, Heart, Sparkles, Waves } from "lucide-react";
 import { Link } from "wouter";
+import ShareSelectionPreviewCard from "@/components/ShareSelectionPreviewCard";
 
 const speciesConfig = {
   goat: {
@@ -338,56 +339,22 @@ function AnimalSpeciesSection({
                           В отношениях до {availability.occupiedUntilLabel}
                         </div>
                       ) : null}
-                      <div className="grid gap-3 rounded-[1.5rem] bg-stone-50 p-4 sm:grid-cols-2">
-                        <div>
-                          <p className="text-xs uppercase tracking-[0.16em] text-stone-500">Полная цена</p>
-                          <p className="mt-1 text-lg font-semibold text-stone-900">{formatCurrency(animal.fullPriceMinor)}</p>
-                        </div>
-                        <div>
-                          <p className="text-xs uppercase tracking-[0.16em] text-stone-500">Занято сейчас</p>
-                          <p className="mt-1 text-lg font-semibold text-stone-900">{shareSummary.ownedPercent}%</p>
-                        </div>
-                        <div>
-                          <p className="text-xs uppercase tracking-[0.16em] text-stone-500">Свободно для шеринга</p>
-                          <p className="mt-1 text-lg font-semibold text-stone-900">{shareSummary.availablePercent}%</p>
-                        </div>
-                        <div>
-                          <p className="text-xs uppercase tracking-[0.16em] text-stone-500">Шаг выбора</p>
-                          <p className="mt-1 text-lg font-semibold text-stone-900">{shareSummary.shareUnitPercent}%</p>
-                        </div>
-                      </div>
-
-                      <div className="rounded-[1.25rem] border border-stone-200 bg-white px-4 py-4">
-                        <div className="flex flex-wrap items-start justify-between gap-3">
-                          <div>
-                            <p className="text-xs uppercase tracking-[0.16em] text-stone-500">Единый сценарий выбора доли</p>
-                            <h4 className="mt-2 text-base font-semibold text-stone-900">Сначала выбираете процент, затем переходите в профиль без лишних развилок.</h4>
-                            <p className="mt-2 text-sm leading-6 text-stone-600">{availability.helper} В профиле откроется тот же сценарий: свободные доли шагом {shareSummary.shareUnitPercent}% и один основной CTA.</p>
-                          </div>
-                          <div className="rounded-2xl bg-stone-50 px-4 py-3 text-sm text-stone-700">
-                            <div className="text-xs uppercase tracking-[0.16em] text-stone-500">Стартовая доля</div>
-                            <div className="mt-1 font-semibold text-stone-900">{shareSummary.primarySharePercent}% · {formatCurrency(shareSummary.primarySharePriceMinor)}</div>
-                            <div className="mt-1 text-xs text-stone-500">Первый доступный вариант для следующего шага</div>
-                          </div>
-                        </div>
-
-                        <div className="mt-4 flex flex-wrap gap-2">
-                          {shareSummary.availableSharePercents.length ? shareSummary.availableSharePercents.map((percent) => (
-                            <span key={percent} className={`rounded-full px-3 py-1.5 text-xs font-medium ring-1 ${percent === shareSummary.primarySharePercent ? "bg-stone-900 text-white ring-stone-900" : "bg-stone-50 text-stone-700 ring-stone-200"}`}>
-                              {percent}%
-                            </span>
-                          )) : (
-                            <span className="rounded-full bg-stone-100 px-3 py-1.5 text-xs text-stone-500 ring-1 ring-stone-200">Свободных долей сейчас нет</span>
-                          )}
-                        </div>
-                      </div>
+                      <ShareSelectionPreviewCard
+                        priceLabel={formatCurrency(animal.fullPriceMinor)}
+                        occupiedPercent={shareSummary.ownedPercent}
+                        availablePercent={shareSummary.availablePercent}
+                        shareUnitPercent={shareSummary.shareUnitPercent}
+                        primarySharePercent={shareSummary.primarySharePercent}
+                        primarySharePriceLabel={formatCurrency(shareSummary.primarySharePriceMinor)}
+                        availableSharePercents={shareSummary.availableSharePercents}
+                        helperText={availability.helper}
+                        description={`${availability.helper} В профиле откроется тот же сценарий: свободные доли шагом ${shareSummary.shareUnitPercent}% и один основной CTA.`}
+                        ctaLabel="Открыть профиль и продолжить с выбранной долей"
+                        ctaHref={`/animals/${animal.slug}`}
+                        theme="stone"
+                      />
 
                       <p className="line-clamp-3 text-sm leading-6 text-stone-600">{animal.shortDescription}</p>
-                    </div>
-
-                    <div className="flex items-center justify-between rounded-2xl bg-stone-900 px-4 py-3 text-sm text-white">
-                      <span>Открыть профиль и продолжить с выбранной долей</span>
-                      <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
                     </div>
                   </CardContent>
                 </Card>

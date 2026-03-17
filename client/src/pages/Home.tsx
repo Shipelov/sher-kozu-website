@@ -9,6 +9,7 @@ import { trpc } from "@/lib/trpc";
 import { motion } from "framer-motion";
 import { Link } from "wouter";
 import Navbar from "@/components/Navbar";
+import ShareSelectionPreviewCard from "@/components/ShareSelectionPreviewCard";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -766,53 +767,19 @@ export default function Home() {
                       </div>
                     </div>
 
-                    <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
-                      <div className="rounded-2xl bg-secondary p-3">
-                        <div className="text-muted-foreground">Полная цена</div>
-                        <div className="mt-1 text-xl font-semibold text-foreground">{new Intl.NumberFormat("ru-RU", { style: "currency", currency: "RUB", maximumFractionDigits: 0 }).format((featuredAnimal?.fullPriceMinor ?? 0) / 100)}</div>
-                      </div>
-                      <div className="rounded-2xl bg-accent/15 p-3">
-                        <div className="text-muted-foreground">Шаг выбора</div>
-                        <div className="mt-1 text-xl font-semibold text-foreground">{featuredAnimalShareUnitPercent}%</div>
-                      </div>
-                      <div className="rounded-2xl bg-secondary p-3">
-                        <div className="text-muted-foreground">Занято сейчас</div>
-                        <div className="mt-1 text-xl font-semibold text-foreground">{featuredAnimalOwnedPercent}%</div>
-                      </div>
-                      <div className="rounded-2xl bg-accent/15 p-3">
-                        <div className="text-muted-foreground">Свободно для шеринга</div>
-                        <div className="mt-1 text-xl font-semibold text-foreground">{featuredAnimalAvailablePercent}%</div>
-                      </div>
-                    </div>
-
-                    <div className="mt-4 rounded-[1.25rem] border border-border/70 bg-background/70 p-4">
-                      <div className="flex flex-wrap items-start justify-between gap-3">
-                        <div>
-                          <p className="text-xs uppercase tracking-[0.16em] text-primary/70">Единый сценарий выбора доли</p>
-                          <h4 className="mt-2 text-lg font-semibold text-foreground">Сначала выбираете процент, затем переходите в профиль без лишних развилок.</h4>
-                          <p className="mt-2 text-sm leading-6 text-muted-foreground">Карточка на главной теперь ведёт в тот же сценарий, что и в каталоге: свободные доли шагом {featuredAnimalShareUnitPercent}% и один основной CTA в профиле животного.</p>
-                        </div>
-                        <div className="rounded-2xl bg-secondary px-4 py-3 text-sm text-foreground">
-                          <div className="text-xs uppercase tracking-[0.16em] text-muted-foreground">Стартовая доля</div>
-                          <div className="mt-1 font-semibold">{featuredAnimalPrimarySharePercent}% · {new Intl.NumberFormat("ru-RU", { style: "currency", currency: "RUB", maximumFractionDigits: 0 }).format(featuredAnimalPrimarySharePriceMinor / 100)}</div>
-                          <div className="mt-1 text-xs text-muted-foreground">Первый доступный вариант для следующего шага</div>
-                        </div>
-                      </div>
-
-                      <div className="mt-4 flex flex-wrap gap-2">
-                        {featuredAnimalAvailableSharePercents.length ? featuredAnimalAvailableSharePercents.map((percent: number) => (
-                          <span key={percent} className={`rounded-full px-3 py-1.5 text-xs font-medium ${percent === featuredAnimalPrimarySharePercent ? "bg-primary text-primary-foreground" : "border border-border bg-white text-foreground"}`}>
-                            {percent}%
-                          </span>
-                        )) : (
-                          <span className="rounded-full bg-muted px-3 py-1.5 text-xs text-muted-foreground">Свободных долей сейчас нет</span>
-                        )}
-                      </div>
-
-                      <Link href={featuredAnimalProfileHref} className="mt-4 inline-flex w-full items-center justify-between rounded-2xl bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground shadow-[0_18px_40px_-20px_rgba(26,58,42,0.65)] transition-all hover:-translate-y-0.5 hover:bg-primary/95">
-                        <span>Открыть профиль и продолжить с выбранной долей</span>
-                        <ArrowRight className="h-4 w-4" />
-                      </Link>
+                    <div className="mt-4">
+                      <ShareSelectionPreviewCard
+                        priceLabel={new Intl.NumberFormat("ru-RU", { style: "currency", currency: "RUB", maximumFractionDigits: 0 }).format((featuredAnimal?.fullPriceMinor ?? 0) / 100)}
+                        occupiedPercent={featuredAnimalOwnedPercent}
+                        availablePercent={featuredAnimalAvailablePercent}
+                        shareUnitPercent={featuredAnimalShareUnitPercent}
+                        primarySharePercent={featuredAnimalPrimarySharePercent}
+                        primarySharePriceLabel={new Intl.NumberFormat("ru-RU", { style: "currency", currency: "RUB", maximumFractionDigits: 0 }).format(featuredAnimalPrimarySharePriceMinor / 100)}
+                        availableSharePercents={featuredAnimalAvailableSharePercents}
+                        helperText={`Карточка на главной теперь ведёт в тот же сценарий, что и в каталоге: свободные доли шагом ${featuredAnimalShareUnitPercent}% и один основной CTA в профиле животного.`}
+                        ctaLabel="Открыть профиль и продолжить с выбранной долей"
+                        ctaHref={featuredAnimalProfileHref}
+                      />
                     </div>
                   </div>
 
