@@ -96,4 +96,20 @@ describe("ShareSelectionPreviewCard", () => {
     expect(markup).toContain("Подготавливаем следующий шаг");
     expect(markup).toContain("animate-spin");
   });
+
+  it("shows login-required CTA state without switching to pending spinner", () => {
+    const markup = renderToStaticMarkup(
+      <ShareSelectionPreviewCard
+        {...baseProps}
+        ctaHref="/animals/marta?share=20"
+        ctaLabel="Войти и продолжить"
+        ctaLoginRequired
+      />
+    );
+
+    expect(markup).toContain("Войти и продолжить");
+    expect(markup).toContain('<a href="/animals/marta?share=20"');
+    expect(markup).not.toContain("animate-spin");
+    expect(markup).toContain("lucide-package");
+  });
 });

@@ -60,3 +60,4 @@
 - [x] Проверить и исправить ошибку на странице галереи животных
 - [x] Добавить unit-тест для ShareSelectionPreviewCard, чтобы избежать появления вложенных ссылок в будущем
 - [x] Расширить unit-тест ShareSelectionPreviewCard проверками состояний disabled и ctaPending
+- [x] Добавить unit-тест для ShareSelectionPreviewCard на состояние ctaLoginRequired
