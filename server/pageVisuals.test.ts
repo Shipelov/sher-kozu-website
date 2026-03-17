@@ -142,9 +142,12 @@ describe("page visual integration source smoke", () => {
   it("keeps animal profile focused on one share-selection flow without plan and duration branching", () => {
     expect(animalProfileSource).toContain("AnimalShareCard");
     expect(animalProfileSource).toContain("Статус, доля и цена");
-    expect(animalProfileSource).toContain("Вы выбираете только долю, а базовый формат участия подставляется автоматически.");
+    expect(animalProfileSource).toContain("Пока вы знакомитесь с профилем и выбираете долю. Действия владельца откроются сразу после оформления участия.");
+    expect(animalProfileSource).toContain("У вас уже есть ${mySharePercent}% участия");
     expect(animalProfileSource).toContain("Продолжить с выбранной долей");
-    expect(animalProfileSource).toContain("Бронь ${selectedSharePercent}% через единый сценарий профиля животного");
+    expect(animalProfileSource).toContain("Увеличить свою долю");
+    expect(animalProfileSource).toContain("Выбрать долю участия");
+    expect(animalProfileSource).toContain("Посмотреть дневник и уход");
     expect(animalProfileSource).toContain('new URLSearchParams(window.location.search).get("share")');
     expect(animalProfileSource).toContain('params.set("share", String(selectedSharePercent))');
     expect(animalProfileSource).not.toContain("План участия");
@@ -179,7 +182,8 @@ describe("page visual integration source smoke", () => {
     expect(animalProfileSource).toContain('new URLSearchParams(window.location.search).get("share")');
     expect(animalProfileSource).toContain('params.set("share", String(selectedSharePercent))');
     expect(animalProfileSource).toContain("Продолжить с выбранной долей");
-    expect(animalProfileSource).toContain("Бронь ${selectedSharePercent}% через единый сценарий профиля животного");
+    expect(animalProfileSource).toContain("Выбрать долю участия");
+    expect(animalProfileSource).toContain("Управление галереей откроется после оформления доли");
 
     expect(shareSelectionPreviewCardSource).toContain("Выбор доли участия");
     expect(shareSelectionPreviewCardSource).toContain("Передвигайте ползунок шагом");

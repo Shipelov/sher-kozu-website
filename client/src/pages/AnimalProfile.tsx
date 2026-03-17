@@ -309,7 +309,9 @@ export default function AnimalProfile() {
 
   const utils = trpc.useUtils();
   const animalQuery = trpc.animals.getBySlug.useQuery({ slug: animalSlug }, { enabled: Boolean(animalSlug) });
-  const photosQuery = trpc.animalPhotos.list.useQuery({ animalSlug }, { enabled: Boolean(animalSlug) && isAuthenticated });
+  const mySharePercent = animalQuery.data?.mySharePercent ?? 0;
+  const hasOwnerAccess = mySharePercent > 0;
+  const photosQuery = trpc.animalPhotos.list.useQuery({ animalSlug }, { enabled: Boolean(animalSlug) && isAuthenticated && hasOwnerAccess });
   const initialSharePercent = useMemo(() => {
     if (typeof window === "undefined") return 10;
     const value = Number(new URLSearchParams(window.location.search).get("share"));
@@ -761,18 +763,37 @@ export default function AnimalProfile() {
                 </motion.p>
 
                 <motion.div initial={{ opacity: 0, y: 22 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.22 }} className="mt-8 flex flex-col gap-3 sm:flex-row">
-                  <Link href={`/tracker?animal=${animalSlug}`} className="group inline-flex items-center justify-center gap-2 rounded-full bg-primary px-7 py-4 text-sm font-semibold text-primary-foreground shadow-[0_18px_40px_-20px_rgba(26,58,42,0.65)] transition-all duration-300 hover:-translate-y-0.5 hover:bg-primary/95">
-                    {profileContent.trackerTitle}
-                    <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
-                  </Link>
-                  <Link href={`/club?animal=${animalSlug}`} className="inline-flex items-center justify-center gap-2 rounded-full border border-border bg-white/80 px-7 py-4 text-sm font-semibold text-foreground backdrop-blur transition-colors hover:bg-white">
-                    {profileContent.clubTitle}
-                    <Heart className="h-4 w-4" />
-                  </Link>
-                  <Link href="/dashboard" className="inline-flex items-center justify-center gap-2 rounded-full border border-primary/15 bg-secondary/70 px-7 py-4 text-sm font-semibold text-primary transition-colors hover:bg-secondary">
-                    Вернуться в кабинет
-                    <Sparkles className="h-4 w-4" />
-                  </Link>
+                  {hasOwnerAccess ? (
+                    <>
+                      <Link href={`/tracker?animal=${animalSlug}`} className="group inline-flex items-center justify-center gap-2 rounded-full bg-primary px-7 py-4 text-sm font-semibold text-primary-foreground shadow-[0_18px_40px_-20px_rgba(26,58,42,0.65)] transition-all duration-300 hover:-translate-y-0.5 hover:bg-primary/95">
+                        {profileContent.trackerTitle}
+                        <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+                      </Link>
+                      <Link href={`/club?animal=${animalSlug}`} className="inline-flex items-center justify-center gap-2 rounded-full border border-border bg-white/80 px-7 py-4 text-sm font-semibold text-foreground backdrop-blur transition-colors hover:bg-white">
+                        {profileContent.clubTitle}
+                        <Heart className="h-4 w-4" />
+                      </Link>
+                      <Link href="/dashboard" className="inline-flex items-center justify-center gap-2 rounded-full border border-primary/15 bg-secondary/70 px-7 py-4 text-sm font-semibold text-primary transition-colors hover:bg-secondary">
+                        Вернуться в кабинет
+                        <Sparkles className="h-4 w-4" />
+                      </Link>
+                    </>
+                  ) : (
+                    <>
+                      <button type="button" onClick={() => document.getElementById("share-selection")?.scrollIntoView({ behavior: "smooth", block: "start" })} className="group inline-flex items-center justify-center gap-2 rounded-full bg-primary px-7 py-4 text-sm font-semibold text-primary-foreground shadow-[0_18px_40px_-20px_rgba(26,58,42,0.65)] transition-all duration-300 hover:-translate-y-0.5 hover:bg-primary/95">
+                        Выбрать долю участия
+                        <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+                      </button>
+                      <button type="button" onClick={() => document.getElementById("profile-diary")?.scrollIntoView({ behavior: "smooth", block: "start" })} className="inline-flex items-center justify-center gap-2 rounded-full border border-border bg-white/80 px-7 py-4 text-sm font-semibold text-foreground backdrop-blur transition-colors hover:bg-white">
+                        Посмотреть дневник и уход
+                        <Heart className="h-4 w-4" />
+                      </button>
+                      <Link href="/animals" className="inline-flex items-center justify-center gap-2 rounded-full border border-primary/15 bg-secondary/70 px-7 py-4 text-sm font-semibold text-primary transition-colors hover:bg-secondary">
+                        Вернуться в галерею
+                        <Sparkles className="h-4 w-4" />
+                      </Link>
+                    </>
+                  )}
                 </motion.div>
 
                 <div className="mt-10 grid max-w-2xl grid-cols-2 gap-3 md:grid-cols-4">
@@ -826,7 +847,7 @@ export default function AnimalProfile() {
                       </div>
                     </div>
 
-                    <div className="overflow-hidden rounded-[1.75rem] border border-primary/15 bg-card p-5 shadow-sm">
+                    <div id="share-selection" className="overflow-hidden rounded-[1.75rem] border border-primary/15 bg-card p-5 shadow-sm">
                       <div>
                         <p className="text-xs uppercase tracking-[0.18em] text-primary">Долевое участие</p>
                         <h3 className="mt-2 text-2xl font-semibold text-foreground">Цена и занятость {displayName}</h3>
@@ -848,9 +869,9 @@ export default function AnimalProfile() {
                           primarySharePercent={availableSharePercents[0] ?? shareUnitPercent}
                           primarySharePriceLabel={formatCurrency(animalQuery.data?.primarySharePriceMinor ?? Math.round((fullPriceMinor * (availableSharePercents[0] ?? shareUnitPercent)) / 100), currencyCode)}
                           availableSharePercents={availableSharePercents}
-                          helperText={`Следующий шаг всегда один: забронировать выбранный процент ${displayName} и перейти к подтверждению участия без лишних развилок.`}
-                          description="Вы выбираете только долю, а базовый формат участия подставляется автоматически."
-                          ctaLabel={isAuthenticated ? "Продолжить с выбранной долей" : "Войдите, чтобы продолжить"}
+                          helperText={hasOwnerAccess ? `У вас уже есть ${mySharePercent}% участия в ${displayName}. Можно перейти к действиям владельца или оформить дополнительную долю, если она ещё свободна.` : `Следующий шаг всегда один: забронировать выбранный процент ${displayName} и перейти к подтверждению участия без лишних развилок.`}
+                          description={hasOwnerAccess ? "После подтверждённого участия вам открываются маршруты владельца: управление фото, клуб и трекер продукции." : "Пока вы знакомитесь с профилем и выбираете долю. Действия владельца откроются сразу после оформления участия."}
+                          ctaLabel={hasOwnerAccess ? "Увеличить свою долю" : isAuthenticated ? "Продолжить с выбранной долей" : "Войдите, чтобы продолжить"}
                           onCtaClick={handlePurchaseShare}
                           ctaDisabled={!availableSharePercents.length || purchaseShare.isPending || !isAuthenticated}
                           ctaPending={purchaseShare.isPending}
@@ -968,7 +989,7 @@ export default function AnimalProfile() {
                 </div>
               </motion.div>
 
-              <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.06 }} className="rounded-[2rem] border border-border/70 bg-card p-6 shadow-sm">
+              <motion.div id="profile-diary" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.06 }} className="rounded-[2rem] border border-border/70 bg-card p-6 shadow-sm">
                 <div className="flex flex-wrap items-start justify-between gap-4">
                   <div>
                     <p className="text-xs uppercase tracking-[0.22em] text-primary">Дневник и прозрачность</p>
@@ -1053,8 +1074,8 @@ export default function AnimalProfile() {
                 <div className="flex flex-wrap items-start justify-between gap-4">
                   <div>
                     <p className="text-xs uppercase tracking-[0.22em] text-primary">Галерея профиля</p>
-                    <h3 className="mt-2 text-2xl font-semibold text-foreground">Все действия профиля животного</h3>
-                    <p className="mt-2 max-w-xl text-sm leading-7 text-muted-foreground">Здесь собран весь рабочий слой кабинета: загрузка, удаление, смена обложки, порядок фото, просмотр и сценарии участия.</p>
+                    <h3 className="mt-2 text-2xl font-semibold text-foreground">{hasOwnerAccess ? "Действия владельца в профиле животного" : "Фотографии и история животного"}</h3>
+                    <p className="mt-2 max-w-xl text-sm leading-7 text-muted-foreground">{hasOwnerAccess ? "После оформления участия вы можете обновлять галерею, выбирать обложку, менять порядок фото и вести живой профиль своего животного." : "До оформления участия вам доступен просмотр галереи, истории и маршрута животного. Управление фото откроется после покупки доли."}</p>
                   </div>
                   <div className="inline-flex items-center gap-2 rounded-full border border-border bg-background px-3 py-1.5 text-xs text-muted-foreground">
                     <Images className="h-3.5 w-3.5" />
@@ -1096,15 +1117,17 @@ export default function AnimalProfile() {
                           <p className="text-xs leading-5 text-muted-foreground">{image.meta}</p>
                         </div>
                         <div className="flex flex-wrap gap-2">
-                          <button type="button" onClick={() => handleSetCoverImage(image)} className="inline-flex items-center gap-1 rounded-full border border-border bg-white px-3 py-1 text-xs text-foreground transition hover:bg-muted">
-                            <Star className="h-3.5 w-3.5" />
-                            Обложка
-                          </button>
+                          {hasOwnerAccess ? (
+                            <button type="button" onClick={() => handleSetCoverImage(image)} className="inline-flex items-center gap-1 rounded-full border border-border bg-white px-3 py-1 text-xs text-foreground transition hover:bg-muted">
+                              <Star className="h-3.5 w-3.5" />
+                              Обложка
+                            </button>
+                          ) : null}
                           <button type="button" onClick={() => setLightboxOpen(true)} className="inline-flex items-center gap-1 rounded-full border border-border bg-white px-3 py-1 text-xs text-foreground transition hover:bg-muted">
                             <Play className="h-3.5 w-3.5" />
                             Просмотр
                           </button>
-                          {image.isUploaded && image.photoId ? (
+                          {hasOwnerAccess && image.isUploaded && image.photoId ? (
                             <>
                               <button type="button" onClick={() => moveUploadedPhoto(image.photoId!, "left")} className="inline-flex items-center gap-1 rounded-full border border-border bg-white px-3 py-1 text-xs text-foreground transition hover:bg-muted">
                                 <ChevronLeft className="h-3.5 w-3.5" />
@@ -1126,14 +1149,21 @@ export default function AnimalProfile() {
                   ))}
                 </div>
 
-                <label onDragOver={handleDropZoneDragOver} onDragLeave={handleDropZoneDragLeave} onDrop={handleDropZoneDrop} className={`mt-5 flex cursor-pointer flex-col items-center justify-center rounded-[1.75rem] border border-dashed px-6 py-8 text-center transition ${isDragActive ? "border-primary bg-primary/5" : "border-border/70 bg-background/70 hover:bg-muted/30"}`}>
-                  <input type="file" accept={ACCEPTED_IMAGE_TYPES.join(",")} className="hidden" onChange={handleGalleryUpload} />
-                  <div className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary">
-                    <Upload className="h-5 w-5" />
+                {hasOwnerAccess ? (
+                  <label onDragOver={handleDropZoneDragOver} onDragLeave={handleDropZoneDragLeave} onDrop={handleDropZoneDrop} className={`mt-5 flex cursor-pointer flex-col items-center justify-center rounded-[1.75rem] border border-dashed px-6 py-8 text-center transition ${isDragActive ? "border-primary bg-primary/5" : "border-border/70 bg-background/70 hover:bg-muted/30"}`}>
+                    <input type="file" accept={ACCEPTED_IMAGE_TYPES.join(",")} className="hidden" onChange={handleGalleryUpload} />
+                    <div className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary">
+                      <Upload className="h-5 w-5" />
+                    </div>
+                    <p className="mt-4 font-medium text-foreground">Загрузить новое фото</p>
+                    <p className="mt-2 max-w-md text-sm leading-6 text-muted-foreground">Поддерживаются JPG, PNG и WebP до 8 МБ. После кадрирования фото попадёт в профиль выбранного животного.</p>
+                  </label>
+                ) : (
+                  <div className="mt-5 rounded-[1.75rem] border border-dashed border-primary/20 bg-primary/5 px-6 py-8 text-center">
+                    <p className="font-medium text-foreground">Управление галереей откроется после оформления доли</p>
+                    <p className="mt-2 mx-auto max-w-md text-sm leading-6 text-muted-foreground">Сейчас вам доступны просмотр фото, история животного и выбор доли участия. После покупки можно будет загружать снимки, менять обложку и настраивать порядок галереи.</p>
                   </div>
-                  <p className="mt-4 font-medium text-foreground">Загрузить новое фото</p>
-                  <p className="mt-2 max-w-md text-sm leading-6 text-muted-foreground">Поддерживаются JPG, PNG и WebP до 8 МБ. После кадрирования фото попадёт в профиль выбранного животного.</p>
-                </label>
+                )}
 
                 <div className="mt-5 grid gap-3 md:grid-cols-2">
                   <button type="button" onClick={handleCopyShareLink} className="inline-flex items-center justify-center gap-2 rounded-full border border-border bg-white px-5 py-3 text-sm font-medium text-foreground transition hover:bg-muted">
@@ -1156,7 +1186,7 @@ export default function AnimalProfile() {
                   </div>
                 </div>
 
-                {photoActivity.length ? (
+                {hasOwnerAccess && photoActivity.length ? (
                   <div className="mt-5 rounded-[1.5rem] border border-border/70 bg-background/70 p-4">
                     <p className="text-xs uppercase tracking-[0.18em] text-primary">Последние действия</p>
                     <div className="mt-3 space-y-3">
