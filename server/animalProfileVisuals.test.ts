@@ -27,5 +27,8 @@ describe("AnimalProfile visual integration", () => {
     expect(source).toContain("animal-guest-preview-diary-note");
     expect(source).toContain("animal-guest-preview-locked-gallery");
     expect(source).toContain("Как работает маршрут владельца");
+    expect(source).toContain("animal-guest-preview-register-cta");
+    expect(source).toContain("animal-guest-preview-register-cta-secondary");
+    expect(source).toContain("Зарегистрироваться, чтобы увидеть больше");
   });
 });

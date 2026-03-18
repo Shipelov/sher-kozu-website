@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
 import { Link, useLocation, useRoute } from "wouter";
 import { useAuth } from "@/_core/hooks/useAuth";
+import { getLoginUrl } from "@/const";
 import Navbar from "@/components/Navbar";
 import AnimalShareCard from "@/components/AnimalShareCard";
 import {
@@ -856,6 +857,15 @@ export default function AnimalProfile() {
                               <p className="text-xs uppercase tracking-[0.18em] text-primary">Guest preview</p>
                               <h4 className="mt-2 text-lg font-semibold text-foreground">Ограниченный предпросмотр профиля питомца</h4>
                               <p className="mt-2 max-w-xl text-sm leading-6 text-muted-foreground">Сейчас вы видите открытые части профиля: историю животного, фотографии, базовые показатели и доступные доли. Дневник владельца, управление галереей и персональный маршрут откроются после входа и оформления участия.</p>
+                              <div className="mt-4 flex flex-wrap gap-3">
+                                <a
+                                  data-testid="animal-guest-preview-register-cta"
+                                  href={getLoginUrl(`/animals/${animalSlug ?? DEFAULT_ROUTE_SLUG}`)}
+                                  className="inline-flex items-center justify-center rounded-full bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground transition hover:opacity-90"
+                                >
+                                  Зарегистрироваться, чтобы увидеть больше
+                                </a>
+                              </div>
                             </div>
                             <Link href="/dashboard" className="inline-flex items-center justify-center gap-2 rounded-full border border-primary/20 bg-white px-4 py-2 text-sm font-medium text-primary transition hover:bg-primary/5">
                               Как работает маршрут владельца
@@ -964,6 +974,7 @@ export default function AnimalProfile() {
                   {isGuestPreview ? (
                     <div data-testid="animal-guest-preview-open-access" className="lg:col-span-2 rounded-[1.5rem] border border-dashed border-primary/25 bg-primary/5 p-5">
                       <p className="text-xs uppercase tracking-[0.18em] text-primary">Что доступно до входа</p>
+                      <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">Если профиль вам откликается, вы можете зарегистрироваться уже сейчас: после входа откроются персональные обновления, owner-only действия и следующий шаг к участию.</p>
                       <div className="mt-3 grid gap-3 md:grid-cols-3">
                         <div className="rounded-2xl bg-card px-4 py-3 text-sm text-muted-foreground">Изучить биографию, происхождение и базовые метрики животного.</div>
                         <div className="rounded-2xl bg-card px-4 py-3 text-sm text-muted-foreground">Посмотреть открытый дневник, галерею и продуктовый потенциал.</div>
@@ -1193,6 +1204,17 @@ export default function AnimalProfile() {
                   <div data-testid="animal-guest-preview-locked-gallery" className="mt-5 rounded-[1.75rem] border border-dashed border-primary/20 bg-primary/5 px-6 py-8 text-center">
                     <p className="font-medium text-foreground">Управление галереей откроется после оформления доли</p>
                     <p className="mt-2 mx-auto max-w-md text-sm leading-6 text-muted-foreground">Сейчас вам доступны просмотр фото, история животного и выбор доли участия. После покупки можно будет загружать снимки, менять обложку и настраивать порядок галереи.</p>
+                    {isGuestPreview ? (
+                      <div className="mt-4 flex justify-center">
+                        <a
+                          data-testid="animal-guest-preview-register-cta-secondary"
+                          href={getLoginUrl(`/animals/${animalSlug ?? DEFAULT_ROUTE_SLUG}`)}
+                          className="inline-flex items-center justify-center rounded-full border border-primary/20 bg-background px-5 py-2.5 text-sm font-semibold text-primary transition hover:border-primary/40 hover:bg-primary/5"
+                        >
+                          Зарегистрироваться, чтобы увидеть больше
+                        </a>
+                      </div>
+                    ) : null}
                     {isGuestPreview ? (
                       <div className="mt-4 flex flex-col items-center justify-center gap-3 sm:flex-row">
                         <Link href="/animals" className="inline-flex items-center justify-center gap-2 rounded-full border border-border bg-white px-5 py-3 text-sm font-medium text-foreground transition hover:bg-muted">
