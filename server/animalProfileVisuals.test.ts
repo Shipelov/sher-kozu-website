@@ -37,4 +37,9 @@ describe("AnimalProfile visual integration", () => {
     expect(source).toContain("Откроете кабинет с долей участия, трекером продукции и следующими шагами.");
     expect(source).toContain("Получите доступ к дневнику ухода, клубным визитам и owner-only обновлениям.");
   });
+
+  it("keeps guest CTA interactive and redirects to login with selected share preserved", () => {
+    expect(source).toContain("window.location.href = getLoginUrl(`/animals/${animalSlug}?share=${selectedSharePercent}`);");
+    expect(source).toContain("ctaDisabled={!availableSharePercents.length || purchaseShare.isPending}");
+  });
 });

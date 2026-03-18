@@ -710,7 +710,7 @@ export default function AnimalProfile() {
     }
 
     if (!isAuthenticated) {
-      toast.error("Нужен вход в аккаунт", { description: "Авторизуйтесь, чтобы выбрать и забронировать долю животного." });
+      window.location.href = getLoginUrl(`/animals/${animalSlug}?share=${selectedSharePercent}`);
       return;
     }
 
@@ -899,7 +899,7 @@ export default function AnimalProfile() {
                           description={hasOwnerAccess ? "После подтверждённого участия вам открываются маршруты владельца: управление фото, клуб и трекер продукции." : "Пока вы знакомитесь с профилем и выбираете долю. Действия владельца откроются сразу после оформления участия."}
                           ctaLabel={hasOwnerAccess ? "Увеличить свою долю" : isAuthenticated ? "Продолжить с выбранной долей" : "Войдите, чтобы продолжить"}
                           onCtaClick={handlePurchaseShare}
-                          ctaDisabled={!availableSharePercents.length || purchaseShare.isPending || !isAuthenticated}
+                          ctaDisabled={!availableSharePercents.length || purchaseShare.isPending}
                           ctaPending={purchaseShare.isPending}
                           ctaLoginRequired={!isAuthenticated}
                           selectedSharePercent={selectedSharePercent}
