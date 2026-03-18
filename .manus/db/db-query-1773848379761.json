@@ -1,0 +1,17 @@
+{
+  "query": "SELECT \n  (SELECT COUNT(*) FROM animalOwnerships WHERE animalId IN (SELECT id FROM animals WHERE ownerOpenId LIKE 'buyer-%')) as buyer_ownerships,\n  (SELECT COUNT(*) FROM animalPhotos WHERE ownerOpenId LIKE 'buyer-%') as buyer_photos,\n  (SELECT COUNT(*) FROM walletTransactions WHERE ownerOpenId LIKE 'buyer-%') as buyer_wallet,\n  (SELECT COUNT(*) FROM families WHERE ownerOpenId LIKE 'buyer-%') as buyer_families,\n  (SELECT COUNT(*) FROM partnerLeads WHERE ownerOpenId LIKE 'buyer-%') as buyer_leads;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3J2fXRHx8d1YjF6.root --database mLhmg5VmBsEBpZiYqdnhMQ --execute SELECT \n  (SELECT COUNT(*) FROM animalOwnerships WHERE animalId IN (SELECT id FROM animals WHERE ownerOpenId LIKE 'buyer-%')) as buyer_ownerships,\n  (SELECT COUNT(*) FROM animalPhotos WHERE ownerOpenId LIKE 'buyer-%') as buyer_photos,\n  (SELECT COUNT(*) FROM walletTransactions WHERE ownerOpenId LIKE 'buyer-%') as buyer_wallet,\n  (SELECT COUNT(*) FROM families WHERE ownerOpenId LIKE 'buyer-%') as buyer_families,\n  (SELECT COUNT(*) FROM partnerLeads WHERE ownerOpenId LIKE 'buyer-%') as buyer_leads;",
+  "rows": [
+    {
+      "buyer_ownerships": "54",
+      "buyer_photos": "0",
+      "buyer_wallet": "0",
+      "buyer_families": "0",
+      "buyer_leads": "0"
+    }
+  ],
+  "messages": [],
+  "stdout": "buyer_ownerships\tbuyer_photos\tbuyer_wallet\tbuyer_families\tbuyer_leads\n54\t0\t0\t0\t0\n",
+  "stderr": "",
+  "execution_time_ms": 384
+}

@@ -128,8 +128,8 @@ describe("page visual integration source smoke", () => {
     expect(adminAnimalsSource).toContain("Войти и открыть админку животных");
     expect(adminAnimalsSource).toContain("Роль:");
     expect(adminAnimalsSource).toContain("Распределение долей");
-    expect(adminAnimalsSource).toContain("Слоты 10%");
-    expect(adminAnimalsSource).toContain("Шаг продажи:");
+    expect(adminAnimalsSource).toContain("bg-emerald-500");
+    expect(adminAnimalsSource).toContain("bg-stone-200");
     expect(adminAnimalsSource).toContain("фактическое распределение 10%-долей");
   });
 

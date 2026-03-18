@@ -1,0 +1,16 @@
+{
+  "query": "SELECT openId, name, role, createdAt FROM users ORDER BY createdAt;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3J2fXRHx8d1YjF6.root --database mLhmg5VmBsEBpZiYqdnhMQ --execute SELECT openId, name, role, createdAt FROM users ORDER BY createdAt;",
+  "rows": [
+    {
+      "openId": "jP5iBYMcdYguBWJPw5Sruu",
+      "name": "Andrey Shipelov",
+      "role": "admin",
+      "createdAt": "2026-03-13 17:10:50"
+    }
+  ],
+  "messages": [],
+  "stdout": "openId\tname\trole\tcreatedAt\njP5iBYMcdYguBWJPw5Sruu\tAndrey Shipelov\tadmin\t2026-03-13 17:10:50\n",
+  "stderr": "",
+  "execution_time_ms": 358
+}

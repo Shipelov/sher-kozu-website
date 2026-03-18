@@ -611,25 +611,19 @@ function fileToBase64(file: File) {
   });
 }
 
-export function ShareSlotsGrid({ animal }: { animal: AdminAnimalRecord }) {
+export function ShareSlotsGrid({ animal, compact = false }: { animal: AdminAnimalRecord; compact?: boolean }) {
   const slotItems = buildShareSlots(animal);
+  const dotSize = compact ? "h-3 w-3" : "h-4 w-4";
   return (
-    <div className="space-y-3">
-      <div className="flex items-center justify-between gap-2">
-        <p className="text-sm font-medium text-foreground">Слоты по 10%</p>
-        <p className="text-xs text-muted-foreground">{animal.activeOwnerships}/{animal.totalOwnershipSlots} занято</p>
-      </div>
-      <div className="grid grid-cols-5 gap-2">
-        {slotItems.map((slot) => (
-          <div
-            key={slot.index}
-            className={`rounded-xl border px-2 py-2 text-center text-xs font-medium ${slot.filled ? "border-emerald-200 bg-emerald-50 text-emerald-800" : "border-dashed border-stone-300 bg-stone-50 text-stone-500"}`}
-            title={`Слот ${slot.index}: ${slot.label}`}
-          >
-            {slot.index * animal.shareUnitPercent}%
-          </div>
-        ))}
-      </div>
+    <div className="flex flex-wrap items-center gap-1.5">
+      {slotItems.map((slot) => (
+        <div
+          key={slot.index}
+          className={`${dotSize} rounded-full ${slot.filled ? "bg-emerald-500" : "bg-stone-200"}`}
+          title={`${slot.index * animal.shareUnitPercent}% — ${slot.label}`}
+        />
+      ))}
+      <span className="ml-1 text-xs text-muted-foreground">{animal.activeOwnerships}/{animal.totalOwnershipSlots}</span>
     </div>
   );
 }
@@ -682,37 +676,15 @@ function ShareDistributionPanel({ animals }: { animals: AdminAnimalRecord[] }) {
             const shareTone = getShareStatusTone(animal);
             return (
               <div key={animal.id} className="rounded-[1.5rem] border border-border/70 bg-stone-50/60 p-4">
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                  <div className="space-y-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <p className="font-semibold text-foreground">{animal.name}</p>
-                      <Badge className={`rounded-full border ${shareTone.className}`}>{shareTone.label}</Badge>
-                    </div>
-                    <p className="text-sm text-muted-foreground">
-                      {animal.ownedPercent}% занято · {animal.availablePercent}% доступно · шаг {animal.shareUnitPercent}%
-                    </p>
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2">
+                    <p className="font-semibold text-foreground">{animal.name}</p>
+                    <Badge className={`rounded-full border ${shareTone.className}`}>{shareTone.label}</Badge>
                   </div>
-                  <div className="rounded-2xl border border-border/70 bg-white px-3 py-2 text-right">
-                    <p className="text-xs uppercase tracking-[0.14em] text-muted-foreground">Доля 10%</p>
-                    <p className="text-sm font-semibold text-foreground">{formatPrice(animal.shareUnitPriceMinor)}</p>
-                  </div>
+                  <p className="text-sm font-semibold text-foreground whitespace-nowrap">{formatPrice(animal.shareUnitPriceMinor)}</p>
                 </div>
-                <div className="mt-4 space-y-4">
-                  <div className="h-3 overflow-hidden rounded-full bg-stone-200">
-                    <div className="h-full rounded-full bg-emerald-500" style={{ width: `${animal.ownedPercent}%` }} />
-                  </div>
+                <div className="mt-3">
                   <ShareSlotsGrid animal={animal} />
-                  <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
-                    {((animal.availableSharePercents?.length ? animal.availableSharePercents : [0])).map((percent) => (
-                      <Badge
-                        key={`${animal.id}-${percent}`}
-                        variant="secondary"
-                        className="rounded-full border border-border/70 bg-white text-foreground"
-                      >
-                        {percent === 0 ? "Свободных долей нет" : `Можно купить ${percent}%`}
-                      </Badge>
-                    ))}
-                  </div>
                 </div>
               </div>
             );
@@ -930,7 +902,6 @@ function AdminAnimalsTable({
             <TableHead>Животное</TableHead>
             <TableHead>Статус</TableHead>
             <TableHead>Доли</TableHead>
-            <TableHead>Слоты 10%</TableHead>
             <TableHead>Показатели</TableHead>
             <TableHead>Цена</TableHead>
             <TableHead className="text-right">Действия</TableHead>
@@ -972,27 +943,7 @@ function AdminAnimalsTable({
                   </div>
                 </TableCell>
                 <TableCell>
-                  <div className="space-y-2 text-sm">
-                    <p className="font-medium text-foreground">{animal.ownedPercent}% занято</p>
-                    <p className="text-muted-foreground">{animal.availablePercent}% доступно</p>
-                    <p className="text-xs text-muted-foreground">{animal.activeOwnerships} из {animal.totalOwnershipSlots} слотов заняты</p>
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <div className="space-y-2">
-                    <div className="grid grid-cols-5 gap-1.5">
-                      {buildShareSlots(animal).map((slot) => (
-                        <div
-                          key={slot.index}
-                          className={`rounded-lg border px-1 py-1 text-center text-[11px] font-medium ${slot.filled ? "border-emerald-200 bg-emerald-50 text-emerald-800" : "border-dashed border-stone-300 bg-stone-50 text-stone-500"}`}
-                          title={`Слот ${slot.index}: ${slot.label}`}
-                        >
-                          {slot.index}
-                        </div>
-                      ))}
-                    </div>
-                    <p className="text-xs text-muted-foreground">Шаг продажи: {animal.shareUnitPercent}%</p>
-                  </div>
+                  <ShareSlotsGrid animal={animal} compact />
                 </TableCell>
                 <TableCell>
                   <div className="grid gap-1 text-sm text-muted-foreground">

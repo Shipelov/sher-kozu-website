@@ -1,0 +1,42 @@
+{
+  "query": "SELECT id, ownerOpenId, name, animalSpecies, slug, animalStatus FROM animals ORDER BY animalSpecies, name;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3J2fXRHx8d1YjF6.root --database mLhmg5VmBsEBpZiYqdnhMQ --execute SELECT id, ownerOpenId, name, animalSpecies, slug, animalStatus FROM animals ORDER BY animalSpecies, name;",
+  "rows": [
+    {
+      "id": "60001",
+      "ownerOpenId": "jP5iBYMcdYguBWJPw5Sruu",
+      "name": "Kozya",
+      "animalSpecies": "goat",
+      "slug": "kozya",
+      "animalStatus": "fully_booked"
+    },
+    {
+      "id": "1",
+      "ownerOpenId": "jP5iBYMcdYguBWJPw5Sruu",
+      "name": "Марта",
+      "animalSpecies": "goat",
+      "slug": "marta-jp5iby",
+      "animalStatus": "archived"
+    },
+    {
+      "id": "30001",
+      "ownerOpenId": "jP5iBYMcdYguBWJPw5Sruu",
+      "name": "Мира",
+      "animalSpecies": "goat",
+      "slug": "mira-goat",
+      "animalStatus": "fully_booked"
+    },
+    {
+      "id": "180005",
+      "ownerOpenId": "jP5iBYMcdYguBWJPw5Sruu",
+      "name": "Злата",
+      "animalSpecies": "sheep",
+      "slug": "zlata-jp5ibymcdygu",
+      "animalStatus": "public_available"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\townerOpenId\tname\tanimalSpecies\tslug\tanimalStatus\n60001\tjP5iBYMcdYguBWJPw5Sruu\tKozya\tgoat\tkozya\tfully_booked\n1\tjP5iBYMcdYguBWJPw5Sruu\tМарта\tgoat\tmarta-jp5iby\tarchived\n30001\tjP5iBYMcdYguBWJPw5Sruu\tМира\tgoat\tmira-goat\tfully_booked\n180005\tjP5iBYMcdYguBWJPw5Sruu\tЗлата\tsheep\tzlata-jp5ibymcdygu\tpublic_available\n",
+  "stderr": "",
+  "execution_time_ms": 355
+}

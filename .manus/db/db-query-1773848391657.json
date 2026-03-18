@@ -1,0 +1,13 @@
+{
+  "query": "SELECT COUNT(*) as buyer_media FROM animalMedia WHERE animalId IN (SELECT id FROM animals WHERE ownerOpenId LIKE 'buyer-%');",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3J2fXRHx8d1YjF6.root --database mLhmg5VmBsEBpZiYqdnhMQ --execute SELECT COUNT(*) as buyer_media FROM animalMedia WHERE animalId IN (SELECT id FROM animals WHERE ownerOpenId LIKE 'buyer-%');",
+  "rows": [
+    {
+      "buyer_media": "42"
+    }
+  ],
+  "messages": [],
+  "stdout": "buyer_media\n42\n",
+  "stderr": "",
+  "execution_time_ms": 353
+}

@@ -1,0 +1,15 @@
+{
+  "query": "SELECT \n  (SELECT COUNT(*) FROM animals WHERE ownerOpenId LIKE 'buyer-%') as remaining_buyer_animals,\n  (SELECT COUNT(*) FROM animalOwnerships WHERE animalId NOT IN (SELECT id FROM animals)) as orphaned_ownerships,\n  (SELECT COUNT(*) FROM animalMedia WHERE animalId NOT IN (SELECT id FROM animals)) as orphaned_media;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3J2fXRHx8d1YjF6.root --database mLhmg5VmBsEBpZiYqdnhMQ --execute SELECT \n  (SELECT COUNT(*) FROM animals WHERE ownerOpenId LIKE 'buyer-%') as remaining_buyer_animals,\n  (SELECT COUNT(*) FROM animalOwnerships WHERE animalId NOT IN (SELECT id FROM animals)) as orphaned_ownerships,\n  (SELECT COUNT(*) FROM animalMedia WHERE animalId NOT IN (SELECT id FROM animals)) as orphaned_media;",
+  "rows": [
+    {
+      "remaining_buyer_animals": "0",
+      "orphaned_ownerships": "0",
+      "orphaned_media": "0"
+    }
+  ],
+  "messages": [],
+  "stdout": "remaining_buyer_animals\torphaned_ownerships\torphaned_media\n0\t0\t0\n",
+  "stderr": "",
+  "execution_time_ms": 362
+}

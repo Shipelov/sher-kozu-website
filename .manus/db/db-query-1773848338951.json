@@ -1,0 +1,15 @@
+{
+  "query": "SELECT \n  COUNT(*) as total,\n  SUM(CASE WHEN ownerOpenId LIKE 'buyer-%' THEN 1 ELSE 0 END) as buyer_animals,\n  SUM(CASE WHEN ownerOpenId = 'jP5iBYMcdYguBWJPw5Sruu' THEN 1 ELSE 0 END) as owner_animals\nFROM animals;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3J2fXRHx8d1YjF6.root --database mLhmg5VmBsEBpZiYqdnhMQ --execute SELECT \n  COUNT(*) as total,\n  SUM(CASE WHEN ownerOpenId LIKE 'buyer-%' THEN 1 ELSE 0 END) as buyer_animals,\n  SUM(CASE WHEN ownerOpenId = 'jP5iBYMcdYguBWJPw5Sruu' THEN 1 ELSE 0 END) as owner_animals\nFROM animals;",
+  "rows": [
+    {
+      "total": "46",
+      "buyer_animals": "42",
+      "owner_animals": "4"
+    }
+  ],
+  "messages": [],
+  "stdout": "total\tbuyer_animals\towner_animals\n46\t42\t4\n",
+  "stderr": "",
+  "execution_time_ms": 355
+}
