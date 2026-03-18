@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { motion } from "framer-motion";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import Navbar from "@/components/Navbar";
 import { trpc } from "@/lib/trpc";
 import {
@@ -168,17 +168,37 @@ function PostCard({ post }: { post: ClubPost }) {
   );
 }
 
+function getRequestedAnimalSlug() {
+  if (typeof window === "undefined") return null;
+  const params = new URLSearchParams(window.location.search);
+  return params.get("animal");
+}
+
 export default function ClubFeed() {
   const [activeFilter, setActiveFilter] = useState<FilterKey>("all");
+  const [location] = useLocation();
+  const requestedAnimalSlug = useMemo(() => getRequestedAnimalSlug(), [location]);
+
   const clubQuery = trpc.club.feed.useQuery();
+  const dashboardQuery = trpc.animals.ownerDashboard.useQuery();
   const animalsQuery = trpc.animals.listPublic.useQuery();
 
   const posts = (clubQuery.data?.posts ?? []) as ClubPost[];
   const events = (clubQuery.data?.events ?? []) as ClubEvent[];
   const members = (clubQuery.data?.members ?? []) as ClubMember[];
-  const featuredAnimalSlug = animalsQuery.data?.[0]?.slug ?? "marta";
-  const featuredAnimalName = animalsQuery.data?.[0]?.name ?? "животного";
-  const featuredAnimalProfileHref = featuredAnimalSlug ? `/animals/${featuredAnimalSlug}` : "/animals";
+
+  const ownerAnimal = dashboardQuery.data?.animal ?? null;
+  const ownership = dashboardQuery.data?.ownership ?? null;
+  const fallbackAnimal = animalsQuery.data?.find((animal) => animal.slug === requestedAnimalSlug) ?? animalsQuery.data?.[0] ?? null;
+
+  const activeAnimalSlug = ownerAnimal?.slug ?? requestedAnimalSlug ?? fallbackAnimal?.slug ?? "marta";
+  const activeAnimalName = ownerAnimal?.name ?? fallbackAnimal?.name ?? "вашего животного";
+  const activeAnimalSharePercent = ownership?.sharePercent ?? ownerAnimal?.mySharePercent ?? 0;
+
+  const profileHref = `/animals/${activeAnimalSlug}`;
+  const trackerHref = `/tracker?animal=${activeAnimalSlug}`;
+  const dashboardHref = activeAnimalSlug ? `/dashboard?animal=${activeAnimalSlug}` : "/dashboard";
+  const clubHref = activeAnimalSlug ? `/club?animal=${activeAnimalSlug}` : "/club";
 
   const visiblePosts = useMemo(() => {
     if (activeFilter === "all") return posts;
@@ -188,21 +208,34 @@ export default function ClubFeed() {
     return posts.filter((post) => post.category === activeFilter);
   }, [activeFilter, posts]);
 
-  const clubSignals = [
-    "Клуб возвращает пользователя через события, ритуалы и живой дневник фермы.",
-    "Каждый пост связан с животным, продуктом или личным семейным визитом.",
-    "Маршруты страницы сохраняют связность с Animal Profile, Product Tracker и кабинетом владельца.",
-  ];
+  const clubSignals = activeAnimalSharePercent
+    ? [
+        `Клуб собирает личный ритм вокруг ${activeAnimalName} и вашего участия ${activeAnimalSharePercent}%.`,
+        "Каждый пост возвращает владельца к животному, визитам и реальным семейным ритуалам на ферме.",
+        "Все переходы синхронизированы с профилем животного, продуктовым трекером и кабинетом владельца.",
+      ]
+    : [
+        "Клуб возвращает пользователя через события, ритуалы и живой дневник фермы.",
+        "Каждый пост связан с животным, продуктом или личным семейным визитом.",
+        "Маршруты страницы сохраняют связность с Animal Profile, Product Tracker и кабинетом владельца.",
+      ];
 
   const stats = [
     { value: String(members.length || 0), label: "семей в клубе" },
     { value: String(events.length || 0), label: "события в календаре" },
     { value: String(posts.reduce((sum, post) => sum + post.likes, 0)), label: "суммарных реакций" },
-    { value: posts.length ? "live" : "0", label: "ритм сообщества" },
+    { value: activeAnimalSharePercent ? `${activeAnimalSharePercent}%` : posts.length ? "live" : "0", label: activeAnimalSharePercent ? "ваше участие" : "ритм сообщества" },
   ];
 
-  const ritualTitle = events[0]?.title ? `${events[0].title} уже в календаре семьи.` : `День ${featuredAnimalName} уже в календаре семьи.`;
-  const ritualDescription = events[0]?.description ?? "Связь здесь строится на личных и эмоционально значимых событиях, а не только на скидках.";
+  const nextEvent = events.find((event) => ["Открыта запись", "Мест осталось мало", "Скоро"].includes(event.status)) ?? events[0] ?? null;
+  const ritualTitle = nextEvent?.title ? `${nextEvent.title} уже связано с маршрутом ${activeAnimalName}.` : `День ${activeAnimalName} уже в календаре семьи.`;
+  const ritualDescription = nextEvent?.description ?? (activeAnimalSharePercent
+    ? `Ваше участие ${activeAnimalSharePercent}% делает клубную часть не абстрактной лентой, а продолжением личной связи с ${activeAnimalName}.`
+    : "Связь здесь строится на личных и эмоционально значимых событиях, а не только на скидках.");
+
+  const heroDescription = ownership
+    ? `Клуб теперь работает как продолжение вашего маршрута владельца: вокруг ${activeAnimalName}, участия ${activeAnimalSharePercent}% и следующих семейных событий.`
+    : "Это не просто лента новостей. Клуб формирует статусную среду, семейные ритуалы, событийную жизнь и чувство принадлежности, которое возвращает владельца в продукт снова и снова.";
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -225,17 +258,14 @@ export default function ClubFeed() {
                 </div>
                 <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-2 text-xs text-white/80 backdrop-blur">
                   <MapPin className="h-4 w-4" />
-                  Семейная ферма + digital community
+                  {ownership ? `${activeAnimalName} · ${activeAnimalSharePercent}% участия` : "Семейная ферма + digital community"}
                 </div>
               </div>
 
               <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
                 <div className="max-w-2xl">
                   <h1 className="font-display text-4xl text-white md:text-6xl">Клуб Шерь Козу удерживает связь между человеком, животным и фермой.</h1>
-                  <p className="mt-4 text-sm leading-7 text-white/75 md:text-base">
-                    Это не просто лента новостей. Клуб формирует статусную среду, семейные ритуалы, событийную жизнь и чувство принадлежности,
-                    которое возвращает владельца в продукт снова и снова.
-                  </p>
+                  <p className="mt-4 text-sm leading-7 text-white/75 md:text-base">{heroDescription}</p>
                 </div>
                 <div className="grid grid-cols-1 gap-3 text-center text-white sm:grid-cols-2">
                   {stats.map((item) => (
@@ -330,7 +360,7 @@ export default function ClubFeed() {
                 transition={{ delay: 0.12 }}
                 className="min-w-0 overflow-hidden rounded-[2rem] border border-border/70 bg-card shadow-sm"
               >
-                <img src={CDN.goat} alt={featuredAnimalName} className="h-56 w-full object-cover object-top" />
+                <img src={ownerAnimal?.coverImageUrl ?? CDN.goat} alt={activeAnimalName} className="h-56 w-full object-cover object-top" />
                 <div className="p-5">
                   <p className="text-sm uppercase tracking-[0.22em] text-primary">Персональный ритуал</p>
                   <h2 className="mt-3 text-2xl font-semibold text-foreground">{ritualTitle}</h2>
@@ -388,7 +418,9 @@ export default function ClubFeed() {
                 </div>
                 <h2 className="mt-4 font-display text-3xl">Клуб удерживает связь между животным, продуктом и семьёй.</h2>
                 <p className="mt-3 text-sm leading-7 text-white/75">
-                  Пользователь возвращается сюда ради событий, сообщества и ощущения принадлежности к жизни фермы.
+                  {ownership
+                    ? `Ваш клубный маршрут связан с ${activeAnimalName}, трекером партии и кабинетом владельца без разрыва сценария.`
+                    : "Пользователь возвращается сюда ради событий, сообщества и ощущения принадлежности к жизни фермы."}
                 </p>
                 <div className="mt-5 space-y-2 text-sm text-white/72">
                   {clubSignals.map((note) => (
@@ -399,24 +431,24 @@ export default function ClubFeed() {
                   ))}
                 </div>
                 <div className="mt-6 grid gap-3">
-                  <Link href={featuredAnimalProfileHref} className="group flex flex-col items-start gap-3 rounded-2xl border border-white/12 bg-white/8 px-4 py-3 text-sm transition-colors hover:bg-white/12 sm:flex-row sm:items-center sm:justify-between">
+                  <Link href={profileHref} className="group flex flex-col items-start gap-3 rounded-2xl border border-white/12 bg-white/8 px-4 py-3 text-sm transition-colors hover:bg-white/12 sm:flex-row sm:items-center sm:justify-between">
                     <div>
-                      <div className="font-semibold text-white">К профилю {featuredAnimalName}</div>
+                      <div className="font-semibold text-white">К профилю {activeAnimalName}</div>
                       <div className="mt-1 text-xs text-white/60">Вернуться к животному, вокруг которого строится клубная история</div>
                     </div>
                     <ChevronRight className="h-5 w-5 text-amber-300 transition-transform group-hover:translate-x-0.5" />
                   </Link>
-                  <Link href="/tracker" className="group flex flex-col items-start gap-3 rounded-2xl border border-white/12 bg-white/8 px-4 py-3 text-sm transition-colors hover:bg-white/12 sm:flex-row sm:items-center sm:justify-between">
+                  <Link href={trackerHref} className="group flex flex-col items-start gap-3 rounded-2xl border border-white/12 bg-white/8 px-4 py-3 text-sm transition-colors hover:bg-white/12 sm:flex-row sm:items-center sm:justify-between">
                     <div>
                       <div className="font-semibold text-white">К трекеру продуктов</div>
                       <div className="mt-1 text-xs text-white/60">Перейти к составу, доставкам и прозрачности продуктового пути</div>
                     </div>
                     <ChevronRight className="h-5 w-5 text-amber-300 transition-transform group-hover:translate-x-0.5" />
                   </Link>
-                  <Link href="/dashboard" className="group flex flex-col items-start gap-3 rounded-2xl border border-white/12 bg-white/8 px-4 py-3 text-sm transition-colors hover:bg-white/12 sm:flex-row sm:items-center sm:justify-between">
+                  <Link href={dashboardHref} className="group flex flex-col items-start gap-3 rounded-2xl border border-white/12 bg-white/8 px-4 py-3 text-sm transition-colors hover:bg-white/12 sm:flex-row sm:items-center sm:justify-between">
                     <div>
                       <div className="font-semibold text-white">В кабинет</div>
-                      <div className="mt-1 text-xs text-white/60">Вернуться к статусам подписки и быстрым действиям владельца</div>
+                      <div className="mt-1 text-xs text-white/60">Вернуться к статусу участия, быстрым действиям и следующим шагам владельца</div>
                     </div>
                     <ChevronRight className="h-5 w-5 text-amber-300 transition-transform group-hover:translate-x-0.5" />
                   </Link>
@@ -436,9 +468,9 @@ export default function ClubFeed() {
                     <h2 className="mt-3 text-2xl font-semibold text-foreground">Какие сигналы должны возвращать пользователя</h2>
                     <div className="mt-5 space-y-3">
                       {[
-                        "Новые посты от фермы и команды ухода",
+                        `Новые посты о ${activeAnimalName} и команде ухода`,
                         "Анонсы клубных событий и персональных визитов",
-                        "Упоминания семьи и животного в клубной среде",
+                        ownership ? "Упоминания семьи и вашего животного в клубной среде" : "Упоминания семьи и животного в клубной среде",
                       ].map((item) => (
                         <div key={item} className="flex items-center justify-between gap-3 rounded-2xl bg-secondary/55 px-4 py-3">
                           <span className="text-sm text-foreground">{item}</span>
@@ -453,15 +485,18 @@ export default function ClubFeed() {
                       Уведомления помогают возвращать пользователя в ритм клуба.
                     </div>
                     <div className="mt-4 grid gap-3 sm:grid-cols-3">
-                      <Link href={featuredAnimalProfileHref} className="inline-flex items-center justify-center rounded-full bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/92">
-                        К профилю {featuredAnimalName}
+                      <Link href={profileHref} className="inline-flex items-center justify-center rounded-full bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/92">
+                        К профилю {activeAnimalName}
                       </Link>
-                      <Link href="/tracker" className="inline-flex items-center justify-center rounded-full border border-border px-4 py-3 text-sm font-semibold text-foreground transition-colors hover:bg-muted">
+                      <Link href={trackerHref} className="inline-flex items-center justify-center rounded-full border border-border px-4 py-3 text-sm font-semibold text-foreground transition-colors hover:bg-muted">
                         К трекеру продуктов
                       </Link>
-                      <Link href="/dashboard" className="inline-flex items-center justify-center rounded-full border border-border px-4 py-3 text-sm font-semibold text-foreground transition-colors hover:bg-muted">
+                      <Link href={dashboardHref} className="inline-flex items-center justify-center rounded-full border border-border px-4 py-3 text-sm font-semibold text-foreground transition-colors hover:bg-muted">
                         В кабинет
                       </Link>
+                    </div>
+                    <div className="mt-3 text-xs text-muted-foreground">
+                      Текущий клубный маршрут: <Link href={clubHref} className="text-primary hover:underline">{activeAnimalName}</Link>
                     </div>
                   </div>
                 </div>

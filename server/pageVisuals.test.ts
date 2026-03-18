@@ -54,7 +54,7 @@ describe("page visual integration source smoke", () => {
   it("keeps club hero imagery and dynamic animal CTA in club feed", () => {
     expect(clubSource).toContain("sherkozu_club_visit");
     expect(clubSource).toContain("/tracker");
-    expect(clubSource).toContain("featuredAnimalProfileHref");
+    expect(clubSource).toContain("const profileHref = `/animals/${activeAnimalSlug}`;");
     expect(clubSource).toContain("Клуб Шерь Козу удерживает связь");
   });
 
