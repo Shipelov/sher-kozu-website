@@ -39,6 +39,8 @@ describe("AnimalProfile visual integration", () => {
   });
 
   it("keeps guest CTA interactive and redirects to login with selected share preserved", () => {
+    expect(source).toContain('const hasRuntimeSession = typeof document !== "undefined" && document.cookie.includes("manus_session=");');
+    expect(source).toContain("const shouldLoginFirst = !isAuthenticated && !hasRuntimeSession;");
     expect(source).toContain("window.location.href = getLoginUrl(`/animals/${animalSlug}?share=${selectedSharePercent}`);");
     expect(source).toContain("ctaDisabled={!availableSharePercents.length || purchaseShare.isPending}");
   });

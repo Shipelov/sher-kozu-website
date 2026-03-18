@@ -709,7 +709,10 @@ export default function AnimalProfile() {
       return;
     }
 
-    if (!isAuthenticated) {
+    const hasRuntimeSession = typeof document !== "undefined" && document.cookie.includes("manus_session=");
+    const shouldLoginFirst = !isAuthenticated && !hasRuntimeSession;
+
+    if (shouldLoginFirst) {
       window.location.href = getLoginUrl(`/animals/${animalSlug}?share=${selectedSharePercent}`);
       return;
     }
