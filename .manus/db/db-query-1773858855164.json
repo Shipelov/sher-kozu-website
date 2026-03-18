@@ -1,0 +1,35 @@
+{
+  "query": "SELECT animalId, ownershipStatus, COUNT(*) as cnt FROM animalOwnerships GROUP BY animalId, ownershipStatus ORDER BY animalId;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3J2fXRHx8d1YjF6.root --database mLhmg5VmBsEBpZiYqdnhMQ --execute SELECT animalId, ownershipStatus, COUNT(*) as cnt FROM animalOwnerships GROUP BY animalId, ownershipStatus ORDER BY animalId;",
+  "rows": [
+    {
+      "animalId": "30001",
+      "ownershipStatus": "cancelled",
+      "cnt": "7"
+    },
+    {
+      "animalId": "30001",
+      "ownershipStatus": "active",
+      "cnt": "3"
+    },
+    {
+      "animalId": "180005",
+      "ownershipStatus": "cancelled",
+      "cnt": "2"
+    },
+    {
+      "animalId": "180005",
+      "ownershipStatus": "active",
+      "cnt": "8"
+    },
+    {
+      "animalId": "270001",
+      "ownershipStatus": "pending_payment",
+      "cnt": "3"
+    }
+  ],
+  "messages": [],
+  "stdout": "animalId\townershipStatus\tcnt\n30001\tcancelled\t7\n30001\tactive\t3\n180005\tcancelled\t2\n180005\tactive\t8\n270001\tpending_payment\t3\n",
+  "stderr": "",
+  "execution_time_ms": 468
+}

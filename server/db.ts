@@ -1450,6 +1450,15 @@ export async function countActiveOwnerships(animalId: number) {
   return Number(rows[0]?.count ?? 0);
 }
 
+export async function countPendingOwnerships(animalId: number) {
+  const db = await getDb();
+  const rows = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(animalOwnerships)
+    .where(and(eq(animalOwnerships.animalId, animalId), eq(animalOwnerships.status, "pending_payment")));
+  return Number(rows[0]?.count ?? 0);
+}
+
 export async function getAnimalOccupiedUntil(animalId: number) {
   const db = await getDb();
   const rows = await db
@@ -1525,6 +1534,7 @@ export async function recalculateAnimalStatus(animalId: number) {
 
 async function enrichAnimalWithShareMetrics(db: any, animal: any) {
   const activeOwnerships = await countActiveOwnerships(animal.id);
+  const pendingOwnerships = await countPendingOwnerships(animal.id);
   const media = await db
     .select()
     .from(animalMedia)
@@ -1542,6 +1552,7 @@ async function enrichAnimalWithShareMetrics(db: any, animal: any) {
   return {
     ...animal,
     ...shareMetrics,
+    pendingOwnerships,
     occupiedUntil,
     occupiedValueMinor,
     shareDistribution,

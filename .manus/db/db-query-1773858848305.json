@@ -1,0 +1,217 @@
+{
+  "query": "SELECT id, animalId, ownerOpenId, ownershipStatus, slotIndex, cancelledAt, paidAt FROM animalOwnerships ORDER BY animalId, slotIndex;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3J2fXRHx8d1YjF6.root --database mLhmg5VmBsEBpZiYqdnhMQ --execute SELECT id, animalId, ownerOpenId, ownershipStatus, slotIndex, cancelledAt, paidAt FROM animalOwnerships ORDER BY animalId, slotIndex;",
+  "rows": [
+    {
+      "id": "1",
+      "animalId": "30001",
+      "ownerOpenId": "jP5iBYMcdYguBWJPw5Sruu",
+      "ownershipStatus": "cancelled",
+      "slotIndex": "1",
+      "cancelledAt": "2026-03-18 17:49:32",
+      "paidAt": "NULL"
+    },
+    {
+      "id": "2",
+      "animalId": "30001",
+      "ownerOpenId": "jP5iBYMcdYguBWJPw5Sruu",
+      "ownershipStatus": "cancelled",
+      "slotIndex": "2",
+      "cancelledAt": "2026-03-18 17:49:35",
+      "paidAt": "NULL"
+    },
+    {
+      "id": "3",
+      "animalId": "30001",
+      "ownerOpenId": "jP5iBYMcdYguBWJPw5Sruu",
+      "ownershipStatus": "cancelled",
+      "slotIndex": "3",
+      "cancelledAt": "2026-03-18 17:49:43",
+      "paidAt": "NULL"
+    },
+    {
+      "id": "4",
+      "animalId": "30001",
+      "ownerOpenId": "jP5iBYMcdYguBWJPw5Sruu",
+      "ownershipStatus": "cancelled",
+      "slotIndex": "4",
+      "cancelledAt": "2026-03-18 17:49:48",
+      "paidAt": "NULL"
+    },
+    {
+      "id": "5",
+      "animalId": "30001",
+      "ownerOpenId": "jP5iBYMcdYguBWJPw5Sruu",
+      "ownershipStatus": "cancelled",
+      "slotIndex": "5",
+      "cancelledAt": "2026-03-18 17:49:52",
+      "paidAt": "NULL"
+    },
+    {
+      "id": "6",
+      "animalId": "30001",
+      "ownerOpenId": "jP5iBYMcdYguBWJPw5Sruu",
+      "ownershipStatus": "cancelled",
+      "slotIndex": "6",
+      "cancelledAt": "2026-03-18 17:49:56",
+      "paidAt": "NULL"
+    },
+    {
+      "id": "7",
+      "animalId": "30001",
+      "ownerOpenId": "jP5iBYMcdYguBWJPw5Sruu",
+      "ownershipStatus": "cancelled",
+      "slotIndex": "7",
+      "cancelledAt": "2026-03-18 17:49:59",
+      "paidAt": "NULL"
+    },
+    {
+      "id": "8",
+      "animalId": "30001",
+      "ownerOpenId": "jP5iBYMcdYguBWJPw5Sruu",
+      "ownershipStatus": "active",
+      "slotIndex": "8",
+      "cancelledAt": "NULL",
+      "paidAt": "NULL"
+    },
+    {
+      "id": "30010",
+      "animalId": "30001",
+      "ownerOpenId": "jP5iBYMcdYguBWJPw5Sruu",
+      "ownershipStatus": "active",
+      "slotIndex": "9",
+      "cancelledAt": "NULL",
+      "paidAt": "NULL"
+    },
+    {
+      "id": "30011",
+      "animalId": "30001",
+      "ownerOpenId": "jP5iBYMcdYguBWJPw5Sruu",
+      "ownershipStatus": "active",
+      "slotIndex": "10",
+      "cancelledAt": "NULL",
+      "paidAt": "NULL"
+    },
+    {
+      "id": "120018",
+      "animalId": "180005",
+      "ownerOpenId": "jP5iBYMcdYguBWJPw5Sruu",
+      "ownershipStatus": "cancelled",
+      "slotIndex": "1",
+      "cancelledAt": "2026-03-18 17:50:14",
+      "paidAt": "NULL"
+    },
+    {
+      "id": "120019",
+      "animalId": "180005",
+      "ownerOpenId": "jP5iBYMcdYguBWJPw5Sruu",
+      "ownershipStatus": "cancelled",
+      "slotIndex": "2",
+      "cancelledAt": "2026-03-18 17:50:11",
+      "paidAt": "NULL"
+    },
+    {
+      "id": "120020",
+      "animalId": "180005",
+      "ownerOpenId": "jP5iBYMcdYguBWJPw5Sruu",
+      "ownershipStatus": "active",
+      "slotIndex": "3",
+      "cancelledAt": "NULL",
+      "paidAt": "NULL"
+    },
+    {
+      "id": "120021",
+      "animalId": "180005",
+      "ownerOpenId": "jP5iBYMcdYguBWJPw5Sruu",
+      "ownershipStatus": "active",
+      "slotIndex": "4",
+      "cancelledAt": "NULL",
+      "paidAt": "NULL"
+    },
+    {
+      "id": "150001",
+      "animalId": "180005",
+      "ownerOpenId": "jP5iBYMcdYguBWJPw5Sruu",
+      "ownershipStatus": "active",
+      "slotIndex": "5",
+      "cancelledAt": "NULL",
+      "paidAt": "NULL"
+    },
+    {
+      "id": "150002",
+      "animalId": "180005",
+      "ownerOpenId": "jP5iBYMcdYguBWJPw5Sruu",
+      "ownershipStatus": "active",
+      "slotIndex": "6",
+      "cancelledAt": "NULL",
+      "paidAt": "NULL"
+    },
+    {
+      "id": "150003",
+      "animalId": "180005",
+      "ownerOpenId": "jP5iBYMcdYguBWJPw5Sruu",
+      "ownershipStatus": "active",
+      "slotIndex": "7",
+      "cancelledAt": "NULL",
+      "paidAt": "NULL"
+    },
+    {
+      "id": "150004",
+      "animalId": "180005",
+      "ownerOpenId": "jP5iBYMcdYguBWJPw5Sruu",
+      "ownershipStatus": "active",
+      "slotIndex": "8",
+      "cancelledAt": "NULL",
+      "paidAt": "NULL"
+    },
+    {
+      "id": "150005",
+      "animalId": "180005",
+      "ownerOpenId": "jP5iBYMcdYguBWJPw5Sruu",
+      "ownershipStatus": "active",
+      "slotIndex": "9",
+      "cancelledAt": "NULL",
+      "paidAt": "NULL"
+    },
+    {
+      "id": "150006",
+      "animalId": "180005",
+      "ownerOpenId": "jP5iBYMcdYguBWJPw5Sruu",
+      "ownershipStatus": "active",
+      "slotIndex": "10",
+      "cancelledAt": "NULL",
+      "paidAt": "NULL"
+    },
+    {
+      "id": "180001",
+      "animalId": "270001",
+      "ownerOpenId": "jP5iBYMcdYguBWJPw5Sruu",
+      "ownershipStatus": "pending_payment",
+      "slotIndex": "1",
+      "cancelledAt": "NULL",
+      "paidAt": "NULL"
+    },
+    {
+      "id": "180002",
+      "animalId": "270001",
+      "ownerOpenId": "jP5iBYMcdYguBWJPw5Sruu",
+      "ownershipStatus": "pending_payment",
+      "slotIndex": "2",
+      "cancelledAt": "NULL",
+      "paidAt": "NULL"
+    },
+    {
+      "id": "180003",
+      "animalId": "270001",
+      "ownerOpenId": "jP5iBYMcdYguBWJPw5Sruu",
+      "ownershipStatus": "pending_payment",
+      "slotIndex": "3",
+      "cancelledAt": "NULL",
+      "paidAt": "NULL"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tanimalId\townerOpenId\townershipStatus\tslotIndex\tcancelledAt\tpaidAt\n1\t30001\tjP5iBYMcdYguBWJPw5Sruu\tcancelled\t1\t2026-03-18 17:49:32\tNULL\n2\t30001\tjP5iBYMcdYguBWJPw5Sruu\tcancelled\t2\t2026-03-18 17:49:35\tNULL\n3\t30001\tjP5iBYMcdYguBWJPw5Sruu\tcancelled\t3\t2026-03-18 17:49:43\tNULL\n4\t30001\tjP5iBYMcdYguBWJPw5Sruu\tcancelled\t4\t2026-03-18 17:49:48\tNULL\n5\t30001\tjP5iBYMcdYguBWJPw5Sruu\tcancelled\t5\t2026-03-18 17:49:52\tNULL\n6\t30001\tjP5iBYMcdYguBWJPw5Sruu\tcancelled\t6\t2026-03-18 17:49:56\tNULL\n7\t30001\tjP5iBYMcdYguBWJPw5Sruu\tcancelled\t7\t2026-03-18 17:49:59\tNULL\n8\t30001\tjP5iBYMcdYguBWJPw5Sruu\tactive\t8\tNULL\tNULL\n30010\t30001\tjP5iBYMcdYguBWJPw5Sruu\tactive\t9\tNULL\tNULL\n30011\t30001\tjP5iBYMcdYguBWJPw5Sruu\tactive\t10\tNULL\tNULL\n120018\t180005\tjP5iBYMcdYguBWJPw5Sruu\tcancelled\t1\t2026-03-18 17:50:14\tNULL\n120019\t180005\tjP5iBYMcdYguBWJPw5Sruu\tcancelled\t2\t2026-03-18 17:50:11\tNULL\n120020\t180005\tjP5iBYMcdYguBWJPw5Sruu\tactive\t3\tNULL\tNULL\n120021\t180005\tjP5iBYMcdYguBWJPw5Sruu\tactive\t4\tNULL\tNULL\n150001\t180005\tjP5iBYMcdYguBWJPw5Sruu\tactive\t5\tNULL\tNULL\n150002\t180005\tjP5iBYMcdYguBWJPw5Sruu\tactive\t6\tNULL\tNULL\n150003\t180005\tjP5iBYMcdYguBWJPw5Sruu\tactive\t7\tNULL\tNULL\n150004\t180005\tjP5iBYMcdYguBWJPw5Sruu\tactive\t8\tNULL\tNULL\n150005\t180005\tjP5iBYMcdYguBWJPw5Sruu\tactive\t9\tNULL\tNULL\n150006\t180005\tjP5iBYMcdYguBWJPw5Sruu\tactive\t10\tNULL\tNULL\n180001\t270001\tjP5iBYMcdYguBWJPw5Sruu\tpending_payment\t1\tNULL\tNULL\n180002\t270001\tjP5iBYMcdYguBWJPw5Sruu\tpending_payment\t2\tNULL\tNULL\n180003\t270001\tjP5iBYMcdYguBWJPw5Sruu\tpending_payment\t3\tNULL\tNULL\n",
+  "stderr": "",
+  "execution_time_ms": 355
+}

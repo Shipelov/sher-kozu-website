@@ -112,6 +112,7 @@ type AdminAnimalRecord = {
   media?: AdminAnimalMediaItem[];
   occupiedValueMinor?: number;
   ownersCount?: number;
+  pendingOwnerships?: number;
   shareDistribution?: { familyName: string; percent: number; slots: number[]; planLabel: string }[];
 };
 
@@ -733,6 +734,12 @@ function ShareDistributionPanel({ animals }: { animals: AdminAnimalRecord[] }) {
                     <div className="flex flex-wrap items-center gap-2">
                       <p className="font-semibold text-foreground">{animal.name}</p>
                       <Badge className={`rounded-full border ${shareTone.className}`}>{shareTone.label}</Badge>
+                      {(animal.pendingOwnerships ?? 0) > 0 ? (
+                        <Badge className="rounded-full border border-amber-200 bg-amber-50 text-amber-800">
+                          <Clock className="mr-1 h-3 w-3" />
+                          {animal.pendingOwnerships} ожид. оплаты
+                        </Badge>
+                      ) : null}
                     </div>
                   </div>
                   <div className="rounded-2xl border border-border/70 bg-white px-3 py-2 text-right">
@@ -892,7 +899,7 @@ function OwnershipManagementDialog({
                         onClick={() => updateStatus.mutate({ ownershipId: ownership.id, status: "active" })}
                       >
                         <CheckCircle2 className="mr-1 h-3.5 w-3.5" />
-                        Активировать
+                        Подтвердить оплату
                       </Button>
                     ) : null}
                     {isOccupied ? (
@@ -997,6 +1004,12 @@ function AdminAnimalsTable({
                   <div className="space-y-2">
                     <Badge className={`rounded-full border ${statusBadge.className}`}>{statusBadge.label}</Badge>
                     <Badge className={`rounded-full border ${shareTone.className}`}>{shareTone.label}</Badge>
+                    {(animal.pendingOwnerships ?? 0) > 0 ? (
+                      <Badge className="rounded-full border border-amber-200 bg-amber-50 text-amber-800">
+                        <Clock className="mr-1 h-3 w-3" />
+                        {animal.pendingOwnerships} ожид. оплаты
+                      </Badge>
+                    ) : null}
                   </div>
                 </TableCell>
                 <TableCell>
@@ -1030,6 +1043,11 @@ function AdminAnimalsTable({
                     >
                       <Users className="mr-2 h-4 w-4" />
                       Владельцы{animal.activeOwnerships > 0 ? ` (${animal.activeOwnerships})` : ""}
+                      {(animal.pendingOwnerships ?? 0) > 0 ? (
+                        <span className="ml-1 inline-flex items-center rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-800">
+                          {animal.pendingOwnerships} ожид.
+                        </span>
+                      ) : null}
                     </Button>
                     <Link href={`/animals/${animal.slug}`}>
                       <Button variant="outline" size="sm" className="rounded-full">
