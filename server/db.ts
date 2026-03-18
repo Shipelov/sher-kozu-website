@@ -1831,6 +1831,8 @@ export async function ensureSprintOneSeed(ownerOpenId: string) {
   const db = await getDb();
   const existingAnimals = await db.select({ id: animals.id }).from(animals).where(eq(animals.ownerOpenId, ownerOpenId)).limit(1);
   if (existingAnimals.length) {
+    // Repair: ensure every active plan has at least one duration
+    await ensurePlanDurationsExist(db, ownerOpenId);
     return;
   }
 
@@ -1949,4 +1951,52 @@ export async function ensureSprintOneSeed(ownerOpenId: string) {
     ],
   });
 
+}
+
+async function ensurePlanDurationsExist(db: any, ownerOpenId: string) {
+  const activePlans = await db
+    .select({ id: plans.id, basePriceMinor: plans.basePriceMinor })
+    .from(plans)
+    .where(and(eq(plans.ownerOpenId, ownerOpenId), eq(plans.status, "active")));
+
+  for (const plan of activePlans) {
+    const existingDurations = await db
+      .select({ id: planDurations.id })
+      .from(planDurations)
+      .where(eq(planDurations.planId, plan.id))
+      .limit(1);
+
+    if (!existingDurations.length) {
+      const base = plan.basePriceMinor || 45000;
+      await db.insert(planDurations).values([
+        {
+          planId: plan.id,
+          months: 1,
+          label: "1 месяц",
+          priceMinor: base,
+          isDefault: 1,
+          isActive: 1,
+          sortOrder: 0,
+        },
+        {
+          planId: plan.id,
+          months: 3,
+          label: "3 месяца",
+          priceMinor: Math.round(base * 3 * 0.95),
+          isDefault: 0,
+          isActive: 1,
+          sortOrder: 1,
+        },
+        {
+          planId: plan.id,
+          months: 12,
+          label: "12 месяцев",
+          priceMinor: Math.round(base * 12 * 0.89),
+          isDefault: 0,
+          isActive: 1,
+          sortOrder: 2,
+        },
+      ] as InsertPlanDuration[]);
+    }
+  }
 }

@@ -380,4 +380,66 @@ describe("Sprint 1 ownership flow domain rules", () => {
     expect(() => assertAdminRole("user")).toThrowError("FORBIDDEN");
     expect(assertAdminRole("admin")).toBe(true);
   });
+
+  it("server-side fallback: purchaseShare input allows omitting planId and planDurationId", () => {
+    // Simulates the new contract: client can call purchaseShare without planId/planDurationId
+    // Server will resolve them from the first active plan
+    type PurchaseInput = {
+      animalId: number;
+      sharePercent: number;
+      planId?: number;
+      planDurationId?: number;
+      notes?: string;
+    };
+
+    type PlanWithDurations = {
+      id: number;
+      durations: { id: number; months: number }[];
+    };
+
+    function resolvePlanIds(
+      input: PurchaseInput,
+      activePlans: PlanWithDurations[]
+    ): { planId: number; planDurationId: number } | null {
+      let planId = input.planId;
+      let planDurationId = input.planDurationId;
+
+      if (!planId || !planDurationId) {
+        const fallbackPlan = activePlans[0];
+        if (!fallbackPlan || !fallbackPlan.durations?.[0]) return null;
+        planId = planId ?? fallbackPlan.id;
+        planDurationId = planDurationId ?? fallbackPlan.durations[0].id;
+      }
+
+      return { planId, planDurationId };
+    }
+
+    // Case 1: client provides both — no fallback needed
+    const withBoth = resolvePlanIds(
+      { animalId: 1, sharePercent: 10, planId: 5, planDurationId: 12 },
+      [{ id: 99, durations: [{ id: 100, months: 1 }] }]
+    );
+    expect(withBoth).toEqual({ planId: 5, planDurationId: 12 });
+
+    // Case 2: client omits both — server picks first active plan
+    const withNeither = resolvePlanIds(
+      { animalId: 1, sharePercent: 20 },
+      [{ id: 99, durations: [{ id: 100, months: 1 }, { id: 101, months: 3 }] }]
+    );
+    expect(withNeither).toEqual({ planId: 99, planDurationId: 100 });
+
+    // Case 3: no active plans at all — returns null (server will throw NO_ACTIVE_PLAN)
+    const noPlans = resolvePlanIds(
+      { animalId: 1, sharePercent: 10 },
+      []
+    );
+    expect(noPlans).toBeNull();
+
+    // Case 4: active plan exists but has no durations — returns null
+    const noDurations = resolvePlanIds(
+      { animalId: 1, sharePercent: 10 },
+      [{ id: 50, durations: [] }]
+    );
+    expect(noDurations).toBeNull();
+  });
 });

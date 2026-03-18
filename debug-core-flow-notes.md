@@ -1,24 +1,15 @@
-# Debug notes — core flow share selection
+# Core Flow Debug — Root Cause Found
 
-## Browser reproduction
+## Database State
+- **plans**: 1 row — id=1, ownerOpenId=jP5iBYMcdYguBWJPw5Sruu, planStatus=active
+- **planDurations**: 0 rows — EMPTY TABLE
+- **mira-goat**: id=30001, ownerOpenId=jP5iBYMcdYguBWJPw5Sruu (matches plan)
 
-- Открыт профиль `mira-goat` по URL `/animals/mira-goat?share=10`.
-- Кнопка `Продолжить с выбранной долей` видна и активна.
-- После клика маршрут визуально не меняется, страница остаётся на том же URL.
-- Текст `Сценарий временно недоступен` не найден в DOM после клика.
-- В консоли браузера нет явной ошибки после клика.
+## Root Cause
+`getAnimalBySlug` finds plan id=1 correctly, but `planDurations` table is empty.
+So `plans[0].durations` = [] → client checks `defaultPlan?.durations?.[0]` → undefined → toast "Сценарий временно недоступен".
 
-## Hypothesis
-
-Вероятно, сообщение показывается через toast/sonner/shadcn и не попадает в обычный DOM extraction, либо обработчик CTA рано завершает сценарий без перехода.
-
-## Browser reproduction on exact user URL
-
-- Открыт точный маршрут пользователя `/animals/mira-goat?share=20`.
-- После загрузки страница оказалась на URL с `?share=10`, то есть выбранная доля нормализуется или сбрасывается ещё до клика.
-- Кнопка остаётся активной в DOM: `disabled=false`, `pointer-events=auto`, у неё есть `onclick`-обработчик.
-- После клика по CTA по-прежнему не происходит ни редиректа, ни видимого toast, ни ошибки в консоли.
-
-## Updated hypothesis
-
-Проблема, вероятно, не в disabled-состоянии кнопки, а в рассинхронизации между query `share`, локальным selectedSharePercent и фактической логикой `onCtaClick`/`handlePurchaseShare`, из-за чего обработчик срабатывает, но рано завершает сценарий без побочного эффекта.
+## Fix Strategy
+1. Repair seed: ensure planDurations are created for existing plans if missing
+2. Make client resilient: if no durations, use plan-level defaults or show helpful message
+3. Add seed verification that planDurations exist for every active plan

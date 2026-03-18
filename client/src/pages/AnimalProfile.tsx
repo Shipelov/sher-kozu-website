@@ -720,16 +720,11 @@ export default function AnimalProfile() {
     const defaultPlan = animalQuery.data?.plans?.[0] ?? null;
     const defaultDuration = defaultPlan?.durations?.[0] ?? null;
 
-    if (!defaultPlan || !defaultDuration) {
-      toast.error("Сценарий временно недоступен", { description: "Для этого животного ещё не настроен базовый формат участия." });
-      return;
-    }
-
     await purchaseShare.mutateAsync({
       animalId: animalQuery.data.id,
       sharePercent: selectedSharePercent,
-      planId: defaultPlan.id,
-      planDurationId: defaultDuration.id,
+      ...(defaultPlan?.id ? { planId: defaultPlan.id } : {}),
+      ...(defaultDuration?.id ? { planDurationId: defaultDuration.id } : {}),
       notes: `Бронь ${selectedSharePercent}% через единый сценарий профиля животного`,
     });
   }

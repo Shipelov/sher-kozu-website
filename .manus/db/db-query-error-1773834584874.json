@@ -1,0 +1,8 @@
+{
+  "query": "SELECT p.id, p.name, p.status, p.ownerOpenId FROM plans p; SELECT pd.id, pd.planId, pd.months, pd.label, pd.isActive, pd.sortOrder FROM planDurations pd;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3J2fXRHx8d1YjF6.root --database mLhmg5VmBsEBpZiYqdnhMQ --execute SELECT p.id, p.name, p.status, p.ownerOpenId FROM plans p; SELECT pd.id, pd.planId, pd.months, pd.label, pd.isActive, pd.sortOrder FROM planDurations pd;",
+  "returncode": 1,
+  "logs": [
+    "ERROR 1054 (42S22) at line 1: Unknown column 'p.status' in 'field list'"
+  ]
+}

@@ -233,8 +233,8 @@ const animalVisibilityInput = z.object({
 const purchaseAnimalShareInput = z.object({
   animalId: z.number().int().positive(),
   sharePercent: z.number().int().min(10).max(100),
-  planId: z.number().int().positive(),
-  planDurationId: z.number().int().positive(),
+  planId: z.number().int().positive().optional(),
+  planDurationId: z.number().int().positive().optional(),
   startsAt: z.number().int().optional(),
   endsAt: z.number().int().optional(),
   notes: z.string().max(1000).optional().nullable(),
@@ -294,12 +294,25 @@ export const appRouter = router({
     }),
     purchaseShare: protectedProcedure.input(purchaseAnimalShareInput).mutation(async ({ ctx, input }) => {
       try {
+        let resolvedPlanId = input.planId;
+        let resolvedPlanDurationId = input.planDurationId;
+
+        if (!resolvedPlanId || !resolvedPlanDurationId) {
+          const activePlans = await listActivePlans();
+          const fallbackPlan = activePlans[0];
+          if (!fallbackPlan || !fallbackPlan.durations?.[0]) {
+            throw new Error("NO_ACTIVE_PLAN");
+          }
+          resolvedPlanId = resolvedPlanId ?? fallbackPlan.id;
+          resolvedPlanDurationId = resolvedPlanDurationId ?? fallbackPlan.durations[0].id;
+        }
+
         return await purchaseAnimalShare({
           ownerOpenId: ctx.user.openId,
           animalId: input.animalId,
           sharePercent: input.sharePercent,
-          planId: input.planId,
-          planDurationId: input.planDurationId,
+          planId: resolvedPlanId as number,
+          planDurationId: resolvedPlanDurationId as number,
           startsAt: input.startsAt ? new Date(input.startsAt) : undefined,
           endsAt: input.endsAt ? new Date(input.endsAt) : undefined,
           notes: input.notes ?? null,
@@ -314,6 +327,9 @@ export const appRouter = router({
         }
         if (code === "INSUFFICIENT_SHARE_AVAILABLE") {
           throw new TRPCError({ code: "BAD_REQUEST", message: "Свободной доли выбранного размера больше нет." });
+        }
+        if (code === "NO_ACTIVE_PLAN") {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Для этого животного ещё не настроен базовый формат участия. Обратитесь к фермеру." });
         }
         throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Не удалось оформить долю животного." });
       }

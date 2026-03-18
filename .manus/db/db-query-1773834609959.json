@@ -1,0 +1,18 @@
+{
+  "query": "SELECT id, ownerOpenId, code, name, planStatus, basePriceMinor FROM plans; SELECT id, planId, months, label, priceMinor, isActive, sortOrder FROM planDurations;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3J2fXRHx8d1YjF6.root --database mLhmg5VmBsEBpZiYqdnhMQ --execute SELECT id, ownerOpenId, code, name, planStatus, basePriceMinor FROM plans; SELECT id, planId, months, label, priceMinor, isActive, sortOrder FROM planDurations;",
+  "rows": [
+    {
+      "id": "1",
+      "ownerOpenId": "jP5iBYMcdYguBWJPw5Sruu",
+      "code": "core-care-jp5ibymc",
+      "name": "Базовая опека",
+      "planStatus": "active",
+      "basePriceMinor": "45000"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\townerOpenId\tcode\tname\tplanStatus\tbasePriceMinor\n1\tjP5iBYMcdYguBWJPw5Sruu\tcore-care-jp5ibymc\tБазовая опека\tactive\t45000\n",
+  "stderr": "",
+  "execution_time_ms": 411
+}
