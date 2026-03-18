@@ -1317,6 +1317,23 @@ export default function AnimalProfile() {
           </div>
         </div>
 
+        {isGuestPreview ? (
+          <div data-testid="animal-guest-preview-sticky-register" className="pointer-events-none fixed inset-x-0 bottom-4 z-40 px-4 sm:px-6">
+            <div className="pointer-events-auto mx-auto flex max-w-3xl items-center justify-between gap-3 rounded-full border border-primary/15 bg-white/92 px-4 py-3 shadow-[0_16px_40px_rgba(15,23,42,0.14)] backdrop-blur">
+              <div className="min-w-0">
+                <p className="text-xs uppercase tracking-[0.18em] text-primary">Продолжить знакомство</p>
+                <p className="truncate text-sm text-muted-foreground">Зарегистрируйтесь, чтобы сохранить интерес к {displayName} и открыть owner-only обновления.</p>
+              </div>
+              <a
+                href={getLoginUrl(`/animals/${animalSlug ?? DEFAULT_ROUTE_SLUG}`)}
+                className="inline-flex shrink-0 items-center justify-center rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition hover:opacity-90"
+              >
+                Зарегистрироваться
+              </a>
+            </div>
+          </div>
+        ) : null}
+
         <AnimatePresence>
           {lightboxOpen && selectedImage ? (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 px-4 py-10" onClick={() => setLightboxOpen(false)}>
