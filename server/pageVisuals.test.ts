@@ -52,6 +52,8 @@ describe("page visual integration source smoke", () => {
     expect(trackerSource).toContain("sherkozu_named_dairy_box");
     expect(trackerSource).toContain("featuredAnimalProfileHref");
     expect(trackerSource).toContain("Трекер показывает, как");
+    expect(trackerSource).toContain("Понятный маршрут для гостя");
+    expect(trackerSource).toContain("Product Tracker → Animal Profile → Вход → Dashboard");
   });
 
   it("keeps club hero imagery and dynamic animal CTA in club feed", () => {
@@ -59,6 +61,8 @@ describe("page visual integration source smoke", () => {
     expect(clubSource).toContain("/tracker");
     expect(clubSource).toContain("const profileHref = `/animals/${activeAnimalSlug}`;");
     expect(clubSource).toContain("Клуб Шерь Козу удерживает связь");
+    expect(clubSource).toContain("Путь гостя до участия");
+    expect(clubSource).toContain("Club Feed → Animal Profile → Выбор доли → Вход");
   });
 
   it("registers universal animal profile routes in app", () => {

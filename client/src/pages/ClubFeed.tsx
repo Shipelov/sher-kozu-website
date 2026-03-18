@@ -199,6 +199,7 @@ export default function ClubFeed() {
   const trackerHref = `/tracker?animal=${activeAnimalSlug}`;
   const dashboardHref = activeAnimalSlug ? `/dashboard?animal=${activeAnimalSlug}` : "/dashboard";
   const clubHref = activeAnimalSlug ? `/club?animal=${activeAnimalSlug}` : "/club";
+  const isGuestJourney = !ownership;
 
   const visiblePosts = useMemo(() => {
     if (activeFilter === "all") return posts;
@@ -422,6 +423,15 @@ export default function ClubFeed() {
                     ? `Ваш клубный маршрут связан с ${activeAnimalName}, трекером партии и кабинетом владельца без разрыва сценария.`
                     : "Пользователь возвращается сюда ради событий, сообщества и ощущения принадлежности к жизни фермы."}
                 </p>
+                {isGuestJourney ? (
+                  <div className="mt-5 rounded-[1.5rem] border border-white/12 bg-white/8 p-4 text-sm text-white/78">
+                    <div className="text-xs uppercase tracking-[0.16em] text-amber-300">Путь гостя до участия</div>
+                    <div className="mt-2 text-base font-semibold text-white">Club Feed → Animal Profile → Выбор доли → Вход</div>
+                    <p className="mt-2 leading-6 text-white/65">
+                      Клуб можно изучать и без аккаунта, но следующий понятный шаг — перейти в профиль животного, выбрать формат участия и войти в момент оформления, чтобы клуб стал персональным маршрутом владельца.
+                    </p>
+                  </div>
+                ) : null}
                 <div className="mt-5 space-y-2 text-sm text-white/72">
                   {clubSignals.map((note) => (
                     <div key={note} className="flex items-start gap-2">

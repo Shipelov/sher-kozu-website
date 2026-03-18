@@ -100,6 +100,7 @@ export default function Dashboard() {
   const featuredAnimalProfileHref = currentAnimal ? `/animals/${currentAnimal.slug}` : "/animals";
   const trackerHref = currentAnimal ? `/tracker?animal=${currentAnimal.slug}` : "/tracker";
   const clubHref = currentAnimal ? `/club?animal=${currentAnimal.slug}` : "/club";
+  const isGuestJourney = !ownership && !currentAnimal;
 
   const summaryCards = currentAnimal
     ? [
@@ -248,6 +249,30 @@ export default function Dashboard() {
               <p className="mt-4 max-w-2xl text-sm leading-7 text-muted-foreground">
                 Этот блок больше не живёт как демо-сводка. Он собирает реальные данные текущего участия, чтобы сразу объяснить, что делать после покупки: вернуться в дневник, проверить продукт или открыть клуб.
               </p>
+
+              {isGuestJourney ? (
+                <div className="mt-5 rounded-[1.75rem] border border-primary/15 bg-primary/5 p-4">
+                  <div className="text-xs uppercase tracking-[0.16em] text-primary">Прозрачный маршрут до входа</div>
+                  <div className="mt-2 text-lg font-semibold text-foreground">Gallery → Animal Profile → Вход → Dashboard</div>
+                  <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                    Если вы ещё не авторизованы, кабинет не обрывает сценарий. Сначала откройте галерею, выберите животное, затем войдите в аккаунт на шаге оформления доли — после этого кабинет автоматически свяжет профиль, трекер и клуб.
+                  </p>
+                  <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                    <Link
+                      href="/animals"
+                      className="inline-flex items-center justify-center rounded-full bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/92"
+                    >
+                      Открыть галерею животных
+                    </Link>
+                    <Link
+                      href="/tracker"
+                      className="inline-flex items-center justify-center rounded-full border border-border bg-white px-4 py-3 text-sm font-semibold text-foreground transition-colors hover:bg-muted"
+                    >
+                      Сначала посмотреть продуктовый маршрут
+                    </Link>
+                  </div>
+                </div>
+              ) : null}
 
               <div className="mt-5 grid gap-3">
                 {nextSteps.map((step: DashboardStep) => {

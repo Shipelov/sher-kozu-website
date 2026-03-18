@@ -156,6 +156,7 @@ export default function ProductTracker() {
   const maxLiters = useMemo(() => Math.max(1, ...monthlyData.map((item) => item.liters)), [monthlyData]);
   const ownerStatusLabel = ownerDashboardQuery.data?.ownership?.statusLabel ?? "Маршрут владельца";
   const ownerSharePercent = ownerDashboardQuery.data?.ownership?.sharePercent ?? 0;
+  const isGuestJourney = ownerSharePercent === 0;
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -448,6 +449,16 @@ export default function ProductTracker() {
               <p className="mt-3 text-sm leading-7 text-white/75">
                 Теперь ProductTracker подхватывает текущее участие владельца и возвращает пользователя к животному, клубной жизни и кабинету как к единой системе без случайного ухода на неактуальное животное.
               </p>
+
+              {isGuestJourney ? (
+                <div className="mt-5 rounded-[1.5rem] border border-white/12 bg-white/8 p-4 text-sm text-white/78">
+                  <div className="text-xs uppercase tracking-[0.16em] text-amber-300">Понятный маршрут для гостя</div>
+                  <div className="mt-2 text-base font-semibold text-white">Product Tracker → Animal Profile → Вход → Dashboard</div>
+                  <p className="mt-2 leading-6 text-white/65">
+                    Даже без аккаунта трекер помогает понять происхождение продукта. Следующий логичный шаг — открыть профиль животного, выбрать долю и войти в аккаунт уже на моменте оформления участия.
+                  </p>
+                </div>
+              ) : null}
 
               <div className="mt-6 grid gap-3">
                 <Link
