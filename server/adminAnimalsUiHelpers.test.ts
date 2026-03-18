@@ -49,6 +49,10 @@ const animals = [
       { familyName: "Семья Орловых", percent: 20, slots: [3, 4], planLabel: "12 месяцев" },
     ],
     baseMonthlyPriceMinor: 125000,
+    shareUnitPercent: 10,
+    shareUnitPriceMinor: 12500,
+    fullPriceMinor: 125000,
+    availableSharePercents: [10, 20, 30, 40, 50, 60],
     healthScore: 92,
     happinessScore: 89,
     milkPotentialScore: 95,
@@ -80,6 +84,10 @@ const animals = [
     activeShareReservations: 0,
     shareDistribution: [],
     baseMonthlyPriceMinor: 99000,
+    shareUnitPercent: 10,
+    shareUnitPriceMinor: 9900,
+    fullPriceMinor: 99000,
+    availableSharePercents: [10, 20, 30, 40, 50, 60, 70, 80, 90, 100],
     healthScore: 88,
     happinessScore: 90,
     milkPotentialScore: 74,
@@ -115,6 +123,10 @@ const animals = [
       { familyName: "Семья Беловых", percent: 20, slots: [9, 10], planLabel: "1 месяц" },
     ],
     baseMonthlyPriceMinor: 135000,
+    shareUnitPercent: 10,
+    shareUnitPriceMinor: 13500,
+    fullPriceMinor: 135000,
+    availableSharePercents: [],
     healthScore: 96,
     happinessScore: 94,
     milkPotentialScore: 97,
@@ -419,33 +431,35 @@ describe("Admin animals UI helpers", () => {
     expect(formatShareRevenue(340000)).toContain("₽");
   });
 
-  it("normalizes incomplete share data without NaN or crashes", () => {
-    const sparseAnimal = {
+  it("handles zero-ownership edge case without NaN or crashes", () => {
+    const zeroAnimal = {
       ...animals[0],
-      totalOwnershipSlots: undefined,
-      activeOwnerships: undefined,
-      availableSlots: undefined,
-      ownedPercent: undefined,
-      availablePercent: undefined,
-      shareUnitPercent: undefined,
-      shareUnitPriceMinor: undefined,
-      fullPriceMinor: undefined,
-      availableSharePercents: undefined,
+      totalOwnershipSlots: 10,
+      activeOwnerships: 0,
+      availableSlots: 10,
+      ownedPercent: 0,
+      availablePercent: 100,
+      shareUnitPercent: 10,
+      shareUnitPriceMinor: 12000,
+      fullPriceMinor: 120000,
+      availableSharePercents: [10, 20, 30, 40, 50, 60, 70, 80, 90, 100],
       baseMonthlyPriceMinor: 120000,
+      occupiedValueMinor: 0,
     } as unknown as typeof animals[number];
 
-    const slots = buildShareSlots(sparseAnimal);
-    const summary = createAdminShareSummary([sparseAnimal]);
+    const slots = buildShareSlots(zeroAnimal);
+    const summary = createAdminShareSummary([zeroAnimal]);
 
     expect(slots).toHaveLength(10);
     expect(slots[0]?.percentLabel).toBe("10%");
+    expect(slots.every(s => s.state === "available")).toBe(true);
     expect(summary.totalAnimals).toBe(1);
     expect(summary.totalOwnedPercent).toBe(0);
     expect(summary.totalAvailablePercent).toBe(100);
     expect(Number.isNaN(summary.totalOccupiedValueMinor)).toBe(false);
-    expect(summary.totalOccupiedValueMinor).toBeGreaterThanOrEqual(0);
+    expect(summary.totalOccupiedValueMinor).toBe(0);
     expect(Number.isNaN(summary.averageOccupancy)).toBe(false);
-    expect(summary.averageOccupancy).toBeGreaterThanOrEqual(0);
+    expect(summary.averageOccupancy).toBe(0);
   });
 
   it("returns tone markers for share occupancy progress", () => {

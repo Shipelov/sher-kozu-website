@@ -359,4 +359,110 @@ describe("E2E Owner Journey: Gallery → Profile → Share → Purchase → Dash
       );
     });
   });
+
+  /* ================================================================ */
+  /*  Step 7 — ProductTracker: verify tracker data after ownership     */
+  /* ================================================================ */
+
+  describe("Step 7: ProductTracker — verify tracker data for owned animal", () => {
+    let trackerData: any;
+
+    beforeAll(async () => {
+      trackerData = await authedCaller.productTracker.getByAnimal({ animalSlug: selectedSlug });
+    });
+
+    it("returns tracker data object with expected shape", () => {
+      expect(trackerData).toBeTruthy();
+      expect(trackerData).toHaveProperty("productBatches");
+      expect(trackerData).toHaveProperty("compositionSnapshots");
+      expect(trackerData).toHaveProperty("monthlyMetrics");
+      expect(trackerData).toHaveProperty("deliveries");
+    });
+
+    it("productBatches is an array with valid items", () => {
+      expect(Array.isArray(trackerData.productBatches)).toBe(true);
+      for (const batch of trackerData.productBatches) {
+        expect(batch).toHaveProperty("id");
+        expect(batch).toHaveProperty("productType");
+        expect(batch).toHaveProperty("batchLabel");
+        expect(batch).toHaveProperty("status");
+      }
+    });
+
+    it("compositionSnapshots is an array with valid items", () => {
+      expect(Array.isArray(trackerData.compositionSnapshots)).toBe(true);
+      for (const snap of trackerData.compositionSnapshots) {
+        expect(snap).toHaveProperty("id");
+        expect(snap).toHaveProperty("label");
+        expect(snap).toHaveProperty("value");
+      }
+    });
+
+    it("monthlyMetrics is an array with valid items", () => {
+      expect(Array.isArray(trackerData.monthlyMetrics)).toBe(true);
+      for (const metric of trackerData.monthlyMetrics) {
+        expect(metric).toHaveProperty("id");
+        expect(metric).toHaveProperty("monthLabel");
+        expect(metric).toHaveProperty("milkVolumeLiters");
+      }
+    });
+
+    it("deliveries is an array with valid items", () => {
+      expect(Array.isArray(trackerData.deliveries)).toBe(true);
+      for (const delivery of trackerData.deliveries) {
+        expect(delivery).toHaveProperty("id");
+        expect(delivery).toHaveProperty("status");
+        expect(delivery).toHaveProperty("scheduledAt");
+      }
+    });
+  });
+
+  /* ================================================================ */
+  /*  Step 8 — ClubFeed: verify club data after ownership              */
+  /* ================================================================ */
+
+  describe("Step 8: ClubFeed — verify club data for authenticated owner", () => {
+    let clubData: any;
+
+    beforeAll(async () => {
+      clubData = await authedCaller.club.feed();
+    });
+
+    it("returns club feed data with expected shape", () => {
+      expect(clubData).toBeTruthy();
+      expect(clubData).toHaveProperty("posts");
+      expect(clubData).toHaveProperty("events");
+      expect(clubData).toHaveProperty("members");
+    });
+
+    it("posts is an array with valid items", () => {
+      expect(Array.isArray(clubData.posts)).toBe(true);
+      for (const post of clubData.posts) {
+        expect(post).toHaveProperty("id");
+        expect(post).toHaveProperty("title");
+        expect(post).toHaveProperty("text");
+        expect(post).toHaveProperty("category");
+        expect(post).toHaveProperty("author");
+      }
+    });
+
+    it("events is an array with valid items", () => {
+      expect(Array.isArray(clubData.events)).toBe(true);
+      for (const event of clubData.events) {
+        expect(event).toHaveProperty("id");
+        expect(event).toHaveProperty("title");
+        expect(event).toHaveProperty("dateLabel");
+        expect(event).toHaveProperty("status");
+      }
+    });
+
+    it("members is an array with valid items", () => {
+      expect(Array.isArray(clubData.members)).toBe(true);
+      for (const member of clubData.members) {
+        expect(member).toHaveProperty("id");
+        expect(member).toHaveProperty("name");
+        expect(member).toHaveProperty("badge");
+      }
+    });
+  });
 });

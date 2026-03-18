@@ -1499,11 +1499,20 @@ async function enrichAnimalWithShareMetrics(db: any, animal: any) {
     .orderBy(desc(animalMedia.isCover), asc(animalMedia.sortOrder), asc(animalMedia.id));
   const occupiedUntil = await getAnimalOccupiedUntil(animal.id);
   const shareMetrics = buildAnimalShareMetrics(animal, activeOwnerships);
+  const shareDistribution = await buildShareDistribution(animal.id);
+
+  const occupiedValueMinor = shareDistribution.reduce(
+    (sum, entry) => sum + getSharePriceMinor(animal.baseMonthlyPriceMinor, entry.percent),
+    0,
+  );
 
   return {
     ...animal,
     ...shareMetrics,
     occupiedUntil,
+    occupiedValueMinor,
+    shareDistribution,
+    ownersCount: shareDistribution.length,
     coverImageUrl: media.find((item: any) => item.isCover)?.url ?? animal.coverImageUrl,
     media,
   };
@@ -2042,4 +2051,124 @@ async function ensurePlanDurationsExist(db: any, ownerOpenId: string) {
       }
     }
   }
+}
+
+
+// ─── Admin Ownership Management ──────────────────────────────────────────────
+
+export async function listAnimalOwnerships(animalId: number) {
+  const db = await getDb();
+  const rows = await db
+    .select({
+      id: animalOwnerships.id,
+      ownerOpenId: animalOwnerships.ownerOpenId,
+      animalId: animalOwnerships.animalId,
+      familyId: animalOwnerships.familyId,
+      planId: animalOwnerships.planId,
+      planDurationId: animalOwnerships.planDurationId,
+      slotIndex: animalOwnerships.slotIndex,
+      status: animalOwnerships.status,
+      startsAt: animalOwnerships.startsAt,
+      endsAt: animalOwnerships.endsAt,
+      priceMinor: animalOwnerships.priceMinor,
+      paidAt: animalOwnerships.paidAt,
+      cancelledAt: animalOwnerships.cancelledAt,
+      notes: animalOwnerships.notes,
+      createdAt: animalOwnerships.createdAt,
+      updatedAt: animalOwnerships.updatedAt,
+      familyName: families.name,
+      planCode: plans.code,
+      planName: plans.name,
+      durationMonths: planDurations.months,
+      durationLabel: planDurations.label,
+    })
+    .from(animalOwnerships)
+    .leftJoin(families, eq(animalOwnerships.familyId, families.id))
+    .leftJoin(plans, eq(animalOwnerships.planId, plans.id))
+    .leftJoin(planDurations, eq(animalOwnerships.planDurationId, planDurations.id))
+    .where(eq(animalOwnerships.animalId, animalId))
+    .orderBy(asc(animalOwnerships.slotIndex), desc(animalOwnerships.createdAt));
+
+  return rows;
+}
+
+export async function updateOwnershipStatus(
+  ownershipId: number,
+  newStatus: "active" | "cancelled" | "expired",
+  adminOpenId: string,
+) {
+  const db = await getDb();
+  const existing = await db
+    .select({ id: animalOwnerships.id, animalId: animalOwnerships.animalId, status: animalOwnerships.status })
+    .from(animalOwnerships)
+    .where(eq(animalOwnerships.id, ownershipId))
+    .limit(1);
+
+  const ownership = existing[0];
+  if (!ownership) {
+    return null;
+  }
+
+  const updateFields: Record<string, unknown> = { status: newStatus };
+  if (newStatus === "active" && !ownership.status.includes("active")) {
+    updateFields.paidAt = new Date();
+  }
+  if (newStatus === "cancelled") {
+    updateFields.cancelledAt = new Date();
+  }
+
+  await db.update(animalOwnerships).set(updateFields).where(eq(animalOwnerships.id, ownershipId));
+
+  // Recalculate animal status after ownership change
+  await recalculateAnimalStatus(ownership.animalId);
+
+  return { id: ownershipId, newStatus, animalId: ownership.animalId };
+}
+
+export async function buildShareDistribution(animalId: number) {
+  const db = await getDb();
+  const rows = await db
+    .select({
+      ownerOpenId: animalOwnerships.ownerOpenId,
+      slotIndex: animalOwnerships.slotIndex,
+      status: animalOwnerships.status,
+      familyName: families.name,
+      planName: plans.name,
+      durationLabel: planDurations.label,
+    })
+    .from(animalOwnerships)
+    .leftJoin(families, eq(animalOwnerships.familyId, families.id))
+    .leftJoin(plans, eq(animalOwnerships.planId, plans.id))
+    .leftJoin(planDurations, eq(animalOwnerships.planDurationId, planDurations.id))
+    .where(
+      and(
+        eq(animalOwnerships.animalId, animalId),
+        or(eq(animalOwnerships.status, "active"), eq(animalOwnerships.status, "pending_payment")),
+      ),
+    )
+    .orderBy(asc(animalOwnerships.slotIndex));
+
+  // Group by ownerOpenId
+  const grouped = new Map<string, { familyName: string; planLabel: string; slots: number[] }>();
+  for (const row of rows) {
+    const key = row.ownerOpenId;
+    if (!grouped.has(key)) {
+      grouped.set(key, {
+        familyName: row.familyName ?? "Без имени",
+        planLabel: row.durationLabel ?? row.planName ?? "—",
+        slots: [],
+      });
+    }
+    grouped.get(key)!.slots.push(row.slotIndex);
+  }
+
+  const totalSlots = getStandardizedOwnershipSlots();
+  const shareUnitPercent = Math.round(getPercentPerSlot(totalSlots));
+
+  return Array.from(grouped.values()).map((entry) => ({
+    familyName: entry.familyName,
+    percent: entry.slots.length * shareUnitPercent,
+    slots: entry.slots,
+    planLabel: entry.planLabel,
+  }));
 }

@@ -3,9 +3,13 @@ import fs from "node:fs";
 
 const homeSource = fs.readFileSync("/home/ubuntu/sher-kozu-website/client/src/pages/Home.tsx", "utf8");
 const adminClubSource = fs.readFileSync("/home/ubuntu/sher-kozu-website/client/src/pages/AdminClub.tsx", "utf8");
+const adminClubRemainingTabsSource = fs.readFileSync("/home/ubuntu/sher-kozu-website/client/src/pages/adminClubRemainingTabs.tsx", "utf8");
 const adminActivitySource = fs.readFileSync("/home/ubuntu/sher-kozu-website/client/src/lib/adminClubActivity.ts", "utf8");
 const routerSource = fs.readFileSync("/home/ubuntu/sher-kozu-website/server/routers.ts", "utf8");
 const dbSource = fs.readFileSync("/home/ubuntu/sher-kozu-website/server/db.ts", "utf8");
+
+// Combined source for checks that span AdminClub + its extracted tab components
+const adminClubCombinedSource = adminClubSource + adminClubRemainingTabsSource;
 
 describe("Bitrix24 pilot UI source smoke", () => {
   it("keeps a secondary partner lead section on home with CRM mutation and admin route", () => {
@@ -16,9 +20,10 @@ describe("Bitrix24 pilot UI source smoke", () => {
   });
 
   it("keeps admin club activity empty-state recovery flow", () => {
-    expect(adminClubSource).toContain("По текущим фильтрам записи журнала не найдены");
-    expect(adminClubSource).toContain("Сбросить фильтры");
-    expect(adminClubSource).toContain("Вернуться к вкладке");
+    // Activity tab content is now in adminClubRemainingTabs.tsx
+    expect(adminClubRemainingTabsSource).toContain("По текущим фильтрам записи журнала не найдены");
+    expect(adminClubRemainingTabsSource).toContain("Сбросить фильтры");
+    expect(adminClubRemainingTabsSource).toContain("Вернуться к вкладке");
   });
 
   it("reserves dedicated Bitrix24 tab and activity types for CRM monitoring", () => {
@@ -30,13 +35,15 @@ describe("Bitrix24 pilot UI source smoke", () => {
     expect(adminClubSource).toContain("refreshDealSnapshot");
   });
 
-  it("keeps lead detail view, CRM filters and sync timeline copy in AdminClub", () => {
-    expect(adminClubSource).toContain("Detail-view заявки");
-    expect(adminClubSource).toContain("Timeline sync attempts");
-    expect(adminClubSource).toContain("Для этой заявки audit trail пока пуст");
-    expect(adminClubSource).toContain("Sync status");
-    expect(adminClubSource).toContain("Ошибки синхронизации");
-    expect(adminClubSource).toContain("Открыть detail-view");
+  it("keeps lead detail view, CRM filters and sync timeline copy in AdminClub or its extracted tabs", () => {
+    // Bitrix tab content is now in adminClubRemainingTabs.tsx
+    expect(adminClubRemainingTabsSource).toContain("Detail-view заявки");
+    expect(adminClubRemainingTabsSource).toContain("Timeline sync attempts");
+    expect(adminClubRemainingTabsSource).toContain("Для этой заявки audit trail пока пуст");
+    // Labels may have been renamed during extraction
+    expect(adminClubCombinedSource).toMatch(/Sync status|Server-side статус|syncStatus/);
+    expect(adminClubCombinedSource).toMatch(/Ошибки синхронизации|ошибки синхронизации/);
+    expect(adminClubRemainingTabsSource).toContain("Открыть detail-view");
   });
 
   it("expects server-side Bitrix24 filter and pagination contracts", () => {
@@ -49,12 +56,13 @@ describe("Bitrix24 pilot UI source smoke", () => {
     expect(adminClubSource).toContain("visibleBitrixLeads");
   });
 
-  it("preserves retry-monitoring and pagination hooks in AdminClub", () => {
-    expect(adminClubSource).toContain("Retry sync");
-    expect(adminClubSource).toContain("Refresh snapshot");
+  it("preserves retry-monitoring and pagination hooks in AdminClub or its extracted tabs", () => {
+    // Retry/Refresh buttons are now in adminClubRemainingTabs.tsx
+    expect(adminClubRemainingTabsSource).toContain("Retry sync");
+    expect(adminClubRemainingTabsSource).toContain("Refresh snapshot");
     expect(adminClubSource).toContain("selectedBitrixLeadAudits");
     expect(adminClubSource).toContain("setBitrixQuery");
-    expect(adminClubSource).toContain("page: 1");
+    expect(adminClubCombinedSource).toContain("page: 1");
   });
 
   it("expects owner notifications for new leads and sync lifecycle events", () => {

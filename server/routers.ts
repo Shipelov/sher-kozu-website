@@ -43,6 +43,8 @@ import {
   updateClubEvent,
   updateClubMember,
   updateClubPost,
+  listAnimalOwnerships,
+  updateOwnershipStatus,
 } from "./db";
 import { storagePut } from "./storage";
 import { pullBitrixDealSnapshot, syncPartnerLeadToBitrix } from "./bitrix24";
@@ -658,6 +660,25 @@ export const appRouter = router({
     deletePreset: protectedProcedure.input(idInput).mutation(async ({ ctx, input }) => {
       return deleteClubAdminPreset(input.id, ctx.user.openId);
     }),
+  }),
+  adminOwnerships: router({
+    listByAnimal: protectedProcedure.input(z.object({ animalId: z.number().int().positive() })).query(async ({ input }) => {
+      return listAnimalOwnerships(input.animalId);
+    }),
+    updateStatus: protectedProcedure
+      .input(
+        z.object({
+          ownershipId: z.number().int().positive(),
+          status: z.enum(["active", "cancelled", "expired"]),
+        }),
+      )
+      .mutation(async ({ ctx, input }) => {
+        const result = await updateOwnershipStatus(input.ownershipId, input.status, ctx.user.openId);
+        if (!result) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Ownership not found." });
+        }
+        return result;
+      }),
   }),
 });
 

@@ -17,7 +17,6 @@ import {
   Calendar,
   ChevronRight,
   Heart,
-  Loader2,
   MapPin,
   Milk,
   Package,
@@ -86,6 +85,109 @@ function iconForStep(kind: string) {
   return Heart;
 }
 
+function DashboardSkeleton() {
+  return (
+    <div className="min-h-screen bg-background text-foreground">
+      <Navbar />
+      <div className="pb-14 pt-24 md:pt-28">
+        <div className="container space-y-5">
+          <div className="animate-pulse overflow-hidden rounded-[2.25rem] border border-border/70 bg-card shadow-sm">
+            <div className="grid gap-0 lg:grid-cols-[1.08fr_0.92fr]">
+              <div className="min-h-[420px] bg-muted" />
+              <div className="bg-secondary/30 p-5 md:p-6">
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {[1, 2, 3, 4].map((i) => (
+                    <div key={i} className="rounded-[1.5rem] border border-border/70 bg-white/80 p-4">
+                      <div className="h-10 w-10 rounded-2xl bg-muted" />
+                      <div className="mt-3 h-3 w-20 rounded bg-muted" />
+                      <div className="mt-2 h-5 w-28 rounded bg-muted" />
+                    </div>
+                  ))}
+                </div>
+                <div className="mt-4 rounded-[1.75rem] border border-border/70 bg-card">
+                  <div className="h-44 bg-muted" />
+                  <div className="p-4 space-y-2">
+                    <div className="h-3 w-32 rounded bg-muted" />
+                    <div className="h-5 w-3/4 rounded bg-muted" />
+                    <div className="h-4 w-full rounded bg-muted" />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div className="grid grid-cols-12 gap-5">
+            <div className="col-span-12 md:col-span-7 animate-pulse rounded-[2rem] border border-border/70 bg-card p-5 shadow-sm">
+              <div className="h-4 w-24 rounded bg-muted" />
+              <div className="mt-3 h-6 w-3/4 rounded bg-muted" />
+              <div className="mt-4 h-4 w-full rounded bg-muted" />
+              <div className="mt-5 space-y-3">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="rounded-[1.75rem] border border-border/70 bg-white p-4">
+                    <div className="flex items-start gap-4">
+                      <div className="h-11 w-11 rounded-2xl bg-muted" />
+                      <div className="flex-1 space-y-2">
+                        <div className="h-5 w-2/3 rounded bg-muted" />
+                        <div className="h-4 w-full rounded bg-muted" />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="col-span-12 md:col-span-5 animate-pulse rounded-[2rem] border border-border/70 bg-card p-5 shadow-sm">
+              <div className="h-4 w-28 rounded bg-muted" />
+              <div className="mt-3 h-6 w-2/3 rounded bg-muted" />
+              <div className="mt-4 space-y-3">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="rounded-2xl bg-secondary/55 p-4">
+                    <div className="h-3 w-16 rounded bg-muted" />
+                    <div className="mt-2 h-5 w-24 rounded bg-muted" />
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function DashboardError({ onRetry }: { onRetry: () => void }) {
+  return (
+    <div className="min-h-screen bg-background text-foreground">
+      <Navbar />
+      <div className="pb-14 pt-24 md:pt-28">
+        <div className="container">
+          <div className="mx-auto max-w-lg rounded-[2rem] border border-destructive/30 bg-card p-8 text-center shadow-sm">
+            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-destructive/10 text-destructive">
+              <ShieldCheck className="h-7 w-7" />
+            </div>
+            <h2 className="mt-4 text-xl font-semibold text-foreground">Не удалось загрузить кабинет</h2>
+            <p className="mt-2 text-sm leading-6 text-muted-foreground">
+              Произошла ошибка при загрузке данных вашего кабинета владельца. Попробуйте обновить страницу или вернитесь позже.
+            </p>
+            <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:justify-center">
+              <button
+                onClick={onRetry}
+                className="inline-flex items-center justify-center rounded-full bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90"
+              >
+                Попробовать снова
+              </button>
+              <Link
+                href="/animals"
+                className="inline-flex items-center justify-center rounded-full border border-border bg-white px-5 py-2.5 text-sm font-semibold text-foreground transition hover:bg-muted"
+              >
+                Открыть галерею
+              </Link>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function Dashboard() {
   const ownerDashboardQuery = trpc.animals.ownerDashboard.useQuery();
   const dashboard = ownerDashboardQuery.data;
@@ -95,6 +197,9 @@ export default function Dashboard() {
   const clubSummary = dashboard?.clubSummary ?? null;
   const nextSteps = dashboard?.nextSteps ?? [];
   const quickLinks = dashboard?.quickLinks ?? [];
+
+  if (ownerDashboardQuery.isLoading) return <DashboardSkeleton />;
+  if (ownerDashboardQuery.isError) return <DashboardError onRetry={() => ownerDashboardQuery.refetch()} />;
 
   const ownershipTone = getOwnershipTone(ownership?.status);
   const featuredAnimalName = currentAnimal?.name ?? ownership?.animalName ?? "ваше животное";
@@ -236,14 +341,7 @@ export default function Dashboard() {
             </div>
           </motion.section>
 
-          {ownerDashboardQuery.isLoading ? (
-            <div className="rounded-[2rem] border border-border/70 bg-card p-6 text-sm text-muted-foreground shadow-sm">
-              <div className="inline-flex items-center gap-2">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Загружаем ваш owner-journey, текущее животное и следующие действия…
-              </div>
-            </div>
-          ) : null}
+
 
           <div className="grid grid-cols-12 gap-5">
             <motion.section
