@@ -1520,7 +1520,14 @@ export async function getAnimalBySlug(slug: string) {
     return null;
   }
 
-  const linkedPlans = await db.select().from(plans).where(eq(plans.status, "active")).orderBy(asc(plans.id));
+  const ownerLinkedPlans = await db
+    .select()
+    .from(plans)
+    .where(and(eq(plans.ownerOpenId, animal.ownerOpenId), eq(plans.status, "active")))
+    .orderBy(asc(plans.id));
+  const linkedPlans = ownerLinkedPlans.length
+    ? ownerLinkedPlans
+    : await db.select().from(plans).where(eq(plans.status, "active")).orderBy(asc(plans.id));
   const durations = linkedPlans.length
     ? await db.select().from(planDurations).where(eq(planDurations.isActive, 1)).orderBy(asc(planDurations.sortOrder), asc(planDurations.months))
     : [];

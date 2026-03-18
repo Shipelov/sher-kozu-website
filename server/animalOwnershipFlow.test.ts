@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 type OwnershipStatus = "active" | "pending_payment" | "cancelled" | "expired";
 type AnimalStatus = "public_available" | "public_limited" | "fully_booked" | "hidden" | "archived";
 type UserRole = "admin" | "user";
+type PlanRecord = { id: number; ownerOpenId: string; status: "active" | "archived" };
 
 type OwnershipRecord = {
   animalId: number;
@@ -129,6 +130,15 @@ function restoreAnimal(animal: AnimalRecord): AnimalRecord {
   };
 }
 
+function pickDefaultPlanForAnimal(ownerOpenId: string, plans: PlanRecord[]) {
+  const ownerActivePlans = plans.filter((plan) => plan.ownerOpenId === ownerOpenId && plan.status === "active");
+  if (ownerActivePlans.length) {
+    return ownerActivePlans[0];
+  }
+
+  return plans.find((plan) => plan.status === "active") ?? null;
+}
+
 function assertAdminRole(role: UserRole) {
   if (role !== "admin") {
     throw new Error("FORBIDDEN");
@@ -230,6 +240,19 @@ describe("Sprint 1 ownership flow domain rules", () => {
     expect(isValidSharePercent(animal, 0)).toBe(false);
     expect(isValidSharePercent(animal, 15)).toBe(false);
     expect(isValidSharePercent(animal, 105)).toBe(false);
+  });
+
+  it("returns the animal owner's active default plan and falls back to any active plan if owner-specific one is missing", () => {
+    const plans: PlanRecord[] = [
+      { id: 1, ownerOpenId: "owner-demo", status: "active" },
+      { id: 2, ownerOpenId: "owner-marta", status: "active" },
+      { id: 3, ownerOpenId: "owner-zlata", status: "archived" },
+    ];
+
+    expect(pickDefaultPlanForAnimal("owner-marta", plans)?.id).toBe(2);
+    expect(pickDefaultPlanForAnimal("owner-zlata", plans)?.id).toBe(1);
+    expect(pickDefaultPlanForAnimal("owner-unknown", plans)?.id).toBe(1);
+    expect(pickDefaultPlanForAnimal("owner-unknown", [{ id: 9, ownerOpenId: "x", status: "archived" }])).toBeNull();
   });
 
   it("returns only share percent options up to remaining available capacity", () => {
