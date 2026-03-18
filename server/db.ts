@@ -675,14 +675,41 @@ export async function getOwnerDashboardData(ownerOpenId: string) {
     groupedByAnimal.set(row.animalId, current);
   }
 
-  const primaryOwnershipGroup = Array.from(groupedByAnimal.values()).sort((left, right) => {
+  const sortedGroups = Array.from(groupedByAnimal.values()).sort((left, right) => {
     const leftPending = left.some((item) => item.status === "pending_payment") ? 1 : 0;
     const rightPending = right.some((item) => item.status === "pending_payment") ? 1 : 0;
     if (leftPending !== rightPending) return rightPending - leftPending;
     return right.length - left.length;
-  })[0] ?? null;
+  });
 
+  const primaryOwnershipGroup = sortedGroups[0] ?? null;
   const primaryOwnership = primaryOwnershipGroup?.[0] ?? null;
+
+  // Build allOwnerships — one entry per animal the owner has booked/paid
+  const allOwnerships = sortedGroups.map((group) => {
+    const first = group[0];
+    const slotsCount = group.length;
+    const totalSlots = normalizeOwnershipSlots(first.totalOwnershipSlots ?? 10);
+    const sharePercent = slotsCount * Math.round(getPercentPerSlot(totalSlots));
+    const hasPending = group.some((item: any) => item.status === "pending_payment");
+    const hasActive = group.some((item: any) => item.status === "active");
+    return {
+      animalId: first.animalId,
+      animalSlug: first.animalSlug,
+      animalName: first.animalName,
+      species: first.species,
+      breed: first.breed,
+      coverImageUrl: first.coverImageUrl,
+      sharePercent,
+      slotsCount,
+      status: hasPending ? "pending_payment" as const : "active" as const,
+      statusLabel: hasPending ? "Ожидает подтверждения" : hasActive ? "Активное участие" : "Без активного участия",
+      startsAt: first.startsAt,
+      endsAt: first.endsAt,
+      priceMinorTotal: group.reduce((sum: number, item: any) => sum + Number(item.priceMinor ?? 0), 0),
+      slotIndexes: group.map((item: any) => item.slotIndex).sort((a: number, b: number) => a - b),
+    };
+  });
   const currentAnimal = primaryOwnership ? await getAnimalBySlug(primaryOwnership.animalSlug) : null;
   const mySharePercent = currentAnimal?.mySharePercent ?? (primaryOwnershipGroup ? primaryOwnershipGroup.length * Math.round(getPercentPerSlot(normalizeOwnershipSlots(primaryOwnership.totalOwnershipSlots ?? 10))) : 0);
   const trackerData = primaryOwnership ? await getProductTrackerData(ownerOpenId, primaryOwnership.animalSlug) : { productBatches: [], compositionSnapshots: [], monthlyMetrics: [], deliveries: [] };
@@ -822,6 +849,7 @@ export async function getOwnerDashboardData(ownerOpenId: string) {
     },
     quickLinks,
     nextSteps,
+    allOwnerships,
   } as const;
 }
 

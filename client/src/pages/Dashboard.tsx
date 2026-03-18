@@ -197,6 +197,7 @@ export default function Dashboard() {
   const clubSummary = dashboard?.clubSummary ?? null;
   const nextSteps = dashboard?.nextSteps ?? [];
   const quickLinks = dashboard?.quickLinks ?? [];
+  const allOwnerships = dashboard?.allOwnerships ?? [];
 
   if (ownerDashboardQuery.isLoading) return <DashboardSkeleton />;
   if (ownerDashboardQuery.isError) return <DashboardError onRetry={() => ownerDashboardQuery.refetch()} />;
@@ -341,7 +342,115 @@ export default function Dashboard() {
             </div>
           </motion.section>
 
+          {/* ── Мои животные ── show when owner has multiple animals */}
+          {allOwnerships.length > 1 && (
+            <motion.section
+              initial={{ opacity: 0, y: 14 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.06 }}
+              className="rounded-[2rem] border border-border/70 bg-card p-5 shadow-sm"
+              data-testid="dashboardAllOwnerships"
+            >
+              <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="text-xs uppercase tracking-[0.18em] text-primary">Мои животные</p>
+                  <h3 className="mt-2 text-xl font-semibold text-foreground">
+                    У вас {allOwnerships.length} {allOwnerships.length >= 5 ? "животных" : allOwnerships.length >= 2 ? "животных" : "животное"} в персональном фермерстве
+                  </h3>
+                </div>
+                <Heart className="h-5 w-5 text-primary" />
+              </div>
+              <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                Каждое животное — отдельный маршрут владельца: профиль, трекер продукта и клубные сценарии. Нажмите на карточку, чтобы перейти к конкретному животному.
+              </p>
+              <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {allOwnerships.map((item) => {
+                  const isPrimary = item.animalId === ownership?.animalId;
+                  return (
+                    <Link
+                      key={item.animalId}
+                      href={`/animals/${item.animalSlug}`}
+                      className={`group relative overflow-hidden rounded-[1.5rem] border bg-white p-4 transition-colors hover:bg-muted/35 ${
+                        isPrimary ? "border-primary/30 ring-1 ring-primary/15" : "border-border/70"
+                      }`}
+                    >
+                      {isPrimary && (
+                        <div className="absolute right-3 top-3 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-widest text-primary">
+                          Основное
+                        </div>
+                      )}
+                      <div className="flex items-start gap-3">
+                        {item.coverImageUrl ? (
+                          <img
+                            src={item.coverImageUrl}
+                            alt={item.animalName}
+                            className="h-14 w-14 shrink-0 rounded-2xl object-cover"
+                          />
+                        ) : (
+                          <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-secondary text-primary">
+                            <Heart className="h-6 w-6" />
+                          </div>
+                        )}
+                        <div className="min-w-0 flex-1">
+                          <div className="text-base font-semibold text-foreground">{item.animalName}</div>
+                          <div className="mt-0.5 text-xs text-muted-foreground">
+                            {item.species}{item.breed ? ` · ${item.breed}` : ""}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="mt-3 grid grid-cols-2 gap-2">
+                        <div className="rounded-xl bg-secondary/55 px-3 py-2">
+                          <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Доля</div>
+                          <div className="mt-0.5 text-sm font-semibold text-foreground">{item.sharePercent}%</div>
+                        </div>
+                        <div className="rounded-xl bg-secondary/55 px-3 py-2">
+                          <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Статус</div>
+                          <div className={`mt-0.5 text-sm font-semibold ${
+                            item.status === "pending_payment" ? "text-amber-600" : "text-emerald-600"
+                          }`}>
+                            {item.statusLabel}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="mt-3 flex items-center justify-between text-sm">
+                        <span className="text-xs text-muted-foreground">
+                          {item.slotsCount} {item.slotsCount === 1 ? "слот" : item.slotsCount < 5 ? "слота" : "слотов"} · {formatCurrency(item.priceMinorTotal)}
+                        </span>
+                        <ChevronRight className="h-4 w-4 text-primary transition-transform group-hover:translate-x-0.5" />
+                      </div>
+                    </Link>
+                  );
+                })}
+              </div>
+            </motion.section>
+          )}
 
+          {/* ── Если одно животное, показываем компактную карточку для навигации */}
+          {allOwnerships.length === 1 && (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.06 }}
+              className="rounded-[1.5rem] border border-primary/15 bg-primary/5 px-5 py-3"
+              data-testid="dashboardSingleOwnership"
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <Heart className="h-4 w-4 text-primary" />
+                  <span className="text-sm text-foreground">
+                    <span className="font-semibold">{allOwnerships[0].animalName}</span>
+                    <span className="text-muted-foreground"> · {allOwnerships[0].sharePercent}% · {allOwnerships[0].statusLabel}</span>
+                  </span>
+                </div>
+                <Link
+                  href={`/animals/${allOwnerships[0].animalSlug}`}
+                  className="inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline"
+                >
+                  Профиль <ChevronRight className="h-4 w-4" />
+                </Link>
+              </div>
+            </motion.div>
+          )}
 
           <div className="grid grid-cols-12 gap-5">
             <motion.section
