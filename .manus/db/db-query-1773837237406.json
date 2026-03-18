@@ -1,0 +1,20 @@
+{
+  "query": "SELECT id, code, ownerOpenId FROM plans ORDER BY id;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3J2fXRHx8d1YjF6.root --database mLhmg5VmBsEBpZiYqdnhMQ --execute SELECT id, code, ownerOpenId FROM plans ORDER BY id;",
+  "rows": [
+    {
+      "id": "1",
+      "code": "core-care-jp5ibymc",
+      "ownerOpenId": "jP5iBYMcdYguBWJPw5Sruu"
+    },
+    {
+      "id": "30001",
+      "code": "core-care-e2e-jour",
+      "ownerOpenId": "e2e-journey-1773837179563"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tcode\townerOpenId\n1\tcore-care-jp5ibymc\tjP5iBYMcdYguBWJPw5Sruu\n30001\tcore-care-e2e-jour\te2e-journey-1773837179563\n",
+  "stderr": "",
+  "execution_time_ms": 383
+}

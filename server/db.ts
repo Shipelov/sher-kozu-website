@@ -49,11 +49,16 @@ async function ensureOwnerExperienceSeed(ownerOpenId: string) {
   const db = await getDb();
   if (!db) return;
 
+  // Resolve actual animal slugs for this owner
+  const ownerAnimals = await db.select({ slug: animals.slug, name: animals.name }).from(animals).where(eq(animals.ownerOpenId, ownerOpenId)).orderBy(animals.sortOrder).limit(2);
+  const slugA = ownerAnimals[0]?.slug ?? "marta";
+  const slugB = ownerAnimals[1]?.slug ?? "zlata";
+
   const existingBatch = await db.select({ id: productBatches.id }).from(productBatches).where(eq(productBatches.ownerOpenId, ownerOpenId)).limit(1);
   if (!existingBatch.length) {
     await db.insert(productBatches).values([
       {
-        animalSlug: "marta",
+        animalSlug: slugA,
         ownerOpenId,
         productName: "Именной набор Марты",
         productType: "Молоко и свежий сыр",
@@ -67,7 +72,7 @@ async function ensureOwnerExperienceSeed(ownerOpenId: string) {
         sortOrder: 0,
       },
       {
-        animalSlug: "marta",
+        animalSlug: slugA,
         ownerOpenId,
         productName: "Сырная партия Марты",
         productType: "Полутвёрдый сыр",
@@ -81,7 +86,7 @@ async function ensureOwnerExperienceSeed(ownerOpenId: string) {
         sortOrder: 1,
       },
       {
-        animalSlug: "zlata",
+        animalSlug: slugB,
         ownerOpenId,
         productName: "Набор Златы для завтрака",
         productType: "Йогурт и мягкий сыр",
@@ -101,26 +106,36 @@ async function ensureOwnerExperienceSeed(ownerOpenId: string) {
   if (!existingCompositions.length) {
     await db.insert(productCompositionSnapshots).values([
       {
-        animalSlug: "marta",
+        animalSlug: slugA,
         ownerOpenId,
-        title: "Утренний профиль молока",
-        fatPercent: "4.8%",
-        proteinPercent: "3.6%",
-        lactosePercent: "4.3%",
-        dryMatterPercent: "12.5%",
+        label: "Жирность",
+        value: "4.8%",
         note: "Подходит для свежих сыров и мягких семейных десертов.",
         sortOrder: 0,
       },
       {
-        animalSlug: "zlata",
+        animalSlug: slugA,
         ownerOpenId,
-        title: "Нежный профиль для йогурта",
-        fatPercent: "4.2%",
-        proteinPercent: "3.4%",
-        lactosePercent: "4.5%",
-        dryMatterPercent: "11.9%",
+        label: "Белок",
+        value: "3.6%",
+        note: "Стабильный показатель для сыроварения.",
+        sortOrder: 1,
+      },
+      {
+        animalSlug: slugB,
+        ownerOpenId,
+        label: "Жирность",
+        value: "4.2%",
         note: "Даёт мягкую текстуру и хорошую стабильность ферментации.",
         sortOrder: 0,
+      },
+      {
+        animalSlug: slugB,
+        ownerOpenId,
+        label: "Белок",
+        value: "3.4%",
+        note: "Нежный профиль для йогурта.",
+        sortOrder: 1,
       },
     ]);
   }
@@ -129,57 +144,57 @@ async function ensureOwnerExperienceSeed(ownerOpenId: string) {
   if (!existingMetrics.length) {
     await db.insert(productMonthlyMetrics).values([
       {
-        animalSlug: "marta",
+        animalSlug: slugA,
         ownerOpenId,
-        label: "Январь",
-        milkLiters: 81,
-        cheeseKg: 12,
-        yogurtKg: 9,
+        monthLabel: "Январь",
+        milkVolumeLiters: 81,
+        proteinPercentTenth: 36,
+        fatPercentTenth: 48,
         sortOrder: 0,
       },
       {
-        animalSlug: "marta",
+        animalSlug: slugA,
         ownerOpenId,
-        label: "Февраль",
-        milkLiters: 88,
-        cheeseKg: 14,
-        yogurtKg: 10,
+        monthLabel: "Февраль",
+        milkVolumeLiters: 88,
+        proteinPercentTenth: 37,
+        fatPercentTenth: 49,
         sortOrder: 1,
       },
       {
-        animalSlug: "marta",
+        animalSlug: slugA,
         ownerOpenId,
-        label: "Март",
-        milkLiters: 92,
-        cheeseKg: 16,
-        yogurtKg: 11,
+        monthLabel: "Март",
+        milkVolumeLiters: 92,
+        proteinPercentTenth: 36,
+        fatPercentTenth: 50,
         sortOrder: 2,
       },
       {
-        animalSlug: "zlata",
+        animalSlug: slugB,
         ownerOpenId,
-        label: "Январь",
-        milkLiters: 74,
-        cheeseKg: 10,
-        yogurtKg: 13,
+        monthLabel: "Январь",
+        milkVolumeLiters: 74,
+        proteinPercentTenth: 34,
+        fatPercentTenth: 42,
         sortOrder: 0,
       },
       {
-        animalSlug: "zlata",
+        animalSlug: slugB,
         ownerOpenId,
-        label: "Февраль",
-        milkLiters: 78,
-        cheeseKg: 11,
-        yogurtKg: 14,
+        monthLabel: "Февраль",
+        milkVolumeLiters: 78,
+        proteinPercentTenth: 35,
+        fatPercentTenth: 43,
         sortOrder: 1,
       },
       {
-        animalSlug: "zlata",
+        animalSlug: slugB,
         ownerOpenId,
-        label: "Март",
-        milkLiters: 83,
-        cheeseKg: 12,
-        yogurtKg: 15,
+        monthLabel: "Март",
+        milkVolumeLiters: 83,
+        proteinPercentTenth: 34,
+        fatPercentTenth: 44,
         sortOrder: 2,
       },
     ]);
@@ -189,30 +204,24 @@ async function ensureOwnerExperienceSeed(ownerOpenId: string) {
   if (!existingDeliveries.length) {
     await db.insert(productDeliveries).values([
       {
-        animalSlug: "marta",
+        animalSlug: slugA,
         ownerOpenId,
         title: "Клубный набор Марты",
         status: "В пути",
         etaLabel: "15 марта, 18:00–20:00",
         destination: "Алматы, Медеуский район",
-        routeLabel: "Ферма → сортировка → курьер",
-        courierName: "Sher Kozu Delivery",
-        trackingCode: "SK-MRT-1503",
-        detail: "Курьер забрал заказ, следующий чекпойнт — сортировка и передача в городскую доставку.",
+        courierNote: "Курьер забрал заказ, следующий чекпойнт — сортировка.",
         isActive: 1,
         sortOrder: 0,
       },
       {
-        animalSlug: "zlata",
+        animalSlug: slugB,
         ownerOpenId,
         title: "Завтрак от Златы",
         status: "Готовится",
         etaLabel: "16 марта, до 11:00",
         destination: "Алматы, Бостандыкский район",
-        routeLabel: "Ферма → упаковка → курьер",
-        courierName: "Семейная логистика",
-        trackingCode: "SK-ZLT-1603",
-        detail: "Набор упаковывается и будет передан курьеру завтра утром.",
+        courierNote: "Набор упаковывается, передача курьеру завтра утром.",
         isActive: 1,
         sortOrder: 0,
       },
@@ -1836,11 +1845,14 @@ export async function ensureSprintOneSeed(ownerOpenId: string) {
     return;
   }
 
+  const ownerSuffix = ownerOpenId.toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 12);
+
   const existingPlans = await db.select({ id: plans.id }).from(plans).where(eq(plans.ownerOpenId, ownerOpenId)).limit(1);
   if (!existingPlans.length) {
+    const planCode = `core-care-${ownerSuffix}-${Date.now().toString(36)}`;
     const planResult = await db.insert(plans).values({
       ownerOpenId,
-      code: `core-care-${ownerOpenId.toLowerCase().slice(0, 8)}`,
+      code: planCode,
       name: "Базовая опека",
       description: "Стартовый статус для участия семьи в жизни животного и получения продукции.",
       status: "active",
@@ -1848,7 +1860,20 @@ export async function ensureSprintOneSeed(ownerOpenId: string) {
       maxOwnersPerAnimal: 3,
       benefitsSummary: "Доступ к кабинету, клубным обновлениям и базовой продуктовой выдаче.",
     });
-    const planId = Number(planResult.insertId);
+    let planId = Number((planResult as { insertId?: number | string }).insertId);
+    if (!Number.isFinite(planId) || planId <= 0) {
+      // Fallback: drizzle mysql2 may return [ResultSetHeader, FieldPacket[]]
+      planId = Number((planResult as any)?.[0]?.insertId);
+    }
+    if (!Number.isFinite(planId) || planId <= 0) {
+      // Final fallback: query by code
+      const rows = await db.select({ id: plans.id }).from(plans).where(eq(plans.code, planCode)).limit(1);
+      planId = Number(rows[0]?.id);
+    }
+    if (!Number.isFinite(planId) || planId <= 0) {
+      console.warn(`[ensureSprintOneSeed] Could not resolve planId for ${ownerOpenId}, skipping durations`);
+      return;
+    }
 
     await db.insert(planDurations).values([
       {
@@ -1881,75 +1906,86 @@ export async function ensureSprintOneSeed(ownerOpenId: string) {
     ] as InsertPlanDuration[]);
   }
 
-  await createAnimalWithMedia({
-    ownerOpenId,
-    name: "Марта",
-    slug: `marta-${ownerOpenId.toLowerCase().slice(0, 6)}`,
-    species: "goat",
-    breed: "Зааненская",
-    shortDescription: "Спокойная и общительная коза с выраженным молочным профилем.",
-    story: "Марта быстро идёт на контакт с семьями и хорошо реагирует на регулярные визиты и кормление.",
-    coverImageUrl: "https://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/goat_portrait_80fc5726.jpg",
-    galleryIntro: "Подборка фотографий Марты для витрины и карточки животного.",
-    status: "public_available",
-    totalOwnershipSlots: 10,
-    baseMonthlyPriceMinor: 135000,
-    healthScore: 88,
-    happinessScore: 91,
-    milkPotentialScore: 84,
-    careLevelScore: 67,
-    isFeatured: 1,
-    sortOrder: 0,
-    publishedAt: new Date(),
-    media: [
-      {
-        animalId: 0,
-        kind: "image",
-        title: "Портрет Марты",
-        alt: "Коза Марта на ферме",
-        fileKey: "seed/marta-hero",
-        url: "https://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/goat_portrait_80fc5726.jpg",
-        mimeType: "image/jpeg",
-        sortOrder: 0,
-        isCover: 1,
-      },
-    ],
-  });
+  // Create animals — ignore duplicate slug errors (animals may already exist from another owner seed)
+  try {
+    await createAnimalWithMedia({
+      ownerOpenId,
+      name: "Марта",
+      slug: `marta-${ownerSuffix}`,
+      species: "goat",
+      breed: "Зааненская",
+      shortDescription: "Спокойная и общительная коза с выраженным молочным профилем.",
+      story: "Марта быстро идёт на контакт с семьями и хорошо реагирует на регулярные визиты и кормление.",
+      coverImageUrl: "https://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/goat_portrait_80fc5726.jpg",
+      galleryIntro: "Подборка фотографий Марты для витрины и карточки животного.",
+      status: "public_available",
+      totalOwnershipSlots: 10,
+      baseMonthlyPriceMinor: 135000,
+      healthScore: 88,
+      happinessScore: 91,
+      milkPotentialScore: 84,
+      careLevelScore: 67,
+      isFeatured: 1,
+      sortOrder: 0,
+      publishedAt: new Date(),
+      media: [
+        {
+          animalId: 0,
+          kind: "image",
+          title: "Портрет Марты",
+          alt: "Коза Марта на ферме",
+          fileKey: "seed/marta-hero",
+          url: "https://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/goat_portrait_80fc5726.jpg",
+          mimeType: "image/jpeg",
+          sortOrder: 0,
+          isCover: 1,
+        },
+      ],
+    });
+  } catch (err) {
+    // Duplicate slug — animal already exists, continue
+    if (!(err as any)?.message?.includes('Duplicate')) throw err;
+  }
 
-  await createAnimalWithMedia({
-    ownerOpenId,
-    name: "Злата",
-    slug: `zlata-${ownerOpenId.toLowerCase().slice(0, 6)}`,
-    species: "sheep",
-    breed: "Казахская тонкорунная",
-    shortDescription: "Мягкий темперамент, ровный ритм ухода и стабильная сезонная отдача.",
-    story: "Злата хорошо подходит семьям, которые хотят мягкое вхождение в формат опеки и регулярных визитов.",
-    coverImageUrl: "https://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/milk_products_d3f8c13d.jpg",
-    galleryIntro: "Подборка фотографий Златы для витрины и карточки животного.",
-    status: "public_available",
-    totalOwnershipSlots: 10,
-    baseMonthlyPriceMinor: 118000,
-    healthScore: 86,
-    happinessScore: 89,
-    milkPotentialScore: 78,
-    careLevelScore: 59,
-    isFeatured: 0,
-    sortOrder: 1,
-    publishedAt: new Date(),
-    media: [
-      {
-        animalId: 0,
-        kind: "image",
-        title: "Образ Златы",
-        alt: "Овца Злата на ферме",
-        fileKey: "seed/zlata-hero",
-        url: "https://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/hero_farm_ab0d054b.jpg",
-        mimeType: "image/jpeg",
-        sortOrder: 0,
-        isCover: 1,
-      },
-    ],
-  });
+  try {
+    await createAnimalWithMedia({
+      ownerOpenId,
+      name: "Злата",
+      slug: `zlata-${ownerSuffix}`,
+      species: "sheep",
+      breed: "Казахская тонкорунная",
+      shortDescription: "Мягкий темперамент, ровный ритм ухода и стабильная сезонная отдача.",
+      story: "Злата хорошо подходит семьям, которые хотят мягкое вхождение в формат опеки и регулярных визитов.",
+      coverImageUrl: "https://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/milk_products_d3f8c13d.jpg",
+      galleryIntro: "Подборка фотографий Златы для витрины и карточки животного.",
+      status: "public_available",
+      totalOwnershipSlots: 10,
+      baseMonthlyPriceMinor: 118000,
+      healthScore: 86,
+      happinessScore: 89,
+      milkPotentialScore: 78,
+      careLevelScore: 59,
+      isFeatured: 0,
+      sortOrder: 1,
+      publishedAt: new Date(),
+      media: [
+        {
+          animalId: 0,
+          kind: "image",
+          title: "Образ Златы",
+          alt: "Овца Злата на ферме",
+          fileKey: "seed/zlata-hero",
+          url: "https://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/hero_farm_ab0d054b.jpg",
+          mimeType: "image/jpeg",
+          sortOrder: 0,
+          isCover: 1,
+        },
+      ],
+    });
+  } catch (err) {
+    // Duplicate slug — animal already exists, continue
+    if (!(err as any)?.message?.includes('Duplicate')) throw err;
+  }
 
 }
 
@@ -1960,6 +1996,8 @@ async function ensurePlanDurationsExist(db: any, ownerOpenId: string) {
     .where(and(eq(plans.ownerOpenId, ownerOpenId), eq(plans.status, "active")));
 
   for (const plan of activePlans) {
+    if (!Number.isFinite(plan.id) || plan.id <= 0) continue;
+
     const existingDurations = await db
       .select({ id: planDurations.id })
       .from(planDurations)
@@ -1967,36 +2005,41 @@ async function ensurePlanDurationsExist(db: any, ownerOpenId: string) {
       .limit(1);
 
     if (!existingDurations.length) {
-      const base = plan.basePriceMinor || 45000;
-      await db.insert(planDurations).values([
-        {
-          planId: plan.id,
-          months: 1,
-          label: "1 месяц",
-          priceMinor: base,
-          isDefault: 1,
-          isActive: 1,
-          sortOrder: 0,
-        },
-        {
-          planId: plan.id,
-          months: 3,
-          label: "3 месяца",
-          priceMinor: Math.round(base * 3 * 0.95),
-          isDefault: 0,
-          isActive: 1,
-          sortOrder: 1,
-        },
-        {
-          planId: plan.id,
-          months: 12,
-          label: "12 месяцев",
-          priceMinor: Math.round(base * 12 * 0.89),
-          isDefault: 0,
-          isActive: 1,
-          sortOrder: 2,
-        },
-      ] as InsertPlanDuration[]);
+      try {
+        const base = plan.basePriceMinor || 45000;
+        await db.insert(planDurations).values([
+          {
+            planId: plan.id,
+            months: 1,
+            label: "1 месяц",
+            priceMinor: base,
+            isDefault: 1,
+            isActive: 1,
+            sortOrder: 0,
+          },
+          {
+            planId: plan.id,
+            months: 3,
+            label: "3 месяца",
+            priceMinor: Math.round(base * 3 * 0.95),
+            isDefault: 0,
+            isActive: 1,
+            sortOrder: 1,
+          },
+          {
+            planId: plan.id,
+            months: 12,
+            label: "12 месяцев",
+            priceMinor: Math.round(base * 12 * 0.89),
+            isDefault: 0,
+            isActive: 1,
+            sortOrder: 2,
+          },
+        ] as InsertPlanDuration[]);
+      } catch (err) {
+        // Ignore duplicate key errors — another concurrent call may have inserted durations
+        console.warn(`[ensurePlanDurationsExist] Insert failed for planId=${plan.id}, likely race condition:`, (err as Error).message?.slice(0, 120));
+      }
     }
   }
 }

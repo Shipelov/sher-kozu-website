@@ -1,0 +1,28 @@
+{
+  "query": "SELECT id, slug, animalStatus, ownerOpenId FROM animals ORDER BY id;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3J2fXRHx8d1YjF6.root --database mLhmg5VmBsEBpZiYqdnhMQ --execute SELECT id, slug, animalStatus, ownerOpenId FROM animals ORDER BY id;",
+  "rows": [
+    {
+      "id": "1",
+      "slug": "marta-jp5iby",
+      "animalStatus": "archived",
+      "ownerOpenId": "jP5iBYMcdYguBWJPw5Sruu"
+    },
+    {
+      "id": "30001",
+      "slug": "mira-goat",
+      "animalStatus": "fully_booked",
+      "ownerOpenId": "jP5iBYMcdYguBWJPw5Sruu"
+    },
+    {
+      "id": "60001",
+      "slug": "kozya",
+      "animalStatus": "fully_booked",
+      "ownerOpenId": "jP5iBYMcdYguBWJPw5Sruu"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tslug\tanimalStatus\townerOpenId\n1\tmarta-jp5iby\tarchived\tjP5iBYMcdYguBWJPw5Sruu\n30001\tmira-goat\tfully_booked\tjP5iBYMcdYguBWJPw5Sruu\n60001\tkozya\tfully_booked\tjP5iBYMcdYguBWJPw5Sruu\n",
+  "stderr": "",
+  "execution_time_ms": 393
+}
