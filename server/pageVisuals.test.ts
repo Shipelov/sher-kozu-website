@@ -46,6 +46,10 @@ describe("page visual integration source smoke", () => {
     expect(dashboardSource).toContain("один ownership journey");
     expect(dashboardSource).toContain("Профиль {featuredAnimalName}");
     expect(dashboardSource).toContain("Dashboard → Profile → Tracker → Club");
+    expect(dashboardSource).toContain("dashboardGuestPreview");
+    expect(dashboardSource).toContain("Ограниченный доступ до входа");
+    expect(dashboardSource).toContain("dashboardGuestLockedParticipation");
+    expect(dashboardSource).toContain("dashboardGuestLockedQuickLinks");
   });
 
   it("keeps named dairy storytelling and dynamic animal route in product tracker", () => {

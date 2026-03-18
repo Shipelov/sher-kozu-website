@@ -101,6 +101,20 @@ export default function Dashboard() {
   const trackerHref = currentAnimal ? `/tracker?animal=${currentAnimal.slug}` : "/tracker";
   const clubHref = currentAnimal ? `/club?animal=${currentAnimal.slug}` : "/club";
   const isGuestJourney = !ownership && !currentAnimal;
+  const guestPreviewSections = [
+    {
+      title: "Профиль участия",
+      description: "После входа здесь появятся ваша доля, статус участия и персональная карточка выбранного животного.",
+    },
+    {
+      title: "Трекер продукта",
+      description: "Кабинет покажет связанную партию, доставку и происхождение молока именно от выбранного животного.",
+    },
+    {
+      title: "Клуб и визиты",
+      description: "После авторизации откроются события, семейные визиты и точки возвращения в фермерский ритм.",
+    },
+  ];
 
   const summaryCards = currentAnimal
     ? [
@@ -251,12 +265,36 @@ export default function Dashboard() {
               </p>
 
               {isGuestJourney ? (
-                <div className="mt-5 rounded-[1.75rem] border border-primary/15 bg-primary/5 p-4">
-                  <div className="text-xs uppercase tracking-[0.16em] text-primary">Прозрачный маршрут до входа</div>
-                  <div className="mt-2 text-lg font-semibold text-foreground">Gallery → Animal Profile → Вход → Dashboard</div>
-                  <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                    Если вы ещё не авторизованы, кабинет не обрывает сценарий. Сначала откройте галерею, выберите животное, затем войдите в аккаунт на шаге оформления доли — после этого кабинет автоматически свяжет профиль, трекер и клуб.
-                  </p>
+                <div className="mt-5 space-y-4 rounded-[1.75rem] border border-primary/15 bg-primary/5 p-4" data-testid="dashboardGuestPreview">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <div className="text-xs uppercase tracking-[0.16em] text-primary">Guest preview</div>
+                    <div className="rounded-full border border-primary/15 bg-white/70 px-3 py-1 text-[11px] font-medium text-primary">
+                      Ограниченный доступ до входа
+                    </div>
+                  </div>
+                  <div>
+                    <div className="mt-2 text-lg font-semibold text-foreground">Gallery → Animal Profile → Вход → Dashboard</div>
+                    <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                      Если вы ещё не авторизованы, кабинет не обрывает сценарий. Сначала откройте галерею, выберите животное и посмотрите его публичный preview, затем войдите в аккаунт на шаге оформления доли — после этого dashboard автоматически свяжет профиль, трекер и клуб.
+                    </p>
+                  </div>
+
+                  <div className="grid gap-3 sm:grid-cols-3">
+                    {guestPreviewSections.map((section) => (
+                      <div key={section.title} className="rounded-2xl border border-primary/10 bg-white/80 p-4">
+                        <div className="text-sm font-semibold text-foreground">{section.title}</div>
+                        <p className="mt-2 text-sm leading-6 text-muted-foreground">{section.description}</p>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="rounded-2xl border border-dashed border-primary/20 bg-white/60 p-4">
+                    <div className="text-sm font-semibold text-foreground">Что откроется после входа</div>
+                    <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                      Полная owner-версия кабинета показывает реальное участие, долю, текущее животное, следующие шаги и быстрые переходы между профилем, трекером и клубом без тупиковых состояний.
+                    </p>
+                  </div>
+
                   <div className="mt-4 grid gap-3 sm:grid-cols-2">
                     <Link
                       href="/animals"
@@ -320,6 +358,16 @@ export default function Dashboard() {
                 <Heart className="h-5 w-5 text-primary" />
               </div>
 
+              {isGuestJourney ? (
+                <div className="mt-4 rounded-[1.5rem] border border-dashed border-border bg-secondary/35 p-4" data-testid="dashboardGuestLockedParticipation">
+                  <div className="text-xs uppercase tracking-[0.16em] text-primary">Preview режима владельца</div>
+                  <h4 className="mt-2 text-lg font-semibold text-foreground">Профиль участия откроется после входа</h4>
+                  <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                    Здесь появятся статус ownership, доля участия, закреплённые слоты и карточка текущего животного. До входа мы показываем структуру кабинета, но не раскрываем owner-only данные.
+                  </p>
+                </div>
+              ) : null}
+
               <div className="mt-4 space-y-3">
                 <div className="rounded-2xl bg-secondary/55 p-4">
                   <div className="text-xs uppercase tracking-[0.16em] text-muted-foreground">Статус</div>
@@ -376,6 +424,16 @@ export default function Dashboard() {
                 </div>
                 <BookOpen className="h-5 w-5 text-primary" />
               </div>
+
+              {isGuestJourney ? (
+                <div className="mt-4 rounded-[1.5rem] border border-dashed border-border bg-secondary/35 p-4" data-testid="dashboardGuestLockedQuickLinks">
+                  <div className="text-xs uppercase tracking-[0.16em] text-primary">Locked owner actions</div>
+                  <h4 className="mt-2 text-lg font-semibold text-foreground">Быстрые переходы активируются после авторизации</h4>
+                  <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                    После входа здесь появятся прямые ссылки в дневник, продуктовый трекер и клубную ленту выбранного животного. До этого момента кабинет показывает только направление маршрута.
+                  </p>
+                </div>
+              ) : null}
 
               <div className="mt-4 grid gap-3 sm:grid-cols-3">
                 {quickLinks.map((item: { label: string; href: string; description: string }) => (
