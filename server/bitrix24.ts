@@ -41,6 +41,18 @@ function trimTrailingSlash(value: string) {
   return value.replace(/\/+$/, "");
 }
 
+/**
+ * Returns true when all three Bitrix24 webhook secrets are present.
+ * Use this before calling any sync/pull function to enable graceful degradation.
+ */
+export function isBitrixConfigured(): boolean {
+  return Boolean(
+    ENV.bitrix24BaseUrl?.trim() &&
+    ENV.bitrix24RestUserId?.trim() &&
+    ENV.bitrix24WebhookToken?.trim(),
+  );
+}
+
 export function getBitrixWebhookBaseUrl() {
   const baseUrl = trimTrailingSlash(ENV.bitrix24BaseUrl);
   const userId = ENV.bitrix24RestUserId.trim();

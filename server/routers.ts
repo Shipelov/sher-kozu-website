@@ -44,10 +44,13 @@ import {
   updateClubMember,
   updateClubPost,
   listAnimalOwnerships,
+  updateIntegrationAuditResult,
   updateOwnershipStatus,
+  updatePartnerLeadSyncResult,
 } from "./db";
 import { storagePut } from "./storage";
-import { pullBitrixDealSnapshot, syncPartnerLeadToBitrix } from "./bitrix24";
+import { isBitrixConfigured, pullBitrixDealSnapshot, syncPartnerLeadToBitrix } from "./bitrix24";
+import { runDiagnostics } from "./diagnostics";
 
 const uploadPhotoInput = z.object({
   animalSlug: z.string().min(1).max(64),
@@ -264,6 +267,112 @@ async function notifyBitrixOperationalEvent(args: { title: string; content: stri
   } catch (error) {
     console.error("[Bitrix Operational Event] Failed to notify owner", error);
     return false;
+  }
+}
+
+/**
+ * Attempt to sync a partner lead to Bitrix24 CRM.
+ * Handles graceful degradation: if Bitrix24 is not configured, marks the audit as pending.
+ * Updates lead sync status and audit trail regardless of outcome.
+ */
+async function attemptBitrixSync(
+  lead: { id: number; fullName: string; companyName: string; email: string; phone: string | null; telegram: string | null; region: string | null; source: "website" | "club" | "referral" | "manual"; interestType: string; preferredContactMethod: string; interestProducts: string | null; notes: string | null; attachmentsJson: string | null },
+  ownerOpenId: string,
+  auditId: number,
+  operation: "sync" | "retry",
+) {
+  if (!isBitrixConfigured()) {
+    console.warn(`[Bitrix24] Credentials not configured — skipping ${operation} for lead #${lead.id}`);
+    return { skipped: true, reason: "bitrix_not_configured" };
+  }
+
+  try {
+    const syncResult = await syncPartnerLeadToBitrix({
+      id: lead.id,
+      fullName: lead.fullName,
+      companyName: lead.companyName,
+      email: lead.email,
+      phone: lead.phone,
+      telegram: lead.telegram,
+      region: lead.region,
+      source: lead.source,
+      interestType: lead.interestType as any,
+      preferredContactMethod: lead.preferredContactMethod as any,
+      interestProducts: lead.interestProducts,
+      notes: lead.notes,
+      attachments: lead.attachmentsJson ? JSON.parse(lead.attachmentsJson) : [],
+    });
+
+    // Update lead with sync results
+    await updatePartnerLeadSyncResult({
+      id: lead.id,
+      ownerOpenId,
+      syncStatus: operation === "retry" ? "retried" : "success",
+      lastSyncError: null,
+      bitrixContactId: syncResult.contactId ?? null,
+      bitrixCompanyId: syncResult.companyId ?? null,
+      bitrixDealId: syncResult.dealId ?? null,
+      bitrixLeadId: syncResult.leadId ?? null,
+      bitrixStageId: syncResult.stageId ?? null,
+      assignedManagerId: syncResult.assignedManagerId ?? null,
+      assignedManagerName: syncResult.assignedManagerName ?? null,
+      nextActivityAt: syncResult.nextActivityAt ?? null,
+    });
+
+    // Update audit trail
+    await updateIntegrationAuditResult({
+      id: auditId,
+      ownerOpenId,
+      status: "success",
+      responsePayload: syncResult.responsePayload,
+      errorMessage: null,
+      externalId: syncResult.dealId ?? syncResult.contactId ?? null,
+    });
+
+    // Notify owner
+    const verb = operation === "retry" ? "Bitrix24 retry выполнен для заявки" : "Новая партнёрская заявка";
+    await notifyBitrixOperationalEvent({
+      title: `${verb} #${lead.id}`,
+      content: `${lead.fullName} (${lead.companyName}) — ${lead.email}. Deal ID: ${syncResult.dealId ?? "N/A"}`,
+    });
+
+    return { skipped: false, success: true, syncResult };
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+
+    // Update lead with failure
+    await updatePartnerLeadSyncResult({
+      id: lead.id,
+      ownerOpenId,
+      syncStatus: "failed",
+      lastSyncError: errorMessage,
+      bitrixContactId: null,
+      bitrixCompanyId: null,
+      bitrixDealId: null,
+      bitrixLeadId: null,
+      bitrixStageId: null,
+      assignedManagerId: null,
+      assignedManagerName: null,
+      nextActivityAt: null,
+    });
+
+    // Update audit trail
+    await updateIntegrationAuditResult({
+      id: auditId,
+      ownerOpenId,
+      status: "failed",
+      responsePayload: null,
+      errorMessage,
+      externalId: null,
+    });
+
+    // Notify owner about failure
+    await notifyBitrixOperationalEvent({
+      title: `Bitrix24 sync failed для заявки #${lead.id}`,
+      content: `Ошибка: ${errorMessage}`,
+    });
+
+    return { skipped: false, success: false, error: errorMessage };
   }
 }
 
@@ -568,6 +677,11 @@ export const appRouter = router({
       return getClubFeedData(ctx.user.openId);
     }),
   }),
+  diagnostics: router({
+    report: protectedProcedure.query(async ({ ctx }) => {
+      return runDiagnostics(ctx.user.openId);
+    }),
+  }),
   bitrixAdmin: router({
     // Legacy smoke-test marker preserved: adminDashboard: adminProcedure.input(bitrixAdminDashboardInput)
     dashboard: protectedProcedure.input(bitrixAdminDashboardInput).query(async ({ ctx, input }) => {
@@ -578,25 +692,81 @@ export const appRouter = router({
       if (!lead) {
         throw new TRPCError({ code: "NOT_FOUND", message: "Заявка не найдена." });
       }
-      return syncPartnerLeadToBitrix({
-        id: lead.id,
-        fullName: lead.fullName,
-        companyName: lead.companyName,
-        email: lead.email,
-        phone: lead.phone,
-        telegram: lead.telegram,
-        region: lead.region,
-        source: lead.source,
-        interestType: lead.interestType,
-        preferredContactMethod: lead.preferredContactMethod,
-        interestProducts: lead.interestProducts,
-        notes: lead.message,
-        attachments: lead.attachmentsJson ? JSON.parse(lead.attachmentsJson) : [],
+
+      if (!isBitrixConfigured()) {
+        throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Bitrix24 не настроен. Укажите BITRIX24_BASE_URL, BITRIX24_REST_USER_ID и BITRIX24_WEBHOOK_TOKEN." });
+      }
+
+      // Create retry audit entry
+      const audit = await createIntegrationAudit({
+        ownerOpenId: ctx.user.openId,
+        entityType: "partnerLead",
+        entityId: lead.id,
+        operation: "retry",
+        status: "pending",
+        requestPayload: JSON.stringify({ leadId: lead.id }),
       });
+
+      const result = await attemptBitrixSync(lead, ctx.user.openId, audit.id, "retry");
+
+      if (result.skipped) {
+        throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Bitrix24 не настроен." });
+      }
+
+      if (!result.success) {
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: `Sync failed: ${result.error}` });
+      }
+
+      return result.syncResult;
     }),
-    dealSnapshot: protectedProcedure.input(z.object({ dealId: z.string().min(1).max(64) })).query(async ({ input }) => {
-      return pullBitrixDealSnapshot(input.dealId);
-    }),
+    dealSnapshot: protectedProcedure
+      .input(z.object({ dealId: z.string().min(1).max(64), leadId: z.number().int().positive().optional() }))
+      .query(async ({ ctx, input }) => {
+        if (!isBitrixConfigured()) {
+          throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Bitrix24 не настроен." });
+        }
+
+        try {
+          const snapshot = await pullBitrixDealSnapshot(input.dealId);
+
+          // If leadId provided, update lead record with fresh snapshot data
+          if (input.leadId) {
+            const lead = await getPartnerLeadById(input.leadId, ctx.user.openId);
+            if (lead) {
+              await updatePartnerLeadSyncResult({
+                id: lead.id,
+                ownerOpenId: ctx.user.openId,
+                syncStatus: lead.syncStatus as any,
+                lastSyncError: lead.lastSyncError,
+                bitrixContactId: lead.bitrixContactId,
+                bitrixCompanyId: lead.bitrixCompanyId,
+                bitrixDealId: input.dealId,
+                bitrixLeadId: lead.bitrixLeadId,
+                bitrixStageId: snapshot.stageId,
+                assignedManagerId: snapshot.assignedManagerId,
+                assignedManagerName: lead.assignedManagerName,
+                nextActivityAt: snapshot.nextActivityAt,
+              });
+
+              await notifyBitrixOperationalEvent({
+                title: `Bitrix24 snapshot обновлён для заявки #${lead.id}`,
+                content: `Deal ${input.dealId}: stage=${snapshot.stageId ?? "N/A"}, manager=${snapshot.assignedManagerId ?? "N/A"}`,
+              });
+            }
+          }
+
+          return snapshot;
+        } catch (error) {
+          const errorMessage = error instanceof Error ? error.message : String(error);
+          if (input.leadId) {
+            await notifyBitrixOperationalEvent({
+              title: `Bitrix24 snapshot failed для заявки #${input.leadId}`,
+              content: `Deal ${input.dealId}: ${errorMessage}`,
+            });
+          }
+          throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: `Snapshot failed: ${errorMessage}` });
+        }
+      }),
     integrationAudit: protectedProcedure.input(idInput).query(async ({ ctx, input }) => {
       const record = await getIntegrationAuditById(input.id, ctx.user.openId);
       if (!record) {
@@ -608,8 +778,16 @@ export const appRouter = router({
   partnerLeads: router({
     create: publicProcedure.input(partnerLeadInput).mutation(async ({ input }) => {
       const ownerOpenId = process.env.OWNER_OPEN_ID ?? "owner";
-      const lead = await createPartnerLead({ ownerOpenId, ...input });
-      await createIntegrationAudit({
+
+      // Map input.message to notes (schema uses 'notes', input uses 'message')
+      const { message, attachments, ...leadFields } = input;
+      const lead = await createPartnerLead({
+        ownerOpenId,
+        ...leadFields,
+        notes: message ?? null,
+      });
+
+      const audit = await createIntegrationAudit({
         ownerOpenId,
         entityType: "partnerLead",
         entityId: lead.id,
@@ -617,6 +795,13 @@ export const appRouter = router({
         status: "pending",
         requestPayload: JSON.stringify(input),
       });
+
+      // Fire-and-forget: attempt Bitrix24 sync in background
+      // Don't block the user response on CRM availability
+      attemptBitrixSync(lead, ownerOpenId, audit.id, "sync").catch((err) => {
+        console.error(`[Bitrix24] Background sync failed for lead #${lead.id}:`, err);
+      });
+
       return lead;
     }),
   }),

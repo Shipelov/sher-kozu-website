@@ -119,7 +119,7 @@ export function useAdminClubMutations(deps: MutationDeps) {
 
   const refreshDealSnapshot = async (dealId: string, leadId?: number | null) => {
     try {
-      await utils.bitrixAdmin.dealSnapshot.fetch({ dealId });
+      await utils.bitrixAdmin.dealSnapshot.fetch({ dealId, leadId: leadId ?? undefined });
       await refreshAdminData();
       setActionLog((current) => recordAdminAction(current, "bitrix", "refresh", "Обновлён snapshot сделки", `Для заявки #${leadId ?? "?"} обновлён статус сделки и следующей активности.`));
       toast.success("Snapshot сделки обновлён", {
