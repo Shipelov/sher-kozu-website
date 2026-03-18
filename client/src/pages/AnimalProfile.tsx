@@ -732,6 +732,7 @@ export default function AnimalProfile() {
 
   const displayName = animalQuery.data?.name ?? "Марта";
   const selectedLabel = selectedImage?.title ?? displayName;
+  const isGuestPreview = !isAuthenticated && !hasOwnerAccess;
 
   return (
     <>
@@ -848,6 +849,21 @@ export default function AnimalProfile() {
                     </div>
 
                     <div id="share-selection" className="overflow-hidden rounded-[1.75rem] border border-primary/15 bg-card p-5 shadow-sm">
+                      {isGuestPreview ? (
+                        <div data-testid="animal-guest-preview-banner" className="mb-5 rounded-[1.4rem] border border-primary/15 bg-primary/5 p-4">
+                          <div className="flex flex-wrap items-start justify-between gap-3">
+                            <div>
+                              <p className="text-xs uppercase tracking-[0.18em] text-primary">Guest preview</p>
+                              <h4 className="mt-2 text-lg font-semibold text-foreground">Ограниченный предпросмотр профиля питомца</h4>
+                              <p className="mt-2 max-w-xl text-sm leading-6 text-muted-foreground">Сейчас вы видите открытые части профиля: историю животного, фотографии, базовые показатели и доступные доли. Дневник владельца, управление галереей и персональный маршрут откроются после входа и оформления участия.</p>
+                            </div>
+                            <Link href="/dashboard" className="inline-flex items-center justify-center gap-2 rounded-full border border-primary/20 bg-white px-4 py-2 text-sm font-medium text-primary transition hover:bg-primary/5">
+                              Как работает маршрут владельца
+                              <ArrowRight className="h-4 w-4" />
+                            </Link>
+                          </div>
+                        </div>
+                      ) : null}
                       <div>
                         <p className="text-xs uppercase tracking-[0.18em] text-primary">Долевое участие</p>
                         <h3 className="mt-2 text-2xl font-semibold text-foreground">Цена и занятость {displayName}</h3>
@@ -945,6 +961,16 @@ export default function AnimalProfile() {
                 </div>
 
                 <div className="mt-6 grid gap-4 lg:grid-cols-[1.08fr_0.92fr]">
+                  {isGuestPreview ? (
+                    <div data-testid="animal-guest-preview-open-access" className="lg:col-span-2 rounded-[1.5rem] border border-dashed border-primary/25 bg-primary/5 p-5">
+                      <p className="text-xs uppercase tracking-[0.18em] text-primary">Что доступно до входа</p>
+                      <div className="mt-3 grid gap-3 md:grid-cols-3">
+                        <div className="rounded-2xl bg-card px-4 py-3 text-sm text-muted-foreground">Изучить биографию, происхождение и базовые метрики животного.</div>
+                        <div className="rounded-2xl bg-card px-4 py-3 text-sm text-muted-foreground">Посмотреть открытый дневник, галерею и продуктовый потенциал.</div>
+                        <div className="rounded-2xl bg-card px-4 py-3 text-sm text-muted-foreground">Выбрать свободную долю и понять, что откроется после участия.</div>
+                      </div>
+                    </div>
+                  ) : null}
                   <div className="rounded-[1.5rem] border border-border/70 bg-background/70 p-5">
                     <h4 className="flex items-center gap-2 text-lg font-semibold text-foreground">
                       <Dna className="h-4 w-4 text-primary" />
@@ -990,6 +1016,11 @@ export default function AnimalProfile() {
               </motion.div>
 
               <motion.div id="profile-diary" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.06 }} className="rounded-[2rem] border border-border/70 bg-card p-6 shadow-sm">
+                {isGuestPreview ? (
+                  <div data-testid="animal-guest-preview-diary-note" className="mb-5 rounded-[1.4rem] border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+                    Вы просматриваете публичную версию дневника. Полная история ухода, персональные обновления и действия владельца становятся доступны после входа и подтверждённого участия.
+                  </div>
+                ) : null}
                 <div className="flex flex-wrap items-start justify-between gap-4">
                   <div>
                     <p className="text-xs uppercase tracking-[0.22em] text-primary">Дневник и прозрачность</p>
@@ -1159,9 +1190,20 @@ export default function AnimalProfile() {
                     <p className="mt-2 max-w-md text-sm leading-6 text-muted-foreground">Поддерживаются JPG, PNG и WebP до 8 МБ. После кадрирования фото попадёт в профиль выбранного животного.</p>
                   </label>
                 ) : (
-                  <div className="mt-5 rounded-[1.75rem] border border-dashed border-primary/20 bg-primary/5 px-6 py-8 text-center">
+                  <div data-testid="animal-guest-preview-locked-gallery" className="mt-5 rounded-[1.75rem] border border-dashed border-primary/20 bg-primary/5 px-6 py-8 text-center">
                     <p className="font-medium text-foreground">Управление галереей откроется после оформления доли</p>
                     <p className="mt-2 mx-auto max-w-md text-sm leading-6 text-muted-foreground">Сейчас вам доступны просмотр фото, история животного и выбор доли участия. После покупки можно будет загружать снимки, менять обложку и настраивать порядок галереи.</p>
+                    {isGuestPreview ? (
+                      <div className="mt-4 flex flex-col items-center justify-center gap-3 sm:flex-row">
+                        <Link href="/animals" className="inline-flex items-center justify-center gap-2 rounded-full border border-border bg-white px-5 py-3 text-sm font-medium text-foreground transition hover:bg-muted">
+                          Сначала посмотреть других питомцев
+                        </Link>
+                        <button type="button" onClick={() => document.getElementById("share-selection")?.scrollIntoView({ behavior: "smooth", block: "start" })} className="inline-flex items-center justify-center gap-2 rounded-full bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground transition hover:bg-primary/95">
+                          Вернуться к выбору доли
+                          <ArrowRight className="h-4 w-4" />
+                        </button>
+                      </div>
+                    ) : null}
                   </div>
                 )}
 

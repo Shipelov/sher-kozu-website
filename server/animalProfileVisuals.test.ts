@@ -19,4 +19,13 @@ describe("AnimalProfile visual integration", () => {
     expect(source).toContain("sherkozu_named_dairy_box");
     expect(source).toContain("sherkozu_club_visit");
   });
+
+  it("contains limited guest preview markers and locked owner actions", () => {
+    expect(source).toContain("animal-guest-preview-banner");
+    expect(source).toContain("Ограниченный предпросмотр профиля питомца");
+    expect(source).toContain("animal-guest-preview-open-access");
+    expect(source).toContain("animal-guest-preview-diary-note");
+    expect(source).toContain("animal-guest-preview-locked-gallery");
+    expect(source).toContain("Как работает маршрут владельца");
+  });
 });
