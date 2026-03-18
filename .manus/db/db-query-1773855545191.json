@@ -1,0 +1,22 @@
+{
+  "query": "SELECT animalId, ownerOpenId, COUNT(*) as slots, GROUP_CONCAT(slotIndex ORDER BY slotIndex) as slotList FROM animalOwnerships GROUP BY animalId, ownerOpenId;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3J2fXRHx8d1YjF6.root --database mLhmg5VmBsEBpZiYqdnhMQ --execute SELECT animalId, ownerOpenId, COUNT(*) as slots, GROUP_CONCAT(slotIndex ORDER BY slotIndex) as slotList FROM animalOwnerships GROUP BY animalId, ownerOpenId;",
+  "rows": [
+    {
+      "animalId": "30001",
+      "ownerOpenId": "jP5iBYMcdYguBWJPw5Sruu",
+      "slots": "10",
+      "slotList": "1,2,3,4,5,6,7,8,9,10"
+    },
+    {
+      "animalId": "180005",
+      "ownerOpenId": "jP5iBYMcdYguBWJPw5Sruu",
+      "slots": "10",
+      "slotList": "1,2,3,4,5,6,7,8,9,10"
+    }
+  ],
+  "messages": [],
+  "stdout": "animalId\townerOpenId\tslots\tslotList\n30001\tjP5iBYMcdYguBWJPw5Sruu\t10\t1,2,3,4,5,6,7,8,9,10\n180005\tjP5iBYMcdYguBWJPw5Sruu\t10\t1,2,3,4,5,6,7,8,9,10\n",
+  "stderr": "",
+  "execution_time_ms": 383
+}

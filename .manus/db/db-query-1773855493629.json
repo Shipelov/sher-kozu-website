@@ -1,0 +1,170 @@
+{
+  "query": "SELECT ao.animalId, a.name as animalName, ao.ownerOpenId, ao.slotIndex, ao.ownershipStatus, f.name as familyName FROM animalOwnerships ao JOIN animals a ON ao.animalId = a.id LEFT JOIN families f ON ao.familyId = f.id ORDER BY ao.animalId, ao.slotIndex;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3J2fXRHx8d1YjF6.root --database mLhmg5VmBsEBpZiYqdnhMQ --execute SELECT ao.animalId, a.name as animalName, ao.ownerOpenId, ao.slotIndex, ao.ownershipStatus, f.name as familyName FROM animalOwnerships ao JOIN animals a ON ao.animalId = a.id LEFT JOIN families f ON ao.familyId = f.id ORDER BY ao.animalId, ao.slotIndex;",
+  "rows": [
+    {
+      "animalId": "30001",
+      "animalName": "Мира",
+      "ownerOpenId": "jP5iBYMcdYguBWJPw5Sruu",
+      "slotIndex": "1",
+      "ownershipStatus": "active",
+      "familyName": "Семья-демо Sher Kozu"
+    },
+    {
+      "animalId": "30001",
+      "animalName": "Мира",
+      "ownerOpenId": "jP5iBYMcdYguBWJPw5Sruu",
+      "slotIndex": "2",
+      "ownershipStatus": "active",
+      "familyName": "Семья-демо Sher Kozu"
+    },
+    {
+      "animalId": "30001",
+      "animalName": "Мира",
+      "ownerOpenId": "jP5iBYMcdYguBWJPw5Sruu",
+      "slotIndex": "3",
+      "ownershipStatus": "active",
+      "familyName": "Семья-демо Sher Kozu"
+    },
+    {
+      "animalId": "30001",
+      "animalName": "Мира",
+      "ownerOpenId": "jP5iBYMcdYguBWJPw5Sruu",
+      "slotIndex": "4",
+      "ownershipStatus": "active",
+      "familyName": "Семья-демо Sher Kozu"
+    },
+    {
+      "animalId": "30001",
+      "animalName": "Мира",
+      "ownerOpenId": "jP5iBYMcdYguBWJPw5Sruu",
+      "slotIndex": "5",
+      "ownershipStatus": "active",
+      "familyName": "Семья-демо Sher Kozu"
+    },
+    {
+      "animalId": "30001",
+      "animalName": "Мира",
+      "ownerOpenId": "jP5iBYMcdYguBWJPw5Sruu",
+      "slotIndex": "6",
+      "ownershipStatus": "active",
+      "familyName": "Семья-демо Sher Kozu"
+    },
+    {
+      "animalId": "30001",
+      "animalName": "Мира",
+      "ownerOpenId": "jP5iBYMcdYguBWJPw5Sruu",
+      "slotIndex": "7",
+      "ownershipStatus": "active",
+      "familyName": "Семья-демо Sher Kozu"
+    },
+    {
+      "animalId": "30001",
+      "animalName": "Мира",
+      "ownerOpenId": "jP5iBYMcdYguBWJPw5Sruu",
+      "slotIndex": "8",
+      "ownershipStatus": "active",
+      "familyName": "Семья-демо Sher Kozu"
+    },
+    {
+      "animalId": "30001",
+      "animalName": "Мира",
+      "ownerOpenId": "e2e-journey-1773837179563",
+      "slotIndex": "9",
+      "ownershipStatus": "active",
+      "familyName": "Семья-демо Sher Kozu"
+    },
+    {
+      "animalId": "30001",
+      "animalName": "Мира",
+      "ownerOpenId": "e2e-journey-1773837192642",
+      "slotIndex": "10",
+      "ownershipStatus": "active",
+      "familyName": "Семья-демо Sher Kozu"
+    },
+    {
+      "animalId": "180005",
+      "animalName": "Злата",
+      "ownerOpenId": "buyer-9fjlucjo-1773847859822",
+      "slotIndex": "1",
+      "ownershipStatus": "active",
+      "familyName": "Семья-демо Sher Kozu"
+    },
+    {
+      "animalId": "180005",
+      "animalName": "Злата",
+      "ownerOpenId": "buyer-9fjlucjo-1773847859822",
+      "slotIndex": "2",
+      "ownershipStatus": "active",
+      "familyName": "Семья-демо Sher Kozu"
+    },
+    {
+      "animalId": "180005",
+      "animalName": "Злата",
+      "ownerOpenId": "buyer-p6o6x4pr-1773847905683",
+      "slotIndex": "3",
+      "ownershipStatus": "active",
+      "familyName": "Семья-демо Sher Kozu"
+    },
+    {
+      "animalId": "180005",
+      "animalName": "Злата",
+      "ownerOpenId": "buyer-p6o6x4pr-1773847905683",
+      "slotIndex": "4",
+      "ownershipStatus": "active",
+      "familyName": "Семья-демо Sher Kozu"
+    },
+    {
+      "animalId": "180005",
+      "animalName": "Злата",
+      "ownerOpenId": "buyer-5pgs5g6w-1773851254117",
+      "slotIndex": "5",
+      "ownershipStatus": "active",
+      "familyName": "Семья-демо Sher Kozu"
+    },
+    {
+      "animalId": "180005",
+      "animalName": "Злата",
+      "ownerOpenId": "buyer-5pgs5g6w-1773851254117",
+      "slotIndex": "6",
+      "ownershipStatus": "active",
+      "familyName": "Семья-демо Sher Kozu"
+    },
+    {
+      "animalId": "180005",
+      "animalName": "Злата",
+      "ownerOpenId": "buyer-68i2138t-1773851285357",
+      "slotIndex": "7",
+      "ownershipStatus": "active",
+      "familyName": "Семья-демо Sher Kozu"
+    },
+    {
+      "animalId": "180005",
+      "animalName": "Злата",
+      "ownerOpenId": "buyer-68i2138t-1773851285357",
+      "slotIndex": "8",
+      "ownershipStatus": "active",
+      "familyName": "Семья-демо Sher Kozu"
+    },
+    {
+      "animalId": "180005",
+      "animalName": "Злата",
+      "ownerOpenId": "buyer-gevgwp8e-1773851733465",
+      "slotIndex": "9",
+      "ownershipStatus": "active",
+      "familyName": "Семья-демо Sher Kozu"
+    },
+    {
+      "animalId": "180005",
+      "animalName": "Злата",
+      "ownerOpenId": "buyer-gevgwp8e-1773851733465",
+      "slotIndex": "10",
+      "ownershipStatus": "active",
+      "familyName": "Семья-демо Sher Kozu"
+    }
+  ],
+  "messages": [],
+  "stdout": "animalId\tanimalName\townerOpenId\tslotIndex\townershipStatus\tfamilyName\n30001\tМира\tjP5iBYMcdYguBWJPw5Sruu\t1\tactive\tСемья-демо Sher Kozu\n30001\tМира\tjP5iBYMcdYguBWJPw5Sruu\t2\tactive\tСемья-демо Sher Kozu\n30001\tМира\tjP5iBYMcdYguBWJPw5Sruu\t3\tactive\tСемья-демо Sher Kozu\n30001\tМира\tjP5iBYMcdYguBWJPw5Sruu\t4\tactive\tСемья-демо Sher Kozu\n30001\tМира\tjP5iBYMcdYguBWJPw5Sruu\t5\tactive\tСемья-демо Sher Kozu\n30001\tМира\tjP5iBYMcdYguBWJPw5Sruu\t6\tactive\tСемья-демо Sher Kozu\n30001\tМира\tjP5iBYMcdYguBWJPw5Sruu\t7\tactive\tСемья-демо Sher Kozu\n30001\tМира\tjP5iBYMcdYguBWJPw5Sruu\t8\tactive\tСемья-демо Sher Kozu\n30001\tМира\te2e-journey-1773837179563\t9\tactive\tСемья-демо Sher Kozu\n30001\tМира\te2e-journey-1773837192642\t10\tactive\tСемья-демо Sher Kozu\n180005\tЗлата\tbuyer-9fjlucjo-1773847859822\t1\tactive\tСемья-демо Sher Kozu\n180005\tЗлата\tbuyer-9fjlucjo-1773847859822\t2\tactive\tСемья-демо Sher Kozu\n180005\tЗлата\tbuyer-p6o6x4pr-1773847905683\t3\tactive\tСемья-демо Sher Kozu\n180005\tЗлата\tbuyer-p6o6x4pr-1773847905683\t4\tactive\tСемья-демо Sher Kozu\n180005\tЗлата\tbuyer-5pgs5g6w-1773851254117\t5\tactive\tСемья-демо Sher Kozu\n180005\tЗлата\tbuyer-5pgs5g6w-1773851254117\t6\tactive\tСемья-демо Sher Kozu\n180005\tЗлата\tbuyer-68i2138t-1773851285357\t7\tactive\tСемья-демо Sher Kozu\n180005\tЗлата\tbuyer-68i2138t-1773851285357\t8\tactive\tСемья-демо Sher Kozu\n180005\tЗлата\tbuyer-gevgwp8e-1773851733465\t9\tactive\tСемья-демо Sher Kozu\n180005\tЗлата\tbuyer-gevgwp8e-1773851733465\t10\tactive\tСемья-демо Sher Kozu\n",
+  "stderr": "",
+  "execution_time_ms": 395
+}

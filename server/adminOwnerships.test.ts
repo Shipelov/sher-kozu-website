@@ -83,16 +83,11 @@ describe("adminOwnerships procedures", () => {
   afterAll(async () => {
     try {
       const { getDb } = await import("./db");
+      const { sql } = await import("drizzle-orm");
       const db = await getDb();
       if (!db) return;
-      await db.execute({
-        sql: `DELETE FROM animalOwnerships WHERE ownerOpenId = ?`,
-        params: [buyerOpenId],
-      });
-      await db.execute({
-        sql: `DELETE FROM users WHERE openId = ?`,
-        params: [buyerOpenId],
-      });
+      await db.execute(sql`DELETE FROM animalOwnerships WHERE ownerOpenId = ${buyerOpenId}`);
+      await db.execute(sql`DELETE FROM users WHERE openId = ${buyerOpenId}`);
     } catch (err) {
       console.warn("[adminOwnerships cleanup] Failed to clean up test data:", err);
     }

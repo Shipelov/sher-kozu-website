@@ -65,27 +65,16 @@ describe("E2E Owner Journey: Gallery → Profile → Share → Purchase → Dash
   afterAll(async () => {
     try {
       const { getDb } = await import("./db");
+      const { sql } = await import("drizzle-orm");
       const db = await getDb();
       if (!db) return;
       // Delete ownerships created by this buyer
-      await db.execute({
-        sql: `DELETE FROM animalOwnerships WHERE ownerOpenId = ?`,
-        params: [buyerOpenId],
-      });
+      await db.execute(sql`DELETE FROM animalOwnerships WHERE ownerOpenId = ${buyerOpenId}`);
       // Delete animals created by this buyer (seed creates them with ownerOpenId = buyerOpenId)
-      await db.execute({
-        sql: `DELETE FROM animalMedia WHERE animalId IN (SELECT id FROM animals WHERE ownerOpenId = ?)`,
-        params: [buyerOpenId],
-      });
-      await db.execute({
-        sql: `DELETE FROM animals WHERE ownerOpenId = ?`,
-        params: [buyerOpenId],
-      });
+      await db.execute(sql`DELETE FROM animalMedia WHERE animalId IN (SELECT id FROM animals WHERE ownerOpenId = ${buyerOpenId})`);
+      await db.execute(sql`DELETE FROM animals WHERE ownerOpenId = ${buyerOpenId}`);
       // Delete the test user
-      await db.execute({
-        sql: `DELETE FROM users WHERE openId = ?`,
-        params: [buyerOpenId],
-      });
+      await db.execute(sql`DELETE FROM users WHERE openId = ${buyerOpenId}`);
     } catch (err) {
       console.warn("[E2E cleanup] Failed to clean up test data:", err);
     }

@@ -1,0 +1,9 @@
+{
+  "query": "DELETE FROM users WHERE openId LIKE 'buyer-%' OR openId LIKE 'e2e-journey-%' OR openId LIKE 'ownership-buyer-%';",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3J2fXRHx8d1YjF6.root --database mLhmg5VmBsEBpZiYqdnhMQ --execute DELETE FROM users WHERE openId LIKE 'buyer-%' OR openId LIKE 'e2e-journey-%' OR openId LIKE 'ownership-buyer-%';",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 349
+}

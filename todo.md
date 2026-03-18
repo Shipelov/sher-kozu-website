@@ -124,3 +124,6 @@
 - [x] Исправить утечку тестовых животных: ensureSprintOneSeed не создаёт животных для buyer-аккаунтов
 - [x] listAdminAnimals фильтрует по OWNER_OPEN_ID (не показывает чужих животных)
 - [x] Добавить afterAll cleanup в e2e и adminOwnerships тесты
+- [x] Восстановить раздел «Мои животные» в кабинете владельца (показывать все животные с долями)
+- [x] Исправить расхождение долей владения между кабинетом владельца и галереей животных
+- [x] Исправить afterAll cleanup в e2e и adminOwnerships тестах (drizzle sql template tag)
