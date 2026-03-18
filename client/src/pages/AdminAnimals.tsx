@@ -315,13 +315,26 @@ export function formatSharePercentLabel(percent: number) {
 }
 
 export function buildShareSlots(animal: AdminAnimalRecord) {
+  // Build a map: slotIndex → ownerName from shareDistribution
+  const slotOwnerMap = new Map<number, string>();
+  if (animal.shareDistribution) {
+    for (const entry of animal.shareDistribution) {
+      for (const slotIdx of entry.slots) {
+        slotOwnerMap.set(slotIdx, entry.familyName);
+      }
+    }
+  }
+
   return Array.from({ length: animal.totalOwnershipSlots }, (_, index) => {
+    const slotIndex = index + 1;
     const filled = index < animal.activeOwnerships;
-    const percent = (index + 1) * animal.shareUnitPercent;
+    const ownerName = filled ? (slotOwnerMap.get(slotIndex) ?? null) : null;
+    const percent = slotIndex * animal.shareUnitPercent;
     return {
-      index: index + 1,
+      index: slotIndex,
       filled,
-      label: filled ? "Занято" : "Свободно",
+      ownerName,
+      label: filled ? (ownerName ?? "Занято") : "Свободно",
       state: filled ? "occupied" as const : "available" as const,
       percentLabel: formatSharePercentLabel(percent),
     };
@@ -622,8 +635,8 @@ export function ShareSlotsGrid({ animal, compact = false }: { animal: AdminAnima
           {slotItems.map((slot) => (
             <div
               key={slot.index}
-              className={`${dotSize} rounded-full ${slot.filled ? "bg-emerald-500" : "bg-stone-200 border border-stone-300"}`}
-              title={`${slot.index * animal.shareUnitPercent}% \u2014 ${slot.label}`}
+              className={`${dotSize} rounded-full cursor-default ${slot.filled ? "bg-emerald-500" : "bg-stone-200 border border-stone-300"}`}
+              title={slot.filled ? `Слот ${slot.index} · ${slot.ownerName ?? "Занято"}` : `Слот ${slot.index} · Свободно`}
             />
           ))}
         </div>
@@ -647,8 +660,8 @@ export function ShareSlotsGrid({ animal, compact = false }: { animal: AdminAnima
         {slotItems.map((slot) => (
           <div
             key={slot.index}
-            className={`${dotSize} rounded-full ${slot.filled ? "bg-emerald-500" : "bg-stone-200 border border-stone-300"}`}
-            title={`Слот ${slot.index}: ${slot.index * animal.shareUnitPercent}% — ${slot.label}`}
+            className={`${dotSize} rounded-full cursor-default ${slot.filled ? "bg-emerald-500" : "bg-stone-200 border border-stone-300"}`}
+            title={slot.filled ? `Слот ${slot.index}: ${slot.index * animal.shareUnitPercent}% · ${slot.ownerName ?? "Занято"}` : `Слот ${slot.index}: ${slot.index * animal.shareUnitPercent}% · Свободно`}
           />
         ))}
       </div>
