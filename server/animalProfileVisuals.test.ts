@@ -4,44 +4,51 @@ import { readFileSync } from "node:fs";
 const source = readFileSync(new URL("../client/src/pages/AnimalProfile.tsx", import.meta.url), "utf-8");
 
 describe("AnimalProfile visual integration", () => {
-  it("contains premium hero storytelling and key route CTAs", () => {
-    expect(source).toContain("— не карточка товара");
-    expect(source).toContain("Открыть трекер продукции");
-    expect(source).toContain("Перейти в клуб");
-    expect(source).toContain("Вернуться в кабинет");
-  });
-
-  it("contains dynamic visual sections and image references", () => {
-    expect(source).toContain("Профиль животного как эмоциональное ядро экосистемы");
-    expect(source).toContain("точкой ежедневного контакта между семьёй, фермой и продуктовым маршрутом");
-    expect(source).toContain("Продолжить эмоциональную связь через события, визиты и контент вокруг фермы");
+  it("contains fact-based hero with key animal data and CDN images", () => {
     expect(source).toContain("sherkozu_anglonubian_portrait");
     expect(source).toContain("sherkozu_named_dairy_box");
     expect(source).toContain("sherkozu_club_visit");
+    expect(source).toContain("displayName");
+    expect(source).toContain("AnimalShareCard");
   });
 
-  it("contains limited guest preview markers and locked owner actions", () => {
+  it("contains share purchase section with dynamic pricing and CTA", () => {
+    expect(source).toContain("Долевое участие");
+    expect(source).toContain("Выберите долю");
+    expect(source).toContain("Забронировать долю");
+    expect(source).toContain("Увеличить долю");
+    expect(source).toContain("mySharePercent");
+    expect(source).toContain("purchaseShare");
+    expect(source).toContain("ctaDisabled={!availableSharePercents.length || purchaseShare.isPending}");
+  });
+
+  it("contains guest preview markers and login prompts without excessive marketing rhetoric", () => {
     expect(source).toContain("animal-guest-preview-banner");
-    expect(source).toContain("Ограниченный предпросмотр профиля питомца");
-    expect(source).toContain("animal-guest-preview-open-access");
-    expect(source).toContain("animal-guest-preview-diary-note");
-    expect(source).toContain("animal-guest-preview-locked-gallery");
-    expect(source).toContain("Как работает маршрут владельца");
-    expect(source).toContain("animal-guest-preview-register-cta");
+    expect(source).toContain("Для покупки доли необходимо войти в аккаунт");
     expect(source).toContain("animal-guest-preview-register-cta-secondary");
     expect(source).toContain("animal-guest-preview-sticky-register");
-    expect(source).toContain("Продолжить знакомство");
-    expect(source).toContain("Зарегистрируйтесь, чтобы сохранить интерес к");
-    expect(source).toContain("animal-guest-preview-sticky-benefits");
-    expect(source).toContain("Сохраните выбранное животное и вернётесь к профилю без повторного поиска.");
-    expect(source).toContain("Откроете кабинет с долей участия, трекером продукции и следующими шагами.");
-    expect(source).toContain("Получите доступ к дневнику ухода, клубным визитам и owner-only обновлениям.");
+    expect(source).toContain("Войти или зарегистрироваться");
+    // No old marketing fluff
+    expect(source).not.toContain("не карточка товара");
+    expect(source).not.toContain("Профиль животного как эмоциональное ядро экосистемы");
+    expect(source).not.toContain("точкой ежедневного контакта между семьёй");
   });
 
   it("keeps guest CTA interactive and redirects to login with selected share preserved", () => {
-    expect(source).toContain('const hasRuntimeSession = typeof document !== "undefined" && document.cookie.includes("manus_session=");');
-    expect(source).toContain("const shouldLoginFirst = !isAuthenticated && !hasRuntimeSession;");
-    expect(source).toContain("window.location.href = getLoginUrl(`/animals/${animalSlug}?share=${selectedSharePercent}`);");
+    expect(source).toContain('document.cookie.includes("manus_session=")');
+    expect(source).toContain("!isAuthenticated && !hasSession");
+    expect(source).toContain("getLoginUrl(`/animals/${animalSlug}?share=${selectedSharePercent}`)");
     expect(source).toContain("ctaDisabled={!availableSharePercents.length || purchaseShare.isPending}");
+  });
+
+  it("contains gallery, diary and passport sections in correct order", () => {
+    expect(source).toContain("Фотографии");
+    expect(source).toContain("Дневник");
+    expect(source).toContain("Паспорт");
+    expect(source).toContain("Управление галереей доступно владельцам доли");
+    // Diary should come before passport in the source
+    const diaryIdx = source.indexOf("Дневник");
+    const passportIdx = source.indexOf("Паспорт");
+    expect(diaryIdx).toBeLessThan(passportIdx);
   });
 });
