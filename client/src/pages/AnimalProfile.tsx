@@ -1319,10 +1319,22 @@ export default function AnimalProfile() {
 
         {isGuestPreview ? (
           <div data-testid="animal-guest-preview-sticky-register" className="pointer-events-none fixed inset-x-0 bottom-4 z-40 px-4 sm:px-6">
-            <div className="pointer-events-auto mx-auto flex max-w-3xl items-center justify-between gap-3 rounded-full border border-primary/15 bg-white/92 px-4 py-3 shadow-[0_16px_40px_rgba(15,23,42,0.14)] backdrop-blur">
+            <div className="pointer-events-auto mx-auto flex max-w-4xl flex-col gap-3 rounded-[1.75rem] border border-primary/15 bg-white/92 px-4 py-4 shadow-[0_16px_40px_rgba(15,23,42,0.14)] backdrop-blur sm:flex-row sm:items-center sm:justify-between sm:px-5">
               <div className="min-w-0">
                 <p className="text-xs uppercase tracking-[0.18em] text-primary">Продолжить знакомство</p>
-                <p className="truncate text-sm text-muted-foreground">Зарегистрируйтесь, чтобы сохранить интерес к {displayName} и открыть owner-only обновления.</p>
+                <p className="mt-1 text-sm text-muted-foreground">Зарегистрируйтесь, чтобы сохранить интерес к {displayName} и открыть owner-only обновления.</p>
+                <div className="mt-3 grid gap-2 sm:grid-cols-3" data-testid="animal-guest-preview-sticky-benefits">
+                  {[
+                    "Сохраните выбранное животное и вернётесь к профилю без повторного поиска.",
+                    "Откроете кабинет с долей участия, трекером продукции и следующими шагами.",
+                    "Получите доступ к дневнику ухода, клубным визитам и owner-only обновлениям.",
+                  ].map((benefit) => (
+                    <div key={benefit} className="flex items-start gap-2 rounded-2xl bg-primary/5 px-3 py-2 text-sm text-foreground">
+                      <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                      <span>{benefit}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
               <a
                 href={getLoginUrl(`/animals/${animalSlug ?? DEFAULT_ROUTE_SLUG}`)}

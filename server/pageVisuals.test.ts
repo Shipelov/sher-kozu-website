@@ -52,6 +52,10 @@ describe("page visual integration source smoke", () => {
     expect(dashboardSource).toContain("dashboardGuestLockedQuickLinks");
     expect(dashboardSource).toContain("dashboardGuestStickyRegister");
     expect(dashboardSource).toContain("Продолжить маршрут");
+    expect(dashboardSource).toContain("Зачем регистрироваться уже сейчас");
+    expect(dashboardSource).toContain("Сохраните выбранное животное и вернётесь к нему без повторного поиска.");
+    expect(dashboardSource).toContain("Откроете личный кабинет с долей участия, трекером продукта и следующими шагами.");
+    expect(dashboardSource).toContain("Получите доступ к клубным визитам, дневнику ухода и owner-only обновлениям.");
     expect(dashboardSource).toContain('getLoginUrl("/dashboard")');
   });
 

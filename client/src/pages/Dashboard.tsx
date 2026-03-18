@@ -117,6 +117,12 @@ export default function Dashboard() {
     },
   ];
 
+  const guestRegistrationBenefits = [
+    "Сохраните выбранное животное и вернётесь к нему без повторного поиска.",
+    "Откроете личный кабинет с долей участия, трекером продукта и следующими шагами.",
+    "Получите доступ к клубным визитам, дневнику ухода и owner-only обновлениям.",
+  ];
+
   const summaryCards = currentAnimal
     ? [
         {
@@ -294,6 +300,18 @@ export default function Dashboard() {
                     <p className="mt-2 text-sm leading-6 text-muted-foreground">
                       Полная owner-версия кабинета показывает реальное участие, долю, текущее животное, следующие шаги и быстрые переходы между профилем, трекером и клубом без тупиковых состояний.
                     </p>
+                  </div>
+
+                  <div className="rounded-2xl border border-primary/15 bg-white/80 p-4" data-testid="dashboard-guest-sticky-benefits">
+                    <div className="text-sm font-semibold text-foreground">Зачем регистрироваться уже сейчас</div>
+                    <div className="mt-3 grid gap-2">
+                      {guestRegistrationBenefits.map((benefit) => (
+                        <div key={benefit} className="flex items-start gap-2 rounded-2xl bg-primary/5 px-3 py-2 text-sm text-foreground">
+                          <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                          <span>{benefit}</span>
+                        </div>
+                      ))}
+                    </div>
                   </div>
 
                   <div className="mt-4 grid gap-3 sm:grid-cols-2">

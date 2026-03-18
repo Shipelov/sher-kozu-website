@@ -31,6 +31,10 @@ describe("AnimalProfile visual integration", () => {
     expect(source).toContain("animal-guest-preview-register-cta-secondary");
     expect(source).toContain("animal-guest-preview-sticky-register");
     expect(source).toContain("Продолжить знакомство");
-    expect(source).toContain("Зарегистрироваться, чтобы увидеть больше");
+    expect(source).toContain("Зарегистрируйтесь, чтобы сохранить интерес к");
+    expect(source).toContain("animal-guest-preview-sticky-benefits");
+    expect(source).toContain("Сохраните выбранное животное и вернётесь к профилю без повторного поиска.");
+    expect(source).toContain("Откроете кабинет с долей участия, трекером продукции и следующими шагами.");
+    expect(source).toContain("Получите доступ к дневнику ухода, клубным визитам и owner-only обновлениям.");
   });
 });
