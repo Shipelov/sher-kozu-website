@@ -8,6 +8,7 @@ Must feel like a living bridge between animal, products, club and future AI cura
 import { motion } from "framer-motion";
 import { Link } from "wouter";
 import Navbar from "@/components/Navbar";
+import { getLoginUrl } from "@/const";
 import { trpc } from "@/lib/trpc";
 import {
   ArrowRight,
@@ -650,6 +651,22 @@ export default function Dashboard() {
             </motion.section>
           </div>
         </div>
+        {isGuestJourney ? (
+          <div data-testid="dashboardGuestStickyRegister" className="pointer-events-none fixed inset-x-0 bottom-4 z-40 px-4 sm:px-6">
+            <div className="pointer-events-auto mx-auto flex max-w-3xl items-center justify-between gap-3 rounded-full border border-primary/15 bg-white/92 px-4 py-3 shadow-[0_16px_40px_rgba(15,23,42,0.14)] backdrop-blur">
+              <div className="min-w-0">
+                <p className="text-xs uppercase tracking-[0.18em] text-primary">Продолжить маршрут</p>
+                <p className="truncate text-sm text-muted-foreground">Войдите, чтобы сохранить выбранный маршрут владельца и открыть кабинет участия.</p>
+              </div>
+              <a
+                href={getLoginUrl("/dashboard")}
+                className="inline-flex shrink-0 items-center justify-center rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition hover:opacity-90"
+              >
+                Зарегистрироваться
+              </a>
+            </div>
+          </div>
+        ) : null}
       </div>
     </div>
   );

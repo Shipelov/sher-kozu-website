@@ -50,6 +50,9 @@ describe("page visual integration source smoke", () => {
     expect(dashboardSource).toContain("Ограниченный доступ до входа");
     expect(dashboardSource).toContain("dashboardGuestLockedParticipation");
     expect(dashboardSource).toContain("dashboardGuestLockedQuickLinks");
+    expect(dashboardSource).toContain("dashboardGuestStickyRegister");
+    expect(dashboardSource).toContain("Продолжить маршрут");
+    expect(dashboardSource).toContain('getLoginUrl("/dashboard")');
   });
 
   it("keeps named dairy storytelling and dynamic animal route in product tracker", () => {
