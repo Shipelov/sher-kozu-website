@@ -9,7 +9,7 @@
  * has already run and created animals + plans. This avoids unique constraint collisions on
  * the plans.code column and ensures gallery returns available animals.
  */
-import { describe, expect, it, beforeAll } from "vitest";
+import { describe, expect, it, beforeAll, afterAll } from "vitest";
 import { appRouter } from "./routers";
 import type { TrpcContext } from "./_core/context";
 
@@ -60,6 +60,36 @@ describe("E2E Owner Journey: Gallery → Profile → Share → Purchase → Dash
   const buyerOpenId = `buyer-${randomSuffix}-${Date.now()}`;
   const guestCaller = appRouter.createCaller(createGuestContext());
   const authedCaller = appRouter.createCaller(createAuthenticatedContext(buyerOpenId));
+
+  // Cleanup: remove test animals and ownerships created by this buyer after all tests
+  afterAll(async () => {
+    try {
+      const { getDb } = await import("./db");
+      const db = await getDb();
+      if (!db) return;
+      // Delete ownerships created by this buyer
+      await db.execute({
+        sql: `DELETE FROM animalOwnerships WHERE ownerOpenId = ?`,
+        params: [buyerOpenId],
+      });
+      // Delete animals created by this buyer (seed creates them with ownerOpenId = buyerOpenId)
+      await db.execute({
+        sql: `DELETE FROM animalMedia WHERE animalId IN (SELECT id FROM animals WHERE ownerOpenId = ?)`,
+        params: [buyerOpenId],
+      });
+      await db.execute({
+        sql: `DELETE FROM animals WHERE ownerOpenId = ?`,
+        params: [buyerOpenId],
+      });
+      // Delete the test user
+      await db.execute({
+        sql: `DELETE FROM users WHERE openId = ?`,
+        params: [buyerOpenId],
+      });
+    } catch (err) {
+      console.warn("[E2E cleanup] Failed to clean up test data:", err);
+    }
+  });
 
   // State shared across steps
   let galleryAnimals: any[];

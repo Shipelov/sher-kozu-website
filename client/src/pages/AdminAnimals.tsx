@@ -67,6 +67,7 @@ import { Link } from "wouter";
 
 type AdminAnimalStatus = "public_available" | "public_limited" | "fully_booked" | "hidden" | "archived";
 type AdminAnimalSpecies = "goat" | "sheep";
+type AdminOwnershipFilter = "all" | "has_free" | "fully_booked" | "no_owners";
 type AdminVisibilityMode = "public" | "hidden" | "archived";
 
 type AdminAnimalMediaItem = {
@@ -596,7 +597,8 @@ export function filterAdminAnimals(
   animals: AdminAnimalRecord[],
   query: string,
   status: AdminAnimalStatus | "all",
-  species: AdminAnimalSpecies | "all"
+  species: AdminAnimalSpecies | "all",
+  ownership: AdminOwnershipFilter = "all"
 ) {
   const normalizedQuery = query.trim().toLowerCase();
 
@@ -607,7 +609,16 @@ export function filterAdminAnimals(
     const matchesStatus = status === "all" || animal.status === status;
     const matchesSpecies = species === "all" || animal.species === species;
 
-    return matchesQuery && matchesStatus && matchesSpecies;
+    let matchesOwnership = true;
+    if (ownership === "has_free") {
+      matchesOwnership = animal.activeOwnerships > 0 && animal.activeOwnerships < animal.totalOwnershipSlots;
+    } else if (ownership === "fully_booked") {
+      matchesOwnership = animal.activeOwnerships >= animal.totalOwnershipSlots;
+    } else if (ownership === "no_owners") {
+      matchesOwnership = animal.activeOwnerships === 0;
+    }
+
+    return matchesQuery && matchesStatus && matchesSpecies && matchesOwnership;
   });
 }
 
@@ -1627,6 +1638,7 @@ export default function AdminAnimalsPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<AdminAnimalStatus | "all">("all");
   const [speciesFilter, setSpeciesFilter] = useState<AdminAnimalSpecies | "all">("all");
+  const [ownershipFilter, setOwnershipFilter] = useState<AdminOwnershipFilter>("all");
   const [editorMode, setEditorMode] = useState<"create" | "edit">("create");
   const [editingAnimalId, setEditingAnimalId] = useState<number | null>(null);
   const [formValues, setFormValues] = useState<AnimalFormValues>(createEmptyAnimalForm());
@@ -1644,8 +1656,8 @@ export default function AdminAnimalsPage() {
     [animalsQuery.data]
   );
   const filteredAnimals = useMemo(
-    () => filterAdminAnimals(animals, searchQuery, statusFilter, speciesFilter),
-    [animals, searchQuery, statusFilter, speciesFilter]
+    () => filterAdminAnimals(animals, searchQuery, statusFilter, speciesFilter, ownershipFilter),
+    [animals, searchQuery, statusFilter, speciesFilter, ownershipFilter]
   );
 
   const portfolioValueMinor = useMemo(
@@ -1946,7 +1958,7 @@ export default function AdminAnimalsPage() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-5">
-                  <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_220px_220px]">
+                  <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_200px_200px_220px]">
                     <div className="relative">
                       <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                       <Input
@@ -1977,6 +1989,17 @@ export default function AdminAnimalsPage() {
                         <SelectItem value="all">Все виды</SelectItem>
                         <SelectItem value="goat">Козы</SelectItem>
                         <SelectItem value="sheep">Овцы</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Select value={ownershipFilter} onValueChange={(value) => setOwnershipFilter(value as AdminOwnershipFilter)}>
+                      <SelectTrigger className="h-11 rounded-full">
+                        <SelectValue placeholder="Владение" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Все доли</SelectItem>
+                        <SelectItem value="has_free">Есть свободные</SelectItem>
+                        <SelectItem value="fully_booked">Полностью занято</SelectItem>
+                        <SelectItem value="no_owners">Без владельцев</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>

@@ -1717,10 +1717,15 @@ export async function listActivePlans() {
 
 export async function listAdminAnimals(_ownerOpenId?: string) {
   const db = await getDb();
-  // Admin sees ALL animals regardless of ownerOpenId (single-owner farm)
+  // Admin sees only the farm owner's animals (filter out test/buyer-created animals)
+  const farmOwner = ENV.ownerOpenId;
+  const whereClause = farmOwner
+    ? eq(animals.ownerOpenId, farmOwner)
+    : undefined;
   const rows = await db
     .select()
     .from(animals)
+    .where(whereClause)
     .orderBy(desc(animals.isFeatured), asc(animals.sortOrder), asc(animals.name));
 
   return Promise.all(rows.map((animal: any) => enrichAnimalWithShareMetrics(db, animal)));
@@ -1887,6 +1892,11 @@ export async function setAnimalVisibility(animalId: number, _ownerOpenId: string
 }
 
 export async function ensureSprintOneSeed(ownerOpenId: string) {
+  // Only seed animals for the actual farm owner, not for buyer/test accounts
+  const farmOwner = ENV.ownerOpenId;
+  if (farmOwner && ownerOpenId !== farmOwner) {
+    return;
+  }
   const db = await getDb();
   const existingAnimals = await db.select({ id: animals.id, species: animals.species }).from(animals).where(eq(animals.ownerOpenId, ownerOpenId));
   const hasGoat = existingAnimals.some((a: any) => a.species === 'goat');

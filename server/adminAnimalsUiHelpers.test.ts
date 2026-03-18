@@ -392,6 +392,37 @@ describe("Admin animals UI helpers", () => {
     expect(result[0]?.slug).toBe("luna");
   });
 
+  it("filters animals by ownership: has_free returns partially occupied", () => {
+    const result = filterAdminAnimals([...animals], "", "all", "all", "has_free");
+    expect(result).toHaveLength(1);
+    expect(result[0]?.slug).toBe("marta");
+  });
+
+  it("filters animals by ownership: fully_booked returns fully occupied", () => {
+    const result = filterAdminAnimals([...animals], "", "all", "all", "fully_booked");
+    expect(result).toHaveLength(1);
+    expect(result[0]?.slug).toBe("zvezda");
+  });
+
+  it("filters animals by ownership: no_owners returns animals with zero ownerships", () => {
+    const result = filterAdminAnimals([...animals], "", "all", "all", "no_owners");
+    expect(result).toHaveLength(1);
+    expect(result[0]?.slug).toBe("luna");
+  });
+
+  it("filters animals by ownership: all returns everything", () => {
+    const result = filterAdminAnimals([...animals], "", "all", "all", "all");
+    expect(result).toHaveLength(3);
+  });
+
+  it("combines ownership filter with other filters", () => {
+    const result = filterAdminAnimals([...animals], "", "all", "goat", "has_free");
+    expect(result).toHaveLength(1);
+    expect(result[0]?.slug).toBe("marta");
+    const result2 = filterAdminAnimals([...animals], "", "all", "sheep", "fully_booked");
+    expect(result2).toHaveLength(0);
+  });
+
   it("returns hidden to public and all other active states to hidden", () => {
     expect(getNextVisibilityMode("hidden")).toBe("public");
     expect(getNextVisibilityMode("public_available")).toBe("hidden");

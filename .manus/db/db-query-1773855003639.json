@@ -1,0 +1,40 @@
+{
+  "query": "SELECT id, slug, name FROM animals ORDER BY id;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3J2fXRHx8d1YjF6.root --database mLhmg5VmBsEBpZiYqdnhMQ --execute SELECT id, slug, name FROM animals ORDER BY id;",
+  "rows": [
+    {
+      "id": "30001",
+      "slug": "mira",
+      "name": "Мира"
+    },
+    {
+      "id": "180005",
+      "slug": "zlata",
+      "name": "Злата"
+    },
+    {
+      "id": "240013",
+      "slug": "marta-buyersgfaxdy",
+      "name": "Марта"
+    },
+    {
+      "id": "240014",
+      "slug": "zlata-buyersgfaxdy",
+      "name": "Злата"
+    },
+    {
+      "id": "240015",
+      "slug": "marta-buyerkhydtr6",
+      "name": "Марта"
+    },
+    {
+      "id": "240016",
+      "slug": "zlata-buyerkhydtr6",
+      "name": "Злата"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tslug\tname\n30001\tmira\tМира\n180005\tzlata\tЗлата\n240013\tmarta-buyersgfaxdy\tМарта\n240014\tzlata-buyersgfaxdy\tЗлата\n240015\tmarta-buyerkhydtr6\tМарта\n240016\tzlata-buyerkhydtr6\tЗлата\n",
+  "stderr": "",
+  "execution_time_ms": 435
+}

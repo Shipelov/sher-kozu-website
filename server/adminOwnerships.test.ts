@@ -5,7 +5,7 @@
  * They rely on the E2E seed data (ensureSprintOneSeed) having already created
  * animals and ownerships for the OWNER_OPEN_ID.
  */
-import { describe, expect, it, beforeAll } from "vitest";
+import { describe, expect, it, beforeAll, afterAll } from "vitest";
 import { appRouter } from "./routers";
 import type { TrpcContext } from "./_core/context";
 import {
@@ -78,6 +78,25 @@ describe("adminOwnerships procedures", () => {
 
   const adminCaller = appRouter.createCaller(createAdminContext(adminOpenId));
   const buyerCaller = appRouter.createCaller(createUserContext(buyerOpenId));
+
+  // Cleanup: remove test ownerships and buyer user after all tests
+  afterAll(async () => {
+    try {
+      const { getDb } = await import("./db");
+      const db = await getDb();
+      if (!db) return;
+      await db.execute({
+        sql: `DELETE FROM animalOwnerships WHERE ownerOpenId = ?`,
+        params: [buyerOpenId],
+      });
+      await db.execute({
+        sql: `DELETE FROM users WHERE openId = ?`,
+        params: [buyerOpenId],
+      });
+    } catch (err) {
+      console.warn("[adminOwnerships cleanup] Failed to clean up test data:", err);
+    }
+  });
 
   beforeAll(async () => {
     // Ensure seed data exists for the admin (farm owner)

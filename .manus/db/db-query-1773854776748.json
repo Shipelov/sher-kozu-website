@@ -1,0 +1,58 @@
+{
+  "query": "SELECT id, slug, name, animalStatus FROM animals ORDER BY id;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3J2fXRHx8d1YjF6.root --database mLhmg5VmBsEBpZiYqdnhMQ --execute SELECT id, slug, name, animalStatus FROM animals ORDER BY id;",
+  "rows": [
+    {
+      "id": "30001",
+      "slug": "mira",
+      "name": "Мира",
+      "animalStatus": "fully_booked"
+    },
+    {
+      "id": "180005",
+      "slug": "zlata",
+      "name": "Злата",
+      "animalStatus": "fully_booked"
+    },
+    {
+      "id": "240007",
+      "slug": "marta-buyerf5diieh",
+      "name": "Марта",
+      "animalStatus": "public_available"
+    },
+    {
+      "id": "240008",
+      "slug": "zlata-buyerf5diieh",
+      "name": "Злата",
+      "animalStatus": "public_available"
+    },
+    {
+      "id": "240009",
+      "slug": "marta-buyeraepkp6k",
+      "name": "Марта",
+      "animalStatus": "public_available"
+    },
+    {
+      "id": "240010",
+      "slug": "zlata-buyeraepkp6k",
+      "name": "Злата",
+      "animalStatus": "public_available"
+    },
+    {
+      "id": "240011",
+      "slug": "marta-buyerx4jx5q6",
+      "name": "Марта",
+      "animalStatus": "public_available"
+    },
+    {
+      "id": "240012",
+      "slug": "zlata-buyerx4jx5q6",
+      "name": "Злата",
+      "animalStatus": "public_available"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tslug\tname\tanimalStatus\n30001\tmira\tМира\tfully_booked\n180005\tzlata\tЗлата\tfully_booked\n240007\tmarta-buyerf5diieh\tМарта\tpublic_available\n240008\tzlata-buyerf5diieh\tЗлата\tpublic_available\n240009\tmarta-buyeraepkp6k\tМарта\tpublic_available\n240010\tzlata-buyeraepkp6k\tЗлата\tpublic_available\n240011\tmarta-buyerx4jx5q6\tМарта\tpublic_available\n240012\tzlata-buyerx4jx5q6\tЗлата\tpublic_available\n",
+  "stderr": "",
+  "execution_time_ms": 354
+}

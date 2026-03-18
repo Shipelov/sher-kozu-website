@@ -6,15 +6,14 @@ const dbSrc = fs.readFileSync(path.resolve(__dirname, "db.ts"), "utf-8");
 const routersSrc = fs.readFileSync(path.resolve(__dirname, "routers.ts"), "utf-8");
 
 describe("Admin ↔ Catalog sync (single-owner farm model)", () => {
-  it("listAdminAnimals does NOT filter by ownerOpenId", () => {
-    // The function should not use eq(animals.ownerOpenId, ...) in its WHERE clause
-    // It should show ALL animals to the admin
+  it("listAdminAnimals filters by ENV.ownerOpenId to exclude test/buyer animals", () => {
+    // The function should filter by the farm owner's openId to prevent test animals from appearing
     expect(dbSrc).toContain("export async function listAdminAnimals(_ownerOpenId");
-    // Should NOT have ownerOpenId filter in the query
     const fnStart = dbSrc.indexOf("export async function listAdminAnimals");
     const fnEnd = dbSrc.indexOf("return Promise.all(rows.map", fnStart);
     const fnBody = dbSrc.slice(fnStart, fnEnd);
-    expect(fnBody).not.toContain("eq(animals.ownerOpenId");
+    expect(fnBody).toContain("ENV.ownerOpenId");
+    expect(fnBody).toContain("eq(animals.ownerOpenId, farmOwner)");
   });
 
   it("listPublicAnimals filters by ENV.ownerOpenId to exclude test animals", () => {
@@ -66,6 +65,14 @@ describe("Admin ↔ Catalog sync (single-owner farm model)", () => {
     expect(fnBody).toContain("hasSheep");
     expect(fnBody).toContain("hasGoat");
     expect(fnBody).toContain("Has goats but no sheep");
+  });
+
+  it("ensureSprintOneSeed skips seeding for non-farm-owner accounts", () => {
+    const fnStart = dbSrc.indexOf("export async function ensureSprintOneSeed");
+    const fnEnd = dbSrc.indexOf("const db = await getDb()", fnStart);
+    const fnBody = dbSrc.slice(fnStart, fnEnd);
+    expect(fnBody).toContain("ENV.ownerOpenId");
+    expect(fnBody).toContain("ownerOpenId !== farmOwner");
   });
 
   it("adminAnimals.list router calls listAdminAnimals", () => {
