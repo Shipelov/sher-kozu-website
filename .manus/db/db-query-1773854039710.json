@@ -1,0 +1,154 @@
+{
+  "query": "SELECT id, name, slug, ownerOpenId, animalStatus, isFeatured, baseMonthlyPriceMinor FROM animals ORDER BY id;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3J2fXRHx8d1YjF6.root --database mLhmg5VmBsEBpZiYqdnhMQ --execute SELECT id, name, slug, ownerOpenId, animalStatus, isFeatured, baseMonthlyPriceMinor FROM animals ORDER BY id;",
+  "rows": [
+    {
+      "id": "1",
+      "name": "Марта",
+      "slug": "marta-jp5iby",
+      "ownerOpenId": "jP5iBYMcdYguBWJPw5Sruu",
+      "animalStatus": "archived",
+      "isFeatured": "1",
+      "baseMonthlyPriceMinor": "45000"
+    },
+    {
+      "id": "30001",
+      "name": "Мира",
+      "slug": "mira-goat",
+      "ownerOpenId": "jP5iBYMcdYguBWJPw5Sruu",
+      "animalStatus": "fully_booked",
+      "isFeatured": "1",
+      "baseMonthlyPriceMinor": "135000"
+    },
+    {
+      "id": "60001",
+      "name": "Kozya",
+      "slug": "kozya",
+      "ownerOpenId": "jP5iBYMcdYguBWJPw5Sruu",
+      "animalStatus": "fully_booked",
+      "isFeatured": "0",
+      "baseMonthlyPriceMinor": "12000000"
+    },
+    {
+      "id": "180005",
+      "name": "Злата",
+      "slug": "zlata-jp5ibymcdygu",
+      "ownerOpenId": "jP5iBYMcdYguBWJPw5Sruu",
+      "animalStatus": "fully_booked",
+      "isFeatured": "0",
+      "baseMonthlyPriceMinor": "118000"
+    },
+    {
+      "id": "210001",
+      "name": "Марта",
+      "slug": "marta-buyer5pgs5g6",
+      "ownerOpenId": "buyer-5pgs5g6w-1773851254117",
+      "animalStatus": "public_available",
+      "isFeatured": "1",
+      "baseMonthlyPriceMinor": "135000"
+    },
+    {
+      "id": "210002",
+      "name": "Злата",
+      "slug": "zlata-buyer5pgs5g6",
+      "ownerOpenId": "buyer-5pgs5g6w-1773851254117",
+      "animalStatus": "public_available",
+      "isFeatured": "0",
+      "baseMonthlyPriceMinor": "118000"
+    },
+    {
+      "id": "210003",
+      "name": "Марта",
+      "slug": "marta-buyer68i2138",
+      "ownerOpenId": "buyer-68i2138t-1773851285357",
+      "animalStatus": "public_available",
+      "isFeatured": "1",
+      "baseMonthlyPriceMinor": "135000"
+    },
+    {
+      "id": "210004",
+      "name": "Злата",
+      "slug": "zlata-buyer68i2138",
+      "ownerOpenId": "buyer-68i2138t-1773851285357",
+      "animalStatus": "public_available",
+      "isFeatured": "0",
+      "baseMonthlyPriceMinor": "118000"
+    },
+    {
+      "id": "210005",
+      "name": "Марта",
+      "slug": "marta-buyergevgwp8",
+      "ownerOpenId": "buyer-gevgwp8e-1773851733465",
+      "animalStatus": "public_available",
+      "isFeatured": "1",
+      "baseMonthlyPriceMinor": "135000"
+    },
+    {
+      "id": "210006",
+      "name": "Злата",
+      "slug": "zlata-buyergevgwp8",
+      "ownerOpenId": "buyer-gevgwp8e-1773851733465",
+      "animalStatus": "public_available",
+      "isFeatured": "0",
+      "baseMonthlyPriceMinor": "118000"
+    },
+    {
+      "id": "240001",
+      "name": "Марта",
+      "slug": "marta-buyernznb6cf",
+      "ownerOpenId": "buyer-nznb6cf3-1773853491888",
+      "animalStatus": "public_available",
+      "isFeatured": "1",
+      "baseMonthlyPriceMinor": "135000"
+    },
+    {
+      "id": "240002",
+      "name": "Злата",
+      "slug": "zlata-buyernznb6cf",
+      "ownerOpenId": "buyer-nznb6cf3-1773853491888",
+      "animalStatus": "public_available",
+      "isFeatured": "0",
+      "baseMonthlyPriceMinor": "118000"
+    },
+    {
+      "id": "240003",
+      "name": "Марта",
+      "slug": "marta-buyer7nfzr8n",
+      "ownerOpenId": "buyer-7nfzr8n9-1773853507448",
+      "animalStatus": "public_available",
+      "isFeatured": "1",
+      "baseMonthlyPriceMinor": "135000"
+    },
+    {
+      "id": "240004",
+      "name": "Злата",
+      "slug": "zlata-buyer7nfzr8n",
+      "ownerOpenId": "buyer-7nfzr8n9-1773853507448",
+      "animalStatus": "public_available",
+      "isFeatured": "0",
+      "baseMonthlyPriceMinor": "118000"
+    },
+    {
+      "id": "240005",
+      "name": "Марта",
+      "slug": "marta-buyereqisz91",
+      "ownerOpenId": "buyer-eqisz91j-1773853574454",
+      "animalStatus": "public_available",
+      "isFeatured": "1",
+      "baseMonthlyPriceMinor": "135000"
+    },
+    {
+      "id": "240006",
+      "name": "Злата",
+      "slug": "zlata-buyereqisz91",
+      "ownerOpenId": "buyer-eqisz91j-1773853574454",
+      "animalStatus": "public_available",
+      "isFeatured": "0",
+      "baseMonthlyPriceMinor": "118000"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tname\tslug\townerOpenId\tanimalStatus\tisFeatured\tbaseMonthlyPriceMinor\n1\tМарта\tmarta-jp5iby\tjP5iBYMcdYguBWJPw5Sruu\tarchived\t1\t45000\n30001\tМира\tmira-goat\tjP5iBYMcdYguBWJPw5Sruu\tfully_booked\t1\t135000\n60001\tKozya\tkozya\tjP5iBYMcdYguBWJPw5Sruu\tfully_booked\t0\t12000000\n180005\tЗлата\tzlata-jp5ibymcdygu\tjP5iBYMcdYguBWJPw5Sruu\tfully_booked\t0\t118000\n210001\tМарта\tmarta-buyer5pgs5g6\tbuyer-5pgs5g6w-1773851254117\tpublic_available\t1\t135000\n210002\tЗлата\tzlata-buyer5pgs5g6\tbuyer-5pgs5g6w-1773851254117\tpublic_available\t0\t118000\n210003\tМарта\tmarta-buyer68i2138\tbuyer-68i2138t-1773851285357\tpublic_available\t1\t135000\n210004\tЗлата\tzlata-buyer68i2138\tbuyer-68i2138t-1773851285357\tpublic_available\t0\t118000\n210005\tМарта\tmarta-buyergevgwp8\tbuyer-gevgwp8e-1773851733465\tpublic_available\t1\t135000\n210006\tЗлата\tzlata-buyergevgwp8\tbuyer-gevgwp8e-1773851733465\tpublic_available\t0\t118000\n240001\tМарта\tmarta-buyernznb6cf\tbuyer-nznb6cf3-1773853491888\tpublic_available\t1\t135000\n240002\tЗлата\tzlata-buyernznb6cf\tbuyer-nznb6cf3-1773853491888\tpublic_available\t0\t118000\n240003\tМарта\tmarta-buyer7nfzr8n\tbuyer-7nfzr8n9-1773853507448\tpublic_available\t1\t135000\n240004\tЗлата\tzlata-buyer7nfzr8n\tbuyer-7nfzr8n9-1773853507448\tpublic_available\t0\t118000\n240005\tМарта\tmarta-buyereqisz91\tbuyer-eqisz91j-1773853574454\tpublic_available\t1\t135000\n240006\tЗлата\tzlata-buyereqisz91\tbuyer-eqisz91j-1773853574454\tpublic_available\t0\t118000\n",
+  "stderr": "",
+  "execution_time_ms": 380
+}

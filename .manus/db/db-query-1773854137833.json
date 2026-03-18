@@ -1,0 +1,18 @@
+{
+  "query": "SELECT animalSlug, COUNT(*) as cnt FROM animalPhotos GROUP BY animalSlug;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3J2fXRHx8d1YjF6.root --database mLhmg5VmBsEBpZiYqdnhMQ --execute SELECT animalSlug, COUNT(*) as cnt FROM animalPhotos GROUP BY animalSlug;",
+  "rows": [
+    {
+      "animalSlug": "kozya",
+      "cnt": "1"
+    },
+    {
+      "animalSlug": "marta",
+      "cnt": "3"
+    }
+  ],
+  "messages": [],
+  "stdout": "animalSlug\tcnt\nkozya\t1\nmarta\t3\n",
+  "stderr": "",
+  "execution_time_ms": 376
+}

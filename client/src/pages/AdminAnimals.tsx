@@ -163,7 +163,7 @@ const DEMO_ANIMAL_PRESETS: Record<"goat" | "sheep", AnimalProfilePreset> = {
     label: "Демо-профиль козы",
     values: {
       name: "Мира",
-      slug: "mira-goat",
+      slug: "mira",
       species: "goat",
       breed: "Зааненская",
       shortDescription: "Контактная молочная коза для семейного участия, визитов на ферму и прозрачного пути от ухода до продукции.",

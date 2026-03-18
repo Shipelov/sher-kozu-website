@@ -1,0 +1,34 @@
+{
+  "query": "SELECT id, name, slug, ownerOpenId FROM animals WHERE ownerOpenId = 'jP5iBYMcdYguBWJPw5Sruu' ORDER BY id;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3J2fXRHx8d1YjF6.root --database mLhmg5VmBsEBpZiYqdnhMQ --execute SELECT id, name, slug, ownerOpenId FROM animals WHERE ownerOpenId = 'jP5iBYMcdYguBWJPw5Sruu' ORDER BY id;",
+  "rows": [
+    {
+      "id": "1",
+      "name": "Марта",
+      "slug": "marta-jp5iby",
+      "ownerOpenId": "jP5iBYMcdYguBWJPw5Sruu"
+    },
+    {
+      "id": "30001",
+      "name": "Мира",
+      "slug": "mira-goat",
+      "ownerOpenId": "jP5iBYMcdYguBWJPw5Sruu"
+    },
+    {
+      "id": "60001",
+      "name": "Kozya",
+      "slug": "kozya",
+      "ownerOpenId": "jP5iBYMcdYguBWJPw5Sruu"
+    },
+    {
+      "id": "180005",
+      "name": "Злата",
+      "slug": "zlata-jp5ibymcdygu",
+      "ownerOpenId": "jP5iBYMcdYguBWJPw5Sruu"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tname\tslug\townerOpenId\n1\tМарта\tmarta-jp5iby\tjP5iBYMcdYguBWJPw5Sruu\n30001\tМира\tmira-goat\tjP5iBYMcdYguBWJPw5Sruu\n60001\tKozya\tkozya\tjP5iBYMcdYguBWJPw5Sruu\n180005\tЗлата\tzlata-jp5ibymcdygu\tjP5iBYMcdYguBWJPw5Sruu\n",
+  "stderr": "",
+  "execution_time_ms": 359
+}

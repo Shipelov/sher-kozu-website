@@ -1,0 +1,26 @@
+{
+  "query": "SELECT id, name, slug, ownerOpenId, animalStatus, isFeatured FROM animals ORDER BY id;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3J2fXRHx8d1YjF6.root --database mLhmg5VmBsEBpZiYqdnhMQ --execute SELECT id, name, slug, ownerOpenId, animalStatus, isFeatured FROM animals ORDER BY id;",
+  "rows": [
+    {
+      "id": "30001",
+      "name": "Мира",
+      "slug": "mira-goat",
+      "ownerOpenId": "jP5iBYMcdYguBWJPw5Sruu",
+      "animalStatus": "fully_booked",
+      "isFeatured": "1"
+    },
+    {
+      "id": "180005",
+      "name": "Злата",
+      "slug": "zlata-jp5ibymcdygu",
+      "ownerOpenId": "jP5iBYMcdYguBWJPw5Sruu",
+      "animalStatus": "fully_booked",
+      "isFeatured": "0"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tname\tslug\townerOpenId\tanimalStatus\tisFeatured\n30001\tМира\tmira-goat\tjP5iBYMcdYguBWJPw5Sruu\tfully_booked\t1\n180005\tЗлата\tzlata-jp5ibymcdygu\tjP5iBYMcdYguBWJPw5Sruu\tfully_booked\t0\n",
+  "stderr": "",
+  "execution_time_ms": 405
+}
