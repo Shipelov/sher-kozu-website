@@ -25,7 +25,7 @@
 - [ ] Перевести `Dashboard` на устойчивый owner-journey с актуальным животным, ownership-state и понятными следующими действиями
 - [x] Перевести `ProductTracker` с локальных демо-массивов на реальные данные или серверный curated fallback
 - [x] Перевести `ClubFeed` с локальных демо-массивов на реальные данные или серверный curated fallback
-- [ ] Свести переходы между `Dashboard`, `ProductTracker`, `ClubFeed` и профилем животного к единому сценарию без dead-end состояний
+- [x] Свести переходы между `Dashboard`, `ProductTracker`, `ClubFeed` и профилем животного к единому сценарию без dead-end состояний
 - [ ] Добавить smoke/vitest-покрытие на ownership journey после выбора животного
 
 ## Phase C — Farm Operations
@@ -97,3 +97,4 @@
 - [x] Перестроить owner dashboard вокруг текущего животного владельца: показать реальный профиль участия, ближайшие шаги после покупки и быстрые переходы в дневник, трекер и клуб.
 - [x] Перевести ProductTracker с локальных демо-массивов на реальные данные текущего участия владельца и единый серверный curated fallback.
 - [x] Перевести ClubFeed на ownership-aware data layer и связать его с текущим животным пользователя, owner dashboard и product tracker.
+- [x] Унифицировать сквозные переходы между Dashboard, ProductTracker, ClubFeed и Animal Profile, чтобы убрать dead-end состояния и сохранить один ownership journey.

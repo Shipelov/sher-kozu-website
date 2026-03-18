@@ -43,6 +43,9 @@ describe("page visual integration source smoke", () => {
     expect(dashboardSource).toContain("sherkozu_named_dairy_box");
     expect(dashboardSource).toContain("Цифровое сердце Sher Kozu");
     expect(dashboardSource).toContain("featuredAnimalProfileHref");
+    expect(dashboardSource).toContain("один ownership journey");
+    expect(dashboardSource).toContain("Профиль {featuredAnimalName}");
+    expect(dashboardSource).toContain("Dashboard → Profile → Tracker → Club");
   });
 
   it("keeps named dairy storytelling and dynamic animal route in product tracker", () => {
