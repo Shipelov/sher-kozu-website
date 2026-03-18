@@ -1,0 +1,122 @@
+{
+  "query": "SELECT id, name, slug, animalSpecies, animalStatus FROM animals WHERE animalSpecies = 'sheep' ORDER BY name;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3J2fXRHx8d1YjF6.root --database mLhmg5VmBsEBpZiYqdnhMQ --execute SELECT id, name, slug, animalSpecies, animalStatus FROM animals WHERE animalSpecies = 'sheep' ORDER BY name;",
+  "rows": [
+    {
+      "id": "90002",
+      "name": "Злата",
+      "slug": "zlata-buyer-",
+      "animalSpecies": "sheep",
+      "animalStatus": "public_available"
+    },
+    {
+      "id": "90005",
+      "name": "Злата",
+      "slug": "zlata-buyerk13ldq0",
+      "animalSpecies": "sheep",
+      "animalStatus": "public_available"
+    },
+    {
+      "id": "90007",
+      "name": "Злата",
+      "slug": "zlata-buyerbsz09cc",
+      "animalSpecies": "sheep",
+      "animalStatus": "public_limited"
+    },
+    {
+      "id": "90009",
+      "name": "Злата",
+      "slug": "zlata-buyerhy7zwtb",
+      "animalSpecies": "sheep",
+      "animalStatus": "public_available"
+    },
+    {
+      "id": "90011",
+      "name": "Злата",
+      "slug": "zlata-buyernxu1ajy",
+      "animalSpecies": "sheep",
+      "animalStatus": "public_available"
+    },
+    {
+      "id": "90013",
+      "name": "Злата",
+      "slug": "zlata-buyer95eoovq",
+      "animalSpecies": "sheep",
+      "animalStatus": "public_available"
+    },
+    {
+      "id": "90015",
+      "name": "Злата",
+      "slug": "zlata-buyer0pbt573",
+      "animalSpecies": "sheep",
+      "animalStatus": "public_available"
+    },
+    {
+      "id": "90017",
+      "name": "Злата",
+      "slug": "zlata-buyertbmhjh0",
+      "animalSpecies": "sheep",
+      "animalStatus": "public_available"
+    },
+    {
+      "id": "120002",
+      "name": "Злата",
+      "slug": "zlata-buyerrxw08ll",
+      "animalSpecies": "sheep",
+      "animalStatus": "public_available"
+    },
+    {
+      "id": "120004",
+      "name": "Злата",
+      "slug": "zlata-buyerfzqryqv",
+      "animalSpecies": "sheep",
+      "animalStatus": "public_available"
+    },
+    {
+      "id": "120006",
+      "name": "Злата",
+      "slug": "zlata-buyerl3jv0xi",
+      "animalSpecies": "sheep",
+      "animalStatus": "public_available"
+    },
+    {
+      "id": "120008",
+      "name": "Злата",
+      "slug": "zlata-buyerazzjiy8",
+      "animalSpecies": "sheep",
+      "animalStatus": "public_available"
+    },
+    {
+      "id": "150002",
+      "name": "Злата",
+      "slug": "zlata-buyerazicz1i",
+      "animalSpecies": "sheep",
+      "animalStatus": "public_available"
+    },
+    {
+      "id": "150004",
+      "name": "Злата",
+      "slug": "zlata-buyerychpyg2",
+      "animalSpecies": "sheep",
+      "animalStatus": "public_available"
+    },
+    {
+      "id": "180002",
+      "name": "Злата",
+      "slug": "zlata-buyeryjyo4b0",
+      "animalSpecies": "sheep",
+      "animalStatus": "public_available"
+    },
+    {
+      "id": "180004",
+      "name": "Злата",
+      "slug": "zlata-buyers05pm6g",
+      "animalSpecies": "sheep",
+      "animalStatus": "public_available"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tname\tslug\tanimalSpecies\tanimalStatus\n90002\tЗлата\tzlata-buyer-\tsheep\tpublic_available\n90005\tЗлата\tzlata-buyerk13ldq0\tsheep\tpublic_available\n90007\tЗлата\tzlata-buyerbsz09cc\tsheep\tpublic_limited\n90009\tЗлата\tzlata-buyerhy7zwtb\tsheep\tpublic_available\n90011\tЗлата\tzlata-buyernxu1ajy\tsheep\tpublic_available\n90013\tЗлата\tzlata-buyer95eoovq\tsheep\tpublic_available\n90015\tЗлата\tzlata-buyer0pbt573\tsheep\tpublic_available\n90017\tЗлата\tzlata-buyertbmhjh0\tsheep\tpublic_available\n120002\tЗлата\tzlata-buyerrxw08ll\tsheep\tpublic_available\n120004\tЗлата\tzlata-buyerfzqryqv\tsheep\tpublic_available\n120006\tЗлата\tzlata-buyerl3jv0xi\tsheep\tpublic_available\n120008\tЗлата\tzlata-buyerazzjiy8\tsheep\tpublic_available\n150002\tЗлата\tzlata-buyerazicz1i\tsheep\tpublic_available\n150004\tЗлата\tzlata-buyerychpyg2\tsheep\tpublic_available\n180002\tЗлата\tzlata-buyeryjyo4b0\tsheep\tpublic_available\n180004\tЗлата\tzlata-buyers05pm6g\tsheep\tpublic_available\n",
+  "stderr": "",
+  "execution_time_ms": 350
+}

@@ -1,0 +1,208 @@
+{
+  "query": "SELECT ownerOpenId, animalSpecies, COUNT(*) as cnt, GROUP_CONCAT(DISTINCT animalStatus) as statuses FROM animals GROUP BY ownerOpenId, animalSpecies ORDER BY ownerOpenId, animalSpecies;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3J2fXRHx8d1YjF6.root --database mLhmg5VmBsEBpZiYqdnhMQ --execute SELECT ownerOpenId, animalSpecies, COUNT(*) as cnt, GROUP_CONCAT(DISTINCT animalStatus) as statuses FROM animals GROUP BY ownerOpenId, animalSpecies ORDER BY ownerOpenId, animalSpecies;",
+  "rows": [
+    {
+      "ownerOpenId": "buyer-0pbt573k-1773840137598",
+      "animalSpecies": "goat",
+      "cnt": "1",
+      "statuses": "public_available"
+    },
+    {
+      "ownerOpenId": "buyer-0pbt573k-1773840137598",
+      "animalSpecies": "sheep",
+      "cnt": "1",
+      "statuses": "public_available"
+    },
+    {
+      "ownerOpenId": "buyer-5q1v7r2o-1773838884326",
+      "animalSpecies": "goat",
+      "cnt": "1",
+      "statuses": "fully_booked"
+    },
+    {
+      "ownerOpenId": "buyer-5q1v7r2o-1773838884326",
+      "animalSpecies": "sheep",
+      "cnt": "1",
+      "statuses": "public_available"
+    },
+    {
+      "ownerOpenId": "buyer-95eoovqd-1773840088855",
+      "animalSpecies": "goat",
+      "cnt": "1",
+      "statuses": "fully_booked"
+    },
+    {
+      "ownerOpenId": "buyer-95eoovqd-1773840088855",
+      "animalSpecies": "sheep",
+      "cnt": "1",
+      "statuses": "public_available"
+    },
+    {
+      "ownerOpenId": "buyer-azicz1im-1773844546994",
+      "animalSpecies": "goat",
+      "cnt": "1",
+      "statuses": "public_available"
+    },
+    {
+      "ownerOpenId": "buyer-azicz1im-1773844546994",
+      "animalSpecies": "sheep",
+      "cnt": "1",
+      "statuses": "public_available"
+    },
+    {
+      "ownerOpenId": "buyer-azzjiy8m-1773843099236",
+      "animalSpecies": "goat",
+      "cnt": "1",
+      "statuses": "public_available"
+    },
+    {
+      "ownerOpenId": "buyer-azzjiy8m-1773843099236",
+      "animalSpecies": "sheep",
+      "cnt": "1",
+      "statuses": "public_available"
+    },
+    {
+      "ownerOpenId": "buyer-bsz09ccq-1773839410882",
+      "animalSpecies": "goat",
+      "cnt": "1",
+      "statuses": "public_available"
+    },
+    {
+      "ownerOpenId": "buyer-bsz09ccq-1773839410882",
+      "animalSpecies": "sheep",
+      "cnt": "1",
+      "statuses": "public_limited"
+    },
+    {
+      "ownerOpenId": "buyer-fzqryqvt-1773842929857",
+      "animalSpecies": "goat",
+      "cnt": "1",
+      "statuses": "public_available"
+    },
+    {
+      "ownerOpenId": "buyer-fzqryqvt-1773842929857",
+      "animalSpecies": "sheep",
+      "cnt": "1",
+      "statuses": "public_available"
+    },
+    {
+      "ownerOpenId": "buyer-hy7zwtbr-1773839427160",
+      "animalSpecies": "goat",
+      "cnt": "1",
+      "statuses": "fully_booked"
+    },
+    {
+      "ownerOpenId": "buyer-hy7zwtbr-1773839427160",
+      "animalSpecies": "sheep",
+      "cnt": "1",
+      "statuses": "public_available"
+    },
+    {
+      "ownerOpenId": "buyer-k13ldq0e-1773839394283",
+      "animalSpecies": "goat",
+      "cnt": "1",
+      "statuses": "public_available"
+    },
+    {
+      "ownerOpenId": "buyer-k13ldq0e-1773839394283",
+      "animalSpecies": "sheep",
+      "cnt": "1",
+      "statuses": "public_available"
+    },
+    {
+      "ownerOpenId": "buyer-l3jv0xih-1773843065585",
+      "animalSpecies": "goat",
+      "cnt": "1",
+      "statuses": "public_available"
+    },
+    {
+      "ownerOpenId": "buyer-l3jv0xih-1773843065585",
+      "animalSpecies": "sheep",
+      "cnt": "1",
+      "statuses": "public_available"
+    },
+    {
+      "ownerOpenId": "buyer-nxu1ajyz-1773839451738",
+      "animalSpecies": "goat",
+      "cnt": "1",
+      "statuses": "public_available"
+    },
+    {
+      "ownerOpenId": "buyer-nxu1ajyz-1773839451738",
+      "animalSpecies": "sheep",
+      "cnt": "1",
+      "statuses": "public_available"
+    },
+    {
+      "ownerOpenId": "buyer-rxw08llt-1773842911885",
+      "animalSpecies": "goat",
+      "cnt": "1",
+      "statuses": "public_available"
+    },
+    {
+      "ownerOpenId": "buyer-rxw08llt-1773842911885",
+      "animalSpecies": "sheep",
+      "cnt": "1",
+      "statuses": "public_available"
+    },
+    {
+      "ownerOpenId": "buyer-s05pm6gi-1773846429690",
+      "animalSpecies": "goat",
+      "cnt": "1",
+      "statuses": "public_available"
+    },
+    {
+      "ownerOpenId": "buyer-s05pm6gi-1773846429690",
+      "animalSpecies": "sheep",
+      "cnt": "1",
+      "statuses": "public_available"
+    },
+    {
+      "ownerOpenId": "buyer-tbmhjh0u-1773841229550",
+      "animalSpecies": "goat",
+      "cnt": "1",
+      "statuses": "public_available"
+    },
+    {
+      "ownerOpenId": "buyer-tbmhjh0u-1773841229550",
+      "animalSpecies": "sheep",
+      "cnt": "1",
+      "statuses": "public_available"
+    },
+    {
+      "ownerOpenId": "buyer-ychpyg2j-1773844575462",
+      "animalSpecies": "goat",
+      "cnt": "1",
+      "statuses": "public_available"
+    },
+    {
+      "ownerOpenId": "buyer-ychpyg2j-1773844575462",
+      "animalSpecies": "sheep",
+      "cnt": "1",
+      "statuses": "public_available"
+    },
+    {
+      "ownerOpenId": "buyer-yjyo4b07-1773846403028",
+      "animalSpecies": "goat",
+      "cnt": "1",
+      "statuses": "public_available"
+    },
+    {
+      "ownerOpenId": "buyer-yjyo4b07-1773846403028",
+      "animalSpecies": "sheep",
+      "cnt": "1",
+      "statuses": "public_available"
+    },
+    {
+      "ownerOpenId": "jP5iBYMcdYguBWJPw5Sruu",
+      "animalSpecies": "goat",
+      "cnt": "3",
+      "statuses": "archived,fully_booked,public_available"
+    }
+  ],
+  "messages": [],
+  "stdout": "ownerOpenId\tanimalSpecies\tcnt\tstatuses\nbuyer-0pbt573k-1773840137598\tgoat\t1\tpublic_available\nbuyer-0pbt573k-1773840137598\tsheep\t1\tpublic_available\nbuyer-5q1v7r2o-1773838884326\tgoat\t1\tfully_booked\nbuyer-5q1v7r2o-1773838884326\tsheep\t1\tpublic_available\nbuyer-95eoovqd-1773840088855\tgoat\t1\tfully_booked\nbuyer-95eoovqd-1773840088855\tsheep\t1\tpublic_available\nbuyer-azicz1im-1773844546994\tgoat\t1\tpublic_available\nbuyer-azicz1im-1773844546994\tsheep\t1\tpublic_available\nbuyer-azzjiy8m-1773843099236\tgoat\t1\tpublic_available\nbuyer-azzjiy8m-1773843099236\tsheep\t1\tpublic_available\nbuyer-bsz09ccq-1773839410882\tgoat\t1\tpublic_available\nbuyer-bsz09ccq-1773839410882\tsheep\t1\tpublic_limited\nbuyer-fzqryqvt-1773842929857\tgoat\t1\tpublic_available\nbuyer-fzqryqvt-1773842929857\tsheep\t1\tpublic_available\nbuyer-hy7zwtbr-1773839427160\tgoat\t1\tfully_booked\nbuyer-hy7zwtbr-1773839427160\tsheep\t1\tpublic_available\nbuyer-k13ldq0e-1773839394283\tgoat\t1\tpublic_available\nbuyer-k13ldq0e-1773839394283\tsheep\t1\tpublic_available\nbuyer-l3jv0xih-1773843065585\tgoat\t1\tpublic_available\nbuyer-l3jv0xih-1773843065585\tsheep\t1\tpublic_available\nbuyer-nxu1ajyz-1773839451738\tgoat\t1\tpublic_available\nbuyer-nxu1ajyz-1773839451738\tsheep\t1\tpublic_available\nbuyer-rxw08llt-1773842911885\tgoat\t1\tpublic_available\nbuyer-rxw08llt-1773842911885\tsheep\t1\tpublic_available\nbuyer-s05pm6gi-1773846429690\tgoat\t1\tpublic_available\nbuyer-s05pm6gi-1773846429690\tsheep\t1\tpublic_available\nbuyer-tbmhjh0u-1773841229550\tgoat\t1\tpublic_available\nbuyer-tbmhjh0u-1773841229550\tsheep\t1\tpublic_available\nbuyer-ychpyg2j-1773844575462\tgoat\t1\tpublic_available\nbuyer-ychpyg2j-1773844575462\tsheep\t1\tpublic_available\nbuyer-yjyo4b07-1773846403028\tgoat\t1\tpublic_available\nbuyer-yjyo4b07-1773846403028\tsheep\t1\tpublic_available\njP5iBYMcdYguBWJPw5Sruu\tgoat\t3\tarchived,fully_booked,public_available\n",
+  "stderr": "",
+  "execution_time_ms": 361
+}

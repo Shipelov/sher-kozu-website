@@ -1,0 +1,15 @@
+{
+  "query": "SELECT ownerOpenId, COUNT(*) as cnt, GROUP_CONCAT(DISTINCT animalSpecies) as species FROM animals GROUP BY ownerOpenId HAVING cnt > 2 ORDER BY cnt DESC LIMIT 5;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3J2fXRHx8d1YjF6.root --database mLhmg5VmBsEBpZiYqdnhMQ --execute SELECT ownerOpenId, COUNT(*) as cnt, GROUP_CONCAT(DISTINCT animalSpecies) as species FROM animals GROUP BY ownerOpenId HAVING cnt > 2 ORDER BY cnt DESC LIMIT 5;",
+  "rows": [
+    {
+      "ownerOpenId": "jP5iBYMcdYguBWJPw5Sruu",
+      "cnt": "3",
+      "species": "goat"
+    }
+  ],
+  "messages": [],
+  "stdout": "ownerOpenId\tcnt\tspecies\njP5iBYMcdYguBWJPw5Sruu\t3\tgoat\n",
+  "stderr": "",
+  "execution_time_ms": 369
+}

@@ -435,15 +435,16 @@ export async function getUserByOpenId(openId: string) {
   return user;
 }
 
-export async function listAnimalPhotos(animalSlug: string, ownerOpenId: string) {
+export async function listAnimalPhotos(animalSlug: string, _ownerOpenId?: string) {
   const db = await getDb();
   if (!db) return [];
 
   try {
+    // Admin can view photos for any animal (single-owner farm)
     const items = await db
       .select()
       .from(animalPhotos)
-      .where(and(eq(animalPhotos.animalSlug, animalSlug), eq(animalPhotos.ownerOpenId, ownerOpenId)))
+      .where(eq(animalPhotos.animalSlug, animalSlug))
       .orderBy(asc(animalPhotos.sortOrder), desc(animalPhotos.createdAt));
 
     return items;
@@ -487,16 +488,17 @@ export async function createAnimalPhoto(input: InsertAnimalPhoto) {
   return created[0];
 }
 
-export async function deleteAnimalPhoto(photoId: number, ownerOpenId: string) {
+export async function deleteAnimalPhoto(photoId: number, _ownerOpenId?: string) {
   const db = await getDb();
   if (!db) {
     throw new Error("Database not available for photo deletion");
   }
 
+  // Admin can delete any photo (single-owner farm)
   const existing = await db
     .select()
     .from(animalPhotos)
-    .where(and(eq(animalPhotos.id, photoId), eq(animalPhotos.ownerOpenId, ownerOpenId)))
+    .where(eq(animalPhotos.id, photoId))
     .limit(1);
 
   if (!existing[0]) {
@@ -511,7 +513,7 @@ export async function deleteAnimalPhoto(photoId: number, ownerOpenId: string) {
     const fallback = await db
       .select()
       .from(animalPhotos)
-      .where(and(eq(animalPhotos.animalSlug, existing[0].animalSlug), eq(animalPhotos.ownerOpenId, ownerOpenId)))
+      .where(eq(animalPhotos.animalSlug, existing[0].animalSlug))
       .orderBy(asc(animalPhotos.sortOrder), desc(animalPhotos.createdAt));
 
     if (fallback[0]) {
@@ -522,23 +524,24 @@ export async function deleteAnimalPhoto(photoId: number, ownerOpenId: string) {
   return existing[0];
 }
 
-export async function setAnimalPhotoCover(photoId: number, ownerOpenId: string) {
+export async function setAnimalPhotoCover(photoId: number, _ownerOpenId?: string) {
   const db = await getDb();
   if (!db) {
     throw new Error("Database not available for setting photo cover");
   }
 
+  // Admin can set cover for any photo (single-owner farm)
   const target = await db
     .select()
     .from(animalPhotos)
-    .where(and(eq(animalPhotos.id, photoId), eq(animalPhotos.ownerOpenId, ownerOpenId)))
+    .where(eq(animalPhotos.id, photoId))
     .limit(1);
 
   if (!target[0]) {
     return null;
   }
 
-  await db.update(animalPhotos).set({ isCover: 0 }).where(and(eq(animalPhotos.animalSlug, target[0].animalSlug), eq(animalPhotos.ownerOpenId, ownerOpenId)));
+  await db.update(animalPhotos).set({ isCover: 0 }).where(eq(animalPhotos.animalSlug, target[0].animalSlug));
 
   await db.update(animalPhotos).set({ isCover: 1 }).where(eq(animalPhotos.id, photoId));
 
@@ -552,10 +555,11 @@ export async function updateAnimalPhotoMeta(input: { photoId: number; ownerOpenI
     throw new Error("Database not available for updating photo metadata");
   }
 
+  // Admin can update meta for any photo (single-owner farm)
   const existing = await db
     .select()
     .from(animalPhotos)
-    .where(and(eq(animalPhotos.id, input.photoId), eq(animalPhotos.ownerOpenId, input.ownerOpenId)))
+    .where(eq(animalPhotos.id, input.photoId))
     .limit(1);
 
   if (!existing[0]) {
@@ -568,22 +572,23 @@ export async function updateAnimalPhotoMeta(input: { photoId: number; ownerOpenI
       title: input.title,
       meta: input.alt?.trim() || input.title,
     })
-    .where(and(eq(animalPhotos.id, input.photoId), eq(animalPhotos.ownerOpenId, input.ownerOpenId)));
+    .where(eq(animalPhotos.id, input.photoId));
 
   const updated = await db.select().from(animalPhotos).where(eq(animalPhotos.id, input.photoId)).limit(1);
   return updated[0] ?? null;
 }
 
-export async function reorderAnimalPhotos(photoIds: number[], ownerOpenId: string, animalSlug: string) {
+export async function reorderAnimalPhotos(photoIds: number[], _ownerOpenId: string, animalSlug: string) {
   const db = await getDb();
   if (!db) {
     throw new Error("Database not available for reordering photos");
   }
 
+  // Admin can reorder photos for any animal (single-owner farm)
   const existing = await db
     .select()
     .from(animalPhotos)
-    .where(and(eq(animalPhotos.animalSlug, animalSlug), eq(animalPhotos.ownerOpenId, ownerOpenId)))
+    .where(eq(animalPhotos.animalSlug, animalSlug))
     .orderBy(asc(animalPhotos.sortOrder), desc(animalPhotos.createdAt));
 
   if (!existing.length) {
@@ -607,7 +612,7 @@ export async function reorderAnimalPhotos(photoIds: number[], ownerOpenId: strin
   const updated = await db
     .select()
     .from(animalPhotos)
-    .where(and(eq(animalPhotos.animalSlug, animalSlug), eq(animalPhotos.ownerOpenId, ownerOpenId)))
+    .where(eq(animalPhotos.animalSlug, animalSlug))
     .orderBy(asc(animalPhotos.sortOrder), desc(animalPhotos.createdAt));
 
   return updated;
@@ -1548,10 +1553,14 @@ async function enrichAnimalWithShareMetrics(db: any, animal: any) {
 
 export async function listPublicAnimals() {
   const db = await getDb();
+  const farmOwner = ENV.ownerOpenId;
+  const statusFilter = or(eq(animals.status, "public_available"), eq(animals.status, "public_limited"), eq(animals.status, "fully_booked"));
+  // Public catalog shows only the farm owner's animals (not test/buyer animals)
+  const ownerFilter = farmOwner ? and(eq(animals.ownerOpenId, farmOwner), statusFilter) : statusFilter;
   const rows = await db
     .select()
     .from(animals)
-    .where(or(eq(animals.status, "public_available"), eq(animals.status, "public_limited"), eq(animals.status, "fully_booked")))
+    .where(ownerFilter)
     .orderBy(desc(animals.isFeatured), asc(animals.sortOrder), asc(animals.name));
 
   return Promise.all(rows.map((animal: any) => enrichAnimalWithShareMetrics(db, animal)));
@@ -1706,13 +1715,13 @@ export async function listActivePlans() {
   }));
 }
 
-export async function listAdminAnimals(ownerOpenId: string) {
+export async function listAdminAnimals(_ownerOpenId?: string) {
   const db = await getDb();
+  // Admin sees ALL animals regardless of ownerOpenId (single-owner farm)
   const rows = await db
     .select()
     .from(animals)
-    .where(eq(animals.ownerOpenId, ownerOpenId))
-    .orderBy(desc(animals.createdAt), asc(animals.sortOrder), asc(animals.name));
+    .orderBy(desc(animals.isFeatured), asc(animals.sortOrder), asc(animals.name));
 
   return Promise.all(rows.map((animal: any) => enrichAnimalWithShareMetrics(db, animal)));
 }
@@ -1758,16 +1767,17 @@ export async function createAnimalWithMedia(input: UpsertAnimalPayload) {
 
 export async function updateAnimalWithMedia(
   animalId: number,
-  ownerOpenId: string,
+  _ownerOpenId: string,
   input: Partial<UpsertAnimalPayload>
 ) {
   const db = await getDb();
   const { media, ...animalPatch } = input;
 
+  // Admin can update any animal (single-owner farm)
   await db
     .update(animals)
     .set({ ...animalPatch, updatedAt: new Date() })
-    .where(and(eq(animals.id, animalId), eq(animals.ownerOpenId, ownerOpenId)));
+    .where(eq(animals.id, animalId));
 
   if (media) {
     await db.delete(animalMedia).where(eq(animalMedia.animalId, animalId));
@@ -1786,12 +1796,13 @@ export async function updateAnimalWithMedia(
   return rows[0] ? getAnimalBySlug(rows[0].slug) : null;
 }
 
-export async function archiveAnimalProfile(animalId: number, ownerOpenId: string) {
+export async function archiveAnimalProfile(animalId: number, _ownerOpenId?: string) {
   const db = await getDb();
   if (!db) {
     throw new Error("Database not available for animal archiving");
   }
 
+  // Admin can archive any animal (single-owner farm)
   const existingRows = await db
     .select({
       id: animals.id,
@@ -1800,7 +1811,7 @@ export async function archiveAnimalProfile(animalId: number, ownerOpenId: string
       status: animals.status,
     })
     .from(animals)
-    .where(and(eq(animals.id, animalId), eq(animals.ownerOpenId, ownerOpenId)))
+    .where(eq(animals.id, animalId))
     .limit(1);
 
   const existing = existingRows[0];
@@ -1815,7 +1826,7 @@ export async function archiveAnimalProfile(animalId: number, ownerOpenId: string
       publishedAt: null,
       updatedAt: new Date(),
     })
-    .where(and(eq(animals.id, animalId), eq(animals.ownerOpenId, ownerOpenId)));
+    .where(eq(animals.id, animalId));
 
   return {
     ...existing,
@@ -1823,12 +1834,13 @@ export async function archiveAnimalProfile(animalId: number, ownerOpenId: string
   };
 }
 
-export async function restoreAnimalProfile(animalId: number, ownerOpenId: string) {
+export async function restoreAnimalProfile(animalId: number, _ownerOpenId?: string) {
   const db = await getDb();
   if (!db) {
     throw new Error("Database not available for animal restore");
   }
 
+  // Admin can restore any animal (single-owner farm)
   const existingRows = await db
     .select({
       id: animals.id,
@@ -1837,7 +1849,7 @@ export async function restoreAnimalProfile(animalId: number, ownerOpenId: string
       status: animals.status,
     })
     .from(animals)
-    .where(and(eq(animals.id, animalId), eq(animals.ownerOpenId, ownerOpenId)))
+    .where(eq(animals.id, animalId))
     .limit(1);
 
   const existing = existingRows[0];
@@ -1851,19 +1863,20 @@ export async function restoreAnimalProfile(animalId: number, ownerOpenId: string
       status: "hidden",
       updatedAt: new Date(),
     })
-    .where(and(eq(animals.id, animalId), eq(animals.ownerOpenId, ownerOpenId)));
+    .where(eq(animals.id, animalId));
 
   const rows = await db.select({ slug: animals.slug }).from(animals).where(eq(animals.id, animalId)).limit(1);
   return rows[0] ? getAnimalBySlug(rows[0].slug) : null;
 }
 
-export async function setAnimalVisibility(animalId: number, ownerOpenId: string, mode: "public" | "hidden" | "archived") {
+export async function setAnimalVisibility(animalId: number, _ownerOpenId: string, mode: "public" | "hidden" | "archived") {
   const db = await getDb();
   const nextStatus = mode === "hidden" ? "hidden" : mode === "archived" ? "archived" : "public_available";
+  // Admin can change visibility of any animal (single-owner farm)
   await db
     .update(animals)
     .set({ status: nextStatus, publishedAt: mode === "public" ? new Date() : null, updatedAt: new Date() })
-    .where(and(eq(animals.id, animalId), eq(animals.ownerOpenId, ownerOpenId)));
+    .where(eq(animals.id, animalId));
 
   if (mode === "public") {
     await recalculateAnimalStatus(animalId);
@@ -1875,9 +1888,58 @@ export async function setAnimalVisibility(animalId: number, ownerOpenId: string,
 
 export async function ensureSprintOneSeed(ownerOpenId: string) {
   const db = await getDb();
-  const existingAnimals = await db.select({ id: animals.id }).from(animals).where(eq(animals.ownerOpenId, ownerOpenId)).limit(1);
+  const existingAnimals = await db.select({ id: animals.id, species: animals.species }).from(animals).where(eq(animals.ownerOpenId, ownerOpenId));
+  const hasGoat = existingAnimals.some((a: any) => a.species === 'goat');
+  const hasSheep = existingAnimals.some((a: any) => a.species === 'sheep');
+  if (hasGoat && hasSheep) {
+    // Both species exist — just ensure plan durations
+    await ensurePlanDurationsExist(db, ownerOpenId);
+    return;
+  }
+  if (existingAnimals.length && hasGoat && !hasSheep) {
+    // Has goats but no sheep — create Zlata only, then return
+    await ensurePlanDurationsExist(db, ownerOpenId);
+    const ownerSuffix = ownerOpenId.toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 12);
+    try {
+      await createAnimalWithMedia({
+        ownerOpenId,
+        name: "Злата",
+        slug: `zlata-${ownerSuffix}`,
+        species: "sheep",
+        breed: "Казахская тонкорунная",
+        shortDescription: "Мягкий темперамент, ровный ритм ухода и стабильная сезонная отдача.",
+        story: "Злата хорошо подходит семьям, которые хотят мягкое вхождение в формат опеки и регулярных визитов.",
+        coverImageUrl: "https://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/milk_products_d3f8c13d.jpg",
+        galleryIntro: "Подборка фотографий Златы для витрины и карточки животного.",
+        status: "public_available",
+        totalOwnershipSlots: 10,
+        baseMonthlyPriceMinor: 118000,
+        healthScore: 86,
+        happinessScore: 89,
+        milkPotentialScore: 78,
+        careLevelScore: 59,
+        isFeatured: 0,
+        sortOrder: 1,
+        publishedAt: new Date(),
+        media: [{
+          animalId: 0,
+          kind: "image",
+          title: "Образ Златы",
+          alt: "Овца Злата на ферме",
+          fileKey: "seed/zlata-hero",
+          url: "https://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/hero_farm_ab0d054b.jpg",
+          mimeType: "image/jpeg",
+          sortOrder: 0,
+          isCover: 1,
+        }],
+      });
+    } catch (err) {
+      if (!(err as any)?.message?.includes('Duplicate')) throw err;
+    }
+    return;
+  }
   if (existingAnimals.length) {
-    // Repair: ensure every active plan has at least one duration
+    // Has animals but missing goat — just ensure durations
     await ensurePlanDurationsExist(db, ownerOpenId);
     return;
   }
