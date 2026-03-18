@@ -8,7 +8,7 @@ Every nav state must reinforce that the product is one connected ecosystem.
 import { trpc } from "@/lib/trpc";
 import { Link, useLocation } from "wouter";
 import { motion } from "framer-motion";
-import { Leaf, Home, LayoutDashboard, Menu, Milk, Users, X, ChevronRight } from "lucide-react";
+import { Leaf, Home, LayoutDashboard, Menu, Milk, PawPrint, Users, X, ChevronRight } from "lucide-react";
 import { useMemo, useState } from "react";
 
 export default function Navbar() {
@@ -18,16 +18,15 @@ export default function Navbar() {
 
   const featuredAnimal = animalsQuery.data?.[0] ?? null;
   const featuredAnimalName = featuredAnimal?.name ?? "животное";
-  const featuredAnimalHref = featuredAnimal ? `/animals/${featuredAnimal.slug}` : "/animals";
   const navItems = useMemo(
     () => [
       { href: "/", label: "Главная", icon: Home },
       { href: "/dashboard", label: "Мой кабинет", icon: LayoutDashboard },
-      { href: featuredAnimalHref, label: featuredAnimal ? `Профиль ${featuredAnimalName}` : "Профиль животного", icon: Leaf },
+      { href: "/animals", label: "Каталог животных", icon: PawPrint },
       { href: "/tracker", label: "Трекер продуктов", icon: Milk },
       { href: "/club", label: "Клуб", icon: Users },
     ],
-    [featuredAnimal, featuredAnimalHref, featuredAnimalName],
+    [],
   );
 
   return (

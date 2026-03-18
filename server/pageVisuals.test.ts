@@ -88,9 +88,10 @@ describe("page visual integration source smoke", () => {
     expect(appSource).toContain("<RouteNormalizer />");
   });
 
-  it("keeps navbar entry dynamic for the current featured animal", () => {
+  it("uses static catalog link and shows featured animal status", () => {
     expect(navbarSource).toContain("trpc.animals.listPublic.useQuery");
-    expect(navbarSource).toContain("featuredAnimalHref");
+    expect(navbarSource).toContain('"/animals"');
+    expect(navbarSource).toContain("Каталог животных");
     expect(navbarSource).toContain("онлайн");
   });
 
