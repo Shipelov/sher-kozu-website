@@ -2727,3 +2727,11 @@ export async function getOwnerProductPlanById(planId: number) {
   const rows = await db.select().from(ownerProductPlans).where(eq(ownerProductPlans.id, planId)).limit(1);
   return rows[0] ?? null;
 }
+
+/** Get animal name by ID (lightweight query for notifications) */
+export async function getAnimalNameById(animalId: number): Promise<string> {
+  const db = await getDb();
+  if (!db) return "Животное";
+  const rows = await db.select({ name: animals.name }).from(animals).where(eq(animals.id, animalId)).limit(1);
+  return rows[0]?.name ?? "Животное";
+}

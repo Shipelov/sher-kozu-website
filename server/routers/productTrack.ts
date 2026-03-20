@@ -23,9 +23,11 @@ import {
   listOwnerProductPlansByAnimal,
   resolveOwnershipId,
   resolveOwnerSharePercent,
+  getAnimalNameById,
 } from "../db";
 import type { ProductOption } from "../../drizzle/schema";
 import { storagePut } from "../storage";
+import { notifyOwner } from "../_core/notification";
 
 /* ── Zod schemas ── */
 
@@ -354,7 +356,7 @@ export const productTrackRouter = router({
       throw new TRPCError({ code: "BAD_REQUEST", message: "Сообщение не может быть пустым." });
     }
 
-    return createChatMessage({
+    const message = await createChatMessage({
       animalId: input.animalId,
       ownerOpenId: input.ownerOpenId,
       sender,
@@ -363,6 +365,25 @@ export const productTrackRouter = router({
       photoKey,
       isRead: 0,
     });
+
+    // Notify admin when owner sends a message
+    if (sender === "owner") {
+      const animalName = await getAnimalNameById(input.animalId);
+      const ownerName = ctx.user.name ?? "Владелец";
+      const preview = input.text
+        ? input.text.length > 100 ? input.text.slice(0, 100) + "…" : input.text
+        : "📷 Фото";
+
+      // Fire-and-forget: don't block the response on notification delivery
+      notifyOwner({
+        title: `💬 Новое сообщение от ${ownerName} (${animalName})`,
+        content: preview,
+      }).catch((err) => {
+        console.warn("[Chat Notification] Failed to notify admin:", err);
+      });
+    }
+
+    return message;
   }),
 
   markRead: protectedProcedure.input(chatListInput).mutation(async ({ ctx, input }) => {
