@@ -51,6 +51,8 @@ import {
   getAnimalNameById,
   getUserFunnelAnalytics,
   getPendingApplicationsCount,
+  getUserProfile,
+  updateUserProfile,
 } from "./db";
 import { storagePut } from "./storage";
 import { isBitrixConfigured, pullBitrixDealSnapshot, syncPartnerLeadToBitrix } from "./bitrix24";
@@ -389,10 +391,14 @@ function sanitizeFileName(fileName: string) {
 export const appRouter = router({
   system: systemRouter,
   auth: router({
-    me: publicProcedure.query(({ ctx }) => ({
-      user: ctx.user,
-      isAuthenticated: Boolean(ctx.user),
-    })),
+    me: publicProcedure.query(async ({ ctx }) => {
+      if (!ctx.user) return { user: null, isAuthenticated: false };
+      const profile = await getUserProfile(ctx.user.openId);
+      return {
+        user: { ...ctx.user, email: profile?.email ?? null, phone: profile?.phone ?? null },
+        isAuthenticated: true,
+      };
+    }),
     logout: publicProcedure.mutation(({ ctx }) => {
       ctx.res.clearCookie(COOKIE_NAME, { ...getSessionCookieOptions(ctx.req), maxAge: -1 });
       return { success: true };
@@ -401,6 +407,18 @@ export const appRouter = router({
       await completeUserOnboarding(ctx.user.openId);
       return { success: true };
     }),
+    updateProfile: protectedProcedure
+      .input(z.object({
+        email: z.string().email().max(320).optional().nullable(),
+        phone: z.string().max(32).optional().nullable(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        await updateUserProfile(ctx.user.openId, {
+          email: input.email ?? null,
+          phone: input.phone ?? null,
+        });
+        return { success: true };
+      }),
   }),
   animals: router({
     listPublic: publicProcedure.query(async () => {

@@ -2648,6 +2648,8 @@ export async function listOwnerProductPlansByAnimal(animalId: number) {
   const rows = await db.select({
     plan: ownerProductPlans,
     ownerName: users.name,
+    ownerEmail: users.email,
+    ownerPhone: users.phone,
     familyName: families.name,
   })
     .from(ownerProductPlans)
@@ -2664,6 +2666,8 @@ export async function listOwnerProductPlansByAnimal(animalId: number) {
     enriched.push({
       ...r.plan,
       ownerName: r.ownerName ?? "Владелец",
+      ownerEmail: r.ownerEmail ?? null,
+      ownerPhone: r.ownerPhone ?? null,
       familyName: r.familyName ?? "—",
       sharePercent,
     });
@@ -2941,6 +2945,8 @@ export async function getUserFunnelAnalytics() {
       id: users.id,
       openId: users.openId,
       name: users.name,
+      email: users.email,
+      phone: users.phone,
       role: users.role,
       createdAt: users.createdAt,
     })
@@ -2959,4 +2965,29 @@ export async function getPendingApplicationsCount() {
     .from(animalOwnerships)
     .where(eq(animalOwnerships.status, "pending_payment"));
   return Number(rows[0]?.count ?? 0);
+}
+
+// ─── User Profile Helpers ──────────────────────────────────────────────────
+
+export async function getUserProfile(openId: string) {
+  const db = await getDb();
+  if (!db) return null;
+  const rows = await db
+    .select({ email: users.email, phone: users.phone })
+    .from(users)
+    .where(eq(users.openId, openId))
+    .limit(1);
+  return rows[0] ?? null;
+}
+
+export async function updateUserProfile(
+  openId: string,
+  data: { email: string | null; phone: string | null },
+) {
+  const db = await getDb();
+  if (!db) return;
+  await db
+    .update(users)
+    .set({ email: data.email, phone: data.phone })
+    .where(eq(users.openId, openId));
 }

@@ -52,8 +52,10 @@ describe("auth.me", () => {
     expect(result.user).toMatchObject({
       openId: "sample-user",
       role: "user",
-      email: "sample@example.com",
     });
+    // email comes from getUserProfile (DB lookup), not from ctx.user
+    expect(result.user).toHaveProperty("email");
+    expect(result.user).toHaveProperty("phone");
   });
 });
 

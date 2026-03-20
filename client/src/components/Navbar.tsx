@@ -205,6 +205,16 @@ export default function Navbar() {
                           Мой кабинет
                         </button>
                       </Link>
+                      <Link href="/profile">
+                        <button
+                          type="button"
+                          onClick={() => setUserMenuOpen(false)}
+                          className="flex w-full items-center gap-3 px-4 py-2.5 text-sm text-foreground transition-colors hover:bg-muted"
+                        >
+                          <User className="h-4 w-4 text-muted-foreground" />
+                          Мой профиль
+                        </button>
+                      </Link>
                       {isAdmin && (
                         <Link href="/admin">
                           <button
@@ -326,6 +336,27 @@ export default function Navbar() {
                   </Link>
                 );
               })}
+
+            {/* Profile link (mobile) */}
+            {isAuthenticated && (
+              <Link href="/profile">
+                <button
+                  type="button"
+                  onClick={() => setMobileOpen(false)}
+                  className={`flex w-full items-center justify-between rounded-2xl px-4 py-3 text-left transition-colors ${
+                    location === "/profile"
+                      ? "bg-primary/10 text-primary"
+                      : "bg-card text-foreground hover:bg-muted"
+                  }`}
+                >
+                  <span className="flex items-center gap-3 text-sm font-medium">
+                    <User className="h-4 w-4" />
+                    Мой профиль
+                  </span>
+                  <ChevronRight className="h-4 w-4" />
+                </button>
+              </Link>
+            )}
 
             {/* Admin link (mobile) */}
             {isAdmin && (

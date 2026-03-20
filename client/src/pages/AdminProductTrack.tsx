@@ -64,6 +64,8 @@ type OwnerPlanRecord = {
   adminNotes: string | null;
   confirmedAt: string | null;
   ownerName: string;
+  ownerEmail: string | null;
+  ownerPhone: string | null;
   familyName: string;
   sharePercent: number;
 };
@@ -645,6 +647,13 @@ function OwnerPlansOverview({ animalId }: { animalId: number }) {
                       <div>
                         <p className="font-semibold text-foreground">{plan.ownerName}</p>
                         <p className="text-xs text-muted-foreground">Семья: {plan.familyName} · Доля: {plan.sharePercent}%</p>
+                        {(plan.ownerEmail || plan.ownerPhone) && (
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            {plan.ownerEmail && <span>{plan.ownerEmail}</span>}
+                            {plan.ownerEmail && plan.ownerPhone && <span> · </span>}
+                            {plan.ownerPhone && <span>{plan.ownerPhone}</span>}
+                          </p>
+                        )}
                       </div>
                       <div className="flex items-center gap-2">
                         <Badge className={`rounded-full border ${
