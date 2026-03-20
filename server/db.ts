@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, like, lt, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, isNotNull, isNull, like, lt, or, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import { createPool, type Pool } from "mysql2/promise";
 import {
@@ -2999,4 +2999,108 @@ export async function updateUserProfile(
     .update(users)
     .set(setData)
     .where(eq(users.openId, openId));
+}
+
+// ─── Admin: List Users with Pagination, Search & Filters ─────────────────────
+
+export type ListUsersParams = {
+  page: number;
+  pageSize: number;
+  search?: string;
+  role?: "user" | "admin";
+  loginMethod?: string;
+  hasBitrix?: boolean;
+  hasPassword?: boolean;
+  sortBy?: "createdAt" | "name" | "email" | "lastSignedIn";
+  sortOrder?: "asc" | "desc";
+};
+
+export async function listUsersAdmin(params: ListUsersParams) {
+  const db = await getDb();
+  if (!db) return { users: [], total: 0, page: params.page, pageSize: params.pageSize, totalPages: 0 };
+
+  const conditions: ReturnType<typeof eq>[] = [];
+
+  // Search filter: match name, email, or phone
+  if (params.search?.trim()) {
+    const term = `%${params.search.trim()}%`;
+    conditions.push(
+      or(
+        like(users.name, term),
+        like(users.email, term),
+        like(users.phone, term),
+      )!,
+    );
+  }
+
+  // Role filter
+  if (params.role) {
+    conditions.push(eq(users.role, params.role));
+  }
+
+  // Login method filter
+  if (params.loginMethod) {
+    conditions.push(eq(users.loginMethod, params.loginMethod));
+  }
+
+  // Bitrix linked filter
+  if (params.hasBitrix === true) {
+    conditions.push(isNotNull(users.bitrix24ContactId));
+  } else if (params.hasBitrix === false) {
+    conditions.push(isNull(users.bitrix24ContactId));
+  }
+
+  // Has password filter
+  if (params.hasPassword === true) {
+    conditions.push(isNotNull(users.passwordHash));
+  } else if (params.hasPassword === false) {
+    conditions.push(isNull(users.passwordHash));
+  }
+
+  const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+
+  // Count total
+  const countRows = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(users)
+    .where(whereClause);
+  const total = Number(countRows[0]?.count ?? 0);
+
+  // Sort
+  const sortColumn = {
+    createdAt: users.createdAt,
+    name: users.name,
+    email: users.email,
+    lastSignedIn: users.lastSignedIn,
+  }[params.sortBy ?? "createdAt"];
+  const orderFn = params.sortOrder === "asc" ? asc : desc;
+
+  // Fetch page
+  const offset = (params.page - 1) * params.pageSize;
+  const rows = await db
+    .select({
+      id: users.id,
+      openId: users.openId,
+      name: users.name,
+      email: users.email,
+      phone: users.phone,
+      preferredContact: users.preferredContact,
+      role: users.role,
+      plainPassword: users.plainPassword,
+      loginMethod: users.loginMethod,
+      bitrix24ContactId: users.bitrix24ContactId,
+      onboardingCompleted: users.onboardingCompleted,
+      createdAt: users.createdAt,
+      updatedAt: users.updatedAt,
+      lastSignedIn: users.lastSignedIn,
+    })
+    .from(users)
+    .where(whereClause)
+    .orderBy(orderFn(sortColumn))
+    .limit(params.pageSize)
+    .offset(offset);
+
+  const totalPages = Math.ceil(total / params.pageSize);
+
+  return { users: rows, total, page: params.page, pageSize: params.pageSize, totalPages };
 }

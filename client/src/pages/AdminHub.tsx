@@ -186,6 +186,19 @@ export default function AdminHub() {
       quickActionLabel: "Открыть управление клубом",
       quickActionPath: "/admin/club",
     },
+    {
+      title: "Пользователи",
+      description: "Полноценное управление пользователями: поиск, фильтры, пагинация, сброс паролей и синхронизация с Bitrix24.",
+      path: "/admin/users",
+      icon: Users,
+      statusLabel: "Управление",
+      adminOnly: true,
+      countLabel: isAdmin
+        ? `${funnelQuery.data?.totalUsers ?? 0} пользователей`
+        : "Счётчик доступен после роли admin",
+      quickActionLabel: "Открыть управление пользователями",
+      quickActionPath: "/admin/users",
+    },
   ];
 
   if (loading) {

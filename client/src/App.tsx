@@ -16,6 +16,7 @@ import AdminClub from "./pages/AdminClub";
 import AnimalsCatalog from "./pages/AnimalsCatalog";
 import AdminAnimals from "./pages/AdminAnimals";
 import AdminHub from "./pages/AdminHub";
+import AdminUsers from "./pages/AdminUsers";
 import AdminProductTrack from "./pages/AdminProductTrack";
 import Profile from "./pages/Profile";
 
@@ -63,6 +64,7 @@ function Router() {
       <Route path="/tracker" component={ProductTracker} />
       <Route path="/club" component={ClubFeed} />
       <Route path="/admin" component={AdminHub} />
+      <Route path="/admin/users" component={AdminUsers} />
       <Route path="/admin/club" component={AdminClub} />
       <Route path="/admin/animals" component={AdminAnimals} />
       <Route path="/admin/product-track" component={AdminProductTrack} />

@@ -53,6 +53,7 @@ import {
   getPendingApplicationsCount,
   getUserProfile,
   updateUserProfile,
+  listUsersAdmin,
 } from "./db";
 import { storagePut } from "./storage";
 import { isBitrixConfigured, pullBitrixDealSnapshot, syncPartnerLeadToBitrix } from "./bitrix24";
@@ -1535,6 +1536,27 @@ export const appRouter = router({
     pendingApplicationsCount: protectedProcedure.query(async () => {
       return getPendingApplicationsCount();
     }),
+    /** Admin: paginated user list with search and filters */
+    listUsers: protectedProcedure
+      .input(
+        z.object({
+          page: z.number().min(1).default(1),
+          pageSize: z.number().min(5).max(100).default(20),
+          search: z.string().optional(),
+          role: z.enum(["user", "admin"]).optional(),
+          loginMethod: z.string().optional(),
+          hasBitrix: z.boolean().optional(),
+          hasPassword: z.boolean().optional(),
+          sortBy: z.enum(["createdAt", "name", "email", "lastSignedIn"]).optional(),
+          sortOrder: z.enum(["asc", "desc"]).optional(),
+        }),
+      )
+      .query(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin" && ctx.user.openId !== process.env.OWNER_OPEN_ID) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Только администратор может просматривать список пользователей" });
+        }
+        return listUsersAdmin(input);
+      }),
   }),
 });
 

@@ -1,0 +1,629 @@
+import DashboardLayout from "@/components/DashboardLayout";
+import { getLoginUrl } from "@/const";
+import { useAuth } from "@/_core/hooks/useAuth";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { trpc } from "@/lib/trpc";
+import {
+  ArrowLeft,
+  ArrowUpDown,
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
+  Eye,
+  EyeOff,
+  Filter,
+  KeyRound,
+  Loader2,
+  RefreshCw,
+  Search,
+  ShieldAlert,
+  Users,
+  X,
+} from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Link } from "wouter";
+import { toast } from "sonner";
+
+// ─── Password Cell (show/hide) ───────────────────────────────
+function PasswordCell({ password }: { password: string }) {
+  const [visible, setVisible] = useState(false);
+  return (
+    <div className="flex items-center gap-1.5">
+      <span className="text-xs font-mono text-foreground">
+        {visible ? password : "••••••••"}
+      </span>
+      <button
+        type="button"
+        onClick={() => setVisible(!visible)}
+        className="text-muted-foreground hover:text-foreground transition-colors"
+        title={visible ? "Скрыть" : "Показать"}
+      >
+        {visible ? (
+          <EyeOff className="h-3.5 w-3.5" />
+        ) : (
+          <Eye className="h-3.5 w-3.5" />
+        )}
+      </button>
+    </div>
+  );
+}
+
+// ─── Main Component ──────────────────────────────────────────
+export default function AdminUsers() {
+  const { user, loading, isAuthenticated } = useAuth();
+  const isAdmin =
+    user?.role === "admin" ||
+    user?.openId === import.meta.env.VITE_OWNER_OPEN_ID;
+
+  // ─── Query state ───
+  const [page, setPage] = useState(1);
+  const [pageSize] = useState(20);
+  const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [roleFilter, setRoleFilter] = useState<string>("all");
+  const [loginMethodFilter, setLoginMethodFilter] = useState<string>("all");
+  const [bitrixFilter, setBitrixFilter] = useState<string>("all");
+  const [passwordFilter, setPasswordFilter] = useState<string>("all");
+  const [sortBy, setSortBy] = useState<string>("createdAt");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
+
+  // Debounce search
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(search);
+      setPage(1);
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [search]);
+
+  // Reset page on filter change
+  const handleFilterChange = useCallback(
+    (setter: (v: string) => void) => (value: string) => {
+      setter(value);
+      setPage(1);
+    },
+    [],
+  );
+
+  // Build query input
+  const queryInput = useMemo(
+    () => ({
+      page,
+      pageSize,
+      search: debouncedSearch || undefined,
+      role:
+        roleFilter !== "all"
+          ? (roleFilter as "user" | "admin")
+          : undefined,
+      loginMethod: loginMethodFilter !== "all" ? loginMethodFilter : undefined,
+      hasBitrix:
+        bitrixFilter === "yes"
+          ? true
+          : bitrixFilter === "no"
+            ? false
+            : undefined,
+      hasPassword:
+        passwordFilter === "yes"
+          ? true
+          : passwordFilter === "no"
+            ? false
+            : undefined,
+      sortBy: sortBy as "createdAt" | "name" | "email" | "lastSignedIn",
+      sortOrder,
+    }),
+    [
+      page,
+      pageSize,
+      debouncedSearch,
+      roleFilter,
+      loginMethodFilter,
+      bitrixFilter,
+      passwordFilter,
+      sortBy,
+      sortOrder,
+    ],
+  );
+
+  const usersQuery = trpc.adminAnalytics.listUsers.useQuery(queryInput, {
+    enabled: isAdmin,
+    placeholderData: (prev) => prev,
+  });
+
+  const utils = trpc.useUtils();
+
+  // Bitrix sync mutation
+  const syncBitrix = trpc.adminSync.syncBitrixContacts.useMutation({
+    onSuccess: (data) => {
+      toast.success(
+        `Синхронизация завершена: ${data.synced} обработано, ${data.created} создано, ${data.updated} обновлено`,
+      );
+      utils.adminAnalytics.listUsers.invalidate();
+    },
+    onError: (err) => {
+      toast.error(`Ошибка синхронизации: ${err.message}`);
+    },
+  });
+
+  // Reset password mutation
+  const resetPassword = trpc.adminSync.resetUserPassword.useMutation({
+    onSuccess: (data) => {
+      toast.success(
+        `Пароль для ${data.userName || data.userEmail} сброшен: ${data.newPassword}`,
+        { duration: 15000 },
+      );
+      utils.adminAnalytics.listUsers.invalidate();
+    },
+    onError: (err) => {
+      toast.error(`Ошибка сброса пароля: ${err.message}`);
+    },
+  });
+
+  // Sort toggle
+  const handleSort = (column: string) => {
+    if (sortBy === column) {
+      setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"));
+    } else {
+      setSortBy(column);
+      setSortOrder("desc");
+    }
+    setPage(1);
+  };
+
+  // Clear all filters
+  const hasActiveFilters =
+    roleFilter !== "all" ||
+    loginMethodFilter !== "all" ||
+    bitrixFilter !== "all" ||
+    passwordFilter !== "all" ||
+    search !== "";
+
+  const clearFilters = () => {
+    setSearch("");
+    setDebouncedSearch("");
+    setRoleFilter("all");
+    setLoginMethodFilter("all");
+    setBitrixFilter("all");
+    setPasswordFilter("all");
+    setPage(1);
+  };
+
+  // ─── Auth guards ───
+  if (loading) {
+    return (
+      <DashboardLayout>
+        <div className="container py-10 flex items-center gap-3 text-muted-foreground">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          Загрузка…
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  if (!user) {
+    return (
+      <DashboardLayout>
+        <div className="container max-w-4xl py-10 space-y-4">
+          <Card className="rounded-2xl border-amber-200 bg-amber-50 text-amber-900">
+            <CardContent className="p-6 space-y-3">
+              <div className="flex items-center gap-2">
+                <ShieldAlert className="h-5 w-5" />
+                <span className="font-semibold">Нужен вход в аккаунт</span>
+              </div>
+              <Button asChild className="rounded-full">
+                <a href={getLoginUrl("/admin/users")}>Войти</a>
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  if (!isAdmin) {
+    return (
+      <DashboardLayout>
+        <div className="container max-w-4xl py-10">
+          <Card className="rounded-2xl border-red-200 bg-red-50 text-red-900">
+            <CardContent className="p-6">
+              <div className="flex items-center gap-2">
+                <ShieldAlert className="h-5 w-5" />
+                <span className="font-semibold">Доступ запрещён</span>
+              </div>
+              <p className="mt-2 text-sm">
+                Эта страница доступна только администраторам.
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  const data = usersQuery.data;
+  const users_list = data?.users ?? [];
+  const total = data?.total ?? 0;
+  const totalPages = data?.totalPages ?? 0;
+
+  return (
+    <DashboardLayout>
+      <div className="container py-6 space-y-6">
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <Link href="/admin">
+              <Button variant="ghost" size="icon" className="rounded-full">
+                <ArrowLeft className="h-4 w-4" />
+              </Button>
+            </Link>
+            <div>
+              <h1 className="text-2xl font-bold tracking-tight text-foreground flex items-center gap-2">
+                <Users className="h-6 w-6 text-primary" />
+                Управление пользователями
+              </h1>
+              <p className="text-sm text-muted-foreground mt-0.5">
+                {total} пользовател{total === 1 ? "ь" : total < 5 ? "я" : "ей"} в системе
+              </p>
+            </div>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            className="rounded-full gap-2"
+            onClick={() => syncBitrix.mutate()}
+            disabled={syncBitrix.isPending}
+          >
+            <RefreshCw
+              className={`h-4 w-4 ${syncBitrix.isPending ? "animate-spin" : ""}`}
+            />
+            Синхронизация с Bitrix24
+          </Button>
+        </div>
+
+        {/* Search + Filters */}
+        <Card className="rounded-2xl border-border/70 bg-white/95 shadow-sm">
+          <CardContent className="p-4 space-y-4">
+            {/* Search bar */}
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Поиск по имени, email или телефону…"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="pl-10 rounded-xl"
+              />
+              {search && (
+                <button
+                  onClick={() => {
+                    setSearch("");
+                    setDebouncedSearch("");
+                    setPage(1);
+                  }}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+
+            {/* Filter row */}
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                <Filter className="h-3.5 w-3.5" />
+                Фильтры:
+              </div>
+
+              <Select
+                value={roleFilter}
+                onValueChange={handleFilterChange(setRoleFilter)}
+              >
+                <SelectTrigger className="w-[140px] rounded-xl h-9 text-sm">
+                  <SelectValue placeholder="Роль" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Все роли</SelectItem>
+                  <SelectItem value="user">Пользователь</SelectItem>
+                  <SelectItem value="admin">Администратор</SelectItem>
+                </SelectContent>
+              </Select>
+
+              <Select
+                value={loginMethodFilter}
+                onValueChange={handleFilterChange(setLoginMethodFilter)}
+              >
+                <SelectTrigger className="w-[160px] rounded-xl h-9 text-sm">
+                  <SelectValue placeholder="Метод входа" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Все методы</SelectItem>
+                  <SelectItem value="local">Локальный</SelectItem>
+                  <SelectItem value="bitrix">Bitrix</SelectItem>
+                  <SelectItem value="manus">Manus OAuth</SelectItem>
+                </SelectContent>
+              </Select>
+
+              <Select
+                value={bitrixFilter}
+                onValueChange={handleFilterChange(setBitrixFilter)}
+              >
+                <SelectTrigger className="w-[160px] rounded-xl h-9 text-sm">
+                  <SelectValue placeholder="Bitrix24" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Все (Bitrix)</SelectItem>
+                  <SelectItem value="yes">Привязан</SelectItem>
+                  <SelectItem value="no">Не привязан</SelectItem>
+                </SelectContent>
+              </Select>
+
+              <Select
+                value={passwordFilter}
+                onValueChange={handleFilterChange(setPasswordFilter)}
+              >
+                <SelectTrigger className="w-[160px] rounded-xl h-9 text-sm">
+                  <SelectValue placeholder="Пароль" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Все (пароль)</SelectItem>
+                  <SelectItem value="yes">Есть пароль</SelectItem>
+                  <SelectItem value="no">Без пароля</SelectItem>
+                </SelectContent>
+              </Select>
+
+              {hasActiveFilters && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={clearFilters}
+                  className="rounded-xl h-9 text-sm gap-1 text-muted-foreground hover:text-foreground"
+                >
+                  <X className="h-3.5 w-3.5" />
+                  Сбросить
+                </Button>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Table */}
+        <Card className="rounded-2xl border-border/70 bg-white/95 shadow-sm overflow-hidden">
+          {usersQuery.isLoading ? (
+            <CardContent className="p-8 flex items-center justify-center gap-3 text-muted-foreground">
+              <Loader2 className="h-5 w-5 animate-spin" />
+              Загрузка пользователей…
+            </CardContent>
+          ) : users_list.length === 0 ? (
+            <CardContent className="p-8 text-center text-muted-foreground">
+              <Users className="h-10 w-10 mx-auto mb-3 opacity-40" />
+              <p className="font-medium">Пользователи не найдены</p>
+              <p className="text-sm mt-1">
+                Попробуйте изменить параметры поиска или фильтры
+              </p>
+            </CardContent>
+          ) : (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-muted/30">
+                    <TableHead className="w-[50px]">#</TableHead>
+                    <TableHead>
+                      <button
+                        onClick={() => handleSort("name")}
+                        className="flex items-center gap-1 hover:text-foreground transition-colors"
+                      >
+                        Имя
+                        <ArrowUpDown className="h-3.5 w-3.5" />
+                      </button>
+                    </TableHead>
+                    <TableHead>
+                      <button
+                        onClick={() => handleSort("email")}
+                        className="flex items-center gap-1 hover:text-foreground transition-colors"
+                      >
+                        Email
+                        <ArrowUpDown className="h-3.5 w-3.5" />
+                      </button>
+                    </TableHead>
+                    <TableHead>Телефон</TableHead>
+                    <TableHead>Роль</TableHead>
+                    <TableHead>Метод</TableHead>
+                    <TableHead>Bitrix</TableHead>
+                    <TableHead>Пароль</TableHead>
+                    <TableHead>
+                      <button
+                        onClick={() => handleSort("createdAt")}
+                        className="flex items-center gap-1 hover:text-foreground transition-colors"
+                      >
+                        Регистрация
+                        <ArrowUpDown className="h-3.5 w-3.5" />
+                      </button>
+                    </TableHead>
+                    <TableHead>
+                      <button
+                        onClick={() => handleSort("lastSignedIn")}
+                        className="flex items-center gap-1 hover:text-foreground transition-colors"
+                      >
+                        Последний вход
+                        <ArrowUpDown className="h-3.5 w-3.5" />
+                      </button>
+                    </TableHead>
+                    <TableHead className="text-right">Действия</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {users_list.map((u: any, idx: number) => (
+                    <TableRow key={u.id} className="hover:bg-muted/20">
+                      <TableCell className="text-xs text-muted-foreground font-mono">
+                        {(page - 1) * pageSize + idx + 1}
+                      </TableCell>
+                      <TableCell className="font-medium text-sm max-w-[180px] truncate">
+                        {u.name || "—"}
+                      </TableCell>
+                      <TableCell className="text-sm text-muted-foreground max-w-[200px] truncate">
+                        {u.email || "—"}
+                      </TableCell>
+                      <TableCell className="text-sm text-muted-foreground">
+                        {u.phone || "—"}
+                      </TableCell>
+                      <TableCell>
+                        <Badge
+                          variant={u.role === "admin" ? "default" : "secondary"}
+                          className="text-[10px] rounded-full"
+                        >
+                          {u.role === "admin" ? "Админ" : "Пользователь"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-xs text-muted-foreground">
+                        {u.loginMethod || "—"}
+                      </TableCell>
+                      <TableCell>
+                        {u.bitrix24ContactId ? (
+                          <Badge
+                            variant="outline"
+                            className="text-[10px] rounded-full border-green-300 text-green-700 bg-green-50"
+                          >
+                            #{u.bitrix24ContactId}
+                          </Badge>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">—</span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {u.plainPassword ? (
+                          <PasswordCell password={u.plainPassword} />
+                        ) : (
+                          <span className="text-xs text-muted-foreground">—</span>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
+                        {u.createdAt
+                          ? new Date(u.createdAt).toLocaleDateString("ru-RU", {
+                              day: "2-digit",
+                              month: "2-digit",
+                              year: "2-digit",
+                            })
+                          : "—"}
+                      </TableCell>
+                      <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
+                        {u.lastSignedIn
+                          ? new Date(u.lastSignedIn).toLocaleDateString("ru-RU", {
+                              day: "2-digit",
+                              month: "2-digit",
+                              year: "2-digit",
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })
+                          : "—"}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 rounded-full text-muted-foreground hover:text-orange-600"
+                          title="Сбросить пароль"
+                          onClick={() => resetPassword.mutate({ userId: u.id })}
+                          disabled={resetPassword.isPending}
+                        >
+                          <KeyRound className="h-3.5 w-3.5" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between px-4 py-3 border-t border-border/50">
+              <p className="text-sm text-muted-foreground">
+                Страница {page} из {totalPages} · {total} записей
+              </p>
+              <div className="flex items-center gap-1">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 rounded-full"
+                  disabled={page <= 1}
+                  onClick={() => setPage(1)}
+                  title="Первая страница"
+                >
+                  <ChevronsLeft className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 rounded-full"
+                  disabled={page <= 1}
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  title="Предыдущая"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+
+                {/* Page numbers */}
+                {(() => {
+                  const pages: number[] = [];
+                  const start = Math.max(1, page - 2);
+                  const end = Math.min(totalPages, page + 2);
+                  for (let i = start; i <= end; i++) pages.push(i);
+                  return pages.map((p) => (
+                    <Button
+                      key={p}
+                      variant={p === page ? "default" : "ghost"}
+                      size="icon"
+                      className="h-8 w-8 rounded-full text-sm"
+                      onClick={() => setPage(p)}
+                    >
+                      {p}
+                    </Button>
+                  ));
+                })()}
+
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 rounded-full"
+                  disabled={page >= totalPages}
+                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                  title="Следующая"
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 rounded-full"
+                  disabled={page >= totalPages}
+                  onClick={() => setPage(totalPages)}
+                  title="Последняя страница"
+                >
+                  <ChevronsRight className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          )}
+        </Card>
+      </div>
+    </DashboardLayout>
+  );
+}
