@@ -31,6 +31,7 @@ import {
   Truck,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import OwnerAdminChat from "@/components/OwnerAdminChat";
 import { toast } from "sonner";
 import { Link, useLocation, useParams } from "wouter";
 
@@ -642,9 +643,42 @@ function DeliveryScheduleOverview({ animalId, ownerPlans }: { animalId: number; 
 
 /* ── Chat Conversations Overview (Admin) ── */
 
-function ChatConversationsOverview({ animalId }: { animalId: number }) {
+function ChatConversationsOverview({ animalId, animalName }: { animalId: number; animalName: string }) {
   const conversationsQuery = trpc.productTrack.adminListConversations.useQuery();
   const conversations = (conversationsQuery.data ?? []).filter((c: any) => c.animalId === animalId);
+  const [selectedOwner, setSelectedOwner] = useState<{ openId: string; name: string } | null>(null);
+
+  // If a conversation is selected, show the chat inline
+  if (selectedOwner) {
+    return (
+      <div className="space-y-4">
+        <Button
+          variant="outline"
+          size="sm"
+          className="rounded-full"
+          onClick={() => setSelectedOwner(null)}
+        >
+          <ArrowLeft className="mr-2 h-4 w-4" /> Назад к списку чатов
+        </Button>
+        <Card className="rounded-[2rem] border-border/70 shadow-sm">
+          <CardHeader className="pb-2">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <MessageCircle className="h-5 w-5 text-primary" />
+              Чат с {selectedOwner.name}
+            </CardTitle>
+            <CardDescription>По животному: {animalName}</CardDescription>
+          </CardHeader>
+          <CardContent className="p-0">
+            <OwnerAdminChat
+              animalId={animalId}
+              ownerOpenId={selectedOwner.openId}
+              animalName={animalName}
+            />
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <Card className="rounded-[2rem] border-border/70 shadow-sm">
@@ -669,7 +703,12 @@ function ChatConversationsOverview({ animalId }: { animalId: number }) {
         ) : (
           <div className="space-y-3">
             {conversations.map((conv: any) => (
-              <Link key={`${conv.animalId}-${conv.ownerOpenId}`} href={`/admin/product-track/${conv.animalSlug}/chat/${conv.ownerOpenId}`}>
+              <button
+                key={`${conv.animalId}-${conv.ownerOpenId}`}
+                type="button"
+                onClick={() => setSelectedOwner({ openId: conv.ownerOpenId, name: conv.ownerName })}
+                className="w-full text-left"
+              >
                 <div className="flex items-center justify-between rounded-2xl border border-border/70 bg-white p-4 shadow-sm hover:bg-secondary/20 transition-colors cursor-pointer">
                   <div>
                     <p className="font-semibold text-foreground">{conv.ownerName}</p>
@@ -683,7 +722,7 @@ function ChatConversationsOverview({ animalId }: { animalId: number }) {
                     )}
                   </div>
                 </div>
-              </Link>
+              </button>
             ))}
           </div>
         )}
@@ -865,7 +904,7 @@ export default function AdminProductTrack() {
           </TabsContent>
 
           <TabsContent value="chat">
-            <ChatConversationsOverview animalId={animalId} />
+            <ChatConversationsOverview animalId={animalId} animalName={animal?.name ?? ""} />
           </TabsContent>
         </Tabs>
       </div>
