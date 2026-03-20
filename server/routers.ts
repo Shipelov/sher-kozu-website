@@ -413,9 +413,21 @@ export const appRouter = router({
         phone: z.string().max(32).optional().nullable(),
       }))
       .mutation(async ({ ctx, input }) => {
+        let normalizedPhone: string | null = null;
+        if (input.phone) {
+          const { formatPhone } = await import("../shared/phone");
+          const formatted = formatPhone(input.phone);
+          if (!formatted) {
+            throw new TRPCError({
+              code: "BAD_REQUEST",
+              message: "Введите корректный российский номер телефона (+7 XXX XXX-XX-XX)",
+            });
+          }
+          normalizedPhone = formatted;
+        }
         await updateUserProfile(ctx.user.openId, {
           email: input.email ?? null,
-          phone: input.phone ?? null,
+          phone: normalizedPhone,
         });
         return { success: true };
       }),

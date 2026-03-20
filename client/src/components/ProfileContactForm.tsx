@@ -5,16 +5,19 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { trpc } from "@/lib/trpc";
 import { Check, Loader2, Mail, Phone, User } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
+import { applyPhoneMask, formatPhone, isValidRussianPhone, stripNonDigits } from "@shared/phone";
 
 export default function ProfileContactForm() {
-  const { user, refresh } = useAuth();
+  const { user } = useAuth();
   const utils = trpc.useUtils();
 
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
+  const [phoneError, setPhoneError] = useState<string | null>(null);
   const [dirty, setDirty] = useState(false);
+  const phoneRef = useRef<HTMLInputElement>(null);
 
   // Sync form with user data on load
   useEffect(() => {
@@ -28,6 +31,7 @@ export default function ProfileContactForm() {
     onSuccess: () => {
       toast.success("Контактные данные сохранены");
       setDirty(false);
+      setPhoneError(null);
       utils.auth.me.invalidate();
     },
     onError: (error) => {
@@ -35,13 +39,59 @@ export default function ProfileContactForm() {
     },
   });
 
-  const handleFieldChange = useCallback(
-    (setter: (v: string) => void) => (e: React.ChangeEvent<HTMLInputElement>) => {
-      setter(e.target.value);
+  const handleEmailChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setEmail(e.target.value);
+    setDirty(true);
+  }, []);
+
+  const handlePhoneChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const rawValue = e.target.value;
+
+    // If user is clearing the field, allow it
+    if (rawValue === "" || rawValue.trim() === "") {
+      setPhone("");
+      setPhoneError(null);
       setDirty(true);
-    },
-    [],
-  );
+      return;
+    }
+
+    // Apply mask as user types
+    const masked = applyPhoneMask(rawValue);
+    setPhone(masked);
+    setDirty(true);
+
+    // Validate once we have enough digits
+    const digits = stripNonDigits(rawValue);
+    // Normalize: if starts with 7 or 8, skip first digit for core count
+    let coreLen = digits.length;
+    if (digits.length > 0 && (digits[0] === "7" || digits[0] === "8")) {
+      coreLen = digits.length - 1;
+    }
+
+    if (coreLen > 0 && coreLen < 10) {
+      setPhoneError("Введите 10 цифр номера");
+    } else if (coreLen >= 10) {
+      setPhoneError(null);
+    } else {
+      setPhoneError(null);
+    }
+  }, []);
+
+  // Handle focus: if empty, pre-fill with +7 prefix
+  const handlePhoneFocus = useCallback(() => {
+    if (!phone) {
+      setPhone("+7 ");
+    }
+  }, [phone]);
+
+  // Handle blur: clean up if only prefix remains
+  const handlePhoneBlur = useCallback(() => {
+    const trimmed = phone.trim();
+    if (trimmed === "+7" || trimmed === "+7 " || trimmed === "+7 (") {
+      setPhone("");
+      setPhoneError(null);
+    }
+  }, [phone]);
 
   const handleSubmit = useCallback(
     (e: React.FormEvent) => {
@@ -55,10 +105,24 @@ export default function ProfileContactForm() {
         return;
       }
 
-      updateProfile.mutate({
-        email: trimmedEmail,
-        phone: trimmedPhone,
-      });
+      // Phone validation: if provided, must be valid Russian number
+      if (trimmedPhone) {
+        if (!isValidRussianPhone(trimmedPhone)) {
+          setPhoneError("Введите корректный номер в формате +7 (XXX) XXX-XX-XX");
+          return;
+        }
+        // Format to canonical form before sending
+        const formatted = formatPhone(trimmedPhone);
+        updateProfile.mutate({
+          email: trimmedEmail,
+          phone: formatted,
+        });
+      } else {
+        updateProfile.mutate({
+          email: trimmedEmail,
+          phone: null,
+        });
+      }
     },
     [email, phone, updateProfile],
   );
@@ -92,7 +156,7 @@ export default function ProfileContactForm() {
               type="email"
               placeholder="example@mail.ru"
               value={email}
-              onChange={handleFieldChange(setEmail)}
+              onChange={handleEmailChange}
               className="rounded-xl"
               maxLength={320}
             />
@@ -104,23 +168,30 @@ export default function ProfileContactForm() {
               Телефон
             </Label>
             <Input
+              ref={phoneRef}
               id="profile-phone"
               type="tel"
-              placeholder="+7 (999) 123-45-67"
+              placeholder="+7 (XXX) XXX-XX-XX"
               value={phone}
-              onChange={handleFieldChange(setPhone)}
-              className="rounded-xl"
-              maxLength={32}
+              onChange={handlePhoneChange}
+              onFocus={handlePhoneFocus}
+              onBlur={handlePhoneBlur}
+              className={`rounded-xl ${phoneError ? "border-red-400 focus-visible:ring-red-400" : ""}`}
+              maxLength={18}
             />
+            {phoneError && (
+              <p className="text-xs text-red-500 mt-1">{phoneError}</p>
+            )}
           </div>
 
           <div className="rounded-xl bg-secondary/55 px-3 py-2.5 text-xs leading-5 text-muted-foreground">
             Эти данные видны только ферме и используются для связи по вопросам доставки и участия.
+            Телефон сохраняется в формате +7 (XXX) XXX-XX-XX.
           </div>
 
           <Button
             type="submit"
-            disabled={!dirty || updateProfile.isPending}
+            disabled={!dirty || updateProfile.isPending || !!phoneError}
             className="w-full rounded-full"
           >
             {updateProfile.isPending ? (
