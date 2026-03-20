@@ -242,22 +242,39 @@ import {
 } from "./bitrix24";
 
 describe("bitrix24 helpers", () => {
-  it("splitFullName handles single name", () => {
-    const result = splitFullName("Иван");
-    expect(result.firstName).toBe("Иван");
-    expect(result.lastName).toBe("Sher Kozu");
+  it("splitFullName handles single name as lastName", () => {
+    const result = splitFullName("Иванов");
+    expect(result.lastName).toBe("Иванов");
+    expect(result.firstName).toBe("");
+    expect(result.secondName).toBe("");
   });
 
-  it("splitFullName handles full name", () => {
-    const result = splitFullName("Иван Петрович Сидоров");
+  it("splitFullName handles two words: Фамилия Имя", () => {
+    const result = splitFullName("Иванов Иван");
+    expect(result.lastName).toBe("Иванов");
     expect(result.firstName).toBe("Иван");
-    expect(result.lastName).toBe("Петрович Сидоров");
+    expect(result.secondName).toBe("");
   });
 
-  it("splitFullName handles empty string", () => {
+  it("splitFullName handles full name: Фамилия Имя Отчество", () => {
+    const result = splitFullName("Иванов Иван Иванович");
+    expect(result.lastName).toBe("Иванов");
+    expect(result.firstName).toBe("Иван");
+    expect(result.secondName).toBe("Иванович");
+  });
+
+  it("splitFullName handles empty string with defaults", () => {
     const result = splitFullName("");
-    expect(result.firstName).toBe("Партнёр");
-    expect(result.lastName).toBe("Sher Kozu");
+    expect(result.lastName).toBe("Контакт");
+    expect(result.firstName).toBe("Шерь Козу");
+    expect(result.secondName).toBe("");
+  });
+
+  it("splitFullName handles extra whitespace", () => {
+    const result = splitFullName("  Сидоров   Пётр   Сергеевич  ");
+    expect(result.lastName).toBe("Сидоров");
+    expect(result.firstName).toBe("Пётр");
+    expect(result.secondName).toBe("Сергеевич");
   });
 
   it("mapLeadSource maps known sources", () => {

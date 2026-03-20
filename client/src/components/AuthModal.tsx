@@ -66,13 +66,18 @@ export default function AuthModal({
   const [successMessage, setSuccessMessage] = useState("");
 
   // Registration fields
-  const [regName, setRegName] = useState("");
+  const [regLastName, setRegLastName] = useState(""); // Фамилия
+  const [regFirstName, setRegFirstName] = useState(""); // Имя
+  const [regMiddleName, setRegMiddleName] = useState(""); // Отчество
   const [regEmail, setRegEmail] = useState("");
   const [regPhone, setRegPhone] = useState("");
   const [regPassword, setRegPassword] = useState("");
   const [regPasswordConfirm, setRegPasswordConfirm] = useState("");
   const verificationChannel = "email" as const; // Only email verification supported
   const [showRegPassword, setShowRegPassword] = useState(false);
+
+  // Compose full name: "Фамилия Имя Отчество"
+  const regFullName = [regLastName, regFirstName, regMiddleName].map(s => s.trim()).filter(Boolean).join(" ");
 
   // Login fields
   const [loginEmail, setLoginEmail] = useState("");
@@ -135,7 +140,8 @@ export default function AuthModal({
 
   const handleRegisterSubmit = () => {
     setError("");
-    if (!regName.trim()) { setError("Введите ФИО"); return; }
+    if (!regLastName.trim()) { setError("Введите фамилию"); return; }
+    if (!regFirstName.trim()) { setError("Введите имя"); return; }
     if (!regEmail.trim()) { setError("Введите email"); return; }
     if (!regPassword) { setError("Введите пароль"); return; }
     if (regPassword.length < 8) { setError("Пароль должен содержать минимум 8 символов"); return; }
@@ -151,7 +157,7 @@ export default function AuthModal({
     // After captcha, send OTP
     registerMutation.mutate(
       {
-        name: regName.trim(),
+        name: regFullName,
         email: regEmail.trim(),
         phone: regPhone.trim() || null,
         password: regPassword,
@@ -181,7 +187,7 @@ export default function AuthModal({
 
     verifyRegistrationMutation.mutate(
       {
-        name: regName.trim(),
+        name: regFullName,
         email: regEmail.trim(),
         phone: regPhone.trim() || null,
         password: regPassword,
@@ -476,14 +482,42 @@ export default function AuthModal({
 
       <div className="space-y-3">
         <div className="space-y-1.5">
-          <Label htmlFor="reg-name">ФИО *</Label>
+          <Label htmlFor="reg-lastname">Фамилия *</Label>
           <div className="relative">
             <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
-              id="reg-name"
-              value={regName}
-              onChange={(e) => setRegName(e.target.value)}
-              placeholder="Иванов Иван Иванович"
+              id="reg-lastname"
+              value={regLastName}
+              onChange={(e) => setRegLastName(e.target.value)}
+              placeholder="Иванов"
+              className="pl-10"
+            />
+          </div>
+        </div>
+
+        <div className="space-y-1.5">
+          <Label htmlFor="reg-firstname">Имя *</Label>
+          <div className="relative">
+            <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input
+              id="reg-firstname"
+              value={regFirstName}
+              onChange={(e) => setRegFirstName(e.target.value)}
+              placeholder="Иван"
+              className="pl-10"
+            />
+          </div>
+        </div>
+
+        <div className="space-y-1.5">
+          <Label htmlFor="reg-middlename">Отчество</Label>
+          <div className="relative">
+            <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input
+              id="reg-middlename"
+              value={regMiddleName}
+              onChange={(e) => setRegMiddleName(e.target.value)}
+              placeholder="Иванович"
               className="pl-10"
             />
           </div>

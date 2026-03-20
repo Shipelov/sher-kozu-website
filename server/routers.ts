@@ -1353,7 +1353,9 @@ export const appRouter = router({
         for (const contact of batch.contacts) {
           const email = contact.EMAIL?.[0]?.VALUE ?? null;
           const phone = contact.PHONE?.[0]?.VALUE ?? null;
-          const fullName = [contact.NAME, contact.LAST_NAME].filter(Boolean).join(" ").trim() || "Контакт";
+          // Bitrix24 fields: LAST_NAME=фамилия, NAME=имя, SECOND_NAME=отчество
+          // Store as "Фамилия Имя Отчество" for consistency with registration form
+          const fullName = [contact.LAST_NAME, contact.NAME, contact.SECOND_NAME].filter(Boolean).join(" ").trim() || "Контакт";
           const bitrixId = String(contact.ID);
 
           if (!email && !phone) continue; // skip contacts without contact info

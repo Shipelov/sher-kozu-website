@@ -65,16 +65,34 @@ export function getBitrixWebhookBaseUrl() {
   return `${baseUrl}/rest/${userId}/${token}`;
 }
 
-export function splitFullName(fullName: string) {
+/**
+ * Split a full name string into Bitrix24-compatible fields.
+ * Expected input format: "Фамилия Имя Отчество" (Russian convention).
+ * Bitrix24 mapping:
+ *   LAST_NAME  = Фамилия (first word)
+ *   NAME       = Имя (second word)
+ *   SECOND_NAME = Отчество (third word and beyond)
+ */
+export function splitFullName(fullName: string): {
+  lastName: string;
+  firstName: string;
+  secondName: string;
+} {
   const chunks = fullName.trim().split(/\s+/).filter(Boolean);
   if (!chunks.length) {
-    return { firstName: "Партнёр", lastName: "Sher Kozu" };
+    return { lastName: "Контакт", firstName: "Шерь Козу", secondName: "" };
   }
-
-  const [firstName, ...rest] = chunks;
+  if (chunks.length === 1) {
+    return { lastName: chunks[0], firstName: "", secondName: "" };
+  }
+  if (chunks.length === 2) {
+    return { lastName: chunks[0], firstName: chunks[1], secondName: "" };
+  }
+  // 3+ words: first = lastName, second = firstName, rest = secondName
   return {
-    firstName,
-    lastName: rest.join(" ") || "Sher Kozu",
+    lastName: chunks[0],
+    firstName: chunks[1],
+    secondName: chunks.slice(2).join(" "),
   };
 }
 
@@ -130,11 +148,12 @@ async function callBitrix<T>(method: string, body: Record<string, unknown>) {
 }
 
 export async function syncPartnerLeadToBitrix(input: PartnerLeadSyncPayload): Promise<BitrixEntitySyncResult> {
-  const { firstName, lastName } = splitFullName(input.fullName);
+  const { firstName, lastName, secondName } = splitFullName(input.fullName);
 
   const contactFields: Record<string, unknown> = {
     NAME: firstName,
     LAST_NAME: lastName,
+    SECOND_NAME: secondName || undefined,
     OPENED: "Y",
     TYPE_ID: "CLIENT",
     SOURCE_ID: mapLeadSource(input.source),
@@ -219,7 +238,7 @@ export async function findBitrixContactByEmail(email: string): Promise<string | 
   try {
     const response = await callBitrix<{ result: Array<{ ID: string }> }>("crm.contact.list", {
       filter: { EMAIL: email },
-      select: ["ID", "NAME", "LAST_NAME", "EMAIL", "PHONE"],
+      select: ["ID", "NAME", "LAST_NAME", "SECOND_NAME", "EMAIL", "PHONE"],
     });
     const contacts = response.result;
     return contacts?.length > 0 ? String(contacts[0].ID) : null;
@@ -237,7 +256,7 @@ export async function findBitrixContactByPhone(phone: string): Promise<string | 
   try {
     const response = await callBitrix<{ result: Array<{ ID: string }> }>("crm.contact.list", {
       filter: { PHONE: phone },
-      select: ["ID", "NAME", "LAST_NAME", "EMAIL", "PHONE"],
+      select: ["ID", "NAME", "LAST_NAME", "SECOND_NAME", "EMAIL", "PHONE"],
     });
     const contacts = response.result;
     return contacts?.length > 0 ? String(contacts[0].ID) : null;
@@ -254,6 +273,7 @@ export async function findBitrixContactByPhone(phone: string): Promise<string | 
 export async function createBitrixContact(data: {
   firstName: string;
   lastName: string;
+  secondName?: string;
   email: string;
   phone?: string | null;
 }): Promise<string | null> {
@@ -262,6 +282,7 @@ export async function createBitrixContact(data: {
     const fields: Record<string, unknown> = {
       NAME: data.firstName,
       LAST_NAME: data.lastName,
+      SECOND_NAME: data.secondName || undefined,
       OPENED: "Y",
       TYPE_ID: "CLIENT",
       SOURCE_ID: "WEB",
@@ -304,10 +325,11 @@ export async function findOrCreateBitrixContact(data: {
   }
 
   // Create new contact
-  const { firstName, lastName } = splitFullName(data.fullName);
+  const { firstName, lastName, secondName } = splitFullName(data.fullName);
   return createBitrixContact({
     firstName,
     lastName,
+    secondName,
     email: data.email,
     phone: data.phone,
   });
@@ -368,6 +390,7 @@ export type BitrixContact = {
   ID: string;
   NAME: string;
   LAST_NAME: string;
+  SECOND_NAME: string;
   EMAIL: Array<{ VALUE: string; VALUE_TYPE: string }> | null;
   PHONE: Array<{ VALUE: string; VALUE_TYPE: string }> | null;
   DATE_CREATE: string;
@@ -396,7 +419,7 @@ export async function pullBitrixContacts(options?: {
     next?: number;
   }>("crm.contact.list", {
     filter,
-    select: ["ID", "NAME", "LAST_NAME", "EMAIL", "PHONE", "DATE_CREATE", "DATE_MODIFY"],
+    select: ["ID", "NAME", "LAST_NAME", "SECOND_NAME", "EMAIL", "PHONE", "DATE_CREATE", "DATE_MODIFY"],
     order: { DATE_MODIFY: "DESC" },
     start: options?.start ?? 0,
   });
