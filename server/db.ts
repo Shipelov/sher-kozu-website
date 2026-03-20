@@ -2656,11 +2656,18 @@ export async function listOwnerProductPlansByAnimal(animalId: number) {
     .where(eq(ownerProductPlans.animalId, animalId))
     .orderBy(desc(ownerProductPlans.createdAt));
 
-  return rows.map((r: any) => ({
-    ...r.plan,
-    ownerName: r.ownerName ?? "Владелец",
-    familyName: r.familyName ?? "—",
-  }));
+  // Enrich each plan with the owner's share percent
+  const enriched = [];
+  for (const r of rows) {
+    const sharePercent = await resolveOwnerSharePercent(r.plan.ownerOpenId, animalId);
+    enriched.push({
+      ...r.plan,
+      ownerName: r.ownerName ?? "Владелец",
+      familyName: r.familyName ?? "—",
+      sharePercent,
+    });
+  }
+  return enriched;
 }
 
 /** Get full product track data for an animal (admin view) */

@@ -25,6 +25,7 @@ import {
   MessageCircle,
   Milk,
   Package,
+  Pencil,
   Truck,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -219,11 +220,11 @@ export default function OwnerProductPlanSection({
   // Queries
   const profileQuery = trpc.productTrack.getProfile.useQuery({ animalId });
   const optionsQuery = trpc.productTrack.listOptions.useQuery({ animalId });
-  const planQuery = trpc.productTrack.getMyPlan.useQuery({ animalId });
+  const planQuery = trpc.productTrack.getMyPlan.useQuery({ animalId }, { staleTime: 0 });
   const currentYear = useMemo(() => new Date().getFullYear(), []);
   const scheduleQuery = trpc.productTrack.getSchedule.useQuery(
     { ownerOpenId: user?.openId ?? "", animalId, year: currentYear },
-    { enabled: Boolean(user?.openId) && Boolean(planQuery.data?.id) },
+    { enabled: Boolean(user?.openId) && Boolean(planQuery.data?.id), staleTime: 0 },
   );
 
   // Mutations
@@ -301,6 +302,7 @@ export default function OwnerProductPlanSection({
   };
 
   const isLocked = existingPlan && (existingPlan.status === "confirmed" || existingPlan.status === "modified_by_admin");
+  const isModifiedByAdmin = existingPlan?.status === "modified_by_admin";
   const isLoading = profileQuery.isLoading || optionsQuery.isLoading || planQuery.isLoading;
 
   // Don't show if no production profile configured
@@ -317,9 +319,14 @@ export default function OwnerProductPlanSection({
           <div className="flex items-center gap-3">
             <Package className="h-5 w-5 text-primary" />
             <h2 className="text-2xl font-semibold text-foreground">Мои продукты</h2>
-            {isLocked && (
+            {isLocked && !isModifiedByAdmin && (
               <Badge className="rounded-full border-emerald-200 bg-emerald-50 text-emerald-700">
                 <Lock className="mr-1 h-3 w-3" /> План подтверждён
+              </Badge>
+            )}
+            {isModifiedByAdmin && (
+              <Badge className="rounded-full border-amber-200 bg-amber-50 text-amber-700">
+                <Pencil className="mr-1 h-3 w-3" /> Изменён фермой
               </Badge>
             )}
           </div>
@@ -353,11 +360,20 @@ export default function OwnerProductPlanSection({
                 <h3 className="text-lg font-semibold text-foreground">
                   {isLocked ? "Ваш продуктовый план" : "Выберите продукты"}
                 </h3>
-                {isLocked && (
-                  <p className="text-sm text-muted-foreground">
-                    План зафиксирован. Для изменений свяжитесь с фермой через чат ниже.
-                  </p>
+            {isLocked && !isModifiedByAdmin && (
+              <p className="text-sm text-muted-foreground">
+                План зафиксирован. Для изменений свяжитесь с фермой через чат ниже.
+              </p>
+            )}
+            {isModifiedByAdmin && (
+              <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+                <p className="font-medium">✒️ План изменён администратором фермы</p>
+                {existingPlan?.adminNotes && (
+                  <p className="mt-1 text-xs text-amber-700">Причина: {existingPlan.adminNotes}</p>
                 )}
+                <p className="mt-1 text-xs text-amber-700">График доставки обновлён автоматически. Вопросы — в чате ниже.</p>
+              </div>
+            )}
 
                 <div className="grid gap-4 sm:grid-cols-2">
                   {options.map((opt) => {

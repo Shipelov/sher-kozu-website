@@ -63,6 +63,7 @@ type OwnerPlanRecord = {
   confirmedAt: string | null;
   ownerName: string;
   familyName: string;
+  sharePercent: number;
 };
 
 type DeliveryEntry = {
@@ -594,7 +595,7 @@ function OwnerPlansOverview({ animalId }: { animalId: number }) {
                     <div className="flex items-center justify-between mb-3">
                       <div>
                         <p className="font-semibold text-foreground">{plan.ownerName}</p>
-                        <p className="text-xs text-muted-foreground">Семья: {plan.familyName}</p>
+                        <p className="text-xs text-muted-foreground">Семья: {plan.familyName} · Доля: {plan.sharePercent}%</p>
                       </div>
                       <div className="flex items-center gap-2">
                         <Badge className={`rounded-full border ${plan.status === "confirmed" ? "border-emerald-200 bg-emerald-50 text-emerald-700" : plan.status === "modified_by_admin" ? "border-amber-200 bg-amber-50 text-amber-700" : "border-stone-200 bg-stone-50 text-stone-500"}`}>
@@ -662,22 +663,33 @@ function OwnerPlansOverview({ animalId }: { animalId: number }) {
           </DialogHeader>
 
           <div className="space-y-4 mt-2">
-            {/* Milk budget indicator */}
-            {profile && (
-              <div className="rounded-xl bg-secondary/30 p-3">
-                <div className="flex justify-between text-sm mb-1">
-                  <span className="text-muted-foreground">Использовано молока</span>
-                  <span className="font-semibold">{editTotalMilk} л</span>
+            {/* Milk budget indicator — limited by owner's share */}
+            {profile && editingPlan && (() => {
+              const ownerMilkBudget = Math.floor((profile.annualMilkLiters * editingPlan.sharePercent) / 100);
+              const overBudget = editTotalMilk > ownerMilkBudget;
+              return (
+                <div className={`rounded-xl p-3 ${overBudget ? "bg-red-50 border border-red-200" : "bg-secondary/30"}`}>
+                  <div className="flex justify-between text-sm mb-1">
+                    <span className="text-muted-foreground">Использовано молока</span>
+                    <span className={`font-semibold ${overBudget ? "text-red-600" : ""}`}>{editTotalMilk} л</span>
+                  </div>
+                  <div className="h-2 rounded-full bg-secondary overflow-hidden">
+                    <div
+                      className={`h-full rounded-full transition-all ${overBudget ? "bg-red-500" : "bg-primary"}`}
+                      style={{ width: `${Math.min((editTotalMilk / ownerMilkBudget) * 100, 100)}%` }}
+                    />
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    из {ownerMilkBudget} л (доля {editingPlan.sharePercent}% от {profile.annualMilkLiters} л/год)
+                  </p>
+                  {overBudget && (
+                    <p className="text-xs text-red-600 font-medium mt-1">
+                      ⚠ Превышен молочный бюджет владельца на {editTotalMilk - ownerMilkBudget} л
+                    </p>
+                  )}
                 </div>
-                <div className="h-2 rounded-full bg-secondary overflow-hidden">
-                  <div
-                    className={`h-full rounded-full transition-all ${editTotalMilk > profile.annualMilkLiters ? "bg-red-500" : "bg-primary"}`}
-                    style={{ width: `${Math.min((editTotalMilk / profile.annualMilkLiters) * 100, 100)}%` }}
-                  />
-                </div>
-                <p className="text-xs text-muted-foreground mt-1">из {profile.annualMilkLiters} л годового объёма</p>
-              </div>
-            )}
+              );
+            })()}
 
             {/* Product sliders */}
             {productOptions.filter((o) => o.isEnabled).map((opt) => {
@@ -736,7 +748,7 @@ function OwnerPlansOverview({ animalId }: { animalId: number }) {
               <Button
                 className="rounded-full"
                 onClick={handleSaveEdit}
-                disabled={adminUpdatePlan.isPending}
+                disabled={adminUpdatePlan.isPending || (profile && editingPlan ? editTotalMilk > Math.floor((profile.annualMilkLiters * editingPlan.sharePercent) / 100) : false)}
               >
                 {adminUpdatePlan.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle2 className="mr-2 h-4 w-4" />}
                 Сохранить изменения
