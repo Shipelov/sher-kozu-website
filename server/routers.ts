@@ -1326,7 +1326,11 @@ export const appRouter = router({
       }),
   }),
   adminSync: router({
-    /** Pull contacts from Bitrix24 and create/update local users */
+    /**
+     * Pull contacts from Bitrix24 and create/update local users.
+     * Optimized: pre-loads all users into lookup Maps to eliminate N+1 queries,
+     * batches DB writes, and moves imports outside the processing loop.
+     */
     syncBitrixContacts: protectedProcedure.mutation(async ({ ctx }) => {
       if (ctx.user.role !== "admin" && ctx.user.openId !== process.env.OWNER_OPEN_ID) {
         throw new TRPCError({ code: "FORBIDDEN", message: "Только администратор может запускать синхронизацию" });
@@ -1337,15 +1341,46 @@ export const appRouter = router({
         throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Bitrix24 не настроен" });
       }
 
+      // ── Move all imports outside the loop ──
       const { getDb: getDbSync } = await import("./db");
       const { users: usersT } = await import("../drizzle/schema");
       const { eq: eqSync } = await import("drizzle-orm");
+      const crypto = await import("crypto");
       const dbSync = await getDbSync();
+
+      // ── Pre-load ALL existing users into lookup Maps (eliminates N+1) ──
+      const allUsers = await dbSync
+        .select({
+          id: usersT.id,
+          openId: usersT.openId,
+          name: usersT.name,
+          email: usersT.email,
+          phone: usersT.phone,
+          bitrix24ContactId: usersT.bitrix24ContactId,
+        })
+        .from(usersT);
+
+      const byBitrixId = new Map<string, (typeof allUsers)[0]>();
+      const byEmail = new Map<string, (typeof allUsers)[0]>();
+      const byPhone = new Map<string, (typeof allUsers)[0]>();
+
+      for (const u of allUsers) {
+        if (u.bitrix24ContactId) byBitrixId.set(u.bitrix24ContactId, u);
+        if (u.email) byEmail.set(u.email.toLowerCase(), u);
+        if (u.phone) byPhone.set(u.phone, u);
+      }
 
       let synced = 0;
       let created = 0;
       let updated = 0;
+      let skipped = 0;
       let nextStart: number | null = 0;
+
+      // ── Collect batch operations to minimize DB round-trips ──
+      type UpdateOp = { openId: string; data: Record<string, unknown> };
+      type InsertOp = typeof usersT.$inferInsert;
+      const pendingUpdates: UpdateOp[] = [];
+      const pendingInserts: InsertOp[] = [];
 
       while (nextStart !== null) {
         const batch = await pullBitrixContacts({ start: nextStart });
@@ -1353,55 +1388,64 @@ export const appRouter = router({
         for (const contact of batch.contacts) {
           const email = contact.EMAIL?.[0]?.VALUE ?? null;
           const phone = contact.PHONE?.[0]?.VALUE ?? null;
-          // Bitrix24 fields: LAST_NAME=фамилия, NAME=имя, SECOND_NAME=отчество
-          // Store as "Фамилия Имя Отчество" for consistency with registration form
           const fullName = [contact.LAST_NAME, contact.NAME, contact.SECOND_NAME].filter(Boolean).join(" ").trim() || "Контакт";
           const bitrixId = String(contact.ID);
 
-          if (!email && !phone) continue; // skip contacts without contact info
+          if (!email && !phone) {
+            skipped++;
+            continue;
+          }
 
-          // Check if user already linked by bitrix24ContactId
-          const existingByBitrix = await dbSync
-            .select()
-            .from(usersT)
-            .where(eqSync(usersT.bitrix24ContactId, bitrixId))
-            .limit(1);
-
-          if (existingByBitrix.length > 0) {
-            // Update name/email/phone if changed
-            const existing = existingByBitrix[0];
+          // ── Lookup 1: by Bitrix ID (O(1) Map lookup instead of DB query) ──
+          const existingByBitrix = byBitrixId.get(bitrixId);
+          if (existingByBitrix) {
             const updates: Record<string, unknown> = {};
-            if (email && existing.email !== email) updates.email = email;
-            if (phone && existing.phone !== phone) updates.phone = phone;
-            if (fullName && existing.name !== fullName) updates.name = fullName;
+            if (email && existingByBitrix.email !== email) updates.email = email;
+            if (phone && existingByBitrix.phone !== phone) updates.phone = phone;
+            if (fullName && existingByBitrix.name !== fullName) updates.name = fullName;
             if (Object.keys(updates).length > 0) {
               updates.updatedAt = new Date();
-              await dbSync.update(usersT).set(updates).where(eqSync(usersT.openId, existing.openId));
+              pendingUpdates.push({ openId: existingByBitrix.openId, data: updates });
               updated++;
             }
             synced++;
             continue;
           }
 
-          // Check if user exists by email
+          // ── Lookup 2: by email (O(1) Map lookup instead of DB query) ──
           if (email) {
-            const { getUserByEmail: getByEmail } = await import("./localAuth");
-            const existingByEmail = await getByEmail(email);
+            const existingByEmail = byEmail.get(email.toLowerCase());
             if (existingByEmail) {
-              // Link existing user to Bitrix contact
-              await dbSync.update(usersT)
-                .set({ bitrix24ContactId: bitrixId, updatedAt: new Date() })
-                .where(eqSync(usersT.openId, existingByEmail.openId));
+              pendingUpdates.push({
+                openId: existingByEmail.openId,
+                data: { bitrix24ContactId: bitrixId, updatedAt: new Date() },
+              });
+              // Update Maps for subsequent lookups within same sync
+              byBitrixId.set(bitrixId, { ...existingByEmail, bitrix24ContactId: bitrixId });
               updated++;
               synced++;
               continue;
             }
           }
 
-          // Create new user from Bitrix contact (no password — they'll need to set one via "forgot password")
-          const crypto = await import("crypto");
+          // ── Lookup 3: by phone (O(1) Map lookup) ──
+          if (phone) {
+            const existingByPhone = byPhone.get(phone);
+            if (existingByPhone) {
+              pendingUpdates.push({
+                openId: existingByPhone.openId,
+                data: { bitrix24ContactId: bitrixId, updatedAt: new Date() },
+              });
+              byBitrixId.set(bitrixId, { ...existingByPhone, bitrix24ContactId: bitrixId });
+              updated++;
+              synced++;
+              continue;
+            }
+          }
+
+          // ── Create new user from Bitrix contact ──
           const openId = `bitrix_${crypto.randomUUID().replace(/-/g, "").slice(0, 24)}`;
-          await dbSync.insert(usersT).values({
+          const newUser: InsertOp = {
             openId,
             name: fullName,
             email,
@@ -1411,7 +1455,15 @@ export const appRouter = router({
             role: "user",
             lastSignedIn: new Date(),
             onboardingCompleted: false,
-          });
+          };
+          pendingInserts.push(newUser);
+
+          // Update Maps so subsequent contacts in same batch can find this user
+          const mapEntry = { id: 0, openId, name: fullName, email, phone, bitrix24ContactId: bitrixId };
+          byBitrixId.set(bitrixId, mapEntry);
+          if (email) byEmail.set(email.toLowerCase(), mapEntry);
+          if (phone) byPhone.set(phone, mapEntry);
+
           created++;
           synced++;
         }
@@ -1419,7 +1471,24 @@ export const appRouter = router({
         nextStart = batch.nextStart;
       }
 
-      return { success: true, synced, created, updated };
+      // ── Flush batch updates (one DB call per update) ──
+      const BATCH_SIZE = 50;
+      for (let i = 0; i < pendingUpdates.length; i += BATCH_SIZE) {
+        const chunk = pendingUpdates.slice(i, i + BATCH_SIZE);
+        await Promise.all(
+          chunk.map((op) =>
+            dbSync.update(usersT).set(op.data).where(eqSync(usersT.openId, op.openId)),
+          ),
+        );
+      }
+
+      // ── Flush batch inserts (bulk insert in chunks) ──
+      for (let i = 0; i < pendingInserts.length; i += BATCH_SIZE) {
+        const chunk = pendingInserts.slice(i, i + BATCH_SIZE);
+        await dbSync.insert(usersT).values(chunk);
+      }
+
+      return { success: true, synced, created, updated, skipped };
     }),
 
     /** Admin resets a user's password — generates a new random password, saves hash + plaintext */

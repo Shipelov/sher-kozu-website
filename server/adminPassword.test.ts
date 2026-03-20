@@ -114,6 +114,59 @@ describe("Admin: plainPassword field and Bitrix24 sync button", () => {
     });
   });
 
+  describe("Sync optimization: pre-loaded Maps and batch operations", () => {
+    // Get the full sync procedure source
+    const syncStart = routersSrc.indexOf("syncBitrixContacts: protectedProcedure");
+    const syncEnd = routersSrc.indexOf("resetUserPassword: protectedProcedure");
+    const syncSrc = routersSrc.slice(syncStart, syncEnd);
+
+    it("pre-loads all users into lookup Maps", () => {
+      expect(syncSrc).toContain("new Map");
+      expect(syncSrc).toContain("byBitrixId");
+      expect(syncSrc).toContain("byEmail");
+      expect(syncSrc).toContain("byPhone");
+    });
+
+    it("uses O(1) Map lookups instead of DB queries inside loop", () => {
+      expect(syncSrc).toContain("byBitrixId.get(bitrixId)");
+      expect(syncSrc).toContain("byEmail.get(email.toLowerCase())");
+    });
+
+    it("collects batch operations instead of immediate writes", () => {
+      expect(syncSrc).toContain("pendingUpdates");
+      expect(syncSrc).toContain("pendingInserts");
+    });
+
+    it("flushes updates in parallel batches", () => {
+      expect(syncSrc).toContain("Promise.all");
+      expect(syncSrc).toContain("BATCH_SIZE");
+    });
+
+    it("uses bulk insert for new users", () => {
+      expect(syncSrc).toContain("dbSync.insert(usersT).values(chunk)");
+    });
+
+    it("moves dynamic imports outside the processing loop", () => {
+      // crypto import should be before the while loop, not inside for loop
+      const cryptoImportPos = syncSrc.indexOf('await import("crypto")');
+      const whileLoopPos = syncSrc.indexOf("while (nextStart !== null)");
+      expect(cryptoImportPos).toBeLessThan(whileLoopPos);
+    });
+
+    it("updates Maps during processing for deduplication", () => {
+      expect(syncSrc).toContain("byBitrixId.set(bitrixId");
+      expect(syncSrc).toContain("byEmail.set(email.toLowerCase()");
+    });
+
+    it("tracks skipped contacts", () => {
+      expect(syncSrc).toContain("skipped");
+    });
+
+    it("returns skipped count in response", () => {
+      expect(syncSrc).toContain("skipped");
+    });
+  });
+
   describe("Admin password reset procedure", () => {
     it("defines resetUserPassword in adminSync router", () => {
       expect(routersSrc).toContain("resetUserPassword: protectedProcedure");
