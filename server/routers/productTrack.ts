@@ -8,6 +8,7 @@ import {
   upsertProductOption,
   deleteProductOption,
   getOwnerProductPlan,
+  getOwnerProductPlanById,
   createOwnerProductPlan,
   adminUpdateOwnerProductPlan,
   generateDeliverySchedule,
@@ -240,20 +241,82 @@ export const productTrackRouter = router({
   }),
 
   // ── Admin: Update owner's plan ──
-  adminUpdatePlan: protectedProcedure.input(adminUpdatePlanInput).mutation(async ({ input }) => {
-    const { totalMilkUsed, enrichedSelections } = await calculateMilkUsage(
-      0, // We need animalId from the plan
-      input.selections,
-    ).catch(() => ({ totalMilkUsed: 0, enrichedSelections: [] as any[] }));
+  adminUpdatePlan: protectedProcedure.input(adminUpdatePlanInput).mutation(async ({ ctx, input }) => {
+    if (ctx.user.role !== "admin") {
+      throw new TRPCError({ code: "FORBIDDEN", message: "Только администратор может изменять планы." });
+    }
 
-    // Get the plan to find animalId
-    const plan = await adminUpdateOwnerProductPlan(input.planId, {
-      selectionsJson: JSON.stringify(input.selections),
+    // Get the existing plan to find animalId and ownerOpenId
+    const existingPlan = await getOwnerProductPlanById(input.planId);
+    if (!existingPlan) {
+      throw new TRPCError({ code: "NOT_FOUND", message: "План не найден." });
+    }
+
+    const { totalMilkUsed, enrichedSelections } = await calculateMilkUsage(
+      existingPlan.animalId,
+      input.selections,
+    );
+
+    // Validate milk budget against owner's share
+    const profile = await getProductionProfile(existingPlan.animalId);
+    if (profile) {
+      const sharePercent = await resolveOwnerSharePercent(existingPlan.ownerOpenId, existingPlan.animalId);
+      const ownerMilkBudget = Math.floor((profile.annualMilkLiters * sharePercent) / 100);
+      if (totalMilkUsed > ownerMilkBudget) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: `Выбранные продукты требуют ${totalMilkUsed} л молока, но доступно только ${ownerMilkBudget} л (доля владельца ${sharePercent}%).`,
+        });
+      }
+    }
+
+    // Update the plan
+    const updatedPlan = await adminUpdateOwnerProductPlan(input.planId, {
+      selectionsJson: JSON.stringify(enrichedSelections),
       totalMilkUsed,
       adminNotes: input.adminNotes,
     });
 
-    return plan;
+    // Regenerate delivery schedule with new selections
+    const currentYear = new Date().getFullYear();
+    await generateDeliverySchedule({
+      ownerOpenId: existingPlan.ownerOpenId,
+      animalId: existingPlan.animalId,
+      ownershipId: existingPlan.ownershipId,
+      productPlanId: existingPlan.id,
+      selections: enrichedSelections,
+      year: currentYear,
+    });
+
+    return updatedPlan;
+  }),
+
+  // ── Admin: Reset owner's plan to draft ──
+  adminResetPlan: protectedProcedure.input(z.object({ planId: z.number().int().positive() })).mutation(async ({ ctx, input }) => {
+    if (ctx.user.role !== "admin") {
+      throw new TRPCError({ code: "FORBIDDEN", message: "Только администратор может сбрасывать планы." });
+    }
+
+    const existingPlan = await getOwnerProductPlanById(input.planId);
+    if (!existingPlan) {
+      throw new TRPCError({ code: "NOT_FOUND", message: "План не найден." });
+    }
+
+    const updatedPlan = await adminUpdateOwnerProductPlan(input.planId, {
+      selectionsJson: existingPlan.selectionsJson,
+      totalMilkUsed: existingPlan.totalMilkUsed,
+      adminNotes: "Сброшен администратором для повторного выбора владельцем",
+    });
+
+    return updatedPlan;
+  }),
+
+  // ── Admin: Get single plan by ID ──
+  getPlanById: protectedProcedure.input(z.object({ planId: z.number().int().positive() })).query(async ({ ctx, input }) => {
+    if (ctx.user.role !== "admin") {
+      throw new TRPCError({ code: "FORBIDDEN", message: "Только администратор." });
+    }
+    return getOwnerProductPlanById(input.planId);
   }),
 
   // ── Delivery Schedule ──

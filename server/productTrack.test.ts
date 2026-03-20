@@ -563,3 +563,226 @@ describe("Full flow: selections → budget → schedule", () => {
     expect(budgetResult.remaining).toBe(50);
   });
 });
+
+/* ═══════════════════════════════════════════════════════════════
+   Admin Plan Editing — Unit Tests
+   Tests cover:
+   1. Admin can modify selections and recalculate milk usage
+   2. Admin edit respects milk budget constraints
+   3. Delivery schedule regenerates after admin edit
+   4. Admin notes are preserved
+   5. Plan status transitions correctly
+   ═══════════════════════════════════════════════════════════════ */
+
+type PlanRecord = {
+  id: number;
+  ownerOpenId: string;
+  animalId: number;
+  ownershipId: number;
+  selectionsJson: string;
+  totalMilkUsed: number;
+  status: "draft" | "confirmed" | "modified_by_admin";
+  adminNotes: string | null;
+};
+
+/**
+ * Simulate admin editing a plan: recalculate selections, validate budget, regenerate schedule.
+ */
+function simulateAdminPlanEdit(
+  plan: PlanRecord,
+  newSelections: Selection[],
+  options: ProductOption[],
+  annualMilkLiters: number,
+  sharePercent: number,
+  adminNotes: string | null,
+): {
+  success: boolean;
+  error?: string;
+  updatedPlan?: PlanRecord;
+  newSchedule?: Array<{ month: number; year: number; items: DeliveryItem[] }>;
+} {
+  // Step 1: Calculate new milk usage
+  const { totalMilkUsed, enrichedSelections, errors } = calculateMilkUsage(options, newSelections);
+  if (errors.length > 0) {
+    return { success: false, error: errors.join("; ") };
+  }
+
+  // Step 2: Validate against owner's milk budget
+  const budgetResult = validateMilkBudget(annualMilkLiters, sharePercent, totalMilkUsed);
+  if (!budgetResult.valid) {
+    return {
+      success: false,
+      error: `Выбранные продукты требуют ${totalMilkUsed} л молока, но доступно только ${budgetResult.budget} л (доля владельца ${sharePercent}%).`,
+    };
+  }
+
+  // Step 3: Update plan
+  const updatedPlan: PlanRecord = {
+    ...plan,
+    selectionsJson: JSON.stringify(enrichedSelections),
+    totalMilkUsed,
+    status: "modified_by_admin",
+    adminNotes,
+  };
+
+  // Step 4: Regenerate delivery schedule
+  const newSchedule = generateMonthlySchedule(enrichedSelections, new Date().getFullYear());
+
+  return { success: true, updatedPlan, newSchedule };
+}
+
+describe("Admin plan editing", () => {
+  const basePlan: PlanRecord = {
+    id: 42,
+    ownerOpenId: "owner-abc",
+    animalId: 1,
+    ownershipId: 10,
+    selectionsJson: JSON.stringify([
+      { productOptionId: 1, productType: "milk", label: "Свежее козье молоко", annualUnits: 24, unit: "л", milkUsed: 24 },
+      { productOptionId: 2, productType: "cheese", label: "Мягкий козий сыр", annualUnits: 3, unit: "кг", milkUsed: 24 },
+    ]),
+    totalMilkUsed: 48,
+    status: "confirmed",
+    adminNotes: null,
+  };
+
+  it("admin can increase product quantities within budget", () => {
+    const result = simulateAdminPlanEdit(
+      basePlan,
+      [
+        { productOptionId: 1, annualUnits: 30 }, // was 24
+        { productOptionId: 2, annualUnits: 2 },  // was 3
+      ],
+      sampleOptions,
+      500, // annualMilkLiters
+      10,  // sharePercent → budget = 50L
+      "Увеличил молоко, уменьшил сыр по просьбе владельца",
+    );
+
+    expect(result.success).toBe(true);
+    expect(result.updatedPlan?.totalMilkUsed).toBe(46); // 30 + 16
+    expect(result.updatedPlan?.status).toBe("modified_by_admin");
+    expect(result.updatedPlan?.adminNotes).toBe("Увеличил молоко, уменьшил сыр по просьбе владельца");
+  });
+
+  it("admin edit is rejected when exceeding milk budget", () => {
+    const result = simulateAdminPlanEdit(
+      basePlan,
+      [
+        { productOptionId: 1, annualUnits: 40 },
+        { productOptionId: 2, annualUnits: 5 }, // 40 + 40 = 80 > 50 budget
+      ],
+      sampleOptions,
+      500,
+      10,
+      null,
+    );
+
+    expect(result.success).toBe(false);
+    expect(result.error).toContain("доступно только 50 л");
+  });
+
+  it("admin can replace products entirely", () => {
+    const result = simulateAdminPlanEdit(
+      basePlan,
+      [
+        { productOptionId: 3, annualUnits: 30 }, // yogurt: 30 * 1.5 = 45L
+      ],
+      sampleOptions,
+      500,
+      10,
+      "Заменил на йогурт",
+    );
+
+    expect(result.success).toBe(true);
+    expect(result.updatedPlan?.totalMilkUsed).toBe(45);
+    const selections = JSON.parse(result.updatedPlan!.selectionsJson);
+    expect(selections).toHaveLength(1);
+    expect(selections[0].label).toBe("Натуральный йогурт");
+  });
+
+  it("admin edit regenerates delivery schedule", () => {
+    const result = simulateAdminPlanEdit(
+      basePlan,
+      [
+        { productOptionId: 1, annualUnits: 36 }, // 36L milk → 3L/month
+      ],
+      sampleOptions,
+      500,
+      10,
+      null,
+    );
+
+    expect(result.success).toBe(true);
+    expect(result.newSchedule).toHaveLength(12);
+    expect(result.newSchedule![0]?.items[0]?.quantity).toBe(3); // 36 / 12
+    expect(result.newSchedule![0]?.items[0]?.label).toBe("Свежее козье молоко");
+  });
+
+  it("admin edit rejects disabled products", () => {
+    const result = simulateAdminPlanEdit(
+      basePlan,
+      [
+        { productOptionId: 4, annualUnits: 10 }, // kefir is disabled
+      ],
+      sampleOptions,
+      500,
+      10,
+      null,
+    );
+
+    expect(result.success).toBe(false);
+    expect(result.error).toContain("отключён");
+  });
+
+  it("admin edit rejects exceeding max annual units", () => {
+    const result = simulateAdminPlanEdit(
+      basePlan,
+      [
+        { productOptionId: 2, annualUnits: 25 }, // max is 20
+      ],
+      sampleOptions,
+      500,
+      10,
+      null,
+    );
+
+    expect(result.success).toBe(false);
+    expect(result.error).toContain("лимит");
+  });
+
+  it("admin notes can be null (no note)", () => {
+    const result = simulateAdminPlanEdit(
+      basePlan,
+      [{ productOptionId: 1, annualUnits: 10 }],
+      sampleOptions,
+      500,
+      10,
+      null,
+    );
+
+    expect(result.success).toBe(true);
+    expect(result.updatedPlan?.adminNotes).toBeNull();
+  });
+
+  it("admin can edit a plan that was already modified_by_admin", () => {
+    const alreadyModified: PlanRecord = {
+      ...basePlan,
+      status: "modified_by_admin",
+      adminNotes: "Первая корректировка",
+    };
+
+    const result = simulateAdminPlanEdit(
+      alreadyModified,
+      [{ productOptionId: 1, annualUnits: 20 }],
+      sampleOptions,
+      500,
+      10,
+      "Вторая корректировка",
+    );
+
+    expect(result.success).toBe(true);
+    expect(result.updatedPlan?.status).toBe("modified_by_admin");
+    expect(result.updatedPlan?.adminNotes).toBe("Вторая корректировка");
+  });
+});

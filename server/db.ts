@@ -2719,3 +2719,11 @@ export async function resolveOwnerSharePercent(ownerOpenId: string, animalId: nu
   const percentPerSlot = 100 / totalSlots;
   return Math.min(100, Math.round(ownerSlots.length * percentPerSlot));
 }
+
+/** Get a single owner product plan by its ID (admin use) */
+export async function getOwnerProductPlanById(planId: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const rows = await db.select().from(ownerProductPlans).where(eq(ownerProductPlans.id, planId)).limit(1);
+  return rows[0] ?? null;
+}

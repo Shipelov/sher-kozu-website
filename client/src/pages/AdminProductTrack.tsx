@@ -485,68 +485,267 @@ function ProductOptionsManager({ animalId }: { animalId: number }) {
 
 /* ── Owner Plans Overview (Admin) ── */
 
+type SelectionEntry = {
+  productOptionId: number;
+  productType: string;
+  label: string;
+  annualUnits: number;
+  unit: string;
+  milkUsed: number;
+};
+
 function OwnerPlansOverview({ animalId }: { animalId: number }) {
   const trackData = trpc.productTrack.getAnimalTrackData.useQuery({ animalId });
   const ownerPlans = (trackData.data?.ownerPlans ?? []) as OwnerPlanRecord[];
+  const productOptions = (trackData.data?.options ?? []) as ProductOptionRecord[];
+  const profile = trackData.data?.profile;
+
+  const [editingPlan, setEditingPlan] = useState<OwnerPlanRecord | null>(null);
+  const [editSelections, setEditSelections] = useState<Map<number, number>>(new Map());
+  const [adminNotes, setAdminNotes] = useState("");
+
+  const adminUpdatePlan = trpc.productTrack.adminUpdatePlan.useMutation({
+    onSuccess: () => {
+      toast.success("План обновлён");
+      setEditingPlan(null);
+      trackData.refetch();
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
+  const adminResetPlan = trpc.productTrack.adminResetPlan.useMutation({
+    onSuccess: () => {
+      toast.success("План сброшен — владелец может выбрать заново");
+      trackData.refetch();
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
+  const openEditDialog = useCallback((plan: OwnerPlanRecord) => {
+    let selections: SelectionEntry[] = [];
+    try { selections = JSON.parse(plan.selectionsJson); } catch {}
+    const map = new Map<number, number>();
+    for (const sel of selections) {
+      if (sel.productOptionId) map.set(sel.productOptionId, sel.annualUnits);
+    }
+    // Also add any product options not yet in the plan
+    for (const opt of productOptions) {
+      if (!map.has(opt.id)) map.set(opt.id, 0);
+    }
+    setEditSelections(map);
+    setAdminNotes(plan.adminNotes ?? "");
+    setEditingPlan(plan);
+  }, [productOptions]);
+
+  const editTotalMilk = useMemo(() => {
+    let total = 0;
+    editSelections.forEach((units, optId) => {
+      const opt = productOptions.find((o) => o.id === optId);
+      if (opt) total += units * opt.conversionRatio;
+    });
+    return total;
+  }, [editSelections, productOptions]);
+
+  const handleSaveEdit = () => {
+    if (!editingPlan) return;
+    const selections = Array.from(editSelections.entries())
+      .filter(([, units]) => units > 0)
+      .map(([optId, units]) => ({ productOptionId: optId, annualUnits: units }));
+    if (selections.length === 0) {
+      toast.error("Выберите хотя бы один продукт.");
+      return;
+    }
+    adminUpdatePlan.mutate({
+      planId: editingPlan.id,
+      selections,
+      adminNotes: adminNotes || null,
+    });
+  };
 
   return (
-    <Card className="rounded-[2rem] border-border/70 shadow-sm">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <BarChart3 className="h-5 w-5 text-primary" />
-          Продуктовые планы владельцев
-        </CardTitle>
-        <CardDescription>
-          Все подтверждённые продуктовые планы владельцев для этого животного.
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        {trackData.isLoading ? (
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Loader2 className="h-4 w-4 animate-spin" /> Загружаем планы…
-          </div>
-        ) : ownerPlans.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-border bg-secondary/20 px-5 py-8 text-center text-sm text-muted-foreground">
-            Ни один владелец ещё не выбрал продуктовый план для этого животного.
-          </div>
-        ) : (
-          <div className="space-y-4">
-            {ownerPlans.map((plan) => {
-              let selections: Array<{ label: string; annualUnits: number; unit: string; milkUsed: number }> = [];
-              try {
-                selections = JSON.parse(plan.selectionsJson);
-              } catch {}
+    <>
+      <Card className="rounded-[2rem] border-border/70 shadow-sm">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <BarChart3 className="h-5 w-5 text-primary" />
+            Продуктовые планы владельцев
+          </CardTitle>
+          <CardDescription>
+            Управляйте продуктовыми планами владельцев. Вы можете изменить количества или сбросить план.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {trackData.isLoading ? (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin" /> Загружаем планы…
+            </div>
+          ) : ownerPlans.length === 0 ? (
+            <div className="rounded-2xl border border-dashed border-border bg-secondary/20 px-5 py-8 text-center text-sm text-muted-foreground">
+              Ни один владелец ещё не выбрал продуктовый план для этого животного.
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {ownerPlans.map((plan) => {
+                let selections: SelectionEntry[] = [];
+                try { selections = JSON.parse(plan.selectionsJson); } catch {}
 
-              return (
-                <div key={plan.id} className="rounded-2xl border border-border/70 bg-white p-4 shadow-sm">
-                  <div className="flex items-center justify-between mb-3">
-                    <div>
-                      <p className="font-semibold text-foreground">{plan.ownerName}</p>
-                      <p className="text-xs text-muted-foreground">Семья: {plan.familyName}</p>
-                    </div>
-                    <Badge className={`rounded-full border ${plan.status === "confirmed" ? "border-emerald-200 bg-emerald-50 text-emerald-700" : plan.status === "modified_by_admin" ? "border-amber-200 bg-amber-50 text-amber-700" : "border-stone-200 bg-stone-50 text-stone-500"}`}>
-                      {plan.status === "confirmed" ? "Подтверждён" : plan.status === "modified_by_admin" ? "Изменён админом" : "Черновик"}
-                    </Badge>
-                  </div>
-                  <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-                    {selections.map((sel, idx) => (
-                      <div key={idx} className="rounded-xl bg-secondary/30 p-3 text-sm">
-                        <p className="font-medium">{sel.label}</p>
-                        <p className="text-muted-foreground">{sel.annualUnits} {sel.unit}/год · {sel.milkUsed} л молока</p>
+                return (
+                  <div key={plan.id} className="rounded-2xl border border-border/70 bg-white p-4 shadow-sm">
+                    <div className="flex items-center justify-between mb-3">
+                      <div>
+                        <p className="font-semibold text-foreground">{plan.ownerName}</p>
+                        <p className="text-xs text-muted-foreground">Семья: {plan.familyName}</p>
                       </div>
-                    ))}
+                      <div className="flex items-center gap-2">
+                        <Badge className={`rounded-full border ${plan.status === "confirmed" ? "border-emerald-200 bg-emerald-50 text-emerald-700" : plan.status === "modified_by_admin" ? "border-amber-200 bg-amber-50 text-amber-700" : "border-stone-200 bg-stone-50 text-stone-500"}`}>
+                          {plan.status === "confirmed" ? "Подтверждён" : plan.status === "modified_by_admin" ? "Изменён админом" : "Черновик"}
+                        </Badge>
+                      </div>
+                    </div>
+                    <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                      {selections.map((sel, idx) => (
+                        <div key={idx} className="rounded-xl bg-secondary/30 p-3 text-sm">
+                          <p className="font-medium">{sel.label}</p>
+                          <p className="text-muted-foreground">{sel.annualUnits} {sel.unit}/год · {sel.milkUsed} л молока</p>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="mt-3 flex items-center justify-between">
+                      <p className="text-xs text-muted-foreground">
+                        Итого: {plan.totalMilkUsed} л молока/год
+                        {plan.adminNotes ? ` · Заметка: ${plan.adminNotes}` : ""}
+                      </p>
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="rounded-full text-xs"
+                          onClick={() => openEditDialog(plan)}
+                        >
+                          <Pencil className="mr-1 h-3 w-3" /> Изменить
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="rounded-full text-xs border-amber-300 text-amber-700 hover:bg-amber-50"
+                          onClick={() => {
+                            if (confirm(`Сбросить план ${plan.ownerName}? Владелец сможет выбрать заново.`)) {
+                              adminResetPlan.mutate({ planId: plan.id });
+                            }
+                          }}
+                          disabled={adminResetPlan.isPending}
+                        >
+                          {adminResetPlan.isPending ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : null}
+                          Сбросить
+                        </Button>
+                      </div>
+                    </div>
                   </div>
-                  <p className="mt-2 text-xs text-muted-foreground">
-                    Итого: {plan.totalMilkUsed} л молока/год
-                    {plan.adminNotes ? ` · Заметка: ${plan.adminNotes}` : ""}
-                  </p>
+                );
+              })}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Edit Plan Dialog */}
+      <Dialog open={!!editingPlan} onOpenChange={(open) => { if (!open) setEditingPlan(null); }}>
+        <DialogContent className="max-w-lg rounded-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Pencil className="h-5 w-5 text-primary" />
+              Редактирование плана — {editingPlan?.ownerName}
+            </DialogTitle>
+            <DialogDescription>
+              Измените количества продуктов. После сохранения график доставки будет пересоздан автоматически.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 mt-2">
+            {/* Milk budget indicator */}
+            {profile && (
+              <div className="rounded-xl bg-secondary/30 p-3">
+                <div className="flex justify-between text-sm mb-1">
+                  <span className="text-muted-foreground">Использовано молока</span>
+                  <span className="font-semibold">{editTotalMilk} л</span>
+                </div>
+                <div className="h-2 rounded-full bg-secondary overflow-hidden">
+                  <div
+                    className={`h-full rounded-full transition-all ${editTotalMilk > profile.annualMilkLiters ? "bg-red-500" : "bg-primary"}`}
+                    style={{ width: `${Math.min((editTotalMilk / profile.annualMilkLiters) * 100, 100)}%` }}
+                  />
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">из {profile.annualMilkLiters} л годового объёма</p>
+              </div>
+            )}
+
+            {/* Product sliders */}
+            {productOptions.filter((o) => o.isEnabled).map((opt) => {
+              const currentUnits = editSelections.get(opt.id) ?? 0;
+              const milkForThis = currentUnits * opt.conversionRatio;
+              return (
+                <div key={opt.id} className="rounded-xl border border-border/60 p-3">
+                  <div className="flex justify-between items-center mb-2">
+                    <div>
+                      <p className="font-medium text-sm">{opt.label}</p>
+                      <p className="text-xs text-muted-foreground">{opt.conversionRatio} л молока → 1 {opt.unit}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-semibold text-sm">{currentUnits} {opt.unit}/год</p>
+                      <p className="text-xs text-muted-foreground">{milkForThis} л молока</p>
+                    </div>
+                  </div>
+                  <input
+                    type="range"
+                    min={0}
+                    max={opt.maxAnnualUnits}
+                    step={1}
+                    value={currentUnits}
+                    onChange={(e) => {
+                      const newMap = new Map(editSelections);
+                      newMap.set(opt.id, Number(e.target.value));
+                      setEditSelections(newMap);
+                    }}
+                    className="w-full accent-primary"
+                  />
+                  <div className="flex justify-between text-xs text-muted-foreground">
+                    <span>0</span>
+                    <span>макс. {opt.maxAnnualUnits} {opt.unit}</span>
+                  </div>
                 </div>
               );
             })}
+
+            {/* Admin notes */}
+            <div>
+              <Label className="text-sm">Заметка администратора</Label>
+              <Textarea
+                value={adminNotes}
+                onChange={(e) => setAdminNotes(e.target.value)}
+                placeholder="Причина изменения плана…"
+                className="mt-1 rounded-xl"
+                rows={2}
+              />
+            </div>
+
+            {/* Save button */}
+            <div className="flex justify-end gap-2 pt-2">
+              <Button variant="outline" className="rounded-full" onClick={() => setEditingPlan(null)}>
+                Отмена
+              </Button>
+              <Button
+                className="rounded-full"
+                onClick={handleSaveEdit}
+                disabled={adminUpdatePlan.isPending}
+              >
+                {adminUpdatePlan.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle2 className="mr-2 h-4 w-4" />}
+                Сохранить изменения
+              </Button>
+            </div>
           </div>
-        )}
-      </CardContent>
-    </Card>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
 
