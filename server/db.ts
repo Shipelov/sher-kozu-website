@@ -43,6 +43,7 @@ import {
   InsertOwnerProductPlan,
   InsertDeliveryScheduleEntry,
   InsertChatMessage,
+  planChangeLog,
 } from "../drizzle/schema";
 import { ENV } from "./_core/env";
 
@@ -2440,10 +2441,10 @@ export async function createOwnerProductPlan(input: {
     ownerOpenId: input.ownerOpenId,
     animalId: input.animalId,
     ownershipId: input.ownershipId,
-    status: "confirmed",
+    status: "pending_approval",
     selectionsJson: input.selectionsJson,
     totalMilkUsed: input.totalMilkUsed,
-    confirmedAt: new Date(),
+    confirmedAt: null,
   });
 
   const created = await db.select().from(ownerProductPlans).where(eq(ownerProductPlans.id, result.insertId)).limit(1);
@@ -2771,4 +2772,80 @@ export async function deleteDeliverySchedule(ownerOpenId: string, animalId: numb
       eq(deliverySchedule.animalId, animalId),
     ),
   );
+}
+
+/** Log a plan change event for audit trail */
+export async function logPlanChange(input: {
+  planId: number;
+  animalId: number;
+  ownerOpenId: string;
+  actorId: string;
+  action: "created" | "submitted" | "approved" | "modified" | "reset";
+  previousStatus: string | null;
+  newStatus: string;
+  selectionsSnapshot?: string | null;
+  note?: string | null;
+}) {
+  const db = await getDb();
+  if (!db) return;
+
+  await db.insert(planChangeLog).values({
+    planId: input.planId,
+    animalId: input.animalId,
+    ownerOpenId: input.ownerOpenId,
+    actorId: input.actorId,
+    action: input.action,
+    previousStatus: input.previousStatus,
+    newStatus: input.newStatus,
+    selectionsSnapshot: input.selectionsSnapshot ?? null,
+    note: input.note ?? null,
+  });
+}
+
+/** List plan change log entries for an animal */
+export async function listPlanChangeLog(animalId: number) {
+  const db = await getDb();
+  if (!db) return [];
+
+  return db.select().from(planChangeLog)
+    .where(eq(planChangeLog.animalId, animalId))
+    .orderBy(desc(planChangeLog.createdAt));
+}
+
+/** List all plan change log entries (admin view) */
+export async function listAllPlanChangeLogs() {
+  const db = await getDb();
+  if (!db) return [];
+
+  return db.select().from(planChangeLog)
+    .orderBy(desc(planChangeLog.createdAt));
+}
+
+/** Approve a pending plan (admin action) → set status to confirmed */
+export async function approveOwnerProductPlan(planId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  await db.update(ownerProductPlans).set({
+    status: "confirmed",
+    confirmedAt: new Date(),
+  }).where(eq(ownerProductPlans.id, planId));
+
+  const updated = await db.select().from(ownerProductPlans).where(eq(ownerProductPlans.id, planId)).limit(1);
+  return updated[0] ?? null;
+}
+
+/** Submit a plan for approval (owner action) → set status to pending_approval */
+export async function submitPlanForApproval(planId: number, selectionsJson: string, totalMilkUsed: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  await db.update(ownerProductPlans).set({
+    status: "pending_approval",
+    selectionsJson,
+    totalMilkUsed,
+  }).where(eq(ownerProductPlans.id, planId));
+
+  const updated = await db.select().from(ownerProductPlans).where(eq(ownerProductPlans.id, planId)).limit(1);
+  return updated[0] ?? null;
 }

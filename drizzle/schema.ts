@@ -402,7 +402,8 @@ export type InsertIntegrationAudit = typeof integrationAudits.$inferInsert;
    ─────────────────────────────────────────────── */
 
 export const productTypeEnum = mysqlEnum("productType", ["milk", "smetana", "yogurt", "kefir", "cheese"]);
-export const ownerProductPlanStatusEnum = mysqlEnum("ownerProductPlanStatus", ["draft", "confirmed", "modified_by_admin"]);
+export const ownerProductPlanStatusEnum = mysqlEnum("ownerProductPlanStatus", ["draft", "pending_approval", "confirmed", "modified_by_admin"]);
+export const planChangeActionEnum = mysqlEnum("planChangeAction", ["created", "submitted", "approved", "modified", "reset"]);
 export const deliveryStatusEnum = mysqlEnum("deliveryStatus", ["planned", "ready", "delivered"]);
 export const chatMessageSenderEnum = mysqlEnum("chatMessageSender", ["owner", "admin"]);
 
@@ -526,3 +527,29 @@ export type InsertDeliveryScheduleEntry = typeof deliverySchedule.$inferInsert;
 
 export type ChatMessage = typeof chatMessages.$inferSelect;
 export type InsertChatMessage = typeof chatMessages.$inferInsert;
+
+/**
+ * Log of all plan changes for audit trail.
+ * Records every status transition with before/after snapshots.
+ */
+export const planChangeLog = mysqlTable("planChangeLog", {
+  id: int("id").autoincrement().primaryKey(),
+  planId: int("planId").notNull(),
+  animalId: int("animalId").notNull(),
+  ownerOpenId: varchar("ownerOpenId", { length: 64 }).notNull(),
+  /** Who performed the action: owner openId or 'admin' */
+  actorId: varchar("actorId", { length: 64 }).notNull(),
+  action: planChangeActionEnum.notNull(),
+  /** Previous status before this change */
+  previousStatus: varchar("previousStatus", { length: 32 }),
+  /** New status after this change */
+  newStatus: varchar("newStatus", { length: 32 }).notNull(),
+  /** Snapshot of selectionsJson at this point */
+  selectionsSnapshot: text("selectionsSnapshot"),
+  /** Optional note */
+  note: text("note"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type PlanChangeLogEntry = typeof planChangeLog.$inferSelect;
+export type InsertPlanChangeLogEntry = typeof planChangeLog.$inferInsert;

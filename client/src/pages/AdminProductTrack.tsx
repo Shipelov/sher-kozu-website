@@ -19,7 +19,9 @@ import {
   BarChart3,
   Calendar,
   CheckCircle2,
+  ClipboardList,
   FlaskConical,
+  History,
   Loader2,
   MessageCircle,
   Milk,
@@ -561,6 +563,14 @@ function OwnerPlansOverview({ animalId }: { animalId: number }) {
     onError: (err) => toast.error(err.message),
   });
 
+  const adminApprovePlan = trpc.productTrack.adminApprovePlan.useMutation({
+    onSuccess: () => {
+      toast.success("План подтверждён — график доставки сформирован");
+      trackData.refetch();
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
   const openEditDialog = useCallback((plan: OwnerPlanRecord) => {
     let selections: SelectionEntry[] = [];
     try { selections = JSON.parse(plan.selectionsJson); } catch {}
@@ -637,8 +647,16 @@ function OwnerPlansOverview({ animalId }: { animalId: number }) {
                         <p className="text-xs text-muted-foreground">Семья: {plan.familyName} · Доля: {plan.sharePercent}%</p>
                       </div>
                       <div className="flex items-center gap-2">
-                        <Badge className={`rounded-full border ${plan.status === "confirmed" ? "border-emerald-200 bg-emerald-50 text-emerald-700" : plan.status === "modified_by_admin" ? "border-amber-200 bg-amber-50 text-amber-700" : "border-stone-200 bg-stone-50 text-stone-500"}`}>
-                          {plan.status === "confirmed" ? "Подтверждён" : plan.status === "modified_by_admin" ? "Изменён админом" : "Черновик"}
+                        <Badge className={`rounded-full border ${
+                          plan.status === "confirmed" ? "border-emerald-200 bg-emerald-50 text-emerald-700" :
+                          plan.status === "modified_by_admin" ? "border-amber-200 bg-amber-50 text-amber-700" :
+                          plan.status === "pending_approval" ? "border-blue-200 bg-blue-50 text-blue-700" :
+                          "border-stone-200 bg-stone-50 text-stone-500"
+                        }`}>
+                          {plan.status === "confirmed" ? "Подтверждён" :
+                           plan.status === "modified_by_admin" ? "Изменён админом" :
+                           plan.status === "pending_approval" ? "Ожидает подтверждения" :
+                           "Черновик"}
                         </Badge>
                       </div>
                     </div>
@@ -656,6 +674,21 @@ function OwnerPlansOverview({ animalId }: { animalId: number }) {
                         {plan.adminNotes ? ` · Заметка: ${plan.adminNotes}` : ""}
                       </p>
                       <div className="flex gap-2">
+                        {plan.status === "pending_approval" && (
+                          <Button
+                            size="sm"
+                            className="rounded-full text-xs bg-emerald-600 hover:bg-emerald-700 text-white"
+                            onClick={() => {
+                              if (confirm(`Подтвердить план ${plan.ownerName}? Будет сформирован график доставки.`)) {
+                                adminApprovePlan.mutate({ planId: plan.id });
+                              }
+                            }}
+                            disabled={adminApprovePlan.isPending}
+                          >
+                            {adminApprovePlan.isPending ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : <CheckCircle2 className="mr-1 h-3 w-3" />}
+                            Подтвердить
+                          </Button>
+                        )}
                         <Button
                           size="sm"
                           variant="outline"
@@ -1135,6 +1168,9 @@ export default function AdminProductTrack() {
             <TabsTrigger value="chat" className="rounded-full">
               <MessageCircle className="mr-2 h-4 w-4" /> Чаты
             </TabsTrigger>
+            <TabsTrigger value="log" className="rounded-full">
+              <History className="mr-2 h-4 w-4" /> Лог
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="profile">
@@ -1156,8 +1192,154 @@ export default function AdminProductTrack() {
           <TabsContent value="chat">
             <ChatConversationsOverview animalId={animalId} animalName={animal?.name ?? ""} />
           </TabsContent>
+
+          <TabsContent value="log">
+            <PlanChangeLogView animalId={animalId} />
+          </TabsContent>
         </Tabs>
       </div>
     </DashboardLayout>
+  );
+}
+
+/* ── Plan Change Log ── */
+
+type LogEntry = {
+  id: number;
+  planId: number;
+  action: string;
+  actorType: string;
+  actorId: string;
+  actorName: string | null;
+  previousSelectionsJson: string | null;
+  newSelectionsJson: string | null;
+  previousStatus: string | null;
+  newStatus: string | null;
+  note: string | null;
+  createdAt: string;
+};
+
+const ACTION_LABELS: Record<string, string> = {
+  owner_submitted: "Владелец отправил план",
+  admin_approved: "Админ подтвердил",
+  admin_modified: "Админ изменил",
+  admin_reset: "Админ сбросил",
+};
+
+const ACTION_COLORS: Record<string, string> = {
+  owner_submitted: "border-blue-200 bg-blue-50 text-blue-700",
+  admin_approved: "border-emerald-200 bg-emerald-50 text-emerald-700",
+  admin_modified: "border-amber-200 bg-amber-50 text-amber-700",
+  admin_reset: "border-rose-200 bg-rose-50 text-rose-700",
+};
+
+function PlanChangeLogView({ animalId }: { animalId: number }) {
+  const logQuery = trpc.productTrack.getPlanChangeLog.useQuery({ animalId });
+  const logs = (logQuery.data ?? []) as LogEntry[];
+
+  const formatDate = (dateStr: string) => {
+    const d = new Date(dateStr);
+    return d.toLocaleDateString("ru-RU", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
+  };
+
+  const renderSelections = (json: string | null) => {
+    if (!json) return null;
+    try {
+      const sels = JSON.parse(json) as Array<{ label?: string; annualUnits?: number; unit?: string; milkUsed?: number }>;
+      if (sels.length === 0) return <span className="text-muted-foreground italic">Пустой план</span>;
+      return (
+        <div className="flex flex-wrap gap-1.5 mt-1">
+          {sels.map((s, i) => (
+            <span key={i} className="inline-flex items-center rounded-full bg-secondary/50 px-2 py-0.5 text-xs">
+              {s.label}: {s.annualUnits} {s.unit}
+            </span>
+          ))}
+        </div>
+      );
+    } catch {
+      return null;
+    }
+  };
+
+  return (
+    <Card className="rounded-[2rem] border-border/70 shadow-sm">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <History className="h-5 w-5 text-primary" />
+          Лог изменений планов
+        </CardTitle>
+        <CardDescription>
+          История всех действий с продуктовыми планами владельцев.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        {logQuery.isLoading ? (
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Loader2 className="h-4 w-4 animate-spin" /> Загружаем лог…
+          </div>
+        ) : logs.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-border bg-secondary/20 px-5 py-8 text-center text-sm text-muted-foreground">
+            История изменений пуста.
+          </div>
+        ) : (
+          <div className="relative">
+            {/* Timeline line */}
+            <div className="absolute left-4 top-0 bottom-0 w-px bg-border" />
+
+            <div className="space-y-4">
+              {logs.map((entry) => (
+                <div key={entry.id} className="relative pl-10">
+                  {/* Timeline dot */}
+                  <div className={`absolute left-2.5 top-1.5 h-3 w-3 rounded-full border-2 ${
+                    entry.action === "admin_approved" ? "border-emerald-500 bg-emerald-100" :
+                    entry.action === "admin_modified" ? "border-amber-500 bg-amber-100" :
+                    entry.action === "admin_reset" ? "border-rose-500 bg-rose-100" :
+                    "border-blue-500 bg-blue-100"
+                  }`} />
+
+                  <div className="rounded-xl border border-border/60 bg-card p-3">
+                    <div className="flex items-center justify-between mb-1">
+                      <div className="flex items-center gap-2">
+                        <Badge className={`rounded-full border text-[10px] ${ACTION_COLORS[entry.action] ?? "border-stone-200 bg-stone-50 text-stone-500"}`}>
+                          {ACTION_LABELS[entry.action] ?? entry.action}
+                        </Badge>
+                        <span className="text-xs text-muted-foreground">
+                          {entry.actorName ?? entry.actorId}
+                        </span>
+                      </div>
+                      <span className="text-xs text-muted-foreground">{formatDate(entry.createdAt)}</span>
+                    </div>
+
+                    {entry.note && (
+                      <p className="text-xs text-muted-foreground mt-1 italic">«{entry.note}»</p>
+                    )}
+
+                    {entry.previousSelectionsJson && entry.newSelectionsJson && (
+                      <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                        <div>
+                          <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium">Было</p>
+                          {renderSelections(entry.previousSelectionsJson)}
+                        </div>
+                        <div>
+                          <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium">Стало</p>
+                          {renderSelections(entry.newSelectionsJson)}
+                        </div>
+                      </div>
+                    )}
+
+                    {!entry.previousSelectionsJson && entry.newSelectionsJson && (
+                      <div className="mt-2">
+                        <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium">План</p>
+                        {renderSelections(entry.newSelectionsJson)}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }

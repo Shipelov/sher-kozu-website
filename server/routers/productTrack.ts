@@ -26,6 +26,11 @@ import {
   getAnimalNameById,
   resetOwnerProductPlan,
   deleteDeliverySchedule,
+  submitPlanForApproval,
+  approveOwnerProductPlan,
+  logPlanChange,
+  listPlanChangeLog,
+  listAllPlanChangeLogs,
 } from "../db";
 import type { ProductOption } from "../../drizzle/schema";
 import { storagePut } from "../storage";
@@ -202,10 +207,10 @@ export const productTrackRouter = router({
   }),
 
   confirmPlan: protectedProcedure.input(ownerProductPlanInput).mutation(async ({ ctx, input }) => {
-    // Check if owner already has a confirmed plan
+    // Check if owner already has a non-draft plan
     const existing = await getOwnerProductPlan(ctx.user.openId, input.animalId);
     if (existing && existing.status !== "draft") {
-      throw new TRPCError({ code: "BAD_REQUEST", message: "Продуктовый план уже подтверждён. Для изменений обратитесь к администратору фермы." });
+      throw new TRPCError({ code: "BAD_REQUEST", message: "Продуктовый план уже отправлен на подтверждение. Для изменений обратитесь к администратору фермы." });
     }
 
     // Auto-resolve ownershipId from the database
@@ -234,28 +239,46 @@ export const productTrackRouter = router({
       throw new TRPCError({ code: "BAD_REQUEST", message: `Выбранные продукты требуют ${totalMilkUsed} л молока, но доступно только ${ownerMilkBudget} л (ваша доля ${sharePercent}%).` });
     }
 
-    const plan = await createOwnerProductPlan({
-      ownerOpenId: ctx.user.openId,
-      animalId: input.animalId,
-      ownershipId: resolvedOwnershipId,
-      selectionsJson: JSON.stringify(enrichedSelections),
-      totalMilkUsed,
-    });
+    let plan;
+    if (existing && existing.status === "draft") {
+      // Update existing draft plan to pending_approval
+      plan = await submitPlanForApproval(existing.id, JSON.stringify(enrichedSelections), totalMilkUsed);
+    } else {
+      // Create new plan with pending_approval status
+      plan = await createOwnerProductPlan({
+        ownerOpenId: ctx.user.openId,
+        animalId: input.animalId,
+        ownershipId: resolvedOwnershipId,
+        selectionsJson: JSON.stringify(enrichedSelections),
+        totalMilkUsed,
+      });
+    }
 
     if (!plan) {
       throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Не удалось сохранить продуктовый план." });
     }
 
-    // Auto-generate delivery schedule for current year
-    const currentYear = new Date().getFullYear();
-    await generateDeliverySchedule({
-      ownerOpenId: ctx.user.openId,
+    // Log the submission
+    await logPlanChange({
+      planId: plan.id,
       animalId: input.animalId,
-      ownershipId: resolvedOwnershipId,
-      productPlanId: plan.id,
-      selections: enrichedSelections,
-      year: currentYear,
+      ownerOpenId: ctx.user.openId,
+      actorId: ctx.user.openId,
+      action: existing?.status === "draft" ? "submitted" : "created",
+      previousStatus: existing?.status ?? null,
+      newStatus: "pending_approval",
+      selectionsSnapshot: JSON.stringify(enrichedSelections),
+      note: "Владелец отправил план на подтверждение",
     });
+
+    // Notify admin about new plan submission
+    const animalName = await getAnimalNameById(input.animalId);
+    notifyOwner({
+      title: `Новый план от ${ctx.user.name || "владельца"} (${animalName})`,
+      content: `Владелец отправил продуктовый план на подтверждение. Молоко: ${totalMilkUsed} л. Подтвердите в админ-панели.`,
+    }).catch(() => {});
+
+    // DO NOT generate delivery schedule yet — wait for admin approval
 
     return plan;
   }),
@@ -297,6 +320,19 @@ export const productTrackRouter = router({
       adminNotes: input.adminNotes,
     });
 
+    // Log the modification
+    await logPlanChange({
+      planId: input.planId,
+      animalId: existingPlan.animalId,
+      ownerOpenId: existingPlan.ownerOpenId,
+      actorId: "admin",
+      action: "modified",
+      previousStatus: existingPlan.status,
+      newStatus: "modified_by_admin",
+      selectionsSnapshot: JSON.stringify(enrichedSelections),
+      note: input.adminNotes || "Администратор изменил план",
+    });
+
     // Regenerate delivery schedule with new selections
     const currentYear = new Date().getFullYear();
     await generateDeliverySchedule({
@@ -328,6 +364,19 @@ export const productTrackRouter = router({
     // Delete existing delivery schedule since plan is reset
     await deleteDeliverySchedule(existingPlan.ownerOpenId, existingPlan.animalId);
 
+    // Log the reset
+    await logPlanChange({
+      planId: input.planId,
+      animalId: existingPlan.animalId,
+      ownerOpenId: existingPlan.ownerOpenId,
+      actorId: "admin",
+      action: "reset",
+      previousStatus: existingPlan.status,
+      newStatus: "draft",
+      selectionsSnapshot: existingPlan.selectionsJson,
+      note: "Администратор сбросил план для повторного выбора",
+    });
+
     return updatedPlan;
   }),
 
@@ -337,6 +386,67 @@ export const productTrackRouter = router({
       throw new TRPCError({ code: "FORBIDDEN", message: "Только администратор." });
     }
     return getOwnerProductPlanById(input.planId);
+  }),
+
+  // ── Admin: Approve owner's pending plan ──
+  adminApprovePlan: protectedProcedure.input(z.object({ planId: z.number().int().positive() })).mutation(async ({ ctx, input }) => {
+    if (ctx.user.role !== "admin") {
+      throw new TRPCError({ code: "FORBIDDEN", message: "Только администратор может подтверждать планы." });
+    }
+
+    const existingPlan = await getOwnerProductPlanById(input.planId);
+    if (!existingPlan) {
+      throw new TRPCError({ code: "NOT_FOUND", message: "План не найден." });
+    }
+
+    if (existingPlan.status !== "pending_approval") {
+      throw new TRPCError({ code: "BAD_REQUEST", message: "План не ожидает подтверждения." });
+    }
+
+    // Approve the plan
+    const approvedPlan = await approveOwnerProductPlan(input.planId);
+
+    // Log the approval
+    await logPlanChange({
+      planId: input.planId,
+      animalId: existingPlan.animalId,
+      ownerOpenId: existingPlan.ownerOpenId,
+      actorId: "admin",
+      action: "approved",
+      previousStatus: "pending_approval",
+      newStatus: "confirmed",
+      selectionsSnapshot: existingPlan.selectionsJson,
+      note: "Администратор подтвердил план",
+    });
+
+    // Generate delivery schedule now that plan is approved
+    const enrichedSelections = JSON.parse(existingPlan.selectionsJson);
+    const currentYear = new Date().getFullYear();
+    await generateDeliverySchedule({
+      ownerOpenId: existingPlan.ownerOpenId,
+      animalId: existingPlan.animalId,
+      ownershipId: existingPlan.ownershipId,
+      productPlanId: existingPlan.id,
+      selections: enrichedSelections,
+      year: currentYear,
+    });
+
+    return approvedPlan;
+  }),
+
+  // ── Plan Change Log ──
+  getPlanChangeLog: protectedProcedure.input(animalIdInput).query(async ({ ctx, input }) => {
+    if (ctx.user.role !== "admin") {
+      throw new TRPCError({ code: "FORBIDDEN", message: "Только администратор." });
+    }
+    return listPlanChangeLog(input.animalId);
+  }),
+
+  getAllPlanChangeLogs: protectedProcedure.query(async ({ ctx }) => {
+    if (ctx.user.role !== "admin") {
+      throw new TRPCError({ code: "FORBIDDEN", message: "Только администратор." });
+    }
+    return listAllPlanChangeLogs();
   }),
 
   // ── Delivery Schedule ──

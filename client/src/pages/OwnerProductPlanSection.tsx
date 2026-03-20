@@ -232,8 +232,8 @@ export default function OwnerProductPlanSection({
     onSuccess: () => {
       utils.productTrack.getMyPlan.invalidate({ animalId });
       utils.productTrack.getSchedule.invalidate();
-      toast.success("Продуктовый план подтверждён", {
-        description: "График доставки сформирован. Изменения возможны через чат с фермой.",
+      toast.success("План отправлен на подтверждение", {
+        description: "Ферма рассмотрит ваш план и подтвердит его. После подтверждения будет сформирован график доставки.",
       });
     },
     onError: (err: { message: string }) => toast.error(err.message),
@@ -308,7 +308,8 @@ export default function OwnerProductPlanSection({
     confirmPlan.mutate({ animalId, selections: selArray });
   };
 
-  const isLocked = existingPlan && (existingPlan.status === "confirmed" || existingPlan.status === "modified_by_admin");
+  const isPendingApproval = existingPlan?.status === "pending_approval";
+  const isLocked = existingPlan && (existingPlan.status === "confirmed" || existingPlan.status === "modified_by_admin" || existingPlan.status === "pending_approval");
   const isModifiedByAdmin = existingPlan?.status === "modified_by_admin";
   const isLoading = profileQuery.isLoading || optionsQuery.isLoading || planQuery.isLoading;
 
@@ -326,7 +327,12 @@ export default function OwnerProductPlanSection({
           <div className="flex items-center gap-3">
             <Package className="h-5 w-5 text-primary" />
             <h2 className="text-2xl font-semibold text-foreground">Мои продукты</h2>
-            {isLocked && !isModifiedByAdmin && (
+            {isPendingApproval && (
+              <Badge className="rounded-full border-blue-200 bg-blue-50 text-blue-700">
+                <Loader2 className="mr-1 h-3 w-3 animate-spin" /> Ожидает подтверждения
+              </Badge>
+            )}
+            {existingPlan?.status === "confirmed" && (
               <Badge className="rounded-full border-emerald-200 bg-emerald-50 text-emerald-700">
                 <Lock className="mr-1 h-3 w-3" /> План подтверждён
               </Badge>
@@ -367,14 +373,20 @@ export default function OwnerProductPlanSection({
                 <h3 className="text-lg font-semibold text-foreground">
                   {isLocked ? "Ваш продуктовый план" : "Выберите продукты"}
                 </h3>
-            {isLocked && !isModifiedByAdmin && (
+            {isPendingApproval && (
+              <div className="rounded-xl border border-blue-200 bg-blue-50 p-3 text-sm text-blue-800">
+                <p className="font-medium">⏳ План отправлен на подтверждение</p>
+                <p className="mt-1 text-xs text-blue-700">Ферма рассмотрит ваш выбор и подтвердит план. После подтверждения будет сформирован график доставки.</p>
+              </div>
+            )}
+            {existingPlan?.status === "confirmed" && (
               <p className="text-sm text-muted-foreground">
-                План зафиксирован. Для изменений свяжитесь с фермой через чат ниже.
+                План подтверждён фермой. Для изменений свяжитесь через чат ниже.
               </p>
             )}
             {isModifiedByAdmin && (
               <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
-                <p className="font-medium">✒️ План изменён администратором фермы</p>
+                <p className="font-medium">✏️ План изменён администратором фермы</p>
                 {existingPlan?.adminNotes && (
                   <p className="mt-1 text-xs text-amber-700">Причина: {existingPlan.adminNotes}</p>
                 )}
@@ -415,10 +427,10 @@ export default function OwnerProductPlanSection({
                       ) : (
                         <CheckCircle2 className="mr-2 h-4 w-4" />
                       )}
-                      Подтвердить план
+                      Отправить на подтверждение
                     </Button>
                     <p className="text-xs text-muted-foreground">
-                      После подтверждения план фиксируется. Изменения — только через админа.
+                      После отправки ферма рассмотрит ваш план и подтвердит его.
                     </p>
                   </div>
                 )}
