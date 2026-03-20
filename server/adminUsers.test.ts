@@ -91,7 +91,7 @@ describe("listUsersAdmin — DB helper", () => {
     ];
     // Find the listUsersAdmin function body
     const fnStart = dbSource.indexOf("export async function listUsersAdmin");
-    const fnBody = dbSource.slice(fnStart, fnStart + 3000);
+    const fnBody = dbSource.slice(fnStart, fnStart + 4000);
     for (const field of selectFields) {
       expect(fnBody).toContain(field);
     }

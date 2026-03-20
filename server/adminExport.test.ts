@@ -21,7 +21,7 @@ describe("exportUsersAdmin — server-side export function", () => {
   it("accepts filters without pagination params", () => {
     const exportSection = dbSrc.slice(
       dbSrc.indexOf("export async function exportUsersAdmin"),
-      dbSrc.indexOf("export async function exportUsersAdmin") + 2000,
+      dbSrc.indexOf("export async function exportUsersAdmin") + 3000,
     );
     expect(exportSection).toContain('Omit<ListUsersParams, "page" | "pageSize">');
   });
@@ -29,7 +29,7 @@ describe("exportUsersAdmin — server-side export function", () => {
   it("does NOT use limit or offset (returns all rows)", () => {
     const exportSection = dbSrc.slice(
       dbSrc.indexOf("export async function exportUsersAdmin"),
-      dbSrc.indexOf("export async function exportUsersAdmin") + 2000,
+      dbSrc.indexOf("export async function exportUsersAdmin") + 3000,
     );
     expect(exportSection).not.toContain(".limit(");
     expect(exportSection).not.toContain(".offset(");
@@ -38,7 +38,7 @@ describe("exportUsersAdmin — server-side export function", () => {
   it("selects key fields for export", () => {
     const exportSection = dbSrc.slice(
       dbSrc.indexOf("export async function exportUsersAdmin"),
-      dbSrc.indexOf("export async function exportUsersAdmin") + 2000,
+      dbSrc.indexOf("export async function exportUsersAdmin") + 3000,
     );
     expect(exportSection).toContain("users.id");
     expect(exportSection).toContain("users.name");
@@ -54,7 +54,7 @@ describe("exportUsersAdmin — server-side export function", () => {
   it("supports search filter", () => {
     const exportSection = dbSrc.slice(
       dbSrc.indexOf("export async function exportUsersAdmin"),
-      dbSrc.indexOf("export async function exportUsersAdmin") + 2000,
+      dbSrc.indexOf("export async function exportUsersAdmin") + 3000,
     );
     expect(exportSection).toContain("params.search");
     expect(exportSection).toContain("like(users.name, term)");
@@ -63,7 +63,7 @@ describe("exportUsersAdmin — server-side export function", () => {
   it("supports role filter", () => {
     const exportSection = dbSrc.slice(
       dbSrc.indexOf("export async function exportUsersAdmin"),
-      dbSrc.indexOf("export async function exportUsersAdmin") + 2000,
+      dbSrc.indexOf("export async function exportUsersAdmin") + 3000,
     );
     expect(exportSection).toContain("params.role");
   });
@@ -71,7 +71,7 @@ describe("exportUsersAdmin — server-side export function", () => {
   it("supports hasBitrix filter", () => {
     const exportSection = dbSrc.slice(
       dbSrc.indexOf("export async function exportUsersAdmin"),
-      dbSrc.indexOf("export async function exportUsersAdmin") + 2000,
+      dbSrc.indexOf("export async function exportUsersAdmin") + 3000,
     );
     expect(exportSection).toContain("params.hasBitrix");
   });

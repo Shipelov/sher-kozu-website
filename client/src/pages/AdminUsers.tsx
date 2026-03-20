@@ -89,6 +89,7 @@ export default function AdminUsers() {
   const [loginMethodFilter, setLoginMethodFilter] = useState<string>("all");
   const [bitrixFilter, setBitrixFilter] = useState<string>("all");
   const [passwordFilter, setPasswordFilter] = useState<string>("all");
+  const [lastLoginFilter, setLastLoginFilter] = useState<string>("all");
   const [sortBy, setSortBy] = useState<string>("createdAt");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
 
@@ -133,6 +134,10 @@ export default function AdminUsers() {
           : passwordFilter === "no"
             ? false
             : undefined,
+      lastLogin:
+        lastLoginFilter !== "all"
+          ? (lastLoginFilter as "today" | "week" | "month" | "inactive" | "never")
+          : undefined,
       sortBy: sortBy as "createdAt" | "name" | "email" | "lastSignedIn",
       sortOrder,
     }),
@@ -144,6 +149,7 @@ export default function AdminUsers() {
       loginMethodFilter,
       bitrixFilter,
       passwordFilter,
+      lastLoginFilter,
       sortBy,
       sortOrder,
     ],
@@ -263,10 +269,14 @@ export default function AdminUsers() {
           : passwordFilter === "no"
             ? false
             : undefined,
+      lastLogin:
+        lastLoginFilter !== "all"
+          ? (lastLoginFilter as "today" | "week" | "month" | "inactive" | "never")
+          : undefined,
       sortBy: sortBy as "createdAt" | "name" | "email" | "lastSignedIn",
       sortOrder,
     }),
-    [debouncedSearch, roleFilter, loginMethodFilter, bitrixFilter, passwordFilter, sortBy, sortOrder],
+    [debouncedSearch, roleFilter, loginMethodFilter, bitrixFilter, passwordFilter, lastLoginFilter, sortBy, sortOrder],
   );
 
   const [exporting, setExporting] = useState<"csv" | "xlsx" | null>(null);
@@ -382,6 +392,7 @@ export default function AdminUsers() {
     loginMethodFilter !== "all" ||
     bitrixFilter !== "all" ||
     passwordFilter !== "all" ||
+    lastLoginFilter !== "all" ||
     search !== "";
 
   const clearFilters = () => {
@@ -391,6 +402,7 @@ export default function AdminUsers() {
     setLoginMethodFilter("all");
     setBitrixFilter("all");
     setPasswordFilter("all");
+    setLastLoginFilter("all");
     setPage(1);
   };
 
@@ -638,6 +650,23 @@ export default function AdminUsers() {
                   <SelectItem value="all">Все (пароль)</SelectItem>
                   <SelectItem value="yes">Есть пароль</SelectItem>
                   <SelectItem value="no">Без пароля</SelectItem>
+                </SelectContent>
+              </Select>
+
+              <Select
+                value={lastLoginFilter}
+                onValueChange={handleFilterChange(setLastLoginFilter)}
+              >
+                <SelectTrigger className="w-[180px] rounded-xl h-9 text-sm">
+                  <SelectValue placeholder="Последний вход" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Все (вход)</SelectItem>
+                  <SelectItem value="today">Сегодня</SelectItem>
+                  <SelectItem value="week">За неделю</SelectItem>
+                  <SelectItem value="month">За месяц</SelectItem>
+                  <SelectItem value="inactive">Неактивные (&gt;30 дн.)</SelectItem>
+                  <SelectItem value="never">Никогда не входили</SelectItem>
                 </SelectContent>
               </Select>
 

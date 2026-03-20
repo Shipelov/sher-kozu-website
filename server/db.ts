@@ -3015,6 +3015,7 @@ export type ListUsersParams = {
   loginMethod?: string;
   hasBitrix?: boolean;
   hasPassword?: boolean;
+  lastLogin?: "today" | "week" | "month" | "inactive" | "never";
   sortBy?: "createdAt" | "name" | "email" | "lastSignedIn";
   sortOrder?: "asc" | "desc";
 };
@@ -3059,6 +3060,31 @@ export async function listUsersAdmin(params: ListUsersParams) {
     conditions.push(isNotNull(users.passwordHash));
   } else if (params.hasPassword === false) {
     conditions.push(isNull(users.passwordHash));
+  }
+
+  // Last login filter
+  if (params.lastLogin) {
+    const now = new Date();
+    if (params.lastLogin === "today") {
+      const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      conditions.push(gte(users.lastSignedIn, startOfDay));
+    } else if (params.lastLogin === "week") {
+      const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+      conditions.push(gte(users.lastSignedIn, weekAgo));
+    } else if (params.lastLogin === "month") {
+      const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+      conditions.push(gte(users.lastSignedIn, monthAgo));
+    } else if (params.lastLogin === "inactive") {
+      const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+      conditions.push(
+        and(
+          isNotNull(users.lastSignedIn),
+          lte(users.lastSignedIn, monthAgo),
+        )!,
+      );
+    } else if (params.lastLogin === "never") {
+      conditions.push(isNull(users.lastSignedIn));
+    }
   }
 
   const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
@@ -3147,6 +3173,31 @@ export async function exportUsersAdmin(params: Omit<ListUsersParams, "page" | "p
     conditions.push(isNotNull(users.passwordHash));
   } else if (params.hasPassword === false) {
     conditions.push(isNull(users.passwordHash));
+  }
+
+  // Last login filter
+  if (params.lastLogin) {
+    const now = new Date();
+    if (params.lastLogin === "today") {
+      const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      conditions.push(gte(users.lastSignedIn, startOfDay));
+    } else if (params.lastLogin === "week") {
+      const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+      conditions.push(gte(users.lastSignedIn, weekAgo));
+    } else if (params.lastLogin === "month") {
+      const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+      conditions.push(gte(users.lastSignedIn, monthAgo));
+    } else if (params.lastLogin === "inactive") {
+      const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+      conditions.push(
+        and(
+          isNotNull(users.lastSignedIn),
+          lte(users.lastSignedIn, monthAgo),
+        )!,
+      );
+    } else if (params.lastLogin === "never") {
+      conditions.push(isNull(users.lastSignedIn));
+    }
   }
 
   const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
