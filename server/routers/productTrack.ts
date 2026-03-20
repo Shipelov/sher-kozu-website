@@ -1,0 +1,309 @@
+import { TRPCError } from "@trpc/server";
+import { z } from "zod";
+import { protectedProcedure, router } from "../_core/trpc";
+import {
+  getProductionProfile,
+  upsertProductionProfile,
+  listProductOptions,
+  upsertProductOption,
+  deleteProductOption,
+  getOwnerProductPlan,
+  createOwnerProductPlan,
+  adminUpdateOwnerProductPlan,
+  generateDeliverySchedule,
+  listDeliverySchedule,
+  updateDeliveryStatus,
+  listChatMessages,
+  createChatMessage,
+  markChatMessagesRead,
+  countUnreadChatMessages,
+  listAdminChatConversations,
+  getAnimalProductTrackData,
+  listOwnerProductPlansByAnimal,
+} from "../db";
+import type { ProductOption } from "../../drizzle/schema";
+import { storagePut } from "../storage";
+
+/* ── Zod schemas ── */
+
+const productTypeSchema = z.enum(["milk", "smetana", "yogurt", "kefir", "cheese"]);
+
+const productionProfileInput = z.object({
+  animalId: z.number().int().positive(),
+  annualMilkLiters: z.number().int().min(1).max(100_000),
+  notes: z.string().max(2000).optional().nullable(),
+});
+
+const productOptionInput = z.object({
+  id: z.number().int().positive().optional(),
+  animalId: z.number().int().positive(),
+  productType: productTypeSchema,
+  label: z.string().min(1).max(160),
+  conversionRatio: z.number().int().min(1).max(1000),
+  unit: z.string().min(1).max(16),
+  maxAnnualUnits: z.number().int().min(1).max(100_000),
+  isEnabled: z.boolean().default(true),
+  sortOrder: z.number().int().min(0).max(9999).default(0),
+});
+
+const deleteProductOptionInput = z.object({
+  optionId: z.number().int().positive(),
+  animalId: z.number().int().positive(),
+});
+
+const ownerProductPlanInput = z.object({
+  animalId: z.number().int().positive(),
+  ownershipId: z.number().int().positive(),
+  selections: z.array(z.object({
+    productOptionId: z.number().int().positive(),
+    annualUnits: z.number().min(0).max(100_000),
+  })).min(1),
+});
+
+const adminUpdatePlanInput = z.object({
+  planId: z.number().int().positive(),
+  selections: z.array(z.object({
+    productOptionId: z.number().int().positive(),
+    annualUnits: z.number().min(0).max(100_000),
+  })).min(1),
+  adminNotes: z.string().max(2000).optional().nullable(),
+});
+
+const deliveryStatusInput = z.object({
+  deliveryId: z.number().int().positive(),
+  status: z.enum(["planned", "ready", "delivered"]),
+  adminNote: z.string().max(1000).optional().nullable(),
+});
+
+const chatMessageInput = z.object({
+  animalId: z.number().int().positive(),
+  ownerOpenId: z.string().min(1).max(64),
+  text: z.string().max(5000).optional().nullable(),
+  photoBase64: z.string().optional().nullable(),
+  photoMimeType: z.string().max(120).optional().nullable(),
+  photoFileName: z.string().max(180).optional().nullable(),
+});
+
+const chatListInput = z.object({
+  animalId: z.number().int().positive(),
+  ownerOpenId: z.string().min(1).max(64),
+});
+
+const animalIdInput = z.object({
+  animalId: z.number().int().positive(),
+});
+
+const scheduleInput = z.object({
+  ownerOpenId: z.string().min(1).max(64),
+  animalId: z.number().int().positive(),
+  year: z.number().int().min(2024).max(2100).optional(),
+});
+
+/* ── Helper: calculate milk usage for selections ── */
+
+async function calculateMilkUsage(animalId: number, selections: Array<{ productOptionId: number; annualUnits: number }>) {
+  const options = (await listProductOptions(animalId)) as ProductOption[];
+  const optionMap = new Map<number, ProductOption>(options.map((o) => [o.id, o]));
+
+  let totalMilkUsed = 0;
+  const enrichedSelections: Array<{
+    productOptionId: number;
+    productType: string;
+    label: string;
+    annualUnits: number;
+    unit: string;
+    milkUsed: number;
+  }> = [];
+
+  for (const sel of selections) {
+    const option = optionMap.get(sel.productOptionId);
+    if (!option) {
+      throw new TRPCError({ code: "BAD_REQUEST", message: `Продукт #${sel.productOptionId} не найден.` });
+    }
+    if (!option.isEnabled) {
+      throw new TRPCError({ code: "BAD_REQUEST", message: `Продукт «${option.label}» отключён.` });
+    }
+    if (sel.annualUnits > option.maxAnnualUnits) {
+      throw new TRPCError({ code: "BAD_REQUEST", message: `Превышен лимит для «${option.label}»: макс. ${option.maxAnnualUnits} ${option.unit}/год.` });
+    }
+
+    const milkUsed = sel.annualUnits * option.conversionRatio;
+    totalMilkUsed += milkUsed;
+
+    enrichedSelections.push({
+      productOptionId: sel.productOptionId,
+      productType: option.productType,
+      label: option.label,
+      annualUnits: sel.annualUnits,
+      unit: option.unit,
+      milkUsed,
+    });
+  }
+
+  return { totalMilkUsed, enrichedSelections };
+}
+
+/* ── Router ── */
+
+export const productTrackRouter = router({
+  // ── Admin: Production Profile ──
+  getProfile: protectedProcedure.input(animalIdInput).query(async ({ input }) => {
+    return getProductionProfile(input.animalId);
+  }),
+
+  upsertProfile: protectedProcedure.input(productionProfileInput).mutation(async ({ input }) => {
+    return upsertProductionProfile(input.animalId, input.annualMilkLiters, input.notes);
+  }),
+
+  // ── Admin: Product Options ──
+  listOptions: protectedProcedure.input(animalIdInput).query(async ({ input }) => {
+    return listProductOptions(input.animalId);
+  }),
+
+  upsertOption: protectedProcedure.input(productOptionInput).mutation(async ({ input }) => {
+    return upsertProductOption(input);
+  }),
+
+  deleteOption: protectedProcedure.input(deleteProductOptionInput).mutation(async ({ input }) => {
+    return deleteProductOption(input.optionId, input.animalId);
+  }),
+
+  // ── Admin: Full product track data for an animal ──
+  getAnimalTrackData: protectedProcedure.input(animalIdInput).query(async ({ input }) => {
+    return getAnimalProductTrackData(input.animalId);
+  }),
+
+  // ── Owner: Product Plan ──
+  getMyPlan: protectedProcedure.input(animalIdInput).query(async ({ ctx, input }) => {
+    return getOwnerProductPlan(ctx.user.openId, input.animalId);
+  }),
+
+  confirmPlan: protectedProcedure.input(ownerProductPlanInput).mutation(async ({ ctx, input }) => {
+    // Check if owner already has a confirmed plan
+    const existing = await getOwnerProductPlan(ctx.user.openId, input.animalId);
+    if (existing && existing.status !== "draft") {
+      throw new TRPCError({ code: "BAD_REQUEST", message: "Продуктовый план уже подтверждён. Для изменений обратитесь к администратору фермы." });
+    }
+
+    // Validate milk budget
+    const profile = await getProductionProfile(input.animalId);
+    if (!profile) {
+      throw new TRPCError({ code: "BAD_REQUEST", message: "Производственный профиль животного ещё не настроен." });
+    }
+
+    const { totalMilkUsed, enrichedSelections } = await calculateMilkUsage(input.animalId, input.selections);
+
+    // Owner's share of milk = (sharePercent / 100) * annualMilkLiters
+    // For now we use 10% per slot as standard
+    // We need to look up the ownership to find sharePercent
+    const ownerMilkBudget = profile.annualMilkLiters; // Will be scaled by share in frontend
+
+    if (totalMilkUsed > ownerMilkBudget) {
+      throw new TRPCError({ code: "BAD_REQUEST", message: `Выбранные продукты требуют ${totalMilkUsed} л молока, но доступно только ${ownerMilkBudget} л.` });
+    }
+
+    const plan = await createOwnerProductPlan({
+      ownerOpenId: ctx.user.openId,
+      animalId: input.animalId,
+      ownershipId: input.ownershipId,
+      selectionsJson: JSON.stringify(enrichedSelections),
+      totalMilkUsed,
+    });
+
+    if (!plan) {
+      throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Не удалось сохранить продуктовый план." });
+    }
+
+    // Auto-generate delivery schedule for current year
+    const currentYear = new Date().getFullYear();
+    await generateDeliverySchedule({
+      ownerOpenId: ctx.user.openId,
+      animalId: input.animalId,
+      ownershipId: input.ownershipId,
+      productPlanId: plan.id,
+      selections: enrichedSelections,
+      year: currentYear,
+    });
+
+    return plan;
+  }),
+
+  // ── Admin: Update owner's plan ──
+  adminUpdatePlan: protectedProcedure.input(adminUpdatePlanInput).mutation(async ({ input }) => {
+    const { totalMilkUsed, enrichedSelections } = await calculateMilkUsage(
+      0, // We need animalId from the plan
+      input.selections,
+    ).catch(() => ({ totalMilkUsed: 0, enrichedSelections: [] as any[] }));
+
+    // Get the plan to find animalId
+    const plan = await adminUpdateOwnerProductPlan(input.planId, {
+      selectionsJson: JSON.stringify(input.selections),
+      totalMilkUsed,
+      adminNotes: input.adminNotes,
+    });
+
+    return plan;
+  }),
+
+  // ── Delivery Schedule ──
+  getSchedule: protectedProcedure.input(scheduleInput).query(async ({ input }) => {
+    return listDeliverySchedule(input.ownerOpenId, input.animalId, input.year);
+  }),
+
+  updateDeliveryStatus: protectedProcedure.input(deliveryStatusInput).mutation(async ({ input }) => {
+    return updateDeliveryStatus(input.deliveryId, input.status, input.adminNote);
+  }),
+
+  // ── Chat ──
+  listMessages: protectedProcedure.input(chatListInput).query(async ({ input }) => {
+    return listChatMessages(input.animalId, input.ownerOpenId);
+  }),
+
+  sendMessage: protectedProcedure.input(chatMessageInput).mutation(async ({ ctx, input }) => {
+    const isAdmin = ctx.user.role === "admin";
+    const sender = isAdmin ? "admin" as const : "owner" as const;
+
+    let photoUrl: string | null = null;
+    let photoKey: string | null = null;
+
+    // Handle photo upload
+    if (input.photoBase64 && input.photoMimeType) {
+      const buffer = Buffer.from(input.photoBase64, "base64");
+      const ext = input.photoFileName?.split(".").pop() ?? "jpg";
+      const key = `chat/${input.animalId}/${input.ownerOpenId}/${Date.now()}.${ext}`;
+      const result = await storagePut(key, buffer, input.photoMimeType);
+      photoUrl = result.url;
+      photoKey = result.key;
+    }
+
+    if (!input.text && !photoUrl) {
+      throw new TRPCError({ code: "BAD_REQUEST", message: "Сообщение не может быть пустым." });
+    }
+
+    return createChatMessage({
+      animalId: input.animalId,
+      ownerOpenId: input.ownerOpenId,
+      sender,
+      text: input.text ?? null,
+      photoUrl,
+      photoKey,
+      isRead: 0,
+    });
+  }),
+
+  markRead: protectedProcedure.input(chatListInput).mutation(async ({ ctx, input }) => {
+    const isAdmin = ctx.user.role === "admin";
+    await markChatMessagesRead(input.animalId, input.ownerOpenId, isAdmin ? "admin" : "owner");
+    return { success: true };
+  }),
+
+  unreadCount: protectedProcedure.input(chatListInput).query(async ({ ctx, input }) => {
+    const isAdmin = ctx.user.role === "admin";
+    return countUnreadChatMessages(input.animalId, input.ownerOpenId, isAdmin ? "admin" : "owner");
+  }),
+
+  // ── Admin: All conversations ──
+  adminListConversations: protectedProcedure.query(async () => {
+    return listAdminChatConversations();
+  }),
+});

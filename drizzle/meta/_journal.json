@@ -57,6 +57,13 @@
       "when": 1773673039743,
       "tag": "0007_hot_captain_marvel",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "5",
+      "when": 1773996000821,
+      "tag": "0008_bizarre_randall_flagg",
+      "breakpoints": true
     }
   ]
 }

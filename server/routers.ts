@@ -51,6 +51,7 @@ import {
 import { storagePut } from "./storage";
 import { isBitrixConfigured, pullBitrixDealSnapshot, syncPartnerLeadToBitrix } from "./bitrix24";
 import { runDiagnostics } from "./diagnostics";
+import { productTrackRouter } from "./routers/productTrack";
 
 const uploadPhotoInput = z.object({
   animalSlug: z.string().min(1).max(64),
@@ -846,6 +847,7 @@ export const appRouter = router({
       return deleteClubAdminPreset(input.id, ctx.user.openId);
     }),
   }),
+  productTrack: productTrackRouter,
   adminOwnerships: router({
     listByAnimal: protectedProcedure.input(z.object({ animalId: z.number().int().positive() })).query(async ({ input }) => {
       return listAnimalOwnerships(input.animalId);

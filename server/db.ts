@@ -33,6 +33,16 @@ import {
   productMonthlyMetrics,
   users,
   wallets,
+  animalProductionProfiles,
+  productOptions,
+  ownerProductPlans,
+  deliverySchedule,
+  chatMessages,
+  InsertAnimalProductionProfile,
+  InsertProductOption,
+  InsertOwnerProductPlan,
+  InsertDeliveryScheduleEntry,
+  InsertChatMessage,
 } from "../drizzle/schema";
 import { ENV } from "./_core/env";
 
@@ -2282,4 +2292,351 @@ export async function buildShareDistribution(animalId: number) {
     slots: entry.slots,
     planLabel: entry.planLabel,
   }));
+}
+
+
+/* ───────────────────────────────────────────────
+   Product Track — query helpers
+   ─────────────────────────────────────────────── */
+
+// ── Admin: Production Profile ──
+
+export async function getProductionProfile(animalId: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const rows = await db.select().from(animalProductionProfiles).where(eq(animalProductionProfiles.animalId, animalId)).limit(1);
+  return rows[0] ?? null;
+}
+
+export async function upsertProductionProfile(animalId: number, annualMilkLiters: number, notes?: string | null) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  const existing = await getProductionProfile(animalId);
+  if (existing) {
+    await db.update(animalProductionProfiles)
+      .set({ annualMilkLiters, notes: notes ?? null })
+      .where(eq(animalProductionProfiles.id, existing.id));
+    return { ...existing, annualMilkLiters, notes: notes ?? null };
+  }
+
+  const [result] = await db.insert(animalProductionProfiles).values({ animalId, annualMilkLiters, notes: notes ?? null });
+  return { id: result.insertId, animalId, annualMilkLiters, notes: notes ?? null };
+}
+
+// ── Admin: Product Options ──
+
+export async function listProductOptions(animalId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(productOptions).where(eq(productOptions.animalId, animalId)).orderBy(asc(productOptions.sortOrder));
+}
+
+export async function upsertProductOption(input: {
+  id?: number;
+  animalId: number;
+  productType: "milk" | "smetana" | "yogurt" | "kefir" | "cheese";
+  label: string;
+  conversionRatio: number;
+  unit: string;
+  maxAnnualUnits: number;
+  isEnabled?: boolean;
+  sortOrder?: number;
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  if (input.id) {
+    await db.update(productOptions).set({
+      productType: input.productType,
+      label: input.label,
+      conversionRatio: input.conversionRatio,
+      unit: input.unit,
+      maxAnnualUnits: input.maxAnnualUnits,
+      isEnabled: input.isEnabled === false ? 0 : 1,
+      sortOrder: input.sortOrder ?? 0,
+    }).where(and(eq(productOptions.id, input.id), eq(productOptions.animalId, input.animalId)));
+    const updated = await db.select().from(productOptions).where(eq(productOptions.id, input.id)).limit(1);
+    return updated[0] ?? null;
+  }
+
+  const [result] = await db.insert(productOptions).values({
+    animalId: input.animalId,
+    productType: input.productType,
+    label: input.label,
+    conversionRatio: input.conversionRatio,
+    unit: input.unit,
+    maxAnnualUnits: input.maxAnnualUnits,
+    isEnabled: input.isEnabled === false ? 0 : 1,
+    sortOrder: input.sortOrder ?? 0,
+  });
+  const created = await db.select().from(productOptions).where(eq(productOptions.id, result.insertId)).limit(1);
+  return created[0] ?? null;
+}
+
+export async function deleteProductOption(optionId: number, animalId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.delete(productOptions).where(and(eq(productOptions.id, optionId), eq(productOptions.animalId, animalId)));
+  return { success: true };
+}
+
+// ── Owner: Product Plan ──
+
+export async function getOwnerProductPlan(ownerOpenId: string, animalId: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const rows = await db.select().from(ownerProductPlans)
+    .where(and(eq(ownerProductPlans.ownerOpenId, ownerOpenId), eq(ownerProductPlans.animalId, animalId)))
+    .orderBy(desc(ownerProductPlans.createdAt))
+    .limit(1);
+  return rows[0] ?? null;
+}
+
+export async function createOwnerProductPlan(input: {
+  ownerOpenId: string;
+  animalId: number;
+  ownershipId: number;
+  selectionsJson: string;
+  totalMilkUsed: number;
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  const [result] = await db.insert(ownerProductPlans).values({
+    ownerOpenId: input.ownerOpenId,
+    animalId: input.animalId,
+    ownershipId: input.ownershipId,
+    status: "confirmed",
+    selectionsJson: input.selectionsJson,
+    totalMilkUsed: input.totalMilkUsed,
+    confirmedAt: new Date(),
+  });
+
+  const created = await db.select().from(ownerProductPlans).where(eq(ownerProductPlans.id, result.insertId)).limit(1);
+  return created[0] ?? null;
+}
+
+export async function adminUpdateOwnerProductPlan(planId: number, input: {
+  selectionsJson: string;
+  totalMilkUsed: number;
+  adminNotes?: string | null;
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  await db.update(ownerProductPlans).set({
+    status: "modified_by_admin",
+    selectionsJson: input.selectionsJson,
+    totalMilkUsed: input.totalMilkUsed,
+    adminNotes: input.adminNotes ?? null,
+  }).where(eq(ownerProductPlans.id, planId));
+
+  const updated = await db.select().from(ownerProductPlans).where(eq(ownerProductPlans.id, planId)).limit(1);
+  return updated[0] ?? null;
+}
+
+// ── Delivery Schedule ──
+
+export async function generateDeliverySchedule(input: {
+  ownerOpenId: string;
+  animalId: number;
+  ownershipId: number;
+  productPlanId: number;
+  selections: Array<{ productType: string; label: string; annualUnits: number; unit: string }>;
+  year: number;
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  // Delete existing schedule for this plan + year
+  await db.delete(deliverySchedule).where(
+    and(
+      eq(deliverySchedule.productPlanId, input.productPlanId),
+      eq(deliverySchedule.year, input.year),
+    ),
+  );
+
+  // Equal monthly distribution
+  const entries: InsertDeliveryScheduleEntry[] = [];
+  for (let month = 1; month <= 12; month++) {
+    const items = input.selections.map((sel) => ({
+      productType: sel.productType,
+      label: sel.label,
+      quantity: Math.round((sel.annualUnits / 12) * 100) / 100,
+      unit: sel.unit,
+    }));
+
+    entries.push({
+      ownerOpenId: input.ownerOpenId,
+      animalId: input.animalId,
+      ownershipId: input.ownershipId,
+      productPlanId: input.productPlanId,
+      month,
+      year: input.year,
+      itemsJson: JSON.stringify(items),
+      status: "planned",
+    });
+  }
+
+  if (entries.length > 0) {
+    await db.insert(deliverySchedule).values(entries);
+  }
+
+  return listDeliverySchedule(input.ownerOpenId, input.animalId, input.year);
+}
+
+export async function listDeliverySchedule(ownerOpenId: string, animalId: number, year?: number) {
+  const db = await getDb();
+  if (!db) return [];
+
+  const conditions = [
+    eq(deliverySchedule.ownerOpenId, ownerOpenId),
+    eq(deliverySchedule.animalId, animalId),
+  ];
+  if (year) {
+    conditions.push(eq(deliverySchedule.year, year));
+  }
+
+  return db.select().from(deliverySchedule)
+    .where(and(...conditions))
+    .orderBy(asc(deliverySchedule.year), asc(deliverySchedule.month));
+}
+
+export async function updateDeliveryStatus(deliveryId: number, status: "planned" | "ready" | "delivered", adminNote?: string | null) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  await db.update(deliverySchedule).set({
+    status,
+    deliveredAt: status === "delivered" ? new Date() : null,
+    adminNote: adminNote ?? null,
+  }).where(eq(deliverySchedule.id, deliveryId));
+
+  const updated = await db.select().from(deliverySchedule).where(eq(deliverySchedule.id, deliveryId)).limit(1);
+  return updated[0] ?? null;
+}
+
+// ── Chat Messages ──
+
+export async function listChatMessages(animalId: number, ownerOpenId: string, limit = 100) {
+  const db = await getDb();
+  if (!db) return [];
+
+  return db.select().from(chatMessages)
+    .where(and(eq(chatMessages.animalId, animalId), eq(chatMessages.ownerOpenId, ownerOpenId)))
+    .orderBy(asc(chatMessages.createdAt))
+    .limit(limit);
+}
+
+export async function createChatMessage(input: InsertChatMessage) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  const [result] = await db.insert(chatMessages).values(input);
+  const created = await db.select().from(chatMessages).where(eq(chatMessages.id, result.insertId)).limit(1);
+  return created[0] ?? null;
+}
+
+export async function markChatMessagesRead(animalId: number, ownerOpenId: string, readerRole: "owner" | "admin") {
+  const db = await getDb();
+  if (!db) return;
+
+  // Mark messages from the OTHER party as read
+  const senderToMark = readerRole === "owner" ? "admin" : "owner";
+  await db.update(chatMessages).set({ isRead: 1 }).where(
+    and(
+      eq(chatMessages.animalId, animalId),
+      eq(chatMessages.ownerOpenId, ownerOpenId),
+      eq(chatMessages.sender, senderToMark),
+      eq(chatMessages.isRead, 0),
+    ),
+  );
+}
+
+export async function countUnreadChatMessages(animalId: number, ownerOpenId: string, forRole: "owner" | "admin") {
+  const db = await getDb();
+  if (!db) return 0;
+
+  const senderToCount = forRole === "owner" ? "admin" : "owner";
+  const rows = await db.select({ count: sql<number>`count(*)` }).from(chatMessages).where(
+    and(
+      eq(chatMessages.animalId, animalId),
+      eq(chatMessages.ownerOpenId, ownerOpenId),
+      eq(chatMessages.sender, senderToCount),
+      eq(chatMessages.isRead, 0),
+    ),
+  );
+  return rows[0]?.count ?? 0;
+}
+
+/** Admin: list all conversations (one per animal+owner pair) with unread counts */
+export async function listAdminChatConversations() {
+  const db = await getDb();
+  if (!db) return [];
+
+  const rows = await db.select({
+    animalId: chatMessages.animalId,
+    ownerOpenId: chatMessages.ownerOpenId,
+    lastMessageAt: sql<Date>`MAX(${chatMessages.createdAt})`,
+    totalMessages: sql<number>`COUNT(*)`,
+    unreadCount: sql<number>`SUM(CASE WHEN ${chatMessages.sender} = 'owner' AND ${chatMessages.isRead} = 0 THEN 1 ELSE 0 END)`,
+  }).from(chatMessages)
+    .groupBy(chatMessages.animalId, chatMessages.ownerOpenId)
+    .orderBy(desc(sql`MAX(${chatMessages.createdAt})`));
+
+  // Enrich with animal name and owner name
+  const enriched = [];
+  for (const row of rows) {
+    const animalRow = await db.select({ name: animals.name, slug: animals.slug }).from(animals).where(eq(animals.id, row.animalId)).limit(1);
+    const userRow = await db.select({ name: users.name }).from(users).where(eq(users.openId, row.ownerOpenId)).limit(1);
+    enriched.push({
+      animalId: row.animalId,
+      animalName: animalRow[0]?.name ?? "—",
+      animalSlug: animalRow[0]?.slug ?? "",
+      ownerOpenId: row.ownerOpenId,
+      ownerName: userRow[0]?.name ?? "Владелец",
+      lastMessageAt: row.lastMessageAt,
+      totalMessages: row.totalMessages,
+      unreadCount: row.unreadCount ?? 0,
+    });
+  }
+
+  return enriched;
+}
+
+// ── Admin: list all owner product plans for an animal ──
+
+export async function listOwnerProductPlansByAnimal(animalId: number) {
+  const db = await getDb();
+  if (!db) return [];
+
+  const rows = await db.select({
+    plan: ownerProductPlans,
+    ownerName: users.name,
+    familyName: families.name,
+  })
+    .from(ownerProductPlans)
+    .leftJoin(users, eq(ownerProductPlans.ownerOpenId, users.openId))
+    .leftJoin(animalOwnerships, eq(ownerProductPlans.ownershipId, animalOwnerships.id))
+    .leftJoin(families, eq(animalOwnerships.familyId, families.id))
+    .where(eq(ownerProductPlans.animalId, animalId))
+    .orderBy(desc(ownerProductPlans.createdAt));
+
+  return rows.map((r: any) => ({
+    ...r.plan,
+    ownerName: r.ownerName ?? "Владелец",
+    familyName: r.familyName ?? "—",
+  }));
+}
+
+/** Get full product track data for an animal (admin view) */
+export async function getAnimalProductTrackData(animalId: number) {
+  const [profile, options, ownerPlans] = await Promise.all([
+    getProductionProfile(animalId),
+    listProductOptions(animalId),
+    listOwnerProductPlansByAnimal(animalId),
+  ]);
+
+  return { profile, options, ownerPlans };
 }

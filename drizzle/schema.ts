@@ -395,3 +395,134 @@ export type InsertPartnerLead = typeof partnerLeads.$inferInsert;
 
 export type IntegrationAudit = typeof integrationAudits.$inferSelect;
 export type InsertIntegrationAudit = typeof integrationAudits.$inferInsert;
+
+/* ───────────────────────────────────────────────
+   Product Track — production profiles, product options,
+   owner product plans, delivery schedule, chat
+   ─────────────────────────────────────────────── */
+
+export const productTypeEnum = mysqlEnum("productType", ["milk", "smetana", "yogurt", "kefir", "cheese"]);
+export const ownerProductPlanStatusEnum = mysqlEnum("ownerProductPlanStatus", ["draft", "confirmed", "modified_by_admin"]);
+export const deliveryStatusEnum = mysqlEnum("deliveryStatus", ["planned", "ready", "delivered"]);
+export const chatMessageSenderEnum = mysqlEnum("chatMessageSender", ["owner", "admin"]);
+
+/**
+ * Per-animal production profile set by admin.
+ * Defines annual milk yield and available product conversions.
+ */
+export const animalProductionProfiles = mysqlTable("animalProductionProfiles", {
+  id: int("id").autoincrement().primaryKey(),
+  animalId: int("animalId").notNull(),
+  /** Total annual milk yield in liters for this animal */
+  annualMilkLiters: int("annualMilkLiters").notNull(),
+  /** JSON notes from admin (optional) */
+  notes: text("notes"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+/**
+ * Available product options for an animal.
+ * Each row = one product type the admin has enabled.
+ * conversionRatio: how many liters of milk to produce 1 unit (liter or kg) of product.
+ * maxAnnualUnits: admin-set cap on annual production for this product.
+ */
+export const productOptions = mysqlTable("productOptions", {
+  id: int("id").autoincrement().primaryKey(),
+  animalId: int("animalId").notNull(),
+  productType: productTypeEnum.notNull(),
+  /** Human-readable label, e.g. "Козий сыр", "Кефир из козьего молока" */
+  label: varchar("label", { length: 160 }).notNull(),
+  /** Liters of milk needed to produce 1 unit (liter or kg) */
+  conversionRatio: int("conversionRatio").notNull(),
+  /** Unit of measurement for the product: "л" or "кг" */
+  unit: varchar("unit", { length: 16 }).default("л").notNull(),
+  /** Max annual production in units */
+  maxAnnualUnits: int("maxAnnualUnits").notNull(),
+  /** Is this option currently enabled for selection? */
+  isEnabled: int("isEnabled").default(1).notNull(),
+  sortOrder: int("sortOrder").default(0).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+/**
+ * Owner's chosen product plan for a specific animal ownership.
+ * Created when owner first selects products. After confirmation,
+ * changes only through admin (status → modified_by_admin).
+ */
+export const ownerProductPlans = mysqlTable("ownerProductPlans", {
+  id: int("id").autoincrement().primaryKey(),
+  ownerOpenId: varchar("ownerOpenId", { length: 64 }).notNull(),
+  animalId: int("animalId").notNull(),
+  ownershipId: int("ownershipId").notNull(),
+  status: ownerProductPlanStatusEnum.default("draft").notNull(),
+  /** JSON array of selections: [{productOptionId, annualUnits}] */
+  selectionsJson: text("selectionsJson").notNull(),
+  /** Total milk liters consumed by this plan */
+  totalMilkUsed: int("totalMilkUsed").default(0).notNull(),
+  /** Admin notes when modifying */
+  adminNotes: text("adminNotes"),
+  confirmedAt: timestamp("confirmedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+/**
+ * Monthly delivery schedule entries.
+ * Auto-generated from ownerProductPlans with equal monthly distribution.
+ */
+export const deliverySchedule = mysqlTable("deliverySchedule", {
+  id: int("id").autoincrement().primaryKey(),
+  ownerOpenId: varchar("ownerOpenId", { length: 64 }).notNull(),
+  animalId: int("animalId").notNull(),
+  ownershipId: int("ownershipId").notNull(),
+  productPlanId: int("productPlanId").notNull(),
+  /** 1-12 */
+  month: int("month").notNull(),
+  /** Calendar year */
+  year: int("year").notNull(),
+  /** JSON array of items: [{productType, label, quantity, unit}] */
+  itemsJson: text("itemsJson").notNull(),
+  status: deliveryStatusEnum.default("planned").notNull(),
+  deliveredAt: timestamp("deliveredAt"),
+  adminNote: text("adminNote"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+/**
+ * Chat messages between owner and admin about a specific animal.
+ * Supports text and photo messages.
+ */
+export const chatMessages = mysqlTable("chatMessages", {
+  id: int("id").autoincrement().primaryKey(),
+  animalId: int("animalId").notNull(),
+  /** The owner's openId (conversation is always owner ↔ admin for a specific animal) */
+  ownerOpenId: varchar("ownerOpenId", { length: 64 }).notNull(),
+  sender: chatMessageSenderEnum.notNull(),
+  /** Text content of the message */
+  text: text("text"),
+  /** Photo URL (uploaded to S3) */
+  photoUrl: text("photoUrl"),
+  /** Photo S3 key for reference */
+  photoKey: varchar("photoKey", { length: 255 }),
+  isRead: int("isRead").default(0).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type AnimalProductionProfile = typeof animalProductionProfiles.$inferSelect;
+export type InsertAnimalProductionProfile = typeof animalProductionProfiles.$inferInsert;
+
+export type ProductOption = typeof productOptions.$inferSelect;
+export type InsertProductOption = typeof productOptions.$inferInsert;
+
+export type OwnerProductPlan = typeof ownerProductPlans.$inferSelect;
+export type InsertOwnerProductPlan = typeof ownerProductPlans.$inferInsert;
+
+export type DeliveryScheduleEntry = typeof deliverySchedule.$inferSelect;
+export type InsertDeliveryScheduleEntry = typeof deliverySchedule.$inferInsert;
+
+export type ChatMessage = typeof chatMessages.$inferSelect;
+export type InsertChatMessage = typeof chatMessages.$inferInsert;
