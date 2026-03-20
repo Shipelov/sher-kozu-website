@@ -113,4 +113,82 @@ describe("Admin: plainPassword field and Bitrix24 sync button", () => {
       expect(syncSection).toContain('ctx.user.role !== "admin"');
     });
   });
+
+  describe("Admin password reset procedure", () => {
+    it("defines resetUserPassword in adminSync router", () => {
+      expect(routersSrc).toContain("resetUserPassword: protectedProcedure");
+    });
+
+    it("accepts userId input", () => {
+      const resetSection = routersSrc.slice(
+        routersSrc.indexOf("resetUserPassword: protectedProcedure"),
+        routersSrc.indexOf("resetUserPassword: protectedProcedure") + 200,
+      );
+      expect(resetSection).toContain("userId: z.number()");
+    });
+
+    it("checks admin role before reset", () => {
+      const resetSection = routersSrc.slice(
+        routersSrc.indexOf("resetUserPassword: protectedProcedure"),
+        routersSrc.indexOf("resetUserPassword: protectedProcedure") + 400,
+      );
+      expect(resetSection).toContain('ctx.user.role !== "admin"');
+    });
+
+    it("generates new password and hashes it", () => {
+      const resetSection = routersSrc.slice(
+        routersSrc.indexOf("resetUserPassword: protectedProcedure"),
+        routersSrc.indexOf("resetUserPassword: protectedProcedure") + 1200,
+      );
+      expect(resetSection).toContain("crypto.randomBytes");
+      expect(resetSection).toContain("hashPassword(newPassword)");
+    });
+
+    it("saves both passwordHash and plainPassword", () => {
+      const resetSection = routersSrc.slice(
+        routersSrc.indexOf("resetUserPassword: protectedProcedure"),
+        routersSrc.indexOf("resetUserPassword: protectedProcedure") + 1800,
+      );
+      expect(resetSection).toContain("passwordHash: newHash");
+      expect(resetSection).toContain("plainPassword: newPassword");
+    });
+
+    it("returns newPassword in response", () => {
+      const resetSection = routersSrc.slice(
+        routersSrc.indexOf("resetUserPassword: protectedProcedure"),
+        routersSrc.indexOf("resetUserPassword: protectedProcedure") + 1800,
+      );
+      expect(resetSection).toContain("newPassword");
+      expect(resetSection).toContain("userName");
+    });
+  });
+
+  describe("Admin password reset button in AdminHub", () => {
+    it("renders reset button with KeyRound icon", () => {
+      expect(adminHubSrc).toContain("KeyRound");
+      expect(adminHubSrc).toContain("Сбросить");
+    });
+
+    it("uses adminSync.resetUserPassword mutation", () => {
+      expect(adminHubSrc).toContain("trpc.adminSync.resetUserPassword.useMutation");
+    });
+
+    it("shows loading state during reset", () => {
+      expect(adminHubSrc).toContain("resetPendingId");
+    });
+
+    it("displays success toast with new password", () => {
+      expect(adminHubSrc).toContain("Пароль сброшен");
+      expect(adminHubSrc).toContain("data.newPassword");
+    });
+
+    it("has Actions column header", () => {
+      expect(adminHubSrc).toContain("Действия");
+    });
+
+    it("invalidates funnel after reset", () => {
+      // The reset mutation onSuccess also invalidates the funnel
+      expect(adminHubSrc).toContain("utils.adminAnalytics.userFunnel.invalidate");
+    });
+  });
 });

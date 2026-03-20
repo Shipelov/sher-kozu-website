@@ -13,6 +13,7 @@ import {
   Crown,
   Eye,
   EyeOff,
+  KeyRound,
   Loader2,
   PawPrint,
   RefreshCw,
@@ -98,6 +99,23 @@ export default function AdminHub() {
   const funnel = funnelQuery.data;
   const pendingCount = pendingCountQuery.data ?? 0;
   const utils = trpc.useUtils();
+
+  const [resetPendingId, setResetPendingId] = useState<number | null>(null);
+
+  const resetPasswordMutation = trpc.adminSync.resetUserPassword.useMutation({
+    onSuccess: (data) => {
+      toast.success(`Пароль сброшен`, {
+        description: `Новый пароль для ${data.userName || data.userEmail || "пользователя"}: ${data.newPassword}`,
+        duration: 15000,
+      });
+      setResetPendingId(null);
+      void utils.adminAnalytics.userFunnel.invalidate();
+    },
+    onError: (err) => {
+      toast.error("Ошибка сброса пароля", { description: err.message });
+      setResetPendingId(null);
+    },
+  });
 
   const syncBitrixMutation = trpc.adminSync.syncBitrixContacts.useMutation({
     onSuccess: (data) => {
@@ -376,6 +394,7 @@ export default function AdminHub() {
                           <th className="px-4 py-2.5 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Способ связи</th>
                           <th className="px-4 py-2.5 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Роль</th>
                           <th className="px-4 py-2.5 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Дата</th>
+                          <th className="px-4 py-2.5 text-center text-xs font-medium uppercase tracking-wider text-muted-foreground">Действия</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -418,6 +437,26 @@ export default function AdminHub() {
                             </td>
                             <td className="px-4 py-2.5 text-muted-foreground">
                               {u.createdAt ? new Date(u.createdAt).toLocaleDateString("ru-RU", { day: "numeric", month: "short", year: "numeric" }) : "—"}
+                            </td>
+                            <td className="px-4 py-2.5 text-center">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-7 gap-1.5 text-xs text-muted-foreground hover:text-foreground"
+                                disabled={resetPendingId === u.id}
+                                onClick={() => {
+                                  setResetPendingId(u.id);
+                                  resetPasswordMutation.mutate({ userId: u.id });
+                                }}
+                                title="Сбросить пароль"
+                              >
+                                {resetPendingId === u.id ? (
+                                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                ) : (
+                                  <KeyRound className="h-3.5 w-3.5" />
+                                )}
+                                Сбросить
+                              </Button>
                             </td>
                           </tr>
                         ))}

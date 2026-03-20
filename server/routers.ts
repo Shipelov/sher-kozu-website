@@ -1421,6 +1421,43 @@ export const appRouter = router({
 
       return { success: true, synced, created, updated };
     }),
+
+    /** Admin resets a user's password — generates a new random password, saves hash + plaintext */
+    resetUserPassword: protectedProcedure
+      .input(z.object({ userId: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin" && ctx.user.openId !== process.env.OWNER_OPEN_ID) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Только администратор может сбрасывать пароли" });
+        }
+
+        const crypto = await import("crypto");
+        const { eq: eqR } = await import("drizzle-orm");
+        const { users: usersT } = await import("../drizzle/schema");
+        const { getDb: getDbR } = await import("./db");
+        const db = await getDbR();
+
+        // Find user by id
+        const [targetUser] = await db
+          .select({ openId: usersT.openId, name: usersT.name, email: usersT.email })
+          .from(usersT)
+          .where(eqR(usersT.id, input.userId))
+          .limit(1);
+
+        if (!targetUser) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Пользователь не найден" });
+        }
+
+        // Generate a random 10-char password
+        const newPassword = crypto.randomBytes(5).toString("hex").slice(0, 8) + "A1";
+        const newHash = await hashPassword(newPassword);
+
+        await db
+          .update(usersT)
+          .set({ passwordHash: newHash, plainPassword: newPassword, updatedAt: new Date() })
+          .where(eqR(usersT.id, input.userId));
+
+        return { success: true, newPassword, userName: targetUser.name, userEmail: targetUser.email };
+      }),
   }),
   adminAnalytics: router({
     userFunnel: protectedProcedure.query(async () => {
