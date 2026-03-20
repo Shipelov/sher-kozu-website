@@ -876,8 +876,13 @@ export async function getProductTrackerData(ownerOpenId: string, animalSlug: str
       compositionSnapshots: [],
       monthlyMetrics: [],
       deliveries: [],
+      currentAnimal: null,
     };
   }
+
+  // Fetch animal data for the tracker page
+  const animalRows = await db.select().from(animals).where(eq(animals.slug, animalSlug)).limit(1);
+  const animal = animalRows[0] ?? null;
 
   const [productBatchesRows, compositionSnapshotsRows, monthlyMetricsRows, deliveriesRows] = await Promise.all([
     db
@@ -907,6 +912,15 @@ export async function getProductTrackerData(ownerOpenId: string, animalSlug: str
     compositionSnapshots: compositionSnapshotsRows,
     monthlyMetrics: monthlyMetricsRows,
     deliveries: deliveriesRows,
+    currentAnimal: animal
+      ? {
+          slug: animal.slug,
+          name: animal.name,
+          title: `${animal.name} — источник вашего персонального маршрута`,
+          description: animal.shortDescription ?? `Трекер продукции ${animal.name} показывает происхождение молока, параметры партии и ход доставки.`,
+          coverImageUrl: animal.coverImageUrl,
+        }
+      : null,
   };
 }
 

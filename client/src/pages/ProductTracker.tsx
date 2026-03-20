@@ -124,7 +124,7 @@ export default function ProductTracker() {
   const ownerDashboardQuery = trpc.animals.ownerDashboard.useQuery();
   const requestedAnimalSlug = getRequestedAnimalSlug();
   const ownerAnimalSlug = ownerDashboardQuery.data?.animal?.slug ?? ownerDashboardQuery.data?.ownership?.animalSlug ?? null;
-  const fallbackAnimalSlug = ownerAnimalSlug ?? requestedAnimalSlug ?? "marta";
+  const fallbackAnimalSlug = requestedAnimalSlug ?? ownerAnimalSlug ?? "marta";
 
   const trackerQuery = trpc.productTracker.getByAnimal.useQuery(
     { animalSlug: fallbackAnimalSlug },
@@ -132,8 +132,8 @@ export default function ProductTracker() {
   );
 
   const summary = trackerQuery.data as TrackerSummary | undefined;
-  const currentAnimalSlug = summary?.currentAnimal.slug ?? requestedAnimalSlug ?? ownerAnimalSlug ?? fallbackAnimalSlug;
-  const featuredAnimalName = summary?.currentAnimal.name ?? ownerDashboardQuery.data?.animal?.name ?? "вашего животного";
+  const currentAnimalSlug = summary?.currentAnimal?.slug ?? requestedAnimalSlug ?? ownerAnimalSlug ?? fallbackAnimalSlug;
+  const featuredAnimalName = summary?.currentAnimal?.name ?? ownerDashboardQuery.data?.animal?.name ?? "вашего животного";
   const featuredAnimalProfileHref = currentAnimalSlug ? `/animals/${currentAnimalSlug}` : "/animals";
   const dashboardHref = currentAnimalSlug ? `/dashboard?animal=${currentAnimalSlug}` : "/dashboard";
   const clubHref = currentAnimalSlug ? `/club?animal=${currentAnimalSlug}` : "/club";
@@ -171,16 +171,16 @@ export default function ProductTracker() {
           >
             <div className="grid gap-0 lg:grid-cols-[1.05fr_0.95fr] lg:items-stretch">
               <div className="relative min-h-[360px] overflow-hidden">
-                <img src={summary?.currentAnimal.coverImageUrl ?? CDN.milk} alt="Именная молочная коробка" className="h-full w-full object-cover" />
+                <img src={summary?.currentAnimal?.coverImageUrl ?? CDN.milk} alt="Именная молочная коробка" className="h-full w-full object-cover" />
                 <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(25,22,20,0.84),rgba(25,22,20,0.42),rgba(25,22,20,0.14))]" />
                 <div className="absolute inset-0 flex flex-col justify-between p-6 text-white md:p-8">
                   <div className="flex flex-wrap items-center gap-2">
                     <div className="inline-flex items-center gap-2 rounded-full bg-white/15 px-3 py-1 text-xs backdrop-blur">
                       <Leaf className="h-3.5 w-3.5" />
-                      {summary?.headline.analysisLabel ?? "Анализ партии загружается"}
+                      {summary?.headline?.analysisLabel ?? "Анализ партии загружается"}
                     </div>
                     <div className="rounded-full bg-green-500 px-3 py-1 text-xs font-semibold">
-                      {summary?.headline.organicLabel ?? "Органик"}
+                      {summary?.headline?.organicLabel ?? "Органик"}
                     </div>
                     <div className="rounded-full bg-white/12 px-3 py-1 text-xs font-medium backdrop-blur">
                       {ownerStatusLabel}
@@ -190,10 +190,10 @@ export default function ProductTracker() {
                   <div className="max-w-2xl">
                     <p className="text-sm uppercase tracking-[0.22em] text-amber-300">Трекер продукта</p>
                     <h1 className="mt-3 font-display text-4xl text-white md:text-5xl">
-                      {summary?.headline.title ?? `Трекер показывает, как история ${featuredAnimalName} превращается в личный продуктовый маршрут.`}
+                      {summary?.headline?.title ?? `Трекер показывает, как история ${featuredAnimalName} превращается в личный продуктовый маршрут.`}
                     </h1>
                     <p className="mt-4 max-w-xl text-sm leading-7 text-white/76 md:text-base">
-                      {summary?.headline.description ??
+                      {summary?.headline?.description ??
                         "Здесь пользователь видит происхождение молока, параметры партии, ход доставки и связь с конкретным животным."}
                     </p>
                   </div>
@@ -218,17 +218,17 @@ export default function ProductTracker() {
 
                 <div className="mt-4 overflow-hidden rounded-[1.75rem] border border-border/70 bg-card shadow-sm">
                   <img
-                    src={summary?.currentAnimal.coverImageUrl ?? CDN.goat}
-                    alt={summary?.currentAnimal.name ?? featuredAnimalName}
+                    src={summary?.currentAnimal?.coverImageUrl ?? CDN.goat}
+                    alt={summary?.currentAnimal?.name ?? featuredAnimalName}
                     className="h-44 w-full object-cover object-top"
                   />
                   <div className="p-4">
                     <p className="text-xs uppercase tracking-[0.18em] text-primary">Источник маршрута</p>
                     <h2 className="mt-2 text-xl font-semibold text-foreground">
-                      {summary?.currentAnimal.title ?? "Любой продукт в системе начинается с конкретного животного."}
+                      {summary?.currentAnimal?.title ?? "Любой продукт в системе начинается с конкретного животного."}
                     </h2>
                     <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                      {summary?.currentAnimal.description ??
+                      {summary?.currentAnimal?.description ??
                         "Трекер не отрывается от живого профиля животного и всегда оставляет маршрут обратно к источнику продукта."}
                     </p>
                   </div>
@@ -256,7 +256,7 @@ export default function ProductTracker() {
               <div className="space-y-4 p-5">
                 <div>
                   <p className="text-sm uppercase tracking-[0.22em] text-primary">Состав партии</p>
-                  <h2 className="mt-3 text-2xl font-semibold text-foreground">Состав молока от {summary?.currentAnimal.name ?? featuredAnimalName}</h2>
+                  <h2 className="mt-3 text-2xl font-semibold text-foreground">Состав молока от {summary?.currentAnimal?.name ?? featuredAnimalName}</h2>
                   <p className="mt-2 text-sm leading-7 text-muted-foreground">
                     Качество партии видно прямо в интерфейсе, а не обещается абстрактно. Теперь этот слой следует не за первым публичным животным, а за текущим owner-journey пользователя.
                   </p>
@@ -421,10 +421,10 @@ export default function ProductTracker() {
               <div className="p-5">
                 <p className="text-sm uppercase tracking-[0.22em] text-primary">Именной продукт</p>
                 <h2 className="mt-3 text-2xl font-semibold text-foreground">
-                  {summary?.productStory.title ?? "Именной продукт завершает цикл от фермы до стола."}
+                  {summary?.productStory?.title ?? "Именной продукт завершает цикл от фермы до стола."}
                 </h2>
                 <p className="mt-3 text-sm leading-7 text-muted-foreground">
-                  {summary?.productStory.description ??
+                  {summary?.productStory?.description ??
                     "Продуктовый слой должен быть личным и премиальным: не безликий сыр, а конкретный результат связи владельца с животным."}
                 </p>
                 <div className="mt-5 space-y-2">
