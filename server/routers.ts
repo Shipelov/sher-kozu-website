@@ -543,11 +543,18 @@ export const appRouter = router({
           });
         }
 
+        // Normalize phone before saving
+        let normalizedRegPhone: string | null = null;
+        if (input.phone) {
+          const { formatPhone: fmtPhone } = await import("../shared/phone");
+          normalizedRegPhone = fmtPhone(input.phone) ?? input.phone;
+        }
+
         // Create user
         const { openId } = await registerLocalUser({
           name: input.name,
           email: input.email,
-          phone: input.phone ?? null,
+          phone: normalizedRegPhone,
           password: input.password,
         });
 
@@ -557,7 +564,7 @@ export const appRouter = router({
           const bitrixContactId = await findOrCreateBitrixContact({
             fullName: input.name,
             email: input.email,
-            phone: input.phone,
+            phone: normalizedRegPhone,
           });
           if (bitrixContactId) {
             // Save Bitrix24 contact ID to user record
@@ -1347,6 +1354,7 @@ export const appRouter = router({
       const { users: usersT } = await import("../drizzle/schema");
       const { eq: eqSync } = await import("drizzle-orm");
       const crypto = await import("crypto");
+      const { formatPhone: normalizePhoneSync } = await import("../shared/phone");
       const dbSync = await getDbSync();
 
       // ── Pre-load ALL existing users into lookup Maps (eliminates N+1) ──
@@ -1368,7 +1376,12 @@ export const appRouter = router({
       for (const u of allUsers) {
         if (u.bitrix24ContactId) byBitrixId.set(u.bitrix24ContactId, u);
         if (u.email) byEmail.set(u.email.toLowerCase(), u);
-        if (u.phone) byPhone.set(u.phone, u);
+        if (u.phone) {
+          byPhone.set(u.phone, u);
+          // Also index by normalized form for cross-format matching
+          const normalized = normalizePhoneSync(u.phone);
+          if (normalized && normalized !== u.phone) byPhone.set(normalized, u);
+        }
       }
 
       let synced = 0;
@@ -1388,7 +1401,8 @@ export const appRouter = router({
 
         for (const contact of batch.contacts) {
           const email = contact.EMAIL?.[0]?.VALUE ?? null;
-          const phone = contact.PHONE?.[0]?.VALUE ?? null;
+          const rawPhone = contact.PHONE?.[0]?.VALUE ?? null;
+          const phone = rawPhone ? (normalizePhoneSync(rawPhone) ?? rawPhone) : null;
           const fullName = [contact.LAST_NAME, contact.NAME, contact.SECOND_NAME].filter(Boolean).join(" ").trim() || "Контакт";
           const bitrixId = String(contact.ID);
 

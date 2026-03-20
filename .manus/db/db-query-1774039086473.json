@@ -1,0 +1,22 @@
+{
+  "query": "SELECT id, name, phone, loginMethod FROM users WHERE phone IS NOT NULL AND phone != '' ORDER BY id LIMIT 30;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3J2fXRHx8d1YjF6.root --database mLhmg5VmBsEBpZiYqdnhMQ --execute SELECT id, name, phone, loginMethod FROM users WHERE phone IS NOT NULL AND phone != '' ORDER BY id LIMIT 30;",
+  "rows": [
+    {
+      "id": "1",
+      "name": "Andrey Shipelov",
+      "phone": "+7 (985) 763-93-53",
+      "loginMethod": "google"
+    },
+    {
+      "id": "330001",
+      "name": "Сигаева Александра Борисовна",
+      "phone": "+79211111313",
+      "loginMethod": "local"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tname\tphone\tloginMethod\n1\tAndrey Shipelov\t+7 (985) 763-93-53\tgoogle\n330001\tСигаева Александра Борисовна\t+79211111313\tlocal\n",
+  "stderr": "",
+  "execution_time_ms": 394
+}
