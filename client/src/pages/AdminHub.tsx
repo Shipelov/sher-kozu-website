@@ -327,6 +327,7 @@ export default function AdminHub() {
                         <tr className="border-b border-border/70 bg-muted/30">
                           <th className="px-4 py-2.5 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Имя</th>
                           <th className="px-4 py-2.5 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Контакты</th>
+                          <th className="px-4 py-2.5 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Способ связи</th>
                           <th className="px-4 py-2.5 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Роль</th>
                           <th className="px-4 py-2.5 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Дата</th>
                         </tr>
@@ -347,6 +348,15 @@ export default function AdminHub() {
                                   <span className="text-xs text-muted-foreground/60">Не указаны</span>
                                 )}
                               </div>
+                            </td>
+                            <td className="px-4 py-2.5">
+                              {u.preferredContact ? (
+                                <Badge variant="outline" className="rounded-full text-[10px] border-border">
+                                  {u.preferredContact === "email" ? "Email" : u.preferredContact === "phone" ? "Телефон" : "Мессенджер"}
+                                </Badge>
+                              ) : (
+                                <span className="text-xs text-muted-foreground/60">—</span>
+                              )}
                             </td>
                             <td className="px-4 py-2.5">
                               <Badge variant="outline" className={cn("rounded-full text-[10px]", u.role === "admin" ? "border-primary/30 text-primary" : "border-border text-muted-foreground")}>

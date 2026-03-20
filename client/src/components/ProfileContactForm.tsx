@@ -3,11 +3,26 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { trpc } from "@/lib/trpc";
-import { Check, Loader2, Mail, Phone, User } from "lucide-react";
+import { Check, Loader2, Mail, MessageCircle, Phone, User } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { applyPhoneMask, formatPhone, isValidRussianPhone, stripNonDigits } from "@shared/phone";
+
+type PreferredContact = "email" | "phone" | "messenger" | null;
+
+const PREFERRED_CONTACT_OPTIONS: { value: "email" | "phone" | "messenger"; label: string; icon: React.ReactNode }[] = [
+  { value: "email", label: "Email", icon: <Mail className="h-3.5 w-3.5" /> },
+  { value: "phone", label: "Телефон / Звонок", icon: <Phone className="h-3.5 w-3.5" /> },
+  { value: "messenger", label: "Мессенджер (WhatsApp, Telegram)", icon: <MessageCircle className="h-3.5 w-3.5" /> },
+];
 
 export default function ProfileContactForm() {
   const { user } = useAuth();
@@ -15,6 +30,7 @@ export default function ProfileContactForm() {
 
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
+  const [preferredContact, setPreferredContact] = useState<PreferredContact>(null);
   const [phoneError, setPhoneError] = useState<string | null>(null);
   const [dirty, setDirty] = useState(false);
   const phoneRef = useRef<HTMLInputElement>(null);
@@ -24,6 +40,7 @@ export default function ProfileContactForm() {
     if (user) {
       setEmail((user as any).email ?? "");
       setPhone((user as any).phone ?? "");
+      setPreferredContact((user as any).preferredContact ?? null);
     }
   }, [user]);
 
@@ -47,7 +64,6 @@ export default function ProfileContactForm() {
   const handlePhoneChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const rawValue = e.target.value;
 
-    // If user is clearing the field, allow it
     if (rawValue === "" || rawValue.trim() === "") {
       setPhone("");
       setPhoneError(null);
@@ -55,14 +71,11 @@ export default function ProfileContactForm() {
       return;
     }
 
-    // Apply mask as user types
     const masked = applyPhoneMask(rawValue);
     setPhone(masked);
     setDirty(true);
 
-    // Validate once we have enough digits
     const digits = stripNonDigits(rawValue);
-    // Normalize: if starts with 7 or 8, skip first digit for core count
     let coreLen = digits.length;
     if (digits.length > 0 && (digits[0] === "7" || digits[0] === "8")) {
       coreLen = digits.length - 1;
@@ -70,21 +83,17 @@ export default function ProfileContactForm() {
 
     if (coreLen > 0 && coreLen < 10) {
       setPhoneError("Введите 10 цифр номера");
-    } else if (coreLen >= 10) {
-      setPhoneError(null);
     } else {
       setPhoneError(null);
     }
   }, []);
 
-  // Handle focus: if empty, pre-fill with +7 prefix
   const handlePhoneFocus = useCallback(() => {
     if (!phone) {
       setPhone("+7 ");
     }
   }, [phone]);
 
-  // Handle blur: clean up if only prefix remains
   const handlePhoneBlur = useCallback(() => {
     const trimmed = phone.trim();
     if (trimmed === "+7" || trimmed === "+7 " || trimmed === "+7 (") {
@@ -93,38 +102,38 @@ export default function ProfileContactForm() {
     }
   }, [phone]);
 
+  const handlePreferredContactChange = useCallback((value: string) => {
+    setPreferredContact(value as PreferredContact);
+    setDirty(true);
+  }, []);
+
   const handleSubmit = useCallback(
     (e: React.FormEvent) => {
       e.preventDefault();
       const trimmedEmail = email.trim() || null;
       const trimmedPhone = phone.trim() || null;
 
-      // Basic email validation
       if (trimmedEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
         toast.error("Введите корректный email-адрес");
         return;
       }
 
-      // Phone validation: if provided, must be valid Russian number
+      let phoneToSend: string | null = null;
       if (trimmedPhone) {
         if (!isValidRussianPhone(trimmedPhone)) {
           setPhoneError("Введите корректный номер в формате +7 (XXX) XXX-XX-XX");
           return;
         }
-        // Format to canonical form before sending
-        const formatted = formatPhone(trimmedPhone);
-        updateProfile.mutate({
-          email: trimmedEmail,
-          phone: formatted,
-        });
-      } else {
-        updateProfile.mutate({
-          email: trimmedEmail,
-          phone: null,
-        });
+        phoneToSend = formatPhone(trimmedPhone);
       }
+
+      updateProfile.mutate({
+        email: trimmedEmail,
+        phone: phoneToSend,
+        preferredContact: preferredContact,
+      });
     },
-    [email, phone, updateProfile],
+    [email, phone, preferredContact, updateProfile],
   );
 
   if (!user) return null;
@@ -139,13 +148,14 @@ export default function ProfileContactForm() {
           <div>
             <CardTitle className="text-lg">Контактные данные</CardTitle>
             <CardDescription>
-              Email и телефон для связи с фермой
+              Email, телефон и предпочтительный способ связи
             </CardDescription>
           </div>
         </div>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Email */}
           <div className="space-y-2">
             <Label htmlFor="profile-email" className="flex items-center gap-2 text-sm font-medium">
               <Mail className="h-3.5 w-3.5 text-muted-foreground" />
@@ -162,6 +172,7 @@ export default function ProfileContactForm() {
             />
           </div>
 
+          {/* Phone */}
           <div className="space-y-2">
             <Label htmlFor="profile-phone" className="flex items-center gap-2 text-sm font-medium">
               <Phone className="h-3.5 w-3.5 text-muted-foreground" />
@@ -181,6 +192,44 @@ export default function ProfileContactForm() {
             />
             {phoneError && (
               <p className="text-xs text-red-500 mt-1">{phoneError}</p>
+            )}
+          </div>
+
+          {/* Preferred contact method */}
+          <div className="space-y-2">
+            <Label className="flex items-center gap-2 text-sm font-medium">
+              <MessageCircle className="h-3.5 w-3.5 text-muted-foreground" />
+              Предпочтительный способ связи
+            </Label>
+            <Select
+              value={preferredContact ?? ""}
+              onValueChange={handlePreferredContactChange}
+            >
+              <SelectTrigger className="rounded-xl">
+                <SelectValue placeholder="Выберите способ связи" />
+              </SelectTrigger>
+              <SelectContent>
+                {PREFERRED_CONTACT_OPTIONS.map((opt) => (
+                  <SelectItem key={opt.value} value={opt.value}>
+                    <span className="flex items-center gap-2">
+                      {opt.icon}
+                      {opt.label}
+                    </span>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {preferredContact && (
+              <button
+                type="button"
+                className="text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground transition-colors"
+                onClick={() => {
+                  setPreferredContact(null);
+                  setDirty(true);
+                }}
+              >
+                Сбросить выбор
+              </button>
             )}
           </div>
 

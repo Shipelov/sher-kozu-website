@@ -304,3 +304,10 @@
 - [x] Маска ввода телефона на клиенте (+7 XXX XXX-XX-XX) в ProfileContactForm
 - [x] Серверная валидация формата телефона в auth.updateProfile
 - [x] Unit-тесты для валидации телефона по маске
+
+- [x] Добавить поле preferredContact в таблицу users (schema + migration)
+- [x] Обновить серверные процедуры auth.me и auth.updateProfile для preferredContact
+- [x] Обновить db-хелперы (getUserProfile, updateUserProfile, getUserFunnelAnalytics, listOwnerProductPlansByAnimal)
+- [x] UI: выбор предпочтительного способа связи в форме профиля
+- [x] Отображение предпочтительного способа связи в админ-панели (AdminHub, AdminProductTrack)
+- [x] Unit-тесты для preferredContact

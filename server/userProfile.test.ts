@@ -113,10 +113,82 @@ describe("auth.updateProfile", () => {
       }),
     ).rejects.toThrow();
   });
+
+  // ── preferredContact tests ──
+
+  it("accepts preferredContact = email", async () => {
+    const ctx = createAuthContext();
+    const caller = appRouter.createCaller(ctx);
+
+    const result = await caller.auth.updateProfile({
+      email: "owner@farm.ru",
+      preferredContact: "email",
+    });
+
+    expect(result).toEqual({ success: true });
+  });
+
+  it("accepts preferredContact = phone", async () => {
+    const ctx = createAuthContext();
+    const caller = appRouter.createCaller(ctx);
+
+    const result = await caller.auth.updateProfile({
+      phone: "+7 999 123-45-67",
+      preferredContact: "phone",
+    });
+
+    expect(result).toEqual({ success: true });
+  });
+
+  it("accepts preferredContact = messenger", async () => {
+    const ctx = createAuthContext();
+    const caller = appRouter.createCaller(ctx);
+
+    const result = await caller.auth.updateProfile({
+      preferredContact: "messenger",
+    });
+
+    expect(result).toEqual({ success: true });
+  });
+
+  it("accepts preferredContact = null (clearing preference)", async () => {
+    const ctx = createAuthContext();
+    const caller = appRouter.createCaller(ctx);
+
+    const result = await caller.auth.updateProfile({
+      preferredContact: null,
+    });
+
+    expect(result).toEqual({ success: true });
+  });
+
+  it("rejects invalid preferredContact value", async () => {
+    const ctx = createAuthContext();
+    const caller = appRouter.createCaller(ctx);
+
+    await expect(
+      caller.auth.updateProfile({
+        preferredContact: "pigeon" as any,
+      }),
+    ).rejects.toThrow();
+  });
+
+  it("accepts all three fields together", async () => {
+    const ctx = createAuthContext();
+    const caller = appRouter.createCaller(ctx);
+
+    const result = await caller.auth.updateProfile({
+      email: "owner@farm.ru",
+      phone: "+7 999 123-45-67",
+      preferredContact: "messenger",
+    });
+
+    expect(result).toEqual({ success: true });
+  });
 });
 
 describe("auth.me with profile data", () => {
-  it("returns user with email and phone fields for authenticated user", async () => {
+  it("returns user with email, phone and preferredContact fields for authenticated user", async () => {
     const ctx = createAuthContext();
     const caller = appRouter.createCaller(ctx);
 
@@ -124,9 +196,9 @@ describe("auth.me with profile data", () => {
 
     expect(result.isAuthenticated).toBe(true);
     expect(result.user).toBeDefined();
-    // The user object should contain email and phone fields (may be null from DB)
     expect(result.user).toHaveProperty("email");
     expect(result.user).toHaveProperty("phone");
+    expect(result.user).toHaveProperty("preferredContact");
   });
 
   it("returns null user for unauthenticated request", async () => {

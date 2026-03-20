@@ -2650,6 +2650,7 @@ export async function listOwnerProductPlansByAnimal(animalId: number) {
     ownerName: users.name,
     ownerEmail: users.email,
     ownerPhone: users.phone,
+    ownerPreferredContact: users.preferredContact,
     familyName: families.name,
   })
     .from(ownerProductPlans)
@@ -2668,6 +2669,7 @@ export async function listOwnerProductPlansByAnimal(animalId: number) {
       ownerName: r.ownerName ?? "Владелец",
       ownerEmail: r.ownerEmail ?? null,
       ownerPhone: r.ownerPhone ?? null,
+      ownerPreferredContact: r.ownerPreferredContact ?? null,
       familyName: r.familyName ?? "—",
       sharePercent,
     });
@@ -2947,6 +2949,7 @@ export async function getUserFunnelAnalytics() {
       name: users.name,
       email: users.email,
       phone: users.phone,
+      preferredContact: users.preferredContact,
       role: users.role,
       createdAt: users.createdAt,
     })
@@ -2973,7 +2976,7 @@ export async function getUserProfile(openId: string) {
   const db = await getDb();
   if (!db) return null;
   const rows = await db
-    .select({ email: users.email, phone: users.phone })
+    .select({ email: users.email, phone: users.phone, preferredContact: users.preferredContact })
     .from(users)
     .where(eq(users.openId, openId))
     .limit(1);
@@ -2982,12 +2985,16 @@ export async function getUserProfile(openId: string) {
 
 export async function updateUserProfile(
   openId: string,
-  data: { email: string | null; phone: string | null },
+  data: { email: string | null; phone: string | null; preferredContact?: string | null },
 ) {
   const db = await getDb();
   if (!db) return;
+  const setData: Record<string, unknown> = { email: data.email, phone: data.phone };
+  if (data.preferredContact !== undefined) {
+    setData.preferredContact = data.preferredContact;
+  }
   await db
     .update(users)
-    .set({ email: data.email, phone: data.phone })
+    .set(setData)
     .where(eq(users.openId, openId));
 }

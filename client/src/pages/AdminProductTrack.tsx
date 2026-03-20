@@ -66,6 +66,7 @@ type OwnerPlanRecord = {
   ownerName: string;
   ownerEmail: string | null;
   ownerPhone: string | null;
+  ownerPreferredContact: string | null;
   familyName: string;
   sharePercent: number;
 };
@@ -652,6 +653,11 @@ function OwnerPlansOverview({ animalId }: { animalId: number }) {
                             {plan.ownerEmail && <span>{plan.ownerEmail}</span>}
                             {plan.ownerEmail && plan.ownerPhone && <span> · </span>}
                             {plan.ownerPhone && <span>{plan.ownerPhone}</span>}
+                          </p>
+                        )}
+                        {plan.ownerPreferredContact && (
+                          <p className="text-[10px] text-primary/80 mt-0.5">
+                            Предпочитает: {plan.ownerPreferredContact === "email" ? "Email" : plan.ownerPreferredContact === "phone" ? "Телефон" : "Мессенджер"}
                           </p>
                         )}
                       </div>

@@ -395,7 +395,7 @@ export const appRouter = router({
       if (!ctx.user) return { user: null, isAuthenticated: false };
       const profile = await getUserProfile(ctx.user.openId);
       return {
-        user: { ...ctx.user, email: profile?.email ?? null, phone: profile?.phone ?? null },
+        user: { ...ctx.user, email: profile?.email ?? null, phone: profile?.phone ?? null, preferredContact: profile?.preferredContact ?? null },
         isAuthenticated: true,
       };
     }),
@@ -411,6 +411,7 @@ export const appRouter = router({
       .input(z.object({
         email: z.string().email().max(320).optional().nullable(),
         phone: z.string().max(32).optional().nullable(),
+        preferredContact: z.enum(["email", "phone", "messenger"]).optional().nullable(),
       }))
       .mutation(async ({ ctx, input }) => {
         let normalizedPhone: string | null = null;
@@ -428,6 +429,7 @@ export const appRouter = router({
         await updateUserProfile(ctx.user.openId, {
           email: input.email ?? null,
           phone: normalizedPhone,
+          preferredContact: input.preferredContact ?? null,
         });
         return { success: true };
       }),
