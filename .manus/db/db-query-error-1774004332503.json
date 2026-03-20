@@ -1,0 +1,8 @@
+{
+  "query": "SELECT ao.id, ao.owner_open_id, ao.animal_id, ao.share_percent, ao.status, a.name FROM animal_ownerships ao JOIN animals a ON a.id = ao.animal_id WHERE a.slug = 'mira';",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3J2fXRHx8d1YjF6.root --database mLhmg5VmBsEBpZiYqdnhMQ --execute SELECT ao.id, ao.owner_open_id, ao.animal_id, ao.share_percent, ao.status, a.name FROM animal_ownerships ao JOIN animals a ON a.id = ao.animal_id WHERE a.slug = 'mira';",
+  "returncode": 1,
+  "logs": [
+    "ERROR 1146 (42S02) at line 1: Table 'mlhmg5vmbsebpziyqdnhmq.animal_ownerships' doesn't exist"
+  ]
+}

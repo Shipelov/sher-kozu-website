@@ -20,6 +20,8 @@ import {
   listAdminChatConversations,
   getAnimalProductTrackData,
   listOwnerProductPlansByAnimal,
+  resolveOwnershipId,
+  resolveOwnerSharePercent,
 } from "../db";
 import type { ProductOption } from "../../drizzle/schema";
 import { storagePut } from "../storage";
@@ -53,7 +55,7 @@ const deleteProductOptionInput = z.object({
 
 const ownerProductPlanInput = z.object({
   animalId: z.number().int().positive(),
-  ownershipId: z.number().int().positive(),
+  ownershipId: z.number().int().positive().optional(), // auto-resolved on server if not provided or omitted
   selections: z.array(z.object({
     productOptionId: z.number().int().positive(),
     annualUnits: z.number().min(0).max(100_000),
@@ -185,6 +187,16 @@ export const productTrackRouter = router({
       throw new TRPCError({ code: "BAD_REQUEST", message: "Продуктовый план уже подтверждён. Для изменений обратитесь к администратору фермы." });
     }
 
+    // Auto-resolve ownershipId from the database
+    let resolvedOwnershipId = input.ownershipId ?? 0;
+    if (!resolvedOwnershipId) {
+      const ownership = await resolveOwnershipId(ctx.user.openId, input.animalId);
+      if (!ownership) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Не найдено активное владение этим животным." });
+      }
+      resolvedOwnershipId = ownership;
+    }
+
     // Validate milk budget
     const profile = await getProductionProfile(input.animalId);
     if (!profile) {
@@ -194,18 +206,17 @@ export const productTrackRouter = router({
     const { totalMilkUsed, enrichedSelections } = await calculateMilkUsage(input.animalId, input.selections);
 
     // Owner's share of milk = (sharePercent / 100) * annualMilkLiters
-    // For now we use 10% per slot as standard
-    // We need to look up the ownership to find sharePercent
-    const ownerMilkBudget = profile.annualMilkLiters; // Will be scaled by share in frontend
+    const sharePercent = await resolveOwnerSharePercent(ctx.user.openId, input.animalId);
+    const ownerMilkBudget = Math.floor((profile.annualMilkLiters * sharePercent) / 100);
 
     if (totalMilkUsed > ownerMilkBudget) {
-      throw new TRPCError({ code: "BAD_REQUEST", message: `Выбранные продукты требуют ${totalMilkUsed} л молока, но доступно только ${ownerMilkBudget} л.` });
+      throw new TRPCError({ code: "BAD_REQUEST", message: `Выбранные продукты требуют ${totalMilkUsed} л молока, но доступно только ${ownerMilkBudget} л (ваша доля ${sharePercent}%).` });
     }
 
     const plan = await createOwnerProductPlan({
       ownerOpenId: ctx.user.openId,
       animalId: input.animalId,
-      ownershipId: input.ownershipId,
+      ownershipId: resolvedOwnershipId,
       selectionsJson: JSON.stringify(enrichedSelections),
       totalMilkUsed,
     });
@@ -219,7 +230,7 @@ export const productTrackRouter = router({
     await generateDeliverySchedule({
       ownerOpenId: ctx.user.openId,
       animalId: input.animalId,
-      ownershipId: input.ownershipId,
+      ownershipId: resolvedOwnershipId,
       productPlanId: plan.id,
       selections: enrichedSelections,
       year: currentYear,

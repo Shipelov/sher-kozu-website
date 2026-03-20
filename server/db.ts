@@ -2673,3 +2673,49 @@ export async function getAnimalProductTrackData(animalId: number) {
 
   return { profile, options, ownerPlans };
 }
+
+/**
+ * Resolve the first active ownership ID for a given owner + animal.
+ * Returns the ownership id or null if none found.
+ */
+export async function resolveOwnershipId(ownerOpenId: string, animalId: number): Promise<number | null> {
+  const db = await getDb();
+  const rows = await db
+    .select({ id: animalOwnerships.id })
+    .from(animalOwnerships)
+    .where(
+      and(
+        eq(animalOwnerships.ownerOpenId, ownerOpenId),
+        eq(animalOwnerships.animalId, animalId),
+        or(eq(animalOwnerships.status, "active"), eq(animalOwnerships.status, "pending_payment")),
+      ),
+    )
+    .orderBy(asc(animalOwnerships.id))
+    .limit(1);
+  return rows[0]?.id ?? null;
+}
+
+/** Resolve owner's share percent for a given animal */
+export async function resolveOwnerSharePercent(ownerOpenId: string, animalId: number): Promise<number> {
+  const db = await getDb();
+  // Count owner's active slots
+  const ownerSlots = await db
+    .select({ id: animalOwnerships.id })
+    .from(animalOwnerships)
+    .where(
+      and(
+        eq(animalOwnerships.ownerOpenId, ownerOpenId),
+        eq(animalOwnerships.animalId, animalId),
+        eq(animalOwnerships.status, "active"),
+      ),
+    );
+  // Get animal's total slots
+  const animalRows = await db
+    .select({ totalOwnershipSlots: animals.totalOwnershipSlots })
+    .from(animals)
+    .where(eq(animals.id, animalId))
+    .limit(1);
+  const totalSlots = Math.max(1, animalRows[0]?.totalOwnershipSlots ?? 10);
+  const percentPerSlot = 100 / totalSlots;
+  return Math.min(100, Math.round(ownerSlots.length * percentPerSlot));
+}

@@ -297,7 +297,7 @@ export default function OwnerProductPlanSection({
     selections.forEach((annualUnits, productOptionId) => {
       selArray.push({ productOptionId, annualUnits });
     });
-    confirmPlan.mutate({ animalId, ownershipId: 0, selections: selArray });
+    confirmPlan.mutate({ animalId, selections: selArray });
   };
 
   const isLocked = existingPlan && (existingPlan.status === "confirmed" || existingPlan.status === "modified_by_admin");

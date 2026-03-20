@@ -1,0 +1,32 @@
+{
+  "query": "SELECT po.id, po.animalId, po.productType, po.label, po.conversionRatio, po.unit, po.maxAnnualUnits, po.isEnabled, a.name as animalName FROM productOptions po JOIN animals a ON po.animalId = a.id;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3J2fXRHx8d1YjF6.root --database mLhmg5VmBsEBpZiYqdnhMQ --execute SELECT po.id, po.animalId, po.productType, po.label, po.conversionRatio, po.unit, po.maxAnnualUnits, po.isEnabled, a.name as animalName FROM productOptions po JOIN animals a ON po.animalId = a.id;",
+  "rows": [
+    {
+      "id": "1",
+      "animalId": "30001",
+      "productType": "smetana",
+      "label": "Сметана",
+      "conversionRatio": "1",
+      "unit": "л",
+      "maxAnnualUnits": "600",
+      "isEnabled": "1",
+      "animalName": "Мира"
+    },
+    {
+      "id": "2",
+      "animalId": "30001",
+      "productType": "cheese",
+      "label": "Сыр",
+      "conversionRatio": "1",
+      "unit": "л",
+      "maxAnnualUnits": "50",
+      "isEnabled": "1",
+      "animalName": "Мира"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tanimalId\tproductType\tlabel\tconversionRatio\tunit\tmaxAnnualUnits\tisEnabled\tanimalName\n1\t30001\tsmetana\tСметана\t1\tл\t600\t1\tМира\n2\t30001\tcheese\tСыр\t1\tл\t50\t1\tМира\n",
+  "stderr": "",
+  "execution_time_ms": 393
+}

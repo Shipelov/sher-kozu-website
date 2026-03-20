@@ -1,0 +1,18 @@
+{
+  "query": "SELECT * FROM animalProductionProfiles WHERE animalId = 30001;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3J2fXRHx8d1YjF6.root --database mLhmg5VmBsEBpZiYqdnhMQ --execute SELECT * FROM animalProductionProfiles WHERE animalId = 30001;",
+  "rows": [
+    {
+      "id": "1",
+      "animalId": "30001",
+      "annualMilkLiters": "650",
+      "notes": "NULL",
+      "createdAt": "2026-03-20 09:07:47",
+      "updatedAt": "2026-03-20 09:07:47"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tanimalId\tannualMilkLiters\tnotes\tcreatedAt\tupdatedAt\n1\t30001\t650\tNULL\t2026-03-20 09:07:47\t2026-03-20 09:07:47\n",
+  "stderr": "",
+  "execution_time_ms": 366
+}
