@@ -75,6 +75,15 @@ describe("exportUsersAdmin — server-side export function", () => {
     );
     expect(exportSection).toContain("params.hasBitrix");
   });
+
+  it("excludes soft-deleted users from export", () => {
+    const exportSection = dbSrc.slice(
+      dbSrc.indexOf("export async function exportUsersAdmin"),
+      dbSrc.indexOf("export async function exportUsersAdmin") + 3000,
+    );
+    expect(exportSection).toContain("isNull(users.deletedAt)");
+    expect(exportSection).toContain("Exclude soft-deleted users from export");
+  });
 });
 
 describe("exportUsers — tRPC procedure", () => {

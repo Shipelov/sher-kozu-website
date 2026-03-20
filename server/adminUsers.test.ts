@@ -107,6 +107,13 @@ describe("listUsersAdmin — DB helper", () => {
   it("defaults to desc sort order", () => {
     expect(dbSource).toContain('params.sortOrder === "asc" ? asc : desc');
   });
+
+  it("excludes soft-deleted users from active list", () => {
+    const fnStart = dbSource.indexOf("export async function listUsersAdmin");
+    const fnBody = dbSource.slice(fnStart, fnStart + 4000);
+    expect(fnBody).toContain("isNull(users.deletedAt)");
+    expect(fnBody).toContain("Exclude soft-deleted users");
+  });
 });
 
 describe("adminAnalytics.listUsers — tRPC procedure", () => {

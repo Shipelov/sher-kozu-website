@@ -3026,6 +3026,9 @@ export async function listUsersAdmin(params: ListUsersParams) {
 
   const conditions: ReturnType<typeof eq>[] = [];
 
+  // Exclude soft-deleted users from active list
+  conditions.push(isNull(users.deletedAt));
+
   // Search filter: match name, email, or phone
   if (params.search?.trim()) {
     const term = `%${params.search.trim()}%`;
@@ -3143,6 +3146,9 @@ export async function exportUsersAdmin(params: Omit<ListUsersParams, "page" | "p
   if (!db) return [];
 
   const conditions: ReturnType<typeof eq>[] = [];
+
+  // Exclude soft-deleted users from export
+  conditions.push(isNull(users.deletedAt));
 
   if (params.search?.trim()) {
     const term = `%${params.search.trim()}%`;
