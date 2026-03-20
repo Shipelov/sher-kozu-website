@@ -31,6 +31,10 @@ import {
   logPlanChange,
   listPlanChangeLog,
   listAllPlanChangeLogs,
+  purgeOldChatMessages,
+  purgeOldPlanChangeLogs,
+  clearChatMessagesByAnimal,
+  clearPlanChangeLogByAnimal,
 } from "../db";
 import type { ProductOption } from "../../drizzle/schema";
 import { storagePut } from "../storage";
@@ -439,6 +443,8 @@ export const productTrackRouter = router({
     if (ctx.user.role !== "admin") {
       throw new TRPCError({ code: "FORBIDDEN", message: "Только администратор." });
     }
+    // Auto-purge log entries older than 30 days (fire-and-forget)
+    purgeOldPlanChangeLogs(30).catch(() => {});
     return listPlanChangeLog(input.animalId);
   }),
 
@@ -460,6 +466,8 @@ export const productTrackRouter = router({
 
   // ── Chat ──
   listMessages: protectedProcedure.input(chatListInput).query(async ({ input }) => {
+    // Auto-purge messages older than 30 days (fire-and-forget)
+    purgeOldChatMessages(30).catch(() => {});
     return listChatMessages(input.animalId, input.ownerOpenId);
   }),
 
@@ -527,6 +535,36 @@ export const productTrackRouter = router({
 
   // ── Admin: All conversations ──
   adminListConversations: protectedProcedure.query(async () => {
+    // Auto-purge messages older than 30 days on each listing (fire-and-forget)
+    purgeOldChatMessages(30).catch(() => {});
     return listAdminChatConversations();
+  }),
+
+  // ── Admin: Clear chat for a specific animal ──
+  adminClearChat: protectedProcedure.input(animalIdInput).mutation(async ({ ctx, input }) => {
+    if (ctx.user.role !== "admin") {
+      throw new TRPCError({ code: "FORBIDDEN", message: "Только администратор." });
+    }
+    const deleted = await clearChatMessagesByAnimal(input.animalId);
+    return { deleted };
+  }),
+
+  // ── Admin: Clear plan change log for a specific animal ──
+  adminClearLog: protectedProcedure.input(animalIdInput).mutation(async ({ ctx, input }) => {
+    if (ctx.user.role !== "admin") {
+      throw new TRPCError({ code: "FORBIDDEN", message: "Только администратор." });
+    }
+    const deleted = await clearPlanChangeLogByAnimal(input.animalId);
+    return { deleted };
+  }),
+
+  // ── Admin: Manual purge old data ──
+  adminPurgeOldData: protectedProcedure.mutation(async ({ ctx }) => {
+    if (ctx.user.role !== "admin") {
+      throw new TRPCError({ code: "FORBIDDEN", message: "Только администратор." });
+    }
+    const chatDeleted = await purgeOldChatMessages(30);
+    const logDeleted = await purgeOldPlanChangeLogs(30);
+    return { chatDeleted, logDeleted };
   }),
 });

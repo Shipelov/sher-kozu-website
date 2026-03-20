@@ -930,6 +930,16 @@ function ChatConversationsOverview({ animalId, animalName }: { animalId: number;
   const conversationsQuery = trpc.productTrack.adminListConversations.useQuery();
   const conversations = (conversationsQuery.data ?? []).filter((c: any) => c.animalId === animalId);
   const [selectedOwner, setSelectedOwner] = useState<{ openId: string; name: string } | null>(null);
+  const utils = trpc.useUtils();
+  const clearChat = trpc.productTrack.adminClearChat.useMutation({
+    onSuccess: (data) => {
+      toast.success(`Удалено ${data.deleted} сообщений`);
+      utils.productTrack.adminListConversations.invalidate();
+      utils.productTrack.listMessages.invalidate();
+    },
+    onError: () => toast.error("Не удалось очистить чат"),
+  });
+  const [confirmClear, setConfirmClear] = useState(false);
 
   // If a conversation is selected, show the chat inline
   if (selectedOwner) {
@@ -966,10 +976,45 @@ function ChatConversationsOverview({ animalId, animalName }: { animalId: number;
   return (
     <Card className="rounded-[2rem] border-border/70 shadow-sm">
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <MessageCircle className="h-5 w-5 text-primary" />
-          Чаты с владельцами
-        </CardTitle>
+        <div className="flex items-center justify-between">
+          <CardTitle className="flex items-center gap-2">
+            <MessageCircle className="h-5 w-5 text-primary" />
+            Чаты с владельцами
+          </CardTitle>
+          {conversations.length > 0 && (
+            confirmClear ? (
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-muted-foreground">Удалить все сообщения?</span>
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  className="rounded-full text-xs h-7"
+                  onClick={() => { clearChat.mutate({ animalId }); setConfirmClear(false); }}
+                  disabled={clearChat.isPending}
+                >
+                  {clearChat.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : "Да, очистить"}
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="rounded-full text-xs h-7"
+                  onClick={() => setConfirmClear(false)}
+                >
+                  Отмена
+                </Button>
+              </div>
+            ) : (
+              <Button
+                variant="outline"
+                size="sm"
+                className="rounded-full text-xs gap-1 text-muted-foreground hover:text-destructive"
+                onClick={() => setConfirmClear(true)}
+              >
+                <Trash2 className="h-3 w-3" /> Очистить чат
+              </Button>
+            )
+          )}
+        </div>
         <CardDescription>
           Переписки по этому животному. Откройте чат для ответа.
         </CardDescription>
@@ -1236,6 +1281,16 @@ const ACTION_COLORS: Record<string, string> = {
 function PlanChangeLogView({ animalId }: { animalId: number }) {
   const logQuery = trpc.productTrack.getPlanChangeLog.useQuery({ animalId });
   const logs = (logQuery.data ?? []) as LogEntry[];
+  const utils = trpc.useUtils();
+  const clearLog = trpc.productTrack.adminClearLog.useMutation({
+    onSuccess: (data) => {
+      toast.success(`Удалено ${data.deleted} записей лога`);
+      utils.productTrack.getPlanChangeLog.invalidate();
+      utils.productTrack.getAllPlanChangeLogs.invalidate();
+    },
+    onError: () => toast.error("Не удалось очистить лог"),
+  });
+  const [confirmClearLog, setConfirmClearLog] = useState(false);
 
   const formatDate = (dateStr: string) => {
     const d = new Date(dateStr);
@@ -1264,12 +1319,47 @@ function PlanChangeLogView({ animalId }: { animalId: number }) {
   return (
     <Card className="rounded-[2rem] border-border/70 shadow-sm">
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <History className="h-5 w-5 text-primary" />
-          Лог изменений планов
-        </CardTitle>
+        <div className="flex items-center justify-between">
+          <CardTitle className="flex items-center gap-2">
+            <History className="h-5 w-5 text-primary" />
+            Лог изменений планов
+          </CardTitle>
+          {logs.length > 0 && (
+            confirmClearLog ? (
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-muted-foreground">Удалить всю историю?</span>
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  className="rounded-full text-xs h-7"
+                  onClick={() => { clearLog.mutate({ animalId }); setConfirmClearLog(false); }}
+                  disabled={clearLog.isPending}
+                >
+                  {clearLog.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : "Да, очистить"}
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="rounded-full text-xs h-7"
+                  onClick={() => setConfirmClearLog(false)}
+                >
+                  Отмена
+                </Button>
+              </div>
+            ) : (
+              <Button
+                variant="outline"
+                size="sm"
+                className="rounded-full text-xs gap-1 text-muted-foreground hover:text-destructive"
+                onClick={() => setConfirmClearLog(true)}
+              >
+                <Trash2 className="h-3 w-3" /> Очистить лог
+              </Button>
+            )
+          )}
+        </div>
         <CardDescription>
-          История всех действий с продуктовыми планами владельцев.
+          История всех действий с продуктовыми планами владельцев. Записи хранятся 30 дней.
         </CardDescription>
       </CardHeader>
       <CardContent>

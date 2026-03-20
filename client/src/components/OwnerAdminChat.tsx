@@ -442,6 +442,11 @@ export default function OwnerAdminChat({
           <PhotoPreview url={lightboxUrl} onClose={() => setLightboxUrl(null)} />
         )}
       </AnimatePresence>
+
+      {/* Retention footnote */}
+      <p className="mt-2 text-[10px] text-muted-foreground/60 text-center px-4">
+        Сообщения хранятся 30 дней и автоматически удаляются после истечения срока.
+      </p>
     </div>
   );
 }

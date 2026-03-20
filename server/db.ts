@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, like, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, like, lt, or, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import { createPool, type Pool } from "mysql2/promise";
 import {
@@ -2848,4 +2848,50 @@ export async function submitPlanForApproval(planId: number, selectionsJson: stri
 
   const updated = await db.select().from(ownerProductPlans).where(eq(ownerProductPlans.id, planId)).limit(1);
   return updated[0] ?? null;
+}
+
+/** Delete chat messages older than the specified number of days */
+export async function purgeOldChatMessages(daysOld: number = 30) {
+  const db = await getDb();
+  if (!db) return 0;
+
+  const cutoff = new Date(Date.now() - daysOld * 24 * 60 * 60 * 1000);
+  const result = await db.delete(chatMessages).where(
+    lt(chatMessages.createdAt, cutoff),
+  );
+  return result[0]?.affectedRows ?? 0;
+}
+
+/** Delete plan change log entries older than the specified number of days */
+export async function purgeOldPlanChangeLogs(daysOld: number = 30) {
+  const db = await getDb();
+  if (!db) return 0;
+
+  const cutoff = new Date(Date.now() - daysOld * 24 * 60 * 60 * 1000);
+  const result = await db.delete(planChangeLog).where(
+    lt(planChangeLog.createdAt, cutoff),
+  );
+  return result[0]?.affectedRows ?? 0;
+}
+
+/** Clear all chat messages for a specific animal (admin manual cleanup) */
+export async function clearChatMessagesByAnimal(animalId: number) {
+  const db = await getDb();
+  if (!db) return 0;
+
+  const result = await db.delete(chatMessages).where(
+    eq(chatMessages.animalId, animalId),
+  );
+  return result[0]?.affectedRows ?? 0;
+}
+
+/** Clear all plan change log entries for a specific animal (admin manual cleanup) */
+export async function clearPlanChangeLogByAnimal(animalId: number) {
+  const db = await getDb();
+  if (!db) return 0;
+
+  const result = await db.delete(planChangeLog).where(
+    eq(planChangeLog.animalId, animalId),
+  );
+  return result[0]?.affectedRows ?? 0;
 }
