@@ -725,7 +725,7 @@ export async function getOwnerDashboardData(ownerOpenId: string) {
       slotIndexes: group.map((item: any) => item.slotIndex).sort((a: number, b: number) => a - b),
     };
   });
-  const currentAnimal = primaryOwnership ? await getAnimalBySlug(primaryOwnership.animalSlug) : null;
+  const currentAnimal = primaryOwnership ? await getAnimalBySlug(primaryOwnership.animalSlug, ownerOpenId) : null;
   const mySharePercent = currentAnimal?.mySharePercent ?? (primaryOwnershipGroup ? primaryOwnershipGroup.length * Math.round(getPercentPerSlot(normalizeOwnershipSlots(primaryOwnership.totalOwnershipSlots ?? 10))) : 0);
   const trackerData = primaryOwnership ? await getProductTrackerData(ownerOpenId, primaryOwnership.animalSlug) : { productBatches: [], compositionSnapshots: [], monthlyMetrics: [], deliveries: [] };
   const clubData = await getClubFeedData(ownerOpenId);
@@ -1601,7 +1601,7 @@ export async function listPublicAnimals() {
   return Promise.all(rows.map((animal: any) => enrichAnimalWithShareMetrics(db, animal)));
 }
 
-export async function getAnimalBySlug(slug: string) {
+export async function getAnimalBySlug(slug: string, viewerOpenId?: string | null) {
   const db = await getDb();
   const rows = await db.select().from(animals).where(eq(animals.slug, slug)).limit(1);
   const animal = rows[0];
@@ -1623,8 +1623,27 @@ export async function getAnimalBySlug(slug: string) {
     : [];
   const enriched = await enrichAnimalWithShareMetrics(db, animal);
 
+  // Compute mySharePercent for the viewing user
+  let mySharePercent = 0;
+  if (viewerOpenId) {
+    const myOwnerships = await db
+      .select({ slotIndex: animalOwnerships.slotIndex })
+      .from(animalOwnerships)
+      .where(
+        and(
+          eq(animalOwnerships.animalId, animal.id),
+          eq(animalOwnerships.ownerOpenId, viewerOpenId),
+          or(eq(animalOwnerships.status, "active"), eq(animalOwnerships.status, "pending_payment")),
+        ),
+      );
+    const totalSlots = getStandardizedOwnershipSlots();
+    const shareUnitPercent = Math.round(getPercentPerSlot(totalSlots));
+    mySharePercent = myOwnerships.length * shareUnitPercent;
+  }
+
   return {
     ...enriched,
+    mySharePercent,
     plans: linkedPlans.map((plan: any) => ({
       ...plan,
       durations: durations.filter((duration: any) => duration.planId === plan.id),

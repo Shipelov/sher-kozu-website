@@ -398,8 +398,8 @@ export const appRouter = router({
       await ensureSprintOneSeed(process.env.OWNER_OPEN_ID || "owner-demo");
       return listPublicAnimals();
     }),
-    getBySlug: publicProcedure.input(animalSlugInput).query(async ({ input }) => {
-      return getAnimalBySlug(input.slug);
+    getBySlug: publicProcedure.input(animalSlugInput).query(async ({ input, ctx }) => {
+      return getAnimalBySlug(input.slug, ctx.user?.openId ?? null);
     }),
     ownerDashboard: protectedProcedure.query(async ({ ctx }) => {
       return getOwnerDashboardData(ctx.user.openId);
