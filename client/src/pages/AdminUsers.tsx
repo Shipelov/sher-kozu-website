@@ -47,6 +47,7 @@ import {
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "wouter";
 import { toast } from "sonner";
+import UserDetailDrawer from "@/components/UserDetailDrawer";
 
 // ─── Password Cell (show/hide) ───────────────────────────────
 function PasswordCell({ password }: { password: string }) {
@@ -237,6 +238,9 @@ export default function AdminUsers() {
 
   // Confirmation state for permanent delete
   const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
+
+  // User detail drawer state
+  const [selectedUserOpenId, setSelectedUserOpenId] = useState<string | null>(null);
 
   // ─── Export helpers ───
   const exportFilters = useMemo(
@@ -719,7 +723,11 @@ export default function AdminUsers() {
                 </TableHeader>
                 <TableBody>
                   {users_list.map((u: any, idx: number) => (
-                    <TableRow key={u.id} className="hover:bg-muted/20">
+                    <TableRow
+                      key={u.id}
+                      className="hover:bg-muted/20 cursor-pointer transition-colors"
+                      onClick={() => setSelectedUserOpenId(u.openId)}
+                    >
                       <TableCell className="text-xs text-muted-foreground font-mono">
                         {(page - 1) * pageSize + idx + 1}
                       </TableCell>
@@ -755,7 +763,7 @@ export default function AdminUsers() {
                           <span className="text-xs text-muted-foreground">—</span>
                         )}
                       </TableCell>
-                      <TableCell>
+                      <TableCell onClick={(e) => e.stopPropagation()}>
                         {u.plainPassword ? (
                           <PasswordCell password={u.plainPassword} />
                         ) : (
@@ -782,7 +790,7 @@ export default function AdminUsers() {
                             })
                           : "—"}
                       </TableCell>
-                      <TableCell className="text-right">
+                      <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                         <div className="flex items-center justify-end gap-1">
                           <Button
                             variant="ghost"
@@ -1050,6 +1058,12 @@ export default function AdminUsers() {
           </Card>
         )}
       </div>
+
+      {/* User Detail Drawer */}
+      <UserDetailDrawer
+        userOpenId={selectedUserOpenId}
+        onClose={() => setSelectedUserOpenId(null)}
+      />
     </DashboardLayout>
   );
 }

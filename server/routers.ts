@@ -55,6 +55,7 @@ import {
   updateUserProfile,
   listUsersAdmin,
   exportUsersAdmin,
+  getUserDetailsAdmin,
   softDeleteUser,
   restoreUser,
   listTrashedUsers,
@@ -1595,6 +1596,22 @@ export const appRouter = router({
           throw new TRPCError({ code: "FORBIDDEN", message: "Только администратор может экспортировать пользователей" });
         }
         return exportUsersAdmin(input);
+      }),
+  }),
+
+  // ─── User Details ──────────────────────────────────────────────────
+  adminUserDetails: router({
+    getDetails: protectedProcedure
+      .input(z.object({ userOpenId: z.string().min(1) }))
+      .query(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin" && ctx.user.openId !== process.env.OWNER_OPEN_ID) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Только администратор" });
+        }
+        const details = await getUserDetailsAdmin(input.userOpenId);
+        if (!details) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Пользователь не найден" });
+        }
+        return details;
       }),
   }),
 

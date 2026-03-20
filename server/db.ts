@@ -3334,3 +3334,172 @@ export async function findExpiredTrashedUsers(days: number = 30) {
     );
   return rows;
 }
+
+
+/* ───────────────────────────────────────────────
+   Admin: Get full user details with all related data
+   ─────────────────────────────────────────────── */
+
+export async function getUserDetailsAdmin(userOpenId: string) {
+  const db = await getDb();
+
+  // 1. User profile
+  const [user] = await db
+    .select({
+      id: users.id,
+      openId: users.openId,
+      name: users.name,
+      email: users.email,
+      phone: users.phone,
+      preferredContact: users.preferredContact,
+      plainPassword: users.plainPassword,
+      bitrix24ContactId: users.bitrix24ContactId,
+      loginMethod: users.loginMethod,
+      role: users.role,
+      createdAt: users.createdAt,
+      updatedAt: users.updatedAt,
+      lastSignedIn: users.lastSignedIn,
+      onboardingCompleted: users.onboardingCompleted,
+      deletedAt: users.deletedAt,
+      deletedBy: users.deletedBy,
+    })
+    .from(users)
+    .where(eq(users.openId, userOpenId))
+    .limit(1);
+
+  if (!user) return null;
+
+  // 2. Animal ownerships with animal info
+  const ownershipsRaw = await db
+    .select({
+      id: animalOwnerships.id,
+      animalId: animalOwnerships.animalId,
+      animalName: animals.name,
+      animalSlug: animals.slug,
+      animalSpecies: animals.species,
+      status: animalOwnerships.status,
+      slotIndex: animalOwnerships.slotIndex,
+      startsAt: animalOwnerships.startsAt,
+      endsAt: animalOwnerships.endsAt,
+      priceMinor: animalOwnerships.priceMinor,
+      paidAt: animalOwnerships.paidAt,
+      cancelledAt: animalOwnerships.cancelledAt,
+      notes: animalOwnerships.notes,
+      createdAt: animalOwnerships.createdAt,
+    })
+    .from(animalOwnerships)
+    .leftJoin(animals, eq(animalOwnerships.animalId, animals.id))
+    .where(eq(animalOwnerships.ownerOpenId, userOpenId))
+    .orderBy(desc(animalOwnerships.createdAt));
+
+  // 3. Product plans
+  const productPlansRaw = await db
+    .select({
+      id: ownerProductPlans.id,
+      animalId: ownerProductPlans.animalId,
+      animalName: animals.name,
+      ownershipId: ownerProductPlans.ownershipId,
+      status: ownerProductPlans.status,
+      selectionsJson: ownerProductPlans.selectionsJson,
+      totalMilkUsed: ownerProductPlans.totalMilkUsed,
+      adminNotes: ownerProductPlans.adminNotes,
+      confirmedAt: ownerProductPlans.confirmedAt,
+      createdAt: ownerProductPlans.createdAt,
+    })
+    .from(ownerProductPlans)
+    .leftJoin(animals, eq(ownerProductPlans.animalId, animals.id))
+    .where(eq(ownerProductPlans.ownerOpenId, userOpenId))
+    .orderBy(desc(ownerProductPlans.createdAt));
+
+  // 4. Delivery schedule
+  const deliveriesRaw = await db
+    .select({
+      id: deliverySchedule.id,
+      animalId: deliverySchedule.animalId,
+      animalName: animals.name,
+      month: deliverySchedule.month,
+      year: deliverySchedule.year,
+      itemsJson: deliverySchedule.itemsJson,
+      status: deliverySchedule.status,
+      deliveredAt: deliverySchedule.deliveredAt,
+      adminNote: deliverySchedule.adminNote,
+    })
+    .from(deliverySchedule)
+    .leftJoin(animals, eq(deliverySchedule.animalId, animals.id))
+    .where(eq(deliverySchedule.ownerOpenId, userOpenId))
+    .orderBy(desc(deliverySchedule.year), desc(deliverySchedule.month));
+
+  // 5. Chat messages (last 50)
+  const chatMessagesRaw = await db
+    .select({
+      id: chatMessages.id,
+      animalId: chatMessages.animalId,
+      animalName: animals.name,
+      sender: chatMessages.sender,
+      text: chatMessages.text,
+      photoUrl: chatMessages.photoUrl,
+      isRead: chatMessages.isRead,
+      createdAt: chatMessages.createdAt,
+    })
+    .from(chatMessages)
+    .leftJoin(animals, eq(chatMessages.animalId, animals.id))
+    .where(eq(chatMessages.ownerOpenId, userOpenId))
+    .orderBy(desc(chatMessages.createdAt))
+    .limit(50);
+
+  // 6. Plan change log (last 30)
+  const changeLogRaw = await db
+    .select({
+      id: planChangeLog.id,
+      animalId: planChangeLog.animalId,
+      animalName: animals.name,
+      actorId: planChangeLog.actorId,
+      action: planChangeLog.action,
+      previousStatus: planChangeLog.previousStatus,
+      newStatus: planChangeLog.newStatus,
+      note: planChangeLog.note,
+      createdAt: planChangeLog.createdAt,
+    })
+    .from(planChangeLog)
+    .leftJoin(animals, eq(planChangeLog.animalId, animals.id))
+    .where(eq(planChangeLog.ownerOpenId, userOpenId))
+    .orderBy(desc(planChangeLog.createdAt))
+    .limit(30);
+
+  // 7. Wallet & transactions
+  const walletsRaw = await db
+    .select({
+      id: wallets.id,
+      balanceMinor: wallets.balanceMinor,
+      status: wallets.status,
+      currencyCode: wallets.currencyCode,
+    })
+    .from(wallets)
+    .where(eq(wallets.ownerOpenId, userOpenId));
+
+  const walletTxRaw = await db
+    .select({
+      id: walletTransactions.id,
+      transactionType: walletTransactions.transactionType,
+      direction: walletTransactions.direction,
+      amountMinor: walletTransactions.amountMinor,
+      balanceAfterMinor: walletTransactions.balanceAfterMinor,
+      memo: walletTransactions.memo,
+      createdAt: walletTransactions.createdAt,
+    })
+    .from(walletTransactions)
+    .where(eq(walletTransactions.ownerOpenId, userOpenId))
+    .orderBy(desc(walletTransactions.createdAt))
+    .limit(30);
+
+  return {
+    user,
+    ownerships: ownershipsRaw,
+    productPlans: productPlansRaw,
+    deliveries: deliveriesRaw,
+    chatMessages: chatMessagesRaw,
+    changeLog: changeLogRaw,
+    wallets: walletsRaw,
+    walletTransactions: walletTxRaw,
+  };
+}
