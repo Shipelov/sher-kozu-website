@@ -2742,3 +2742,33 @@ export async function getAnimalNameById(animalId: number): Promise<string> {
   const rows = await db.select({ name: animals.name }).from(animals).where(eq(animals.id, animalId)).limit(1);
   return rows[0]?.name ?? "Животное";
 }
+
+/** Reset an owner product plan back to draft status for re-selection */
+export async function resetOwnerProductPlan(planId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  await db.update(ownerProductPlans).set({
+    status: "draft",
+    selectionsJson: "[]",
+    totalMilkUsed: 0,
+    adminNotes: "Сброшен администратором для повторного выбора",
+    confirmedAt: null,
+  }).where(eq(ownerProductPlans.id, planId));
+
+  const updated = await db.select().from(ownerProductPlans).where(eq(ownerProductPlans.id, planId)).limit(1);
+  return updated[0] ?? null;
+}
+
+/** Delete all delivery schedule entries for an owner+animal (used when plan is reset) */
+export async function deleteDeliverySchedule(ownerOpenId: string, animalId: number) {
+  const db = await getDb();
+  if (!db) return;
+
+  await db.delete(deliverySchedule).where(
+    and(
+      eq(deliverySchedule.ownerOpenId, ownerOpenId),
+      eq(deliverySchedule.animalId, animalId),
+    ),
+  );
+}

@@ -24,6 +24,8 @@ import {
   resolveOwnershipId,
   resolveOwnerSharePercent,
   getAnimalNameById,
+  resetOwnerProductPlan,
+  deleteDeliverySchedule,
 } from "../db";
 import type { ProductOption } from "../../drizzle/schema";
 import { storagePut } from "../storage";
@@ -320,11 +322,11 @@ export const productTrackRouter = router({
       throw new TRPCError({ code: "NOT_FOUND", message: "План не найден." });
     }
 
-    const updatedPlan = await adminUpdateOwnerProductPlan(input.planId, {
-      selectionsJson: existingPlan.selectionsJson,
-      totalMilkUsed: existingPlan.totalMilkUsed,
-      adminNotes: "Сброшен администратором для повторного выбора владельцем",
-    });
+    // Reset plan to draft with empty selections
+    const updatedPlan = await resetOwnerProductPlan(input.planId);
+
+    // Delete existing delivery schedule since plan is reset
+    await deleteDeliverySchedule(existingPlan.ownerOpenId, existingPlan.animalId);
 
     return updatedPlan;
   }),

@@ -260,19 +260,26 @@ export default function OwnerProductPlanSection({
     return total;
   }, [selections, options]);
 
-  // Initialize selections from existing plan
+  // Initialize selections from existing plan (or clear them on reset)
   useEffect(() => {
     if (existingPlan?.selectionsJson) {
       try {
         const parsed = JSON.parse(existingPlan.selectionsJson) as EnrichedSelection[];
         const map = new Map<number, number>();
         for (const sel of parsed) {
-          map.set(sel.productOptionId, sel.annualUnits);
+          if (sel.annualUnits > 0) {
+            map.set(sel.productOptionId, sel.annualUnits);
+          }
         }
         setSelections(map);
-      } catch {}
+      } catch {
+        setSelections(new Map());
+      }
+    } else {
+      // No plan or empty selections — start fresh
+      setSelections(new Map());
     }
-  }, [existingPlan?.selectionsJson]);
+  }, [existingPlan?.selectionsJson, existingPlan?.status]);
 
   const handleSelectionChange = useCallback(
     (optionId: number, units: number) => {
