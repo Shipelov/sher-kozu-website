@@ -336,12 +336,39 @@ export async function checkRateLimit(
   return { allowed: true };
 }
 
-// ─── Email sending (stub — requires SMTP config) ────────────
+// ─── Email sending via Bitrix24 CRM ────────────────────────
+
+import {
+  findOrCreateBitrixContact,
+  sendBitrixEmail,
+  isBitrixConfigured,
+} from "./bitrix24";
 
 /**
- * Send an OTP code via email.
- * In production, this would use Nodemailer or a transactional email service.
- * For now, we log the code and use the notifyOwner mechanism as a fallback.
+ * Build a beautiful HTML email template for OTP codes.
+ */
+function buildOtpEmailHtml(code: string, purposeLabel: string): string {
+  return `
+<div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 480px; margin: 0 auto; padding: 32px; background: #faf9f6; border-radius: 12px;">
+  <div style="text-align: center; margin-bottom: 24px;">
+    <h2 style="color: #2d5016; margin: 0; font-size: 22px;">Шерь Козу</h2>
+    <p style="color: #6b7280; margin: 4px 0 0; font-size: 14px;">Персональное фермерство</p>
+  </div>
+  <div style="background: white; border-radius: 8px; padding: 24px; border: 1px solid #e5e7eb;">
+    <p style="color: #374151; font-size: 15px; margin: 0 0 16px;">Ваш код для ${purposeLabel}:</p>
+    <div style="text-align: center; margin: 20px 0;">
+      <span style="font-size: 32px; font-weight: bold; letter-spacing: 8px; color: #2d5016; background: #f0fdf4; padding: 12px 24px; border-radius: 8px; display: inline-block;">${code}</span>
+    </div>
+    <p style="color: #6b7280; font-size: 13px; margin: 16px 0 0; text-align: center;">Код действителен 3 минуты.<br/>Если вы не запрашивали этот код, проигнорируйте это сообщение.</p>
+  </div>
+  <p style="color: #9ca3af; font-size: 11px; text-align: center; margin: 16px 0 0;">© Шерь Козу — семейная ферма</p>
+</div>
+  `.trim();
+}
+
+/**
+ * Send an OTP code via email using Bitrix24 CRM.
+ * Falls back to notifyOwner if Bitrix24 is not configured.
  */
 export async function sendOtpEmail(
   email: string,
@@ -351,11 +378,34 @@ export async function sendOtpEmail(
   const purposeLabel =
     purpose === "registration" ? "регистрации" : "сброса пароля";
 
-  console.log(
-    `[LocalAuth] OTP for ${email} (${purposeLabel}): ${code}`
-  );
+  console.log(`[LocalAuth] OTP for ${email} (${purposeLabel}): ${code}`);
 
-  // Try to send via the notification service as a fallback
+  // Try Bitrix24 CRM email first
+  if (isBitrixConfigured()) {
+    try {
+      const contactId = await findOrCreateBitrixContact({
+        fullName: email.split("@")[0], // minimal name from email
+        email,
+      });
+
+      if (contactId) {
+        const sent = await sendBitrixEmail({
+          contactId,
+          toEmail: email,
+          subject: `Код ${purposeLabel} — Шерь Козу`,
+          htmlBody: buildOtpEmailHtml(code, purposeLabel),
+        });
+        if (sent) {
+          console.log(`[LocalAuth] OTP email sent via Bitrix24 to ${email}`);
+          return true;
+        }
+      }
+    } catch (e) {
+      console.warn("[LocalAuth] Bitrix24 email failed, falling back:", e);
+    }
+  }
+
+  // Fallback: notify owner
   try {
     const { notifyOwner } = await import("./_core/notification");
     await notifyOwner({
@@ -370,17 +420,41 @@ export async function sendOtpEmail(
 }
 
 /**
- * Send a password reset email with a link.
- * In production, this would send an actual email with a reset link.
+ * Send a password reset email using Bitrix24 CRM.
+ * Falls back to notifyOwner if Bitrix24 is not configured.
  */
 export async function sendPasswordResetEmail(
   email: string,
   code: string
 ): Promise<boolean> {
-  console.log(
-    `[LocalAuth] Password reset code for ${email}: ${code}`
-  );
+  console.log(`[LocalAuth] Password reset code for ${email}: ${code}`);
 
+  // Try Bitrix24 CRM email first
+  if (isBitrixConfigured()) {
+    try {
+      const contactId = await findOrCreateBitrixContact({
+        fullName: email.split("@")[0],
+        email,
+      });
+
+      if (contactId) {
+        const sent = await sendBitrixEmail({
+          contactId,
+          toEmail: email,
+          subject: "Сброс пароля — Шерь Козу",
+          htmlBody: buildOtpEmailHtml(code, "сброса пароля"),
+        });
+        if (sent) {
+          console.log(`[LocalAuth] Reset email sent via Bitrix24 to ${email}`);
+          return true;
+        }
+      }
+    } catch (e) {
+      console.warn("[LocalAuth] Bitrix24 reset email failed, falling back:", e);
+    }
+  }
+
+  // Fallback: notify owner
   try {
     const { notifyOwner } = await import("./_core/notification");
     await notifyOwner({

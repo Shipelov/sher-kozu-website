@@ -191,6 +191,7 @@ function DashboardError({ onRetry }: { onRetry: () => void }) {
 
 export default function Dashboard() {
   const ownerDashboardQuery = trpc.animals.ownerDashboard.useQuery();
+  const [authModalOpen, setAuthModalOpen] = useState(false);
   const dashboard = ownerDashboardQuery.data;
   const ownership = dashboard?.ownership ?? null;
   const currentAnimal = dashboard?.animal ?? null;
@@ -209,7 +210,6 @@ export default function Dashboard() {
   const trackerHref = currentAnimal ? `/tracker?animal=${currentAnimal.slug}` : "/tracker";
   const clubHref = currentAnimal ? `/club?animal=${currentAnimal.slug}` : "/club";
   const isGuestJourney = !ownership && !currentAnimal;
-  const [authModalOpen, setAuthModalOpen] = useState(false);
   const guestPreviewSections = [
     {
       title: "Профиль участия",

@@ -232,3 +232,43 @@ describe("localAuth.resendOtp", () => {
     expect(expiresDate.getTime()).toBeGreaterThan(Date.now());
   });
 });
+
+// ─── Bitrix24 integration helpers ──────────────────────────────────
+
+import {
+  isBitrixConfigured,
+  splitFullName,
+  mapLeadSource,
+} from "./bitrix24";
+
+describe("bitrix24 helpers", () => {
+  it("splitFullName handles single name", () => {
+    const result = splitFullName("Иван");
+    expect(result.firstName).toBe("Иван");
+    expect(result.lastName).toBe("Sher Kozu");
+  });
+
+  it("splitFullName handles full name", () => {
+    const result = splitFullName("Иван Петрович Сидоров");
+    expect(result.firstName).toBe("Иван");
+    expect(result.lastName).toBe("Петрович Сидоров");
+  });
+
+  it("splitFullName handles empty string", () => {
+    const result = splitFullName("");
+    expect(result.firstName).toBe("Партнёр");
+    expect(result.lastName).toBe("Sher Kozu");
+  });
+
+  it("mapLeadSource maps known sources", () => {
+    expect(mapLeadSource("website")).toBe("WEB");
+    expect(mapLeadSource("club")).toBe("CALL");
+    expect(mapLeadSource("referral")).toBe("RECOMMENDATION");
+    expect(mapLeadSource("manual")).toBe("SELF");
+  });
+
+  it("isBitrixConfigured returns boolean", () => {
+    // Should return a boolean regardless of env state
+    expect(typeof isBitrixConfigured()).toBe("boolean");
+  });
+});

@@ -71,7 +71,7 @@ export default function AuthModal({
   const [regPhone, setRegPhone] = useState("");
   const [regPassword, setRegPassword] = useState("");
   const [regPasswordConfirm, setRegPasswordConfirm] = useState("");
-  const [verificationChannel, setVerificationChannel] = useState<"email" | "phone">("email");
+  const verificationChannel = "email" as const; // Only email verification supported
   const [showRegPassword, setShowRegPassword] = useState(false);
 
   // Login fields
@@ -543,32 +543,10 @@ export default function AuthModal({
           )}
         </div>
 
-        {/* Verification channel selector */}
-        <div className="space-y-1.5">
-          <Label>Подтверждение через</Label>
-          <div className="flex gap-2">
-            <Button
-              type="button"
-              variant={verificationChannel === "email" ? "default" : "outline"}
-              size="sm"
-              onClick={() => setVerificationChannel("email")}
-              className="flex-1"
-            >
-              <Mail className="w-4 h-4 mr-1" />
-              Email
-            </Button>
-            <Button
-              type="button"
-              variant={verificationChannel === "phone" ? "default" : "outline"}
-              size="sm"
-              onClick={() => setVerificationChannel("phone")}
-              disabled={!regPhone.trim()}
-              className="flex-1"
-            >
-              <Phone className="w-4 h-4 mr-1" />
-              Телефон
-            </Button>
-          </div>
+        {/* Email verification notice */}
+        <div className="flex items-center gap-2 p-3 rounded-lg bg-green-50 border border-green-200 text-green-800 text-sm">
+          <Mail className="w-4 h-4 shrink-0" />
+          <span>Код подтверждения будет отправлен на указанный email</span>
         </div>
 
         <Button
@@ -816,7 +794,7 @@ export default function AuthModal({
       case "register-otp":
         return renderOtpVerification(
           "Введите код подтверждения",
-          "Мы отправили 6-значный код для завершения регистрации",
+          "Мы отправили 6-значный код на вашу электронную почту",
           handleVerifyRegistrationOtp,
           "register-captcha"
         );

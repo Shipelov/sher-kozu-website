@@ -1,0 +1,1 @@
+ALTER TABLE `users` ADD `bitrix24ContactId` varchar(32);

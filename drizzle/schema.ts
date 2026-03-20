@@ -18,6 +18,7 @@ export const users = mysqlTable("users", {
   phone: varchar("phone", { length: 32 }),
   preferredContact: mysqlEnum("preferredContact", ["email", "phone", "messenger"]),
   passwordHash: varchar("passwordHash", { length: 255 }),
+  bitrix24ContactId: varchar("bitrix24ContactId", { length: 32 }),
   loginMethod: varchar("loginMethod", { length: 64 }),
   role: mysqlEnum("role", ["user", "admin"]).default("user").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),

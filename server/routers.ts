@@ -550,6 +550,30 @@ export const appRouter = router({
           password: input.password,
         });
 
+        // Sync contact to Bitrix24 CRM (non-blocking)
+        try {
+          const { findOrCreateBitrixContact } = await import("./bitrix24");
+          const bitrixContactId = await findOrCreateBitrixContact({
+            fullName: input.name,
+            email: input.email,
+            phone: input.phone,
+          });
+          if (bitrixContactId) {
+            // Save Bitrix24 contact ID to user record
+            const { getDb: getDbLocal } = await import("./db");
+            const { users: usersTable } = await import("../drizzle/schema");
+            const { eq: eqOp } = await import("drizzle-orm");
+            const dbLocal = await getDbLocal();
+            await dbLocal
+              .update(usersTable)
+              .set({ bitrix24ContactId: bitrixContactId })
+              .where(eqOp(usersTable.openId, openId));
+            console.log(`[Registration] Bitrix24 contact ${bitrixContactId} linked to user ${openId}`);
+          }
+        } catch (e) {
+          console.warn("[Registration] Bitrix24 contact sync failed (non-critical):", e);
+        }
+
         // Create session
         const sessionToken = await sdk.createSessionToken(openId, {
           name: input.name,
@@ -1300,6 +1324,101 @@ export const appRouter = router({
         }
         return result;
       }),
+  }),
+  adminSync: router({
+    /** Pull contacts from Bitrix24 and create/update local users */
+    syncBitrixContacts: protectedProcedure.mutation(async ({ ctx }) => {
+      if (ctx.user.role !== "admin" && ctx.user.openId !== process.env.OWNER_OPEN_ID) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Только администратор может запускать синхронизацию" });
+      }
+
+      const { pullBitrixContacts, isBitrixConfigured: isBxConfigured } = await import("./bitrix24");
+      if (!isBxConfigured()) {
+        throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Bitrix24 не настроен" });
+      }
+
+      const { getDb: getDbSync } = await import("./db");
+      const { users: usersT } = await import("../drizzle/schema");
+      const { eq: eqSync } = await import("drizzle-orm");
+      const dbSync = await getDbSync();
+
+      let synced = 0;
+      let created = 0;
+      let updated = 0;
+      let nextStart: number | null = 0;
+
+      while (nextStart !== null) {
+        const batch = await pullBitrixContacts({ start: nextStart });
+
+        for (const contact of batch.contacts) {
+          const email = contact.EMAIL?.[0]?.VALUE ?? null;
+          const phone = contact.PHONE?.[0]?.VALUE ?? null;
+          const fullName = [contact.NAME, contact.LAST_NAME].filter(Boolean).join(" ").trim() || "Контакт";
+          const bitrixId = String(contact.ID);
+
+          if (!email && !phone) continue; // skip contacts without contact info
+
+          // Check if user already linked by bitrix24ContactId
+          const existingByBitrix = await dbSync
+            .select()
+            .from(usersT)
+            .where(eqSync(usersT.bitrix24ContactId, bitrixId))
+            .limit(1);
+
+          if (existingByBitrix.length > 0) {
+            // Update name/email/phone if changed
+            const existing = existingByBitrix[0];
+            const updates: Record<string, unknown> = {};
+            if (email && existing.email !== email) updates.email = email;
+            if (phone && existing.phone !== phone) updates.phone = phone;
+            if (fullName && existing.name !== fullName) updates.name = fullName;
+            if (Object.keys(updates).length > 0) {
+              updates.updatedAt = new Date();
+              await dbSync.update(usersT).set(updates).where(eqSync(usersT.openId, existing.openId));
+              updated++;
+            }
+            synced++;
+            continue;
+          }
+
+          // Check if user exists by email
+          if (email) {
+            const { getUserByEmail: getByEmail } = await import("./localAuth");
+            const existingByEmail = await getByEmail(email);
+            if (existingByEmail) {
+              // Link existing user to Bitrix contact
+              await dbSync.update(usersT)
+                .set({ bitrix24ContactId: bitrixId, updatedAt: new Date() })
+                .where(eqSync(usersT.openId, existingByEmail.openId));
+              updated++;
+              synced++;
+              continue;
+            }
+          }
+
+          // Create new user from Bitrix contact (no password — they'll need to set one via "forgot password")
+          const crypto = await import("crypto");
+          const openId = `bitrix_${crypto.randomUUID().replace(/-/g, "").slice(0, 24)}`;
+          await dbSync.insert(usersT).values({
+            openId,
+            name: fullName,
+            email,
+            phone,
+            bitrix24ContactId: bitrixId,
+            loginMethod: "bitrix",
+            role: "user",
+            lastSignedIn: new Date(),
+            onboardingCompleted: false,
+          });
+          created++;
+          synced++;
+        }
+
+        nextStart = batch.nextStart;
+      }
+
+      return { success: true, synced, created, updated };
+    }),
   }),
   adminAnalytics: router({
     userFunnel: protectedProcedure.query(async () => {

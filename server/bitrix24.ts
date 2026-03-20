@@ -208,6 +208,206 @@ export async function syncPartnerLeadToBitrix(input: PartnerLeadSyncPayload): Pr
   };
 }
 
+// ─── Contact Management ─────────────────────────────────────
+
+/**
+ * Find an existing contact in Bitrix24 by email.
+ * Returns the first matching contact ID or null.
+ */
+export async function findBitrixContactByEmail(email: string): Promise<string | null> {
+  if (!isBitrixConfigured()) return null;
+  try {
+    const response = await callBitrix<{ result: Array<{ ID: string }> }>("crm.contact.list", {
+      filter: { EMAIL: email },
+      select: ["ID", "NAME", "LAST_NAME", "EMAIL", "PHONE"],
+    });
+    const contacts = response.result;
+    return contacts?.length > 0 ? String(contacts[0].ID) : null;
+  } catch (e) {
+    console.warn("[Bitrix24] findBitrixContactByEmail error:", e);
+    return null;
+  }
+}
+
+/**
+ * Find an existing contact in Bitrix24 by phone.
+ */
+export async function findBitrixContactByPhone(phone: string): Promise<string | null> {
+  if (!isBitrixConfigured()) return null;
+  try {
+    const response = await callBitrix<{ result: Array<{ ID: string }> }>("crm.contact.list", {
+      filter: { PHONE: phone },
+      select: ["ID", "NAME", "LAST_NAME", "EMAIL", "PHONE"],
+    });
+    const contacts = response.result;
+    return contacts?.length > 0 ? String(contacts[0].ID) : null;
+  } catch (e) {
+    console.warn("[Bitrix24] findBitrixContactByPhone error:", e);
+    return null;
+  }
+}
+
+/**
+ * Create a new contact in Bitrix24 CRM.
+ * Returns the new contact ID.
+ */
+export async function createBitrixContact(data: {
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone?: string | null;
+}): Promise<string | null> {
+  if (!isBitrixConfigured()) return null;
+  try {
+    const fields: Record<string, unknown> = {
+      NAME: data.firstName,
+      LAST_NAME: data.lastName,
+      OPENED: "Y",
+      TYPE_ID: "CLIENT",
+      SOURCE_ID: "WEB",
+      SOURCE_DESCRIPTION: "Регистрация через сайт Шерь Козу",
+      EMAIL: [{ VALUE: data.email, VALUE_TYPE: "WORK" }],
+    };
+    if (data.phone) {
+      fields.PHONE = [{ VALUE: data.phone, VALUE_TYPE: "MOBILE" }];
+    }
+    const response = await callBitrix<{ result: number | string }>("crm.contact.add", {
+      fields,
+      params: { REGISTER_SONET_EVENT: "Y" },
+    });
+    return String(response.result);
+  } catch (e) {
+    console.warn("[Bitrix24] createBitrixContact error:", e);
+    return null;
+  }
+}
+
+/**
+ * Find or create a contact in Bitrix24.
+ * First searches by email, then by phone. If not found, creates a new one.
+ */
+export async function findOrCreateBitrixContact(data: {
+  fullName: string;
+  email: string;
+  phone?: string | null;
+}): Promise<string | null> {
+  if (!isBitrixConfigured()) return null;
+
+  // Try to find by email first
+  let contactId = await findBitrixContactByEmail(data.email);
+  if (contactId) return contactId;
+
+  // Try by phone
+  if (data.phone) {
+    contactId = await findBitrixContactByPhone(data.phone);
+    if (contactId) return contactId;
+  }
+
+  // Create new contact
+  const { firstName, lastName } = splitFullName(data.fullName);
+  return createBitrixContact({
+    firstName,
+    lastName,
+    email: data.email,
+    phone: data.phone,
+  });
+}
+
+/**
+ * Send an email to a contact via Bitrix24 CRM activity.
+ * Uses crm.activity.add with TYPE_ID=4 (email).
+ */
+export async function sendBitrixEmail(params: {
+  contactId: string;
+  toEmail: string;
+  subject: string;
+  htmlBody: string;
+}): Promise<boolean> {
+  if (!isBitrixConfigured()) return false;
+  try {
+    const userId = ENV.bitrix24RestUserId.trim();
+    const now = new Date();
+    const endTime = new Date(now.getTime() + 3600 * 1000);
+
+    await callBitrix<{ result: number | string }>("crm.activity.add", {
+      fields: {
+        SUBJECT: params.subject,
+        DESCRIPTION: params.htmlBody,
+        DESCRIPTION_TYPE: 3, // 3 = HTML
+        COMPLETED: "Y",
+        DIRECTION: 2, // 2 = outgoing
+        OWNER_ID: params.contactId,
+        OWNER_TYPE_ID: 3, // 3 = contact
+        TYPE_ID: 4, // 4 = email
+        COMMUNICATIONS: [
+          {
+            VALUE: params.toEmail,
+            ENTITY_ID: params.contactId,
+            ENTITY_TYPE_ID: 3,
+          },
+        ],
+        START_TIME: now.toISOString(),
+        END_TIME: endTime.toISOString(),
+        RESPONSIBLE_ID: userId,
+        SETTINGS: {
+          MESSAGE_FROM: `Шерь Козу <noreply@sherkozu.ru>`,
+        },
+      },
+    });
+    console.log(`[Bitrix24] Email sent to ${params.toEmail} (contact ${params.contactId})`);
+    return true;
+  } catch (e) {
+    console.warn("[Bitrix24] sendBitrixEmail error:", e);
+    return false;
+  }
+}
+
+// ─── Contact Sync from Bitrix24 to Site ─────────────────────
+
+export type BitrixContact = {
+  ID: string;
+  NAME: string;
+  LAST_NAME: string;
+  EMAIL: Array<{ VALUE: string; VALUE_TYPE: string }> | null;
+  PHONE: Array<{ VALUE: string; VALUE_TYPE: string }> | null;
+  DATE_CREATE: string;
+  DATE_MODIFY: string;
+};
+
+/**
+ * Pull contacts from Bitrix24 CRM.
+ * Supports pagination and optional date filter for incremental sync.
+ */
+export async function pullBitrixContacts(options?: {
+  modifiedSince?: Date;
+  start?: number;
+  limit?: number;
+}): Promise<{ contacts: BitrixContact[]; total: number; nextStart: number | null }> {
+  if (!isBitrixConfigured()) return { contacts: [], total: 0, nextStart: null };
+
+  const filter: Record<string, unknown> = {};
+  if (options?.modifiedSince) {
+    filter[">DATE_MODIFY"] = options.modifiedSince.toISOString();
+  }
+
+  const response = await callBitrix<{
+    result: BitrixContact[];
+    total: number;
+    next?: number;
+  }>("crm.contact.list", {
+    filter,
+    select: ["ID", "NAME", "LAST_NAME", "EMAIL", "PHONE", "DATE_CREATE", "DATE_MODIFY"],
+    order: { DATE_MODIFY: "DESC" },
+    start: options?.start ?? 0,
+  });
+
+  return {
+    contacts: response.result ?? [],
+    total: response.total ?? 0,
+    nextStart: response.next ?? null,
+  };
+}
+
 export async function pullBitrixDealSnapshot(dealId: string) {
   const dealGetResponse = await callBitrix<{ result?: Record<string, unknown> }>("crm.deal.get", {
     id: dealId,
