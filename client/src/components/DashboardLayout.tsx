@@ -22,7 +22,7 @@ import {
 } from "@/components/ui/sidebar";
 import { getLoginUrl } from "@/const";
 import { useIsMobile } from "@/hooks/useMobile";
-import { Crown, LayoutDashboard, LogOut, PanelLeft, ShieldCheck, ShieldEllipsis, Users } from "lucide-react";
+import { Crown, LayoutDashboard, LogOut, Milk, PanelLeft, ShieldCheck, ShieldEllipsis, Users } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { DashboardLayoutSkeleton } from './DashboardLayoutSkeleton';
@@ -37,6 +37,7 @@ const adminMenuItems = [
   { icon: ShieldEllipsis, label: "Admin Overview", path: "/admin" },
   { icon: ShieldCheck, label: "Admin Animals", path: "/admin/animals" },
   { icon: Crown, label: "Admin Club", path: "/admin/club" },
+  { icon: Milk, label: "Трек продукции", path: "/admin/product-track" },
 ];
 
 const SIDEBAR_WIDTH_KEY = "sidebar-width";

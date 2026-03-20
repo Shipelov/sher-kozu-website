@@ -36,6 +36,7 @@ import {
   Zap,
   BookOpen,
 } from "lucide-react";
+import OwnerProductPlanSection from "./OwnerProductPlanSection";
 
 /* ── constants ── */
 const MAX_UPLOAD_SIZE_BYTES = 8 * 1024 * 1024;
@@ -798,6 +799,16 @@ export default function AnimalProfile() {
             </div>
           </div>
         </section>
+
+        {/* ═══ SECTION 4.5: Product Plan (owners only) ═══ */}
+        {hasOwnerAccess && data?.id ? (
+          <OwnerProductPlanSection
+            animalId={data.id}
+            animalSlug={animalSlug!}
+            animalName={displayName}
+            mySharePercent={mySharePercent}
+          />
+        ) : null}
 
         {/* ═══ SECTION 5: Passport ═══ */}
         <section className="border-b border-border/60 py-10 md:py-14">
