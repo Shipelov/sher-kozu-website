@@ -263,6 +263,18 @@ function ProductOptionsManager({ animalId }: { animalId: number }) {
     setEditingOption({ ...opt });
   };
 
+  // Calculate milk used by OTHER options (excluding the one being edited)
+  const milkUsedByOtherOptions = useMemo(() => {
+    return options
+      .filter((o) => o.id !== editingOption?.id)
+      .reduce((sum, o) => sum + o.maxAnnualUnits * o.conversionRatio, 0);
+  }, [options, editingOption?.id]);
+
+  // Milk this option would use
+  const editingOptionMilk = (editingOption?.maxAnnualUnits ?? 0) * (editingOption?.conversionRatio ?? 1);
+  const projectedTotalMilk = milkUsedByOtherOptions + editingOptionMilk;
+  const isOverBudget = annualMilk > 0 && projectedTotalMilk > annualMilk;
+
   const handleSaveOption = () => {
     if (!editingOption) return;
     if (!editingOption.label?.trim()) {
@@ -271,6 +283,10 @@ function ProductOptionsManager({ animalId }: { animalId: number }) {
     }
     if (!editingOption.conversionRatio || editingOption.conversionRatio < 1) {
       toast.error("Коэффициент конверсии должен быть >= 1");
+      return;
+    }
+    if (isOverBudget) {
+      toast.error(`Превышен молочный бюджет: ${projectedTotalMilk} л из ${annualMilk} л`);
       return;
     }
     upsertOption.mutate({
@@ -462,15 +478,38 @@ function ProductOptionsManager({ animalId }: { animalId: number }) {
                   />
                   <Label>Доступен для выбора владельцами</Label>
                 </div>
-                {annualMilk > 0 && editingOption.maxAnnualUnits && editingOption.conversionRatio ? (
-                  <div className="rounded-xl bg-secondary/40 p-3 text-sm text-muted-foreground">
-                    Этот продукт потребует <strong>{(editingOption.maxAnnualUnits ?? 0) * (editingOption.conversionRatio ?? 1)} л</strong> молока в год
-                    ({Math.round(((editingOption.maxAnnualUnits ?? 0) * (editingOption.conversionRatio ?? 1) / annualMilk) * 100)}% от бюджета).
+                {annualMilk > 0 && (
+                  <div className={`rounded-xl p-3 text-sm ${isOverBudget ? "bg-red-50 border border-red-200" : "bg-secondary/40"}`}>
+                    <div className="flex justify-between mb-1">
+                      <span className="text-muted-foreground">Другие продукты</span>
+                      <span>{milkUsedByOtherOptions} л</span>
+                    </div>
+                    <div className="flex justify-between mb-1">
+                      <span className="text-muted-foreground">Этот продукт</span>
+                      <span className="font-medium">{editingOptionMilk} л</span>
+                    </div>
+                    <div className="h-2 rounded-full bg-secondary overflow-hidden my-2">
+                      <div
+                        className={`h-full rounded-full transition-all ${isOverBudget ? "bg-red-500" : "bg-primary"}`}
+                        style={{ width: `${Math.min((projectedTotalMilk / annualMilk) * 100, 100)}%` }}
+                      />
+                    </div>
+                    <div className="flex justify-between">
+                      <span className={`font-semibold ${isOverBudget ? "text-red-600" : ""}`}>
+                        Итого: {projectedTotalMilk} л
+                      </span>
+                      <span className="text-muted-foreground">из {annualMilk} л/год</span>
+                    </div>
+                    {isOverBudget && (
+                      <p className="text-xs text-red-600 font-medium mt-1">
+                        ⚠ Превышение на {projectedTotalMilk - annualMilk} л. Уменьшите лимит или конверсию.
+                      </p>
+                    )}
                   </div>
-                ) : null}
+                )}
                 <div className="flex justify-end gap-3">
                   <Button variant="outline" className="rounded-full" onClick={() => setEditingOption(null)}>Отмена</Button>
-                  <Button className="rounded-full" onClick={handleSaveOption} disabled={upsertOption.isPending}>
+                  <Button className="rounded-full" onClick={handleSaveOption} disabled={upsertOption.isPending || isOverBudget}>
                     {upsertOption.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle2 className="mr-2 h-4 w-4" />}
                     Сохранить
                   </Button>

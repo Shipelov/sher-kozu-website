@@ -166,6 +166,22 @@ export const productTrackRouter = router({
   }),
 
   upsertOption: protectedProcedure.input(productOptionInput).mutation(async ({ input }) => {
+    // Server-side milk budget validation
+    const profile = await getProductionProfile(input.animalId);
+    if (profile) {
+      const existingOptions = await listProductOptions(input.animalId);
+      const milkUsedByOthers = existingOptions
+        .filter((o: any) => o.id !== input.id)
+        .reduce((sum: number, o: any) => sum + o.maxAnnualUnits * o.conversionRatio, 0);
+      const thisOptionMilk = (input.maxAnnualUnits ?? 0) * input.conversionRatio;
+      const totalMilk = milkUsedByOthers + thisOptionMilk;
+      if (totalMilk > profile.annualMilkLiters) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: `Превышен молочный бюджет: ${totalMilk} л из ${profile.annualMilkLiters} л. Уменьшите лимит или конверсию.`,
+        });
+      }
+    }
     return upsertProductOption(input);
   }),
 
