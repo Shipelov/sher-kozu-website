@@ -28,8 +28,10 @@ import {
   ChevronRight,
   ChevronsLeft,
   ChevronsRight,
+  Download,
   Eye,
   EyeOff,
+  FileSpreadsheet,
   Filter,
   KeyRound,
   Loader2,
@@ -177,6 +179,129 @@ export default function AdminUsers() {
     },
   });
 
+  // ─── Export helpers ───
+  const exportFilters = useMemo(
+    () => ({
+      search: debouncedSearch || undefined,
+      role:
+        roleFilter !== "all"
+          ? (roleFilter as "user" | "admin")
+          : undefined,
+      loginMethod: loginMethodFilter !== "all" ? loginMethodFilter : undefined,
+      hasBitrix:
+        bitrixFilter === "yes"
+          ? true
+          : bitrixFilter === "no"
+            ? false
+            : undefined,
+      hasPassword:
+        passwordFilter === "yes"
+          ? true
+          : passwordFilter === "no"
+            ? false
+            : undefined,
+      sortBy: sortBy as "createdAt" | "name" | "email" | "lastSignedIn",
+      sortOrder,
+    }),
+    [debouncedSearch, roleFilter, loginMethodFilter, bitrixFilter, passwordFilter, sortBy, sortOrder],
+  );
+
+  const [exporting, setExporting] = useState<"csv" | "xlsx" | null>(null);
+
+  const EXPORT_COLUMNS = [
+    { key: "id", label: "ID" },
+    { key: "name", label: "Имя" },
+    { key: "email", label: "Email" },
+    { key: "phone", label: "Телефон" },
+    { key: "role", label: "Роль" },
+    { key: "loginMethod", label: "Метод входа" },
+    { key: "preferredContact", label: "Предпочтительный контакт" },
+    { key: "bitrix24ContactId", label: "Bitrix24 ID" },
+    { key: "onboardingCompleted", label: "Онбординг" },
+    { key: "createdAt", label: "Дата регистрации" },
+    { key: "lastSignedIn", label: "Последний вход" },
+  ] as const;
+
+  const formatExportValue = (key: string, value: unknown): string => {
+    if (value === null || value === undefined) return "";
+    if (key === "createdAt" || key === "lastSignedIn") {
+      return new Date(value as string).toLocaleString("ru-RU");
+    }
+    if (key === "onboardingCompleted") return value ? "Да" : "Нет";
+    if (key === "role") return value === "admin" ? "Админ" : "Пользователь";
+    if (key === "loginMethod") {
+      const methods: Record<string, string> = { local: "Локальный", oauth: "OAuth", bitrix: "Bitrix" };
+      return methods[value as string] ?? String(value);
+    }
+    return String(value);
+  };
+
+  const handleExportCSV = async () => {
+    setExporting("csv");
+    try {
+      const rows = await utils.adminAnalytics.exportUsers.fetch(exportFilters);
+      if (!rows.length) {
+        toast.info("Нет данных для экспорта");
+        return;
+      }
+      const BOM = "\uFEFF";
+      const header = EXPORT_COLUMNS.map((c) => c.label).join(";");
+      const lines = rows.map((row: Record<string, unknown>) =>
+        EXPORT_COLUMNS.map((c) => {
+          const val = formatExportValue(c.key, row[c.key]);
+          return `"${val.replace(/"/g, '""')}"`;
+        }).join(";"),
+      );
+      const csv = BOM + header + "\n" + lines.join("\n");
+      const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `пользователи_${new Date().toISOString().slice(0, 10)}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success(`Экспортировано ${rows.length} записей в CSV`);
+    } catch (err: unknown) {
+      toast.error(`Ошибка экспорта: ${err instanceof Error ? err.message : "Неизвестная ошибка"}`);
+    } finally {
+      setExporting(null);
+    }
+  };
+
+  const handleExportExcel = async () => {
+    setExporting("xlsx");
+    try {
+      const rows = await utils.adminAnalytics.exportUsers.fetch(exportFilters);
+      if (!rows.length) {
+        toast.info("Нет данных для экспорта");
+        return;
+      }
+      const XLSX = await import("xlsx");
+      const wsData = [
+        EXPORT_COLUMNS.map((c) => c.label),
+        ...rows.map((row: Record<string, unknown>) =>
+          EXPORT_COLUMNS.map((c) => formatExportValue(c.key, row[c.key])),
+        ),
+      ];
+      const ws = XLSX.utils.aoa_to_sheet(wsData);
+      // Auto-width columns
+      ws["!cols"] = EXPORT_COLUMNS.map((c, i) => ({
+        wch: Math.max(
+          c.label.length,
+          ...rows.map((r: Record<string, unknown>) => formatExportValue(c.key, r[c.key]).length),
+        ) + 2,
+      }));
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Пользователи");
+      XLSX.writeFile(wb, `пользователи_${new Date().toISOString().slice(0, 10)}.xlsx`);
+      toast.success(`Экспортировано ${rows.length} записей в Excel`);
+    } catch (err: unknown) {
+      toast.error(`Ошибка экспорта: ${err instanceof Error ? err.message : "Неизвестная ошибка"}`);
+    } finally {
+      setExporting(null);
+    }
+  };
+
   // Sort toggle
   const handleSort = (column: string) => {
     if (sortBy === column) {
@@ -284,18 +409,48 @@ export default function AdminUsers() {
               </p>
             </div>
           </div>
-          <Button
-            variant="outline"
-            size="sm"
-            className="rounded-full gap-2"
-            onClick={() => syncBitrix.mutate()}
-            disabled={syncBitrix.isPending}
-          >
-            <RefreshCw
-              className={`h-4 w-4 ${syncBitrix.isPending ? "animate-spin" : ""}`}
-            />
-            Синхронизация с Bitrix24
-          </Button>
+          <div className="flex items-center gap-2 flex-wrap">
+            <Button
+              variant="outline"
+              size="sm"
+              className="rounded-full gap-2"
+              onClick={handleExportCSV}
+              disabled={exporting !== null}
+            >
+              {exporting === "csv" ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Download className="h-4 w-4" />
+              )}
+              CSV
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="rounded-full gap-2"
+              onClick={handleExportExcel}
+              disabled={exporting !== null}
+            >
+              {exporting === "xlsx" ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <FileSpreadsheet className="h-4 w-4" />
+              )}
+              Excel
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="rounded-full gap-2"
+              onClick={() => syncBitrix.mutate()}
+              disabled={syncBitrix.isPending}
+            >
+              <RefreshCw
+                className={`h-4 w-4 ${syncBitrix.isPending ? "animate-spin" : ""}`}
+              />
+              Bitrix24
+            </Button>
+          </div>
         </div>
 
         {/* Search + Filters */}

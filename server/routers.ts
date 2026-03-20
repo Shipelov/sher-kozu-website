@@ -54,6 +54,7 @@ import {
   getUserProfile,
   updateUserProfile,
   listUsersAdmin,
+  exportUsersAdmin,
 } from "./db";
 import { storagePut } from "./storage";
 import { isBitrixConfigured, pullBitrixDealSnapshot, syncPartnerLeadToBitrix } from "./bitrix24";
@@ -1570,6 +1571,25 @@ export const appRouter = router({
           throw new TRPCError({ code: "FORBIDDEN", message: "Только администратор может просматривать список пользователей" });
         }
         return listUsersAdmin(input);
+      }),
+    /** Admin: export all users matching filters (no pagination) */
+    exportUsers: protectedProcedure
+      .input(
+        z.object({
+          search: z.string().optional(),
+          role: z.enum(["user", "admin"]).optional(),
+          loginMethod: z.string().optional(),
+          hasBitrix: z.boolean().optional(),
+          hasPassword: z.boolean().optional(),
+          sortBy: z.enum(["createdAt", "name", "email", "lastSignedIn"]).optional(),
+          sortOrder: z.enum(["asc", "desc"]).optional(),
+        }),
+      )
+      .query(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin" && ctx.user.openId !== process.env.OWNER_OPEN_ID) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Только администратор может экспортировать пользователей" });
+        }
+        return exportUsersAdmin(input);
       }),
   }),
 });

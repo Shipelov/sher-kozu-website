@@ -3104,3 +3104,74 @@ export async function listUsersAdmin(params: ListUsersParams) {
 
   return { users: rows, total, page: params.page, pageSize: params.pageSize, totalPages };
 }
+
+/**
+ * Export all users matching current filters (no pagination) for CSV/Excel export.
+ */
+export async function exportUsersAdmin(params: Omit<ListUsersParams, "page" | "pageSize">) {
+  const db = await getDb();
+  if (!db) return [];
+
+  const conditions: ReturnType<typeof eq>[] = [];
+
+  if (params.search?.trim()) {
+    const term = `%${params.search.trim()}%`;
+    conditions.push(
+      or(
+        like(users.name, term),
+        like(users.email, term),
+        like(users.phone, term),
+      )!,
+    );
+  }
+
+  if (params.role) {
+    conditions.push(eq(users.role, params.role));
+  }
+
+  if (params.loginMethod) {
+    conditions.push(eq(users.loginMethod, params.loginMethod));
+  }
+
+  if (params.hasBitrix === true) {
+    conditions.push(isNotNull(users.bitrix24ContactId));
+  } else if (params.hasBitrix === false) {
+    conditions.push(isNull(users.bitrix24ContactId));
+  }
+
+  if (params.hasPassword === true) {
+    conditions.push(isNotNull(users.passwordHash));
+  } else if (params.hasPassword === false) {
+    conditions.push(isNull(users.passwordHash));
+  }
+
+  const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+
+  const sortColumn = {
+    createdAt: users.createdAt,
+    name: users.name,
+    email: users.email,
+    lastSignedIn: users.lastSignedIn,
+  }[params.sortBy ?? "createdAt"];
+  const orderFn = params.sortOrder === "asc" ? asc : desc;
+
+  const rows = await db
+    .select({
+      id: users.id,
+      name: users.name,
+      email: users.email,
+      phone: users.phone,
+      preferredContact: users.preferredContact,
+      role: users.role,
+      loginMethod: users.loginMethod,
+      bitrix24ContactId: users.bitrix24ContactId,
+      onboardingCompleted: users.onboardingCompleted,
+      createdAt: users.createdAt,
+      lastSignedIn: users.lastSignedIn,
+    })
+    .from(users)
+    .where(whereClause)
+    .orderBy(orderFn(sortColumn));
+
+  return rows;
+}
