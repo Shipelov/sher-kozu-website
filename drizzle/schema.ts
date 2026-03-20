@@ -17,6 +17,7 @@ export const users = mysqlTable("users", {
   email: varchar("email", { length: 320 }),
   phone: varchar("phone", { length: 32 }),
   preferredContact: mysqlEnum("preferredContact", ["email", "phone", "messenger"]),
+  passwordHash: varchar("passwordHash", { length: 255 }),
   loginMethod: varchar("loginMethod", { length: 64 }),
   role: mysqlEnum("role", ["user", "admin"]).default("user").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
@@ -556,3 +557,70 @@ export const planChangeLog = mysqlTable("planChangeLog", {
 
 export type PlanChangeLogEntry = typeof planChangeLog.$inferSelect;
 export type InsertPlanChangeLogEntry = typeof planChangeLog.$inferInsert;
+
+/* ───────────────────────────────────────────────
+   Local Auth — OTP codes and password reset tokens
+   ─────────────────────────────────────────────── */
+
+export const otpPurposeEnum = mysqlEnum("otpPurpose", ["registration", "password_reset"]);
+export const otpChannelEnum = mysqlEnum("otpChannel", ["email", "phone"]);
+
+/**
+ * One-time verification codes for registration and password reset.
+ * Codes expire after 3 minutes. Max 5 attempts per code.
+ */
+export const otpCodes = mysqlTable("otpCodes", {
+  id: int("id").autoincrement().primaryKey(),
+  /** Email or phone the code was sent to */
+  target: varchar("target", { length: 320 }).notNull(),
+  /** 6-digit code */
+  code: varchar("code", { length: 6 }).notNull(),
+  purpose: otpPurposeEnum.notNull(),
+  channel: otpChannelEnum.notNull(),
+  /** Number of verification attempts */
+  attempts: int("attempts").default(0).notNull(),
+  /** Whether the code has been successfully verified */
+  verified: boolean("verified").default(false).notNull(),
+  expiresAt: timestamp("expiresAt").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+/**
+ * Password reset tokens sent via email.
+ * Token is a random UUID, expires after 30 minutes.
+ */
+export const passwordResetTokens = mysqlTable("passwordResetTokens", {
+  id: int("id").autoincrement().primaryKey(),
+  userOpenId: varchar("userOpenId", { length: 64 }).notNull(),
+  token: varchar("token", { length: 128 }).notNull().unique(),
+  used: boolean("used").default(false).notNull(),
+  expiresAt: timestamp("expiresAt").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+/**
+ * Rate limiting for auth operations (login attempts, OTP sends).
+ * Tracks attempts per IP/identifier within time windows.
+ */
+export const authRateLimits = mysqlTable("authRateLimits", {
+  id: int("id").autoincrement().primaryKey(),
+  /** IP address or identifier being rate-limited */
+  identifier: varchar("identifier", { length: 320 }).notNull(),
+  /** Type of action being limited */
+  action: varchar("action", { length: 32 }).notNull(),
+  /** Number of attempts in current window */
+  attempts: int("attempts").default(1).notNull(),
+  /** When this rate limit window expires */
+  windowExpiresAt: timestamp("windowExpiresAt").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type OtpCode = typeof otpCodes.$inferSelect;
+export type InsertOtpCode = typeof otpCodes.$inferInsert;
+
+export type PasswordResetToken = typeof passwordResetTokens.$inferSelect;
+export type InsertPasswordResetToken = typeof passwordResetTokens.$inferInsert;
+
+export type AuthRateLimit = typeof authRateLimits.$inferSelect;
+export type InsertAuthRateLimit = typeof authRateLimits.$inferInsert;

@@ -5,11 +5,12 @@ Core: not an admin panel, but a premium emotional operating system for personal 
 Must feel like a living bridge between animal, products, club and future AI curation.
 */
 
+import { useState } from "react";
 import { motion } from "framer-motion";
 import { Link } from "wouter";
 import Navbar from "@/components/Navbar";
-import { getLoginUrl } from "@/const";
 import { trpc } from "@/lib/trpc";
+import AuthModal from "@/components/AuthModal";
 import {
   ArrowRight,
   BookOpen,
@@ -208,6 +209,7 @@ export default function Dashboard() {
   const trackerHref = currentAnimal ? `/tracker?animal=${currentAnimal.slug}` : "/tracker";
   const clubHref = currentAnimal ? `/club?animal=${currentAnimal.slug}` : "/club";
   const isGuestJourney = !ownership && !currentAnimal;
+  const [authModalOpen, setAuthModalOpen] = useState(false);
   const guestPreviewSections = [
     {
       title: "Профиль участия",
@@ -974,15 +976,22 @@ export default function Dashboard() {
                 <p className="text-xs uppercase tracking-[0.18em] text-primary">Продолжить маршрут</p>
                 <p className="truncate text-sm text-muted-foreground">Войдите, чтобы сохранить выбранный маршрут владельца и открыть кабинет участия.</p>
               </div>
-              <a
-                href={getLoginUrl("/dashboard")}
+              <button
+                type="button"
+                onClick={() => setAuthModalOpen(true)}
                 className="inline-flex shrink-0 items-center justify-center rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition hover:opacity-90"
               >
                 Зарегистрироваться
-              </a>
+              </button>
             </div>
           </div>
         ) : null}
+        {/* Auth Modal for guest registration */}
+        <AuthModal
+          open={authModalOpen}
+          onOpenChange={setAuthModalOpen}
+          defaultView="register"
+        />
       </div>
     </div>
   );

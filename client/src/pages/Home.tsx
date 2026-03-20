@@ -47,8 +47,10 @@ import {
   RefreshCcw,
   ChevronDown,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useCallback } from "react";
 import { toast } from "sonner";
+import { useAuth } from "@/_core/hooks/useAuth";
+import AuthModal from "@/components/AuthModal";
 
 // Legacy smoke-test markers preserved:
 // trpc.bitrix24.createPartnerLead.useMutation
@@ -319,6 +321,18 @@ function getStatusCopy(status: string | null | undefined) {
 }
 
 export default function Home() {
+  const { isAuthenticated } = useAuth();
+  const [authModalOpen, setAuthModalOpen] = useState(false);
+  const [authModalView, setAuthModalView] = useState<"login" | "register">("register");
+  const openAuthRegister = useCallback(() => {
+    setAuthModalView("register");
+    setAuthModalOpen(true);
+  }, []);
+  const openAuthLogin = useCallback(() => {
+    setAuthModalView("login");
+    setAuthModalOpen(true);
+  }, []);
+
   const animalsQuery = trpc.animals.listPublic.useQuery();
   const featuredAnimal = animalsQuery.data?.[0] ?? null;
   const featuredAnimalName = featuredAnimal?.name ?? "животное недели";
@@ -639,10 +653,17 @@ export default function Home() {
                   Открыть профиль {featuredAnimalName}
                   <ChevronRight className="h-4 w-4" />
                 </Link>
-                <Link href="/dashboard" className="inline-flex items-center justify-center gap-2 rounded-full border border-primary/15 bg-secondary/70 px-7 py-4 text-sm font-semibold text-primary transition-colors hover:bg-secondary">
-                  Открыть дашборд владельца
-                  <Sparkles className="h-4 w-4" />
-                </Link>
+                {isAuthenticated ? (
+                  <Link href="/dashboard" className="inline-flex items-center justify-center gap-2 rounded-full border border-primary/15 bg-secondary/70 px-7 py-4 text-sm font-semibold text-primary transition-colors hover:bg-secondary">
+                    Открыть дашборд владельца
+                    <Sparkles className="h-4 w-4" />
+                  </Link>
+                ) : (
+                  <button type="button" onClick={openAuthRegister} className="inline-flex items-center justify-center gap-2 rounded-full border border-primary/15 bg-secondary/70 px-7 py-4 text-sm font-semibold text-primary transition-colors hover:bg-secondary">
+                    Стать участником
+                    <Sparkles className="h-4 w-4" />
+                  </button>
+                )}
                 <a href="#partner-pilot" className="inline-flex items-center justify-center gap-2 rounded-full border border-stone-300 bg-white/70 px-7 py-4 text-sm font-semibold text-stone-700 backdrop-blur transition-colors hover:bg-white">
                   Стать партнёром
                   <Building2 className="h-4 w-4" />
@@ -1500,10 +1521,17 @@ export default function Home() {
                   Перейти к разделу галереи на странице
                   <ChevronDown className="h-4 w-4" />
                 </Link>
-                <Link href="/dashboard" className="inline-flex items-center justify-center gap-2 rounded-full bg-white px-7 py-4 text-sm font-semibold text-primary transition-colors hover:bg-white/95">
-                  Перейти в кабинет
-                  <ArrowRight className="h-4 w-4" />
-                </Link>
+                {isAuthenticated ? (
+                  <Link href="/dashboard" className="inline-flex items-center justify-center gap-2 rounded-full bg-white px-7 py-4 text-sm font-semibold text-primary transition-colors hover:bg-white/95">
+                    Перейти в кабинет
+                    <ArrowRight className="h-4 w-4" />
+                  </Link>
+                ) : (
+                  <button type="button" onClick={openAuthRegister} className="inline-flex items-center justify-center gap-2 rounded-full bg-white px-7 py-4 text-sm font-semibold text-primary transition-colors hover:bg-white/95">
+                    Стать участником
+                    <ArrowRight className="h-4 w-4" />
+                  </button>
+                )}
                 <Link href="/club" className="inline-flex items-center justify-center gap-2 rounded-full border border-white/20 px-7 py-4 text-sm font-semibold text-white transition-colors hover:bg-white/10">
                   Открыть клубную ленту
                   <Users className="h-4 w-4" />
@@ -1513,6 +1541,12 @@ export default function Home() {
           </div>
         </div>
       </section>
+      {/* Auth Modal */}
+      <AuthModal
+        open={authModalOpen}
+        onOpenChange={setAuthModalOpen}
+        defaultView={authModalView}
+      />
     </div>
   );
 }

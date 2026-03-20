@@ -59,6 +59,22 @@ import { isBitrixConfigured, pullBitrixDealSnapshot, syncPartnerLeadToBitrix } f
 import { runDiagnostics } from "./diagnostics";
 import { notifyOwner } from "./_core/notification";
 import { productTrackRouter } from "./routers/productTrack";
+import {
+  checkRateLimit,
+  createOtp,
+  getUserByEmail,
+  getUserByPhone,
+  hashPassword,
+  registerLocalUser,
+  sendOtpEmail,
+  sendPasswordResetEmail,
+  updateUserPassword,
+  validatePasswordStrength,
+  verifyOtp,
+  verifyPassword,
+} from "./localAuth";
+import { sdk } from "./_core/sdk";
+import { ONE_YEAR_MS } from "../shared/const";
 
 const uploadPhotoInput = z.object({
   animalSlug: z.string().min(1).max(64),
@@ -390,6 +406,368 @@ function sanitizeFileName(fileName: string) {
 
 export const appRouter = router({
   system: systemRouter,
+  localAuth: router({
+    /** Step 1: Register — validate fields, create OTP, send code */
+    register: publicProcedure
+      .input(
+        z.object({
+          name: z.string().min(2).max(160),
+          email: z.string().email().max(320),
+          phone: z.string().max(32).optional().nullable(),
+          password: z.string().min(8).max(128),
+          verificationChannel: z.enum(["email", "phone"]).default("email"),
+        })
+      )
+      .mutation(async ({ input, ctx }) => {
+        // Rate limit
+        const ip = ctx.req.ip || ctx.req.headers["x-forwarded-for"] || "unknown";
+        const rl = await checkRateLimit(String(ip), "register");
+        if (!rl.allowed) {
+          throw new TRPCError({
+            code: "TOO_MANY_REQUESTS",
+            message: `Слишком много попыток. Повторите через ${Math.ceil((rl.retryAfterMs ?? 0) / 60000)} мин.`,
+          });
+        }
+
+        // Validate password
+        const pwCheck = validatePasswordStrength(input.password);
+        if (!pwCheck.valid) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: pwCheck.message! });
+        }
+
+        // Normalize phone
+        let normalizedPhone: string | null = null;
+        if (input.phone) {
+          const { formatPhone } = await import("../shared/phone");
+          const formatted = formatPhone(input.phone);
+          if (!formatted) {
+            throw new TRPCError({
+              code: "BAD_REQUEST",
+              message: "Введите корректный российский номер телефона",
+            });
+          }
+          normalizedPhone = formatted;
+        }
+
+        // Check if email already taken
+        const existingByEmail = await getUserByEmail(input.email);
+        if (existingByEmail) {
+          throw new TRPCError({
+            code: "CONFLICT",
+            message: "Пользователь с таким email уже зарегистрирован. Используйте вход.",
+          });
+        }
+
+        // Check phone uniqueness if provided
+        if (normalizedPhone) {
+          const existingByPhone = await getUserByPhone(normalizedPhone);
+          if (existingByPhone) {
+            throw new TRPCError({
+              code: "CONFLICT",
+              message: "Пользователь с таким телефоном уже зарегистрирован.",
+            });
+          }
+        }
+
+        // Determine OTP target
+        const otpTarget =
+          input.verificationChannel === "phone" && normalizedPhone
+            ? normalizedPhone
+            : input.email;
+        const otpChannel =
+          input.verificationChannel === "phone" && normalizedPhone
+            ? ("phone" as const)
+            : ("email" as const);
+
+        // Create OTP
+        const { code, expiresAt } = await createOtp(
+          otpTarget,
+          "registration",
+          otpChannel
+        );
+
+        // Send OTP
+        if (otpChannel === "email") {
+          await sendOtpEmail(otpTarget, code, "registration");
+        }
+        // Phone SMS would go here in production
+
+        return {
+          success: true,
+          otpTarget,
+          otpChannel,
+          expiresAt: expiresAt.toISOString(),
+          // Store registration data temporarily in client state
+          pendingRegistration: {
+            name: input.name,
+            email: input.email,
+            phone: normalizedPhone,
+            passwordHash: await hashPassword(input.password),
+          },
+        };
+      }),
+
+    /** Step 2: Verify OTP and complete registration */
+    verifyRegistration: publicProcedure
+      .input(
+        z.object({
+          name: z.string().min(2).max(160),
+          email: z.string().email().max(320),
+          phone: z.string().max(32).optional().nullable(),
+          password: z.string().min(8).max(128),
+          otpTarget: z.string(),
+          code: z.string().length(6),
+        })
+      )
+      .mutation(async ({ input, ctx }) => {
+        // Verify OTP
+        const otpResult = await verifyOtp(
+          input.otpTarget,
+          input.code,
+          "registration"
+        );
+        if (!otpResult.valid) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: otpResult.message ?? "Неверный код",
+          });
+        }
+
+        // Double-check email uniqueness
+        const existingByEmail = await getUserByEmail(input.email);
+        if (existingByEmail) {
+          throw new TRPCError({
+            code: "CONFLICT",
+            message: "Пользователь с таким email уже зарегистрирован.",
+          });
+        }
+
+        // Create user
+        const { openId } = await registerLocalUser({
+          name: input.name,
+          email: input.email,
+          phone: input.phone ?? null,
+          password: input.password,
+        });
+
+        // Create session
+        const sessionToken = await sdk.createSessionToken(openId, {
+          name: input.name,
+          expiresInMs: ONE_YEAR_MS,
+        });
+
+        const cookieOptions = getSessionCookieOptions(ctx.req);
+        ctx.res.cookie(COOKIE_NAME, sessionToken, {
+          ...cookieOptions,
+          maxAge: ONE_YEAR_MS,
+        });
+
+        // Notify admin about new registration
+        try {
+          await notifyOwner({
+            title: "Новый участник зарегистрировался",
+            content: `Имя: ${input.name}\nEmail: ${input.email}${input.phone ? `\nТелефон: ${input.phone}` : ""}`,
+          });
+        } catch {
+          // Non-critical
+        }
+
+        return { success: true, openId };
+      }),
+
+    /** Login with email + password */
+    login: publicProcedure
+      .input(
+        z.object({
+          email: z.string().email().max(320),
+          password: z.string().min(1).max(128),
+          rememberMe: z.boolean().default(false),
+        })
+      )
+      .mutation(async ({ input, ctx }) => {
+        // Rate limit
+        const ip = ctx.req.ip || ctx.req.headers["x-forwarded-for"] || "unknown";
+        const rl = await checkRateLimit(String(ip), "login");
+        if (!rl.allowed) {
+          throw new TRPCError({
+            code: "TOO_MANY_REQUESTS",
+            message: `Слишком много попыток входа. Повторите через ${Math.ceil((rl.retryAfterMs ?? 0) / 60000)} мин.`,
+          });
+        }
+
+        const user = await getUserByEmail(input.email);
+        if (!user || !user.passwordHash) {
+          throw new TRPCError({
+            code: "UNAUTHORIZED",
+            message: "Неверный email или пароль.",
+          });
+        }
+
+        const passwordValid = await verifyPassword(
+          input.password,
+          user.passwordHash
+        );
+        if (!passwordValid) {
+          throw new TRPCError({
+            code: "UNAUTHORIZED",
+            message: "Неверный email или пароль.",
+          });
+        }
+
+        // Create session
+        const expiresInMs = input.rememberMe ? ONE_YEAR_MS : 24 * 60 * 60 * 1000; // 1 year or 24h
+        const sessionToken = await sdk.createSessionToken(user.openId, {
+          name: user.name || "",
+          expiresInMs,
+        });
+
+        const cookieOptions = getSessionCookieOptions(ctx.req);
+        ctx.res.cookie(COOKIE_NAME, sessionToken, {
+          ...cookieOptions,
+          maxAge: expiresInMs,
+        });
+
+        return { success: true, userName: user.name };
+      }),
+
+    /** Request password reset — sends OTP to email */
+    requestPasswordReset: publicProcedure
+      .input(
+        z.object({
+          email: z.string().email().max(320),
+        })
+      )
+      .mutation(async ({ input, ctx }) => {
+        // Rate limit
+        const ip = ctx.req.ip || ctx.req.headers["x-forwarded-for"] || "unknown";
+        const rl = await checkRateLimit(String(ip), "password_reset");
+        if (!rl.allowed) {
+          throw new TRPCError({
+            code: "TOO_MANY_REQUESTS",
+            message: `Слишком много попыток. Повторите через ${Math.ceil((rl.retryAfterMs ?? 0) / 60000)} мин.`,
+          });
+        }
+
+        const user = await getUserByEmail(input.email);
+        // Always return success to prevent email enumeration
+        if (!user || !user.passwordHash) {
+          return {
+            success: true,
+            message: "Если аккаунт с таким email существует, код будет отправлен.",
+          };
+        }
+
+        // Create OTP for password reset
+        const { code, expiresAt } = await createOtp(
+          input.email,
+          "password_reset",
+          "email"
+        );
+
+        await sendPasswordResetEmail(input.email, code);
+
+        return {
+          success: true,
+          message: "Код для сброса пароля отправлен на вашу почту.",
+          expiresAt: expiresAt.toISOString(),
+        };
+      }),
+
+    /** Verify reset code and set new password */
+    resetPassword: publicProcedure
+      .input(
+        z.object({
+          email: z.string().email().max(320),
+          code: z.string().length(6),
+          newPassword: z.string().min(8).max(128),
+        })
+      )
+      .mutation(async ({ input, ctx }) => {
+        // Validate new password
+        const pwCheck = validatePasswordStrength(input.newPassword);
+        if (!pwCheck.valid) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: pwCheck.message! });
+        }
+
+        // Verify OTP
+        const otpResult = await verifyOtp(
+          input.email,
+          input.code,
+          "password_reset"
+        );
+        if (!otpResult.valid) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: otpResult.message ?? "Неверный код",
+          });
+        }
+
+        const user = await getUserByEmail(input.email);
+        if (!user) {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "Пользователь не найден.",
+          });
+        }
+
+        // Update password
+        await updateUserPassword(user.openId, input.newPassword);
+
+        // Auto-login after password reset
+        const sessionToken = await sdk.createSessionToken(user.openId, {
+          name: user.name || "",
+          expiresInMs: ONE_YEAR_MS,
+        });
+
+        const cookieOptions = getSessionCookieOptions(ctx.req);
+        ctx.res.cookie(COOKIE_NAME, sessionToken, {
+          ...cookieOptions,
+          maxAge: ONE_YEAR_MS,
+        });
+
+        return { success: true };
+      }),
+
+    /** Resend OTP code */
+    resendOtp: publicProcedure
+      .input(
+        z.object({
+          target: z.string().min(1).max(320),
+          purpose: z.enum(["registration", "password_reset"]),
+          channel: z.enum(["email", "phone"]).default("email"),
+        })
+      )
+      .mutation(async ({ input, ctx }) => {
+        // Rate limit
+        const ip = ctx.req.ip || ctx.req.headers["x-forwarded-for"] || "unknown";
+        const rl = await checkRateLimit(String(ip), "otp_send");
+        if (!rl.allowed) {
+          throw new TRPCError({
+            code: "TOO_MANY_REQUESTS",
+            message: `Слишком много попыток отправки. Повторите через ${Math.ceil((rl.retryAfterMs ?? 0) / 60000)} мин.`,
+          });
+        }
+
+        const { code, expiresAt } = await createOtp(
+          input.target,
+          input.purpose,
+          input.channel
+        );
+
+        if (input.channel === "email") {
+          if (input.purpose === "password_reset") {
+            await sendPasswordResetEmail(input.target, code);
+          } else {
+            await sendOtpEmail(input.target, code, input.purpose);
+          }
+        }
+
+        return {
+          success: true,
+          expiresAt: expiresAt.toISOString(),
+        };
+      }),
+  }),
   auth: router({
     me: publicProcedure.query(async ({ ctx }) => {
       if (!ctx.user) return { user: null, isAuthenticated: false };
