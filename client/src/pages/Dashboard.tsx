@@ -342,6 +342,97 @@ export default function Dashboard() {
             </div>
           </motion.section>
 
+          {/* ── Pending Payment Banner ── */}
+          {ownership?.status === "pending_payment" && (
+            <motion.section
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.04 }}
+              className="overflow-hidden rounded-[2rem] border border-amber-300/50 bg-gradient-to-br from-amber-50 to-orange-50 p-5 shadow-sm md:p-6"
+              data-testid="dashboardPendingPayment"
+            >
+              <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:gap-8">
+                <div className="flex-1">
+                  <div className="inline-flex items-center gap-2 rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold uppercase tracking-widest text-amber-700">
+                    <Waves className="h-3.5 w-3.5" />
+                    Ожидает подтверждения оплаты
+                  </div>
+                  <h3 className="mt-3 text-2xl font-semibold text-foreground">
+                    Ваша доля {ownership.sharePercent}% в {featuredAnimalName} забронирована
+                  </h3>
+                  <p className="mt-2 max-w-xl text-sm leading-7 text-muted-foreground">
+                    Чтобы активировать участие и открыть полный кабинет владельца, оплатите бронирование. После подтверждения оплаты фермой вам станут доступны: дневник, трекер продуктов, клуб и чат с фермой.
+                  </p>
+
+                  {/* Stepper */}
+                  <div className="mt-5 flex items-center gap-0">
+                    {[
+                      { label: "Заявка", done: true },
+                      { label: "Оплата", done: false, active: true },
+                      { label: "Активация", done: false },
+                    ].map((step, i, arr) => (
+                      <div key={step.label} className="flex items-center">
+                        <div className="flex flex-col items-center">
+                          <div
+                            className={`flex h-9 w-9 items-center justify-center rounded-full text-sm font-bold ${
+                              step.done
+                                ? "bg-emerald-500 text-white"
+                                : step.active
+                                  ? "bg-amber-500 text-white ring-4 ring-amber-200"
+                                  : "bg-muted text-muted-foreground"
+                            }`}
+                          >
+                            {step.done ? "✓" : i + 1}
+                          </div>
+                          <span
+                            className={`mt-1.5 text-xs font-medium ${
+                              step.done
+                                ? "text-emerald-600"
+                                : step.active
+                                  ? "text-amber-700"
+                                  : "text-muted-foreground"
+                            }`}
+                          >
+                            {step.label}
+                          </span>
+                        </div>
+                        {i < arr.length - 1 && (
+                          <div
+                            className={`mx-2 h-0.5 w-10 sm:w-16 ${
+                              step.done ? "bg-emerald-400" : "bg-muted"
+                            }`}
+                          />
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Payment instructions card */}
+                <div className="w-full rounded-2xl border border-amber-200 bg-white p-4 shadow-sm lg:max-w-xs">
+                  <div className="text-xs font-semibold uppercase tracking-widest text-amber-700">Как оплатить</div>
+                  <div className="mt-3 space-y-2.5">
+                    <div className="flex items-start gap-2.5 text-sm text-foreground">
+                      <div className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[10px] font-bold text-primary">1</div>
+                      <span>Свяжитесь с фермой через чат или по контактам на сайте</span>
+                    </div>
+                    <div className="flex items-start gap-2.5 text-sm text-foreground">
+                      <div className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[10px] font-bold text-primary">2</div>
+                      <span>Получите реквизиты для оплаты и переведите сумму {formatCurrency(ownership.priceMinorTotal)}</span>
+                    </div>
+                    <div className="flex items-start gap-2.5 text-sm text-foreground">
+                      <div className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[10px] font-bold text-primary">3</div>
+                      <span>Ферма подтвердит оплату, и кабинет откроется полностью</span>
+                    </div>
+                  </div>
+                  <div className="mt-4 rounded-xl bg-amber-50 px-3 py-2 text-xs text-amber-700">
+                    Бронирование действительно 7 дней. После этого доля снова станет доступной для других.
+                  </div>
+                </div>
+              </div>
+            </motion.section>
+          )}
+
           {/* ── Мои животные ── show when owner has multiple animals */}
           {allOwnerships.length > 1 && (
             <motion.section

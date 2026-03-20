@@ -2895,3 +2895,68 @@ export async function clearPlanChangeLogByAnimal(animalId: number) {
   );
   return result[0]?.affectedRows ?? 0;
 }
+
+// ─── Onboarding ─────────────────────────────────────────────────────────────
+export async function completeUserOnboarding(openId: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(users).set({ onboardingCompleted: true }).where(eq(users.openId, openId));
+}
+
+
+// ─── User Funnel Analytics ───────────────────────────────────────────────────
+
+export async function getUserFunnelAnalytics() {
+  const db = await getDb();
+  if (!db) return { totalUsers: 0, pendingPayment: 0, activeOwners: 0, withPlans: 0, recentUsers: [] };
+
+  // Total registered users
+  const totalUsersRows = await db.select({ count: sql<number>`count(*)` }).from(users);
+  const totalUsers = Number(totalUsersRows[0]?.count ?? 0);
+
+  // Pending payment ownerships (unique users)
+  const pendingRows = await db
+    .select({ count: sql<number>`count(distinct ${animalOwnerships.ownerOpenId})` })
+    .from(animalOwnerships)
+    .where(eq(animalOwnerships.status, "pending_payment"));
+  const pendingPayment = Number(pendingRows[0]?.count ?? 0);
+
+  // Active ownerships (unique users)
+  const activeRows = await db
+    .select({ count: sql<number>`count(distinct ${animalOwnerships.ownerOpenId})` })
+    .from(animalOwnerships)
+    .where(eq(animalOwnerships.status, "active"));
+  const activeOwners = Number(activeRows[0]?.count ?? 0);
+
+  // Users with confirmed product plans
+  const planRows = await db
+    .select({ count: sql<number>`count(distinct ${ownerProductPlans.ownerOpenId})` })
+    .from(ownerProductPlans)
+    .where(eq(ownerProductPlans.status, "confirmed"));
+  const withPlans = Number(planRows[0]?.count ?? 0);
+
+  // Recent users (last 20)
+  const recentUsers = await db
+    .select({
+      id: users.id,
+      openId: users.openId,
+      name: users.name,
+      role: users.role,
+      createdAt: users.createdAt,
+    })
+    .from(users)
+    .orderBy(desc(users.createdAt))
+    .limit(20);
+
+  return { totalUsers, pendingPayment, activeOwners, withPlans, recentUsers };
+}
+
+export async function getPendingApplicationsCount() {
+  const db = await getDb();
+  if (!db) return 0;
+  const rows = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(animalOwnerships)
+    .where(eq(animalOwnerships.status, "pending_payment"));
+  return Number(rows[0]?.count ?? 0);
+}

@@ -2,9 +2,11 @@ import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/NotFound";
 import { Route, Switch, useLocation } from "wouter";
-import { useEffect } from "react";
+import { useEffect, useState, useCallback } from "react";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
+import { useAuth } from "@/_core/hooks/useAuth";
+import WelcomeOnboarding from "@/components/WelcomeOnboarding";
 import Home from "./pages/Home";
 import Dashboard from "./pages/Dashboard";
 import AnimalProfile from "./pages/AnimalProfile";
@@ -70,12 +72,28 @@ function Router() {
   );
 }
 
+function OnboardingGate() {
+  const { user, isAuthenticated, loading } = useAuth();
+  const [dismissed, setDismissed] = useState(false);
+
+  const handleComplete = useCallback(() => {
+    setDismissed(true);
+  }, []);
+
+  if (loading || !isAuthenticated || !user) return null;
+  if (dismissed) return null;
+  if ((user as any).onboardingCompleted) return null;
+
+  return <WelcomeOnboarding userName={user.name || ""} onComplete={handleComplete} />;
+}
+
 function App() {
   return (
     <ErrorBoundary>
       <ThemeProvider defaultTheme="light">
         <TooltipProvider>
           <Toaster />
+          <OnboardingGate />
           <Router />
         </TooltipProvider>
       </ThemeProvider>

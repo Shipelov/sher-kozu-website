@@ -47,10 +47,15 @@ import {
   updateIntegrationAuditResult,
   updateOwnershipStatus,
   updatePartnerLeadSyncResult,
+  completeUserOnboarding,
+  getAnimalNameById,
+  getUserFunnelAnalytics,
+  getPendingApplicationsCount,
 } from "./db";
 import { storagePut } from "./storage";
 import { isBitrixConfigured, pullBitrixDealSnapshot, syncPartnerLeadToBitrix } from "./bitrix24";
 import { runDiagnostics } from "./diagnostics";
+import { notifyOwner } from "./_core/notification";
 import { productTrackRouter } from "./routers/productTrack";
 
 const uploadPhotoInput = z.object({
@@ -392,6 +397,10 @@ export const appRouter = router({
       ctx.res.clearCookie(COOKIE_NAME, { ...getSessionCookieOptions(ctx.req), maxAge: -1 });
       return { success: true };
     }),
+    completeOnboarding: protectedProcedure.mutation(async ({ ctx }) => {
+      await completeUserOnboarding(ctx.user.openId);
+      return { success: true };
+    }),
   }),
   animals: router({
     listPublic: publicProcedure.query(async () => {
@@ -419,7 +428,7 @@ export const appRouter = router({
           resolvedPlanDurationId = resolvedPlanDurationId ?? fallbackPlan.durations[0].id;
         }
 
-        return await purchaseAnimalShare({
+        const result = await purchaseAnimalShare({
           ownerOpenId: ctx.user.openId,
           animalId: input.animalId,
           sharePercent: input.sharePercent,
@@ -429,6 +438,21 @@ export const appRouter = router({
           endsAt: input.endsAt ? new Date(input.endsAt) : undefined,
           notes: input.notes ?? null,
         });
+
+        // Fire-and-forget: notify admin about new ownership request
+        (async () => {
+          try {
+            const animalName = await getAnimalNameById(input.animalId);
+            await notifyOwner({
+              title: `Новая заявка на долю`,
+              content: `${ctx.user.name || "Пользователь"} забронировал ${input.sharePercent}% доли животного ${animalName || "#" + input.animalId}. Ожидает подтверждения оплаты.`,
+            });
+          } catch (e) {
+            console.warn("[purchaseShare] Failed to notify admin:", e);
+          }
+        })();
+
+        return result;
       } catch (error) {
         const code = error instanceof Error ? error.message : "PURCHASE_FAILED";
         if (code === "ANIMAL_NOT_FOUND") {
@@ -866,6 +890,14 @@ export const appRouter = router({
         }
         return result;
       }),
+  }),
+  adminAnalytics: router({
+    userFunnel: protectedProcedure.query(async () => {
+      return getUserFunnelAnalytics();
+    }),
+    pendingApplicationsCount: protectedProcedure.query(async () => {
+      return getPendingApplicationsCount();
+    }),
   }),
 });
 

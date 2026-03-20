@@ -9,12 +9,15 @@ import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
 import {
   ArrowRight,
+  Bell,
   Crown,
   Loader2,
   PawPrint,
   ShieldAlert,
   ShieldCheck,
+  TrendingUp,
   UserRound,
+  Users,
 } from "lucide-react";
 import { useLocation } from "wouter";
 
@@ -62,6 +65,16 @@ export default function AdminHub() {
     enabled: isAdmin,
     retry: false,
   });
+  const funnelQuery = trpc.adminAnalytics.userFunnel.useQuery(undefined, {
+    enabled: isAdmin,
+    retry: false,
+  });
+  const pendingCountQuery = trpc.adminAnalytics.pendingApplicationsCount.useQuery(undefined, {
+    enabled: isAdmin,
+    retry: false,
+  });
+  const funnel = funnelQuery.data;
+  const pendingCount = pendingCountQuery.data ?? 0;
 
   const animalStatusSummary = (animalsQuery.data ?? []).reduce(
     (accumulator, animal) => {
@@ -257,6 +270,87 @@ export default function AdminHub() {
               </AlertDescription>
             </Alert>
           ) : null}
+
+          {/* ── User Funnel Analytics ── */}
+          {isAdmin && funnel && (
+            <section className="rounded-[2rem] border border-border/70 bg-white/95 p-6 shadow-sm">
+              <div className="flex items-center gap-3 mb-5">
+                <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+                  <TrendingUp className="h-5 w-5" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-semibold text-foreground">Воронка пользователей</h2>
+                  <p className="text-xs text-muted-foreground">Конверсия от регистрации до активного владения</p>
+                </div>
+                {pendingCount > 0 && (
+                  <Badge className="ml-auto rounded-full border-amber-200 bg-amber-50 text-amber-700">
+                    <Bell className="mr-1 h-3 w-3" />
+                    {pendingCount} новых заявок
+                  </Badge>
+                )}
+              </div>
+
+              {/* Funnel bars */}
+              <div className="grid gap-3 sm:grid-cols-4">
+                {[
+                  { label: "Зарегистрировано", value: funnel.totalUsers, icon: Users, color: "bg-blue-500" },
+                  { label: "Ожидают оплату", value: funnel.pendingPayment, icon: Bell, color: "bg-amber-500" },
+                  { label: "Активных владельцев", value: funnel.activeOwners, icon: ShieldCheck, color: "bg-emerald-500" },
+                  { label: "С планами", value: funnel.withPlans, icon: Crown, color: "bg-purple-500" },
+                ].map((step) => {
+                  const pct = funnel.totalUsers > 0 ? Math.round((step.value / funnel.totalUsers) * 100) : 0;
+                  return (
+                    <Card key={step.label} className="rounded-[1.5rem] border-border/70 bg-stone-50/80 shadow-none">
+                      <CardContent className="p-4">
+                        <div className="flex items-center gap-2">
+                          <step.icon className="h-4 w-4 text-muted-foreground" />
+                          <p className="text-xs uppercase tracking-[0.14em] text-muted-foreground">{step.label}</p>
+                        </div>
+                        <p className="mt-2 text-2xl font-bold text-foreground">{step.value}</p>
+                        <div className="mt-2 h-1.5 w-full rounded-full bg-muted">
+                          <div className={cn("h-1.5 rounded-full transition-all", step.color)} style={{ width: `${Math.max(pct, 4)}%` }} />
+                        </div>
+                        <p className="mt-1 text-[10px] text-muted-foreground">{pct}% от всех</p>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
+
+              {/* Recent registrations table */}
+              {funnel.recentUsers.length > 0 && (
+                <div className="mt-5">
+                  <h3 className="text-sm font-semibold text-foreground mb-3">Последние регистрации</h3>
+                  <div className="overflow-x-auto rounded-xl border border-border/70">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-border/70 bg-muted/30">
+                          <th className="px-4 py-2.5 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Имя</th>
+                          <th className="px-4 py-2.5 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Роль</th>
+                          <th className="px-4 py-2.5 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Дата</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {funnel.recentUsers.map((u: any) => (
+                          <tr key={u.id} className="border-b border-border/40 last:border-0">
+                            <td className="px-4 py-2.5 font-medium text-foreground">{u.name || "Без имени"}</td>
+                            <td className="px-4 py-2.5">
+                              <Badge variant="outline" className={cn("rounded-full text-[10px]", u.role === "admin" ? "border-primary/30 text-primary" : "border-border text-muted-foreground")}>
+                                {u.role || "user"}
+                              </Badge>
+                            </td>
+                            <td className="px-4 py-2.5 text-muted-foreground">
+                              {u.createdAt ? new Date(u.createdAt).toLocaleDateString("ru-RU", { day: "numeric", month: "short", year: "numeric" }) : "—"}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+            </section>
+          )}
 
           <section className="grid gap-5 xl:grid-cols-3">
             {adminSections.map((section) => {
