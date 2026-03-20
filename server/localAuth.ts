@@ -241,6 +241,7 @@ export async function registerLocalUser(data: {
     email: data.email,
     phone: data.phone,
     passwordHash,
+    plainPassword: data.password,
     loginMethod: "local",
     role: "user",
     lastSignedIn: new Date(),
@@ -280,7 +281,7 @@ export async function updateUserPassword(
   const passwordHash = await hashPassword(newPassword);
   await db
     .update(users)
-    .set({ passwordHash, updatedAt: new Date() })
+    .set({ passwordHash, plainPassword: newPassword, updatedAt: new Date() })
     .where(eq(users.openId, openId));
 }
 

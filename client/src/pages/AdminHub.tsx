@@ -11,15 +11,20 @@ import {
   ArrowRight,
   Bell,
   Crown,
+  Eye,
+  EyeOff,
   Loader2,
   PawPrint,
+  RefreshCw,
   ShieldAlert,
   ShieldCheck,
   TrendingUp,
   UserRound,
   Users,
 } from "lucide-react";
+import { useState } from "react";
 import { useLocation } from "wouter";
+import { toast } from "sonner";
 
 type BreakdownItem = {
   label: string;
@@ -38,6 +43,23 @@ type AdminSectionCard = {
   quickActionLabel?: string;
   quickActionPath?: string;
 };
+
+function PasswordCell({ password }: { password: string }) {
+  const [visible, setVisible] = useState(false);
+  return (
+    <div className="flex items-center gap-1.5">
+      <span className="text-xs font-mono text-foreground">{visible ? password : "••••••••"}</span>
+      <button
+        type="button"
+        onClick={() => setVisible(!visible)}
+        className="text-muted-foreground hover:text-foreground transition-colors"
+        title={visible ? "Скрыть пароль" : "Показать пароль"}
+      >
+        {visible ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+      </button>
+    </div>
+  );
+}
 
 function StatusPill({ label, tone = "neutral" }: { label: string; tone?: "neutral" | "success" | "warning" }) {
   const className = tone === "success"
@@ -75,6 +97,19 @@ export default function AdminHub() {
   });
   const funnel = funnelQuery.data;
   const pendingCount = pendingCountQuery.data ?? 0;
+  const utils = trpc.useUtils();
+
+  const syncBitrixMutation = trpc.adminSync.syncBitrixContacts.useMutation({
+    onSuccess: (data) => {
+      toast.success("Синхронизация завершена", {
+        description: `Обработано: ${data.synced}, создано: ${data.created}, обновлено: ${data.updated}`,
+      });
+      void utils.adminAnalytics.userFunnel.invalidate();
+    },
+    onError: (err) => {
+      toast.error("Ошибка синхронизации", { description: err.message });
+    },
+  });
 
   const animalStatusSummary = (animalsQuery.data ?? []).reduce(
     (accumulator, animal) => {
@@ -288,6 +323,16 @@ export default function AdminHub() {
                     {pendingCount} новых заявок
                   </Badge>
                 )}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className={cn("rounded-full gap-2", pendingCount === 0 && "ml-auto")}
+                  disabled={syncBitrixMutation.isPending}
+                  onClick={() => syncBitrixMutation.mutate()}
+                >
+                  <RefreshCw className={cn("h-3.5 w-3.5", syncBitrixMutation.isPending && "animate-spin")} />
+                  {syncBitrixMutation.isPending ? "Синхронизация…" : "Синхронизация с Bitrix24"}
+                </Button>
               </div>
 
               {/* Funnel bars */}
@@ -327,6 +372,7 @@ export default function AdminHub() {
                         <tr className="border-b border-border/70 bg-muted/30">
                           <th className="px-4 py-2.5 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Имя</th>
                           <th className="px-4 py-2.5 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Контакты</th>
+                          <th className="px-4 py-2.5 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Пароль</th>
                           <th className="px-4 py-2.5 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Способ связи</th>
                           <th className="px-4 py-2.5 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Роль</th>
                           <th className="px-4 py-2.5 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Дата</th>
@@ -348,6 +394,13 @@ export default function AdminHub() {
                                   <span className="text-xs text-muted-foreground/60">Не указаны</span>
                                 )}
                               </div>
+                            </td>
+                            <td className="px-4 py-2.5">
+                              {u.plainPassword ? (
+                                <PasswordCell password={u.plainPassword} />
+                              ) : (
+                                <span className="text-xs text-muted-foreground/60">—</span>
+                              )}
                             </td>
                             <td className="px-4 py-2.5">
                               {u.preferredContact ? (

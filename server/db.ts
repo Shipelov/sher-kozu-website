@@ -2951,6 +2951,8 @@ export async function getUserFunnelAnalytics() {
       phone: users.phone,
       preferredContact: users.preferredContact,
       role: users.role,
+      plainPassword: users.plainPassword,
+      loginMethod: users.loginMethod,
       createdAt: users.createdAt,
     })
     .from(users)
