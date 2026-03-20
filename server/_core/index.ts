@@ -27,6 +27,26 @@ async function findAvailablePort(startPort: number = 3000): Promise<number> {
   throw new Error(`No available port found starting from ${startPort}`);
 }
 
+async function runTrashCleanup() {
+  try {
+    const { findExpiredTrashedUsers, permanentDeleteUser } = await import("../db");
+    const expired = await findExpiredTrashedUsers(30);
+    if (expired.length === 0) return;
+    console.log(`[Trash Cleanup] Found ${expired.length} expired user(s) to permanently delete`);
+    for (const user of expired) {
+      try {
+        await permanentDeleteUser(user.id);
+        console.log(`[Trash Cleanup] Permanently deleted user ${user.id} (${user.name || "no name"})`);
+      } catch (err) {
+        console.error(`[Trash Cleanup] Failed to delete user ${user.id}:`, err);
+      }
+    }
+    console.log(`[Trash Cleanup] Completed. Deleted ${expired.length} user(s).`);
+  } catch (err) {
+    console.error("[Trash Cleanup] Error during cleanup:", err);
+  }
+}
+
 async function startServer() {
   const app = express();
   const server = createServer(app);
@@ -59,6 +79,10 @@ async function startServer() {
 
   server.listen(port, () => {
     console.log(`Server running on http://localhost:${port}/`);
+
+    // Run trash cleanup on startup and then every 24 hours
+    runTrashCleanup();
+    setInterval(runTrashCleanup, 24 * 60 * 60 * 1000);
   });
 }
 

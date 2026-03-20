@@ -15,6 +15,10 @@ export async function createContext(
 
   try {
     user = await sdk.authenticateRequest(opts.req);
+    // Block access for soft-deleted users (in trash)
+    if (user && user.deletedAt) {
+      user = null;
+    }
   } catch (error) {
     // Authentication is optional for public procedures.
     user = null;

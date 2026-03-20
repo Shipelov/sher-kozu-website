@@ -55,6 +55,11 @@ import {
   updateUserProfile,
   listUsersAdmin,
   exportUsersAdmin,
+  softDeleteUser,
+  restoreUser,
+  listTrashedUsers,
+  permanentDeleteUser,
+  findExpiredTrashedUsers,
 } from "./db";
 import { storagePut } from "./storage";
 import { isBitrixConfigured, pullBitrixDealSnapshot, syncPartnerLeadToBitrix } from "./bitrix24";
@@ -1590,6 +1595,68 @@ export const appRouter = router({
           throw new TRPCError({ code: "FORBIDDEN", message: "Только администратор может экспортировать пользователей" });
         }
         return exportUsersAdmin(input);
+      }),
+  }),
+
+  // ─── Trash / Soft-Delete ──────────────────────────────────────────────────
+  adminTrash: router({
+    /** Move user to trash (soft-delete) */
+    softDelete: protectedProcedure
+      .input(z.object({ userId: z.number().int().positive() }))
+      .mutation(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin" && ctx.user.openId !== process.env.OWNER_OPEN_ID) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Только администратор может удалять пользователей" });
+        }
+        await softDeleteUser(input.userId, ctx.user.openId);
+        return { success: true };
+      }),
+
+    /** Restore user from trash */
+    restore: protectedProcedure
+      .input(z.object({ userId: z.number().int().positive() }))
+      .mutation(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin" && ctx.user.openId !== process.env.OWNER_OPEN_ID) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Только администратор может восстанавливать пользователей" });
+        }
+        await restoreUser(input.userId);
+        return { success: true };
+      }),
+
+    /** List users in trash */
+    list: protectedProcedure
+      .query(async ({ ctx }) => {
+        if (ctx.user.role !== "admin" && ctx.user.openId !== process.env.OWNER_OPEN_ID) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Только администратор может просматривать корзину" });
+        }
+        return listTrashedUsers();
+      }),
+
+    /** Permanently delete a user and return shares to farm */
+    permanentDelete: protectedProcedure
+      .input(z.object({ userId: z.number().int().positive() }))
+      .mutation(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin" && ctx.user.openId !== process.env.OWNER_OPEN_ID) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Только администратор может окончательно удалять пользователей" });
+        }
+        const result = await permanentDeleteUser(input.userId);
+        return { success: true, deletedOwnerships: result.deletedOwnerships };
+      }),
+
+    /** Auto-cleanup: permanently delete users in trash > 30 days */
+    autoCleanup: protectedProcedure
+      .mutation(async ({ ctx }) => {
+        if (ctx.user.role !== "admin" && ctx.user.openId !== process.env.OWNER_OPEN_ID) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Только администратор может запускать очистку" });
+        }
+        const expired = await findExpiredTrashedUsers(30);
+        let cleaned = 0;
+        const allDeletedOwnerships: Array<{ animalId: number; ownershipId: number }> = [];
+        for (const u of expired) {
+          const result = await permanentDeleteUser(u.id);
+          allDeletedOwnerships.push(...result.deletedOwnerships);
+          cleaned++;
+        }
+        return { cleaned, deletedOwnerships: allDeletedOwnerships };
       }),
   }),
 });

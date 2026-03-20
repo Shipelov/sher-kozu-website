@@ -27,6 +27,10 @@ export const users = mysqlTable("users", {
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   lastSignedIn: timestamp("lastSignedIn").defaultNow().notNull(),
   onboardingCompleted: boolean("onboardingCompleted").default(false).notNull(),
+  /** Soft-delete timestamp. When set, user is in trash and access is blocked. */
+  deletedAt: timestamp("deletedAt"),
+  /** Admin openId who moved the user to trash. */
+  deletedBy: varchar("deletedBy", { length: 64 }),
 });
 
 export const animalSpeciesEnum = mysqlEnum("animalSpecies", ["goat", "sheep"]);

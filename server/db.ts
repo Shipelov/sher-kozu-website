@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, isNotNull, isNull, like, lt, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gte, isNotNull, isNull, like, lt, lte, or, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import { createPool, type Pool } from "mysql2/promise";
 import {
@@ -44,6 +44,10 @@ import {
   InsertDeliveryScheduleEntry,
   InsertChatMessage,
   planChangeLog,
+  walletTransactions,
+  otpCodes,
+  passwordResetTokens,
+  authRateLimits,
 } from "../drizzle/schema";
 import { ENV } from "./_core/env";
 
@@ -3173,5 +3177,160 @@ export async function exportUsersAdmin(params: Omit<ListUsersParams, "page" | "p
     .where(whereClause)
     .orderBy(orderFn(sortColumn));
 
+  return rows;
+}
+
+// ─── Trash / Soft-Delete ─────────────────────────────────────────────────────
+
+/**
+ * Soft-delete a user: set deletedAt + deletedBy. Does NOT remove data.
+ */
+export async function softDeleteUser(userId: number, adminOpenId: string) {
+  const db = await getDb();
+  await db
+    .update(users)
+    .set({ deletedAt: new Date(), deletedBy: adminOpenId })
+    .where(eq(users.id, userId));
+}
+
+/**
+ * Restore a user from trash: clear deletedAt + deletedBy.
+ */
+export async function restoreUser(userId: number) {
+  const db = await getDb();
+  await db
+    .update(users)
+    .set({ deletedAt: null, deletedBy: null })
+    .where(eq(users.id, userId));
+}
+
+/**
+ * List users currently in trash (deletedAt IS NOT NULL).
+ */
+export async function listTrashedUsers() {
+  const db = await getDb();
+  const rows = await db
+    .select({
+      id: users.id,
+      openId: users.openId,
+      name: users.name,
+      email: users.email,
+      phone: users.phone,
+      role: users.role,
+      loginMethod: users.loginMethod,
+      bitrix24ContactId: users.bitrix24ContactId,
+      createdAt: users.createdAt,
+      deletedAt: users.deletedAt,
+      deletedBy: users.deletedBy,
+    })
+    .from(users)
+    .where(isNotNull(users.deletedAt))
+    .orderBy(desc(users.deletedAt));
+  return rows;
+}
+
+/**
+ * Permanently delete a user and all associated data.
+ * Returns the user's active ownership animalIds so the caller can
+ * update animal availability.
+ */
+export async function permanentDeleteUser(userId: number) {
+  const db = await getDb();
+
+  // 1. Look up the user to get openId
+  const [user] = await db
+    .select({ openId: users.openId })
+    .from(users)
+    .where(eq(users.id, userId))
+    .limit(1);
+
+  if (!user) return { deletedOwnerships: [] };
+
+  const openId = user.openId;
+
+  // 2. Find active ownerships to return to farm
+  const activeOwnerships = await db
+    .select({
+      id: animalOwnerships.id,
+      animalId: animalOwnerships.animalId,
+      status: animalOwnerships.status,
+    })
+    .from(animalOwnerships)
+    .where(
+      and(
+        eq(animalOwnerships.ownerOpenId, openId),
+        eq(animalOwnerships.status, "active")
+      )
+    );
+
+  // 3. Cancel active ownerships (return shares to farm)
+  if (activeOwnerships.length > 0) {
+    await db
+      .update(animalOwnerships)
+      .set({ status: "cancelled", cancelledAt: new Date() })
+      .where(
+        and(
+          eq(animalOwnerships.ownerOpenId, openId),
+          eq(animalOwnerships.status, "active")
+        )
+      );
+  }
+
+  // 4. Delete all user-related data from dependent tables
+  const tablesToClean = [
+    walletTransactions,
+    wallets,
+    ownerProductPlans,
+    deliverySchedule,
+    chatMessages,
+    clubMembers,
+    productDeliveries,
+    partnerLeads,
+    integrationAudits,
+    planChangeLog,
+  ];
+
+  for (const table of tablesToClean) {
+    await db.delete(table).where(eq((table as any).ownerOpenId, openId));
+  }
+
+  // 5. Delete OTP codes and password reset tokens by email
+  const [userData] = await db
+    .select({ email: users.email })
+    .from(users)
+    .where(eq(users.id, userId))
+    .limit(1);
+
+  if (userData?.email) {
+    await db.delete(otpCodes).where(eq(otpCodes.target, userData.email));
+  }
+  await db.delete(passwordResetTokens).where(eq(passwordResetTokens.userOpenId, openId));
+
+  // 6. Delete the user record itself
+  await db.delete(users).where(eq(users.id, userId));
+
+  return {
+    deletedOwnerships: activeOwnerships.map((o: { id: number; animalId: number; status: string }) => ({
+      animalId: o.animalId,
+      ownershipId: o.id,
+    })),
+  };
+}
+
+/**
+ * Find users in trash older than the given number of days.
+ */
+export async function findExpiredTrashedUsers(days: number = 30) {
+  const db = await getDb();
+  const cutoff = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+  const rows = await db
+    .select({ id: users.id, openId: users.openId, name: users.name, deletedAt: users.deletedAt })
+    .from(users)
+    .where(
+      and(
+        isNotNull(users.deletedAt),
+        lte(users.deletedAt, cutoff)
+      )
+    );
   return rows;
 }

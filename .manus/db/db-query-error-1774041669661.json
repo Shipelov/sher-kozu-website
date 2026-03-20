@@ -1,0 +1,8 @@
+{
+  "query": "DELETE FROM auth_rate_limits WHERE 1=1;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3J2fXRHx8d1YjF6.root --database mLhmg5VmBsEBpZiYqdnhMQ --execute DELETE FROM auth_rate_limits WHERE 1=1;",
+  "returncode": 1,
+  "logs": [
+    "ERROR 1146 (42S02) at line 1: Table 'mlhmg5vmbsebpziyqdnhmq.auth_rate_limits' doesn't exist"
+  ]
+}

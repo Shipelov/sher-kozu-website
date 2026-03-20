@@ -38,6 +38,9 @@ import {
   RefreshCw,
   Search,
   ShieldAlert,
+  Trash2,
+  RotateCcw,
+  AlertTriangle,
   Users,
   X,
 } from "lucide-react";
@@ -178,6 +181,62 @@ export default function AdminUsers() {
       toast.error(`Ошибка сброса пароля: ${err.message}`);
     },
   });
+
+  // ─── Tab state (active vs trash) ───
+  const [activeTab, setActiveTab] = useState<"active" | "trash">("active");
+
+  // Soft-delete mutation
+  const softDelete = trpc.adminTrash.softDelete.useMutation({
+    onSuccess: () => {
+      toast.success("Пользователь перемещён в корзину");
+      utils.adminAnalytics.listUsers.invalidate();
+      utils.adminTrash.list.invalidate();
+    },
+    onError: (err) => toast.error(`Ошибка: ${err.message}`),
+  });
+
+  // Restore mutation
+  const restoreUser = trpc.adminTrash.restore.useMutation({
+    onSuccess: () => {
+      toast.success("Пользователь восстановлен");
+      utils.adminAnalytics.listUsers.invalidate();
+      utils.adminTrash.list.invalidate();
+    },
+    onError: (err) => toast.error(`Ошибка: ${err.message}`),
+  });
+
+  // Permanent delete mutation
+  const permanentDelete = trpc.adminTrash.permanentDelete.useMutation({
+    onSuccess: (data) => {
+      const msg = data.deletedOwnerships.length > 0
+        ? `Пользователь удалён. ${data.deletedOwnerships.length} долей возвращены ферме.`
+        : "Пользователь окончательно удалён.";
+      toast.success(msg);
+      utils.adminTrash.list.invalidate();
+    },
+    onError: (err) => toast.error(`Ошибка: ${err.message}`),
+  });
+
+  // Auto-cleanup mutation
+  const autoCleanup = trpc.adminTrash.autoCleanup.useMutation({
+    onSuccess: (data) => {
+      if (data.cleaned === 0) {
+        toast.info("Нет записей для очистки (все менее 30 дней)");
+      } else {
+        toast.success(`Очищено ${data.cleaned} пользователей. ${data.deletedOwnerships.length} долей возвращены ферме.`);
+      }
+      utils.adminTrash.list.invalidate();
+    },
+    onError: (err) => toast.error(`Ошибка: ${err.message}`),
+  });
+
+  // Trash list query
+  const trashQuery = trpc.adminTrash.list.useQuery(undefined, {
+    enabled: isAdmin && activeTab === "trash",
+  });
+
+  // Confirmation state for permanent delete
+  const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
 
   // ─── Export helpers ───
   const exportFilters = useMemo(
@@ -405,7 +464,9 @@ export default function AdminUsers() {
                 Управление пользователями
               </h1>
               <p className="text-sm text-muted-foreground mt-0.5">
-                {total} пользовател{total === 1 ? "ь" : total < 5 ? "я" : "ей"} в системе
+                {activeTab === "active"
+                  ? `${total} пользовател${total === 1 ? "ь" : total < 5 ? "я" : "ей"} в системе`
+                  : `${trashQuery.data?.length ?? 0} в корзине`}
               </p>
             </div>
           </div>
@@ -453,6 +514,39 @@ export default function AdminUsers() {
           </div>
         </div>
 
+        {/* Tab switcher */}
+        <div className="flex items-center gap-2 border-b border-border/50 pb-1">
+          <button
+            onClick={() => setActiveTab("active")}
+            className={`px-4 py-2 text-sm font-medium rounded-t-lg transition-colors ${
+              activeTab === "active"
+                ? "bg-white border border-b-white border-border/70 text-foreground -mb-[1px]"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <Users className="h-4 w-4 inline mr-1.5 -mt-0.5" />
+            Активные
+          </button>
+          <button
+            onClick={() => setActiveTab("trash")}
+            className={`px-4 py-2 text-sm font-medium rounded-t-lg transition-colors ${
+              activeTab === "trash"
+                ? "bg-white border border-b-white border-border/70 text-foreground -mb-[1px]"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <Trash2 className="h-4 w-4 inline mr-1.5 -mt-0.5" />
+            Корзина
+            {trashQuery.data && trashQuery.data.length > 0 && (
+              <Badge variant="destructive" className="ml-1.5 text-[10px] rounded-full px-1.5 py-0">
+                {trashQuery.data.length}
+              </Badge>
+            )}
+          </button>
+        </div>
+
+        {activeTab === "active" && (
+        <>
         {/* Search + Filters */}
         <Card className="rounded-2xl border-border/70 bg-white/95 shadow-sm">
           <CardContent className="p-4 space-y-4">
@@ -689,16 +783,32 @@ export default function AdminUsers() {
                           : "—"}
                       </TableCell>
                       <TableCell className="text-right">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 rounded-full text-muted-foreground hover:text-orange-600"
-                          title="Сбросить пароль"
-                          onClick={() => resetPassword.mutate({ userId: u.id })}
-                          disabled={resetPassword.isPending}
-                        >
-                          <KeyRound className="h-3.5 w-3.5" />
-                        </Button>
+                        <div className="flex items-center justify-end gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 rounded-full text-muted-foreground hover:text-orange-600"
+                            title="Сбросить пароль"
+                            onClick={() => resetPassword.mutate({ userId: u.id })}
+                            disabled={resetPassword.isPending}
+                          >
+                            <KeyRound className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 rounded-full text-muted-foreground hover:text-red-500"
+                            title="В корзину"
+                            onClick={() => {
+                              if (confirm(`Переместить ${u.name || u.email} в корзину? Доступ в кабинет будет заблокирован.`)) {
+                                softDelete.mutate({ userId: u.id });
+                              }
+                            }}
+                            disabled={softDelete.isPending || u.role === "admin"}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -778,6 +888,167 @@ export default function AdminUsers() {
             </div>
           )}
         </Card>
+        </>
+        )}
+
+        {/* Trash Tab */}
+        {activeTab === "trash" && (
+          <Card className="rounded-2xl border-border/70 bg-white/95 shadow-sm">
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <Trash2 className="h-5 w-5 text-red-500" />
+                  Корзина
+                </CardTitle>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="rounded-full gap-2 text-red-600 border-red-200 hover:bg-red-50"
+                    onClick={() => autoCleanup.mutate()}
+                    disabled={autoCleanup.isPending}
+                  >
+                    {autoCleanup.isPending ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Trash2 className="h-4 w-4" />
+                    )}
+                    Очистить (старше 30 дней)
+                  </Button>
+                </div>
+              </div>
+              <p className="text-sm text-muted-foreground mt-1">
+                Пользователи в корзине не могут войти в свой кабинет. Через 30 дней данные удаляются окончательно, а доли возвращаются ферме.
+              </p>
+            </CardHeader>
+            <CardContent className="p-0">
+              {trashQuery.isLoading ? (
+                <div className="p-8 flex items-center justify-center gap-3 text-muted-foreground">
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                  Загрузка…
+                </div>
+              ) : !trashQuery.data?.length ? (
+                <div className="p-8 text-center text-muted-foreground">
+                  <Trash2 className="h-10 w-10 mx-auto mb-3 opacity-40" />
+                  <p className="font-medium">Корзина пуста</p>
+                  <p className="text-sm mt-1">Удалённые пользователи появятся здесь</p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="bg-red-50/50">
+                        <TableHead className="w-[50px]">#</TableHead>
+                        <TableHead>Имя</TableHead>
+                        <TableHead>Email</TableHead>
+                        <TableHead>Телефон</TableHead>
+                        <TableHead>Роль</TableHead>
+                        <TableHead>Удалён</TableHead>
+                        <TableHead>Осталось дней</TableHead>
+                        <TableHead className="text-right">Действия</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {trashQuery.data.map((u: any, idx: number) => {
+                        const deletedDate = new Date(u.deletedAt);
+                        const daysInTrash = Math.floor((Date.now() - deletedDate.getTime()) / (1000 * 60 * 60 * 24));
+                        const daysRemaining = Math.max(0, 30 - daysInTrash);
+                        return (
+                          <TableRow key={u.id} className="hover:bg-red-50/30">
+                            <TableCell className="text-xs text-muted-foreground font-mono">
+                              {idx + 1}
+                            </TableCell>
+                            <TableCell className="font-medium text-sm max-w-[180px] truncate">
+                              {u.name || "—"}
+                            </TableCell>
+                            <TableCell className="text-sm text-muted-foreground max-w-[200px] truncate">
+                              {u.email || "—"}
+                            </TableCell>
+                            <TableCell className="text-sm text-muted-foreground">
+                              {u.phone || "—"}
+                            </TableCell>
+                            <TableCell>
+                              <Badge
+                                variant={u.role === "admin" ? "default" : "secondary"}
+                                className="text-[10px] rounded-full"
+                              >
+                                {u.role === "admin" ? "Админ" : "Пользователь"}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
+                              {deletedDate.toLocaleDateString("ru-RU", {
+                                day: "2-digit",
+                                month: "2-digit",
+                                year: "2-digit",
+                              })}
+                            </TableCell>
+                            <TableCell>
+                              <Badge
+                                variant={daysRemaining <= 7 ? "destructive" : "secondary"}
+                                className="text-[10px] rounded-full"
+                              >
+                                {daysRemaining} дн.
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <div className="flex items-center justify-end gap-1">
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8 rounded-full text-green-600 hover:text-green-700 hover:bg-green-50"
+                                  title="Восстановить"
+                                  onClick={() => restoreUser.mutate({ userId: u.id })}
+                                  disabled={restoreUser.isPending}
+                                >
+                                  <RotateCcw className="h-3.5 w-3.5" />
+                                </Button>
+                                {confirmDeleteId === u.id ? (
+                                  <div className="flex items-center gap-1">
+                                    <Button
+                                      variant="destructive"
+                                      size="sm"
+                                      className="h-7 rounded-full text-xs gap-1"
+                                      onClick={() => {
+                                        permanentDelete.mutate({ userId: u.id });
+                                        setConfirmDeleteId(null);
+                                      }}
+                                      disabled={permanentDelete.isPending}
+                                    >
+                                      <AlertTriangle className="h-3 w-3" />
+                                      Да, удалить
+                                    </Button>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="h-7 rounded-full text-xs"
+                                      onClick={() => setConfirmDeleteId(null)}
+                                    >
+                                      Отмена
+                                    </Button>
+                                  </div>
+                                ) : (
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-8 w-8 rounded-full text-red-500 hover:text-red-700 hover:bg-red-50"
+                                    title="Удалить окончательно"
+                                    onClick={() => setConfirmDeleteId(u.id)}
+                                  >
+                                    <X className="h-3.5 w-3.5" />
+                                  </Button>
+                                )}
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
       </div>
     </DashboardLayout>
   );
