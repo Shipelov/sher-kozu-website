@@ -120,4 +120,15 @@ describe("Google OAuth Button — AuthModal", () => {
     const matches = authModalSrc.match(dividerPattern);
     expect(matches).toHaveLength(2);
   });
+
+  // ── Modal overflow fix ──
+  describe("Modal overflow fix", () => {
+    it("DialogContent has max-h-[90vh] to prevent viewport overflow", () => {
+      expect(authModalSrc).toContain("max-h-[90vh]");
+    });
+
+    it("DialogContent has overflow-y-auto for scrollable content", () => {
+      expect(authModalSrc).toContain("overflow-y-auto");
+    });
+  });
 });

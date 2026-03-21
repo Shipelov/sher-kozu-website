@@ -935,7 +935,7 @@ export default function AuthModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[420px] p-6">
+      <DialogContent className="sm:max-w-[420px] p-6 max-h-[90vh] overflow-y-auto">
         {renderContent()}
       </DialogContent>
     </Dialog>
