@@ -246,6 +246,64 @@ export default function ProductTracker() {
             </div>
           ) : null}
 
+          {trackerQuery.isError ? (
+            <motion.div
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mb-5 rounded-[2rem] border border-destructive/30 bg-destructive/5 p-6 shadow-sm"
+              data-testid="trackerError"
+            >
+              <div className="flex flex-col items-center gap-4 text-center sm:flex-row sm:text-left">
+                <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-destructive/10 text-destructive">
+                  <Package className="h-7 w-7" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <h3 className="text-lg font-semibold text-foreground">Не удалось загрузить продуктовый маршрут</h3>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    Произошла ошибка при загрузке данных трекера. Попробуйте обновить страницу или вернитесь позже.
+                  </p>
+                </div>
+                <button
+                  onClick={() => trackerQuery.refetch()}
+                  className="shrink-0 rounded-full bg-destructive px-5 py-2.5 text-sm font-semibold text-destructive-foreground transition hover:bg-destructive/90"
+                >
+                  Попробовать снова
+                </button>
+              </div>
+            </motion.div>
+          ) : null}
+
+          {!trackerQuery.isLoading && !trackerQuery.isError && !summary ? (
+            <motion.div
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mb-5 rounded-[2rem] border border-dashed border-primary/20 bg-primary/5 p-8 text-center shadow-sm"
+              data-testid="trackerEmpty"
+            >
+              <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+                <Package className="h-8 w-8" />
+              </div>
+              <h3 className="mt-4 text-xl font-semibold text-foreground">Продуктовый маршрут ещё не сформирован</h3>
+              <p className="mx-auto mt-2 max-w-lg text-sm leading-6 text-muted-foreground">
+                Когда вы выберете животное и оформите участие, здесь появится полный трекер: состав молока, динамика надоев, история доставок и именные продукты.
+              </p>
+              <div className="mt-5 flex flex-wrap items-center justify-center gap-3">
+                <Link
+                  href="/animals"
+                  className="inline-flex items-center gap-2 rounded-full bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90"
+                >
+                  Выбрать животное <ChevronRight className="h-4 w-4" />
+                </Link>
+                <Link
+                  href="/dashboard"
+                  className="inline-flex items-center gap-2 rounded-full border border-border px-5 py-2.5 text-sm font-semibold text-foreground transition hover:bg-muted"
+                >
+                  В кабинет
+                </Link>
+              </div>
+            </motion.div>
+          ) : null}
+
           <div className="grid grid-cols-12 gap-5">
             <motion.section
               initial={{ opacity: 0, x: -14 }}
@@ -262,6 +320,14 @@ export default function ProductTracker() {
                   </p>
                 </div>
 
+                {(summary?.composition ?? []).length === 0 && (
+                  <div className="rounded-2xl border border-dashed border-border bg-secondary/30 p-4 text-center" data-testid="trackerEmptyComposition">
+                    <FlaskConical className="mx-auto h-5 w-5 text-primary/50" />
+                    <p className="mt-2 text-sm text-muted-foreground">
+                      Данные о составе партии появятся после первого анализа молока.
+                    </p>
+                  </div>
+                )}
                 {(summary?.composition ?? []).map((item) => (
                   <div key={item.label}>
                     <div className="mb-2 flex items-center justify-between gap-3 text-sm">
@@ -363,6 +429,14 @@ export default function ProductTracker() {
                   </div>
 
                   <div className="mt-6 space-y-3">
+                    {deliveries.length === 0 && (
+                      <div className="rounded-[1.5rem] border border-dashed border-border bg-secondary/30 p-5 text-center" data-testid="trackerEmptyDeliveries">
+                        <Truck className="mx-auto h-6 w-6 text-primary/50" />
+                        <p className="mt-2 text-sm text-muted-foreground">
+                          История доставок появится здесь после первой отправки продуктового набора.
+                        </p>
+                      </div>
+                    )}
                     {deliveries.map((delivery, index) => (
                       <button
                         key={delivery.id}

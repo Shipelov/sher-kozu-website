@@ -387,3 +387,12 @@
 ### Документация
 - [x] Обновить roadmap.md — Phase 4 отмечена как COMPLETED с детальными результатами
 - [x] Smoke-pass результаты зафиксированы в .manus-notes/smoke_pass_21march.md
+
+## Empty/Error States — Graceful UI
+- [x] Dashboard: empty state для нового пользователя без животных/планов/доставок (nextSteps + quickLinks empty states)
+- [x] Dashboard: error state при сбое загрузки данных (уже реализован DashboardError с retry)
+- [x] Tracker: empty state когда нет активного ownership (global + composition + deliveries empty states)
+- [x] Tracker: error state при сбое загрузки данных (trackerError с retry)
+- [x] Club: empty state для пустой ленты постов (с фильтр-aware сообщением), событий и участников (уже были dashed-border empty)
+- [x] Club: error state при сбое загрузки данных (clubError с retry)
+- [x] Unit-тесты для empty/error states (40 тестов в emptyErrorStates.test.ts)

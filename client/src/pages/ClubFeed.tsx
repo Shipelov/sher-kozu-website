@@ -299,15 +299,66 @@ export default function ClubFeed() {
               </div>
 
               {clubQuery.isLoading ? (
-                <div className="rounded-[2rem] border border-border/70 bg-card p-6 text-sm text-muted-foreground shadow-sm">
-                  Загружаем живую клубную ленту фермы…
+                <div className="rounded-[2rem] border border-border/70 bg-card p-6 shadow-sm" data-testid="clubLoading">
+                  <div className="flex items-center gap-3 text-sm text-muted-foreground">
+                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+                    Загружаем живую клубную ленту фермы…
+                  </div>
                 </div>
               ) : null}
 
-              {!clubQuery.isLoading && !visiblePosts.length ? (
-                <div className="rounded-[2rem] border border-border/70 bg-card p-6 text-sm text-muted-foreground shadow-sm">
-                  Клубная лента пока пуста. После первого события или дневниковой записи здесь появится живая история вашей фермы.
-                </div>
+              {clubQuery.isError ? (
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="rounded-[2rem] border border-destructive/30 bg-destructive/5 p-6 shadow-sm"
+                  data-testid="clubError"
+                >
+                  <div className="flex flex-col items-center gap-4 text-center sm:flex-row sm:text-left">
+                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-destructive/10 text-destructive">
+                      <MessageCircle className="h-6 w-6" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <h3 className="text-lg font-semibold text-foreground">Не удалось загрузить клубную ленту</h3>
+                      <p className="mt-1 text-sm text-muted-foreground">
+                        Произошла ошибка при загрузке постов, событий и участников. Попробуйте обновить страницу.
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => clubQuery.refetch()}
+                      className="shrink-0 rounded-full bg-destructive px-5 py-2.5 text-sm font-semibold text-destructive-foreground transition hover:bg-destructive/90"
+                    >
+                      Попробовать снова
+                    </button>
+                  </div>
+                </motion.div>
+              ) : null}
+
+              {!clubQuery.isLoading && !clubQuery.isError && !visiblePosts.length ? (
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="rounded-[2rem] border border-dashed border-primary/20 bg-primary/5 p-6 text-center shadow-sm"
+                  data-testid="clubEmptyPosts"
+                >
+                  <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+                    <Sparkles className="h-6 w-6" />
+                  </div>
+                  <h4 className="mt-3 text-lg font-semibold text-foreground">Клубная лента пока пуста</h4>
+                  <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-muted-foreground">
+                    {activeFilter !== "all"
+                      ? `Нет публикаций в категории \u00ab${filters.find(f => f.key === activeFilter)?.label}\u00bb. Попробуйте выбрать \u00abВсе\u00bb или другой фильтр.`
+                      : "После первого события или дневниковой записи здесь появится живая история вашей фермы."}
+                  </p>
+                  {activeFilter !== "all" && (
+                    <button
+                      onClick={() => setActiveFilter("all")}
+                      className="mt-3 inline-flex items-center gap-2 rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90"
+                    >
+                      Показать все
+                    </button>
+                  )}
+                </motion.div>
               ) : null}
 
               {visiblePosts.map((post) => (

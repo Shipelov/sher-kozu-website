@@ -632,6 +632,23 @@ export default function Dashboard() {
               ) : null}
 
               <div className="mt-5 grid gap-3">
+                {!isGuestJourney && nextSteps.length === 0 && (
+                  <div className="rounded-[1.75rem] border border-dashed border-primary/20 bg-primary/5 p-5 text-center" data-testid="dashboardEmptyNextSteps">
+                    <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+                      <Sparkles className="h-6 w-6" />
+                    </div>
+                    <h4 className="mt-3 text-lg font-semibold text-foreground">Все шаги выполнены</h4>
+                    <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                      Отличная работа! Все текущие шаги маршрута владельца завершены. Новые действия появятся здесь, когда ферма обновит статус участия или запланирует событие.
+                    </p>
+                    <Link
+                      href="/animals"
+                      className="mt-4 inline-flex items-center gap-2 rounded-full bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90"
+                    >
+                      Открыть галерею <ArrowRight className="h-4 w-4" />
+                    </Link>
+                  </div>
+                )}
                 {nextSteps.map((step: DashboardStep) => {
                   const Icon = iconForStep(step.kind);
                   return (
@@ -755,6 +772,14 @@ export default function Dashboard() {
               ) : null}
 
               <div className="mt-4 grid gap-3 sm:grid-cols-3">
+                {!isGuestJourney && quickLinks.length === 0 && (
+                  <div className="col-span-full rounded-[1.5rem] border border-dashed border-border bg-secondary/30 p-5 text-center" data-testid="dashboardEmptyQuickLinks">
+                    <BookOpen className="mx-auto h-6 w-6 text-primary/60" />
+                    <p className="mt-2 text-sm text-muted-foreground">
+                      Быстрые переходы появятся здесь после активации участия и связи с животным.
+                    </p>
+                  </div>
+                )}
                 {quickLinks.map((item: { label: string; href: string; description: string }) => (
                   <Link
                     key={item.label}
