@@ -396,3 +396,8 @@
 - [x] Club: empty state для пустой ленты постов (с фильтр-aware сообщением), событий и участников (уже были dashed-border empty)
 - [x] Club: error state при сбое загрузки данных (clubError с retry)
 - [x] Unit-тесты для empty/error states (40 тестов в emptyErrorStates.test.ts)
+
+## Google Sign-In Button
+- [x] Добавить явную кнопку «Войти через Google» в AuthModal (логин + регистрация)
+- [x] Разделитель «или» между OAuth и локальной авторизацией
+- [x] Unit-тесты для кнопки Google sign-in (16 тестов)
