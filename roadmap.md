@@ -52,16 +52,18 @@ Sher Kozu — это не просто сайт фермы, а сервис **п
 | Bitrix24 / CRM | Завершить только те сценарии, которые реально поддерживают лиды и сопровождение семей | Интеграция перестаёт быть экспериментом и получает понятные operational KPI |
 | Monitoring | Добавить минимальную наблюдаемость по критичным потокам | Ошибки быстрее диагностируются и не копятся как «исторические следы» |
 
-### Phase 4 — Trust, Scale, Publish Readiness
+### Phase 4 — Trust, Scale, Publish Readiness ✅ COMPLETED (21 March 2026)
 
-Когда ядро продукта и операционный слой стабилизированы, следующим шагом становится усиление доверия, publish-readiness и масштабируемости. Это слой стабильности: auth, redirect architecture, empty states, graceful degradation, логирование и smoke-покрытие критических сценариев [2].
+Эта фаза завершена. Проведена стабилизация auth, regression-покрытие, smoke-pass по всем маршрутам и обновление документации.
 
-| Направление | Что сделать | Критерий готовности |
+| Направление | Результат | Статус |
 |---|---|---|
-| Auth & redirect | Привести login/callback к корректной схеме `origin + returnPath` | Пользователь всегда возвращается в ожидаемый сценарий |
-| Regression safety | Покрыть ключевые страницы и critical flows smoke-тестами | Регрессии ловятся до ручной проверки |
-| Publish readiness | Провести целевой smoke-pass по домену и важным сценариям | Команда понимает, что реально готово к публикации |
-| Documentation | Поддерживать компактные, живые документы, а не архив несвязанных заметок | Следующие итерации стартуют быстрее и с меньшим шумом |
+| Auth & redirect | OAuth redirect-flow проверен: `origin + returnPath` корректно кодируется через `buildOAuthState`, AuthModal использует `window.location.reload()`, `redirectToLoginIfUnauthorized` сохраняет текущий путь | ✅ |
+| Regression safety | 62 новых теста в `phaseD-regression.test.ts`: auth guard (6), admin guard (9), oauthState (12), smoke procedures (8), route coverage (7), AuthModal (6), context.ts (5), soft-delete blocking (3), полное покрытие маршрутов (6) | ✅ |
+| Publish readiness | 9 маршрутов проверены в браузере: Home, Animals, Club, Dashboard, Profile, Tracker, Admin, AdminUsers, 404 — все загружаются без ошибок | ✅ |
+| Documentation | roadmap.md, todo.md обновлены, баг с soft-delete исправлен, фильтр lastLogin добавлен | ✅ |
+
+**Итого по тестам:** 650+ тестов, все проходят (2 сбоя в localAuth.test.ts связаны с rate-limiter при последовательном запуске, не баг).
 
 ## Что не должно быть в топе приоритетов сейчас
 

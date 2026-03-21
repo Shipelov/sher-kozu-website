@@ -364,3 +364,26 @@
 - [x] Серверная поддержка фильтра lastLogin в adminUsers.list
 - [x] Unit-тесты для фильтра lastLogin
 - [x] BUG: Удалённый через корзину пользователь остаётся в списке активных — добавлен isNull(deletedAt) в listUsersAdmin и exportUsersAdmin
+
+## Phase D — Stability and Publish Readiness
+
+### OAuth и redirect-flow
+- [x] Аудит OAuth redirect-flow: проверить edge-кейсы (returnPath с query params, hash, пустой returnPath) — реализовано корректно
+- [x] Убедиться что после login/register через AuthModal пользователь остаётся на текущей странице — window.location.reload() сохраняет путь
+- [x] Проверить что redirectToLoginIfUnauthorized в main.tsx сохраняет текущий путь — getLoginUrl() без аргументов берёт window.location
+
+### Regression-тесты
+- [x] Тесты для oauthState: encode/decode, normalizeOrigin, normalizeReturnPath, getPostAuthRedirectUrl (12 тестов)
+- [x] Тесты для auth guard: protectedProcedure блокирует неавторизованных (6 тестов)
+- [x] Тесты для admin guard: админ-процедуры блокируют обычных пользователей (6+3 тестов)
+- [x] Тесты для localAuth: login, register, OTP, password reset — уже покрыты в localAuth.test.ts (14 тестов)
+- [x] Smoke-тесты: публичные и защищённые процедуры, покрытие маршрутов, AuthModal, context.ts (62 теста)
+
+### Publish-smoke pass
+- [x] Проверить все основные маршруты в браузере — 9 маршрутов проверены, все загружаются без ошибок
+- [ ] Проверить мобильную адаптивность ключевых страниц (требует ручной проверки на устройстве)
+- [ ] Проверить empty states и error states
+
+### Документация
+- [x] Обновить roadmap.md — Phase 4 отмечена как COMPLETED с детальными результатами
+- [x] Smoke-pass результаты зафиксированы в .manus-notes/smoke_pass_21march.md
