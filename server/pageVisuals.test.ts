@@ -21,45 +21,47 @@ describe("page visual integration source smoke", () => {
   it("keeps consumer-first hero with concept explanation and gallery CTA on home", () => {
     // Hero section with concept explanation
     expect(homeSource).toContain("Персональное фермерство");
-    expect(homeSource).toContain("Ваша коза.");
+    expect(homeSource).toContain("Ваша ферма.");
     expect(homeSource).toContain("Ваше молоко.");
     expect(homeSource).toContain("Ваша история.");
     expect(homeSource).toContain("Выбрать животное");
     expect(homeSource).toContain("Как это устроено");
 
     // Trust signals
-    expect(homeSource).toContain("A2");
-    expect(homeSource).toContain("48ч");
+    expect(homeSource).toContain("здоровое питание");
+    expect(homeSource).toContain("основатель фермы");
     expect(homeSource).toContain("прозрачность");
+    expect(homeSource).toContain("сервис");
+    expect(homeSource).toContain("семей");
 
     // How it works section
     expect(homeSource).toContain('id="how-it-works"');
-    expect(homeSource).toContain("Выберите животное");
-    expect(homeSource).toContain("Следите за жизнью на ферме");
+    expect(homeSource).toContain("Выберите своё животное");
+    expect(homeSource).toContain("Наблюдайте за жизнью на ферме");
     expect(homeSource).toContain("Получайте именные продукты");
 
     // Audience segments
     expect(homeSource).toContain("Семьи с детьми");
-    expect(homeSource).toContain("Ценители натуральных продуктов");
+    expect(homeSource).toContain("Ценители качества");
     expect(homeSource).toContain("Дарители уникальных подарков");
     expect(homeSource).toContain("Участники закрытого клуба");
 
     // Values section with social proof
     expect(homeSource).toContain("Эмоциональная связь");
     expect(homeSource).toContain("Радикальная прозрачность");
-    expect(homeSource).toContain("Премиальная продукция");
+    expect(homeSource).toContain("Элитные породы");
     expect(homeSource).toContain("Доставка до двери");
     expect(homeSource).toContain("Отзывы участников");
 
     // Product preview
-    expect(homeSource).toContain("Именная коробка делает происхождение зримым");
-    expect(homeSource).toContain("Молоко A2");
-    expect(homeSource).toContain("Крафтовые сыры");
+    expect(homeSource).toContain("Что внутри именной коробки");
+    expect(homeSource).toContain("Свежее молоко");
+    expect(homeSource).toContain("Именные сыры");
     expect(homeSource).toContain("Сезонные наборы");
 
     // Final CTA
     expect(homeSource).toContain("Начните сейчас");
-    expect(homeSource).toContain("Выберите животное и станьте частью истории семейной фермы");
+    expect(homeSource).toContain("Станьте частью первого в России клуба персонального фермерства");
   });
 
   it("does NOT contain old home elements (animal of the week, inline partner form, ecosystem routes)", () => {

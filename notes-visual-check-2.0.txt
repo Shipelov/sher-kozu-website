@@ -1,0 +1,10 @@
+Visual check after applying document 2.0 text changes
+
+Hero section:
+- "Ваша ферма. Ваше молоко. Ваша история." — correct
+- Subtitle about elite breeds — correct
+- Badge "Первый в России клуб персонального фермерства" — correct
+- Photo caption "Конкретная ферма — конкретное животное с именем, породой и историей" — correct
+- Trust signals visible: heart emoji, wheat emoji, 100%, 24/7, 50
+
+All 718 tests pass. TypeScript: no errors. Dev server: running.
