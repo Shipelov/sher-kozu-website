@@ -20,6 +20,7 @@ import AdminUsers from "./pages/AdminUsers";
 import AdminProductTrack from "./pages/AdminProductTrack";
 import Profile from "./pages/Profile";
 import Partners from "./pages/Partners";
+import AboutFarm from "./pages/AboutFarm";
 
 function normalizeRoutePath(path: string) {
   const [pathname, query = ""] = path.split("?");
@@ -70,6 +71,7 @@ function Router() {
       <Route path="/admin/animals" component={AdminAnimals} />
       <Route path="/admin/product-track" component={AdminProductTrack} />
       <Route path="/admin/product-track/:animalId" component={AdminProductTrack} />
+      <Route path="/about" component={AboutFarm} />
       <Route path="/partners" component={Partners} />
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />

@@ -79,6 +79,7 @@ export default function Navbar() {
     () => [
       { href: "/", label: "Главная", icon: Home },
       { href: "/animals", label: "Каталог животных", icon: PawPrint },
+      { href: "/about", label: "О ферме", icon: Leaf },
       { href: "/club", label: "Клуб", icon: Users },
     ],
     [],

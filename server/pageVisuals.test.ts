@@ -14,6 +14,7 @@ const adminAnimalsSource = fs.readFileSync("/home/ubuntu/sher-kozu-website/clien
 const animalsCatalogSource = fs.readFileSync("/home/ubuntu/sher-kozu-website/client/src/pages/AnimalsCatalog.tsx", "utf8");
 const animalProfileSource = fs.readFileSync("/home/ubuntu/sher-kozu-website/client/src/pages/AnimalProfile.tsx", "utf8");
 const animalShareCardSource = fs.readFileSync("/home/ubuntu/sher-kozu-website/client/src/components/AnimalShareCard.tsx", "utf8");
+const aboutFarmSource = fs.readFileSync("/home/ubuntu/sher-kozu-website/client/src/pages/AboutFarm.tsx", "utf8");
 const shareSelectionPreviewCardSource = fs.readFileSync("/home/ubuntu/sher-kozu-website/client/src/components/ShareSelectionPreviewCard.tsx", "utf8");
 
 describe("page visual integration source smoke", () => {
@@ -89,6 +90,53 @@ describe("page visual integration source smoke", () => {
   it("links to /partners from home footer", () => {
     expect(homeSource).toContain('href="/partners"');
     expect(homeSource).toContain("Для партнёров");
+  });
+
+  /* ─── AboutFarm.tsx — О ферме page ─── */
+  it("renders the About Farm page with family story, philosophy, breeds and gallery", () => {
+    // Hero
+    expect(aboutFarmSource).toContain("О ферме");
+    expect(aboutFarmSource).toContain("Семейная ферма,");
+    expect(aboutFarmSource).toContain("где каждое животное — член семьи");
+
+    // Timeline / History
+    expect(aboutFarmSource).toContain("Наша история");
+    expect(aboutFarmSource).toContain("2019");
+    expect(aboutFarmSource).toContain("2024");
+    expect(aboutFarmSource).toContain("Клуб «Шерь Козу»");
+    expect(aboutFarmSource).toContain("Цифровая ферма");
+
+    // Philosophy
+    expect(aboutFarmSource).toContain("Наша философия");
+    expect(aboutFarmSource).toContain("Радикальная прозрачность");
+    expect(aboutFarmSource).toContain("Эмоциональная связь");
+    expect(aboutFarmSource).toContain("Элитная генетика");
+
+    // Breeds
+    expect(aboutFarmSource).toContain("Англо-нубийская коза");
+    expect(aboutFarmSource).toContain("Альпийская коза");
+    expect(aboutFarmSource).toContain("Остфризская овца");
+    expect(aboutFarmSource).toContain("Лаконская овца");
+
+    // Gallery
+    expect(aboutFarmSource).toContain("Жизнь на ферме");
+    expect(aboutFarmSource).toContain("galleryImages");
+
+    // Values / stats
+    expect(aboutFarmSource).toContain("Не масштаб, а глубина");
+    expect(aboutFarmSource).toContain("50");
+    expect(aboutFarmSource).toContain("семей в клубе");
+
+    // CTA
+    expect(aboutFarmSource).toContain("Приезжайте к нам на ферму");
+    expect(aboutFarmSource).toContain("Выбрать животное");
+  });
+
+  it("registers /about route in App.tsx and adds nav link", () => {
+    expect(appSource).toContain('path="/about"');
+    expect(appSource).toContain("AboutFarm");
+    expect(navbarSource).toContain('"/about"');
+    expect(navbarSource).toContain("О ферме");
   });
 
   /* ─── Partners.tsx — Dedicated partner page ─── */
