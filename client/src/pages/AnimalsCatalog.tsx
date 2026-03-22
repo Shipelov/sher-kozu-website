@@ -14,38 +14,38 @@ const speciesConfig = {
     title: "Козы",
     singular: "Коза",
     description:
-      "Живые профили коз Sher Kozu: эмоциональная связь, молочный потенциал и личная история каждой семьи с конкретным животным.",
+      "Англо-нубийские, альпийские и другие элитные породы. У каждой козы — имя, характер и личная история с вашей семьёй.",
     tone: "border-amber-200 bg-amber-50 text-amber-900",
     emptyTitle: "Козы скоро появятся",
-    emptyText: "Как только администратор опубликует новые профили коз, они появятся в этом разделе галереи.",
+    emptyText: "Мы готовим профили коз элитных пород. Как только они будут опубликованы, вы увидите их здесь — с именем, породой и историей.",
     relationshipEmptyTitle: "Коз в отношениях пока нет",
     relationshipEmptyText:
-      "Когда у коз появится временный владелец на все доли, они отобразятся здесь со статусом «в отношениях».",
+      "Когда семья выберет козу и оформит участие на все доли, она появится здесь со статусом «в отношениях».",
     sharedEmptyTitle: "Коз с доступными долями пока нет",
     sharedEmptyText:
-      "Как только у коз появится частичная занятость, они отобразятся здесь со статусом «доступно для участия».",
+      "Когда часть долей козы будет оформлена одной семьёй, а остальные останутся свободными — она появится здесь.",
     availableEmptyTitle: "Свободных коз пока нет",
     availableEmptyText:
-      "Когда в разделе коз появятся полностью свободные профили, они будут показаны здесь со статусом «на выданье».",
+      "Все козы сейчас в заботливых руках. Как только появится свободный профиль — он будет показан здесь.",
     icon: Heart,
   },
   sheep: {
     title: "Овцы",
     singular: "Овца",
     description:
-      "Раздел с овцами помогает быстро выбрать мягкий характер, статус участия и перейти в полный профиль животного в один клик.",
+      "Остфризские, лаконские и другие молочные породы. Спокойный характер, мягкое молоко и тёплая связь с вашей семьёй.",
     tone: "border-emerald-200 bg-emerald-50 text-emerald-900",
     emptyTitle: "Овцы скоро появятся",
-    emptyText: "После публикации первых овец в системе здесь откроется отдельная галерея с карточками и переходом в профиль.",
+    emptyText: "Мы готовим профили овец молочных пород. Скоро здесь появятся их имена, характеры и истории.",
     relationshipEmptyTitle: "Овец в отношениях пока нет",
     relationshipEmptyText:
-      "Когда у овцы все доли будут заняты временным владельцем, она появится здесь со статусом «в отношениях».",
+      "Когда семья выберет овцу и оформит участие на все доли, она появится здесь со статусом «в отношениях».",
     sharedEmptyTitle: "Овец с доступными долями пока нет",
     sharedEmptyText:
-      "Когда у овцы появится частичная занятость, она будет показана здесь со статусом «доступно для участия».",
+      "Когда часть долей овцы будет оформлена, а остальные останутся свободными — она появится здесь.",
     availableEmptyTitle: "Свободных овец пока нет",
     availableEmptyText:
-      "Как только овца будет полностью свободна и готова к сделке, она появится здесь со статусом «на выданье».",
+      "Все овцы сейчас в заботливых руках. Как только появится свободный профиль — он будет показан здесь.",
     icon: Waves,
   },
 } as const;
@@ -112,8 +112,8 @@ function getRelationshipStatus(slots: number, total: number, occupiedUntil?: str
       filter: "relationship" as const,
       label: "Статус: в отношениях",
       helper: occupiedUntilLabel
-        ? `На 100% есть временный владелец. Занято до ${occupiedUntilLabel}.`
-        : "На 100% есть временный владелец. Можно указать срок действия статуса до конкретной даты в профиле сделки.",
+        ? `Животное уже нашло свою семью. Участие оформлено до ${occupiedUntilLabel}.`
+        : "Животное уже нашло свою семью. Все доли оформлены.",
       className: "border-rose-200 bg-rose-50 text-rose-800",
       compactLabel: "В отношениях",
       occupiedUntilLabel,
@@ -124,7 +124,7 @@ function getRelationshipStatus(slots: number, total: number, occupiedUntil?: str
     return {
       filter: "available" as const,
       label: "Статус: на выданье",
-      helper: "Профиль полностью свободен и готов к сделке.",
+      helper: "Животное ждёт свою семью. Все доли свободны.",
       className: "border-emerald-200 bg-emerald-50 text-emerald-800",
       compactLabel: "На выданье",
       occupiedUntilLabel: null,
@@ -134,7 +134,7 @@ function getRelationshipStatus(slots: number, total: number, occupiedUntil?: str
   return {
     filter: "shared" as const,
       label: `Статус: доступно для участия · свободно ${slots} из ${total}`,
-      helper: "Часть долей уже занята, а оставшаяся часть доступна для участия.",
+      helper: "Одна семья уже участвует, но есть свободные доли.",
       className: "border-amber-200 bg-amber-50 text-amber-800",
       compactLabel: "Доступно для участия",
 
@@ -324,7 +324,7 @@ function AnimalSpeciesSection({
                         className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
                       />
                     ) : (
-                      <div className="flex h-full items-center justify-center text-stone-400">Аватарка появится после загрузки</div>
+                      <div className="flex h-full items-center justify-center text-stone-400">Фото скоро появится</div>
                     )}
                     <div className="absolute inset-x-0 top-0 flex items-start justify-between p-4">
                       <Badge className="rounded-full border border-white/20 bg-black/60 px-3 py-1 text-white backdrop-blur">
@@ -338,7 +338,7 @@ function AnimalSpeciesSection({
                         ) : null}
                         {animal.isFeatured ? (
                           <Badge className="rounded-full border border-white/20 bg-white/90 px-3 py-1 text-stone-900">
-                            Профиль недели
+                            Животное недели
                           </Badge>
                         ) : null}
                       </div>
@@ -367,14 +367,14 @@ function AnimalSpeciesSection({
                         primarySharePriceLabel={formatCurrency(shareSummary.primarySharePriceMinor)}
                         availableSharePercents={shareSummary.availableSharePercents}
                         helperText={availability.helper}
-                        description={`${availability.helper} В профиле откроется тот же сценарий: свободные доли шагом ${shareSummary.shareUnitPercent}% и один основной CTA.`}
-                        ctaLabel="Открыть профиль и продолжить с выбранной долей"
+                        description={`${availability.helper} В профиле вы увидите доступные доли шагом ${shareSummary.shareUnitPercent}% и сможете оформить участие.`}
+                        ctaLabel="Познакомиться и выбрать долю"
                         ctaHref={`/animals/${animal.slug}?share=${shareSummary.primarySharePercent}`}
                         ctaAsButton
                         theme="stone"
                         occupiedUntilLabel={availability.occupiedUntilLabel}
-                        title="Один и тот же сценарий выбора доли на всей витрине"
-                        eyebrow="Статус, доля и цена"
+                        title="Участие в жизни животного"
+                        eyebrow="Ваша доля участия"
                         compact
                       />
 
@@ -434,14 +434,14 @@ export default function AnimalsCatalog() {
           <div className="grid gap-8 px-6 py-8 md:grid-cols-[1.35fr_0.95fr] md:px-10 md:py-10">
             <div className="space-y-5">
               <Badge className="rounded-full border border-stone-300 bg-stone-100 px-4 py-1.5 text-xs font-medium uppercase tracking-[0.28em] text-stone-700">
-                Галерея животных
+                Каталог животных
               </Badge>
               <div className="space-y-4">
                 <h1 className="max-w-3xl text-4xl font-semibold tracking-tight text-stone-900 md:text-5xl">
-                  Выбирайте животное по типу отношений, а не только по виду.
+                  Найдите своё животное элитной породы
                 </h1>
                 <p className="max-w-3xl text-base leading-8 text-stone-600 md:text-lg">
-                  Вкладка разделена на коз и овец, а внутри каждого раздела можно фильтровать профили по статусу участия: полностью занято, полностью свободно или доступно для участия.
+                  Козы и овцы с именем, характером и историей. Выберите по породе или статусу участия — и начните свою историю персонального фермерства.
                 </p>
               </div>
               <div className="flex flex-wrap gap-3">
@@ -476,19 +476,19 @@ export default function AnimalsCatalog() {
             <p className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.2em] text-rose-700">
               <Sparkles className="h-4 w-4" /> В отношениях
             </p>
-            <p>На 100% есть временный владелец. Для такого статуса логично показывать срок, до какой даты животное закреплено.</p>
+<p>Животное уже нашло свою семью. Все доли оформлены, владелец получает именные продукты.</p>
           </div>
           <div className="space-y-2 rounded-[1.5rem] bg-emerald-50 p-4">
             <p className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.2em] text-emerald-700">
               <Heart className="h-4 w-4" /> На выданье
             </p>
-            <p>Профиль полностью свободен и готов к сделке: временного владельца нет, все доли доступны.</p>
+<p>Животное ждёт свою семью. Все доли свободны — можно стать единственным владельцем.</p>
           </div>
           <div className="space-y-2 rounded-[1.5rem] bg-amber-50 p-4">
             <p className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.2em] text-amber-700">
               <Waves className="h-4 w-4" /> Доступно для участия
             </p>
-            <p>Часть долей уже занята, а оставшаяся часть доступна для участия другой семьи.</p>
+<p>Одна семья уже участвует, но есть свободные доли. Можно присоединиться и разделить заботу о животном.</p>
           </div>
         </div>
 

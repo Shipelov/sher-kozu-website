@@ -307,7 +307,7 @@ describe("page visual integration source smoke", () => {
 
   /* ─── Animals catalog ─── */
   it("renders animal gallery with separate goats and sheep sections, relationship statuses and links to full profiles", () => {
-    expect(animalsCatalogSource).toContain("Галерея животных");
+    expect(animalsCatalogSource).toContain("Каталог животных");
     expect(animalsCatalogSource).toContain("Козы");
     expect(animalsCatalogSource).toContain("Овцы");
     expect(animalsCatalogSource).toContain('id="goats"');
@@ -320,7 +320,7 @@ describe("page visual integration source smoke", () => {
     expect(animalsCatalogSource).toContain("goatFilter");
     expect(animalsCatalogSource).toContain("sheepFilter");
     expect(animalsCatalogSource).toContain("getRelationshipStatus");
-    expect(animalsCatalogSource).toContain("Открыть профиль и продолжить с выбранной долей");
+    expect(animalsCatalogSource).toContain("Познакомиться и выбрать долю");
     expect(animalsCatalogSource).toContain("AnimalShareCard");
     expect(animalsCatalogSource).toContain("occupiedUntilLabel={availability.occupiedUntilLabel}");
     expect(animalsCatalogSource).toContain('new URLSearchParams(window.location.search).get("share")');
@@ -369,8 +369,8 @@ describe("page visual integration source smoke", () => {
     expect(homeSource).toContain("Выбрать животное");
 
     // Catalog has full gallery with share selection
-    expect(animalsCatalogSource).toContain("Галерея животных");
-    expect(animalsCatalogSource).toContain("Открыть профиль и продолжить с выбранной долей");
+    expect(animalsCatalogSource).toContain("Каталог животных");
+    expect(animalsCatalogSource).toContain("Познакомиться и выбрать долю");
     expect(animalsCatalogSource).toContain('new URLSearchParams(window.location.search).get("share")');
     expect(animalsCatalogSource).toContain('ctaHref={`/animals/${animal.slug}?share=${shareSummary.primarySharePercent}`}');
 
