@@ -7,6 +7,7 @@ import { trpc } from "@/lib/trpc";
 import { ArrowRight, Heart, Sparkles, Waves } from "lucide-react";
 import { Link } from "wouter";
 import AnimalShareCard from "@/components/AnimalShareCard";
+import Navbar from "@/components/Navbar";
 
 const speciesConfig = {
   goat: {
@@ -163,6 +164,9 @@ function getShareBlockSummary(animal: CatalogAnimal) {
 
 function AnimalsCatalogSkeleton() {
   return (
+    <div className="min-h-screen overflow-hidden bg-background text-foreground">
+      <Navbar />
+      <div className="bg-[#f7f1e8] pt-28 md:pt-32">
     <section className="container space-y-10 py-16 md:py-20">
       {Array.from({ length: 2 }).map((_, sectionIndex) => (
         <div key={sectionIndex} className="space-y-6">
@@ -191,6 +195,8 @@ function AnimalsCatalogSkeleton() {
         </div>
       ))}
     </section>
+      </div>
+    </div>
   );
 }
 
@@ -420,7 +426,9 @@ export default function AnimalsCatalog() {
   ).length;
 
   return (
-    <div className="bg-[#f7f1e8] pb-20 pt-10 text-stone-900 md:pt-14">
+    <div className="min-h-screen overflow-hidden bg-background text-foreground">
+      <Navbar />
+      <div className="bg-[#f7f1e8] pb-20 pt-28 text-stone-900 md:pt-32">
       <section className="container space-y-8">
         <div className="overflow-hidden rounded-[2.5rem] border border-stone-200 bg-white/95 shadow-xl shadow-stone-200/50">
           <div className="grid gap-8 px-6 py-8 md:grid-cols-[1.35fr_0.95fr] md:px-10 md:py-10">
@@ -505,6 +513,7 @@ export default function AnimalsCatalog() {
           </div>
         </div>
       </section>
+      </div>
     </div>
   );
 }
