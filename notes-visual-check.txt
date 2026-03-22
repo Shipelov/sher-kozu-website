@@ -1,0 +1,25 @@
+Visual check results - Homepage redesign:
+- Hero section renders correctly with "Ваша коза. Ваше молоко. Ваша история." headline
+- Badge "Первый в России клуб персонального фермерства" visible
+- Two CTAs visible: "Выбрать животное" and "Как это устроено"
+- Farm hero image loads correctly on the right
+- Navbar shows: Главная, Каталог животных, Клуб, Мой кабинет, Трекер продуктов
+- User avatar visible (Andrey Shipelov)
+- Live indicator "Мира онлайн" visible
+- TypeScript: No errors
+- LSP: No errors
+- All 718 tests pass
+
+Partners page visual check:
+- Hero section with "Партнёрская программа Шерь Козу" renders correctly
+- B2B badge visible
+- "Вернуться на главную" link works
+- Form fields: name, company, email, phone, region, telegram, interest type, contact method, products, notes
+- Drag-drop file upload area visible with recommendations
+- Progress indicator visible (33%)
+- Consent checkbox visible
+- "Отправить заявку" button visible
+- FAQ section with 5 expandable items
+- Sync status section shows empty state
+- Footer with navigation links
+- All renders without errors
