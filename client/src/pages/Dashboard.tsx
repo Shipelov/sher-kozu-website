@@ -73,7 +73,7 @@ function getOwnershipTone(status?: string | null) {
   return {
     pill: "Активный владелец",
     description:
-      "У вас открыт полный owner-режим: дневник, галерея, трекер продукта и клубные сценарии возвращения.",
+        "У вас открыт полный доступ: дневник, галерея, трекер продукта и клубные события.",
   };
 }
 
@@ -228,7 +228,7 @@ export default function Dashboard() {
   const guestRegistrationBenefits = [
     "Сохраните выбранное животное и вернётесь к нему без повторного поиска.",
     "Откроете личный кабинет с долей участия, трекером продукта и следующими шагами.",
-    "Получите доступ к клубным визитам, дневнику ухода и owner-only обновлениям.",
+    "Получите доступ к клубным визитам, дневнику ухода и персональным обновлениям.",
   ];
 
   const summaryCards = currentAnimal
@@ -297,13 +297,13 @@ export default function Dashboard() {
                   <div className="max-w-2xl">
                     <h1 className="font-display text-4xl text-white md:text-6xl">
                       {currentAnimal
-                        ? `Цифровое сердце Sher Kozu собирает жизнь ${featuredAnimalName} в один понятный маршрут владельца.`
-                        : "Цифровое сердце Sher Kozu готово собрать ваше персональное фермерство в один понятный маршрут."}
+                        ? `Ваш личный кабинет — всё о ${featuredAnimalName}, продуктах и жизни фермы в одном месте.`
+                        : "Ваш личный кабинет — сердце персонального фермерства. Здесь начинается ваш путь."}
                     </h1>
                     <p className="mt-4 max-w-xl text-sm leading-7 text-white/76 md:text-base">
                       {currentAnimal
                         ? ownershipTone.description
-                        : "Сначала выберите животное в галерее. После этого кабинет свяжет дневник, трекер продукта, клуб и следующий лучший шаг без лишних развилок."}
+                        : "Сначала выберите животное в галерее. После этого кабинет свяжет дневник, трекер продукта и клуб воедино."}
                     </p>
                   </div>
                 </div>
@@ -328,15 +328,15 @@ export default function Dashboard() {
                 <div className="mt-4 overflow-hidden rounded-[1.75rem] border border-border/70 bg-card shadow-sm">
                   <img src={CDN.dairyBox} alt="Именная продуктовая коробка" className="h-44 w-full object-cover" />
                   <div className="p-4">
-                    <p className="text-xs uppercase tracking-[0.18em] text-primary">Следующий материальный результат</p>
+                    <p className="text-xs uppercase tracking-[0.18em] text-primary">Ваша именная коробка</p>
                     <h2 className="mt-2 text-xl font-semibold text-foreground">
                       {currentAnimal
                         ? `Именная коробка продолжает историю ${featuredAnimalName} и вашего участия ${ownership?.sharePercent ?? currentAnimal.mySharePercent ?? 0}%.`
-                        : "После выбора животного кабинет покажет, как личная связь превращается в именной продуктовый маршрут."}
+                        : "После выбора животного кабинет покажет, как ваше участие превращается в именную коробку с продуктами."}
                     </h2>
                     <p className="mt-2 text-sm leading-6 text-muted-foreground">
                       {productSummary?.currentBatch?.detail ??
-                        "Продуктовый слой здесь показывает, что Sher Kozu продаёт не просто молочные наборы, а прозрачную и персональную историю происхождения."}
+                        "Каждая именная коробка — это не просто набор продуктов, а прозрачная история происхождения от конкретного животного."}
                     </p>
                   </div>
                 </div>
@@ -557,32 +557,32 @@ export default function Dashboard() {
                   <p className="text-xs uppercase tracking-[0.18em] text-primary">Следующие шаги</p>
                   <h3 className="mt-2 text-2xl font-semibold text-foreground">
                     {currentAnimal
-                      ? `${featuredAnimalName} уже в кабинете. Дальше — понятные действия без dead-end состояний.`
-                      : "Кабинет ждёт первый шаг: выбрать животное и запустить личный маршрут участия."}
+                      ? `${featuredAnimalName} уже в кабинете. Вот ваши следующие шаги.`
+                      : "Кабинет ждёт первый шаг: выберите животное и начните свой путь в клубе."}
                   </h3>
                 </div>
                 <div className="inline-flex max-w-full items-center gap-2 self-start rounded-full bg-secondary px-3 py-1 text-xs font-medium text-primary">
                   <span className="pulse-dot" />
-                  Owner journey
+                  Ваш путь
                 </div>
               </div>
 
               <p className="mt-4 max-w-2xl text-sm leading-7 text-muted-foreground">
-                Этот блок больше не живёт как демо-сводка. Он собирает реальные данные текущего участия, чтобы сразу объяснить, что делать после покупки: вернуться в дневник, проверить продукт или открыть клуб.
+                Здесь собраны ваши текущие задачи: проверить дневник, отследить продукт или заглянуть в клуб.
               </p>
 
               {isGuestJourney ? (
                 <div className="mt-5 space-y-4 rounded-[1.75rem] border border-primary/15 bg-primary/5 p-4" data-testid="dashboardGuestPreview">
                   <div className="flex flex-wrap items-center gap-2">
-                    <div className="text-xs uppercase tracking-[0.16em] text-primary">Guest preview</div>
+                    <div className="text-xs uppercase tracking-[0.16em] text-primary">Предварительный просмотр</div>
                     <div className="rounded-full border border-primary/15 bg-white/70 px-3 py-1 text-[11px] font-medium text-primary">
                       Ограниченный доступ до входа
                     </div>
                   </div>
                   <div>
-                    <div className="mt-2 text-lg font-semibold text-foreground">Gallery → Animal Profile → Вход → Dashboard</div>
+                    <div className="mt-2 text-lg font-semibold text-foreground">Галерея → Профиль животного → Вход → Личный кабинет</div>
                     <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                      Если вы ещё не авторизованы, кабинет не обрывает сценарий. Сначала откройте галерею, выберите животное и посмотрите его публичный preview, затем войдите в аккаунт на шаге оформления доли — после этого dashboard автоматически свяжет профиль, трекер и клуб.
+                      Если вы ещё не вошли в аккаунт, начните с галереи: выберите животное, познакомьтесь с его историей, а затем войдите — кабинет автоматически свяжет профиль, трекер и клуб.
                     </p>
                   </div>
 
@@ -598,7 +598,7 @@ export default function Dashboard() {
                   <div className="rounded-2xl border border-dashed border-primary/20 bg-white/60 p-4">
                     <div className="text-sm font-semibold text-foreground">Что откроется после входа</div>
                     <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                      Полная owner-версия кабинета показывает реальное участие, долю, текущее животное, следующие шаги и быстрые переходы между профилем, трекером и клубом без тупиковых состояний.
+                      Полная версия кабинета показывает ваше участие, долю, текущее животное, следующие шаги и быстрые переходы между профилем, трекером и клубом.
                     </p>
                   </div>
 
@@ -625,7 +625,7 @@ export default function Dashboard() {
                       href="/tracker"
                       className="inline-flex items-center justify-center rounded-full border border-border bg-white px-4 py-3 text-sm font-semibold text-foreground transition-colors hover:bg-muted"
                     >
-                      Сначала посмотреть продуктовый маршрут
+                      Сначала посмотреть трекер продуктов
                     </Link>
                   </div>
                 </div>
@@ -696,10 +696,10 @@ export default function Dashboard() {
 
               {isGuestJourney ? (
                 <div className="mt-4 rounded-[1.5rem] border border-dashed border-border bg-secondary/35 p-4" data-testid="dashboardGuestLockedParticipation">
-                  <div className="text-xs uppercase tracking-[0.16em] text-primary">Preview режима владельца</div>
+                    <div className="text-xs uppercase tracking-[0.16em] text-primary">Предварительный просмотр</div>
                   <h4 className="mt-2 text-lg font-semibold text-foreground">Профиль участия откроется после входа</h4>
                   <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                    Здесь появятся статус ownership, доля участия, закреплённые слоты и карточка текущего животного. До входа мы показываем структуру кабинета, но не раскрываем owner-only данные.
+                    Здесь появятся статус участия, доля, закреплённые слоты и карточка текущего животного. До входа мы показываем структуру кабинета, но не раскрываем персональные данные.
                   </p>
                 </div>
               ) : null}
@@ -715,7 +715,7 @@ export default function Dashboard() {
                   <p className="mt-2 text-sm leading-6 text-muted-foreground">
                     {ownership
                       ? `Закреплены доли: ${ownership.slotIndexes.join(", ")}. Общая сумма текущего участия — ${formatCurrency(ownership.priceMinorTotal)}.`
-                      : "После выбора доли кабинет начнёт показывать ваш реальный ownership-state и дальнейшие действия владельца."}
+                      : "После выбора доли кабинет покажет ваш статус участия и дальнейшие действия."}
                   </p>
                 </div>
                 <div className="rounded-2xl border border-border bg-white p-4">
@@ -739,8 +739,8 @@ export default function Dashboard() {
                   </div>
                   <div className="mt-1 text-xs text-muted-foreground">
                     {currentAnimal
-                      ? "Дневник, история, галерея и действия владельца открываются из одного профиля."
-                      : "Каталог — первый шаг, чтобы запустить owner journey."}
+                      ? "Дневник, история, галерея и все действия — из одного профиля."
+                      : "Каталог — первый шаг к персональному фермерству."}
                   </div>
                 </div>
                 <ChevronRight className="h-5 w-5 text-primary transition-transform group-hover:translate-x-0.5" />
@@ -756,17 +756,17 @@ export default function Dashboard() {
               <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <p className="text-xs uppercase tracking-[0.18em] text-primary">Быстрые переходы</p>
-                  <h3 className="mt-2 text-xl font-semibold text-foreground">Важные owner-действия всегда на расстоянии одного клика</h3>
+                  <h3 className="mt-2 text-xl font-semibold text-foreground">Важные действия всегда на расстоянии одного клика</h3>
                 </div>
                 <BookOpen className="h-5 w-5 text-primary" />
               </div>
 
               {isGuestJourney ? (
                 <div className="mt-4 rounded-[1.5rem] border border-dashed border-border bg-secondary/35 p-4" data-testid="dashboardGuestLockedQuickLinks">
-                  <div className="text-xs uppercase tracking-[0.16em] text-primary">Locked owner actions</div>
+                  <div className="text-xs uppercase tracking-[0.16em] text-primary">Доступно после входа</div>
                   <h4 className="mt-2 text-lg font-semibold text-foreground">Быстрые переходы активируются после авторизации</h4>
                   <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                    После входа здесь появятся прямые ссылки в дневник, продуктовый трекер и клубную ленту выбранного животного. До этого момента кабинет показывает только направление маршрута.
+                    После входа здесь появятся прямые ссылки в дневник, трекер продуктов и клубную ленту вашего животного.
                   </p>
                 </div>
               ) : null}
@@ -837,7 +837,7 @@ export default function Dashboard() {
               <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <p className="text-xs uppercase tracking-[0.18em] text-primary">Маршрут продукта</p>
-                  <h3 className="mt-2 text-xl font-semibold text-foreground">Продукт не отрывается от животного и вашего участия</h3>
+                  <h3 className="mt-2 text-xl font-semibold text-foreground">Продукт связан с вашим животным и участием</h3>
                 </div>
                 <Package className="h-5 w-5 text-primary" />
               </div>
@@ -888,16 +888,16 @@ export default function Dashboard() {
                 <div>
                   <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/8 px-3 py-1 text-xs uppercase tracking-[0.18em] text-amber-300">
                     <Bot className="h-3.5 w-3.5" />
-                    AI-блок для Sprint 2
+                    Скоро в клубе
                   </div>
-                  <h3 className="mt-4 font-display text-3xl">Следующий слой — персональный куратор владельца.</h3>
+                  <h3 className="mt-4 font-display text-3xl">Персональный куратор — скоро в вашем кабинете.</h3>
                   <p className="mt-3 max-w-2xl text-sm leading-7 text-white/75">
-                    Теперь, когда dashboard уже знает текущее животное, долю и ближайшие действия, нижний блок не остаётся концептом. Он удерживает те же переходы, что и ProductTracker, ClubFeed и Animal Profile, чтобы пользователь не попадал в dead-end состояние.
+                    Мы работаем над персональным куратором, который будет подсказывать следующие шаги на основе вашего участия, истории животного и клубных событий. Пока — быстрые переходы к профилю, трекеру и клубу.
                   </p>
                   <div className="mt-5 flex flex-wrap gap-2 text-xs text-white/65">
-                    <span className="rounded-full border border-white/15 px-3 py-1">единый slug животного</span>
-                    <span className="rounded-full border border-white/15 px-3 py-1">возврат в профиль, трекер и клуб</span>
-                    <span className="rounded-full border border-white/15 px-3 py-1">один ownership journey</span>
+                    <span className="rounded-full border border-white/15 px-3 py-1">профиль животного</span>
+                    <span className="rounded-full border border-white/15 px-3 py-1">трекер продуктов</span>
+                    <span className="rounded-full border border-white/15 px-3 py-1">клубная лента</span>
                   </div>
                 </div>
 
@@ -921,7 +921,7 @@ export default function Dashboard() {
                     Клубная лента владельца
                   </Link>
                   <div className="rounded-2xl border border-dashed border-white/20 p-3 text-xs text-white/55">
-                    Следующий этап здесь сможет добавить AI-объяснения, но уже поверх устойчивого маршрута между кабинетом, профилем, продуктом и клубом.
+                    Персональный куратор появится здесь в ближайшем обновлении.
                   </div>
                 </div>
               </div>
@@ -937,9 +937,9 @@ export default function Dashboard() {
                 <img src={CDN.family} alt="Семья на ферме" className="h-full min-h-[260px] w-full object-cover" />
                 <div className="p-6">
                   <p className="text-xs uppercase tracking-[0.18em] text-primary">Ритм участия</p>
-                  <h3 className="mt-2 text-2xl font-semibold text-foreground">Кабинет удерживает пользователя между животным, продуктом и жизнью фермы.</h3>
+                  <h3 className="mt-2 text-2xl font-semibold text-foreground">Ваш кабинет связывает животное, продукт и жизнь фермы.</h3>
                   <p className="mt-3 text-sm leading-7 text-muted-foreground">
-                    Важное изменение этой итерации — owner dashboard больше не замыкается на красивой витрине. Теперь он начинает с текущего животного владельца и ведёт дальше в профиль, трекер и клуб как в единый маршрут, а каждый экран возвращает пользователя обратно в эту же систему.
+                    Личный кабинет начинается с вашего животного и ведёт дальше: профиль, трекер продуктов, клуб и обратно — всё связано в единый путь персонального фермерства.
                   </p>
                   <div className="mt-5 grid gap-3 sm:grid-cols-4">
                     {[
@@ -978,7 +978,7 @@ export default function Dashboard() {
                   <div className="mt-5 grid gap-3 sm:grid-cols-3">
                     <Link href={featuredAnimalProfileHref} className="group rounded-2xl border border-border bg-white px-4 py-3 text-sm transition-colors hover:bg-muted/40">
                       <div className="font-semibold text-foreground">Вернуться к профилю животного</div>
-                      <div className="mt-1 text-xs text-muted-foreground">Дневник, галерея и все owner-only действия начинаются отсюда</div>
+                      <div className="mt-1 text-xs text-muted-foreground">Дневник, галерея и все действия начинаются отсюда</div>
                     </Link>
                     <Link href={trackerHref} className="group rounded-2xl border border-border bg-white px-4 py-3 text-sm transition-colors hover:bg-muted/40">
                       <div className="font-semibold text-foreground">Проверить трекер продукции</div>
@@ -986,7 +986,7 @@ export default function Dashboard() {
                     </Link>
                     <Link href={clubHref} className="group rounded-2xl border border-border bg-white px-4 py-3 text-sm transition-colors hover:bg-muted/40">
                       <div className="font-semibold text-foreground">Открыть клубную ленту</div>
-                      <div className="mt-1 text-xs text-muted-foreground">События, визиты и ритм возвращения к ферме остаются рядом</div>
+                      <div className="mt-1 text-xs text-muted-foreground">События, визиты и жизнь фермы</div>
                     </Link>
                   </div>
                 </div>

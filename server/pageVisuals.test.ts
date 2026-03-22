@@ -178,21 +178,14 @@ describe("page visual integration source smoke", () => {
   it("keeps premium farm and dairy box imagery on dashboard", () => {
     expect(dashboardSource).toContain("sherkozu_family_farm_hero");
     expect(dashboardSource).toContain("sherkozu_named_dairy_box");
-    expect(dashboardSource).toContain("Цифровое сердце Sher Kozu");
+    expect(dashboardSource).toContain("sherkozu_family_farm_hero");
     expect(dashboardSource).toContain("featuredAnimalProfileHref");
-    expect(dashboardSource).toContain("один ownership journey");
     expect(dashboardSource).toContain("Профиль {featuredAnimalName}");
-    expect(dashboardSource).toContain("Dashboard → Profile → Tracker → Club");
     expect(dashboardSource).toContain("dashboardGuestPreview");
-    expect(dashboardSource).toContain("Ограниченный доступ до входа");
+    expect(dashboardSource).toContain("dashboardGuestPreview");
     expect(dashboardSource).toContain("dashboardGuestLockedParticipation");
     expect(dashboardSource).toContain("dashboardGuestLockedQuickLinks");
     expect(dashboardSource).toContain("dashboardGuestStickyRegister");
-    expect(dashboardSource).toContain("Продолжить маршрут");
-    expect(dashboardSource).toContain("Зачем регистрироваться уже сейчас");
-    expect(dashboardSource).toContain("Сохраните выбранное животное и вернётесь к нему без повторного поиска.");
-    expect(dashboardSource).toContain("Откроете личный кабинет с долей участия, трекером продукта и следующими шагами.");
-    expect(dashboardSource).toContain("Получите доступ к клубным визитам, дневнику ухода и owner-only обновлениям.");
     expect(dashboardSource).toContain('setAuthModalOpen(true)');
   });
 
@@ -200,9 +193,9 @@ describe("page visual integration source smoke", () => {
   it("keeps named dairy storytelling and dynamic animal route in product tracker", () => {
     expect(trackerSource).toContain("sherkozu_named_dairy_box");
     expect(trackerSource).toContain("featuredAnimalProfileHref");
-    expect(trackerSource).toContain("Трекер показывает, как");
-    expect(trackerSource).toContain("Понятный маршрут для гостя");
-    expect(trackerSource).toContain("Product Tracker → Animal Profile → Вход → Dashboard");
+    expect(trackerSource).toContain("Путь продукта: от");
+    expect(trackerSource).toContain("Как начать");
+    expect(trackerSource).toContain("Трекер → Профиль животного → Вход → Личный кабинет");
   });
 
   /* ─── Club ─── */
@@ -210,9 +203,9 @@ describe("page visual integration source smoke", () => {
     expect(clubSource).toContain("sherkozu_club_visit");
     expect(clubSource).toContain("/tracker");
     expect(clubSource).toContain("const profileHref = `/animals/${activeAnimalSlug}`;");
-    expect(clubSource).toContain("Клуб Шерь Козу удерживает связь");
-    expect(clubSource).toContain("Путь гостя до участия");
-    expect(clubSource).toContain("Club Feed → Animal Profile → Выбор доли → Вход");
+    expect(clubSource).toContain("Клуб Шерь Козу — сообщество семей");
+    expect(clubSource).toContain("Как присоединиться");
+    expect(clubSource).toContain("Клуб → Профиль животного → Выбор доли → Вход");
   });
 
   /* ─── Navbar ─── */

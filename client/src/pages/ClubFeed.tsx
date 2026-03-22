@@ -211,14 +211,14 @@ export default function ClubFeed() {
 
   const clubSignals = activeAnimalSharePercent
     ? [
-        `Клуб собирает личный ритм вокруг ${activeAnimalName} и вашего участия ${activeAnimalSharePercent}%.`,
-        "Каждый пост возвращает владельца к животному, визитам и реальным семейным ритуалам на ферме.",
-        "Все переходы синхронизированы с профилем животного, продуктовым трекером и кабинетом владельца.",
+        `Ваш клуб строится вокруг ${activeAnimalName} и вашего участия ${activeAnimalSharePercent}%.`,
+        "Дневник фермы, визиты, семейные события — всё связано с вашим животным.",
+        "Профиль животного, трекер продуктов и личный кабинет — всегда на расстоянии одного клика.",
       ]
     : [
-        "Клуб возвращает пользователя через события, ритуалы и живой дневник фермы.",
-        "Каждый пост связан с животным, продуктом или личным семейным визитом.",
-        "Маршруты страницы сохраняют связность с Animal Profile, Product Tracker и кабинетом владельца.",
+        "События, дневник фермы и живые истории участников.",
+        "Каждый пост связан с животным, продуктом или семейным визитом.",
+        "Профиль животного, трекер и кабинет — всегда на расстоянии одного клика.",
       ];
 
   const stats = [
@@ -229,14 +229,14 @@ export default function ClubFeed() {
   ];
 
   const nextEvent = events.find((event) => ["Открыта запись", "Мест осталось мало", "Скоро"].includes(event.status)) ?? events[0] ?? null;
-  const ritualTitle = nextEvent?.title ? `${nextEvent.title} уже связано с маршрутом ${activeAnimalName}.` : `День ${activeAnimalName} уже в календаре семьи.`;
+  const ritualTitle = nextEvent?.title ? `${nextEvent.title} — событие с ${activeAnimalName}.` : `День ${activeAnimalName} уже в календаре.`;
   const ritualDescription = nextEvent?.description ?? (activeAnimalSharePercent
-    ? `Ваше участие ${activeAnimalSharePercent}% делает клубную часть не абстрактной лентой, а продолжением личной связи с ${activeAnimalName}.`
-    : "Связь здесь строится на личных и эмоционально значимых событиях, а не только на скидках.");
+    ? `Ваше участие ${activeAnimalSharePercent}% делает клубные события личными — каждое связано с ${activeAnimalName} и вашей семьёй.`
+    : "Семейные визиты, мастер-классы и праздники — события, которые остаются в памяти.");
 
   const heroDescription = ownership
-    ? `Клуб теперь работает как продолжение вашего маршрута владельца: вокруг ${activeAnimalName}, участия ${activeAnimalSharePercent}% и следующих семейных событий.`
-    : "Это не просто лента новостей. Клуб формирует статусную среду, семейные ритуалы, событийную жизнь и чувство принадлежности, которое возвращает владельца в продукт снова и снова.";
+    ? `Дневник фермы, события и истории участников — всё вокруг ${activeAnimalName} и вашего участия ${activeAnimalSharePercent}%.`
+    : "Дневник фермы, семейные визиты, мастер-классы и живые истории участников — место, где ферма становится частью вашей жизни."
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -265,7 +265,7 @@ export default function ClubFeed() {
 
               <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
                 <div className="max-w-2xl">
-                  <h1 className="font-display text-4xl text-white md:text-6xl">Клуб Шерь Козу удерживает связь между человеком, животным и фермой.</h1>
+                  <h1 className="font-display text-4xl text-white md:text-6xl">Клуб Шерь Козу — сообщество семей, которые знают своих животных по имени.</h1>
                   <p className="mt-4 text-sm leading-7 text-white/75 md:text-base">{heroDescription}</p>
                 </div>
                 <div className="grid grid-cols-1 gap-3 text-center text-white sm:grid-cols-2">
@@ -468,18 +468,18 @@ export default function ClubFeed() {
                   <Wine className="h-5 w-5" />
                   <span className="text-sm uppercase tracking-[0.2em]">Маршруты сообщества</span>
                 </div>
-                <h2 className="mt-4 font-display text-3xl">Клуб удерживает связь между животным, продуктом и семьёй.</h2>
+                <h2 className="mt-4 font-display text-3xl">Животное, продукт и семья — всё связано.</h2>
                 <p className="mt-3 text-sm leading-7 text-white/75">
                   {ownership
-                    ? `Ваш клубный маршрут связан с ${activeAnimalName}, трекером партии и кабинетом владельца без разрыва сценария.`
-                    : "Пользователь возвращается сюда ради событий, сообщества и ощущения принадлежности к жизни фермы."}
+                    ? `Из клуба вы можете перейти к профилю ${activeAnimalName}, трекеру продуктов или личному кабинету.`
+                    : "События, сообщество и ощущение принадлежности к жизни фермы."}
                 </p>
                 {isGuestJourney ? (
                   <div className="mt-5 rounded-[1.5rem] border border-white/12 bg-white/8 p-4 text-sm text-white/78">
-                    <div className="text-xs uppercase tracking-[0.16em] text-amber-300">Путь гостя до участия</div>
-                    <div className="mt-2 text-base font-semibold text-white">Club Feed → Animal Profile → Выбор доли → Вход</div>
+                    <div className="text-xs uppercase tracking-[0.16em] text-amber-300">Как присоединиться</div>
+                    <div className="mt-2 text-base font-semibold text-white">Клуб → Профиль животного → Выбор доли → Вход</div>
                     <p className="mt-2 leading-6 text-white/65">
-                      Клуб можно изучать и без аккаунта, но следующий понятный шаг — перейти в профиль животного, выбрать формат участия и войти в момент оформления, чтобы клуб стал персональным маршрутом владельца.
+                      Клуб можно изучать и без аккаунта. Следующий шаг — откройте профиль животного, выберите формат участия и войдите в аккаунт, чтобы клуб стал персональным.
                     </p>
                   </div>
                 ) : null}
@@ -495,21 +495,21 @@ export default function ClubFeed() {
                   <Link href={profileHref} className="group flex flex-col items-start gap-3 rounded-2xl border border-white/12 bg-white/8 px-4 py-3 text-sm transition-colors hover:bg-white/12 sm:flex-row sm:items-center sm:justify-between">
                     <div>
                       <div className="font-semibold text-white">К профилю {activeAnimalName}</div>
-                      <div className="mt-1 text-xs text-white/60">Вернуться к животному, вокруг которого строится клубная история</div>
+                      <div className="mt-1 text-xs text-white/60">Дневник, история и галерея вашего животного</div>
                     </div>
                     <ChevronRight className="h-5 w-5 text-amber-300 transition-transform group-hover:translate-x-0.5" />
                   </Link>
                   <Link href={trackerHref} className="group flex flex-col items-start gap-3 rounded-2xl border border-white/12 bg-white/8 px-4 py-3 text-sm transition-colors hover:bg-white/12 sm:flex-row sm:items-center sm:justify-between">
                     <div>
                       <div className="font-semibold text-white">К трекеру продуктов</div>
-                      <div className="mt-1 text-xs text-white/60">Перейти к составу, доставкам и прозрачности продуктового пути</div>
+                      <div className="mt-1 text-xs text-white/60">Состав молока, доставки и путь продукта</div>
                     </div>
                     <ChevronRight className="h-5 w-5 text-amber-300 transition-transform group-hover:translate-x-0.5" />
                   </Link>
                   <Link href={dashboardHref} className="group flex flex-col items-start gap-3 rounded-2xl border border-white/12 bg-white/8 px-4 py-3 text-sm transition-colors hover:bg-white/12 sm:flex-row sm:items-center sm:justify-between">
                     <div>
                       <div className="font-semibold text-white">В кабинет</div>
-                      <div className="mt-1 text-xs text-white/60">Вернуться к статусу участия, быстрым действиям и следующим шагам владельца</div>
+                      <div className="mt-1 text-xs text-white/60">Ваше участие, следующие шаги и быстрые действия</div>
                     </div>
                     <ChevronRight className="h-5 w-5 text-amber-300 transition-transform group-hover:translate-x-0.5" />
                   </Link>
@@ -526,13 +526,12 @@ export default function ClubFeed() {
                   <img src={CDN.family} alt="Семейный визит" className="h-full min-h-[220px] w-full object-cover" />
                   <div className="p-5">
                     <p className="text-sm uppercase tracking-[0.22em] text-primary">Уведомления клуба</p>
-                    <h2 className="mt-3 text-2xl font-semibold text-foreground">Какие сигналы должны возвращать пользователя</h2>
+                    <h2 className="mt-3 text-2xl font-semibold text-foreground">Уведомления клуба</h2>
                     <div className="mt-5 space-y-3">
                       {[
                         `Новые посты о ${activeAnimalName} и команде ухода`,
                         "Анонсы клубных событий и персональных визитов",
-                        ownership ? "Упоминания семьи и вашего животного в клубной среде" : "Упоминания семьи и животного в клубной среде",
-                      ].map((item) => (
+                        ownership ? "Упоминания вашей семьи и животного в ленте" : "Упоминания семьи и животного в ленте",                      ].map((item) => (
                         <div key={item} className="flex items-center justify-between gap-3 rounded-2xl bg-secondary/55 px-4 py-3">
                           <span className="text-sm text-foreground">{item}</span>
                           <div className="flex h-6 w-11 shrink-0 items-center rounded-full bg-primary px-1">
@@ -543,7 +542,7 @@ export default function ClubFeed() {
                     </div>
                     <div className="mt-4 flex items-center gap-2 text-xs text-muted-foreground">
                       <Bell className="h-4 w-4 text-primary" />
-                      Уведомления помогают возвращать пользователя в ритм клуба.
+                      Уведомления помогают не пропустить важное.
                     </div>
                     <div className="mt-4 grid gap-3 sm:grid-cols-3">
                       <Link href={profileHref} className="inline-flex items-center justify-center rounded-full bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/92">

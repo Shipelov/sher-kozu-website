@@ -99,7 +99,7 @@ describe("ProductTracker empty/error states", () => {
   });
 
   it("global empty state shows helpful message", () => {
-    expect(src).toContain("Продуктовый маршрут ещё не сформирован");
+    expect(src).toContain("Трекер ещё не запущен");
   });
 
   it("global empty state has CTA to choose animal", () => {

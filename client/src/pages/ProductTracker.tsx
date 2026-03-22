@@ -190,11 +190,11 @@ export default function ProductTracker() {
                   <div className="max-w-2xl">
                     <p className="text-sm uppercase tracking-[0.22em] text-amber-300">Трекер продукта</p>
                     <h1 className="mt-3 font-display text-4xl text-white md:text-5xl">
-                      {summary?.headline?.title ?? `Трекер показывает, как история ${featuredAnimalName} превращается в личный продуктовый маршрут.`}
+                      {summary?.headline?.title ?? `Путь продукта: от ${featuredAnimalName} до вашей именной коробки.`}
                     </h1>
                     <p className="mt-4 max-w-xl text-sm leading-7 text-white/76 md:text-base">
                       {summary?.headline?.description ??
-                        "Здесь пользователь видит происхождение молока, параметры партии, ход доставки и связь с конкретным животным."}
+                        "Происхождение молока, состав партии, статус доставки и связь с вашим животным — всё в одном месте."}
                     </p>
                   </div>
                 </div>
@@ -223,13 +223,13 @@ export default function ProductTracker() {
                     className="h-44 w-full object-cover object-top"
                   />
                   <div className="p-4">
-                    <p className="text-xs uppercase tracking-[0.18em] text-primary">Источник маршрута</p>
+                    <p className="text-sm uppercase tracking-[0.22em] text-primary">Ваше животное</p>
                     <h2 className="mt-2 text-xl font-semibold text-foreground">
-                      {summary?.currentAnimal?.title ?? "Любой продукт в системе начинается с конкретного животного."}
+                      {summary?.currentAnimal?.title ?? "Каждый продукт начинается с конкретного животного."}
                     </h2>
                     <p className="mt-2 text-sm leading-6 text-muted-foreground">
                       {summary?.currentAnimal?.description ??
-                        "Трекер не отрывается от живого профиля животного и всегда оставляет маршрут обратно к источнику продукта."}
+                        "Вы всегда знаете, от кого именно получено молоко и можете перейти к профилю животного."}
                     </p>
                   </div>
                 </div>
@@ -241,7 +241,7 @@ export default function ProductTracker() {
             <div className="mb-5 rounded-[2rem] border border-border/70 bg-card p-6 text-sm text-muted-foreground shadow-sm">
               <div className="inline-flex items-center gap-2">
                 <Loader2 className="h-4 w-4 animate-spin" />
-                Загружаем реальные данные продуктового маршрута и текущего участия владельца…
+                Загружаем данные о продуктах и вашем участии…
               </div>
             </div>
           ) : null}
@@ -283,7 +283,7 @@ export default function ProductTracker() {
               <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10 text-primary">
                 <Package className="h-8 w-8" />
               </div>
-              <h3 className="mt-4 text-xl font-semibold text-foreground">Продуктовый маршрут ещё не сформирован</h3>
+              <h3 className="mt-4 text-xl font-semibold text-foreground">Трекер ещё не запущен</h3>
               <p className="mx-auto mt-2 max-w-lg text-sm leading-6 text-muted-foreground">
                 Когда вы выберете животное и оформите участие, здесь появится полный трекер: состав молока, динамика надоев, история доставок и именные продукты.
               </p>
@@ -316,7 +316,7 @@ export default function ProductTracker() {
                   <p className="text-sm uppercase tracking-[0.22em] text-primary">Состав партии</p>
                   <h2 className="mt-3 text-2xl font-semibold text-foreground">Состав молока от {summary?.currentAnimal?.name ?? featuredAnimalName}</h2>
                   <p className="mt-2 text-sm leading-7 text-muted-foreground">
-                    Качество партии видно прямо в интерфейсе, а не обещается абстрактно. Теперь этот слой следует не за первым публичным животным, а за текущим owner-journey пользователя.
+                    Качество партии видно прямо здесь — никаких абстрактных обещаний. Данные привязаны к вашему животному и вашей доле участия.
                   </p>
                 </div>
 
@@ -342,8 +342,8 @@ export default function ProductTracker() {
 
                 <div className="rounded-2xl bg-secondary/55 p-4 text-sm leading-7 text-muted-foreground">
                   {ownerSharePercent > 0
-                    ? `В вашем маршруте закреплено ${ownerSharePercent}% участия. Поэтому продуктовый трекер показывает не абстрактный пример, а персональный слой происхождения и доставки.`
-                    : "Сертификат качества подтверждает партию и делает прозрачность наблюдаемой и эмоционально убедительной."}
+                    ? `Ваша доля участия — ${ownerSharePercent}%. Трекер показывает именно вашу партию: происхождение, состав и доставку.`
+                    : "Сертификат качества подтверждает каждую партию — прозрачность, которую можно увидеть."}
                 </div>
               </div>
             </motion.section>
@@ -499,7 +499,7 @@ export default function ProductTracker() {
                 </h2>
                 <p className="mt-3 text-sm leading-7 text-muted-foreground">
                   {summary?.productStory?.description ??
-                    "Продуктовый слой должен быть личным и премиальным: не безликий сыр, а конкретный результат связи владельца с животным."}
+                    "Не безликий сыр, а именной продукт — результат вашей связи с животным и заботы фермы."}
                 </p>
                 <div className="mt-5 space-y-2">
                   {(summary?.routeNotes ?? []).map((note) => (
@@ -519,17 +519,17 @@ export default function ProductTracker() {
               className="col-span-12 rounded-[2rem] border border-primary/15 bg-[linear-gradient(135deg,rgba(26,58,42,0.97),rgba(46,77,59,0.94))] p-6 text-white shadow-[0_34px_80px_-42px_rgba(26,58,42,0.72)] lg:col-span-6"
             >
               <p className="text-sm uppercase tracking-[0.22em] text-amber-300">Связанные маршруты</p>
-              <h2 className="mt-3 font-display text-3xl">Трекер больше не тупик.</h2>
+              <h2 className="mt-3 font-display text-3xl">Всё связано в единый путь.</h2>
               <p className="mt-3 text-sm leading-7 text-white/75">
-                Теперь ProductTracker подхватывает текущее участие владельца и возвращает пользователя к животному, клубной жизни и кабинету как к единой системе без случайного ухода на неактуальное животное.
+                Из трекера вы можете перейти к профилю животного, клубной ленте или личному кабинету — всё связано с вашим участием.
               </p>
 
               {isGuestJourney ? (
                 <div className="mt-5 rounded-[1.5rem] border border-white/12 bg-white/8 p-4 text-sm text-white/78">
-                  <div className="text-xs uppercase tracking-[0.16em] text-amber-300">Понятный маршрут для гостя</div>
-                  <div className="mt-2 text-base font-semibold text-white">Product Tracker → Animal Profile → Вход → Dashboard</div>
+                  <div className="text-xs uppercase tracking-[0.16em] text-amber-300">Как начать</div>
+                  <div className="mt-2 text-base font-semibold text-white">Трекер → Профиль животного → Вход → Личный кабинет</div>
                   <p className="mt-2 leading-6 text-white/65">
-                    Даже без аккаунта трекер помогает понять происхождение продукта. Следующий логичный шаг — открыть профиль животного, выбрать долю и войти в аккаунт уже на моменте оформления участия.
+                    Даже без аккаунта вы можете увидеть, откуда продукт. Следующий шаг — откройте профиль животного, выберите долю и войдите в аккаунт.
                   </p>
                 </div>
               ) : null}
@@ -541,7 +541,7 @@ export default function ProductTracker() {
                 >
                   <div>
                     <div className="font-semibold text-white">К профилю {featuredAnimalName}</div>
-                    <div className="mt-1 text-xs text-white/60">Вернуться к животному, от которого начинается продуктовый путь</div>
+                    <div className="mt-1 text-xs text-white/60">Дневник, история и галерея вашего животного</div>
                   </div>
                   <ChevronRight className="h-5 w-5 text-amber-300 transition-transform group-hover:translate-x-0.5" />
                 </Link>
@@ -551,7 +551,7 @@ export default function ProductTracker() {
                 >
                   <div>
                     <div className="font-semibold text-white">К клубной ленте</div>
-                    <div className="mt-1 text-xs text-white/60">Перейти к событиям, отзывам и семейным ритуалам вокруг продукта</div>
+                    <div className="mt-1 text-xs text-white/60">События, визиты и жизнь фермы</div>
                   </div>
                   <Users className="h-5 w-5 text-amber-300" />
                 </Link>
@@ -561,7 +561,7 @@ export default function ProductTracker() {
                 >
                   <div>
                     <div className="font-semibold text-white">В кабинет</div>
-                    <div className="mt-1 text-xs text-white/60">Вернуться к ownership-state, следующим шагам и быстрым действиям семьи</div>
+                    <div className="mt-1 text-xs text-white/60">Ваше участие, следующие шаги и быстрые действия</div>
                   </div>
                   <ChevronRight className="h-5 w-5 text-amber-300 transition-transform group-hover:translate-x-0.5" />
                 </Link>
@@ -578,9 +578,9 @@ export default function ProductTracker() {
                 <div className="grid gap-5 lg:grid-cols-[1.1fr_0.9fr] lg:items-start">
                   <div>
                     <p className="text-sm uppercase tracking-[0.22em] text-primary">Текущий статус маршрута</p>
-                    <h2 className="mt-3 text-2xl font-semibold text-foreground">Текущая активная доставка остаётся связанной с животным, коробкой и клубной историей.</h2>
+                    <h2 className="mt-3 text-2xl font-semibold text-foreground">Текущая доставка — часть вашей истории с животным.</h2>
                     <p className="mt-3 max-w-2xl text-sm leading-7 text-muted-foreground">
-                      Для V1 важно, чтобы пользователь не видел набор разрозненных метрик. Он должен понимать, какая именно доставка сейчас в фокусе и куда идти дальше внутри системы.
+                      Вы всегда знаете, какая именно доставка сейчас в пути, что в ней и откуда она.
                     </p>
 
                     <div className="mt-5 rounded-[1.5rem] bg-secondary/50 p-4">
