@@ -21,6 +21,8 @@ import AdminProductTrack from "./pages/AdminProductTrack";
 import AdminMarketplace from "./pages/AdminMarketplace";
 import AdminTokens from "./pages/AdminTokens";
 import AdminAnalytics from "./pages/AdminAnalytics";
+import Marketplace from "./pages/Marketplace";
+import Leaderboard from "./pages/Leaderboard";
 import Profile from "./pages/Profile";
 import Partners from "./pages/Partners";
 import AboutFarm from "./pages/AboutFarm";
@@ -77,6 +79,8 @@ function Router() {
       <Route path="/admin/marketplace" component={AdminMarketplace} />
       <Route path="/admin/tokens" component={AdminTokens} />
       <Route path="/admin/analytics" component={AdminAnalytics} />
+      <Route path="/marketplace" component={Marketplace} />
+      <Route path="/leaderboard" component={Leaderboard} />
       <Route path="/about" component={AboutFarm} />
       <Route path="/partners" component={Partners} />
       <Route path="/404" component={NotFound} />

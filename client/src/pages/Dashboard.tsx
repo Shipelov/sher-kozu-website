@@ -29,6 +29,9 @@ import {
   Waves,
   Crown,
   Loader2,
+  Coins,
+  Gift,
+  Trophy,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -217,6 +220,9 @@ export default function Dashboard() {
         description: err.message,
       });
     },
+  });
+  const balanceQuery = trpc.gamification.wallet.balance.useQuery(undefined, {
+    enabled: Boolean(ownerDashboardQuery.data?.ownership),
   });
   const dashboard = ownerDashboardQuery.data;
   const ownership = dashboard?.ownership ?? null;
@@ -588,6 +594,51 @@ export default function Dashboard() {
                 </Link>
               </div>
             </motion.div>
+          )}
+
+          {/* ── SKC Balance & Gamification Widget ── */}
+          {ownership && (
+            <motion.section
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.07 }}
+              className="rounded-[2rem] border border-border/70 bg-gradient-to-r from-card via-card to-secondary/20 p-5 shadow-sm"
+              data-testid="dashboardBalanceWidget"
+            >
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex items-center gap-4">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-100 text-amber-600">
+                    <Coins className="h-6 w-6" />
+                  </div>
+                  <div>
+                    <p className="text-xs uppercase tracking-[0.18em] text-primary">Баланс SKC</p>
+                    <p className="mt-0.5 text-3xl font-bold text-foreground">
+                      {balanceQuery.data?.balanceSKC ?? 0}
+                      <span className="ml-1.5 text-sm font-medium text-muted-foreground">SKC</span>
+                    </p>
+                  </div>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <Link
+                    href="/marketplace"
+                    className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-4 py-2 text-sm font-medium text-primary transition hover:bg-primary/10"
+                  >
+                    <Gift className="h-4 w-4" /> Маркетплейс
+                  </Link>
+                  <Link
+                    href="/leaderboard"
+                    className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-4 py-2 text-sm font-medium text-foreground transition hover:bg-muted"
+                  >
+                    <Trophy className="h-4 w-4" /> Рейтинг
+                  </Link>
+                </div>
+              </div>
+              {balanceQuery.data && (
+                <p className="mt-3 text-sm text-muted-foreground">
+                  Тратьте токены в маркетплейсе на подарки и угощения для {featuredAnimalName} — это повышает метрики благополучия и рейтинг.
+                </p>
+              )}
+            </motion.section>
           )}
 
           <div className="grid grid-cols-12 gap-5">

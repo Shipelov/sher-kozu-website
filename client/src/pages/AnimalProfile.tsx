@@ -35,8 +35,10 @@ import {
   Clock3,
   Zap,
   BookOpen,
+  Gift,
 } from "lucide-react";
 import OwnerProductPlanSection from "./OwnerProductPlanSection";
+import WellnessRadarChart from "@/components/WellnessRadarChart";
 
 /* ── constants ── */
 const MAX_UPLOAD_SIZE_BYTES = 8 * 1024 * 1024;
@@ -174,6 +176,12 @@ export default function AnimalProfile() {
   const mySharePercent = data?.mySharePercent ?? 0;
   const hasOwnerAccess = mySharePercent > 0;
   const isGuestPreview = !isAuthenticated && !hasOwnerAccess;
+
+  const wellnessQuery = trpc.gamification.wellness.get.useQuery(
+    { animalId: data?.id ?? 0 },
+    { enabled: Boolean(data?.id) && hasOwnerAccess },
+  );
+  const wellnessData = wellnessQuery.data;
 
   const photosQuery = trpc.animalPhotos.list.useQuery(
     { animalSlug: animalSlug! },
@@ -809,6 +817,42 @@ export default function AnimalProfile() {
             mySharePercent={mySharePercent}
           />
         ) : null}
+
+        {/* ═══ SECTION 4.7: Wellness Metrics (owners only) ═══ */}
+        {hasOwnerAccess && wellnessData && (
+          <section className="border-b border-border/60 py-10 md:py-14">
+            <div className="container">
+              <div className="mx-auto max-w-3xl">
+                <div className="flex items-center justify-between mb-6">
+                  <div className="flex items-center gap-3">
+                    <Heart className="h-5 w-5 text-rose-500" />
+                    <h2 className="text-2xl font-semibold text-foreground">Благополучие {displayName}</h2>
+                  </div>
+                  <Link href="/marketplace">
+                    <button className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-4 py-2 text-sm font-medium text-foreground transition hover:bg-muted">
+                      <Gift className="h-4 w-4" /> Позаботиться
+                    </button>
+                  </Link>
+                </div>
+                <div className="rounded-2xl border border-border/70 bg-card p-6">
+                  <WellnessRadarChart
+                    metrics={{
+                      happiness: wellnessData.happiness ?? 50,
+                      health: wellnessData.health ?? 50,
+                      attachment: wellnessData.attachment ?? 50,
+                      mood: wellnessData.mood ?? 50,
+                      obedience: wellnessData.obedience ?? 50,
+                    }}
+                    size={260}
+                  />
+                  <p className="text-center text-xs text-muted-foreground mt-4">
+                    Покупайте подарки и угощения в маркетплейсе, чтобы улучшить показатели
+                  </p>
+                </div>
+              </div>
+            </div>
+          </section>
+        )}
 
         {/* ═══ SECTION 5: Passport ═══ */}
         <section className="border-b border-border/60 py-10 md:py-14">
