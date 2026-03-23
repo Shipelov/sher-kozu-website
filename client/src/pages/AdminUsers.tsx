@@ -21,6 +21,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { trpc } from "@/lib/trpc";
+import ScrollRemaining from "@/components/ScrollRemaining";
 import {
   ArrowLeft,
   ArrowUpDown,
@@ -722,7 +723,7 @@ export default function AdminUsers() {
               </p>
             </CardContent>
           ) : (
-            <div className="overflow-x-auto max-h-[600px] overflow-y-auto">
+            <ScrollRemaining totalItems={users_list.length} itemHeight={52} className="overflow-x-auto max-h-[600px] overflow-y-auto">
               <Table>
                 <TableHeader>
                   <TableRow className="bg-muted/30">
@@ -930,7 +931,7 @@ export default function AdminUsers() {
                   ))}
                 </TableBody>
               </Table>
-            </div>
+            </ScrollRemaining>
           )}
 
           {/* Pagination */}
@@ -1050,7 +1051,7 @@ export default function AdminUsers() {
                   <p className="text-sm mt-1">Удалённые пользователи появятся здесь</p>
                 </div>
               ) : (
-                <div className="overflow-x-auto max-h-[600px] overflow-y-auto">
+                <ScrollRemaining totalItems={trashQuery.data?.length ?? 0} itemHeight={52} className="overflow-x-auto max-h-[600px] overflow-y-auto">
                   <Table>
                     <TableHeader>
                       <TableRow className="bg-red-50/50">
@@ -1160,7 +1161,7 @@ export default function AdminUsers() {
                       })}
                     </TableBody>
                   </Table>
-                </div>
+                </ScrollRemaining>
               )}
             </CardContent>
           </Card>

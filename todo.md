@@ -696,3 +696,18 @@
 - [x] AdminUsers: таблица пользователей (max-h-[600px]) — уже были
 - [x] AdminMarketplace: категории (max-h-[70vh]), товары (max-h-[600px]) — уже были
 - [x] Тест: 962 теста пройдены, 0 ошибок TypeScript
+
+## UX: Кастомный скроллбар
+- [x] Добавить глобальные CSS-стили для тонкого стилизованного скроллбара (scrollbar-width: thin + webkit-scrollbar)
+- [x] Убедиться что стили применяются ко всем overflow-y-auto контейнерам
+
+## UX: Кнопка «Показать ещё» для публичных страниц
+- [x] Создан компонент ShowMoreList (initial=12, step=12, grid-совместимый)
+- [x] AnimalsCatalog: заменено на ShowMoreList с кнопкой «Показать ещё»
+- [x] Leaderboard: заменено на ShowMoreList для стада и владельцев
+- [x] Marketplace: заменено на ShowMoreList для товаров
+
+## UX: Индикатор «ещё N записей»
+- [x] Создан компонент ScrollRemaining (градиент + счётчик оставшихся элементов)
+- [x] Применено к 16 страницам: Dashboard, AdminTokens, AdminAnalytics, AdminHub, AdminAnimals, AdminProductTrack, AdminUsers, AdminMarketplace, AnimalProfile, ClubFeed, Marketplace, OwnerProductPlanSection, Partners, ProductTracker, adminClubRemainingTabs, adminClubUi
+- [x] 962 теста пройдены, 0 ошибок TypeScript

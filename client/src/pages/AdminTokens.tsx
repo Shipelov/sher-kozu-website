@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { trpc } from "@/lib/trpc";
+import ScrollRemaining from "@/components/ScrollRemaining";
 import {
   ArrowLeft,
   ArrowUpRight,
@@ -249,7 +250,7 @@ export default function AdminTokens() {
                 </CardContent>
               </Card>
             ) : (
-              <div className="space-y-2 max-h-[520px] overflow-y-auto pr-1">
+              <ScrollRemaining totalItems={wallets.length} itemHeight={72} className="space-y-2 max-h-[520px] overflow-y-auto pr-1">
                 {wallets.map((w: any) => (
                   <Card key={w.openId}>
                     <CardContent className="flex items-center justify-between p-4">
@@ -286,7 +287,7 @@ export default function AdminTokens() {
                     </CardContent>
                   </Card>
                 ))}
-              </div>
+              </ScrollRemaining>
             )}
           </TabsContent>
 
@@ -415,7 +416,7 @@ export default function AdminTokens() {
               </Card>
             ) : (
               <>
-                <div className="space-y-2 max-h-[520px] overflow-y-auto pr-1">
+                <ScrollRemaining totalItems={transactions.items.length} itemHeight={72} className="space-y-2 max-h-[520px] overflow-y-auto pr-1">
                   {transactions.items.map((tx: any) => {
                     const isCredit = tx.direction === "credit";
                     const typeLabels: Record<string, string> = {
@@ -466,7 +467,7 @@ export default function AdminTokens() {
                       </Card>
                     );
                   })}
-                </div>
+                </ScrollRemaining>
                 {/* Pagination */}
                 <div className="flex items-center justify-between pt-2">
                   <p className="text-xs text-muted-foreground">

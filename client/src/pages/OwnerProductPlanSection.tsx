@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Slider } from "@/components/ui/slider";
 import { trpc } from "@/lib/trpc";
+import ScrollRemaining from "@/components/ScrollRemaining";
 import {
   Calendar,
   CheckCircle2,
@@ -449,7 +450,7 @@ export default function OwnerProductPlanSection({
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 max-h-[520px] overflow-y-auto pr-1">
+                    <ScrollRemaining totalItems={schedule.length} itemHeight={140} className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 max-h-[520px] overflow-y-auto pr-1">
                       {schedule.map((entry) => {
                         let items: Array<{ label: string; quantity: number; unit: string }> = [];
                         try { items = JSON.parse(entry.itemsJson); } catch {}
@@ -479,7 +480,7 @@ export default function OwnerProductPlanSection({
                           </motion.div>
                         );
                       })}
-                    </div>
+                    </ScrollRemaining>
                   </CardContent>
                 </Card>
               )}

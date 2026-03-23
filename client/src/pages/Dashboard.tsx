@@ -38,6 +38,7 @@ import {
   ShoppingCart,
 } from "lucide-react";
 import { toast } from "sonner";
+import ScrollRemaining from "@/components/ScrollRemaining";
 
 const CDN = {
   hero: "https://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/sherkozu_family_farm_hero-UF9QBY2UhWL9gdEpLXiEFS.webp",
@@ -502,7 +503,7 @@ export default function Dashboard() {
               <p className="mt-2 text-sm leading-6 text-muted-foreground">
                 Каждое животное — отдельный маршрут владельца: профиль, трекер продукта и клубные сценарии. Нажмите на карточку, чтобы перейти к конкретному животному.
               </p>
-              <div className="mt-4 max-h-[520px] overflow-y-auto pr-1">
+              <ScrollRemaining totalItems={allOwnerships.length} itemHeight={120} className="mt-4 max-h-[520px] overflow-y-auto pr-1">
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 {allOwnerships.map((item) => {
                   const isPrimary = (item as any).isPrimary ?? item.animalId === ownership?.animalId;
@@ -581,7 +582,7 @@ export default function Dashboard() {
                   );
                 })}
               </div>
-              </div>
+              </ScrollRemaining>
             </motion.section>
           )}
 
@@ -728,7 +729,7 @@ export default function Dashboard() {
                         <p className="mt-2 text-sm text-muted-foreground">Пока нет операций. Начисления появятся здесь.</p>
                       </div>
                     )}
-                    {txQuery.data && txQuery.data.length > 0 && <div className="max-h-[480px] overflow-y-auto space-y-2 pr-1">{txQuery.data.map((tx: any) => {
+                    {txQuery.data && txQuery.data.length > 0 && <ScrollRemaining totalItems={txQuery.data.length} itemHeight={64} className="max-h-[480px] overflow-y-auto space-y-2 pr-1">{txQuery.data.map((tx: any) => {
                       const isCredit = tx.direction === "credit";
                       const typeLabels: Record<string, string> = {
                         topup: "Пополнение",
@@ -771,7 +772,7 @@ export default function Dashboard() {
                           </div>
                         </div>
                       );
-                    })}</div>}
+                    })}</ScrollRemaining>}
                   </>
                 )}
 
@@ -788,7 +789,7 @@ export default function Dashboard() {
                         <p className="mt-2 text-sm text-muted-foreground">Пока нет покупок. Загляните в маркетплейс!</p>
                       </div>
                     )}
-                    {purchaseQuery.data && purchaseQuery.data.length > 0 && <div className="max-h-[480px] overflow-y-auto space-y-2 pr-1">{purchaseQuery.data.map((p: any) => (
+                    {purchaseQuery.data && purchaseQuery.data.length > 0 && <ScrollRemaining totalItems={purchaseQuery.data.length} itemHeight={64} className="max-h-[480px] overflow-y-auto space-y-2 pr-1">{purchaseQuery.data.map((p: any) => (
                       <div
                         key={p.id}
                         className="flex items-center gap-3 rounded-2xl border border-border/70 bg-white px-4 py-3 transition-colors hover:bg-muted/30"
@@ -812,7 +813,7 @@ export default function Dashboard() {
                           −{p.priceMinor} SKC
                         </div>
                       </div>
-                    ))}</div>}
+                    ))}</ScrollRemaining>}
                   </>
                 )}
               </div>

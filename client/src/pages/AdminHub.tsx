@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { trpc } from "@/lib/trpc";
+import ScrollRemaining from "@/components/ScrollRemaining";
 import { cn } from "@/lib/utils";
 import {
   ArrowRight,
@@ -433,7 +434,7 @@ export default function AdminHub() {
               {funnel.recentUsers.length > 0 && (
                 <div className="mt-5">
                   <h3 className="text-sm font-semibold text-foreground mb-3">Последние регистрации</h3>
-                  <div className="overflow-x-auto max-h-[520px] overflow-y-auto rounded-xl border border-border/70">
+                  <ScrollRemaining totalItems={funnel.recentUsers.length} itemHeight={48} className="overflow-x-auto max-h-[520px] overflow-y-auto rounded-xl border border-border/70">
                     <table className="w-full text-sm">
                       <thead>
                         <tr className="border-b border-border/70 bg-muted/30">
@@ -511,7 +512,7 @@ export default function AdminHub() {
                         ))}
                       </tbody>
                     </table>
-                  </div>
+                  </ScrollRemaining>
                 </div>
               )}
             </section>

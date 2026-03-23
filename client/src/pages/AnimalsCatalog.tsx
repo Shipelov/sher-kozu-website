@@ -8,6 +8,7 @@ import { ArrowRight, Heart, Sparkles, Waves } from "lucide-react";
 import { Link } from "wouter";
 import AnimalShareCard from "@/components/AnimalShareCard";
 import Navbar from "@/components/Navbar";
+import ShowMoreList from "@/components/ShowMoreList";
 
 const speciesConfig = {
   goat: {
@@ -200,6 +201,87 @@ function AnimalsCatalogSkeleton() {
   );
 }
 
+function AnimalCard({ animal, config, selectedSharePercent }: { animal: CatalogAnimal; config: (typeof speciesConfig)[SupportedSpecies]; selectedSharePercent: number | null }) {
+  const availability = getRelationshipStatus(animal.availableSlots, animal.totalOwnershipSlots, animal.occupiedUntil);
+  const shareSummary = getShareBlockSummary(animal);
+  const hasSelectedShare = selectedSharePercent !== null;
+  const matchesSelectedShare = hasSelectedShare && shareSummary.availableSharePercents.includes(selectedSharePercent);
+
+  return (
+    <Link href={`/animals/${animal.slug}?share=${shareSummary.primarySharePercent}`}>
+      <Card
+        className={`group h-full cursor-pointer overflow-hidden bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-lg ${matchesSelectedShare ? "border-amber-400 ring-2 ring-amber-200 shadow-[0_18px_45px_-28px_rgba(217,119,6,0.55)]" : "border-stone-200"}`}
+      >
+        <div className="relative h-56 overflow-hidden bg-stone-100">
+          {animal.coverImageUrl ? (
+            <img
+              src={animal.coverImageUrl}
+              alt={animal.name}
+              className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
+            />
+          ) : (
+            <div className="flex h-full items-center justify-center text-stone-400">Фото скоро появится</div>
+          )}
+          <div className="absolute inset-x-0 top-0 flex items-start justify-between p-4">
+            <Badge className="rounded-full border border-white/20 bg-black/60 px-3 py-1 text-white backdrop-blur">
+              {config.singular}
+            </Badge>
+            <div className="flex flex-col items-end gap-2">
+              {matchesSelectedShare ? (
+                <Badge className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-amber-900 shadow-sm">
+                  Выбрано {selectedSharePercent}%
+                </Badge>
+              ) : null}
+              {animal.isFeatured ? (
+                <Badge className="rounded-full border border-white/20 bg-white/90 px-3 py-1 text-stone-900">
+                  Животное недели
+                </Badge>
+              ) : null}
+            </div>
+          </div>
+        </div>
+
+        <CardContent className="space-y-5 p-6">
+          <div className="space-y-3">
+            <Badge className={`rounded-full border px-3 py-1 text-xs font-medium ${availability.className}`}>
+              {availability.label}
+            </Badge>
+            <div className="space-y-1">
+              <h3 className="text-2xl font-semibold text-stone-900">{animal.name}</h3>
+              <p className="text-sm text-stone-500">{animal.breed ?? `${config.singular} Sher Kozu`}</p>
+            </div>
+            <AnimalShareCard
+              statusLabel={availability.label}
+              statusClassName={availability.className}
+              name={animal.name}
+              breedLabel={animal.breed ?? `${config.singular} Sher Kozu`}
+              priceLabel={formatCurrency(animal.fullPriceMinor)}
+              occupiedPercent={shareSummary.ownedPercent}
+              availablePercent={shareSummary.availablePercent}
+              shareUnitPercent={shareSummary.shareUnitPercent}
+              primarySharePercent={shareSummary.primarySharePercent}
+              primarySharePriceLabel={formatCurrency(shareSummary.primarySharePriceMinor)}
+              availableSharePercents={shareSummary.availableSharePercents}
+              helperText={availability.helper}
+              description={`${availability.helper} В профиле вы увидите доступные доли шагом ${shareSummary.shareUnitPercent}% и сможете оформить участие.`}
+              ctaLabel="Познакомиться и выбрать долю"
+              ctaHref={`/animals/${animal.slug}?share=${shareSummary.primarySharePercent}`}
+              ctaAsButton
+              theme="stone"
+              occupiedUntilLabel={availability.occupiedUntilLabel}
+              title="Участие в жизни животного"
+              eyebrow="Ваша доля участия"
+              compact
+            />
+
+            <p className="line-clamp-3 text-sm leading-6 text-stone-600">{animal.shortDescription}</p>
+          </div>
+        </CardContent>
+      </Card>
+    </Link>
+  );
+}
+
 function AnimalSpeciesSection({
   species,
   animals,
@@ -271,121 +353,50 @@ function AnimalSpeciesSection({
             </div>
           </div>
           <div className="rounded-[1.5rem] border border-stone-200 bg-stone-50 p-3 text-sm text-stone-700">
-            <p className="text-xs uppercase tracking-[0.18em] text-stone-500">По статусам</p>
-            <div className="mt-2 flex flex-wrap items-center gap-2 text-stone-900">
-              <span className="rounded-full bg-rose-100 px-3 py-1 text-xs font-medium text-rose-800">В отношениях: {relationshipCount}</span>
-              <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-medium text-emerald-800">На выданье: {availableCount}</span>
-              <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-medium text-amber-800">Доступно для участия: {sharedCount}</span>
-            </div>
+            <p className="text-xs uppercase tracking-[0.18em] text-stone-500">По статусу</p>
+            <p className="mt-1 font-medium text-stone-900">
+              {relationshipCount} в отношениях · {availableCount} на выданье · {sharedCount} для участия
+            </p>
           </div>
         </div>
       </div>
 
-      <div className="flex flex-wrap gap-3">
+      {/* Status filter pills */}
+      <div className="flex flex-wrap gap-2">
         {statusFilterOptions.map((option) => {
+          const count = option.value === "relationship" ? relationshipCount : option.value === "available" ? availableCount : sharedCount;
           const isActive = filter === option.value;
-
           return (
             <Button
               key={option.value}
-              type="button"
-              variant="outline"
-              onClick={() => onFilterChange(option.value)}
-              className={
+              variant={isActive ? "default" : "outline"}
+              className={`rounded-full px-5 py-2.5 text-sm font-medium transition-all ${
                 isActive
-                  ? "rounded-full border-stone-900 bg-stone-900 text-white hover:bg-stone-800 hover:text-white"
-                  : "rounded-full border-stone-300 bg-white text-stone-700 hover:border-stone-400 hover:bg-stone-50"
-              }
+                  ? "bg-stone-900 text-white shadow-md hover:bg-stone-800"
+                  : "border-stone-300 bg-white text-stone-700 hover:bg-stone-50"
+              }`}
+              onClick={() => onFilterChange(option.value)}
             >
               {option.label}
+              <span className={`ml-2 rounded-full px-2 py-0.5 text-xs ${isActive ? "bg-white/20 text-white" : "bg-stone-100 text-stone-500"}`}>
+                {count}
+              </span>
             </Button>
           );
         })}
       </div>
 
       {filteredAnimals.length ? (
-        <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3 max-h-[800px] overflow-y-auto pr-1">
-          {filteredAnimals.map((animal) => {
-            const availability = getRelationshipStatus(animal.availableSlots, animal.totalOwnershipSlots, animal.occupiedUntil);
-            const shareSummary = getShareBlockSummary(animal);
-            const hasSelectedShare = selectedSharePercent !== null;
-            const matchesSelectedShare = hasSelectedShare && shareSummary.availableSharePercents.includes(selectedSharePercent);
-
-            return (
-              <Link key={animal.id} href={`/animals/${animal.slug}?share=${shareSummary.primarySharePercent}`}>
-                <Card
-                  className={`group h-full cursor-pointer overflow-hidden bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-lg ${matchesSelectedShare ? "border-amber-400 ring-2 ring-amber-200 shadow-[0_18px_45px_-28px_rgba(217,119,6,0.55)]" : "border-stone-200"}`}
-                >
-                  <div className="relative h-56 overflow-hidden bg-stone-100">
-                    {animal.coverImageUrl ? (
-                      <img
-                        src={animal.coverImageUrl}
-                        alt={animal.name}
-                        className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
-                      />
-                    ) : (
-                      <div className="flex h-full items-center justify-center text-stone-400">Фото скоро появится</div>
-                    )}
-                    <div className="absolute inset-x-0 top-0 flex items-start justify-between p-4">
-                      <Badge className="rounded-full border border-white/20 bg-black/60 px-3 py-1 text-white backdrop-blur">
-                        {config.singular}
-                      </Badge>
-                      <div className="flex flex-col items-end gap-2">
-                        {matchesSelectedShare ? (
-                          <Badge className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-amber-900 shadow-sm">
-                            Выбрано {selectedSharePercent}%
-                          </Badge>
-                        ) : null}
-                        {animal.isFeatured ? (
-                          <Badge className="rounded-full border border-white/20 bg-white/90 px-3 py-1 text-stone-900">
-                            Животное недели
-                          </Badge>
-                        ) : null}
-                      </div>
-                    </div>
-                  </div>
-
-                  <CardContent className="space-y-5 p-6">
-                    <div className="space-y-3">
-                      <Badge className={`rounded-full border px-3 py-1 text-xs font-medium ${availability.className}`}>
-                        {availability.label}
-                      </Badge>
-                      <div className="space-y-1">
-                        <h3 className="text-2xl font-semibold text-stone-900">{animal.name}</h3>
-                        <p className="text-sm text-stone-500">{animal.breed ?? `${config.singular} Sher Kozu`}</p>
-                      </div>
-                      <AnimalShareCard
-                        statusLabel={availability.label}
-                        statusClassName={availability.className}
-                        name={animal.name}
-                        breedLabel={animal.breed ?? `${config.singular} Sher Kozu`}
-                        priceLabel={formatCurrency(animal.fullPriceMinor)}
-                        occupiedPercent={shareSummary.ownedPercent}
-                        availablePercent={shareSummary.availablePercent}
-                        shareUnitPercent={shareSummary.shareUnitPercent}
-                        primarySharePercent={shareSummary.primarySharePercent}
-                        primarySharePriceLabel={formatCurrency(shareSummary.primarySharePriceMinor)}
-                        availableSharePercents={shareSummary.availableSharePercents}
-                        helperText={availability.helper}
-                        description={`${availability.helper} В профиле вы увидите доступные доли шагом ${shareSummary.shareUnitPercent}% и сможете оформить участие.`}
-                        ctaLabel="Познакомиться и выбрать долю"
-                        ctaHref={`/animals/${animal.slug}?share=${shareSummary.primarySharePercent}`}
-                        ctaAsButton
-                        theme="stone"
-                        occupiedUntilLabel={availability.occupiedUntilLabel}
-                        title="Участие в жизни животного"
-                        eyebrow="Ваша доля участия"
-                        compact
-                      />
-
-                      <p className="line-clamp-3 text-sm leading-6 text-stone-600">{animal.shortDescription}</p>
-                    </div>
-                  </CardContent>
-                </Card>
-              </Link>
-            );
-          })}
-        </div>
+        <ShowMoreList
+          items={filteredAnimals}
+          pageSize={6}
+          getKey={(animal) => animal.id}
+          className="grid gap-6 md:grid-cols-2 xl:grid-cols-3"
+          renderItem={(animal) => (
+            <AnimalCard animal={animal} config={config} selectedSharePercent={selectedSharePercent} />
+          )}
+          buttonLabel="Показать ещё животных"
+        />
       ) : (
         <Card className="border-dashed border-stone-300 bg-white/80 shadow-sm">
           <CardContent className="space-y-3 p-8 text-center">

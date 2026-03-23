@@ -29,6 +29,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { trpc } from "@/lib/trpc";
+import ScrollRemaining from "@/components/ScrollRemaining";
 import { NOT_ADMIN_ERR_MSG } from "@shared/const";
 import {
   Dialog,
@@ -724,7 +725,7 @@ function ShareDistributionPanel({ animals }: { animals: AdminAnimalRecord[] }) {
           </Card>
         </div>
 
-        <div className="max-h-[640px] overflow-y-auto pr-1">
+        <ScrollRemaining totalItems={animals.length} itemHeight={140} className="max-h-[640px] overflow-y-auto pr-1">
         <div className="grid gap-4 lg:grid-cols-2">
           {animals.map((animal) => {
             const shareTone = getShareStatusTone(animal);
@@ -755,7 +756,7 @@ function ShareDistributionPanel({ animals }: { animals: AdminAnimalRecord[] }) {
             );
           })}
         </div>
-        </div>
+        </ScrollRemaining>
 
         {summary.loadedAnimals === 0 ? (
           <div className="rounded-2xl border border-dashed border-border bg-background/80 px-5 py-4 text-sm text-muted-foreground">
@@ -851,7 +852,7 @@ function OwnershipManagementDialog({
             У этого животного пока нет ни одного ownership. Покупки появятся здесь автоматически.
           </div>
         ) : (
-          <div className="space-y-3 max-h-[520px] overflow-y-auto pr-1">
+          <ScrollRemaining totalItems={ownerships.length} itemHeight={100} className="space-y-3 max-h-[520px] overflow-y-auto pr-1">
             {ownerships.map((ownership) => {
               const statusInfo = OWNERSHIP_STATUS_MAP[ownership.status] ?? OWNERSHIP_STATUS_MAP.expired;
               const StatusIcon = statusInfo.icon;
@@ -932,7 +933,7 @@ function OwnershipManagementDialog({
                 </div>
               );
             })}
-          </div>
+          </ScrollRemaining>
         )}
       </DialogContent>
     </Dialog>

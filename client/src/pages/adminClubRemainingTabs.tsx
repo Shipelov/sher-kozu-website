@@ -1,5 +1,6 @@
 import type { Dispatch, SetStateAction } from "react";
 
+import ScrollRemaining from "@/components/ScrollRemaining";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -271,7 +272,7 @@ export function AdminClubBitrixTabContent({
           </CardHeader>
           <CardContent className="space-y-4">
             {bitrixLeads.length ? (
-              <div className="space-y-3 max-h-[520px] overflow-y-auto pr-1">
+              <ScrollRemaining totalItems={bitrixLeads.length} itemHeight={100} className="space-y-3 max-h-[520px] overflow-y-auto pr-1">
                 {bitrixLeads.map((lead) => (
                   <div
                     key={lead.id}
@@ -347,7 +348,7 @@ export function AdminClubBitrixTabContent({
                     </div>
                   </div>
                 ))}
-              </div>
+              </ScrollRemaining>
             ) : (
               <div className="rounded-2xl border border-dashed border-stone-200 bg-stone-50/70 px-4 py-5 text-sm text-stone-500">
                 По текущим фильтрам лиды не найдены. Измените server-side статус, поиск, источник или режим ошибок, чтобы вернуть заявки в CRM-мониторинг.
@@ -708,7 +709,7 @@ export function AdminClubBitrixTabContent({
             </CardHeader>
             <CardContent className="space-y-3">
               {bitrixAudits.length ? (
-                <div className="space-y-3 max-h-[520px] overflow-y-auto pr-1">
+                <ScrollRemaining totalItems={Math.min(bitrixAudits.length, 12)} itemHeight={80} className="space-y-3 max-h-[520px] overflow-y-auto pr-1">
                 {bitrixAudits.slice(0, 12).map((audit) => (
                   <div
                     key={audit.id}
@@ -744,7 +745,7 @@ export function AdminClubBitrixTabContent({
                     </div>
                   </div>
                 ))}
-                </div>
+                </ScrollRemaining>
               ) : (
                 <div className="rounded-2xl border border-dashed border-stone-200 bg-stone-50/70 px-4 py-5 text-sm text-stone-500">
                   Аудит интеграции пока пуст. После первой отправки или refresh snapshot здесь появятся push/pull записи.
@@ -1179,7 +1180,7 @@ export function AdminClubActivityTabContent({
               </CardHeader>
               <CardContent>
                 {criticalNotificationHistory.length ? (
-                  <div className="space-y-3 max-h-[520px] overflow-y-auto pr-1">
+                  <ScrollRemaining totalItems={criticalNotificationHistory.length} itemHeight={120} className="space-y-3 max-h-[520px] overflow-y-auto pr-1">
                     {criticalNotificationHistory.map((entry) => {
                       const statusBadge = getCriticalNotificationStatusCopy(entry);
 
@@ -1225,7 +1226,7 @@ export function AdminClubActivityTabContent({
                         </div>
                       );
                     })}
-                  </div>
+                  </ScrollRemaining>
                 ) : (
                   <div className="rounded-2xl border border-dashed border-stone-200 bg-stone-50/70 px-4 py-5 text-sm text-stone-500">
                     Пока критические уведомления не отправлялись. Как только администратор выполнит рискованное действие, здесь появится запись со статусом доставки.
@@ -1235,7 +1236,7 @@ export function AdminClubActivityTabContent({
             </Card>
 
             {filteredActionLog.length ? (
-              <div className="space-y-4 max-h-[600px] overflow-y-auto pr-1">
+              <ScrollRemaining totalItems={filteredActionLog.length} itemHeight={80} className="space-y-4 max-h-[600px] overflow-y-auto pr-1">
                 {groupedActionLog.map((group) => (
                   <div key={group.key} className="space-y-3">
                     <div className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-dashed border-stone-200 bg-stone-50/70 px-4 py-2">
@@ -1306,7 +1307,7 @@ export function AdminClubActivityTabContent({
                     })}
                   </div>
                 ))}
-              </div>
+              </ScrollRemaining>
             ) : (
               <div className="rounded-3xl border border-dashed border-stone-200 bg-stone-50/70 px-5 py-8">
                 <div className="mx-auto flex max-w-2xl flex-col items-start gap-4 text-left">

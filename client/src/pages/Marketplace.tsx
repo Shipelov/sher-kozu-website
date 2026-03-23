@@ -22,6 +22,8 @@ import { useState, useMemo } from "react";
 import { toast } from "sonner";
 import { Link } from "wouter";
 import { getLoginUrl } from "@/const";
+import ShowMoreList from "@/components/ShowMoreList";
+import ScrollRemaining from "@/components/ScrollRemaining";
 
 type MetricEffect = {
   happiness?: number;
@@ -142,7 +144,7 @@ export default function Marketplace() {
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
             {/* Categories Sidebar */}
             <div className="lg:col-span-1">
-              <div className="sticky top-24 space-y-2 max-h-[70vh] overflow-y-auto pr-1">
+              <ScrollRemaining totalItems={categories.length + 1} itemHeight={40} className="sticky top-24 space-y-2 max-h-[70vh] overflow-y-auto pr-1">
                 <h3 className="font-semibold text-sm text-muted-foreground mb-3 uppercase tracking-wider">Категории</h3>
                 <button
                   onClick={() => setSelectedCategory(null)}
@@ -163,7 +165,7 @@ export default function Marketplace() {
                     {cat.emoji} {cat.name}
                   </button>
                 ))}
-              </div>
+              </ScrollRemaining>
             </div>
 
             {/* Items Grid */}
@@ -181,8 +183,13 @@ export default function Marketplace() {
                   </CardContent>
                 </Card>
               ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 max-h-[800px] overflow-y-auto pr-1">
-                  {items.map((item: any) => {
+                <ShowMoreList
+                  items={items}
+                  pageSize={9}
+                  getKey={(item: any) => item.id}
+                  className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4"
+                  buttonLabel="Показать ещё товаров"
+                  renderItem={(item: any) => {
                     const effects: MetricEffect = item.metricEffects ? (typeof item.metricEffects === "string" ? JSON.parse(item.metricEffects) : item.metricEffects) : {};
                     const effectEntries = Object.entries(effects).filter(([, v]) => (v as number) > 0);
                     const canAfford = balance >= item.priceSKC;
@@ -191,7 +198,6 @@ export default function Marketplace() {
 
                     return (
                       <Card
-                        key={item.id}
                         className={`group relative overflow-hidden transition-all hover:shadow-lg ${!inStock ? "opacity-60" : ""}`}
                       >
                         <CardContent className="p-5">
@@ -261,8 +267,8 @@ export default function Marketplace() {
                         </CardContent>
                       </Card>
                     );
-                  })}
-                </div>
+                  }}
+                />
               )}
             </div>
           </div>

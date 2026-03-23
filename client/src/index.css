@@ -104,6 +104,32 @@
   * {
     @apply border-border outline-ring/50;
   }
+
+  /* ── Custom Scrollbar ── */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: oklch(0.78 0.03 90) transparent;
+  }
+  *::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  *::-webkit-scrollbar-track {
+    background: transparent;
+    border-radius: 999px;
+  }
+  *::-webkit-scrollbar-thumb {
+    background: oklch(0.78 0.03 90);
+    border-radius: 999px;
+    transition: background 0.2s;
+  }
+  *::-webkit-scrollbar-thumb:hover {
+    background: oklch(0.65 0.05 150);
+  }
+  *::-webkit-scrollbar-corner {
+    background: transparent;
+  }
+
   body {
     @apply bg-background text-foreground;
     font-family: 'DM Sans', system-ui, sans-serif;

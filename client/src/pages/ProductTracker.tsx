@@ -10,6 +10,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Link, useLocation } from "wouter";
 import Navbar from "@/components/Navbar";
 import { trpc } from "@/lib/trpc";
+import ScrollRemaining from "@/components/ScrollRemaining";
 import {
   BarChart3,
   Calendar,
@@ -428,7 +429,7 @@ export default function ProductTracker() {
                     <Package className="h-6 w-6 text-primary" />
                   </div>
 
-                  <div className="mt-6 space-y-3 max-h-[520px] overflow-y-auto pr-1">
+                  <ScrollRemaining totalItems={deliveries.length} itemHeight={72} className="mt-6 space-y-3 max-h-[520px] overflow-y-auto pr-1">
                     {deliveries.length === 0 && (
                       <div className="rounded-[1.5rem] border border-dashed border-border bg-secondary/30 p-5 text-center" data-testid="trackerEmptyDeliveries">
                         <Truck className="mx-auto h-6 w-6 text-primary/50" />
@@ -480,7 +481,7 @@ export default function ProductTracker() {
                         </AnimatePresence>
                       </button>
                     ))}
-                  </div>
+                  </ScrollRemaining>
                 </div>
               </div>
             </motion.section>
@@ -501,14 +502,14 @@ export default function ProductTracker() {
                   {summary?.productStory?.description ??
                     "Не безликий сыр, а именной продукт — результат вашей связи с животным и заботы фермы."}
                 </p>
-                <div className="mt-5 space-y-2 max-h-[300px] overflow-y-auto pr-1">
+                <ScrollRemaining totalItems={(summary?.routeNotes ?? []).length} itemHeight={32} className="mt-5 space-y-2 max-h-[300px] overflow-y-auto pr-1">
                   {(summary?.routeNotes ?? []).map((note) => (
                     <div key={note} className="flex items-start gap-2 text-sm text-muted-foreground">
                       <Star className="mt-0.5 h-4 w-4 text-accent" />
                       <span>{note}</span>
                     </div>
                   ))}
-                </div>
+                </ScrollRemaining>
               </div>
             </motion.section>
 

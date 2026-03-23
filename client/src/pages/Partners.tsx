@@ -13,6 +13,7 @@
 */
 
 import { trpc } from "@/lib/trpc";
+import ScrollRemaining from "@/components/ScrollRemaining";
 import { motion } from "framer-motion";
 import { Link } from "wouter";
 import Navbar from "@/components/Navbar";
@@ -760,7 +761,7 @@ export default function Partners() {
                         ) : null}
                       </div>
                       {partnerAttachments.length ? (
-                        <div className="space-y-2 max-h-[400px] overflow-y-auto pr-1">
+                        <ScrollRemaining totalItems={partnerAttachments.length} itemHeight={60} className="space-y-2 max-h-[400px] overflow-y-auto pr-1">
                           {partnerAttachments.map((item) => {
                             const attachmentKind = getPartnerAttachmentKind(item.mimeType, item.name);
                             const attachmentBadge = getPartnerAttachmentBadge(attachmentKind);
@@ -789,7 +790,7 @@ export default function Partners() {
                               </div>
                             );
                           })}
-                        </div>
+                        </ScrollRemaining>
                       ) : (
                         <div className="rounded-xl border border-dashed border-stone-200 bg-stone-50 px-3 py-3 text-sm text-stone-500">
                           Файлы пока не выбраны. После выбора они появятся здесь.

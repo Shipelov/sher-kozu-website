@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import type { BulkActionConfig, ClubAdminPreset, InlineActionConfig } from "./adminClubShared";
+import ScrollRemaining from "@/components/ScrollRemaining";
 import { CheckSquare, Pencil, Save, Search, Square, Trash2, X } from "lucide-react";
 
 export function MetricCard({ label, value, icon }: { label: string; value: number; icon: ReactNode }) {
@@ -96,9 +97,9 @@ export function EntityListCard({
       </CardHeader>
       <CardContent className="space-y-4">
         {toolbar}
-        <div className="space-y-3 max-h-[600px] overflow-y-auto pr-1">
+        <ScrollRemaining totalItems={items.length} itemHeight={80} className="space-y-3 max-h-[600px] overflow-y-auto pr-1">
           {items.length ? items.map((item) => <div key={item.id}>{renderItem(item)}</div>) : <p className="text-sm text-stone-500">{emptyText ?? "Пока нет записей."}</p>}
-        </div>
+        </ScrollRemaining>
         {pagination && onPageChange && onPageSizeChange ? (
           <PaginationToolbar
             totalItems={pagination.totalItems}

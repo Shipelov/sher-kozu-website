@@ -3,6 +3,7 @@ import { motion } from "framer-motion";
 import { Link, useLocation } from "wouter";
 import Navbar from "@/components/Navbar";
 import { trpc } from "@/lib/trpc";
+import ScrollRemaining from "@/components/ScrollRemaining";
 import {
   Award,
   Bell,
@@ -381,7 +382,7 @@ export default function ClubFeed() {
                   <Calendar className="h-5 w-5 text-primary" />
                 </div>
 
-                <div className="mt-5 space-y-3 max-h-[420px] overflow-y-auto pr-1">
+                <ScrollRemaining totalItems={events.length} itemHeight={120} className="mt-5 space-y-3 max-h-[420px] overflow-y-auto pr-1">
                   {events.length ? (
                     events.map((event) => (
                       <div key={event.id} className={["min-w-0 rounded-[1.5rem] border p-4", toneClassName(event.tone)].join(" ")}>
@@ -403,7 +404,7 @@ export default function ClubFeed() {
                       Ближайшие события появятся здесь после публикации новой клубной программы.
                     </div>
                   )}
-                </div>
+                </ScrollRemaining>
               </motion.section>
 
               <motion.section
@@ -434,7 +435,7 @@ export default function ClubFeed() {
                   <Users className="h-5 w-5 text-primary" />
                 </div>
 
-                <div className="mt-5 space-y-3 max-h-[420px] overflow-y-auto pr-1">
+                <ScrollRemaining totalItems={members.length} itemHeight={64} className="mt-5 space-y-3 max-h-[420px] overflow-y-auto pr-1">
                   {members.length ? (
                     members.map((member) => (
                       <div key={member.id} className="flex flex-wrap items-center gap-3 rounded-[1.5rem] bg-secondary/50 p-4">
@@ -455,7 +456,7 @@ export default function ClubFeed() {
                       Состав клуба появится здесь после добавления первых участников.
                     </div>
                   )}
-                </div>
+                </ScrollRemaining>
               </motion.section>
 
               <motion.section

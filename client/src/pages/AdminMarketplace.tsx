@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { trpc } from "@/lib/trpc";
+import ScrollRemaining from "@/components/ScrollRemaining";
 import { cn } from "@/lib/utils";
 import {
   ArrowLeft,
@@ -600,7 +601,7 @@ export default function AdminMarketplace() {
                 </CardContent>
               </Card>
             ) : (
-              <div className="grid gap-3 max-h-[600px] overflow-y-auto pr-1">
+              <ScrollRemaining totalItems={items.length} itemHeight={100} className="grid gap-3 max-h-[600px] overflow-y-auto pr-1">
                 {items.map((item: any) => {
                   const cat = categories.find((c: any) => c.id === item.categoryId);
                   const effects = item.metricEffectsJson ? JSON.parse(item.metricEffectsJson) : {};
@@ -672,7 +673,7 @@ export default function AdminMarketplace() {
                     </Card>
                   );
                 })}
-              </div>
+              </ScrollRemaining>
             )}
           </TabsContent>
         </Tabs>

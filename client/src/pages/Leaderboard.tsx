@@ -16,6 +16,7 @@ import {
   Loader2,
 } from "lucide-react";
 import WellnessRadarChart from "@/components/WellnessRadarChart";
+import ShowMoreList from "@/components/ShowMoreList";
 
 /* ── Title helpers ── */
 const TITLE_LABELS: Record<string, { label: string; color: string; bg: string }> = {
@@ -152,52 +153,56 @@ export default function Leaderboard() {
                   <p className="mt-3 text-sm text-muted-foreground">Рейтинг стада пока пуст — покупайте подарки в маркетплейсе, чтобы ваше животное поднялось в рейтинге.</p>
                 </div>
               ) : (
-                <div className="max-h-[600px] overflow-y-auto space-y-3 pr-1">
-                {herdQuery.data.map((animal: any, idx: number) => (
-                  <motion.div
-                    key={animal.animalId}
-                    initial={{ opacity: 0, y: 8 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: idx * 0.03 }}
-                    className={`rounded-2xl border p-4 transition ${
-                      idx < 3 ? "border-primary/20 bg-primary/5" : "border-border/70 bg-card"
-                    }`}
-                  >
-                    <div className="flex items-center gap-4">
-                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white border border-border/50">
-                        {getRankIcon(idx + 1)}
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2">
-                          <Link href={`/animals/${animal.animalSlug ?? animal.animalId}`} className="font-semibold text-foreground hover:text-primary truncate">
-                            {animal.animalName ?? `Животное #${animal.animalId}`}
-                          </Link>
-                          {idx === 0 && <Crown className="h-4 w-4 text-amber-500 shrink-0" />}
+                <ShowMoreList
+                  items={herdQuery.data}
+                  pageSize={10}
+                  getKey={(animal: any) => animal.animalId}
+                  className="space-y-3"
+                  buttonLabel="Показать ещё"
+                  renderItem={(animal: any, idx: number) => (
+                    <motion.div
+                      initial={{ opacity: 0, y: 8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: idx * 0.03 }}
+                      className={`rounded-2xl border p-4 transition ${
+                        idx < 3 ? "border-primary/20 bg-primary/5" : "border-border/70 bg-card"
+                      }`}
+                    >
+                      <div className="flex items-center gap-4">
+                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white border border-border/50">
+                          {getRankIcon(idx + 1)}
                         </div>
-                        <p className="text-xs text-muted-foreground">
-                          Общий рейтинг: {animal.overallRating ?? 0}
-                        </p>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2">
+                            <Link href={`/animals/${animal.animalSlug ?? animal.animalId}`} className="font-semibold text-foreground hover:text-primary truncate">
+                              {animal.animalName ?? `Животное #${animal.animalId}`}
+                            </Link>
+                            {idx === 0 && <Crown className="h-4 w-4 text-amber-500 shrink-0" />}
+                          </div>
+                          <p className="text-xs text-muted-foreground">
+                            Общий рейтинг: {animal.overallRating ?? 0}
+                          </p>
+                        </div>
+                        <div className="hidden sm:block">
+                          <WellnessRadarChart
+                            metrics={{
+                              happiness: animal.happiness ?? 50,
+                              health: animal.health ?? 50,
+                              attachment: animal.attachment ?? 50,
+                              mood: animal.mood ?? 50,
+                              obedience: animal.obedience ?? 50,
+                            }}
+                            size={90}
+                          />
+                        </div>
+                        <div className="text-right">
+                          <div className="text-2xl font-bold text-primary">{animal.overallRating ?? 0}</div>
+                          <div className="text-[10px] text-muted-foreground">ОЧКОВ</div>
+                        </div>
                       </div>
-                      <div className="hidden sm:block">
-                        <WellnessRadarChart
-                          metrics={{
-                            happiness: animal.happiness ?? 50,
-                            health: animal.health ?? 50,
-                            attachment: animal.attachment ?? 50,
-                            mood: animal.mood ?? 50,
-                            obedience: animal.obedience ?? 50,
-                          }}
-                          size={90}
-                        />
-                      </div>
-                      <div className="text-right">
-                        <div className="text-2xl font-bold text-primary">{animal.overallRating ?? 0}</div>
-                        <div className="text-[10px] text-muted-foreground">ОЧКОВ</div>
-                      </div>
-                    </div>
-                  </motion.div>
-                ))}
-                </div>
+                    </motion.div>
+                  )}
+                />
               )}
             </motion.div>
           )}
@@ -219,52 +224,56 @@ export default function Leaderboard() {
                   <p className="mt-3 text-sm text-muted-foreground">Рейтинг владельцев пока пуст.</p>
                 </div>
               ) : (
-                <div className="max-h-[600px] overflow-y-auto space-y-3 pr-1">
-                {ownersQuery.data.map((owner: any, idx: number) => {
-                  const titleInfo = getTitleInfo(owner.title);
-                  const isMe = user?.openId === owner.ownerOpenId;
-                  return (
-                    <motion.div
-                      key={owner.ownerOpenId}
-                      initial={{ opacity: 0, y: 8 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: idx * 0.03 }}
-                      className={`rounded-2xl border p-4 transition ${
-                        isMe
-                          ? "border-primary/30 bg-primary/5 ring-1 ring-primary/20"
-                          : idx < 3
-                          ? "border-primary/20 bg-primary/5"
-                          : "border-border/70 bg-card"
-                      }`}
-                    >
-                      <div className="flex items-center gap-4">
-                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white border border-border/50">
-                          {getRankIcon(idx + 1)}
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-center gap-2">
-                            <span className="font-semibold text-foreground truncate">
-                              {owner.ownerName ?? "Владелец"}
-                              {isMe && <span className="ml-1 text-xs text-primary">(вы)</span>}
-                            </span>
-                            <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-medium ${titleInfo.bg} ${titleInfo.color}`}>
-                              <Star className="h-3 w-3" />
-                              {titleInfo.label}
-                            </span>
+                <ShowMoreList
+                  items={ownersQuery.data}
+                  pageSize={10}
+                  getKey={(owner: any) => owner.ownerOpenId}
+                  className="space-y-3"
+                  buttonLabel="Показать ещё"
+                  renderItem={(owner: any, idx: number) => {
+                    const titleInfo = getTitleInfo(owner.title);
+                    const isMe = user?.openId === owner.ownerOpenId;
+                    return (
+                      <motion.div
+                        initial={{ opacity: 0, y: 8 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: idx * 0.03 }}
+                        className={`rounded-2xl border p-4 transition ${
+                          isMe
+                            ? "border-primary/30 bg-primary/5 ring-1 ring-primary/20"
+                            : idx < 3
+                            ? "border-primary/20 bg-primary/5"
+                            : "border-border/70 bg-card"
+                        }`}
+                      >
+                        <div className="flex items-center gap-4">
+                          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white border border-border/50">
+                            {getRankIcon(idx + 1)}
                           </div>
-                          <p className="text-xs text-muted-foreground">
-                            {owner.animalCount ?? 0} животных · Средний рейтинг: {owner.averageAnimalScore ?? 0}
-                          </p>
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2">
+                              <span className="font-semibold text-foreground truncate">
+                                {owner.ownerName ?? "Владелец"}
+                                {isMe && <span className="ml-1 text-xs text-primary">(вы)</span>}
+                              </span>
+                              <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-medium ${titleInfo.bg} ${titleInfo.color}`}>
+                                <Star className="h-3 w-3" />
+                                {titleInfo.label}
+                              </span>
+                            </div>
+                            <p className="text-xs text-muted-foreground">
+                              {owner.animalCount ?? 0} животных · Средний рейтинг: {owner.averageAnimalScore ?? 0}
+                            </p>
+                          </div>
+                          <div className="text-right">
+                            <div className="text-2xl font-bold text-primary">{owner.totalScore ?? 0}</div>
+                            <div className="text-[10px] text-muted-foreground">ОЧКОВ</div>
+                          </div>
                         </div>
-                        <div className="text-right">
-                          <div className="text-2xl font-bold text-primary">{owner.totalScore ?? 0}</div>
-                          <div className="text-[10px] text-muted-foreground">ОЧКОВ</div>
-                        </div>
-                      </div>
-                    </motion.div>
-                  );
-                })}
-                </div>
+                      </motion.div>
+                    );
+                  }}
+                />
               )}
             </motion.div>
           )}

@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { Link } from "wouter";
+import ScrollRemaining from "@/components/ScrollRemaining";
 
 export default function AdminAnalytics() {
   const { user, loading: authLoading } = useAuth();
@@ -134,7 +135,7 @@ export default function AdminAnalytics() {
                   </CardHeader>
                   <CardContent>
                     {tokenData?.recentVolume && Array.isArray(tokenData.recentVolume) && tokenData.recentVolume.length > 0 ? (
-                      <div className="space-y-3 max-h-[400px] overflow-y-auto pr-1">
+                      <ScrollRemaining totalItems={tokenData.recentVolume.length} itemHeight={48} className="space-y-3 max-h-[400px] overflow-y-auto pr-1">
                         {tokenData.recentVolume.map((item: any, i: number) => {
                           const colors = ["bg-emerald-500", "bg-amber-500", "bg-blue-500", "bg-purple-500", "bg-gray-500"];
                           const maxAmount = Math.max(...tokenData.recentVolume.map((t: any) => t.total ?? 0));
@@ -151,7 +152,7 @@ export default function AdminAnalytics() {
                             </div>
                           );
                         })}
-                      </div>
+                      </ScrollRemaining>
                     ) : (
                       <p className="text-sm text-muted-foreground text-center py-4">Нет данных о транзакциях</p>
                     )}
@@ -169,7 +170,7 @@ export default function AdminAnalytics() {
                     </CardHeader>
                     <CardContent>
                     {marketData?.topItems && marketData.topItems.length > 0 ? (
-                      <div className="space-y-2 max-h-[400px] overflow-y-auto pr-1">
+                      <ScrollRemaining totalItems={marketData.topItems.length} itemHeight={40} className="space-y-2 max-h-[400px] overflow-y-auto pr-1">
                         {marketData.topItems.map((item: any, i: number) => (
                             <div key={i} className="flex items-center justify-between py-1.5 border-b last:border-0">
                               <div className="flex items-center gap-2">
@@ -182,7 +183,7 @@ export default function AdminAnalytics() {
                               </div>
                             </div>
                           ))}
-                        </div>
+                        </ScrollRemaining>
                       ) : (
                         <p className="text-sm text-muted-foreground text-center py-4">Нет покупок</p>
                       )}
@@ -196,7 +197,7 @@ export default function AdminAnalytics() {
                     </CardHeader>
                     <CardContent>
                     {marketData?.categorySales && marketData.categorySales.length > 0 ? (
-                      <div className="space-y-2 max-h-[400px] overflow-y-auto pr-1">
+                      <ScrollRemaining totalItems={marketData.categorySales.length} itemHeight={40} className="space-y-2 max-h-[400px] overflow-y-auto pr-1">
                         {marketData.categorySales.map((cat: any, i: number) => (
                             <div key={i} className="flex items-center justify-between py-1.5 border-b last:border-0">
                               <span className="text-sm">{cat.emoji} {cat.name}</span>
@@ -206,7 +207,7 @@ export default function AdminAnalytics() {
                               </div>
                             </div>
                           ))}
-                        </div>
+                        </ScrollRemaining>
                       ) : (
                         <p className="text-sm text-muted-foreground text-center py-4">Нет данных</p>
                       )}
@@ -222,7 +223,7 @@ export default function AdminAnalytics() {
                   </CardHeader>
                   <CardContent>
                     {marketData?.topOwners && marketData.topOwners.length > 0 ? (
-                      <div className="space-y-2 max-h-[400px] overflow-y-auto pr-1">
+                      <ScrollRemaining totalItems={marketData.topOwners.length} itemHeight={40} className="space-y-2 max-h-[400px] overflow-y-auto pr-1">
                         {marketData.topOwners.map((buyer: any, i: number) => (
                           <div key={i} className="flex items-center justify-between py-1.5 border-b last:border-0">
                             <div className="flex items-center gap-2">
@@ -237,7 +238,7 @@ export default function AdminAnalytics() {
                             </div>
                           </div>
                         ))}
-                      </div>
+                      </ScrollRemaining>
                     ) : (
                       <p className="text-sm text-muted-foreground text-center py-4">Нет данных</p>
                     )}
