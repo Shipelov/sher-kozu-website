@@ -70,8 +70,15 @@ export default function Navbar() {
     }
   }, [logoutMutation]);
 
+  // Primary animal from owner dashboard (authenticated users)
+  const ownerDashboardQuery = trpc.animals.ownerDashboard.useQuery(undefined, {
+    enabled: isAuthenticated,
+  });
+  const primaryAnimal = ownerDashboardQuery.data?.animal ?? null;
+  const primaryAnimalName = primaryAnimal?.name ?? null;
+
   const featuredAnimal = animalsQuery.data?.[0] ?? null;
-  const featuredAnimalName = featuredAnimal?.name ?? "животное";
+  const featuredAnimalName = primaryAnimalName ?? featuredAnimal?.name ?? "животное";
 
   const isAdmin = user?.role === "admin";
 
@@ -174,10 +181,21 @@ export default function Navbar() {
 
           {/* Right side: auth state */}
           <div className="flex items-center gap-2 md:gap-3">
-            {/* Live indicator */}
+            {/* Live indicator — shows primary animal for authenticated users */}
             <div className="hidden items-center gap-1.5 text-sm text-muted-foreground lg:flex">
               <span className="pulse-dot" />
-              <span className="font-mono-data text-xs">{featuredAnimalName} онлайн</span>
+              {isAuthenticated && primaryAnimalName ? (
+                <Link href={`/animals/${primaryAnimal?.slug ?? ""}`}>
+                  <span
+                    className="font-mono-data text-xs transition-colors hover:text-primary cursor-pointer"
+                    data-testid="navbar-primary-animal"
+                  >
+                    {primaryAnimalName} онлайн
+                  </span>
+                </Link>
+              ) : (
+                <span className="font-mono-data text-xs">{featuredAnimalName} онлайн</span>
+              )}
             </div>
 
             {/* Auth section */}
@@ -309,6 +327,12 @@ export default function Navbar() {
                   </div>
                   <div>
                     <p className="text-sm font-medium text-foreground">{user.name}</p>
+                    {primaryAnimalName && (
+                      <p className="text-xs text-primary font-medium" data-testid="navbar-primary-animal-mobile">
+                        <span className="pulse-dot mr-1 inline-block" />
+                        {primaryAnimalName} онлайн
+                      </p>
+                    )}
                     <p className="text-xs text-muted-foreground">
                       {isAdmin ? "Администратор" : "Владелец"}
                     </p>
