@@ -68,6 +68,7 @@ import { isBitrixConfigured, pullBitrixDealSnapshot, syncPartnerLeadToBitrix } f
 import { runDiagnostics } from "./diagnostics";
 import { notifyOwner } from "./_core/notification";
 import { productTrackRouter } from "./routers/productTrack";
+import { gamificationRouter } from "./routers/gamification";
 import {
   checkRateLimit,
   createOtp,
@@ -1334,6 +1335,7 @@ export const appRouter = router({
     }),
   }),
   productTrack: productTrackRouter,
+  gamification: gamificationRouter,
   adminOwnerships: router({
     listByAnimal: protectedProcedure.input(z.object({ animalId: z.number().int().positive() })).query(async ({ input }) => {
       return listAnimalOwnerships(input.animalId);

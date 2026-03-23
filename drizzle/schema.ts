@@ -633,3 +633,283 @@ export type InsertPasswordResetToken = typeof passwordResetTokens.$inferInsert;
 
 export type AuthRateLimit = typeof authRateLimits.$inferSelect;
 export type InsertAuthRateLimit = typeof authRateLimits.$inferInsert;
+
+/* ───────────────────────────────────────────────
+   Gamification — "Забота" Ecosystem
+   Token economy, marketplace, wellness metrics,
+   farmer checklists, animal feedback
+   ─────────────────────────────────────────────── */
+
+export const farmAccountTypeEnum = mysqlEnum("farmAccountType", ["bank", "revenue"]);
+export const farmTxTypeEnum = mysqlEnum("farmTxType", [
+  "emission",           // Bank → Owner (admin grants tokens)
+  "bulk_emission",      // Bank → multiple Owners
+  "auto_emission",      // Bank → Owner (monthly auto)
+  "purchase",           // Owner → Revenue (marketplace buy)
+  "refund",             // Revenue → Owner (admin refund)
+  "adjustment",         // Manual correction
+  "bonus",              // Bank → Owner (achievement reward)
+]);
+export const farmTxDirectionEnum = mysqlEnum("farmTxDirection", ["credit", "debit"]);
+export const checklistStatusEnum = mysqlEnum("checklistStatus", ["pending", "in_progress", "completed"]);
+export const marketplaceItemSeasonEnum = mysqlEnum("marketplaceItemSeason", ["all", "spring", "summer", "autumn", "winter"]);
+
+/**
+ * Farm-level accounts: Bank (token emission source) and Revenue (collects purchase payments).
+ * Only two rows should exist: one for "bank" and one for "revenue".
+ */
+export const farmAccounts = mysqlTable("farmAccounts", {
+  id: int("id").autoincrement().primaryKey(),
+  accountType: farmAccountTypeEnum.notNull().unique(),
+  /** Balance in SKC tokens (1 SKC = 100 RUB) */
+  balanceSKC: int("balanceSKC").default(0).notNull(),
+  /** Total tokens ever emitted (bank) or collected (revenue) */
+  totalLifetimeSKC: int("totalLifetimeSKC").default(0).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+/**
+ * Every token movement between farm accounts and owner wallets.
+ * Full audit trail for the entire token economy.
+ */
+export const farmAccountTransactions = mysqlTable("farmAccountTransactions", {
+  id: int("id").autoincrement().primaryKey(),
+  /** Which farm account is affected (bank or revenue) */
+  farmAccountId: int("farmAccountId").notNull(),
+  /** Owner wallet affected (null for inter-farm transfers) */
+  walletId: int("walletId"),
+  /** Owner who receives/sends tokens */
+  ownerOpenId: varchar("ownerOpenId", { length: 64 }),
+  txType: farmTxTypeEnum.notNull(),
+  direction: farmTxDirectionEnum.notNull(),
+  /** Amount in SKC tokens */
+  amountSKC: int("amountSKC").notNull(),
+  /** Farm account balance after this transaction */
+  farmBalanceAfterSKC: int("farmBalanceAfterSKC").notNull(),
+  /** Owner wallet balance after this transaction (null if no wallet involved) */
+  walletBalanceAfterSKC: int("walletBalanceAfterSKC"),
+  /** Reference to marketplace purchase if applicable */
+  purchaseId: int("purchaseId"),
+  memo: varchar("memo", { length: 500 }),
+  /** Admin who initiated the transaction */
+  initiatedByOpenId: varchar("initiatedByOpenId", { length: 64 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+/**
+ * Marketplace categories managed by admin.
+ * Each category groups related care items.
+ */
+export const marketplaceCategories = mysqlTable("marketplaceCategories", {
+  id: int("id").autoincrement().primaryKey(),
+  name: varchar("name", { length: 160 }).notNull(),
+  slug: varchar("slug", { length: 120 }).notNull().unique(),
+  description: text("description"),
+  emoji: varchar("emoji", { length: 8 }),
+  iconUrl: text("iconUrl"),
+  isVisible: int("isVisible").default(1).notNull(),
+  sortOrder: int("sortOrder").default(0).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+/**
+ * Marketplace items (care actions) that owners can purchase for their animals.
+ * Each item has a price in SKC and affects specific wellness metrics.
+ */
+export const marketplaceItems = mysqlTable("marketplaceItems", {
+  id: int("id").autoincrement().primaryKey(),
+  categoryId: int("categoryId").notNull(),
+  name: varchar("name", { length: 160 }).notNull(),
+  slug: varchar("slug", { length: 120 }).notNull().unique(),
+  description: text("description"),
+  imageUrl: text("imageUrl"),
+  /** Price in SKC tokens */
+  priceSKC: int("priceSKC").notNull(),
+  /** Available stock (-1 = unlimited) */
+  stock: int("stock").default(-1).notNull(),
+  /** Max purchases per owner per day (0 = no limit) */
+  dailyLimitPerOwner: int("dailyLimitPerOwner").default(0).notNull(),
+  /** Max purchases per owner per week (0 = no limit) */
+  weeklyLimitPerOwner: int("weeklyLimitPerOwner").default(0).notNull(),
+  /** Max purchases per owner per month (0 = no limit) */
+  monthlyLimitPerOwner: int("monthlyLimitPerOwner").default(0).notNull(),
+  /** Seasonal availability */
+  season: marketplaceItemSeasonEnum.default("all").notNull(),
+  /** Wellness metric effects as JSON: {happiness: 5, health: 3, attachment: 2, mood: 4, obedience: 1} */
+  metricEffectsJson: text("metricEffectsJson").notNull(),
+  /** Whether this item requires a farmer checklist */
+  requiresChecklist: int("requiresChecklist").default(1).notNull(),
+  /** Checklist template as JSON array: [{task: "Дать морковку", description: "..."}] */
+  checklistTemplateJson: text("checklistTemplateJson"),
+  /** Animal feedback message template (from animal's perspective) */
+  feedbackTemplate: text("feedbackTemplate"),
+  isVisible: int("isVisible").default(1).notNull(),
+  /** Applicable species: null = all, "goat", "sheep" */
+  applicableSpecies: varchar("applicableSpecies", { length: 16 }),
+  sortOrder: int("sortOrder").default(0).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+/**
+ * Record of each marketplace purchase by an owner for their animal.
+ */
+export const marketplacePurchases = mysqlTable("marketplacePurchases", {
+  id: int("id").autoincrement().primaryKey(),
+  ownerOpenId: varchar("ownerOpenId", { length: 64 }).notNull(),
+  animalId: int("animalId").notNull(),
+  itemId: int("itemId").notNull(),
+  walletId: int("walletId").notNull(),
+  /** Price paid in SKC at time of purchase */
+  pricePaidSKC: int("pricePaidSKC").notNull(),
+  /** Snapshot of metric effects applied */
+  metricEffectsAppliedJson: text("metricEffectsAppliedJson").notNull(),
+  /** Whether the farmer checklist is completed */
+  checklistCompleted: int("checklistCompleted").default(0).notNull(),
+  /** Whether the animal feedback has been sent */
+  feedbackSent: int("feedbackSent").default(0).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+/**
+ * Farmer checklists generated after a marketplace purchase.
+ * The farmer fills these out to confirm the care action was performed.
+ */
+export const farmerChecklists = mysqlTable("farmerChecklists", {
+  id: int("id").autoincrement().primaryKey(),
+  purchaseId: int("purchaseId").notNull(),
+  animalId: int("animalId").notNull(),
+  ownerOpenId: varchar("ownerOpenId", { length: 64 }).notNull(),
+  /** Item name for quick reference */
+  itemName: varchar("itemName", { length: 160 }).notNull(),
+  status: checklistStatusEnum.default("pending").notNull(),
+  /** Checklist tasks as JSON: [{task, description, completed, completedAt}] */
+  tasksJson: text("tasksJson").notNull(),
+  /** Farmer's notes/report */
+  farmerNotes: text("farmerNotes"),
+  /** Photo proof URLs as JSON array */
+  photoUrlsJson: text("photoUrlsJson"),
+  completedAt: timestamp("completedAt"),
+  /** Farmer who completed the checklist */
+  completedByOpenId: varchar("completedByOpenId", { length: 64 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+/**
+ * Messages from the animal's perspective after a care action is completed.
+ * Generated when farmer completes a checklist.
+ */
+export const animalFeedbackMessages = mysqlTable("animalFeedbackMessages", {
+  id: int("id").autoincrement().primaryKey(),
+  purchaseId: int("purchaseId").notNull(),
+  animalId: int("animalId").notNull(),
+  ownerOpenId: varchar("ownerOpenId", { length: 64 }).notNull(),
+  /** Message text from the animal's perspective */
+  message: text("message").notNull(),
+  /** Photo URL from the farmer's checklist */
+  photoUrl: text("photoUrl"),
+  isRead: int("isRead").default(0).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+/**
+ * Wellness metrics for each animal. Updated on purchases and decayed daily.
+ * Each metric ranges from 0-100 with a minimum floor of 10.
+ */
+export const animalWellnessMetrics = mysqlTable("animalWellnessMetrics", {
+  id: int("id").autoincrement().primaryKey(),
+  animalId: int("animalId").notNull().unique(),
+  happiness: int("happiness").default(50).notNull(),
+  health: int("health").default(50).notNull(),
+  attachment: int("attachment").default(50).notNull(),
+  mood: int("mood").default(50).notNull(),
+  obedience: int("obedience").default(50).notNull(),
+  /** Weighted average of all metrics (auto-calculated) */
+  overallRating: int("overallRating").default(50).notNull(),
+  /** Rank position in the herd (1 = best) */
+  herdRank: int("herdRank").default(0).notNull(),
+  /** Last time decay was applied */
+  lastDecayAt: timestamp("lastDecayAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+/**
+ * Owner rating and title based on their animals' wellness.
+ * Updated whenever animal metrics change.
+ */
+export const ownerRatings = mysqlTable("ownerRatings", {
+  id: int("id").autoincrement().primaryKey(),
+  ownerOpenId: varchar("ownerOpenId", { length: 64 }).notNull().unique(),
+  /** Average overall rating across all owned animals */
+  averageAnimalRating: int("averageAnimalRating").default(50).notNull(),
+  /** Activity bonus (0-20 points based on purchase frequency) */
+  activityBonus: int("activityBonus").default(0).notNull(),
+  /** Final composite score */
+  totalScore: int("totalScore").default(50).notNull(),
+  /** Current title based on score */
+  title: varchar("title", { length: 80 }).default("Новичок").notNull(),
+  /** Rank position among all owners (1 = best) */
+  rank: int("rank").default(0).notNull(),
+  /** Total SKC ever spent */
+  totalSpentSKC: int("totalSpentSKC").default(0).notNull(),
+  /** Total purchases made */
+  totalPurchases: int("totalPurchases").default(0).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+/**
+ * Auto-allocation settings for monthly token distribution.
+ * Admin can enable/disable and set the amount.
+ */
+export const autoAllocationSettings = mysqlTable("autoAllocationSettings", {
+  id: int("id").autoincrement().primaryKey(),
+  /** Whether auto-allocation is enabled */
+  isEnabled: int("isEnabled").default(0).notNull(),
+  /** Amount of SKC to allocate per owner per month */
+  amountSKC: int("amountSKC").default(50).notNull(),
+  /** Whether manual allocation is also allowed */
+  manualAllocationEnabled: int("manualAllocationEnabled").default(1).notNull(),
+  /** Day of month to run auto-allocation (1-28) */
+  dayOfMonth: int("dayOfMonth").default(1).notNull(),
+  /** Last time auto-allocation was executed */
+  lastRunAt: timestamp("lastRunAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+// Type exports for gamification tables
+export type FarmAccount = typeof farmAccounts.$inferSelect;
+export type InsertFarmAccount = typeof farmAccounts.$inferInsert;
+
+export type FarmAccountTransaction = typeof farmAccountTransactions.$inferSelect;
+export type InsertFarmAccountTransaction = typeof farmAccountTransactions.$inferInsert;
+
+export type MarketplaceCategory = typeof marketplaceCategories.$inferSelect;
+export type InsertMarketplaceCategory = typeof marketplaceCategories.$inferInsert;
+
+export type MarketplaceItem = typeof marketplaceItems.$inferSelect;
+export type InsertMarketplaceItem = typeof marketplaceItems.$inferInsert;
+
+export type MarketplacePurchase = typeof marketplacePurchases.$inferSelect;
+export type InsertMarketplacePurchase = typeof marketplacePurchases.$inferInsert;
+
+export type FarmerChecklist = typeof farmerChecklists.$inferSelect;
+export type InsertFarmerChecklist = typeof farmerChecklists.$inferInsert;
+
+export type AnimalFeedbackMessage = typeof animalFeedbackMessages.$inferSelect;
+export type InsertAnimalFeedbackMessage = typeof animalFeedbackMessages.$inferInsert;
+
+export type AnimalWellnessMetric = typeof animalWellnessMetrics.$inferSelect;
+export type InsertAnimalWellnessMetric = typeof animalWellnessMetrics.$inferInsert;
+
+export type OwnerRating = typeof ownerRatings.$inferSelect;
+export type InsertOwnerRating = typeof ownerRatings.$inferInsert;
+
+export type AutoAllocationSetting = typeof autoAllocationSettings.$inferSelect;
+export type InsertAutoAllocationSetting = typeof autoAllocationSettings.$inferInsert;
