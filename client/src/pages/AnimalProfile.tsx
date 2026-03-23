@@ -1,6 +1,6 @@
 import { trpc } from "@/lib/trpc";
 import ScrollRemaining from "@/components/ScrollRemaining";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ChangeEvent, DragEvent } from "react";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
@@ -561,9 +561,57 @@ export default function AnimalProfile() {
     ...(data?.story ? [{ label: "История", value: data.story }] : []),
   ];
 
-  const coverUrl = data?.coverImageUrl ?? selectedImage?.src ?? CDN.hero;
+    const coverUrl = data?.coverImageUrl ?? selectedImage?.src ?? CDN.hero;
 
-  /* ────────────────────────── RENDER ────────────────────────── */
+  /* ── Profile completeness (animated) ── */
+  const profileChecks = useMemo(() => [
+    { label: "Фото в галерее", done: (photosQuery.data?.length ?? 0) > 0, tip: "Загрузите фото в галерею" },
+    { label: "Доля оформлена", done: hasOwnerAccess, tip: "Оформите долю в животном" },
+    { label: "Дневник заполнен", done: diaryEntries.length > 0, tip: "Подождите первых записей в дневнике" },
+    { label: "Метрики благополучия", done: Boolean(wellnessData), tip: "Метрики появятся после оформления доли" },
+    { label: "Паспорт заполнен", done: passportRows.length >= 3, tip: "Данные паспорта заполняются фермером" },
+  ], [photosQuery.data?.length, hasOwnerAccess, diaryEntries.length, wellnessData, passportRows.length]);
+
+  const profileDoneCount = useMemo(() => profileChecks.filter(c => c.done).length, [profileChecks]);
+  const profilePercent = useMemo(() => Math.round((profileDoneCount / profileChecks.length) * 100), [profileDoneCount, profileChecks.length]);
+  const profileIncomplete = useMemo(() => profileChecks.filter(c => !c.done), [profileChecks]);
+
+  // Animated percent display
+  const [animatedPercent, setAnimatedPercent] = useState(profilePercent);
+  const prevPercentRef = useRef(profilePercent);
+  const [showCelebration, setShowCelebration] = useState(false);
+
+  useEffect(() => {
+    const prev = prevPercentRef.current;
+    if (prev === profilePercent) return;
+    prevPercentRef.current = profilePercent;
+
+    // Animate the number counting up/down
+    const start = prev;
+    const end = profilePercent;
+    const diff = end - start;
+    const duration = 800; // ms
+    const startTime = performance.now();
+
+    function tick(now: number) {
+      const elapsed = now - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+      // easeOutCubic
+      const eased = 1 - Math.pow(1 - progress, 3);
+      setAnimatedPercent(Math.round(start + diff * eased));
+      if (progress < 1) requestAnimationFrame(tick);
+    }
+    requestAnimationFrame(tick);
+
+    // Show celebration if reached 100%
+    if (profilePercent === 100 && prev < 100) {
+      setShowCelebration(true);
+      const timer = setTimeout(() => setShowCelebration(false), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [profilePercent]);
+
+  /* ────────────────────────── RENDER ──────────────────────── */
   return (
     <>
       <div className="min-h-screen bg-background text-foreground">
@@ -712,45 +760,110 @@ export default function AnimalProfile() {
             <div className="mx-auto max-w-3xl space-y-3">
 
               {/* ── Profile Completeness Indicator ── */}
-              {isAuthenticated ? (() => {
-                const checks = [
-                  { label: "Фото в галерее", done: (photosQuery.data?.length ?? 0) > 0, tip: "Загрузите фото в галерею" },
-                  { label: "Доля оформлена", done: hasOwnerAccess, tip: "Оформите долю в животном" },
-                  { label: "Дневник заполнен", done: diaryEntries.length > 0, tip: "Подождите первых записей в дневнике" },
-                  { label: "Метрики благополучия", done: Boolean(wellnessData), tip: "Метрики появятся после оформления доли" },
-                  { label: "Паспорт заполнен", done: passportRows.length >= 3, tip: "Данные паспорта заполняются фермером" },
-                ];
-                const doneCount = checks.filter(c => c.done).length;
-                const percent = Math.round((doneCount / checks.length) * 100);
-                const incomplete = checks.filter(c => !c.done);
-                return (
-                  <div className="rounded-2xl border border-border/70 bg-card p-5">
+              {isAuthenticated ? (
+                  <div className="rounded-2xl border border-border/70 bg-card p-5 relative overflow-hidden">
+                    {/* Celebration pulse overlay */}
+                    <AnimatePresence>
+                      {showCelebration && (
+                        <motion.div
+                          initial={{ opacity: 0, scale: 0.8 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          exit={{ opacity: 0, scale: 1.1 }}
+                          transition={{ duration: 0.5 }}
+                          className="absolute inset-0 bg-gradient-to-r from-emerald-500/10 via-emerald-400/20 to-emerald-500/10 rounded-2xl pointer-events-none z-10"
+                        />
+                      )}
+                    </AnimatePresence>
+
                     <div className="flex items-center justify-between gap-3 mb-3">
                       <div className="flex items-center gap-2">
-                        <CircleDot className="h-4 w-4 text-primary" />
-                        <span className="text-sm font-semibold text-foreground">Профиль заполнен на {percent}%</span>
+                        <motion.div
+                          animate={showCelebration ? { rotate: [0, -10, 10, -10, 0], scale: [1, 1.2, 1] } : {}}
+                          transition={{ duration: 0.6 }}
+                        >
+                          <CircleDot className={`h-4 w-4 ${profilePercent === 100 ? 'text-emerald-600' : 'text-primary'}`} />
+                        </motion.div>
+                        <span className="text-sm font-semibold text-foreground">
+                          Профиль заполнен на{" "}
+                          <motion.span
+                            key={profilePercent}
+                            className={`inline-block tabular-nums ${profilePercent === 100 ? 'text-emerald-600' : ''}`}
+                          >
+                            {animatedPercent}%
+                          </motion.span>
+                        </span>
                       </div>
-                      <span className="text-xs text-muted-foreground">{doneCount}/{checks.length}</span>
+                      <span className="text-xs text-muted-foreground">{profileDoneCount}/{profileChecks.length}</span>
                     </div>
-                    <Progress value={percent} className="h-2 mb-3" />
+
+                    {/* Animated progress bar */}
+                    <div className="relative h-2 mb-3 bg-primary/20 rounded-full overflow-hidden">
+                      <motion.div
+                        className={`h-full rounded-full ${profilePercent === 100 ? 'bg-emerald-500' : 'bg-primary'}`}
+                        initial={false}
+                        animate={{ width: `${profilePercent}%` }}
+                        transition={{ duration: 0.8, ease: [0.33, 1, 0.68, 1] }}
+                      />
+                    </div>
+
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                      {checks.map((c) => (
-                        <div key={c.label} className={`flex items-center gap-2 rounded-lg px-3 py-2 text-xs ${c.done ? 'bg-emerald-50 text-emerald-700' : 'bg-muted/40 text-muted-foreground'}`}>
-                          {c.done ? <CheckCircle2 className="h-3.5 w-3.5 shrink-0" /> : <CircleDot className="h-3.5 w-3.5 shrink-0 opacity-40" />}
+                      {profileChecks.map((c, i) => (
+                        <motion.div
+                          key={c.label}
+                          initial={false}
+                          animate={c.done ? { backgroundColor: 'rgb(236 253 245)', color: 'rgb(4 120 87)' } : {}}
+                          transition={{ duration: 0.4, delay: i * 0.05 }}
+                          className={`flex items-center gap-2 rounded-lg px-3 py-2 text-xs ${c.done ? 'bg-emerald-50 text-emerald-700' : 'bg-muted/40 text-muted-foreground'}`}
+                        >
+                          <AnimatePresence mode="wait">
+                            {c.done ? (
+                              <motion.div
+                                key="done"
+                                initial={{ scale: 0, rotate: -180 }}
+                                animate={{ scale: 1, rotate: 0 }}
+                                exit={{ scale: 0 }}
+                                transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+                              >
+                                <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
+                              </motion.div>
+                            ) : (
+                              <motion.div key="pending" exit={{ scale: 0 }}>
+                                <CircleDot className="h-3.5 w-3.5 shrink-0 opacity-40" />
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
                           <span className={c.done ? 'line-through opacity-70' : ''}>{c.label}</span>
-                        </div>
+                        </motion.div>
                       ))}
                     </div>
-                    {incomplete.length > 0 ? (
-                      <p className="mt-3 text-xs text-muted-foreground">
-                        Совет: {incomplete[0].tip}
-                      </p>
-                    ) : (
-                      <p className="mt-3 text-xs text-emerald-600 font-medium">Профиль полностью заполнен!</p>
-                    )}
+
+                    <AnimatePresence mode="wait">
+                      {profileIncomplete.length > 0 ? (
+                        <motion.p
+                          key="tip"
+                          initial={{ opacity: 0, y: 5 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -5 }}
+                          transition={{ duration: 0.3 }}
+                          className="mt-3 text-xs text-muted-foreground"
+                        >
+                          Совет: {profileIncomplete[0].tip}
+                        </motion.p>
+                      ) : (
+                        <motion.p
+                          key="complete"
+                          initial={{ opacity: 0, y: 5 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -5 }}
+                          transition={{ duration: 0.3 }}
+                          className="mt-3 text-xs text-emerald-600 font-medium"
+                        >
+                          Профиль полностью заполнен!
+                        </motion.p>
+                      )}
+                    </AnimatePresence>
                   </div>
-                );
-              })() : null}
+              ) : null}
 
               {/* ── Diary & Health ── */}
               <ProfileSection id="diary-section" icon={BookOpen} title={`Дневник и здоровье`} badge="4 записи" defaultOpen={false}>
