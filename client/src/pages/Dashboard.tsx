@@ -237,6 +237,7 @@ export default function Dashboard() {
     { enabled: Boolean(ownerDashboardQuery.data?.ownership) }
   );
   const [txTab, setTxTab] = useState<"all" | "purchases">("all");
+  const [showTxHistory, setShowTxHistory] = useState(false);
   const dashboard = ownerDashboardQuery.data;
   const ownership = dashboard?.ownership ?? null;
   const currentAnimal = dashboard?.animal ?? null;
@@ -638,6 +639,17 @@ export default function Dashboard() {
                   >
                     <Gift className="h-4 w-4" /> Маркетплейс
                   </Link>
+                  <button
+                    type="button"
+                    onClick={() => setShowTxHistory((v) => !v)}
+                    className={`inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-medium transition ${
+                      showTxHistory
+                        ? "border-primary/30 bg-primary/10 text-primary"
+                        : "border-border bg-card text-foreground hover:bg-muted"
+                    }`}
+                  >
+                    <History className="h-4 w-4" /> История
+                  </button>
                   <Link
                     href="/leaderboard"
                     className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-4 py-2 text-sm font-medium text-foreground transition hover:bg-muted"
@@ -654,12 +666,13 @@ export default function Dashboard() {
             </motion.section>
           )}
 
-          {/* ── Transaction History Widget ── */}
-          {ownership && (
-            <motion.section
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.075 }}
+          {/* ── Collapsible Transaction History (inside balance block) ── */}
+          {ownership && showTxHistory && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.25 }}
               className="rounded-[2rem] border border-border/70 bg-card p-5 shadow-sm"
               data-testid="dashboardTransactionHistory"
             >
@@ -801,7 +814,7 @@ export default function Dashboard() {
                   </>
                 )}
               </div>
-            </motion.section>
+            </motion.div>
           )}
 
           <div className="grid grid-cols-12 gap-5">
