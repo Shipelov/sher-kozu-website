@@ -1,0 +1,130 @@
+{
+  "query": "SELECT ao.ownerOpenId, ao.animalId, ao.ownershipStatus, u.name FROM animalOwnerships ao LEFT JOIN users u ON ao.ownerOpenId = u.openId LIMIT 20;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3J2fXRHx8d1YjF6.root --database mLhmg5VmBsEBpZiYqdnhMQ --execute SELECT ao.ownerOpenId, ao.animalId, ao.ownershipStatus, u.name FROM animalOwnerships ao LEFT JOIN users u ON ao.ownerOpenId = u.openId LIMIT 20;",
+  "rows": [
+    {
+      "ownerOpenId": "jP5iBYMcdYguBWJPw5Sruu",
+      "animalId": "30001",
+      "ownershipStatus": "cancelled",
+      "name": "Andrey Shipelov"
+    },
+    {
+      "ownerOpenId": "jP5iBYMcdYguBWJPw5Sruu",
+      "animalId": "30001",
+      "ownershipStatus": "cancelled",
+      "name": "Andrey Shipelov"
+    },
+    {
+      "ownerOpenId": "jP5iBYMcdYguBWJPw5Sruu",
+      "animalId": "30001",
+      "ownershipStatus": "cancelled",
+      "name": "Andrey Shipelov"
+    },
+    {
+      "ownerOpenId": "jP5iBYMcdYguBWJPw5Sruu",
+      "animalId": "30001",
+      "ownershipStatus": "cancelled",
+      "name": "Andrey Shipelov"
+    },
+    {
+      "ownerOpenId": "jP5iBYMcdYguBWJPw5Sruu",
+      "animalId": "30001",
+      "ownershipStatus": "cancelled",
+      "name": "Andrey Shipelov"
+    },
+    {
+      "ownerOpenId": "jP5iBYMcdYguBWJPw5Sruu",
+      "animalId": "30001",
+      "ownershipStatus": "cancelled",
+      "name": "Andrey Shipelov"
+    },
+    {
+      "ownerOpenId": "jP5iBYMcdYguBWJPw5Sruu",
+      "animalId": "30001",
+      "ownershipStatus": "cancelled",
+      "name": "Andrey Shipelov"
+    },
+    {
+      "ownerOpenId": "jP5iBYMcdYguBWJPw5Sruu",
+      "animalId": "30001",
+      "ownershipStatus": "active",
+      "name": "Andrey Shipelov"
+    },
+    {
+      "ownerOpenId": "jP5iBYMcdYguBWJPw5Sruu",
+      "animalId": "30001",
+      "ownershipStatus": "active",
+      "name": "Andrey Shipelov"
+    },
+    {
+      "ownerOpenId": "jP5iBYMcdYguBWJPw5Sruu",
+      "animalId": "30001",
+      "ownershipStatus": "active",
+      "name": "Andrey Shipelov"
+    },
+    {
+      "ownerOpenId": "jP5iBYMcdYguBWJPw5Sruu",
+      "animalId": "180005",
+      "ownershipStatus": "cancelled",
+      "name": "Andrey Shipelov"
+    },
+    {
+      "ownerOpenId": "jP5iBYMcdYguBWJPw5Sruu",
+      "animalId": "180005",
+      "ownershipStatus": "cancelled",
+      "name": "Andrey Shipelov"
+    },
+    {
+      "ownerOpenId": "jP5iBYMcdYguBWJPw5Sruu",
+      "animalId": "180005",
+      "ownershipStatus": "active",
+      "name": "Andrey Shipelov"
+    },
+    {
+      "ownerOpenId": "jP5iBYMcdYguBWJPw5Sruu",
+      "animalId": "180005",
+      "ownershipStatus": "active",
+      "name": "Andrey Shipelov"
+    },
+    {
+      "ownerOpenId": "jP5iBYMcdYguBWJPw5Sruu",
+      "animalId": "180005",
+      "ownershipStatus": "active",
+      "name": "Andrey Shipelov"
+    },
+    {
+      "ownerOpenId": "jP5iBYMcdYguBWJPw5Sruu",
+      "animalId": "180005",
+      "ownershipStatus": "active",
+      "name": "Andrey Shipelov"
+    },
+    {
+      "ownerOpenId": "jP5iBYMcdYguBWJPw5Sruu",
+      "animalId": "180005",
+      "ownershipStatus": "active",
+      "name": "Andrey Shipelov"
+    },
+    {
+      "ownerOpenId": "jP5iBYMcdYguBWJPw5Sruu",
+      "animalId": "180005",
+      "ownershipStatus": "active",
+      "name": "Andrey Shipelov"
+    },
+    {
+      "ownerOpenId": "jP5iBYMcdYguBWJPw5Sruu",
+      "animalId": "180005",
+      "ownershipStatus": "active",
+      "name": "Andrey Shipelov"
+    },
+    {
+      "ownerOpenId": "jP5iBYMcdYguBWJPw5Sruu",
+      "animalId": "180005",
+      "ownershipStatus": "active",
+      "name": "Andrey Shipelov"
+    }
+  ],
+  "messages": [],
+  "stdout": "ownerOpenId\tanimalId\townershipStatus\tname\njP5iBYMcdYguBWJPw5Sruu\t30001\tcancelled\tAndrey Shipelov\njP5iBYMcdYguBWJPw5Sruu\t30001\tcancelled\tAndrey Shipelov\njP5iBYMcdYguBWJPw5Sruu\t30001\tcancelled\tAndrey Shipelov\njP5iBYMcdYguBWJPw5Sruu\t30001\tcancelled\tAndrey Shipelov\njP5iBYMcdYguBWJPw5Sruu\t30001\tcancelled\tAndrey Shipelov\njP5iBYMcdYguBWJPw5Sruu\t30001\tcancelled\tAndrey Shipelov\njP5iBYMcdYguBWJPw5Sruu\t30001\tcancelled\tAndrey Shipelov\njP5iBYMcdYguBWJPw5Sruu\t30001\tactive\tAndrey Shipelov\njP5iBYMcdYguBWJPw5Sruu\t30001\tactive\tAndrey Shipelov\njP5iBYMcdYguBWJPw5Sruu\t30001\tactive\tAndrey Shipelov\njP5iBYMcdYguBWJPw5Sruu\t180005\tcancelled\tAndrey Shipelov\njP5iBYMcdYguBWJPw5Sruu\t180005\tcancelled\tAndrey Shipelov\njP5iBYMcdYguBWJPw5Sruu\t180005\tactive\tAndrey Shipelov\njP5iBYMcdYguBWJPw5Sruu\t180005\tactive\tAndrey Shipelov\njP5iBYMcdYguBWJPw5Sruu\t180005\tactive\tAndrey Shipelov\njP5iBYMcdYguBWJPw5Sruu\t180005\tactive\tAndrey Shipelov\njP5iBYMcdYguBWJPw5Sruu\t180005\tactive\tAndrey Shipelov\njP5iBYMcdYguBWJPw5Sruu\t180005\tactive\tAndrey Shipelov\njP5iBYMcdYguBWJPw5Sruu\t180005\tactive\tAndrey Shipelov\njP5iBYMcdYguBWJPw5Sruu\t180005\tactive\tAndrey Shipelov\n",
+  "stderr": "",
+  "execution_time_ms": 62
+}

@@ -1,0 +1,15 @@
+{
+  "query": "SELECT DISTINCT ao.ownerOpenId, u.name, u.role FROM animalOwnerships ao LEFT JOIN users u ON ao.ownerOpenId = u.openId WHERE ao.ownershipStatus = 'active';",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3J2fXRHx8d1YjF6.root --database mLhmg5VmBsEBpZiYqdnhMQ --execute SELECT DISTINCT ao.ownerOpenId, u.name, u.role FROM animalOwnerships ao LEFT JOIN users u ON ao.ownerOpenId = u.openId WHERE ao.ownershipStatus = 'active';",
+  "rows": [
+    {
+      "ownerOpenId": "jP5iBYMcdYguBWJPw5Sruu",
+      "name": "Andrey Shipelov",
+      "role": "admin"
+    }
+  ],
+  "messages": [],
+  "stdout": "ownerOpenId\tname\trole\njP5iBYMcdYguBWJPw5Sruu\tAndrey Shipelov\tadmin\n",
+  "stderr": "",
+  "execution_time_ms": 60
+}

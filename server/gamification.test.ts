@@ -129,6 +129,81 @@ describe("Bank Balance Adjustment", () => {
 });
 
 // ═══════════════════════════════════════════════════════════
+// 0b. OWNER WALLETS LIST (Token Allocation Fix)
+// ═══════════════════════════════════════════════════════════
+
+describe("Owner Wallets List (Token Allocation Fix)", () => {
+  describe("Server: listOwnerWallets function", () => {
+    it("exports listOwnerWallets from gamification.ts", () => {
+      expect(GAMIFICATION_SRC).toContain("export async function listOwnerWallets");
+    });
+
+    it("joins wallets with users table for names", () => {
+      expect(GAMIFICATION_SRC).toContain("leftJoin(users, eq(wallets.ownerOpenId, users.openId))");
+    });
+
+    it("also finds owners with active ownerships but no wallet", () => {
+      expect(GAMIFICATION_SRC).toContain("ownersWithoutWallets");
+      expect(GAMIFICATION_SRC).toContain('eq(animalOwnerships.status, "active")');
+    });
+
+    it("returns openId, name, balance, walletId, hasWallet fields", () => {
+      expect(GAMIFICATION_SRC).toContain("openId: w.ownerOpenId");
+      expect(GAMIFICATION_SRC).toContain("name: w.name || w.ownerOpenId");
+      expect(GAMIFICATION_SRC).toContain("balance: w.balance");
+      expect(GAMIFICATION_SRC).toContain("walletId: w.walletId");
+      expect(GAMIFICATION_SRC).toContain("hasWallet: true");
+      expect(GAMIFICATION_SRC).toContain("hasWallet: false");
+    });
+  });
+
+  describe("Router: ownerWallets procedure", () => {
+    it("has ownerWallets procedure in farmAccounts router", () => {
+      expect(ROUTER_SRC).toContain("ownerWallets: adminProcedure");
+    });
+
+    it("imports listOwnerWallets from gamification", () => {
+      expect(ROUTER_SRC).toContain("listOwnerWallets");
+    });
+  });
+
+  describe("UI: AdminTokens uses real wallet data", () => {
+    it("queries ownerWallets from server", () => {
+      expect(ADMIN_TOKENS_SRC).toContain("gamification.farmAccounts.ownerWallets.useQuery");
+    });
+
+    it("does NOT use hardcoded empty wallets array", () => {
+      expect(ADMIN_TOKENS_SRC).not.toContain("const wallets: any[] = []");
+    });
+
+    it("populates select dropdown with wallet data", () => {
+      expect(ADMIN_TOKENS_SRC).toContain("wallets.map");
+      expect(ADMIN_TOKENS_SRC).toContain("SelectItem");
+    });
+
+    it("sends ownerOpenIds from wallets data for bulk grant", () => {
+      expect(ADMIN_TOKENS_SRC).toContain("wallets.map((w: any) => w.openId)");
+    });
+
+    it("invalidates ownerWallets on successful allocation", () => {
+      expect(ADMIN_TOKENS_SRC).toContain("utils.gamification.farmAccounts.ownerWallets.invalidate");
+    });
+
+    it("shows wallet count in overview", () => {
+      expect(ADMIN_TOKENS_SRC).toContain("кошельков");
+    });
+
+    it("shows wallets tab with owner list", () => {
+      expect(ADMIN_TOKENS_SRC).toContain("Кошельки");
+    });
+
+    it("shows hasWallet false indicator for owners without wallets", () => {
+      expect(ADMIN_TOKENS_SRC).toContain("Кошелёк не создан");
+    });
+  });
+});
+
+// ═══════════════════════════════════════════════════════════
 // 1. DATABASE SCHEMA
 // ═══════════════════════════════════════════════════════════
 

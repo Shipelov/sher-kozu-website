@@ -1,0 +1,20 @@
+{
+  "query": "SELECT u.openId, u.name, u.role FROM users u LIMIT 20;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3J2fXRHx8d1YjF6.root --database mLhmg5VmBsEBpZiYqdnhMQ --execute SELECT u.openId, u.name, u.role FROM users u LIMIT 20;",
+  "rows": [
+    {
+      "openId": "jP5iBYMcdYguBWJPw5Sruu",
+      "name": "Andrey Shipelov",
+      "role": "admin"
+    },
+    {
+      "openId": "local_ebc58cac93b64ae2b8cafa2c",
+      "name": "Сигаева Александра Борисовна",
+      "role": "user"
+    }
+  ],
+  "messages": [],
+  "stdout": "openId\tname\trole\njP5iBYMcdYguBWJPw5Sruu\tAndrey Shipelov\tadmin\nlocal_ebc58cac93b64ae2b8cafa2c\tСигаева Александра Борисовна\tuser\n",
+  "stderr": "",
+  "execution_time_ms": 61
+}

@@ -48,8 +48,7 @@ export default function AdminTokens() {
 
   // Queries
   const accountsQuery = trpc.gamification.farmAccounts.get.useQuery(undefined, { enabled: isAdmin });
-  // For admin wallets view, we'll use the users list from admin panel
-  // The wallet.balance is per-user, so we need a different approach for admin view
+  const walletsQuery = trpc.gamification.farmAccounts.ownerWallets.useQuery(undefined, { enabled: isAdmin });
   const txQuery = trpc.gamification.farmAccounts.transactions.useQuery(
     { limit: 20, offset: (txPage - 1) * 20 },
     { enabled: isAdmin }
@@ -61,6 +60,7 @@ export default function AdminTokens() {
     onSuccess: () => {
       toast.success("Токены начислены");
       utils.gamification.farmAccounts.get.invalidate();
+      utils.gamification.farmAccounts.ownerWallets.invalidate();
       utils.gamification.farmAccounts.transactions.invalidate();
       setAllocateUserId("");
       setAllocateAmount(100);
@@ -73,6 +73,7 @@ export default function AdminTokens() {
     onSuccess: () => {
       toast.success("Массовое начисление выполнено");
       utils.gamification.farmAccounts.get.invalidate();
+      utils.gamification.farmAccounts.ownerWallets.invalidate();
       utils.gamification.farmAccounts.transactions.invalidate();
     },
     onError: (e: any) => toast.error(e.message),
@@ -102,13 +103,14 @@ export default function AdminTokens() {
   });
 
   const farmData = accountsQuery.data;
+  const wallets = walletsQuery.data ?? [];
+  const totalOwnerBalances = wallets.reduce((sum: number, w: any) => sum + (w.balance ?? 0), 0);
   const overview = farmData ? {
     bank: farmData.bank?.balanceSKC ?? 0,
     revenue: farmData.revenue?.balanceSKC ?? 0,
-    totalOwnerBalances: 0,
-    ownerCount: 0,
+    totalOwnerBalances,
+    ownerCount: wallets.length,
   } : null;
-  const wallets: any[] = [];
   const transactions = txQuery.data;
   const autoSettings = autoSettingsQuery.data;
 
@@ -237,11 +239,13 @@ export default function AdminTokens() {
 
           {/* ─── Wallets Tab ─── */}
           <TabsContent value="overview" className="space-y-4">
-            {wallets.length === 0 ? (
+            {walletsQuery.isLoading ? (
+              <div className="flex justify-center py-10"><Loader2 className="h-5 w-5 animate-spin" /></div>
+            ) : wallets.length === 0 ? (
               <Card>
                 <CardContent className="p-8 text-center text-muted-foreground">
                   <Wallet className="h-10 w-10 mx-auto mb-3 opacity-40" />
-                  <p>Кошельков пока нет. Начислите токены первому владельцу.</p>
+                  <p>Кошельков пока нет. Начислите токены первому владельцу во вкладке «Начисление».</p>
                 </CardContent>
               </Card>
             ) : (
@@ -254,16 +258,21 @@ export default function AdminTokens() {
                           {(w.name || "?")[0].toUpperCase()}
                         </div>
                         <div>
-                          <p className="font-medium text-sm">{w.name || w.openId}</p>
-                          <p className="text-[10px] text-muted-foreground">{w.email || "—"}</p>
+                          <p className="font-medium text-sm">{w.name}</p>
+                          <p className="text-[10px] text-muted-foreground">{w.openId.slice(0, 12)}…</p>
                         </div>
                       </div>
                       <div className="flex items-center gap-3">
-                        <span className="font-bold text-emerald-700">{w.balance.toLocaleString()} SKC</span>
+                        <div className="text-right">
+                          <p className="font-bold text-sm">{w.balance.toLocaleString()} SKC</p>
+                          {!w.hasWallet && (
+                            <p className="text-[10px] text-amber-500">Кошелёк не создан</p>
+                          )}
+                        </div>
                         <Button
-                          variant="outline"
+                          variant="ghost"
                           size="sm"
-                          className="h-7 text-xs"
+                          className="h-8 text-xs"
                           onClick={() => {
                             setAllocateUserId(w.openId);
                             setActiveTab("allocate");
@@ -301,6 +310,9 @@ export default function AdminTokens() {
                         ))}
                       </SelectContent>
                     </Select>
+                    {wallets.length === 0 && !walletsQuery.isLoading && (
+                      <p className="text-xs text-amber-600">Нет владельцев с активными животными. Сначала назначьте владельца животному.</p>
+                    )}
                   </div>
                   <div className="space-y-2">
                     <Label className="text-xs">Сумма SKC</Label>
@@ -338,15 +350,26 @@ export default function AdminTokens() {
                     <Label className="text-xs">Причина</Label>
                     <Input value={bulkReason} onChange={e => setBulkReason(e.target.value)} placeholder="Ежемесячное начисление" />
                   </div>
+                  <div className="p-3 rounded-lg bg-muted text-sm">
+                    <p className="text-muted-foreground">
+                      Будет начислено <span className="font-bold text-foreground">{wallets.length}</span> владельцам по{" "}
+                      <span className="font-bold text-foreground">{bulkAmount} SKC</span> ={" "}
+                      <span className="font-bold text-foreground">{(wallets.length * bulkAmount).toLocaleString()} SKC</span> всего
+                    </p>
+                  </div>
                   <Button
                     className="w-full"
                     variant="outline"
                     onClick={() => {
-                      if (confirm(`Начислить ${bulkAmount} SKC всем владельцам?`)) {
+                      if (wallets.length === 0) {
+                        toast.error("Нет владельцев для начисления");
+                        return;
+                      }
+                      if (confirm(`Начислить ${bulkAmount} SKC каждому из ${wallets.length} владельцев?`)) {
                         bulkAllocate.mutate({ ownerOpenIds: wallets.map((w: any) => w.openId), amountSKC: bulkAmount, memo: bulkReason || "Массовое начисление" });
                       }
                     }}
-                    disabled={bulkAllocate.isPending || bulkAmount < 1}
+                    disabled={bulkAllocate.isPending || bulkAmount < 1 || wallets.length === 0}
                   >
                     {bulkAllocate.isPending && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
                     Начислить всем по {bulkAmount} SKC

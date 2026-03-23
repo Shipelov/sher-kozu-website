@@ -319,6 +319,57 @@ export async function getOwnerBalance(ownerOpenId: string) {
   return wallet ? { balanceSKC: wallet.balanceMinor, walletId: wallet.id } : null;
 }
 
+/** List all owner wallets with user info (for admin token allocation UI) */
+export async function listOwnerWallets() {
+  const db = await getDb();
+  if (!db) return [];
+
+  // Get all wallets joined with user names
+  const walletRows = await db.select({
+    walletId: wallets.id,
+    ownerOpenId: wallets.ownerOpenId,
+    balance: wallets.balanceMinor,
+    status: wallets.status,
+    name: users.name,
+  })
+    .from(wallets)
+    .leftJoin(users, eq(wallets.ownerOpenId, users.openId))
+    .orderBy(desc(wallets.balanceMinor));
+
+  // Also find owners with active ownerships who don't have wallets yet
+  const existingOpenIds = walletRows.map((w: typeof walletRows[number]) => w.ownerOpenId);
+  const ownersWithoutWallets = await db.selectDistinct({
+    ownerOpenId: animalOwnerships.ownerOpenId,
+    name: users.name,
+  })
+    .from(animalOwnerships)
+    .leftJoin(users, eq(animalOwnerships.ownerOpenId, users.openId))
+    .where(eq(animalOwnerships.status, "active"));
+
+  const result: Array<{ openId: string; name: string; balance: number; walletId: number; hasWallet: boolean }> = walletRows.map((w: typeof walletRows[number]) => ({
+    openId: w.ownerOpenId,
+    name: w.name || w.ownerOpenId,
+    balance: w.balance,
+    walletId: w.walletId,
+    hasWallet: true,
+  }));
+
+  // Add owners with active animals but no wallet yet
+  for (const owner of ownersWithoutWallets) {
+    if (!existingOpenIds.includes(owner.ownerOpenId)) {
+      result.push({
+        openId: owner.ownerOpenId,
+        name: owner.name || owner.ownerOpenId,
+        balance: 0,
+        walletId: 0,
+        hasWallet: false,
+      });
+    }
+  }
+
+  return result;
+}
+
 /** Get owner's transaction history */
 export async function getOwnerTransactions(ownerOpenId: string, limit = 20) {
   const db = await getDb();

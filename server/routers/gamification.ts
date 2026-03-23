@@ -43,6 +43,7 @@ import {
   getMarketplaceAnalytics,
   getHerdWellnessOverview,
   getOwnerPurchaseHistory,
+  listOwnerWallets,
 } from "../gamification";
 
 // ─── Admin guard ─────────────────────────────────────────
@@ -58,6 +59,10 @@ export const gamificationRouter = router({
   farmAccounts: router({
     get: adminProcedure.query(async () => {
       return getFarmAccounts();
+    }),
+
+    ownerWallets: adminProcedure.query(async () => {
+      return listOwnerWallets();
     }),
 
     adjustBank: adminProcedure
