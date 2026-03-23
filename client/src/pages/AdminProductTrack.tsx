@@ -1,6 +1,7 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import { getLoginUrl } from "@/const";
 import DashboardLayout from "@/components/DashboardLayout";
+import PageBreadcrumbs from "@/components/PageBreadcrumbs";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -1129,14 +1130,14 @@ export default function AdminProductTrack() {
     return (
       <DashboardLayout>
         <div className="container py-10 space-y-6">
+          <PageBreadcrumbs
+            items={[
+              { label: "Главная", href: "/" },
+              { label: "Admin", href: "/admin" },
+              { label: "Трек продукции" },
+            ]}
+          />
           <div className="rounded-[2rem] border border-border/70 bg-white/95 p-6 shadow-sm">
-            <div className="flex items-center gap-3 mb-4">
-              <Link href="/admin/animals">
-                <Button variant="outline" size="sm" className="rounded-full">
-                  <ArrowLeft className="mr-2 h-4 w-4" /> Назад к каталогу
-                </Button>
-              </Link>
-            </div>
             <h1 className="text-2xl font-semibold tracking-tight text-foreground">Трек продукции</h1>
             <p className="mt-2 text-sm text-muted-foreground">
               Выберите животное для настройки производственного профиля и продуктовых опций.
@@ -1184,19 +1185,15 @@ export default function AdminProductTrack() {
   return (
     <DashboardLayout>
       <div className="container py-10 space-y-6">
+        <PageBreadcrumbs
+          items={[
+            { label: "Главная", href: "/" },
+            { label: "Admin", href: "/admin" },
+            { label: "Трек продукции", href: "/admin/product-track" },
+            { label: animal?.name ?? `#${animalId}` },
+          ]}
+        />
         <div className="rounded-[2rem] border border-border/70 bg-white/95 p-6 shadow-sm">
-          <div className="flex items-center gap-3 mb-4">
-            <Link href="/admin/product-track">
-              <Button variant="outline" size="sm" className="rounded-full">
-                <ArrowLeft className="mr-2 h-4 w-4" /> Все животные
-              </Button>
-            </Link>
-            <Link href="/admin/animals">
-              <Button variant="outline" size="sm" className="rounded-full">
-                Каталог животных
-              </Button>
-            </Link>
-          </div>
           <div className="flex items-center gap-4">
             {animal?.coverImageUrl && (
               <div className="h-16 w-16 overflow-hidden rounded-2xl bg-stone-100">

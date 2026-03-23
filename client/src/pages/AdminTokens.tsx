@@ -1,5 +1,6 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import DashboardLayout from "@/components/DashboardLayout";
+import PageBreadcrumbs from "@/components/PageBreadcrumbs";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -151,18 +152,18 @@ export default function AdminTokens() {
   return (
     <DashboardLayout>
       <div className="container py-6 space-y-6">
+        <PageBreadcrumbs
+          items={[
+            { label: "Главная", href: "/" },
+            { label: "Admin", href: "/admin" },
+            { label: "Токены" },
+          ]}
+        />
         {/* Header */}
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Link href="/admin">
-              <Button variant="ghost" size="icon" className="rounded-full">
-                <ArrowLeft className="h-4 w-4" />
-              </Button>
-            </Link>
-            <div>
-              <h1 className="text-2xl font-bold tracking-tight">Экономика токенов</h1>
-              <p className="text-sm text-muted-foreground">Банк, Выручка, кошельки владельцев и журнал транзакций</p>
-            </div>
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight">Экономика токенов</h1>
+            <p className="text-sm text-muted-foreground">Банк, Выручка, кошельки владельцев и журнал транзакций</p>
           </div>
           <Badge variant="outline" className="gap-1.5">
             <Coins className="h-3.5 w-3.5" />

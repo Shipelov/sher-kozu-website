@@ -17,6 +17,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { getLoginUrl } from "@/const";
 import DashboardLayout from "@/components/DashboardLayout";
+import PageBreadcrumbs from "@/components/PageBreadcrumbs";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
   AlertDialog,
@@ -1898,6 +1899,14 @@ export default function AdminAnimalsPage() {
     <DashboardLayout>
       <div className="min-h-screen bg-[radial-gradient(circle_at_top,#f7efe4_0%,#f4ede4_35%,#f9f6f2_100%)] text-foreground">
         <div className="container py-10">
+          <PageBreadcrumbs
+            className="mb-5"
+            items={[
+              { label: "Главная", href: "/" },
+              { label: "Admin", href: "/admin" },
+              { label: "Животные" },
+            ]}
+          />
           <div className="grid gap-8 xl:grid-cols-[minmax(0,1.15fr)_420px] xl:items-start">
             <section className="space-y-6">
               {isForbidden ? (

@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { trpc } from "@/lib/trpc";
 import ScrollRemaining from "@/components/ScrollRemaining";
+import PageBreadcrumbs from "@/components/PageBreadcrumbs";
 import { cn } from "@/lib/utils";
 import {
   ArrowRight,
@@ -306,6 +307,13 @@ export default function AdminHub() {
     <DashboardLayout>
       <div className="min-h-screen bg-[radial-gradient(circle_at_top,#f6efe6_0%,#f7f2ea_35%,#faf7f3_100%)] text-foreground">
         <div className="container py-10 space-y-8">
+          <PageBreadcrumbs
+            className="mb-1"
+            items={[
+              { label: "Главная", href: "/" },
+              { label: "Admin" },
+            ]}
+          />
           <section className="rounded-[2rem] border border-border/70 bg-white/95 p-6 shadow-sm">
             <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
               <div className="max-w-3xl space-y-3">

@@ -1,5 +1,6 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import DashboardLayout from "@/components/DashboardLayout";
+import PageBreadcrumbs from "@/components/PageBreadcrumbs";
 import {
   getCrudToastCopy,
   getInlineActionToastCopy,
@@ -262,6 +263,13 @@ export default function AdminClub() {
       </AlertDialog>
 
       <div className="container py-6 md:py-8 space-y-6">
+        <PageBreadcrumbs
+          items={[
+            { label: "Главная", href: "/" },
+            { label: "Admin", href: "/admin" },
+            { label: "Клуб" },
+          ]}
+        />
         <AdminClubOverviewSection counts={derived.counts} user={user} isLoading={adminQuery.isLoading} />
 
         {isForbidden ? (

@@ -854,3 +854,21 @@
 - [x] Использует shadcn/ui Breadcrumb компоненты
 - [x] 22 новых теста (breadcrumbs.test.ts), обновлён pageVisuals.test.ts
 - [x] Все 1163 теста проходят
+
+## SEO: Schema.org BreadcrumbList микроразметка
+- [x] Добавить JSON-LD Schema.org BreadcrumbList в компонент PageBreadcrumbs
+- [x] Генерировать структурированные данные автоматически из items[]
+- [x] 7 тестов на корректность JSON-LD: структура, позиции, абсолютные URL, отсутствие item для последнего элемента
+
+## UX: Breadcrumbs в admin-панели
+- [x] Аудит 8 admin-страниц, определена иерархия: Главная > Admin > [Раздел]
+- [x] AdminHub: Главная > Admin
+- [x] AdminAnimals: Главная > Admin > Животные
+- [x] AdminClub: Главная > Admin > Клуб
+- [x] AdminProductTrack: Главная > Admin > Трек продукции (+ детальная: > [Имя животного])
+- [x] AdminMarketplace: Главная > Admin > Маркетплейс
+- [x] AdminTokens: Главная > Admin > Токены
+- [x] AdminUsers: Главная > Admin > Пользователи
+- [x] AdminAnalytics: Главная > Admin > Аналитика
+- [x] Старые кнопки ArrowLeft «Назад» заменены на единообразные breadcrumbs
+- [x] 44 теста (breadcrumbs.test.ts), все 1183 проходят
