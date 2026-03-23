@@ -434,6 +434,9 @@ export async function ensureUserRecord(user: InsertUser) {
   const saved = await upsertUser(user);
   if (saved) {
     await ensureOwnerExperienceSeed(saved.openId);
+    // Auto-create wallet for every registered user
+    const { ensureWallet } = await import("./gamification");
+    await ensureWallet(saved.openId);
   }
   return saved;
 }
@@ -446,6 +449,9 @@ export async function getUserByOpenId(openId: string) {
   const user = records[0] ?? null;
   if (user) {
     await ensureOwnerExperienceSeed(user.openId);
+    // Auto-create wallet on login if missing
+    const { ensureWallet } = await import("./gamification");
+    await ensureWallet(user.openId);
   }
   return user;
 }

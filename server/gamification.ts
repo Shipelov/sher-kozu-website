@@ -79,6 +79,57 @@ function getOwnerTitle(score: number): string {
   return "Новичок";
 }
 
+// ─── Wallet Auto-Creation ────────────────────────────────
+
+/**
+ * Ensure a wallet exists for the given user.
+ * Called automatically on user registration / login.
+ * Idempotent — safe to call multiple times.
+ */
+export async function ensureWallet(ownerOpenId: string): Promise<void> {
+  const db = await getDb();
+  if (!db || !ownerOpenId) return;
+
+  const [existing] = await db.select({ id: wallets.id }).from(wallets).where(eq(wallets.ownerOpenId, ownerOpenId)).limit(1);
+  if (existing) return; // wallet already exists
+
+  await db.insert(wallets).values({
+    ownerOpenId,
+    familyId: 0,
+    status: "active",
+    balanceMinor: 0,
+    currencyCode: "SKC",
+  });
+}
+
+/**
+ * Backfill: create wallets for all registered users who don't have one yet.
+ * Safe to run multiple times.
+ */
+export async function backfillWallets(): Promise<number> {
+  const db = await getDb();
+  if (!db) return 0;
+
+  const allUsers = await db.select({ openId: users.openId }).from(users);
+  const existingWallets = await db.select({ ownerOpenId: wallets.ownerOpenId }).from(wallets);
+  const existingSet = new Set(existingWallets.map((w: { ownerOpenId: string }) => w.ownerOpenId));
+
+  let created = 0;
+  for (const user of allUsers) {
+    if (!existingSet.has(user.openId)) {
+      await db.insert(wallets).values({
+        ownerOpenId: user.openId,
+        familyId: 0,
+        status: "active",
+        balanceMinor: 0,
+        currencyCode: "SKC",
+      });
+      created++;
+    }
+  }
+  return created;
+}
+
 // ─── Farm Accounts ───────────────────────────────────────
 
 /** Ensure Bank and Revenue accounts exist. Called on first admin access. */
@@ -319,12 +370,15 @@ export async function getOwnerBalance(ownerOpenId: string) {
   return wallet ? { balanceSKC: wallet.balanceMinor, walletId: wallet.id } : null;
 }
 
-/** List all owner wallets with user info (for admin token allocation UI) */
+/**
+ * List all owner wallets with user info (for admin token allocation UI).
+ * Since wallets are auto-created for every user, this simply joins wallets + users.
+ */
 export async function listOwnerWallets() {
   const db = await getDb();
   if (!db) return [];
 
-  // Get all wallets joined with user names
+  // All users should have wallets (auto-created on registration, backfilled on admin access)
   const walletRows = await db.select({
     walletId: wallets.id,
     ownerOpenId: wallets.ownerOpenId,
@@ -336,17 +390,7 @@ export async function listOwnerWallets() {
     .leftJoin(users, eq(wallets.ownerOpenId, users.openId))
     .orderBy(desc(wallets.balanceMinor));
 
-  // Also find all registered users who don't have wallets yet
-  // (includes owners with active ownerships AND any other registered users)
-  const existingOpenIds = walletRows.map((w: typeof walletRows[number]) => w.ownerOpenId);
-  const allUsers = await db.select({
-    openId: users.openId,
-    name: users.name,
-  })
-    .from(users)
-    .orderBy(asc(users.name));
-
-  // Also check which users have active ownerships
+  // Check which users have active ownerships
   const ownersWithActiveAnimals = await db.selectDistinct({
     ownerOpenId: animalOwnerships.ownerOpenId,
   })
@@ -354,30 +398,13 @@ export async function listOwnerWallets() {
     .where(eq(animalOwnerships.status, "active"));
   const activeOwnerIds = new Set(ownersWithActiveAnimals.map((o: { ownerOpenId: string }) => o.ownerOpenId));
 
-  const result: Array<{ openId: string; name: string; balance: number; walletId: number; hasWallet: boolean; hasActiveOwnership: boolean }> = walletRows.map((w: typeof walletRows[number]) => ({
+  return walletRows.map((w: typeof walletRows[number]) => ({
     openId: w.ownerOpenId,
     name: w.name || w.ownerOpenId,
     balance: w.balance,
     walletId: w.walletId,
-    hasWallet: true,
     hasActiveOwnership: activeOwnerIds.has(w.ownerOpenId),
   }));
-
-  // Add all registered users who don't have a wallet yet
-  for (const user of allUsers) {
-    if (!existingOpenIds.includes(user.openId)) {
-      result.push({
-        openId: user.openId,
-        name: user.name || user.openId,
-        balance: 0,
-        walletId: 0,
-        hasWallet: false,
-        hasActiveOwnership: activeOwnerIds.has(user.openId),
-      });
-    }
-  }
-
-  return result;
 }
 
 /** Get owner's transaction history */

@@ -44,6 +44,7 @@ import {
   getHerdWellnessOverview,
   getOwnerPurchaseHistory,
   listOwnerWallets,
+  backfillWallets,
 } from "../gamification";
 
 // ─── Admin guard ─────────────────────────────────────────
@@ -62,7 +63,14 @@ export const gamificationRouter = router({
     }),
 
     ownerWallets: adminProcedure.query(async () => {
+      // Auto-backfill wallets for any users missing them
+      await backfillWallets();
       return listOwnerWallets();
+    }),
+
+    backfillWallets: adminProcedure.mutation(async () => {
+      const created = await backfillWallets();
+      return { created };
     }),
 
     adjustBank: adminProcedure

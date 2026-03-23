@@ -248,6 +248,10 @@ export async function registerLocalUser(data: {
     onboardingCompleted: false,
   });
 
+  // Auto-create wallet for the new user
+  const { ensureWallet } = await import("./gamification");
+  await ensureWallet(openId);
+
   return { openId };
 }
 

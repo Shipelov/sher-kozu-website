@@ -129,22 +129,59 @@ describe("Bank Balance Adjustment", () => {
 });
 
 // ═══════════════════════════════════════════════════════════
-// 0b. OWNER WALLETS LIST (Token Allocation Fix)
+// 0b. AUTO-WALLET CREATION & OWNER WALLETS LIST
 // ═══════════════════════════════════════════════════════════
 
-describe("Owner Wallets List (Token Allocation Fix)", () => {
-  describe("Server: listOwnerWallets function", () => {
+const LOCAL_AUTH_SRC = fs.readFileSync(path.resolve(__dirname, "localAuth.ts"), "utf-8");
+const DB_SRC = fs.readFileSync(path.resolve(__dirname, "db.ts"), "utf-8");
+
+describe("Auto-Wallet Creation & Owner Wallets List", () => {
+  describe("Server: ensureWallet function", () => {
+    it("exports ensureWallet from gamification.ts", () => {
+      expect(GAMIFICATION_SRC).toContain("export async function ensureWallet");
+    });
+
+    it("is idempotent — checks for existing wallet before creating", () => {
+      expect(GAMIFICATION_SRC).toContain("if (existing) return");
+    });
+
+    it("creates wallet with status active and 0 balance", () => {
+      expect(GAMIFICATION_SRC).toContain('status: "active"');
+      expect(GAMIFICATION_SRC).toContain("balanceMinor: 0");
+    });
+  });
+
+  describe("Server: backfillWallets function", () => {
+    it("exports backfillWallets from gamification.ts", () => {
+      expect(GAMIFICATION_SRC).toContain("export async function backfillWallets");
+    });
+
+    it("creates wallets for users who don't have one", () => {
+      expect(GAMIFICATION_SRC).toContain("existingSet.has(user.openId)");
+    });
+  });
+
+  describe("Auto-wallet on user registration", () => {
+    it("calls ensureWallet in ensureUserRecord (OAuth flow)", () => {
+      expect(DB_SRC).toContain("ensureWallet(saved.openId)");
+    });
+
+    it("calls ensureWallet in getUserByOpenId (login flow)", () => {
+      expect(DB_SRC).toContain("ensureWallet(user.openId)");
+    });
+
+    it("calls ensureWallet in registerLocalUser (local auth)", () => {
+      expect(LOCAL_AUTH_SRC).toContain("ensureWallet(openId)");
+    });
+  });
+
+  describe("Server: listOwnerWallets (simplified)", () => {
     it("exports listOwnerWallets from gamification.ts", () => {
       expect(GAMIFICATION_SRC).toContain("export async function listOwnerWallets");
     });
 
     it("joins wallets with users table for names", () => {
       expect(GAMIFICATION_SRC).toContain("leftJoin(users, eq(wallets.ownerOpenId, users.openId))");
-    });
-
-    it("also finds all registered users who don't have wallets yet", () => {
-      expect(GAMIFICATION_SRC).toContain("allUsers");
-      expect(GAMIFICATION_SRC).toContain(".from(users)");
     });
 
     it("checks which users have active ownerships", () => {
@@ -155,30 +192,40 @@ describe("Owner Wallets List (Token Allocation Fix)", () => {
 
     it("returns hasActiveOwnership field", () => {
       expect(GAMIFICATION_SRC).toContain("hasActiveOwnership: activeOwnerIds.has(w.ownerOpenId)");
-      expect(GAMIFICATION_SRC).toContain("hasActiveOwnership: activeOwnerIds.has(user.openId)");
     });
 
-    it("returns openId, name, balance, walletId, hasWallet fields", () => {
+    it("returns openId, name, balance, walletId fields", () => {
       expect(GAMIFICATION_SRC).toContain("openId: w.ownerOpenId");
       expect(GAMIFICATION_SRC).toContain("name: w.name || w.ownerOpenId");
       expect(GAMIFICATION_SRC).toContain("balance: w.balance");
       expect(GAMIFICATION_SRC).toContain("walletId: w.walletId");
-      expect(GAMIFICATION_SRC).toContain("hasWallet: true");
-      expect(GAMIFICATION_SRC).toContain("hasWallet: false");
+    });
+
+    it("no longer has hasWallet field (all users have wallets)", () => {
+      // The simplified version doesn't need hasWallet since backfill guarantees wallets
+      expect(GAMIFICATION_SRC).not.toContain("hasWallet: false");
     });
   });
 
-  describe("Router: ownerWallets procedure", () => {
+  describe("Router: ownerWallets with auto-backfill", () => {
     it("has ownerWallets procedure in farmAccounts router", () => {
       expect(ROUTER_SRC).toContain("ownerWallets: adminProcedure");
     });
 
-    it("imports listOwnerWallets from gamification", () => {
-      expect(ROUTER_SRC).toContain("listOwnerWallets");
+    it("auto-backfills wallets before listing", () => {
+      expect(ROUTER_SRC).toContain("await backfillWallets()");
+    });
+
+    it("imports backfillWallets from gamification", () => {
+      expect(ROUTER_SRC).toContain("backfillWallets");
+    });
+
+    it("has a separate backfillWallets mutation endpoint", () => {
+      expect(ROUTER_SRC).toContain("backfillWallets: adminProcedure");
     });
   });
 
-  describe("UI: AdminTokens uses real wallet data", () => {
+  describe("UI: AdminTokens (simplified)", () => {
     it("queries ownerWallets from server", () => {
       expect(ADMIN_TOKENS_SRC).toContain("gamification.farmAccounts.ownerWallets.useQuery");
     });
@@ -187,29 +234,17 @@ describe("Owner Wallets List (Token Allocation Fix)", () => {
       expect(ADMIN_TOKENS_SRC).not.toContain("const wallets: any[] = []");
     });
 
-    it("populates select dropdown with wallet data", () => {
-      expect(ADMIN_TOKENS_SRC).toContain("wallets.map");
-      expect(ADMIN_TOKENS_SRC).toContain("SelectItem");
+    it("no longer shows 'wallet not created' indicator", () => {
+      expect(ADMIN_TOKENS_SRC).not.toContain("Кошелёк не создан");
     });
 
-    it("sends ownerOpenIds from wallets data for bulk grant", () => {
-      expect(ADMIN_TOKENS_SRC).toContain("wallets.map((w: any) => w.openId)");
+    it("shows 'Owner' badge for users with active ownerships", () => {
+      expect(ADMIN_TOKENS_SRC).toContain("Владелец");
+      expect(ADMIN_TOKENS_SRC).toContain("hasActiveOwnership");
     });
 
-    it("invalidates ownerWallets on successful allocation", () => {
-      expect(ADMIN_TOKENS_SRC).toContain("utils.gamification.farmAccounts.ownerWallets.invalidate");
-    });
-
-    it("shows wallet count in overview", () => {
-      expect(ADMIN_TOKENS_SRC).toContain("кошельков");
-    });
-
-    it("shows wallets tab with owner list", () => {
-      expect(ADMIN_TOKENS_SRC).toContain("Кошельки");
-    });
-
-    it("shows hasWallet false indicator for owners without wallets", () => {
-      expect(ADMIN_TOKENS_SRC).toContain("Кошелёк не создан");
+    it("shows auto-creation message in empty state", () => {
+      expect(ADMIN_TOKENS_SRC).toContain("создаются автоматически при регистрации");
     });
   });
 });

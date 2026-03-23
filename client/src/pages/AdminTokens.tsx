@@ -245,7 +245,7 @@ export default function AdminTokens() {
               <Card>
                 <CardContent className="p-8 text-center text-muted-foreground">
                   <Wallet className="h-10 w-10 mx-auto mb-3 opacity-40" />
-                  <p>Кошельков пока нет. Начислите токены первому владельцу во вкладке «Начисление».</p>
+                  <p>Пользователей пока нет. Кошельки создаются автоматически при регистрации.</p>
                 </CardContent>
               </Card>
             ) : (
@@ -259,15 +259,17 @@ export default function AdminTokens() {
                         </div>
                         <div>
                           <p className="font-medium text-sm">{w.name}</p>
-                          <p className="text-[10px] text-muted-foreground">{w.openId.slice(0, 12)}…</p>
+                          <div className="flex items-center gap-1.5">
+                            <p className="text-[10px] text-muted-foreground">{w.openId.slice(0, 12)}…</p>
+                            {w.hasActiveOwnership && (
+                              <span className="text-[9px] bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded-full">Владелец</span>
+                            )}
+                          </div>
                         </div>
                       </div>
                       <div className="flex items-center gap-3">
                         <div className="text-right">
                           <p className="font-bold text-sm">{w.balance.toLocaleString()} SKC</p>
-                          {!w.hasWallet && (
-                            <p className="text-[10px] text-amber-500">Кошелёк не создан</p>
-                          )}
                         </div>
                         <Button
                           variant="ghost"
@@ -311,7 +313,7 @@ export default function AdminTokens() {
                       </SelectContent>
                     </Select>
                     {wallets.length === 0 && !walletsQuery.isLoading && (
-                      <p className="text-xs text-amber-600">Нет владельцев с активными животными. Сначала назначьте владельца животному.</p>
+                      <p className="text-xs text-amber-600">Нет зарегистрированных пользователей. Кошельки создаются автоматически при регистрации.</p>
                     )}
                   </div>
                   <div className="space-y-2">
