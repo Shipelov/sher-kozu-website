@@ -649,3 +649,11 @@
 - [x] Эндпоинты wallet.transactions и wallet.purchaseHistory уже работают
 - [x] Создан UI виджет с табами «Все операции» / «Покупки» в Dashboard.tsx
 - [x] Тесты и чекпоинт (938 тестов, все проходят)
+
+## Блокировка/разблокировка счёта + индикатор в управлении пользователями
+- [x] Изучить текущую структуру wallets (статус frozen/active/archived) и AdminUsers
+- [x] Добавить freezeWallet, unfreezeWallet, getWalletStatus + tRPC эндпоинты
+- [x] Добавить колонку «Счёт» в таблицу пользователей (LEFT JOIN wallets в listUsersAdmin)
+- [x] Кнопки блокировки/разблокировки с подтверждением, защита админов от блокировки
+- [x] Защита: grantTokensToOwner и purchaseMarketplaceItem отклоняют замороженные кошельки
+- [x] Тесты и чекпоинт (962 теста, 24 новых)

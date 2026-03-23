@@ -45,6 +45,9 @@ import {
   getOwnerPurchaseHistory,
   listOwnerWallets,
   backfillWallets,
+  freezeWallet,
+  unfreezeWallet,
+  getWalletStatus,
 } from "../gamification";
 
 // ─── Admin guard ─────────────────────────────────────────
@@ -119,6 +122,30 @@ export const gamificationRouter = router({
       }).optional())
       .query(async ({ input }) => {
         return getFarmTransactions(input?.limit ?? 50, input?.offset ?? 0);
+      }),
+
+    freezeWallet: adminProcedure
+      .input(z.object({
+        ownerOpenId: z.string().min(1),
+        memo: z.string().max(500).default("Блокировка счёта"),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        return freezeWallet(input.ownerOpenId, input.memo, ctx.user.openId);
+      }),
+
+    unfreezeWallet: adminProcedure
+      .input(z.object({
+        ownerOpenId: z.string().min(1),
+        memo: z.string().max(500).default("Разблокировка счёта"),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        return unfreezeWallet(input.ownerOpenId, input.memo, ctx.user.openId);
+      }),
+
+    walletStatus: adminProcedure
+      .input(z.object({ ownerOpenId: z.string().min(1) }))
+      .query(async ({ input }) => {
+        return getWalletStatus(input.ownerOpenId);
       }),
 
     autoAllocation: router({

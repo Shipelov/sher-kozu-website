@@ -217,6 +217,9 @@ export async function grantTokensToOwner(
 
   // Find or create owner wallet
   let [wallet] = await db.select().from(wallets).where(eq(wallets.ownerOpenId, ownerOpenId)).limit(1);
+  if (wallet && wallet.status === "frozen") {
+    throw new Error("Счёт пользователя заблокирован. Разблокируйте счёт перед начислением.");
+  }
   if (!wallet) {
     // Auto-create wallet for this owner
     const [family] = await db.select().from(animalOwnerships).where(eq(animalOwnerships.ownerOpenId, ownerOpenId)).limit(1);
@@ -616,9 +619,10 @@ export async function purchaseMarketplaceItem(
   const limitError = await checkPurchaseLimits(ownerOpenId, itemId, item);
   if (limitError) throw new Error(limitError);
 
-  // 7. Check balance
+  // 7. Check balance & wallet status
   const [wallet] = await db.select().from(wallets).where(eq(wallets.ownerOpenId, ownerOpenId)).limit(1);
   if (!wallet) throw new Error("Кошелёк не найден");
+  if (wallet.status === "frozen") throw new Error("Ваш счёт заблокирован. Обратитесь к администратору.");
   if (wallet.balanceMinor < item.priceSKC) throw new Error("Недостаточно SKC на балансе");
 
   // 8. Deduct from wallet
@@ -1266,4 +1270,79 @@ export async function getOwnerPurchaseHistory(ownerOpenId: string, limit = 20) {
     });
   }
   return result;
+}
+
+
+/**
+ * Freeze (block) a user's wallet. Prevents spending and receiving tokens.
+ */
+export async function freezeWallet(ownerOpenId: string, memo: string, adminOpenId: string) {
+  const db = await getDb();
+  if (!db) throw new Error("DB unavailable");
+  const [wallet] = await db
+    .select()
+    .from(wallets)
+    .where(eq(wallets.ownerOpenId, ownerOpenId))
+    .limit(1);
+  if (!wallet) throw new Error("Кошелёк не найден");
+  if (wallet.status === "frozen") throw new Error("Кошелёк уже заблокирован");
+  await db
+    .update(wallets)
+    .set({ status: "frozen" })
+    .where(eq(wallets.id, wallet.id));
+  // Log the action as a transaction memo
+  await db.insert(walletTransactions).values({
+    ownerOpenId,
+    walletId: wallet.id,
+    amountMinor: 0,
+    direction: "debit",
+    transactionType: "admin_adjustment",
+    memo: `[БЛОКИРОВКА] ${memo}`,
+    adminOpenId,
+  });
+  return { success: true, status: "frozen" as const };
+}
+
+/**
+ * Unfreeze (unblock) a user's wallet. Restores normal operations.
+ */
+export async function unfreezeWallet(ownerOpenId: string, memo: string, adminOpenId: string) {
+  const db = await getDb();
+  if (!db) throw new Error("DB unavailable");
+  const [wallet] = await db
+    .select()
+    .from(wallets)
+    .where(eq(wallets.ownerOpenId, ownerOpenId))
+    .limit(1);
+  if (!wallet) throw new Error("Кошелёк не найден");
+  if (wallet.status === "active") throw new Error("Кошелёк уже активен");
+  await db
+    .update(wallets)
+    .set({ status: "active" })
+    .where(eq(wallets.id, wallet.id));
+  // Log the action
+  await db.insert(walletTransactions).values({
+    ownerOpenId,
+    walletId: wallet.id,
+    amountMinor: 0,
+    direction: "credit",
+    transactionType: "admin_adjustment",
+    memo: `[РАЗБЛОКИРОВКА] ${memo}`,
+    adminOpenId,
+  });
+  return { success: true, status: "active" as const };
+}
+
+/**
+ * Get wallet status for a specific user.
+ */
+export async function getWalletStatus(ownerOpenId: string) {
+  const db = await getDb();
+  if (!db) return null;
+  const [wallet] = await db
+    .select({ status: wallets.status, balanceMinor: wallets.balanceMinor })
+    .from(wallets)
+    .where(eq(wallets.ownerOpenId, ownerOpenId))
+    .limit(1);
+  return wallet ?? null;
 }

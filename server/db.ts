@@ -3142,8 +3142,11 @@ export async function listUsersAdmin(params: ListUsersParams) {
       createdAt: users.createdAt,
       updatedAt: users.updatedAt,
       lastSignedIn: users.lastSignedIn,
+      walletStatus: wallets.status,
+      walletBalance: wallets.balanceMinor,
     })
     .from(users)
+    .leftJoin(wallets, eq(users.openId, wallets.ownerOpenId))
     .where(whereClause)
     .orderBy(orderFn(sortColumn))
     .limit(params.pageSize)

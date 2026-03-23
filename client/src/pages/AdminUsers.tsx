@@ -43,6 +43,9 @@ import {
   AlertTriangle,
   Users,
   X,
+  Wallet,
+  Lock,
+  Unlock,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "wouter";
@@ -233,6 +236,24 @@ export default function AdminUsers() {
         toast.success(`Очищено ${data.cleaned} пользователей. ${data.deletedOwnerships.length} долей возвращены ферме.`);
       }
       utils.adminTrash.list.invalidate();
+    },
+    onError: (err) => toast.error(`Ошибка: ${err.message}`),
+  });
+
+  // Freeze wallet mutation
+  const freezeWalletMut = trpc.gamification.farmAccounts.freezeWallet.useMutation({
+    onSuccess: () => {
+      toast.success("Счёт заблокирован");
+      utils.adminAnalytics.listUsers.invalidate();
+    },
+    onError: (err) => toast.error(`Ошибка: ${err.message}`),
+  });
+
+  // Unfreeze wallet mutation
+  const unfreezeWalletMut = trpc.gamification.farmAccounts.unfreezeWallet.useMutation({
+    onSuccess: () => {
+      toast.success("Счёт разблокирован");
+      utils.adminAnalytics.listUsers.invalidate();
     },
     onError: (err) => toast.error(`Ошибка: ${err.message}`),
   });
@@ -729,6 +750,7 @@ export default function AdminUsers() {
                     <TableHead>Метод</TableHead>
                     <TableHead>Bitrix</TableHead>
                     <TableHead>Пароль</TableHead>
+                    <TableHead>Счёт</TableHead>
                     <TableHead>
                       <button
                         onClick={() => handleSort("createdAt")}
@@ -795,6 +817,63 @@ export default function AdminUsers() {
                       <TableCell onClick={(e) => e.stopPropagation()}>
                         {u.plainPassword ? (
                           <PasswordCell password={u.plainPassword} />
+                        ) : (
+                          <span className="text-xs text-muted-foreground">—</span>
+                        )}
+                      </TableCell>
+                      {/* Wallet status indicator */}
+                      <TableCell onClick={(e) => e.stopPropagation()}>
+                        {u.walletStatus ? (
+                          <div className="flex items-center gap-1">
+                            <Badge
+                              variant="outline"
+                              className={`text-[10px] rounded-full ${
+                                u.walletStatus === "active"
+                                  ? "border-green-300 text-green-700 bg-green-50"
+                                  : u.walletStatus === "frozen"
+                                    ? "border-red-300 text-red-700 bg-red-50"
+                                    : "border-gray-300 text-gray-500 bg-gray-50"
+                              }`}
+                            >
+                              {u.walletStatus === "active" ? (
+                                <><Wallet className="h-3 w-3 mr-0.5" />{((u.walletBalance ?? 0) / 100).toLocaleString()} SKC</>
+                              ) : u.walletStatus === "frozen" ? (
+                                <><Lock className="h-3 w-3 mr-0.5" />Заблок.</>
+                              ) : (
+                                <>Архив</>
+                              )}
+                            </Badge>
+                            {u.walletStatus === "active" && u.role !== "admin" && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6 rounded-full text-muted-foreground hover:text-red-500"
+                                title="Заблокировать счёт"
+                                onClick={() => {
+                                  if (confirm(`Заблокировать счёт ${u.name || u.email}? Пользователь не сможет тратить и получать токены.`)) {
+                                    freezeWalletMut.mutate({ ownerOpenId: u.openId });
+                                  }
+                                }}
+                                disabled={freezeWalletMut.isPending}
+                              >
+                                <Lock className="h-3 w-3" />
+                              </Button>
+                            )}
+                            {u.walletStatus === "frozen" && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6 rounded-full text-muted-foreground hover:text-green-600"
+                                title="Разблокировать счёт"
+                                onClick={() => {
+                                  unfreezeWalletMut.mutate({ ownerOpenId: u.openId });
+                                }}
+                                disabled={unfreezeWalletMut.isPending}
+                              >
+                                <Unlock className="h-3 w-3" />
+                              </Button>
+                            )}
+                          </div>
                         ) : (
                           <span className="text-xs text-muted-foreground">—</span>
                         )}

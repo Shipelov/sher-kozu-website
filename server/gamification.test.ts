@@ -746,3 +746,159 @@ describe("App Routing: gamification pages", () => {
     expect(APP_SRC).toContain("AdminAnalytics");
   });
 });
+
+
+// ═══════════════════════════════════════════════════════════
+// 11. Wallet Freeze / Unfreeze
+// ═══════════════════════════════════════════════════════════
+
+const ADMIN_USERS_SRC = fs.readFileSync(path.resolve(__dirname, "../client/src/pages/AdminUsers.tsx"), "utf-8");
+
+describe("Wallet Freeze/Unfreeze — Server Logic", () => {
+  it("exports freezeWallet function", () => {
+    expect(GAMIFICATION_SRC).toContain("export async function freezeWallet");
+  });
+
+  it("exports unfreezeWallet function", () => {
+    expect(GAMIFICATION_SRC).toContain("export async function unfreezeWallet");
+  });
+
+  it("exports getWalletStatus function", () => {
+    expect(GAMIFICATION_SRC).toContain("export async function getWalletStatus");
+  });
+
+  it("freezeWallet checks if wallet is already frozen", () => {
+    const fnStart = GAMIFICATION_SRC.indexOf("export async function freezeWallet");
+    const fnEnd = GAMIFICATION_SRC.indexOf("export async function unfreezeWallet");
+    const fnBody = GAMIFICATION_SRC.slice(fnStart, fnEnd);
+    expect(fnBody).toContain('wallet.status === "frozen"');
+    expect(fnBody).toContain("уже заблокирован");
+  });
+
+  it("unfreezeWallet checks if wallet is already active", () => {
+    const fnStart = GAMIFICATION_SRC.indexOf("export async function unfreezeWallet");
+    const fnEnd = GAMIFICATION_SRC.indexOf("export async function getWalletStatus");
+    const fnBody = GAMIFICATION_SRC.slice(fnStart, fnEnd);
+    expect(fnBody).toContain('wallet.status === "active"');
+    expect(fnBody).toContain("уже активен");
+  });
+
+  it("freezeWallet logs a transaction with БЛОКИРОВКА memo", () => {
+    const fnStart = GAMIFICATION_SRC.indexOf("export async function freezeWallet");
+    const fnEnd = GAMIFICATION_SRC.indexOf("export async function unfreezeWallet");
+    const fnBody = GAMIFICATION_SRC.slice(fnStart, fnEnd);
+    expect(fnBody).toContain("[БЛОКИРОВКА]");
+    expect(fnBody).toContain("walletTransactions");
+  });
+
+  it("unfreezeWallet logs a transaction with РАЗБЛОКИРОВКА memo", () => {
+    const fnStart = GAMIFICATION_SRC.indexOf("export async function unfreezeWallet");
+    const fnEnd = GAMIFICATION_SRC.indexOf("export async function getWalletStatus");
+    const fnBody = GAMIFICATION_SRC.slice(fnStart, fnEnd);
+    expect(fnBody).toContain("[РАЗБЛОКИРОВКА]");
+    expect(fnBody).toContain("walletTransactions");
+  });
+
+  it("grantTokensToOwner rejects frozen wallets", () => {
+    const fnStart = GAMIFICATION_SRC.indexOf("export async function grantTokensToOwner");
+    const fnEnd = GAMIFICATION_SRC.indexOf("export async function bulkGrantTokens");
+    const fnBody = GAMIFICATION_SRC.slice(fnStart, fnEnd);
+    expect(fnBody).toContain('wallet.status === "frozen"');
+    expect(fnBody).toContain("заблокирован");
+  });
+
+  it("purchaseMarketplaceItem rejects frozen wallets", () => {
+    const fnStart = GAMIFICATION_SRC.indexOf("export async function purchaseMarketplaceItem");
+    const fnBody = GAMIFICATION_SRC.slice(fnStart, fnStart + 2000);
+    expect(fnBody).toContain('wallet.status === "frozen"');
+    expect(fnBody).toContain("заблокирован");
+  });
+});
+
+describe("Wallet Freeze/Unfreeze — tRPC Router", () => {
+  it("has freezeWallet admin procedure", () => {
+    expect(ROUTER_SRC).toContain("freezeWallet: adminProcedure");
+  });
+
+  it("has unfreezeWallet admin procedure", () => {
+    expect(ROUTER_SRC).toContain("unfreezeWallet: adminProcedure");
+  });
+
+  it("has walletStatus admin procedure", () => {
+    expect(ROUTER_SRC).toContain("walletStatus: adminProcedure");
+  });
+
+  it("freezeWallet accepts ownerOpenId and memo", () => {
+    const idx = ROUTER_SRC.indexOf("freezeWallet: adminProcedure");
+    const block = ROUTER_SRC.slice(idx, idx + 300);
+    expect(block).toContain("ownerOpenId");
+    expect(block).toContain("memo");
+  });
+
+  it("unfreezeWallet accepts ownerOpenId and memo", () => {
+    const idx = ROUTER_SRC.indexOf("unfreezeWallet: adminProcedure");
+    const block = ROUTER_SRC.slice(idx, idx + 300);
+    expect(block).toContain("ownerOpenId");
+    expect(block).toContain("memo");
+  });
+
+  it("imports freezeWallet and unfreezeWallet from gamification", () => {
+    expect(ROUTER_SRC).toContain("freezeWallet,");
+    expect(ROUTER_SRC).toContain("unfreezeWallet,");
+    expect(ROUTER_SRC).toContain("getWalletStatus,");
+  });
+});
+
+describe("Wallet Status in Admin Users — DB", () => {
+  it("listUsersAdmin LEFT JOINs with wallets table", () => {
+    const fnStart = DB_SRC.indexOf("export async function listUsersAdmin");
+    const fnEnd = DB_SRC.indexOf("export async function exportUsersAdmin");
+    const fnBody = DB_SRC.slice(fnStart, fnEnd);
+    expect(fnBody).toContain("leftJoin(wallets");
+    expect(fnBody).toContain("walletStatus");
+    expect(fnBody).toContain("walletBalance");
+  });
+});
+
+describe("Wallet Status in Admin Users — UI", () => {
+  it("shows wallet status column in the users table", () => {
+    expect(ADMIN_USERS_SRC).toContain("Счёт");
+  });
+
+  it("displays active wallet with balance", () => {
+    expect(ADMIN_USERS_SRC).toContain("walletStatus");
+    expect(ADMIN_USERS_SRC).toContain("walletBalance");
+    expect(ADMIN_USERS_SRC).toContain("SKC");
+  });
+
+  it("shows frozen badge for blocked wallets", () => {
+    expect(ADMIN_USERS_SRC).toContain("frozen");
+    expect(ADMIN_USERS_SRC).toContain("Заблок.");
+  });
+
+  it("has freeze wallet button for active wallets", () => {
+    expect(ADMIN_USERS_SRC).toContain("freezeWalletMut");
+    expect(ADMIN_USERS_SRC).toContain("Заблокировать счёт");
+  });
+
+  it("has unfreeze wallet button for frozen wallets", () => {
+    expect(ADMIN_USERS_SRC).toContain("unfreezeWalletMut");
+    expect(ADMIN_USERS_SRC).toContain("Разблокировать счёт");
+  });
+
+  it("imports Lock and Unlock icons", () => {
+    expect(ADMIN_USERS_SRC).toContain("Lock");
+    expect(ADMIN_USERS_SRC).toContain("Unlock");
+    expect(ADMIN_USERS_SRC).toContain("Wallet");
+  });
+
+  it("freeze button shows confirmation dialog", () => {
+    expect(ADMIN_USERS_SRC).toContain("confirm(");
+    expect(ADMIN_USERS_SRC).toContain("не сможет тратить и получать токены");
+  });
+
+  it("freeze mutation invalidates user list on success", () => {
+    expect(ADMIN_USERS_SRC).toContain("farmAccounts.freezeWallet.useMutation");
+    expect(ADMIN_USERS_SRC).toContain("farmAccounts.unfreezeWallet.useMutation");
+  });
+});
