@@ -1,0 +1,1 @@
+-- primaryAnimalId column already exists in DB (applied in previous session)

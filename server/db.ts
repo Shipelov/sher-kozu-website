@@ -702,7 +702,13 @@ export async function getOwnerDashboardData(ownerOpenId: string) {
     return right.length - left.length;
   });
 
-  const primaryOwnershipGroup = sortedGroups[0] ?? null;
+  // Respect user's explicit primary animal preference
+  const userRow = await db.select({ primaryAnimalId: users.primaryAnimalId }).from(users).where(eq(users.openId, ownerOpenId)).limit(1);
+  const preferredAnimalId = userRow[0]?.primaryAnimalId ?? null;
+  let primaryOwnershipGroup = sortedGroups[0] ?? null;
+  if (preferredAnimalId && groupedByAnimal.has(preferredAnimalId)) {
+    primaryOwnershipGroup = groupedByAnimal.get(preferredAnimalId)!;
+  }
   const primaryOwnership = primaryOwnershipGroup?.[0] ?? null;
 
   // Build allOwnerships — one entry per animal the owner has booked/paid
@@ -869,7 +875,11 @@ export async function getOwnerDashboardData(ownerOpenId: string) {
     },
     quickLinks,
     nextSteps,
-    allOwnerships,
+    allOwnerships: allOwnerships.map((o) => ({
+      ...o,
+      isPrimary: primaryOwnership ? o.animalId === primaryOwnership.animalId : false,
+    })),
+    primaryAnimalId: preferredAnimalId,
   } as const;
 }
 
@@ -3559,4 +3569,39 @@ export async function getUserDetailsAdmin(userOpenId: string) {
     wallets: walletsRaw,
     walletTransactions: walletTxRaw,
   };
+}
+
+
+/**
+ * Set the user's preferred primary animal for the dashboard.
+ * Pass null to reset to auto-select (default sorting).
+ */
+export async function setPrimaryAnimal(ownerOpenId: string, animalId: number | null) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  // If setting a specific animal, verify the user actually owns a share
+  if (animalId !== null) {
+    const ownershipCheck = await db
+      .select({ id: animalOwnerships.id })
+      .from(animalOwnerships)
+      .where(
+        and(
+          eq(animalOwnerships.ownerOpenId, ownerOpenId),
+          eq(animalOwnerships.animalId, animalId),
+          or(eq(animalOwnerships.status, "active"), eq(animalOwnerships.status, "pending_payment"))
+        )
+      )
+      .limit(1);
+    if (!ownershipCheck.length) {
+      throw new Error("У вас нет доли в этом животном");
+    }
+  }
+
+  await db
+    .update(users)
+    .set({ primaryAnimalId: animalId })
+    .where(eq(users.openId, ownerOpenId));
+
+  return { success: true, primaryAnimalId: animalId };
 }

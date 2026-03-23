@@ -27,7 +27,10 @@ import {
   Truck,
   Users,
   Waves,
+  Crown,
+  Loader2,
 } from "lucide-react";
+import { toast } from "sonner";
 
 const CDN = {
   hero: "https://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/sherkozu_family_farm_hero-UF9QBY2UhWL9gdEpLXiEFS.webp",
@@ -192,6 +195,26 @@ function DashboardError({ onRetry }: { onRetry: () => void }) {
 export default function Dashboard() {
   const ownerDashboardQuery = trpc.animals.ownerDashboard.useQuery();
   const [authModalOpen, setAuthModalOpen] = useState(false);
+  const utils = trpc.useUtils();
+  const setPrimaryMutation = trpc.animals.setPrimaryAnimal.useMutation({
+    onSuccess: (_data, variables) => {
+      utils.animals.ownerDashboard.invalidate();
+      if (variables.animalId) {
+        toast.success("Основное животное обновлено", {
+          description: "Кабинет теперь показывает выбранное вами животное.",
+        });
+      } else {
+        toast.success("Сброшено на автоматический выбор", {
+          description: "Кабинет покажет животное по умолчанию.",
+        });
+      }
+    },
+    onError: (err) => {
+      toast.error("Не удалось сменить основное животное", {
+        description: err.message,
+      });
+    },
+  });
   const dashboard = ownerDashboardQuery.data;
   const ownership = dashboard?.ownership ?? null;
   const currentAnimal = dashboard?.animal ?? null;
@@ -458,60 +481,79 @@ export default function Dashboard() {
               </p>
               <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 {allOwnerships.map((item) => {
-                  const isPrimary = item.animalId === ownership?.animalId;
+                  const isPrimary = (item as any).isPrimary ?? item.animalId === ownership?.animalId;
+                  const isSettingPrimary = setPrimaryMutation.isPending;
                   return (
-                    <Link
+                    <div
                       key={item.animalId}
-                      href={`/animals/${item.animalSlug}`}
-                      className={`group relative overflow-hidden rounded-[1.5rem] border bg-white p-4 transition-colors hover:bg-muted/35 ${
+                      className={`group relative overflow-hidden rounded-[1.5rem] border bg-white p-4 transition-colors ${
                         isPrimary ? "border-primary/30 ring-1 ring-primary/15" : "border-border/70"
                       }`}
                     >
                       {isPrimary && (
-                        <div className="absolute right-3 top-3 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-widest text-primary">
+                        <div className="absolute right-3 top-3 flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-widest text-primary">
+                          <Crown className="h-3 w-3" />
                           Основное
                         </div>
                       )}
-                      <div className="flex items-start gap-3">
-                        {item.coverImageUrl ? (
-                          <img
-                            src={item.coverImageUrl}
-                            alt={item.animalName}
-                            className="h-14 w-14 shrink-0 rounded-2xl object-cover"
-                          />
-                        ) : (
-                          <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-secondary text-primary">
-                            <Heart className="h-6 w-6" />
-                          </div>
-                        )}
-                        <div className="min-w-0 flex-1">
-                          <div className="text-base font-semibold text-foreground">{item.animalName}</div>
-                          <div className="mt-0.5 text-xs text-muted-foreground">
-                            {item.species}{item.breed ? ` · ${item.breed}` : ""}
-                          </div>
-                        </div>
-                      </div>
-                      <div className="mt-3 grid grid-cols-2 gap-2">
-                        <div className="rounded-xl bg-secondary/55 px-3 py-2">
-                          <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Доля</div>
-                          <div className="mt-0.5 text-sm font-semibold text-foreground">{item.sharePercent}%</div>
-                        </div>
-                        <div className="rounded-xl bg-secondary/55 px-3 py-2">
-                          <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Статус</div>
-                          <div className={`mt-0.5 text-sm font-semibold ${
-                            item.status === "pending_payment" ? "text-amber-600" : "text-emerald-600"
-                          }`}>
-                            {item.statusLabel}
+                      <Link href={`/animals/${item.animalSlug}`}>
+                        <div className="flex items-start gap-3">
+                          {item.coverImageUrl ? (
+                            <img
+                              src={item.coverImageUrl}
+                              alt={item.animalName}
+                              className="h-14 w-14 shrink-0 rounded-2xl object-cover"
+                            />
+                          ) : (
+                            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-secondary text-primary">
+                              <Heart className="h-6 w-6" />
+                            </div>
+                          )}
+                          <div className="min-w-0 flex-1">
+                            <div className="text-base font-semibold text-foreground">{item.animalName}</div>
+                            <div className="mt-0.5 text-xs text-muted-foreground">
+                              {item.species}{item.breed ? ` · ${item.breed}` : ""}
+                            </div>
                           </div>
                         </div>
-                      </div>
-                      <div className="mt-3 flex items-center justify-between text-sm">
-                        <span className="text-xs text-muted-foreground">
-                          {item.slotsCount} {item.slotsCount === 1 ? "слот" : item.slotsCount < 5 ? "слота" : "слотов"} · {formatCurrency(item.priceMinorTotal)}
-                        </span>
-                        <ChevronRight className="h-4 w-4 text-primary transition-transform group-hover:translate-x-0.5" />
-                      </div>
-                    </Link>
+                        <div className="mt-3 grid grid-cols-2 gap-2">
+                          <div className="rounded-xl bg-secondary/55 px-3 py-2">
+                            <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Доля</div>
+                            <div className="mt-0.5 text-sm font-semibold text-foreground">{item.sharePercent}%</div>
+                          </div>
+                          <div className="rounded-xl bg-secondary/55 px-3 py-2">
+                            <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Статус</div>
+                            <div className={`mt-0.5 text-sm font-semibold ${
+                              item.status === "pending_payment" ? "text-amber-600" : "text-emerald-600"
+                            }`}>
+                              {item.statusLabel}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="mt-3 flex items-center justify-between text-sm">
+                          <span className="text-xs text-muted-foreground">
+                            {item.slotsCount} {item.slotsCount === 1 ? "слот" : item.slotsCount < 5 ? "слота" : "слотов"} · {formatCurrency(item.priceMinorTotal)}
+                          </span>
+                          <ChevronRight className="h-4 w-4 text-primary transition-transform group-hover:translate-x-0.5" />
+                        </div>
+                      </Link>
+                      {!isPrimary && (
+                        <button
+                          type="button"
+                          data-testid={`set-primary-${item.animalId}`}
+                          disabled={isSettingPrimary}
+                          onClick={() => setPrimaryMutation.mutate({ animalId: item.animalId })}
+                          className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl border border-primary/20 bg-primary/5 px-3 py-2 text-xs font-semibold text-primary transition-colors hover:bg-primary/10 disabled:opacity-50"
+                        >
+                          {isSettingPrimary ? (
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          ) : (
+                            <Crown className="h-3.5 w-3.5" />
+                          )}
+                          Сделать основным
+                        </button>
+                      )}
+                    </div>
                   );
                 })}
               </div>

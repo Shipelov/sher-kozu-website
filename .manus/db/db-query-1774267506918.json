@@ -1,0 +1,18 @@
+{
+  "query": "SHOW COLUMNS FROM users LIKE 'primaryAnimalId';",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3J2fXRHx8d1YjF6.root --database mLhmg5VmBsEBpZiYqdnhMQ --execute SHOW COLUMNS FROM users LIKE 'primaryAnimalId';",
+  "rows": [
+    {
+      "Field": "primaryAnimalId",
+      "Type": "int",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    }
+  ],
+  "messages": [],
+  "stdout": "Field\tType\tNull\tKey\tDefault\tExtra\nprimaryAnimalId\tint\tYES\t\tNULL\t\n",
+  "stderr": "",
+  "execution_time_ms": 177
+}

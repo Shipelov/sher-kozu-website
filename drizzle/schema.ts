@@ -27,6 +27,8 @@ export const users = mysqlTable("users", {
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   lastSignedIn: timestamp("lastSignedIn").defaultNow().notNull(),
   onboardingCompleted: boolean("onboardingCompleted").default(false).notNull(),
+  /** User's preferred primary animal for the dashboard. Nullable — when null, auto-select by ownership priority. */
+  primaryAnimalId: int("primaryAnimalId"),
   /** Soft-delete timestamp. When set, user is in trash and access is blocked. */
   deletedAt: timestamp("deletedAt"),
   /** Admin openId who moved the user to trash. */

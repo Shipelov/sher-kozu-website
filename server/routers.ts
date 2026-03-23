@@ -61,6 +61,7 @@ import {
   listTrashedUsers,
   permanentDeleteUser,
   findExpiredTrashedUsers,
+  setPrimaryAnimal,
 } from "./db";
 import { storagePut } from "./storage";
 import { isBitrixConfigured, pullBitrixDealSnapshot, syncPartnerLeadToBitrix } from "./bitrix24";
@@ -862,6 +863,18 @@ export const appRouter = router({
     ownerDashboard: protectedProcedure.query(async ({ ctx }) => {
       return getOwnerDashboardData(ctx.user.openId);
     }),
+    setPrimaryAnimal: protectedProcedure
+      .input(z.object({ animalId: z.number().int().positive().nullable() }))
+      .mutation(async ({ ctx, input }) => {
+        try {
+          return await setPrimaryAnimal(ctx.user.openId, input.animalId);
+        } catch (error) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: error instanceof Error ? error.message : "Не удалось изменить основное животное.",
+          });
+        }
+      }),
     purchaseShare: protectedProcedure.input(purchaseAnimalShareInput).mutation(async ({ ctx, input }) => {
       try {
         let resolvedPlanId = input.planId;

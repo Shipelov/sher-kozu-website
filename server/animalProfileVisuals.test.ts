@@ -13,10 +13,10 @@ describe("AnimalProfile visual integration", () => {
   });
 
   it("contains share purchase section with dynamic pricing and CTA", () => {
-    expect(source).toContain("Долевое участие");
-    expect(source).toContain("Выберите долю");
+    expect(source).toContain("Персональное участие");
+    expect(source).toContain("Станьте частью истории");
     expect(source).toContain("Забронировать долю");
-    expect(source).toContain("Увеличить долю");
+    expect(source).toContain("Увеличить свою долю");
     expect(source).toContain("mySharePercent");
     expect(source).toContain("purchaseShare");
     expect(source).toContain("ctaDisabled={!availableSharePercents.length || purchaseShare.isPending}");
@@ -24,7 +24,7 @@ describe("AnimalProfile visual integration", () => {
 
   it("contains guest preview markers and login prompts without excessive marketing rhetoric", () => {
     expect(source).toContain("animal-guest-preview-banner");
-    expect(source).toContain("Для покупки доли необходимо войти в аккаунт");
+    expect(source).toContain("войдите в аккаунт или зарегистрируйтесь");
     expect(source).toContain("animal-guest-preview-register-cta-secondary");
     expect(source).toContain("animal-guest-preview-sticky-register");
     expect(source).toContain("Войти или зарегистрироваться");

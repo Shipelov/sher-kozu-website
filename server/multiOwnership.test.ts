@@ -19,8 +19,8 @@ const DASHBOARD_SRC = fs.readFileSync(
 
 describe("Multi-ownership: server-side (db.ts)", () => {
   it("getOwnerDashboardData returns allOwnerships in the response", () => {
-    // The return object must include allOwnerships
-    expect(DB_SRC).toContain("allOwnerships,");
+    // The return object must include allOwnerships (now with isPrimary mapping)
+    expect(DB_SRC).toContain("allOwnerships:");
     expect(DB_SRC).toContain("allOwnerships =");
   });
 

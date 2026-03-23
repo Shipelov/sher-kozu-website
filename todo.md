@@ -480,3 +480,14 @@
 - [x] Обновить подсказки и пустые состояния
 - [x] Обновить тесты под новые тексты
 - [x] Визуальная проверка и чекпоинт
+
+## Смена основного животного в кабинете владельца
+- [x] Серверная функция setPrimaryAnimal в db.ts (проверка владения, обновление users.primaryAnimalId)
+- [x] tRPC мутация animals.setPrimaryAnimal (protectedProcedure, z.number().int().positive().nullable())
+- [x] Обновить getOwnerDashboardData: учёт primaryAnimalId, isPrimary в allOwnerships
+- [x] UI: кнопка «Сделать основным» (Crown icon) на карточках неосновных животных
+- [x] UI: бейдж «Основное» с Crown icon на текущем основном животном
+- [x] UI: loading state (Loader2 spinner) при смене основного животного
+- [x] UI: toast уведомления при успехе/ошибке (sonner)
+- [x] Unit-тесты для setPrimaryAnimal (29 тестов — schema, db, router, dashboard data, UI)
+- [x] Исправить сломанные тесты multiOwnership и animalProfileVisuals после рефакторинга
