@@ -737,3 +737,7 @@
 - [x] Снимки записываются автоматически в updateOwnerRating (upsert по дате)
 - [x] Серверная процедура getRatingHistory (30 дней, настраиваемо 7–90)
 - [x] SVG sparkline компонент RatingHistoryChart с трендом, датами и градиентом
+
+## BUG: Блок «Аналитика заботы» не работает
+- [x] Причина: AdminHub ссылался на /admin/gamification, а маршрут зарегистрирован как /admin/analytics → 404
+- [x] Исправлено: path и quickActionPath в AdminHub изменены на /admin/analytics

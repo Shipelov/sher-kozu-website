@@ -228,13 +228,13 @@ export default function AdminHub() {
     {
       title: "Аналитика Заботы",
       description: "Чек-листы фермера, аналитика продаж маркетплейса, оборот токенов, метрики стада и рейтинги владельцев.",
-      path: "/admin/gamification",
+      path: "/admin/analytics",
       icon: Gamepad2,
       statusLabel: "Аналитика",
       adminOnly: true,
       countLabel: "Чек-листы · Продажи · Метрики",
       quickActionLabel: "Открыть аналитику",
-      quickActionPath: "/admin/gamification",
+      quickActionPath: "/admin/analytics",
     },
   ];
 
