@@ -37,6 +37,7 @@ import {
   Zap,
   BookOpen,
   Gift,
+  ArrowLeftRight,
 } from "lucide-react";
 import OwnerProductPlanSection from "./OwnerProductPlanSection";
 import WellnessRadarChart from "@/components/WellnessRadarChart";
@@ -880,7 +881,7 @@ export default function AnimalProfile() {
         {/* ═══ SECTION 6: Navigation links ═══ */}
         <section className="py-10 md:py-14">
           <div className="container">
-            <div className="mx-auto grid max-w-4xl gap-4 md:grid-cols-3">
+            <div className="mx-auto grid max-w-4xl gap-4 md:grid-cols-2 lg:grid-cols-4">
               <Link href="/dashboard" className="group rounded-2xl border border-border/70 bg-card p-5 transition hover:bg-muted/30">
                 <Package className="h-6 w-6 text-primary" />
                 <h4 className="mt-3 font-semibold text-foreground">Ваш личный кабинет</h4>
@@ -898,6 +899,12 @@ export default function AnimalProfile() {
                 <h4 className="mt-3 font-semibold text-foreground">Клуб Шерь Козу</h4>
                 <p className="mt-1 text-sm text-muted-foreground">Семейные визиты, мастер-классы и встречи с вашим животным.</p>
                 <span className="mt-3 inline-flex items-center gap-1 text-sm font-medium text-primary">Открыть <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" /></span>
+              </Link>
+              <Link href={`/compare?animal=${animalSlug}`} className="group rounded-2xl border border-border/70 bg-card p-5 transition hover:bg-muted/30">
+                <ArrowLeftRight className="h-6 w-6 text-primary" />
+                <h4 className="mt-3 font-semibold text-foreground">Сравнить</h4>
+                <p className="mt-1 text-sm text-muted-foreground">Сравните {displayName} с другими животными фермы по ключевым метрикам.</p>
+                <span className="mt-3 inline-flex items-center gap-1 text-sm font-medium text-primary">Сравнить <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" /></span>
               </Link>
             </div>
           </div>

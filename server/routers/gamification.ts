@@ -435,5 +435,34 @@ export const gamificationRouter = router({
     herdWellness: adminProcedure.query(async () => {
       return getHerdWellnessOverview();
     }),
+
+    exportCsv: adminProcedure
+      .input(z.object({ type: z.enum(["owners", "herd", "sales"]) }))
+      .mutation(async ({ input }) => {
+        const { exportOwnerRatingsCsv, exportHerdWellnessCsv, exportMarketplaceSalesCsv } = await import("../analyticsExport");
+        let csv: string;
+        let filename: string;
+        switch (input.type) {
+          case "owners":
+            csv = await exportOwnerRatingsCsv();
+            filename = "owner_ratings.csv";
+            break;
+          case "herd":
+            csv = await exportHerdWellnessCsv();
+            filename = "herd_wellness.csv";
+            break;
+          case "sales":
+            csv = await exportMarketplaceSalesCsv();
+            filename = "marketplace_sales.csv";
+            break;
+        }
+        return { csv, filename };
+      }),
+
+    exportPdf: adminProcedure.mutation(async () => {
+      const { generateAnalyticsPdfHtml } = await import("../analyticsExport");
+      const html = await generateAnalyticsPdfHtml();
+      return { html, filename: "analytics_report.html" };
+    }),
   }),
 });

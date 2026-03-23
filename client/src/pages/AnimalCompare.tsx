@@ -1,6 +1,6 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Link } from "wouter";
+import { Link, useSearch } from "wouter";
 import Navbar from "@/components/Navbar";
 import { trpc } from "@/lib/trpc";
 import { ComparisonRadarChart } from "@/components/RadarChart";
@@ -174,6 +174,14 @@ function MetricComparisonRow({
 export default function AnimalCompare() {
   const [animalIdA, setAnimalIdA] = useState<number | null>(null);
   const [animalIdB, setAnimalIdB] = useState<number | null>(null);
+  const [preselected, setPreselected] = useState(false);
+
+  // Read ?animal=slug query parameter for pre-selection from AnimalProfile
+  const searchString = useSearch();
+  const preselectedSlug = useMemo(() => {
+    const params = new URLSearchParams(searchString);
+    return params.get("animal") || null;
+  }, [searchString]);
 
   // Get herd leaderboard which includes wellness metrics
   const { data: herdData, isLoading: herdLoading } = trpc.gamification.leaderboard.herd.useQuery({ limit: 50 });
@@ -198,6 +206,16 @@ export default function AnimalCompare() {
         },
       }));
   }, [herdData]);
+
+  // Pre-select animal A from query parameter
+  useEffect(() => {
+    if (preselected || !preselectedSlug || animals.length === 0) return;
+    const match = animals.find((a: any) => a.slug === preselectedSlug || String(a.id) === preselectedSlug);
+    if (match) {
+      setAnimalIdA(match.id);
+      setPreselected(true);
+    }
+  }, [preselectedSlug, animals, preselected]);
 
   const animalA = animals.find((a: any) => a.id === animalIdA);
   const animalB = animals.find((a: any) => a.id === animalIdB);

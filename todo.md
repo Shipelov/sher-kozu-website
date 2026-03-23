@@ -772,3 +772,18 @@
 - [x] Исправить запрос: считать только уникальных животных с активным ownership (COUNT(DISTINCT animalId))
 - [x] Исправлено в 4 местах: myRating, getOwnerLeaderboard, checkMyBadges, updateOwnerRating
 - [x] 9 новых тестов подтверждают исправление (1095 всего, все проходят)
+
+## FEATURE: Кнопка «Сравнить» в профиле животного
+- [x] Добавить кнопку «Сравнить» в AnimalProfile с переходом на /compare?animal=slug
+- [x] AnimalCompare читает query-параметр и предвыбирает животное A
+
+## FEATURE: CSV/PDF экспорт аналитики для админа
+- [x] Серверный endpoint для генерации CSV (рейтинги владельцев, метрики стада, продажи)
+- [x] Серверный endpoint для генерации HTML отчёта с таблицами и стилями
+- [x] Кнопки CSV и Отчёт в AdminAnalytics с выбором типа по активной вкладке
+
+## FEATURE: Автоматические триггеры бейджей
+- [x] Вызывать checkAndAwardBadges после покупки в маркетплейсе (purchaseMarketplaceItem)
+- [x] Вызывать checkAndAwardBadges при обновлении рейтинга (updateOwnerRating)
+- [x] try-catch обёртки чтобы не ломать основной поток
+- [x] 47 новых тестов, всего 1142 — все проходят

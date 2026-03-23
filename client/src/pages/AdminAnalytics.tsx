@@ -9,6 +9,8 @@ import {
   ArrowLeft,
   BarChart3,
   Coins,
+  Download,
+  FileText,
   Heart,
   Loader2,
   ShoppingBag,
@@ -17,7 +19,19 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { Link } from "wouter";
+import { toast } from "sonner";
 import ScrollRemaining from "@/components/ScrollRemaining";
+
+function downloadFile(content: string, filename: string, mime: string) {
+  const blob = new Blob([content], { type: mime });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 100);
+}
 
 export default function AdminAnalytics() {
   const { user, loading: authLoading } = useAuth();
@@ -27,6 +41,24 @@ export default function AdminAnalytics() {
   const tokensQuery = trpc.gamification.analytics.tokens.useQuery(undefined, { enabled: isAdmin });
   const marketplaceQuery = trpc.gamification.analytics.marketplace.useQuery(undefined, { enabled: isAdmin });
   const herdQuery = trpc.gamification.analytics.herdWellness.useQuery(undefined, { enabled: isAdmin });
+
+  const exportCsv = trpc.gamification.analytics.exportCsv.useMutation({
+    onSuccess: (data) => {
+      downloadFile(data.csv, data.filename, "text/csv;charset=utf-8");
+      toast.success(`Файл ${data.filename} скачан`);
+    },
+    onError: () => toast.error("Ошибка при экспорте CSV"),
+  });
+
+  const exportPdf = trpc.gamification.analytics.exportPdf.useMutation({
+    onSuccess: (data) => {
+      downloadFile(data.html, data.filename, "text/html;charset=utf-8");
+      toast.success("Отчёт скачан (HTML)");
+    },
+    onError: () => toast.error("Ошибка при генерации отчёта"),
+  });
+
+  const isExporting = exportCsv.isPending || exportPdf.isPending;
 
   const tokenData = tokensQuery.data;
   const marketData = marketplaceQuery.data;
@@ -69,10 +101,39 @@ export default function AdminAnalytics() {
               <p className="text-sm text-muted-foreground">Обзор экономики, продаж и активности</p>
             </div>
           </div>
-          <Badge variant="outline" className="gap-1.5">
-            <BarChart3 className="h-3.5 w-3.5" />
-            Аналитика
-          </Badge>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1.5"
+              disabled={isExporting}
+              onClick={() => {
+                const typeMap: Record<string, "owners" | "herd" | "sales"> = {
+                  tokens: "owners",
+                  sales: "sales",
+                  wellness: "herd",
+                };
+                exportCsv.mutate({ type: typeMap[activeTab] ?? "owners" });
+              }}
+            >
+              {exportCsv.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
+              CSV
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1.5"
+              disabled={isExporting}
+              onClick={() => exportPdf.mutate()}
+            >
+              {exportPdf.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileText className="h-3.5 w-3.5" />}
+              Отчёт
+            </Button>
+            <Badge variant="outline" className="gap-1.5">
+              <BarChart3 className="h-3.5 w-3.5" />
+              Аналитика
+            </Badge>
+          </div>
         </div>
 
         {isLoadingAny ? (

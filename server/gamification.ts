@@ -763,6 +763,27 @@ export async function purchaseMarketplaceItem(
   // 17. Update owner rating
   await updateOwnerRating(ownerOpenId);
 
+  // 18. Auto-check badges after purchase
+  try {
+    const { checkAndAwardBadges } = await import("./badges");
+    const [walletCount] = await db.select({ count: sql<number>`count(DISTINCT animalId)` })
+      .from(animalOwnerships)
+      .where(and(
+        eq(animalOwnerships.ownerOpenId, ownerOpenId),
+        eq(animalOwnerships.status, "active")
+      ));
+    const [spentResult] = await db.select({ total: sql<number>`COALESCE(SUM(ABS(amountMinor)), 0)` })
+      .from(walletTransactions)
+      .where(eq(walletTransactions.ownerOpenId, ownerOpenId));
+    await checkAndAwardBadges(ownerOpenId, {
+      animalCount: walletCount?.count ?? 0,
+      hasPurchases: true,
+      totalSpent: Number(spentResult?.total ?? 0),
+    });
+  } catch (e) {
+    console.error("[Badges] Auto-check after purchase failed:", e);
+  }
+
   return { purchase, checklist, metricsAfter };
 }
 
@@ -955,6 +976,25 @@ export async function updateOwnerRating(ownerOpenId: string) {
 
   // Recalculate owner ranks
   await recalculateOwnerRanks();
+
+  // Auto-check badges after rating update
+  try {
+    const { checkAndAwardBadges } = await import("./badges");
+    const [latestRatingForBadges] = await db.select().from(ownerRatings)
+      .where(eq(ownerRatings.ownerOpenId, ownerOpenId));
+    const animalMetrics = await db.select().from(animalWellnessMetrics)
+      .where(inArray(animalWellnessMetrics.animalId, animalIds));
+    await checkAndAwardBadges(ownerOpenId, {
+      animalCount: animalIds.length,
+      totalSpent: spentResult.totalSpent,
+      rank: latestRatingForBadges?.rank ?? 0,
+      totalScore,
+      animalHealthScores: animalMetrics.map((m: AnimalWellnessMetric) => m.health),
+      animalHappinessScores: animalMetrics.map((m: AnimalWellnessMetric) => m.happiness),
+    });
+  } catch (e) {
+    console.error("[Badges] Auto-check after rating update failed:", e);
+  }
 
   // Record daily snapshot for history chart
   const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
