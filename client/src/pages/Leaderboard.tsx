@@ -39,9 +39,17 @@ function getRankIcon(rank: number) {
 }
 
 type TabId = "herd" | "owners";
+type SpeciesFilter = "all" | "goat" | "sheep";
+
+const SPECIES_FILTERS: { id: SpeciesFilter; label: string }[] = [
+  { id: "all", label: "Все" },
+  { id: "goat", label: "Козы" },
+  { id: "sheep", label: "Овцы" },
+];
 
 export default function Leaderboard() {
   const [activeTab, setActiveTab] = useState<TabId>("herd");
+  const [speciesFilter, setSpeciesFilter] = useState<SpeciesFilter>("all");
   const { user } = useAuth();
 
   const herdQuery = trpc.gamification.leaderboard.herd.useQuery({ limit: 20 });
@@ -143,6 +151,28 @@ export default function Leaderboard() {
               animate={{ opacity: 1, y: 0 }}
               className="space-y-3"
             >
+              {/* Species filter */}
+              <div className="flex items-center gap-2">
+                {SPECIES_FILTERS.map((f) => (
+                  <button
+                    key={f.id}
+                    onClick={() => setSpeciesFilter(f.id)}
+                    className={`rounded-full border px-3 py-1.5 text-xs font-medium transition ${
+                      speciesFilter === f.id
+                        ? "border-primary bg-primary/10 text-primary"
+                        : "border-border bg-card text-muted-foreground hover:bg-muted"
+                    }`}
+                  >
+                    {f.label}
+                  </button>
+                ))}
+                {speciesFilter !== "all" && herdQuery.data && (
+                  <span className="ml-1 text-xs text-muted-foreground">
+                    {herdQuery.data.filter((a: any) => a.animal?.species === speciesFilter).length} из {herdQuery.data.length}
+                  </span>
+                )}
+              </div>
+
               {herdQuery.isLoading ? (
                 <div className="flex items-center justify-center py-12">
                   <Loader2 className="h-6 w-6 animate-spin text-primary" />
@@ -152,9 +182,21 @@ export default function Leaderboard() {
                   <Heart className="mx-auto h-8 w-8 text-muted-foreground" />
                   <p className="mt-3 text-sm text-muted-foreground">Рейтинг стада пока пуст — покупайте подарки в маркетплейсе, чтобы ваше животное поднялось в рейтинге.</p>
                 </div>
-              ) : (
+              ) : (() => {
+                const filtered = speciesFilter === "all"
+                  ? herdQuery.data
+                  : herdQuery.data.filter((a: any) => a.animal?.species === speciesFilter);
+                if (!filtered.length) return (
+                  <div className="rounded-[2rem] border border-dashed border-border bg-card p-8 text-center">
+                    <Heart className="mx-auto h-8 w-8 text-muted-foreground" />
+                    <p className="mt-3 text-sm text-muted-foreground">
+                      {speciesFilter === "goat" ? "Коз" : "Овец"} в рейтинге пока нет.
+                    </p>
+                  </div>
+                );
+                return (
                 <ShowMoreList
-                  items={herdQuery.data}
+                  items={filtered}
                   pageSize={10}
                   getKey={(animal: any) => animal.animalId}
                   className="space-y-3"
@@ -203,7 +245,8 @@ export default function Leaderboard() {
                     </motion.div>
                   )}
                 />
-              )}
+              );
+              })()}
             </motion.div>
           )}
 
