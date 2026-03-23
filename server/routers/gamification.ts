@@ -350,15 +350,22 @@ export const gamificationRouter = router({
 
     myRating: protectedProcedure.query(async ({ ctx }) => {
       await updateOwnerRating(ctx.user.openId);
-      const db = await import("../gamification");
       // Re-fetch after update
       const { getDb } = await import("../db");
       const dbConn = await getDb();
       if (!dbConn) return null;
-      const { ownerRatings } = await import("../../drizzle/schema");
-      const { eq } = await import("drizzle-orm");
+      const { ownerRatings, animalOwnerships } = await import("../../drizzle/schema");
+      const { eq, and, sql } = await import("drizzle-orm");
       const [rating] = await dbConn.select().from(ownerRatings).where(eq(ownerRatings.ownerOpenId, ctx.user.openId));
-      return rating ?? null;
+      if (!rating) return null;
+      // Count active ownerships
+      const [countResult] = await dbConn.select({ count: sql<number>`count(*)` })
+        .from(animalOwnerships)
+        .where(and(
+          eq(animalOwnerships.ownerOpenId, ctx.user.openId),
+          eq(animalOwnerships.status, "active")
+        ));
+      return { ...rating, animalCount: countResult?.count ?? 0 };
     }),
   }),
 

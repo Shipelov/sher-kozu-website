@@ -715,3 +715,8 @@
 ## BUG: Клик на животное в рейтинге фермы (Leaderboard) вызывает ошибку
 - [x] Причина: использовался animal.animalSlug вместо animal.animal?.slug (slug вложен в объект animal)
 - [x] Исправлено: Link теперь использует animal.animal?.slug, имя — animal.animal?.name
+
+## CHECK: Вкладка «Рейтинг владельцев» — проверка навигации и отображения
+- [x] Проверить отображение данных во вкладке «Рейтинг владельцев»
+- [x] Проверить навигацию при клике на элементы
+- [x] Исправлено 5 проблем: owner.ownerName→user?.name, averageAnimalScore→averageAnimalRating, добавлен animalCount в серверный ответ (owners + myRating)

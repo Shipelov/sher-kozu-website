@@ -999,12 +999,18 @@ export async function getOwnerLeaderboard(limit = 20) {
     .orderBy(asc(ownerRatings.rank))
     .limit(limit);
 
-  // Enrich with user names
+  // Enrich with user names and animal count
   const result = [];
   for (const r of ratings) {
     const [user] = await db.select({ name: users.name, openId: users.openId })
       .from(users).where(eq(users.openId, r.ownerOpenId));
-    result.push({ ...r, user: user ?? null });
+    const [countResult] = await db.select({ count: sql<number>`count(*)` })
+      .from(animalOwnerships)
+      .where(and(
+        eq(animalOwnerships.ownerOpenId, r.ownerOpenId),
+        eq(animalOwnerships.status, "active")
+      ));
+    result.push({ ...r, user: user ?? null, animalCount: countResult?.count ?? 0 });
   }
   return result;
 }

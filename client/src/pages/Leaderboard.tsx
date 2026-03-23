@@ -100,7 +100,7 @@ export default function Leaderboard() {
               <div className="mt-4 grid gap-3 sm:grid-cols-3">
                 <div className="rounded-2xl bg-white/80 p-3">
                   <div className="text-xs text-muted-foreground">Средний рейтинг животных</div>
-                  <div className="mt-1 text-lg font-semibold text-foreground">{myRating.averageAnimalScore ?? 0}</div>
+                  <div className="mt-1 text-lg font-semibold text-foreground">{myRating.averageAnimalRating ?? 0}</div>
                 </div>
                 <div className="rounded-2xl bg-white/80 p-3">
                   <div className="text-xs text-muted-foreground">Бонус активности</div>
@@ -253,7 +253,7 @@ export default function Leaderboard() {
                           <div className="min-w-0 flex-1">
                             <div className="flex items-center gap-2">
                               <span className="font-semibold text-foreground truncate">
-                                {owner.ownerName ?? "Владелец"}
+                                {owner.user?.name ?? "Владелец"}
                                 {isMe && <span className="ml-1 text-xs text-primary">(вы)</span>}
                               </span>
                               <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-medium ${titleInfo.bg} ${titleInfo.color}`}>
@@ -262,7 +262,7 @@ export default function Leaderboard() {
                               </span>
                             </div>
                             <p className="text-xs text-muted-foreground">
-                              {owner.animalCount ?? 0} животных · Средний рейтинг: {owner.averageAnimalScore ?? 0}
+                              {owner.animalCount ?? 0} животных · Средний рейтинг: {owner.averageAnimalRating ?? 0}
                             </p>
                           </div>
                           <div className="text-right">
