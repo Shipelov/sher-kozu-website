@@ -14,6 +14,7 @@ import {
   farmerChecklists,
   animalFeedbackMessages,
   autoAllocationSettings,
+  ratingSnapshots,
   wallets,
   walletTransactions,
   animals,
@@ -954,6 +955,35 @@ export async function updateOwnerRating(ownerOpenId: string) {
 
   // Recalculate owner ranks
   await recalculateOwnerRanks();
+
+  // Record daily snapshot for history chart
+  const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+  const [existingSnap] = await db.select().from(ratingSnapshots)
+    .where(and(
+      eq(ratingSnapshots.ownerOpenId, ownerOpenId),
+      eq(ratingSnapshots.snapshotDate, today)
+    ));
+  // Get latest rank
+  const [latestRating] = await db.select().from(ownerRatings)
+    .where(eq(ownerRatings.ownerOpenId, ownerOpenId));
+  const currentRank = latestRating?.rank ?? 0;
+  if (existingSnap) {
+    await db.update(ratingSnapshots).set({
+      totalScore,
+      averageAnimalRating: avgRating,
+      activityBonus,
+      rank: currentRank,
+    }).where(eq(ratingSnapshots.id, existingSnap.id));
+  } else {
+    await db.insert(ratingSnapshots).values({
+      ownerOpenId,
+      snapshotDate: today,
+      totalScore,
+      averageAnimalRating: avgRating,
+      activityBonus,
+      rank: currentRank,
+    });
+  }
 }
 
 /** Recalculate owner ranks */
@@ -1387,4 +1417,19 @@ export async function getWalletStatus(ownerOpenId: string) {
     .where(eq(wallets.ownerOpenId, ownerOpenId))
     .limit(1);
   return wallet ?? null;
+}
+
+/** Get rating history snapshots for the last N days */
+export async function getRatingHistory(ownerOpenId: string, days = 30) {
+  const db = await getDb();
+  if (!db) return [];
+  const sinceDate = new Date();
+  sinceDate.setDate(sinceDate.getDate() - days);
+  const since = sinceDate.toISOString().slice(0, 10);
+  return db.select().from(ratingSnapshots)
+    .where(and(
+      eq(ratingSnapshots.ownerOpenId, ownerOpenId),
+      gte(ratingSnapshots.snapshotDate, since)
+    ))
+    .orderBy(asc(ratingSnapshots.snapshotDate));
 }

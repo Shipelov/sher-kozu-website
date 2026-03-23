@@ -913,3 +913,22 @@ export type InsertOwnerRating = typeof ownerRatings.$inferInsert;
 
 export type AutoAllocationSetting = typeof autoAllocationSettings.$inferSelect;
 export type InsertAutoAllocationSetting = typeof autoAllocationSettings.$inferInsert;
+
+/**
+ * Daily snapshots of owner rating for history chart.
+ * One row per owner per day, recording their totalScore at that point.
+ */
+export const ratingSnapshots = mysqlTable("ratingSnapshots", {
+  id: int("id").autoincrement().primaryKey(),
+  ownerOpenId: varchar("ownerOpenId", { length: 64 }).notNull(),
+  /** The date this snapshot represents (YYYY-MM-DD stored as varchar for easy querying) */
+  snapshotDate: varchar("snapshotDate", { length: 10 }).notNull(),
+  totalScore: int("totalScore").default(0).notNull(),
+  averageAnimalRating: int("averageAnimalRating").default(0).notNull(),
+  activityBonus: int("activityBonus").default(0).notNull(),
+  rank: int("rank").default(0).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type RatingSnapshot = typeof ratingSnapshots.$inferSelect;
+export type InsertRatingSnapshot = typeof ratingSnapshots.$inferInsert;

@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import WellnessRadarChart from "@/components/WellnessRadarChart";
 import ShowMoreList from "@/components/ShowMoreList";
+import RatingHistoryChart from "@/components/RatingHistoryChart";
 
 /* ── Title helpers ── */
 const TITLE_LABELS: Record<string, { label: string; color: string; bg: string }> = {
@@ -40,6 +41,7 @@ function getRankIcon(rank: number) {
 
 type TabId = "herd" | "owners";
 type SpeciesFilter = "all" | "goat" | "sheep";
+type SortMetric = "overall" | "health" | "happiness" | "obedience" | "attachment" | "mood";
 
 const SPECIES_FILTERS: { id: SpeciesFilter; label: string }[] = [
   { id: "all", label: "Все" },
@@ -47,14 +49,30 @@ const SPECIES_FILTERS: { id: SpeciesFilter; label: string }[] = [
   { id: "sheep", label: "Овцы" },
 ];
 
+const SORT_METRICS: { id: SortMetric; label: string; emoji: string }[] = [
+  { id: "overall", label: "Общий", emoji: "⭐" },
+  { id: "happiness", label: "Счастье", emoji: "😊" },
+  { id: "health", label: "Здоровье", emoji: "💚" },
+  { id: "attachment", label: "Привязанность", emoji: "🤝" },
+  { id: "mood", label: "Настроение", emoji: "🌈" },
+  { id: "obedience", label: "Послушание", emoji: "🎓" },
+];
+
+function sortByMetric(items: any[], metric: SortMetric) {
+  const key = metric === "overall" ? "overallRating" : metric;
+  return [...items].sort((a, b) => (b[key] ?? 0) - (a[key] ?? 0));
+}
+
 export default function Leaderboard() {
   const [activeTab, setActiveTab] = useState<TabId>("herd");
   const [speciesFilter, setSpeciesFilter] = useState<SpeciesFilter>("all");
+  const [sortMetric, setSortMetric] = useState<SortMetric>("overall");
   const { user } = useAuth();
 
   const herdQuery = trpc.gamification.leaderboard.herd.useQuery({ limit: 20 });
   const ownersQuery = trpc.gamification.leaderboard.owners.useQuery({ limit: 20 });
   const myRatingQuery = trpc.gamification.leaderboard.myRating.useQuery();
+  const historyQuery = trpc.gamification.leaderboard.ratingHistory.useQuery({ days: 30 });
 
   const tabs: { id: TabId; label: string; icon: typeof Trophy }[] = [
     { id: "herd", label: "Рейтинг стада", icon: Heart },
@@ -119,6 +137,13 @@ export default function Leaderboard() {
                   <div className="mt-1 text-lg font-semibold text-foreground">{myRating.animalCount ?? 0}</div>
                 </div>
               </div>
+              {/* Rating History Mini-Chart */}
+              {historyQuery.data && historyQuery.data.length > 0 && (
+                <div className="mt-4 rounded-2xl bg-white/80 p-3">
+                  <div className="mb-1 text-xs text-muted-foreground">Динамика рейтинга за 30 дней</div>
+                  <RatingHistoryChart snapshots={historyQuery.data} height={80} />
+                </div>
+              )}
             </motion.div>
           )}
 
@@ -173,6 +198,24 @@ export default function Leaderboard() {
                 )}
               </div>
 
+              {/* Sort metric selector */}
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <span className="text-xs text-muted-foreground mr-1">Сортировка:</span>
+                {SORT_METRICS.map((m) => (
+                  <button
+                    key={m.id}
+                    onClick={() => setSortMetric(m.id)}
+                    className={`rounded-full border px-2.5 py-1 text-[11px] font-medium transition flex items-center gap-1 ${
+                      sortMetric === m.id
+                        ? "border-primary bg-primary/10 text-primary"
+                        : "border-border bg-card text-muted-foreground hover:bg-muted"
+                    }`}
+                  >
+                    <span>{m.emoji}</span> {m.label}
+                  </button>
+                ))}
+              </div>
+
               {herdQuery.isLoading ? (
                 <div className="flex items-center justify-center py-12">
                   <Loader2 className="h-6 w-6 animate-spin text-primary" />
@@ -183,9 +226,10 @@ export default function Leaderboard() {
                   <p className="mt-3 text-sm text-muted-foreground">Рейтинг стада пока пуст — покупайте подарки в маркетплейсе, чтобы ваше животное поднялось в рейтинге.</p>
                 </div>
               ) : (() => {
-                const filtered = speciesFilter === "all"
+                const speciesFiltered = speciesFilter === "all"
                   ? herdQuery.data
                   : herdQuery.data.filter((a: any) => a.animal?.species === speciesFilter);
+                const filtered = sortByMetric(speciesFiltered, sortMetric);
                 if (!filtered.length) return (
                   <div className="rounded-[2rem] border border-dashed border-border bg-card p-8 text-center">
                     <Heart className="mx-auto h-8 w-8 text-muted-foreground" />
@@ -214,6 +258,19 @@ export default function Leaderboard() {
                         <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white border border-border/50">
                           {getRankIcon(idx + 1)}
                         </div>
+                        {animal.animal?.coverImageUrl ? (
+                          <Link href={`/animals/${animal.animal?.slug ?? animal.animalId}`} className="shrink-0">
+                            <img
+                              src={animal.animal.coverImageUrl}
+                              alt={animal.animal?.name ?? ""}
+                              className="h-11 w-11 rounded-full object-cover border-2 border-white shadow-sm"
+                            />
+                          </Link>
+                        ) : (
+                          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary/10 border-2 border-white shadow-sm">
+                            <Heart className="h-5 w-5 text-primary/50" />
+                          </div>
+                        )}
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-2">
                             <Link href={`/animals/${animal.animal?.slug ?? animal.animalId}`} className="font-semibold text-foreground hover:text-primary truncate">
@@ -238,8 +295,12 @@ export default function Leaderboard() {
                           />
                         </div>
                         <div className="text-right">
-                          <div className="text-2xl font-bold text-primary">{animal.overallRating ?? 0}</div>
-                          <div className="text-[10px] text-muted-foreground">ОЧКОВ</div>
+                          <div className="text-2xl font-bold text-primary">
+                            {sortMetric === "overall" ? (animal.overallRating ?? 0) : (animal[sortMetric] ?? 0)}
+                          </div>
+                          <div className="text-[10px] text-muted-foreground">
+                            {SORT_METRICS.find(m => m.id === sortMetric)?.label?.toUpperCase() ?? "ОЧКОВ"}
+                          </div>
                         </div>
                       </div>
                     </motion.div>

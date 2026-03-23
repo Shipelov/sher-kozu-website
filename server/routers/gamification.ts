@@ -31,6 +31,7 @@ import {
   getHerdLeaderboard,
   getOwnerLeaderboard,
   updateOwnerRating,
+  getRatingHistory,
   recalculateHerdRanks,
   listFarmerChecklists,
   completeFarmerChecklist,
@@ -367,6 +368,12 @@ export const gamificationRouter = router({
         ));
       return { ...rating, animalCount: countResult?.count ?? 0 };
     }),
+
+    ratingHistory: protectedProcedure
+      .input(z.object({ days: z.number().int().min(7).max(90).default(30) }).optional())
+      .query(async ({ ctx, input }) => {
+        return getRatingHistory(ctx.user.openId, input?.days ?? 30);
+      }),
   }),
 
   // ─── Farmer Checklists (Admin) ─────────────────────
