@@ -1370,7 +1370,7 @@ export const appRouter = router({
       const ownerOpenId = ctx.user.openId;
 
       // Count animals
-      const animalRows = await db.select({ cnt: sql<number>`count(*)` }).from(animalOwnerships).where(eq(animalOwnerships.ownerOpenId, ownerOpenId));
+      const animalRows = await db.select({ cnt: sql<number>`count(DISTINCT animalId)` }).from(animalOwnerships).where(eq(animalOwnerships.ownerOpenId, ownerOpenId));
       const animalCount = Number(animalRows[0]?.cnt ?? 0);
 
       // Count purchases

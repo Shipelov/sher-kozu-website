@@ -359,8 +359,8 @@ export const gamificationRouter = router({
       const { eq, and, sql } = await import("drizzle-orm");
       const [rating] = await dbConn.select().from(ownerRatings).where(eq(ownerRatings.ownerOpenId, ctx.user.openId));
       if (!rating) return null;
-      // Count active ownerships
-      const [countResult] = await dbConn.select({ count: sql<number>`count(*)` })
+      // Count unique active animals (not ownership rows)
+      const [countResult] = await dbConn.select({ count: sql<number>`count(DISTINCT animalId)` })
         .from(animalOwnerships)
         .where(and(
           eq(animalOwnerships.ownerOpenId, ctx.user.openId),

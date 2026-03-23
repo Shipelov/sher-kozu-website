@@ -901,7 +901,7 @@ export async function updateOwnerRating(ownerOpenId: string) {
 
   if (ownedAnimalIds.length === 0) return;
 
-  const animalIds = ownedAnimalIds.map((a: { animalId: number }) => a.animalId);
+  const animalIds: number[] = Array.from(new Set(ownedAnimalIds.map((a: { animalId: number }) => a.animalId)));
   const metrics = await db.select().from(animalWellnessMetrics)
     .where(inArray(animalWellnessMetrics.animalId, animalIds));
 
@@ -1075,7 +1075,7 @@ export async function getOwnerLeaderboard(limit = 20) {
   for (const r of ratings) {
     const [user] = await db.select({ name: users.name, openId: users.openId })
       .from(users).where(eq(users.openId, r.ownerOpenId));
-    const [countResult] = await db.select({ count: sql<number>`count(*)` })
+    const [countResult] = await db.select({ count: sql<number>`count(DISTINCT animalId)` })
       .from(animalOwnerships)
       .where(and(
         eq(animalOwnerships.ownerOpenId, r.ownerOpenId),

@@ -766,3 +766,9 @@
 ## TESTS: Бейджи, уведомления и сравнение
 - [x] 124 новых теста: badges server logic, tRPC routes, UI components, dashboard integration, notifications, comparison page, radar chart
 - [x] Все 1086 тестов проходят (40 файлов)
+
+## BUG: Рейтинг владельца показывает 21 животное — неверное число
+- [x] Проверить логику подсчёта animalCount в myRating и ownerLeaderboard
+- [x] Исправить запрос: считать только уникальных животных с активным ownership (COUNT(DISTINCT animalId))
+- [x] Исправлено в 4 местах: myRating, getOwnerLeaderboard, checkMyBadges, updateOwnerRating
+- [x] 9 новых тестов подтверждают исправление (1095 всего, все проходят)
