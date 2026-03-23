@@ -428,7 +428,7 @@ export default function ProductTracker() {
                     <Package className="h-6 w-6 text-primary" />
                   </div>
 
-                  <div className="mt-6 space-y-3">
+                  <div className="mt-6 space-y-3 max-h-[520px] overflow-y-auto pr-1">
                     {deliveries.length === 0 && (
                       <div className="rounded-[1.5rem] border border-dashed border-border bg-secondary/30 p-5 text-center" data-testid="trackerEmptyDeliveries">
                         <Truck className="mx-auto h-6 w-6 text-primary/50" />
@@ -501,7 +501,7 @@ export default function ProductTracker() {
                   {summary?.productStory?.description ??
                     "Не безликий сыр, а именной продукт — результат вашей связи с животным и заботы фермы."}
                 </p>
-                <div className="mt-5 space-y-2">
+                <div className="mt-5 space-y-2 max-h-[300px] overflow-y-auto pr-1">
                   {(summary?.routeNotes ?? []).map((note) => (
                     <div key={note} className="flex items-start gap-2 text-sm text-muted-foreground">
                       <Star className="mt-0.5 h-4 w-4 text-accent" />

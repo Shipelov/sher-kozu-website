@@ -152,7 +152,8 @@ export default function Leaderboard() {
                   <p className="mt-3 text-sm text-muted-foreground">Рейтинг стада пока пуст — покупайте подарки в маркетплейсе, чтобы ваше животное поднялось в рейтинге.</p>
                 </div>
               ) : (
-                herdQuery.data.map((animal: any, idx: number) => (
+                <div className="max-h-[600px] overflow-y-auto space-y-3 pr-1">
+                {herdQuery.data.map((animal: any, idx: number) => (
                   <motion.div
                     key={animal.animalId}
                     initial={{ opacity: 0, y: 8 }}
@@ -195,7 +196,8 @@ export default function Leaderboard() {
                       </div>
                     </div>
                   </motion.div>
-                ))
+                ))}
+                </div>
               )}
             </motion.div>
           )}
@@ -217,7 +219,8 @@ export default function Leaderboard() {
                   <p className="mt-3 text-sm text-muted-foreground">Рейтинг владельцев пока пуст.</p>
                 </div>
               ) : (
-                ownersQuery.data.map((owner: any, idx: number) => {
+                <div className="max-h-[600px] overflow-y-auto space-y-3 pr-1">
+                {ownersQuery.data.map((owner: any, idx: number) => {
                   const titleInfo = getTitleInfo(owner.title);
                   const isMe = user?.openId === owner.ownerOpenId;
                   return (
@@ -260,7 +263,8 @@ export default function Leaderboard() {
                       </div>
                     </motion.div>
                   );
-                })
+                })}
+                </div>
               )}
             </motion.div>
           )}

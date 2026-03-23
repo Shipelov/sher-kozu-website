@@ -142,7 +142,7 @@ export default function Marketplace() {
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
             {/* Categories Sidebar */}
             <div className="lg:col-span-1">
-              <div className="sticky top-24 space-y-2">
+              <div className="sticky top-24 space-y-2 max-h-[70vh] overflow-y-auto pr-1">
                 <h3 className="font-semibold text-sm text-muted-foreground mb-3 uppercase tracking-wider">Категории</h3>
                 <button
                   onClick={() => setSelectedCategory(null)}
@@ -181,7 +181,7 @@ export default function Marketplace() {
                   </CardContent>
                 </Card>
               ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 max-h-[800px] overflow-y-auto pr-1">
                   {items.map((item: any) => {
                     const effects: MetricEffect = item.metricEffects ? (typeof item.metricEffects === "string" ? JSON.parse(item.metricEffects) : item.metricEffects) : {};
                     const effectEntries = Object.entries(effects).filter(([, v]) => (v as number) > 0);

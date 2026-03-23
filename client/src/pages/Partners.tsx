@@ -760,7 +760,7 @@ export default function Partners() {
                         ) : null}
                       </div>
                       {partnerAttachments.length ? (
-                        <div className="space-y-2">
+                        <div className="space-y-2 max-h-[400px] overflow-y-auto pr-1">
                           {partnerAttachments.map((item) => {
                             const attachmentKind = getPartnerAttachmentKind(item.mimeType, item.name);
                             const attachmentBadge = getPartnerAttachmentBadge(attachmentKind);

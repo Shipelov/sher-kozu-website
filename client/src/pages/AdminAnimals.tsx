@@ -724,6 +724,7 @@ function ShareDistributionPanel({ animals }: { animals: AdminAnimalRecord[] }) {
           </Card>
         </div>
 
+        <div className="max-h-[640px] overflow-y-auto pr-1">
         <div className="grid gap-4 lg:grid-cols-2">
           {animals.map((animal) => {
             const shareTone = getShareStatusTone(animal);
@@ -753,6 +754,7 @@ function ShareDistributionPanel({ animals }: { animals: AdminAnimalRecord[] }) {
               </div>
             );
           })}
+        </div>
         </div>
 
         {summary.loadedAnimals === 0 ? (
@@ -849,7 +851,7 @@ function OwnershipManagementDialog({
             У этого животного пока нет ни одного ownership. Покупки появятся здесь автоматически.
           </div>
         ) : (
-          <div className="space-y-3">
+          <div className="space-y-3 max-h-[520px] overflow-y-auto pr-1">
             {ownerships.map((ownership) => {
               const statusInfo = OWNERSHIP_STATUS_MAP[ownership.status] ?? OWNERSHIP_STATUS_MAP.expired;
               const StatusIcon = statusInfo.icon;
@@ -959,7 +961,7 @@ function AdminAnimalsTable({
   restoringAnimalId: number | null;
 }) {
   return (
-    <div className="overflow-hidden rounded-[1.75rem] border border-border/70 bg-white shadow-sm">
+    <div className="overflow-hidden rounded-[1.75rem] border border-border/70 bg-white shadow-sm max-h-[640px] overflow-y-auto">
       <Table>
         <TableHeader>
           <TableRow className="hover:bg-transparent">

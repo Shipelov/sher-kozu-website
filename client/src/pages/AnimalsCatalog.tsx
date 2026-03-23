@@ -304,7 +304,7 @@ function AnimalSpeciesSection({
       </div>
 
       {filteredAnimals.length ? (
-        <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+        <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3 max-h-[800px] overflow-y-auto pr-1">
           {filteredAnimals.map((animal) => {
             const availability = getRelationshipStatus(animal.availableSlots, animal.totalOwnershipSlots, animal.occupiedUntil);
             const shareSummary = getShareBlockSummary(animal);

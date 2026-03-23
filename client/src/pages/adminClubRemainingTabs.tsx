@@ -271,7 +271,7 @@ export function AdminClubBitrixTabContent({
           </CardHeader>
           <CardContent className="space-y-4">
             {bitrixLeads.length ? (
-              <div className="space-y-3">
+              <div className="space-y-3 max-h-[520px] overflow-y-auto pr-1">
                 {bitrixLeads.map((lead) => (
                   <div
                     key={lead.id}
@@ -708,7 +708,8 @@ export function AdminClubBitrixTabContent({
             </CardHeader>
             <CardContent className="space-y-3">
               {bitrixAudits.length ? (
-                bitrixAudits.slice(0, 12).map((audit) => (
+                <div className="space-y-3 max-h-[520px] overflow-y-auto pr-1">
+                {bitrixAudits.slice(0, 12).map((audit) => (
                   <div
                     key={audit.id}
                     className="rounded-2xl border border-stone-200 bg-stone-50/80 px-4 py-3"
@@ -742,7 +743,8 @@ export function AdminClubBitrixTabContent({
                       <span className="text-xs text-stone-500">{formatDateTime(audit.createdAt)}</span>
                     </div>
                   </div>
-                ))
+                ))}
+                </div>
               ) : (
                 <div className="rounded-2xl border border-dashed border-stone-200 bg-stone-50/70 px-4 py-5 text-sm text-stone-500">
                   Аудит интеграции пока пуст. После первой отправки или refresh snapshot здесь появятся push/pull записи.
@@ -1177,7 +1179,7 @@ export function AdminClubActivityTabContent({
               </CardHeader>
               <CardContent>
                 {criticalNotificationHistory.length ? (
-                  <div className="space-y-3">
+                  <div className="space-y-3 max-h-[520px] overflow-y-auto pr-1">
                     {criticalNotificationHistory.map((entry) => {
                       const statusBadge = getCriticalNotificationStatusCopy(entry);
 
@@ -1233,7 +1235,7 @@ export function AdminClubActivityTabContent({
             </Card>
 
             {filteredActionLog.length ? (
-              <div className="space-y-4">
+              <div className="space-y-4 max-h-[600px] overflow-y-auto pr-1">
                 {groupedActionLog.map((group) => (
                   <div key={group.key} className="space-y-3">
                     <div className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-dashed border-stone-200 bg-stone-50/70 px-4 py-2">

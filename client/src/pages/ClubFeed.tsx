@@ -381,7 +381,7 @@ export default function ClubFeed() {
                   <Calendar className="h-5 w-5 text-primary" />
                 </div>
 
-                <div className="mt-5 space-y-3">
+                <div className="mt-5 space-y-3 max-h-[420px] overflow-y-auto pr-1">
                   {events.length ? (
                     events.map((event) => (
                       <div key={event.id} className={["min-w-0 rounded-[1.5rem] border p-4", toneClassName(event.tone)].join(" ")}>
@@ -434,7 +434,7 @@ export default function ClubFeed() {
                   <Users className="h-5 w-5 text-primary" />
                 </div>
 
-                <div className="mt-5 space-y-3">
+                <div className="mt-5 space-y-3 max-h-[420px] overflow-y-auto pr-1">
                   {members.length ? (
                     members.map((member) => (
                       <div key={member.id} className="flex flex-wrap items-center gap-3 rounded-[1.5rem] bg-secondary/50 p-4">

@@ -714,6 +714,7 @@ export default function AnimalProfile() {
                 {photoActivity.length ? (
                   <div className="rounded-2xl border border-border/70 bg-card p-4">
                     <p className="mb-2 text-xs uppercase tracking-wide text-muted-foreground">Последние действия</p>
+                    <div className="max-h-[260px] overflow-y-auto">
                     {photoActivity.map((item) => (
                       <div key={item.id} className="flex items-center gap-3 py-1.5 text-sm">
                         <span className={`inline-flex h-7 w-7 items-center justify-center rounded-full ${item.action === "upload" ? "bg-emerald-100 text-emerald-700" : "bg-rose-100 text-rose-700"}`}>
@@ -723,6 +724,7 @@ export default function AnimalProfile() {
                         <span className="ml-auto text-xs text-muted-foreground">{new Date(item.timestamp).toLocaleString("ru-RU")}</span>
                       </div>
                     ))}
+                    </div>
                   </div>
                 ) : null}
               </div>
@@ -767,7 +769,7 @@ export default function AnimalProfile() {
               </div>
 
               {activeTab === "diary" ? (
-                <div className="mt-6 space-y-4">
+                <div className="mt-6 space-y-4 max-h-[520px] overflow-y-auto pr-1">
                   {diaryEntries.map((entry) => (
                     <motion.div key={entry.date} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="rounded-2xl border border-border/70 bg-card p-5">
                       <div className="flex items-center gap-3">
@@ -787,7 +789,7 @@ export default function AnimalProfile() {
                   ))}
                 </div>
               ) : (
-                <div className="mt-6 space-y-3">
+                <div className="mt-6 space-y-3 max-h-[520px] overflow-y-auto pr-1">
                   {healthHistory.map((item) => (
                     <div key={item.date + item.event} className="flex items-start gap-4 rounded-2xl border border-border/70 bg-card p-4">
                       <div className={`mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${item.status === "ok" ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"}`}>

@@ -96,7 +96,7 @@ export function EntityListCard({
       </CardHeader>
       <CardContent className="space-y-4">
         {toolbar}
-        <div className="space-y-3">
+        <div className="space-y-3 max-h-[600px] overflow-y-auto pr-1">
           {items.length ? items.map((item) => <div key={item.id}>{renderItem(item)}</div>) : <p className="text-sm text-stone-500">{emptyText ?? "Пока нет записей."}</p>}
         </div>
         {pagination && onPageChange && onPageSizeChange ? (

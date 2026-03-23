@@ -637,7 +637,7 @@ function OwnerPlansOverview({ animalId }: { animalId: number }) {
               Ни один владелец ещё не выбрал продуктовый план для этого животного.
             </div>
           ) : (
-            <div className="space-y-4">
+            <div className="space-y-4 max-h-[520px] overflow-y-auto pr-1">
               {ownerPlans.map((plan) => {
                 let selections: SelectionEntry[] = [];
                 try { selections = JSON.parse(plan.selectionsJson); } catch {}
@@ -896,6 +896,7 @@ function DeliveryScheduleOverview({ animalId, ownerPlans }: { animalId: number; 
             График доставки пуст. Он будет сгенерирован автоматически при подтверждении продуктового плана.
           </div>
         ) : (
+          <div className="max-h-[520px] overflow-y-auto pr-1">
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {schedule.map((entry) => {
               let items: Array<{ label: string; quantity: number; unit: string }> = [];
@@ -932,6 +933,7 @@ function DeliveryScheduleOverview({ animalId, ownerPlans }: { animalId: number; 
                 </div>
               );
             })}
+          </div>
           </div>
         )}
       </CardContent>
@@ -1044,7 +1046,7 @@ function ChatConversationsOverview({ animalId, animalName }: { animalId: number;
             Пока нет сообщений от владельцев по этому животному.
           </div>
         ) : (
-          <div className="space-y-3">
+          <div className="space-y-3 max-h-[520px] overflow-y-auto pr-1">
             {conversations.map((conv: any) => (
               <button
                 key={`${conv.animalId}-${conv.ownerOpenId}`}
@@ -1145,7 +1147,7 @@ export default function AdminProductTrack() {
               <Loader2 className="h-4 w-4 animate-spin" /> Загружаем каталог…
             </div>
           ) : (
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 max-h-[600px] overflow-y-auto pr-1">
               {animals.map((a) => (
                 <Card
                   key={a.id}
@@ -1387,7 +1389,7 @@ function PlanChangeLogView({ animalId }: { animalId: number }) {
             История изменений пуста.
           </div>
         ) : (
-          <div className="relative">
+          <div className="relative max-h-[520px] overflow-y-auto pr-1">
             {/* Timeline line */}
             <div className="absolute left-4 top-0 bottom-0 w-px bg-border" />
 

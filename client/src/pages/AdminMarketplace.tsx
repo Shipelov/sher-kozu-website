@@ -600,7 +600,7 @@ export default function AdminMarketplace() {
                 </CardContent>
               </Card>
             ) : (
-              <div className="grid gap-3">
+              <div className="grid gap-3 max-h-[600px] overflow-y-auto pr-1">
                 {items.map((item: any) => {
                   const cat = categories.find((c: any) => c.id === item.categoryId);
                   const effects = item.metricEffectsJson ? JSON.parse(item.metricEffectsJson) : {};

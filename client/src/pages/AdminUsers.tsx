@@ -722,7 +722,7 @@ export default function AdminUsers() {
               </p>
             </CardContent>
           ) : (
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto max-h-[600px] overflow-y-auto">
               <Table>
                 <TableHeader>
                   <TableRow className="bg-muted/30">
@@ -1050,7 +1050,7 @@ export default function AdminUsers() {
                   <p className="text-sm mt-1">Удалённые пользователи появятся здесь</p>
                 </div>
               ) : (
-                <div className="overflow-x-auto">
+                <div className="overflow-x-auto max-h-[600px] overflow-y-auto">
                   <Table>
                     <TableHeader>
                       <TableRow className="bg-red-50/50">

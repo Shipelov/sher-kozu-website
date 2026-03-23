@@ -674,3 +674,25 @@
 - [x] Добавить кнопку «История» рядом с «Маркетплейс» и «Рейтинг» в блоке баланса SKC
 - [x] При нажатии раскрывается секция с табами «Все операции» / «Покупки»
 - [x] Тест и чекпоинт (962 теста, UI проверен)
+
+## UI: Прокрутка в блоках с накапливающимися данными
+- [x] Аудит всех страниц: найти все блоки с растущими списками данных
+- [x] Добавить max-height + overflow-y scroll (показывать ~10 строк, далее скролл)
+- [x] Leaderboard: рейтинг стада и владельцев (max-h-[600px])
+- [x] Marketplace: категории (max-h-[70vh]), товары (max-h-[800px])
+- [x] ProductTracker: история доставок (max-h-[520px]), заметки маршрута (max-h-[300px])
+- [x] AnimalProfile: дневник, здоровье (max-h-[520px]), фото-активность (max-h-[260px]) — уже были
+- [x] AdminAnalytics: оборот токенов, топ товаров, категории, покупатели (max-h-[400px])
+- [x] AdminHub: таблица регистраций (max-h-[520px])
+- [x] AdminAnimals: ownerships (max-h-[520px]), таблица животных (max-h-[640px])
+- [x] AdminProductTrack: лог изменений (max-h-[520px]), каталог животных (max-h-[600px])
+- [x] adminClubRemainingTabs: лиды Bitrix (max-h-[520px]), аудит (max-h-[520px]), уведомления (max-h-[520px]), лог действий (max-h-[600px])
+- [x] adminClubUi: CrudListPanel items (max-h-[600px]) — покрывает посты, события, участников
+- [x] AnimalsCatalog: каталог животных (max-h-[800px])
+- [x] Partners: вложения (max-h-[400px])
+- [x] OwnerProductPlanSection: график доставки (max-h-[520px])
+- [x] Dashboard: животные (max-h-[520px]), транзакции, покупки (max-h-[480px]) — уже были
+- [x] AdminTokens: кошельки, журнал (max-h-[520px]) — уже были
+- [x] AdminUsers: таблица пользователей (max-h-[600px]) — уже были
+- [x] AdminMarketplace: категории (max-h-[70vh]), товары (max-h-[600px]) — уже были
+- [x] Тест: 962 теста пройдены, 0 ошибок TypeScript

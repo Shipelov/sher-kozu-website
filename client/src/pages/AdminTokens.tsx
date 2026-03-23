@@ -249,7 +249,7 @@ export default function AdminTokens() {
                 </CardContent>
               </Card>
             ) : (
-              <div className="space-y-2">
+              <div className="space-y-2 max-h-[520px] overflow-y-auto pr-1">
                 {wallets.map((w: any) => (
                   <Card key={w.openId}>
                     <CardContent className="flex items-center justify-between p-4">
@@ -415,7 +415,7 @@ export default function AdminTokens() {
               </Card>
             ) : (
               <>
-                <div className="space-y-2">
+                <div className="space-y-2 max-h-[520px] overflow-y-auto pr-1">
                   {transactions.items.map((tx: any) => {
                     const isCredit = tx.direction === "credit";
                     const typeLabels: Record<string, string> = {
