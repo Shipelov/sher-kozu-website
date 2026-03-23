@@ -70,6 +70,9 @@ export default function Marketplace() {
       toast.success("Подарок отправлен!");
       utils.gamification.wallet.balance.invalidate();
       utils.gamification.items.list.invalidate();
+      utils.gamification.wellness.get.invalidate();
+      utils.gamification.wallet.transactions.invalidate();
+      utils.gamification.wallet.purchaseHistory.invalidate();
       utils.animals.ownerDashboard.invalidate();
     },
     onError: (e: any) => toast.error(e.message),
@@ -336,6 +339,9 @@ export default function Marketplace() {
       {/* Success Dialog */}
       <Dialog open={showSuccess} onOpenChange={setShowSuccess}>
         <DialogContent className="sm:max-w-sm text-center">
+          <DialogHeader className="sr-only">
+            <DialogTitle>Подарок отправлен</DialogTitle>
+          </DialogHeader>
           <div className="py-6">
             <div className="w-16 h-16 rounded-full bg-emerald-100 flex items-center justify-center mx-auto mb-4">
               <CheckCircle2 className="h-8 w-8 text-emerald-600" />

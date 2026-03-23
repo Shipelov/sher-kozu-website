@@ -1,0 +1,24 @@
+{
+  "query": "SELECT * FROM animalWellnessMetrics WHERE animalId = 30001;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3J2fXRHx8d1YjF6.root --database mLhmg5VmBsEBpZiYqdnhMQ --execute SELECT * FROM animalWellnessMetrics WHERE animalId = 30001;",
+  "rows": [
+    {
+      "id": "2",
+      "animalId": "30001",
+      "happiness": "52",
+      "health": "55",
+      "attachment": "50",
+      "mood": "50",
+      "obedience": "50",
+      "overallRating": "52",
+      "herdRank": "0",
+      "lastDecayAt": "NULL",
+      "createdAt": "2026-03-23 15:30:39",
+      "updatedAt": "2026-03-23 15:42:18"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tanimalId\thappiness\thealth\tattachment\tmood\tobedience\toverallRating\therdRank\tlastDecayAt\tcreatedAt\tupdatedAt\n2\t30001\t52\t55\t50\t50\t50\t52\t0\tNULL\t2026-03-23 15:30:39\t2026-03-23 15:42:18\n",
+  "stderr": "",
+  "execution_time_ms": 56
+}

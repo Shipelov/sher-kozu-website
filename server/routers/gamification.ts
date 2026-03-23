@@ -119,9 +119,10 @@ export const gamificationRouter = router({
       .input(z.object({
         limit: z.number().int().positive().max(100).default(50),
         offset: z.number().int().min(0).default(0),
+        txType: z.string().optional(),
       }).optional())
       .query(async ({ input }) => {
-        return getFarmTransactions(input?.limit ?? 50, input?.offset ?? 0);
+        return getFarmTransactions(input?.limit ?? 50, input?.offset ?? 0, input?.txType);
       }),
 
     freezeWallet: adminProcedure

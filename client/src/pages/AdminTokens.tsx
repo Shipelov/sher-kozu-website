@@ -50,7 +50,7 @@ export default function AdminTokens() {
   const accountsQuery = trpc.gamification.farmAccounts.get.useQuery(undefined, { enabled: isAdmin });
   const walletsQuery = trpc.gamification.farmAccounts.ownerWallets.useQuery(undefined, { enabled: isAdmin });
   const txQuery = trpc.gamification.farmAccounts.transactions.useQuery(
-    { limit: 20, offset: (txPage - 1) * 20 },
+    { limit: 20, offset: (txPage - 1) * 20, txType: txType !== "all" ? txType : undefined },
     { enabled: isAdmin }
   );
   const autoSettingsQuery = trpc.gamification.farmAccounts.autoAllocation.get.useQuery(undefined, { enabled: isAdmin });
@@ -390,7 +390,9 @@ export default function AdminTokens() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Все типы</SelectItem>
-                  <SelectItem value="allocation">Начисление</SelectItem>
+                  <SelectItem value="emission">Начисление</SelectItem>
+                  <SelectItem value="bulk_emission">Массовое начисление</SelectItem>
+                  <SelectItem value="auto_emission">Автоначисление</SelectItem>
                   <SelectItem value="purchase">Покупка</SelectItem>
                   <SelectItem value="refund">Возврат</SelectItem>
                   <SelectItem value="bonus">Бонус</SelectItem>
@@ -415,16 +417,20 @@ export default function AdminTokens() {
               <>
                 <div className="space-y-2">
                   {transactions.items.map((tx: any) => {
-                    const isIncome = tx.type === "allocation" || tx.type === "refund" || tx.type === "bonus";
+                    const isCredit = tx.direction === "credit";
                     const typeLabels: Record<string, string> = {
-                      allocation: "Начисление",
+                      emission: "Начисление",
+                      bulk_emission: "Массовое начисление",
+                      auto_emission: "Автоначисление",
                       purchase: "Покупка",
                       refund: "Возврат",
                       bonus: "Бонус",
                       adjustment: "Корректировка",
                     };
                     const typeColors: Record<string, string> = {
-                      allocation: "bg-emerald-100 text-emerald-700",
+                      emission: "bg-emerald-100 text-emerald-700",
+                      bulk_emission: "bg-emerald-100 text-emerald-700",
+                      auto_emission: "bg-teal-100 text-teal-700",
                       purchase: "bg-amber-100 text-amber-700",
                       refund: "bg-blue-100 text-blue-700",
                       bonus: "bg-purple-100 text-purple-700",
@@ -435,22 +441,22 @@ export default function AdminTokens() {
                       <Card key={tx.id}>
                         <CardContent className="flex items-center justify-between p-3">
                           <div className="flex items-center gap-3">
-                            <div className={`w-8 h-8 rounded-full flex items-center justify-center ${isIncome ? "bg-emerald-100" : "bg-amber-100"}`}>
-                              {isIncome ? <ArrowDownRight className="h-4 w-4 text-emerald-600" /> : <ArrowUpRight className="h-4 w-4 text-amber-600" />}
+                            <div className={`w-8 h-8 rounded-full flex items-center justify-center ${isCredit ? "bg-emerald-100" : "bg-amber-100"}`}>
+                              {isCredit ? <ArrowDownRight className="h-4 w-4 text-emerald-600" /> : <ArrowUpRight className="h-4 w-4 text-amber-600" />}
                             </div>
                             <div>
                               <div className="flex items-center gap-2">
-                                <Badge className={`text-[10px] ${typeColors[tx.type] ?? ""}`}>
-                                  {typeLabels[tx.type] ?? tx.type}
+                                <Badge className={`text-[10px] ${typeColors[tx.txType] ?? "bg-gray-100 text-gray-700"}`}>
+                                  {typeLabels[tx.txType] ?? tx.txType}
                                 </Badge>
-                                <span className="text-xs text-muted-foreground">{tx.userName || tx.userId}</span>
+                                <span className="text-xs text-muted-foreground">{tx.userName || tx.ownerOpenId || "Система"}</span>
                               </div>
-                              <p className="text-xs text-muted-foreground mt-0.5">{tx.description}</p>
+                              {tx.memo && <p className="text-xs text-muted-foreground mt-0.5">{tx.memo}</p>}
                             </div>
                           </div>
                           <div className="text-right">
-                            <p className={`font-bold text-sm ${isIncome ? "text-emerald-600" : "text-amber-600"}`}>
-                              {isIncome ? "+" : "-"}{tx.amount} SKC
+                            <p className={`font-bold text-sm ${isCredit ? "text-emerald-600" : "text-amber-600"}`}>
+                              {isCredit ? "+" : "-"}{tx.amountSKC} SKC
                             </p>
                             <p className="text-[10px] text-muted-foreground">
                               {new Date(tx.createdAt).toLocaleDateString("ru-RU", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}
@@ -464,13 +470,13 @@ export default function AdminTokens() {
                 {/* Pagination */}
                 <div className="flex items-center justify-between pt-2">
                   <p className="text-xs text-muted-foreground">
-                    Страница {txPage} из {Math.ceil((transactions.total ?? 0) / 20)}
+                    Страница {txPage} из {Math.max(1, Math.ceil((transactions.total ?? 0) / 20))}
                   </p>
                   <div className="flex gap-2">
                     <Button variant="outline" size="sm" disabled={txPage <= 1} onClick={() => setTxPage(p => p - 1)}>
                       Назад
                     </Button>
-                    <Button variant="outline" size="sm" disabled={txPage >= Math.ceil((transactions.total ?? 0) / 20)} onClick={() => setTxPage(p => p + 1)}>
+                    <Button variant="outline" size="sm" disabled={txPage >= Math.max(1, Math.ceil((transactions.total ?? 0) / 20))} onClick={() => setTxPage(p => p + 1)}>
                       Далее
                     </Button>
                   </div>

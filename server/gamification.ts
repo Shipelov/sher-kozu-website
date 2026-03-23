@@ -355,14 +355,50 @@ export async function refundTokensToOwner(
   return { newRevenueBalance, newWalletBalance };
 }
 
-/** Get transaction history for farm accounts */
-export async function getFarmTransactions(limit = 50, offset = 0) {
+/** Get transaction history for farm accounts (enriched with user names, paginated) */
+export async function getFarmTransactions(limit = 50, offset = 0, txTypeFilter?: string) {
   const db = await getDb();
-  if (!db) return [];
-  return db.select().from(farmAccountTransactions)
-    .orderBy(desc(farmAccountTransactions.createdAt))
-    .limit(limit)
-    .offset(offset);
+  if (!db) return { items: [], total: 0 };
+
+  const conditions = [];
+  if (txTypeFilter && txTypeFilter !== "all") {
+    conditions.push(eq(farmAccountTransactions.txType, txTypeFilter as any));
+  }
+
+  const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+
+  const [rows, countResult] = await Promise.all([
+    db.select({
+      id: farmAccountTransactions.id,
+      farmAccountId: farmAccountTransactions.farmAccountId,
+      walletId: farmAccountTransactions.walletId,
+      ownerOpenId: farmAccountTransactions.ownerOpenId,
+      txType: farmAccountTransactions.txType,
+      direction: farmAccountTransactions.direction,
+      amountSKC: farmAccountTransactions.amountSKC,
+      farmBalanceAfterSKC: farmAccountTransactions.farmBalanceAfterSKC,
+      walletBalanceAfterSKC: farmAccountTransactions.walletBalanceAfterSKC,
+      purchaseId: farmAccountTransactions.purchaseId,
+      memo: farmAccountTransactions.memo,
+      initiatedByOpenId: farmAccountTransactions.initiatedByOpenId,
+      createdAt: farmAccountTransactions.createdAt,
+      userName: users.name,
+    })
+      .from(farmAccountTransactions)
+      .leftJoin(users, eq(farmAccountTransactions.ownerOpenId, users.openId))
+      .where(whereClause)
+      .orderBy(desc(farmAccountTransactions.createdAt))
+      .limit(limit)
+      .offset(offset),
+    db.select({ count: sql<number>`count(*)` })
+      .from(farmAccountTransactions)
+      .where(whereClause),
+  ]);
+
+  return {
+    items: rows,
+    total: Number(countResult[0]?.count ?? 0),
+  };
 }
 
 /** Get owner's wallet balance */

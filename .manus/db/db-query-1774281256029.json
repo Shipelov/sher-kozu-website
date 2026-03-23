@@ -1,0 +1,32 @@
+{
+  "query": "SELECT mp.id, mp.ownerOpenId, mp.animalId, mp.itemId, mp.pricePaidSKC, mp.metricEffectsAppliedJson, mp.createdAt, mi.name as itemName, mi.metricEffectsJson\nFROM marketplacePurchases mp\nLEFT JOIN marketplaceItems mi ON mp.itemId = mi.id\nORDER BY mp.createdAt DESC\nLIMIT 10;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3J2fXRHx8d1YjF6.root --database mLhmg5VmBsEBpZiYqdnhMQ --execute SELECT mp.id, mp.ownerOpenId, mp.animalId, mp.itemId, mp.pricePaidSKC, mp.metricEffectsAppliedJson, mp.createdAt, mi.name as itemName, mi.metricEffectsJson\nFROM marketplacePurchases mp\nLEFT JOIN marketplaceItems mi ON mp.itemId = mi.id\nORDER BY mp.createdAt DESC\nLIMIT 10;",
+  "rows": [
+    {
+      "id": "2",
+      "ownerOpenId": "jP5iBYMcdYguBWJPw5Sruu",
+      "animalId": "30001",
+      "itemId": "9",
+      "pricePaidSKC": "10",
+      "metricEffectsAppliedJson": "{\"happiness\":2,\"health\":3,\"attachment\":0,\"mood\":0,\"obedience\":0}",
+      "createdAt": "2026-03-23 15:42:18",
+      "itemName": "Расчёсывание шерсти",
+      "metricEffectsJson": "{\"happiness\":2,\"health\":3,\"attachment\":0,\"mood\":0,\"obedience\":0}"
+    },
+    {
+      "id": "1",
+      "ownerOpenId": "jP5iBYMcdYguBWJPw5Sruu",
+      "animalId": "30001",
+      "itemId": "1",
+      "pricePaidSKC": "5",
+      "metricEffectsAppliedJson": "{\"happiness\":0,\"health\":2,\"attachment\":0,\"mood\":0,\"obedience\":0}",
+      "createdAt": "2026-03-23 15:30:39",
+      "itemName": "Сено луговое",
+      "metricEffectsJson": "{\"happiness\":0,\"health\":2,\"attachment\":0,\"mood\":0,\"obedience\":0}"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\townerOpenId\tanimalId\titemId\tpricePaidSKC\tmetricEffectsAppliedJson\tcreatedAt\titemName\tmetricEffectsJson\n2\tjP5iBYMcdYguBWJPw5Sruu\t30001\t9\t10\t{\"happiness\":2,\"health\":3,\"attachment\":0,\"mood\":0,\"obedience\":0}\t2026-03-23 15:42:18\tРасчёсывание шерсти\t{\"happiness\":2,\"health\":3,\"attachment\":0,\"mood\":0,\"obedience\":0}\n1\tjP5iBYMcdYguBWJPw5Sruu\t30001\t1\t5\t{\"happiness\":0,\"health\":2,\"attachment\":0,\"mood\":0,\"obedience\":0}\t2026-03-23 15:30:39\tСено луговое\t{\"happiness\":0,\"health\":2,\"attachment\":0,\"mood\":0,\"obedience\":0}\n",
+  "stderr": "",
+  "execution_time_ms": 59
+}
