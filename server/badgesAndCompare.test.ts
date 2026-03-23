@@ -546,9 +546,9 @@ describe("Animal Comparison Page (AnimalCompare.tsx)", () => {
     expect(COMPARE_SRC).toContain("Выберите двух животных для сравнения");
   });
 
-  it("has back link to leaderboard", () => {
-    expect(COMPARE_SRC).toContain('href="/leaderboard"');
-    expect(COMPARE_SRC).toContain("Рейтинг");
+  it("has back navigation button", () => {
+    expect(COMPARE_SRC).toContain('Назад');
+    expect(COMPARE_SRC).toContain('window.history.back');
   });
 
   it("uses framer-motion for animations", () => {

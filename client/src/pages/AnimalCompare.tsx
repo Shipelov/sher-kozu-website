@@ -243,13 +243,16 @@ export default function AnimalCompare() {
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
-      <main className="container max-w-4xl py-8">
-        {/* Header */}
-        <div className="flex items-center gap-4 mb-8">
-          <Link href="/leaderboard" className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors">
+      <main className="container max-w-4xl pt-24 pb-12">
+        {/* Header with back navigation */}
+        <div className="mb-8">
+          <button
+            onClick={() => window.history.length > 1 ? window.history.back() : (window.location.href = '/animals')}
+            className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors mb-4"
+          >
             <ArrowLeft className="h-4 w-4" />
-            Рейтинг
-          </Link>
+            Назад
+          </button>
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-primary/10 text-primary">
               <ArrowLeftRight className="h-5 w-5" />
