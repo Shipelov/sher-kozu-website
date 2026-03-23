@@ -32,6 +32,10 @@ import {
   Coins,
   Gift,
   Trophy,
+  ArrowDownLeft,
+  ArrowUpRight,
+  History,
+  ShoppingCart,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -224,6 +228,15 @@ export default function Dashboard() {
   const balanceQuery = trpc.gamification.wallet.balance.useQuery(undefined, {
     enabled: Boolean(ownerDashboardQuery.data?.ownership),
   });
+  const txQuery = trpc.gamification.wallet.transactions.useQuery(
+    { limit: 10 },
+    { enabled: Boolean(ownerDashboardQuery.data?.ownership) }
+  );
+  const purchaseQuery = trpc.gamification.wallet.purchaseHistory.useQuery(
+    { limit: 10 },
+    { enabled: Boolean(ownerDashboardQuery.data?.ownership) }
+  );
+  const [txTab, setTxTab] = useState<"all" | "purchases">("all");
   const dashboard = ownerDashboardQuery.data;
   const ownership = dashboard?.ownership ?? null;
   const currentAnimal = dashboard?.animal ?? null;
@@ -638,6 +651,156 @@ export default function Dashboard() {
                   Тратьте токены в маркетплейсе на подарки и угощения для {featuredAnimalName} — это повышает метрики благополучия и рейтинг.
                 </p>
               )}
+            </motion.section>
+          )}
+
+          {/* ── Transaction History Widget ── */}
+          {ownership && (
+            <motion.section
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.075 }}
+              className="rounded-[2rem] border border-border/70 bg-card p-5 shadow-sm"
+              data-testid="dashboardTransactionHistory"
+            >
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+                    <History className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <p className="text-xs uppercase tracking-[0.18em] text-primary">История операций</p>
+                    <p className="mt-0.5 text-sm text-muted-foreground">Начисления, списания и покупки</p>
+                  </div>
+                </div>
+                <div className="flex rounded-full border border-border bg-secondary/40 p-0.5">
+                  <button
+                    type="button"
+                    onClick={() => setTxTab("all")}
+                    className={`rounded-full px-3 py-1.5 text-xs font-medium transition ${
+                      txTab === "all"
+                        ? "bg-white text-foreground shadow-sm"
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    Все операции
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setTxTab("purchases")}
+                    className={`rounded-full px-3 py-1.5 text-xs font-medium transition ${
+                      txTab === "purchases"
+                        ? "bg-white text-foreground shadow-sm"
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    Покупки
+                  </button>
+                </div>
+              </div>
+
+              <div className="mt-4 space-y-2">
+                {txTab === "all" && (
+                  <>
+                    {txQuery.isLoading && (
+                      <div className="flex items-center justify-center py-8">
+                        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                      </div>
+                    )}
+                    {txQuery.data && txQuery.data.length === 0 && (
+                      <div className="rounded-2xl border border-dashed border-border bg-secondary/30 p-6 text-center">
+                        <History className="mx-auto h-6 w-6 text-muted-foreground/60" />
+                        <p className="mt-2 text-sm text-muted-foreground">Пока нет операций. Начисления появятся здесь.</p>
+                      </div>
+                    )}
+                    {txQuery.data && txQuery.data.length > 0 && txQuery.data.map((tx: any) => {
+                      const isCredit = tx.direction === "credit";
+                      const typeLabels: Record<string, string> = {
+                        topup: "Пополнение",
+                        spend: "Покупка",
+                        reward: "Награда",
+                        admin_grant: "Начисление",
+                        admin_adjustment: "Корректировка",
+                        refund: "Возврат",
+                        expiry: "Истечение",
+                      };
+                      return (
+                        <div
+                          key={tx.id}
+                          className="flex items-center gap-3 rounded-2xl border border-border/70 bg-white px-4 py-3 transition-colors hover:bg-muted/30"
+                        >
+                          <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${
+                            isCredit ? "bg-emerald-50 text-emerald-600" : "bg-red-50 text-red-500"
+                          }`}>
+                            {isCredit ? <ArrowDownLeft className="h-4 w-4" /> : <ArrowUpRight className="h-4 w-4" />}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm font-medium text-foreground">
+                                {typeLabels[tx.transactionType] ?? tx.transactionType}
+                              </span>
+                              {tx.memo && (
+                                <span className="truncate text-xs text-muted-foreground">— {tx.memo}</span>
+                              )}
+                            </div>
+                            <div className="mt-0.5 text-xs text-muted-foreground">
+                              {new Date(tx.createdAt).toLocaleString("ru-RU", {
+                                day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit"
+                              })}
+                            </div>
+                          </div>
+                          <div className={`shrink-0 text-sm font-semibold ${
+                            isCredit ? "text-emerald-600" : "text-red-500"
+                          }`}>
+                            {isCredit ? "+" : "−"}{tx.amountMinor} SKC
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </>
+                )}
+
+                {txTab === "purchases" && (
+                  <>
+                    {purchaseQuery.isLoading && (
+                      <div className="flex items-center justify-center py-8">
+                        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                      </div>
+                    )}
+                    {purchaseQuery.data && purchaseQuery.data.length === 0 && (
+                      <div className="rounded-2xl border border-dashed border-border bg-secondary/30 p-6 text-center">
+                        <ShoppingCart className="mx-auto h-6 w-6 text-muted-foreground/60" />
+                        <p className="mt-2 text-sm text-muted-foreground">Пока нет покупок. Загляните в маркетплейс!</p>
+                      </div>
+                    )}
+                    {purchaseQuery.data && purchaseQuery.data.length > 0 && purchaseQuery.data.map((p: any) => (
+                      <div
+                        key={p.id}
+                        className="flex items-center gap-3 rounded-2xl border border-border/70 bg-white px-4 py-3 transition-colors hover:bg-muted/30"
+                      >
+                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-50 text-amber-600">
+                          <ShoppingCart className="h-4 w-4" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="text-sm font-medium text-foreground">{p.itemName}</div>
+                          <div className="mt-0.5 flex items-center gap-2 text-xs text-muted-foreground">
+                            <span>для {p.animalName}</span>
+                            <span>·</span>
+                            <span>
+                              {new Date(p.createdAt).toLocaleString("ru-RU", {
+                                day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit"
+                              })}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="shrink-0 text-sm font-semibold text-red-500">
+                          −{p.priceMinor} SKC
+                        </div>
+                      </div>
+                    ))}
+                  </>
+                )}
+              </div>
             </motion.section>
           )}
 
