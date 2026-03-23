@@ -60,7 +60,7 @@ describe("Compare button in AnimalProfile", () => {
   });
 
   it("uses 3-column grid for navigation links (Compare moved to top)", () => {
-    expect(ANIMAL_PROFILE_SRC).toContain("md:grid-cols-3");
+    expect(ANIMAL_PROFILE_SRC).toContain("sm:grid-cols-3");
   });
 
   it("applies accent styling for owners with hasOwnerAccess", () => {

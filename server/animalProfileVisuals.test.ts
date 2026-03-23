@@ -42,7 +42,7 @@ describe("AnimalProfile visual integration", () => {
   });
 
   it("contains gallery, diary and passport sections in correct order", () => {
-    expect(source).toContain("Фотографии");
+    expect(source).toContain("Галерея");
     expect(source).toContain("Дневник");
     expect(source).toContain("Паспорт");
     expect(source).toContain("Управление галереей доступно владельцам доли");

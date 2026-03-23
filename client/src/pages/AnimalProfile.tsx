@@ -9,6 +9,7 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { getLoginUrl } from "@/const";
 import Navbar from "@/components/Navbar";
 import AnimalShareCard from "@/components/AnimalShareCard";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
   Heart,
   Thermometer,
@@ -17,6 +18,7 @@ import {
   Star,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
   Play,
   Calendar,
   Dna,
@@ -151,13 +153,67 @@ function useAnimalSlug() {
   return paramsByAnimals?.slug ?? paramsByLegacy?.slug ?? null;
 }
 
+/* ── Collapsible section helper ── */
+function ProfileSection({
+  id,
+  icon: Icon,
+  title,
+  badge,
+  defaultOpen = false,
+  children,
+}: {
+  id: string;
+  icon: React.ComponentType<{ className?: string }>;
+  title: string;
+  badge?: string;
+  defaultOpen?: boolean;
+  children: React.ReactNode;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
+
+  return (
+    <div id={id} className="rounded-2xl border border-border/70 bg-card overflow-hidden transition-shadow hover:shadow-sm">
+      <button
+        type="button"
+        onClick={() => setOpen(!open)}
+        className="flex w-full items-center gap-3 px-5 py-4 text-left transition hover:bg-muted/30"
+      >
+        <div className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+          <Icon className="h-4.5 w-4.5" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <span className="text-sm font-semibold text-foreground">{title}</span>
+        </div>
+        {badge ? (
+          <span className="shrink-0 rounded-full bg-secondary px-2.5 py-0.5 text-[11px] font-medium text-muted-foreground">{badge}</span>
+        ) : null}
+        <ChevronDown className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200 ${open ? "rotate-180" : ""}`} />
+      </button>
+      <AnimatePresence initial={false}>
+        {open && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.25, ease: "easeInOut" }}
+            className="overflow-hidden"
+          >
+            <div className="border-t border-border/50 px-5 pb-5 pt-4">
+              {children}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
 /* ── component ── */
 export default function AnimalProfile() {
   const [, setLocation] = useLocation();
   const animalSlug = useAnimalSlug();
   const { isAuthenticated } = useAuth();
 
-  const [activeTab, setActiveTab] = useState<"diary" | "health">("diary");
   const [selectedImageId, setSelectedImageId] = useState("cover");
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [photoActivity, setPhotoActivity] = useState<PhotoActivity[]>([]);
@@ -506,13 +562,13 @@ export default function AnimalProfile() {
       <div className="min-h-screen bg-background text-foreground">
         <Navbar />
 
-        {/* ═══ SECTION 1: Hero — name, photo, key facts ═══ */}
-        <section className="relative overflow-hidden border-b border-border/60 bg-gradient-to-br from-background via-secondary/30 to-background pb-12 pt-24 md:pb-16 md:pt-28">
+        {/* ═══ HERO: Compact name, photo, key facts ═══ */}
+        <section className="relative overflow-hidden border-b border-border/60 bg-gradient-to-br from-background via-secondary/30 to-background pb-10 pt-24 md:pb-14 md:pt-28">
           <div className="container">
             <div className="grid items-start gap-8 lg:grid-cols-[1fr_1.1fr]">
               {/* Left: info */}
               <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="min-w-0">
-                <Link href="/animals" className="mb-4 inline-flex items-center gap-2 text-sm text-muted-foreground transition hover:text-foreground">
+                <Link href="/animals" className="mb-3 inline-flex items-center gap-2 text-sm text-muted-foreground transition hover:text-foreground">
                   <ChevronLeft className="h-4 w-4" /> Каталог животных
                 </Link>
 
@@ -523,43 +579,40 @@ export default function AnimalProfile() {
                   <span className="text-xs text-muted-foreground">{speciesLabel} · {breedLabel}</span>
                 </div>
 
-                <h1 className="mt-4 font-display text-4xl font-bold leading-tight text-foreground md:text-5xl lg:text-6xl">
+                <h1 className="mt-3 font-display text-4xl font-bold leading-tight text-foreground md:text-5xl lg:text-6xl">
                   {displayName}
                 </h1>
 
                 {data?.shortDescription ? (
-                  <p className="mt-4 max-w-lg text-base leading-7 text-muted-foreground">{data.shortDescription}</p>
+                  <p className="mt-3 max-w-lg text-base leading-7 text-muted-foreground">{data.shortDescription}</p>
                 ) : null}
 
-                {/* Key facts grid */}
-                <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
+                {/* Key facts — compact 2x2 grid */}
+                <div className="mt-5 grid grid-cols-2 gap-2.5 sm:grid-cols-4">
                   {keyFacts.map((fact) => {
                     const Icon = fact.icon;
                     return (
-                      <div key={fact.label} className="rounded-2xl border border-border/70 bg-card p-3 text-center">
-                        <Icon className="mx-auto h-4 w-4 text-primary" />
-                        <div className="mt-1.5 text-lg font-semibold text-foreground">{fact.value}</div>
-                        <div className="text-xs text-muted-foreground">{fact.label}</div>
+                      <div key={fact.label} className="rounded-xl border border-border/70 bg-card px-3 py-2.5 text-center">
+                        <Icon className="mx-auto h-3.5 w-3.5 text-primary" />
+                        <div className="mt-1 text-base font-semibold text-foreground">{fact.value}</div>
+                        <div className="text-[11px] text-muted-foreground">{fact.label}</div>
                       </div>
                     );
                   })}
                 </div>
 
                 {/* Quick CTA */}
-                <div className="mt-6 flex flex-wrap gap-3">
+                <div className="mt-5 flex flex-wrap gap-2.5">
                   {hasOwnerAccess ? (
-                    <Link href="/dashboard" className="inline-flex items-center gap-2 rounded-full bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground transition hover:bg-primary/95">
+                    <Link href="/dashboard" className="inline-flex items-center gap-2 rounded-full bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground transition hover:bg-primary/95">
                       Кабинет владельца <ArrowRight className="h-4 w-4" />
                     </Link>
                   ) : (
-                    <button type="button" onClick={() => document.getElementById("share-purchase")?.scrollIntoView({ behavior: "smooth" })} className="inline-flex items-center gap-2 rounded-full bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground transition hover:bg-primary/95">
+                    <button type="button" onClick={() => document.getElementById("share-purchase")?.scrollIntoView({ behavior: "smooth" })} className="inline-flex items-center gap-2 rounded-full bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground transition hover:bg-primary/95">
                       Выбрать долю <ArrowRight className="h-4 w-4" />
                     </button>
                   )}
-                  <button type="button" onClick={() => document.getElementById("gallery-section")?.scrollIntoView({ behavior: "smooth" })} className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-5 py-3 text-sm font-medium text-foreground transition hover:bg-muted">
-                    <Images className="h-4 w-4" /> Галерея
-                  </button>
-                  <Link href={`/compare?animal=${animalSlug}`} className={`group/cmp relative inline-flex items-center gap-2 rounded-full px-5 py-3 text-sm font-medium transition ${hasOwnerAccess ? 'border-2 border-primary/60 bg-primary/10 text-primary hover:bg-primary/20' : 'border border-border bg-card text-foreground hover:bg-muted'}`}>
+                  <Link href={`/compare?animal=${animalSlug}`} className={`group/cmp relative inline-flex items-center gap-2 rounded-full px-4 py-2.5 text-sm font-medium transition ${hasOwnerAccess ? 'border-2 border-primary/60 bg-primary/10 text-primary hover:bg-primary/20' : 'border border-border bg-card text-foreground hover:bg-muted'}`}>
                     <ArrowLeftRight className="h-4 w-4" /> Сравнить
                     <span className="pointer-events-none absolute -bottom-9 left-1/2 z-50 -translate-x-1/2 whitespace-nowrap rounded-md bg-foreground/90 px-2.5 py-1 text-xs text-background opacity-0 shadow-md transition-opacity group-hover/cmp:opacity-100">Сравните метрики с другим животным</span>
                   </Link>
@@ -569,7 +622,7 @@ export default function AnimalProfile() {
               {/* Right: main photo */}
               <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.1 }} className="relative">
                 <div className="overflow-hidden rounded-3xl border border-border/60 shadow-lg">
-                  <img src={coverUrl} alt={displayName} className="h-[400px] w-full object-cover md:h-[480px]" />
+                  <img src={coverUrl} alt={displayName} className="h-[360px] w-full object-cover md:h-[440px]" />
                   <div className="absolute inset-0 rounded-3xl bg-gradient-to-t from-black/40 via-transparent to-transparent" />
                   <div className="absolute bottom-4 left-4 flex items-center gap-2 rounded-full bg-white/20 px-3 py-1.5 text-xs text-white backdrop-blur">
                     <span className="inline-flex h-2 w-2 rounded-full bg-emerald-400" />
@@ -581,11 +634,11 @@ export default function AnimalProfile() {
           </div>
         </section>
 
-        {/* ═══ SECTION 2: Share purchase ═══ */}
-        <section id="share-purchase" className="border-b border-border/60 bg-card/50 py-10 md:py-14">
+        {/* ═══ SHARE PURCHASE ═══ */}
+        <section id="share-purchase" className="border-b border-border/60 bg-card/50 py-8 md:py-12">
           <div className="container">
             <div className="mx-auto max-w-3xl">
-              <div className="mb-6 text-center">
+              <div className="mb-5 text-center">
                 <p className="text-xs uppercase tracking-widest text-primary">Персональное участие</p>
                 <h2 className="mt-2 text-2xl font-semibold text-foreground md:text-3xl">Станьте частью истории {displayName}</h2>
                 <p className="mt-2 text-sm text-muted-foreground">
@@ -594,7 +647,7 @@ export default function AnimalProfile() {
               </div>
 
               {isGuestPreview ? (
-                <div data-testid="animal-guest-preview-banner" className="mb-6 rounded-2xl border border-primary/15 bg-primary/5 p-4 text-center">
+                <div data-testid="animal-guest-preview-banner" className="mb-5 rounded-2xl border border-primary/15 bg-primary/5 p-4 text-center">
                   <p className="text-sm text-muted-foreground">Чтобы стать частью истории {displayName}, войдите в аккаунт или зарегистрируйтесь.</p>
                   <a href={getLoginUrl(`/animals/${animalSlug}`)} className="mt-3 inline-flex items-center gap-2 rounded-full bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground transition hover:opacity-90">
                     Войти или зарегистрироваться
@@ -638,272 +691,243 @@ export default function AnimalProfile() {
           </div>
         </section>
 
-        {/* ═══ SECTION 3: Gallery ═══ */}
-        <section id="gallery-section" className="border-b border-border/60 py-10 md:py-14">
+        {/* ═══ COLLAPSIBLE SECTIONS — organized, friendly ═══ */}
+        <section className="py-8 md:py-12">
           <div className="container">
-            <div className="flex flex-wrap items-center justify-between gap-4">
-              <div>
-                <p className="text-xs uppercase tracking-widest text-primary">Галерея</p>
-                <h2 className="mt-1 text-2xl font-semibold text-foreground">Фотографии {displayName}</h2>
-              </div>
-              <span className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1.5 text-xs text-muted-foreground">
-                <Images className="h-3.5 w-3.5" /> {galleryImages.length} фото
-              </span>
-            </div>
+            <div className="mx-auto max-w-3xl space-y-3">
 
-            {/* Main viewer */}
-            <div className="mt-6 overflow-hidden rounded-3xl border border-border/70 bg-card shadow-sm">
-              <div className="relative">
-                <img src={selectedImage?.src ?? CDN.hero} alt={selectedImage?.title ?? displayName} className="h-[360px] w-full object-cover md:h-[480px]" />
-                <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent p-5 text-white">
-                  <h4 className="text-xl font-semibold">{selectedImage?.title}</h4>
-                  <p className="mt-1 text-sm text-white/75">{selectedImage?.meta}</p>
-                </div>
-                <button type="button" onClick={() => moveGallery("prev")} className="absolute left-4 top-1/2 inline-flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-white/85 text-foreground shadow transition hover:bg-white">
-                  <ChevronLeft className="h-5 w-5" />
-                </button>
-                <button type="button" onClick={() => moveGallery("next")} className="absolute right-4 top-1/2 inline-flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-white/85 text-foreground shadow transition hover:bg-white">
-                  <ChevronRight className="h-5 w-5" />
-                </button>
-              </div>
-            </div>
-
-            {/* Thumbnails */}
-            <div className="mt-4 flex gap-3 overflow-x-auto pb-2">
-              {galleryImages.map((img) => (
-                <button key={img.id} type="button" onClick={() => setSelectedImageId(img.id)} className={`shrink-0 overflow-hidden rounded-2xl border-2 transition ${selectedImageId === img.id ? "border-primary" : "border-transparent opacity-70 hover:opacity-100"}`}>
-                  <img src={img.src} alt={img.title} className="h-20 w-28 object-cover" />
-                </button>
-              ))}
-            </div>
-
-            {/* Owner gallery actions */}
-            {hasOwnerAccess ? (
-              <div className="mt-4 space-y-3">
-                <div className="flex flex-wrap gap-2">
-                  {selectedImage?.isUploaded && selectedImage?.photoId ? (
-                    <>
-                      <button type="button" onClick={() => handleSetCoverImage(selectedImage)} className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-xs transition hover:bg-muted">
-                        <Star className="h-3.5 w-3.5" /> Сделать обложкой
-                      </button>
-                      <button type="button" onClick={() => moveUploadedPhoto(selectedImage.photoId!, "left")} className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-xs transition hover:bg-muted">
-                        <ChevronLeft className="h-3.5 w-3.5" /> Влево
-                      </button>
-                      <button type="button" onClick={() => moveUploadedPhoto(selectedImage.photoId!, "right")} className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-xs transition hover:bg-muted">
-                        <ChevronRight className="h-3.5 w-3.5" /> Вправо
-                      </button>
-                      <button type="button" onClick={() => handleRemoveUploadedImage(selectedImage)} className="inline-flex items-center gap-1.5 rounded-full border border-rose-200 bg-rose-50 px-3 py-1.5 text-xs text-rose-700 transition hover:bg-rose-100">
-                        <X className="h-3.5 w-3.5" /> Удалить
-                      </button>
-                    </>
-                  ) : selectedImage ? (
-                    <button type="button" onClick={() => handleSetCoverImage(selectedImage)} className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-xs transition hover:bg-muted">
-                      <Star className="h-3.5 w-3.5" /> Сделать обложкой
+              {/* ── Gallery ── */}
+              <ProfileSection id="gallery-section" icon={Images} title={`Галерея ${displayName}`} badge={`${galleryImages.length} фото`} defaultOpen={true}>
+                {/* Main viewer */}
+                <div className="overflow-hidden rounded-2xl border border-border/70 bg-muted/20">
+                  <div className="relative">
+                    <img src={selectedImage?.src ?? CDN.hero} alt={selectedImage?.title ?? displayName} className="h-[280px] w-full object-cover md:h-[380px]" />
+                    <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent p-4 text-white">
+                      <h4 className="text-lg font-semibold">{selectedImage?.title}</h4>
+                      <p className="mt-0.5 text-xs text-white/75">{selectedImage?.meta}</p>
+                    </div>
+                    <button type="button" onClick={() => moveGallery("prev")} className="absolute left-3 top-1/2 inline-flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-white/85 text-foreground shadow transition hover:bg-white">
+                      <ChevronLeft className="h-4 w-4" />
                     </button>
-                  ) : null}
-                  <button type="button" onClick={() => setLightboxOpen(true)} className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-xs transition hover:bg-muted">
-                    <Play className="h-3.5 w-3.5" /> Полный размер
-                  </button>
+                    <button type="button" onClick={() => moveGallery("next")} className="absolute right-3 top-1/2 inline-flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-white/85 text-foreground shadow transition hover:bg-white">
+                      <ChevronRight className="h-4 w-4" />
+                    </button>
+                  </div>
                 </div>
 
-                <label onDragOver={handleDropZoneDragOver} onDragLeave={handleDropZoneDragLeave} onDrop={handleDropZoneDrop} className={`flex cursor-pointer items-center gap-4 rounded-2xl border border-dashed px-5 py-4 transition ${isDragActive ? "border-primary bg-primary/5" : "border-border/70 bg-card hover:bg-muted/30"}`}>
-                  <input type="file" accept={ACCEPTED_IMAGE_TYPES.join(",")} className="hidden" onChange={handleGalleryUpload} />
-                  <div className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary">
-                    <Upload className="h-4 w-4" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-foreground">Загрузить фото</p>
-                    <p className="text-xs text-muted-foreground">JPG, PNG, WebP до 8 МБ</p>
-                  </div>
-                </label>
-
-                {photoActivity.length ? (
-                  <div className="rounded-2xl border border-border/70 bg-card p-4">
-                    <p className="mb-2 text-xs uppercase tracking-wide text-muted-foreground">Последние действия</p>
-                    <ScrollRemaining totalItems={photoActivity.length} itemHeight={40} className="max-h-[260px] overflow-y-auto">
-                    {photoActivity.map((item) => (
-                      <div key={item.id} className="flex items-center gap-3 py-1.5 text-sm">
-                        <span className={`inline-flex h-7 w-7 items-center justify-center rounded-full ${item.action === "upload" ? "bg-emerald-100 text-emerald-700" : "bg-rose-100 text-rose-700"}`}>
-                          {item.action === "upload" ? <Upload className="h-3 w-3" /> : <X className="h-3 w-3" />}
-                        </span>
-                        <span className="text-foreground">{item.action === "upload" ? "Загружено" : "Удалено"}: {item.title}</span>
-                        <span className="ml-auto text-xs text-muted-foreground">{new Date(item.timestamp).toLocaleString("ru-RU")}</span>
-                      </div>
-                    ))}
-                    </ScrollRemaining>
-                  </div>
-                ) : null}
-              </div>
-            ) : !isAuthenticated ? (
-              <div className="mt-4 rounded-2xl border border-dashed border-primary/20 bg-primary/5 p-5 text-center">
-                <p className="text-sm text-muted-foreground">Управление галереей доступно владельцам доли.</p>
-                <a data-testid="animal-guest-preview-register-cta-secondary" href={getLoginUrl(`/animals/${animalSlug}`)} className="mt-3 inline-flex items-center gap-2 rounded-full border border-primary/20 bg-card px-4 py-2 text-sm font-medium text-primary transition hover:bg-primary/5">
-                  Войти или зарегистрироваться
-                </a>
-              </div>
-            ) : null}
-
-            {/* Share buttons */}
-            <div className="mt-4 flex flex-wrap gap-2">
-              <button type="button" onClick={handleCopyShareLink} className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-4 py-2 text-sm transition hover:bg-muted">
-                <Link2 className="h-4 w-4" /> Скопировать ссылку
-              </button>
-              <button type="button" onClick={() => handleShare("facebook")} className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-3 py-2 text-sm transition hover:bg-muted">
-                <Facebook className="h-4 w-4" />
-              </button>
-              <button type="button" onClick={() => handleShare("vk")} className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-3 py-2 text-sm transition hover:bg-muted">
-                <MessageCircle className="h-4 w-4" />
-              </button>
-              <button type="button" onClick={() => handleShare("instagram")} className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-3 py-2 text-sm transition hover:bg-muted">
-                <Instagram className="h-4 w-4" />
-              </button>
-            </div>
-          </div>
-        </section>
-
-        {/* ═══ SECTION 4: Diary & Health ═══ */}
-        <section className="border-b border-border/60 py-10 md:py-14">
-          <div className="container">
-            <div className="mx-auto max-w-4xl">
-              <div className="flex items-center gap-4">
-                <button type="button" onClick={() => setActiveTab("diary")} className={`rounded-full px-5 py-2 text-sm font-medium transition ${activeTab === "diary" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:text-foreground"}`}>
-                  <BookOpen className="mr-1.5 inline h-4 w-4" /> Дневник
-                </button>
-                <button type="button" onClick={() => setActiveTab("health")} className={`rounded-full px-5 py-2 text-sm font-medium transition ${activeTab === "health" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:text-foreground"}`}>
-                  <Thermometer className="mr-1.5 inline h-4 w-4" /> Здоровье
-                </button>
-              </div>
-
-              {activeTab === "diary" ? (
-                <ScrollRemaining totalItems={diaryEntries.length} itemHeight={120} className="mt-6 space-y-4 max-h-[520px] overflow-y-auto pr-1">
-                  {diaryEntries.map((entry) => (
-                    <motion.div key={entry.date} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="rounded-2xl border border-border/70 bg-card p-5">
-                      <div className="flex items-center gap-3">
-                        <span className="text-2xl">{entry.mood}</span>
-                        <div>
-                          <h4 className="font-semibold text-foreground">{entry.title}</h4>
-                          <p className="text-xs text-muted-foreground">{entry.date}</p>
-                        </div>
-                      </div>
-                      <p className="mt-3 text-sm leading-6 text-muted-foreground">{entry.text}</p>
-                      <div className="mt-3 flex flex-wrap gap-2">
-                        {entry.tags.map((tag) => (
-                          <span key={tag} className="rounded-full bg-secondary px-2.5 py-0.5 text-xs text-muted-foreground">#{tag}</span>
-                        ))}
-                      </div>
-                    </motion.div>
+                {/* Thumbnails */}
+                <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
+                  {galleryImages.map((img) => (
+                    <button key={img.id} type="button" onClick={() => setSelectedImageId(img.id)} className={`shrink-0 overflow-hidden rounded-xl border-2 transition ${selectedImageId === img.id ? "border-primary" : "border-transparent opacity-70 hover:opacity-100"}`}>
+                      <img src={img.src} alt={img.title} className="h-16 w-24 object-cover" />
+                    </button>
                   ))}
-                </ScrollRemaining>
-              ) : (
-                <ScrollRemaining totalItems={healthHistory.length} itemHeight={80} className="mt-6 space-y-3 max-h-[520px] overflow-y-auto pr-1">
-                  {healthHistory.map((item) => (
-                    <div key={item.date + item.event} className="flex items-start gap-4 rounded-2xl border border-border/70 bg-card p-4">
-                      <div className={`mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${item.status === "ok" ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"}`}>
-                        <ShieldCheck className="h-4 w-4" />
+                </div>
+
+                {/* Owner gallery actions */}
+                {hasOwnerAccess ? (
+                  <div className="mt-3 space-y-2.5">
+                    <div className="flex flex-wrap gap-1.5">
+                      {selectedImage?.isUploaded && selectedImage?.photoId ? (
+                        <>
+                          <button type="button" onClick={() => handleSetCoverImage(selectedImage)} className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-xs transition hover:bg-muted">
+                            <Star className="h-3.5 w-3.5" /> Обложка
+                          </button>
+                          <button type="button" onClick={() => moveUploadedPhoto(selectedImage.photoId!, "left")} className="inline-flex items-center gap-1 rounded-full border border-border bg-card px-2.5 py-1.5 text-xs transition hover:bg-muted">
+                            <ChevronLeft className="h-3 w-3" />
+                          </button>
+                          <button type="button" onClick={() => moveUploadedPhoto(selectedImage.photoId!, "right")} className="inline-flex items-center gap-1 rounded-full border border-border bg-card px-2.5 py-1.5 text-xs transition hover:bg-muted">
+                            <ChevronRight className="h-3 w-3" />
+                          </button>
+                          <button type="button" onClick={() => handleRemoveUploadedImage(selectedImage)} className="inline-flex items-center gap-1.5 rounded-full border border-rose-200 bg-rose-50 px-3 py-1.5 text-xs text-rose-700 transition hover:bg-rose-100">
+                            <X className="h-3.5 w-3.5" /> Удалить
+                          </button>
+                        </>
+                      ) : selectedImage ? (
+                        <button type="button" onClick={() => handleSetCoverImage(selectedImage)} className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-xs transition hover:bg-muted">
+                          <Star className="h-3.5 w-3.5" /> Обложка
+                        </button>
+                      ) : null}
+                      <button type="button" onClick={() => setLightboxOpen(true)} className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-xs transition hover:bg-muted">
+                        <Play className="h-3.5 w-3.5" /> Полный размер
+                      </button>
+                    </div>
+
+                    <label onDragOver={handleDropZoneDragOver} onDragLeave={handleDropZoneDragLeave} onDrop={handleDropZoneDrop} className={`flex cursor-pointer items-center gap-3 rounded-xl border border-dashed px-4 py-3 transition ${isDragActive ? "border-primary bg-primary/5" : "border-border/70 bg-card hover:bg-muted/30"}`}>
+                      <input type="file" accept={ACCEPTED_IMAGE_TYPES.join(",")} className="hidden" onChange={handleGalleryUpload} />
+                      <div className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary">
+                        <Upload className="h-3.5 w-3.5" />
                       </div>
                       <div>
-                        <div className="flex items-center gap-2">
-                          <h4 className="font-medium text-foreground">{item.event}</h4>
-                          <span className="text-xs text-muted-foreground">{item.date}</span>
-                        </div>
-                        <p className="mt-1 text-sm text-muted-foreground">{item.note}</p>
+                        <p className="text-sm font-medium text-foreground">Загрузить фото</p>
+                        <p className="text-[11px] text-muted-foreground">JPG, PNG, WebP до 8 МБ</p>
                       </div>
+                    </label>
+                  </div>
+                ) : !isAuthenticated ? (
+                  <div className="mt-3 rounded-xl border border-dashed border-primary/20 bg-primary/5 p-4 text-center">
+                    <p className="text-sm text-muted-foreground">Управление галереей доступно владельцам доли.</p>
+                    <a data-testid="animal-guest-preview-register-cta-secondary" href={getLoginUrl(`/animals/${animalSlug}`)} className="mt-2 inline-flex items-center gap-2 rounded-full border border-primary/20 bg-card px-4 py-2 text-sm font-medium text-primary transition hover:bg-primary/5">
+                      Войти или зарегистрироваться
+                    </a>
+                  </div>
+                ) : null}
+
+                {/* Share buttons */}
+                <div className="mt-3 flex flex-wrap gap-1.5">
+                  <button type="button" onClick={handleCopyShareLink} className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1.5 text-xs transition hover:bg-muted">
+                    <Link2 className="h-3.5 w-3.5" /> Скопировать ссылку
+                  </button>
+                  <button type="button" onClick={() => handleShare("facebook")} className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-2.5 py-1.5 text-xs transition hover:bg-muted">
+                    <Facebook className="h-3.5 w-3.5" />
+                  </button>
+                  <button type="button" onClick={() => handleShare("vk")} className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-2.5 py-1.5 text-xs transition hover:bg-muted">
+                    <MessageCircle className="h-3.5 w-3.5" />
+                  </button>
+                  <button type="button" onClick={() => handleShare("instagram")} className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-2.5 py-1.5 text-xs transition hover:bg-muted">
+                    <Instagram className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              </ProfileSection>
+
+              {/* ── Diary & Health ── */}
+              <ProfileSection id="diary-section" icon={BookOpen} title={`Дневник и здоровье`} badge="4 записи" defaultOpen={false}>
+                <Tabs defaultValue="diary" className="w-full">
+                  <TabsList className="mb-4 w-full">
+                    <TabsTrigger value="diary" className="flex-1 gap-1.5">
+                      <BookOpen className="h-3.5 w-3.5" /> Дневник
+                    </TabsTrigger>
+                    <TabsTrigger value="health" className="flex-1 gap-1.5">
+                      <Thermometer className="h-3.5 w-3.5" /> Здоровье
+                    </TabsTrigger>
+                  </TabsList>
+
+                  <TabsContent value="diary">
+                    <ScrollRemaining totalItems={diaryEntries.length} itemHeight={110} className="space-y-3 max-h-[420px] overflow-y-auto pr-1">
+                      {diaryEntries.map((entry) => (
+                        <div key={entry.date} className="rounded-xl border border-border/70 bg-muted/20 p-4">
+                          <div className="flex items-center gap-3">
+                            <span className="text-xl">{entry.mood}</span>
+                            <div>
+                              <h4 className="text-sm font-semibold text-foreground">{entry.title}</h4>
+                              <p className="text-[11px] text-muted-foreground">{entry.date}</p>
+                            </div>
+                          </div>
+                          <p className="mt-2 text-sm leading-6 text-muted-foreground">{entry.text}</p>
+                          <div className="mt-2 flex flex-wrap gap-1.5">
+                            {entry.tags.map((tag) => (
+                              <span key={tag} className="rounded-full bg-primary/10 px-2.5 py-0.5 text-[11px] font-medium text-primary">{tag}</span>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </ScrollRemaining>
+                  </TabsContent>
+
+                  <TabsContent value="health">
+                    <div className="space-y-3">
+                      {/* Health scores */}
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="rounded-xl border border-border/70 bg-muted/20 p-4 text-center">
+                          <Heart className="mx-auto h-5 w-5 text-rose-500" />
+                          <div className="mt-2 text-2xl font-bold text-foreground">{healthScore}</div>
+                          <p className="text-[11px] text-muted-foreground">Здоровье</p>
+                        </div>
+                        <div className="rounded-xl border border-border/70 bg-muted/20 p-4 text-center">
+                          <Star className="mx-auto h-5 w-5 text-amber-500" />
+                          <div className="mt-2 text-2xl font-bold text-foreground">{happinessScore}</div>
+                          <p className="text-[11px] text-muted-foreground">Настроение</p>
+                        </div>
+                      </div>
+
+                      {/* Health history */}
+                      <ScrollRemaining totalItems={healthHistory.length} itemHeight={80} className="space-y-2 max-h-[320px] overflow-y-auto pr-1">
+                        {healthHistory.map((item) => (
+                          <div key={item.date} className="flex items-start gap-3 rounded-xl border border-border/70 bg-muted/20 p-3">
+                            <div className="mt-0.5 inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-700">
+                              <ShieldCheck className="h-3.5 w-3.5" />
+                            </div>
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-2">
+                                <h5 className="text-sm font-medium text-foreground">{item.event}</h5>
+                                <span className="text-[11px] text-muted-foreground">{item.date}</span>
+                              </div>
+                              <p className="mt-0.5 text-xs text-muted-foreground">{item.note}</p>
+                            </div>
+                          </div>
+                        ))}
+                      </ScrollRemaining>
+                    </div>
+                  </TabsContent>
+                </Tabs>
+              </ProfileSection>
+
+              {/* ── Wellness Radar ── */}
+              {hasOwnerAccess ? (
+                <ProfileSection id="wellness-section" icon={Zap} title="Благополучие" badge={wellnessData ? `${Math.round(((wellnessData.happiness ?? 0) + (wellnessData.health ?? 0) + (wellnessData.attachment ?? 0) + (wellnessData.mood ?? 0) + (wellnessData.obedience ?? 0)) / 5)} / 100` : undefined} defaultOpen={false}>
+                  {wellnessData ? (
+                    <div className="flex flex-col items-center gap-4">
+                      <WellnessRadarChart metrics={{
+                        happiness: wellnessData.happiness ?? 0,
+                        health: wellnessData.health ?? 0,
+                        attachment: wellnessData.attachment ?? 0,
+                        mood: wellnessData.mood ?? 0,
+                        obedience: wellnessData.obedience ?? 0,
+                      }} size={260} />
+                      <p className="text-center text-sm text-muted-foreground">Метрики обновляются ежедневно на основе данных фермера.</p>
+                      <Link href="/marketplace" className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-4 py-2 text-sm font-medium text-primary transition hover:bg-primary/20">
+                        <Heart className="h-4 w-4" /> Позаботиться
+                      </Link>
+                    </div>
+                  ) : (
+                    <div className="py-6 text-center">
+                      <Zap className="mx-auto h-8 w-8 text-muted-foreground/50" />
+                      <p className="mt-2 text-sm text-muted-foreground">Данные о благополучии пока не доступны.</p>
+                    </div>
+                  )}
+                </ProfileSection>
+              ) : null}
+
+              {/* ── Product Plan (owners only) ── */}
+              {hasOwnerAccess && data?.id ? (
+                <ProfileSection id="product-plan-section" icon={Milk} title="Продуктовый план" defaultOpen={false}>
+                  <OwnerProductPlanSection animalId={data.id} animalSlug={animalSlug!} animalName={displayName} mySharePercent={mySharePercent} />
+                </ProfileSection>
+              ) : null}
+
+              {/* ── Passport ── */}
+              <ProfileSection id="passport-section" icon={Dna} title={`Паспорт ${displayName}`} badge={speciesLabel} defaultOpen={false}>
+                <div className="space-y-2">
+                  {passportRows.map((row) => (
+                    <div key={row.label} className="flex items-start gap-3 rounded-lg bg-muted/20 px-4 py-2.5">
+                      <span className="w-28 shrink-0 text-xs font-medium uppercase tracking-wide text-muted-foreground">{row.label}</span>
+                      <span className="text-sm text-foreground">{row.value}</span>
                     </div>
                   ))}
-                </ScrollRemaining>
-              )}
-            </div>
-          </div>
-        </section>
-
-        {/* ═══ SECTION 4.5: Product Plan (owners only) ═══ */}
-        {hasOwnerAccess && data?.id ? (
-          <OwnerProductPlanSection
-            animalId={data.id}
-            animalSlug={animalSlug!}
-            animalName={displayName}
-            mySharePercent={mySharePercent}
-          />
-        ) : null}
-
-        {/* ═══ SECTION 4.7: Wellness Metrics (owners only) ═══ */}
-        {hasOwnerAccess && wellnessData && (
-          <section className="border-b border-border/60 py-10 md:py-14">
-            <div className="container">
-              <div className="mx-auto max-w-3xl">
-                <div className="flex items-center justify-between mb-6">
-                  <div className="flex items-center gap-3">
-                    <Heart className="h-5 w-5 text-rose-500" />
-                    <h2 className="text-2xl font-semibold text-foreground">Благополучие {displayName}</h2>
-                  </div>
-                  <Link href="/marketplace">
-                    <button className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-4 py-2 text-sm font-medium text-foreground transition hover:bg-muted">
-                      <Gift className="h-4 w-4" /> Позаботиться
-                    </button>
-                  </Link>
                 </div>
-                <div className="rounded-2xl border border-border/70 bg-card p-6">
-                  <WellnessRadarChart
-                    metrics={{
-                      happiness: wellnessData.happiness ?? 50,
-                      health: wellnessData.health ?? 50,
-                      attachment: wellnessData.attachment ?? 50,
-                      mood: wellnessData.mood ?? 50,
-                      obedience: wellnessData.obedience ?? 50,
-                    }}
-                    size={260}
-                  />
-                  <p className="text-center text-xs text-muted-foreground mt-4">
-                    Покупайте подарки и угощения в маркетплейсе, чтобы улучшить показатели
-                  </p>
-                </div>
-              </div>
-            </div>
-          </section>
-        )}
+              </ProfileSection>
 
-        {/* ═══ SECTION 5: Passport ═══ */}
-        <section className="border-b border-border/60 py-10 md:py-14">
-          <div className="container">
-            <div className="mx-auto max-w-3xl">
-              <div className="flex items-center gap-3">
-                <Dna className="h-5 w-5 text-primary" />
-                <h2 className="text-2xl font-semibold text-foreground">Паспорт {displayName}</h2>
+              {/* ── Quick Links ── */}
+              <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
+                <Link href="/dashboard" className="group rounded-2xl border border-border/70 bg-card p-5 transition hover:bg-muted/30">
+                  <Calendar className="h-6 w-6 text-primary" />
+                  <h4 className="mt-3 font-semibold text-foreground">Кабинет владельца</h4>
+                  <p className="mt-1 text-sm text-muted-foreground">Управляйте долями, следите за рейтингом и получайте обновления.</p>
+                  <span className="mt-3 inline-flex items-center gap-1 text-sm font-medium text-primary">Открыть <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" /></span>
+                </Link>
+                <Link href="/tracker" className="group rounded-2xl border border-border/70 bg-card p-5 transition hover:bg-muted/30">
+                  <MapPin className="h-6 w-6 text-primary" />
+                  <h4 className="mt-3 font-semibold text-foreground">Трекер продуктов</h4>
+                  <p className="mt-1 text-sm text-muted-foreground">Отслеживайте путь молока и продуктов от фермы до вашего дома.</p>
+                  <span className="mt-3 inline-flex items-center gap-1 text-sm font-medium text-primary">Открыть <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" /></span>
+                </Link>
+                <Link href={`/club?animal=${animalSlug}`} className="group rounded-2xl border border-border/70 bg-card p-5 transition hover:bg-muted/30">
+                  <Heart className="h-6 w-6 text-primary" />
+                  <h4 className="mt-3 font-semibold text-foreground">Клуб Шерь Козу</h4>
+                  <p className="mt-1 text-sm text-muted-foreground">Семейные визиты, мастер-классы и встречи с вашим животным.</p>
+                  <span className="mt-3 inline-flex items-center gap-1 text-sm font-medium text-primary">Открыть <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" /></span>
+                </Link>
               </div>
-              <div className="mt-6 overflow-hidden rounded-2xl border border-border/70">
-                {passportRows.map((row, idx) => (
-                  <div key={row.label} className={`flex items-start gap-4 px-5 py-3.5 text-sm ${idx % 2 === 0 ? "bg-card" : "bg-muted/30"}`}>
-                    <span className="w-28 shrink-0 font-medium text-muted-foreground">{row.label}</span>
-                    <span className="text-foreground">{row.value}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* ═══ SECTION 6: Navigation links ═══ */}
-        <section className="py-10 md:py-14">
-          <div className="container">
-            <div className="mx-auto grid max-w-3xl gap-4 md:grid-cols-3">
-              <Link href="/dashboard" className="group rounded-2xl border border-border/70 bg-card p-5 transition hover:bg-muted/30">
-                <Package className="h-6 w-6 text-primary" />
-                <h4 className="mt-3 font-semibold text-foreground">Ваш личный кабинет</h4>
-                <p className="mt-1 text-sm text-muted-foreground">Всё о ваших животных, именной коробке и жизни фермы.</p>
-                <span className="mt-3 inline-flex items-center gap-1 text-sm font-medium text-primary">Открыть <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" /></span>
-              </Link>
-              <Link href={`/tracker?animal=${animalSlug}`} className="group rounded-2xl border border-border/70 bg-card p-5 transition hover:bg-muted/30">
-                <Milk className="h-6 w-6 text-primary" />
-                <h4 className="mt-3 font-semibold text-foreground">Путь продукта</h4>
-                <p className="mt-1 text-sm text-muted-foreground">От молока {displayName} до вашей именной коробки — каждый шаг прозрачен.</p>
-                <span className="mt-3 inline-flex items-center gap-1 text-sm font-medium text-primary">Открыть <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" /></span>
-              </Link>
-              <Link href={`/club?animal=${animalSlug}`} className="group rounded-2xl border border-border/70 bg-card p-5 transition hover:bg-muted/30">
-                <Heart className="h-6 w-6 text-primary" />
-                <h4 className="mt-3 font-semibold text-foreground">Клуб Шерь Козу</h4>
-                <p className="mt-1 text-sm text-muted-foreground">Семейные визиты, мастер-классы и встречи с вашим животным.</p>
-                <span className="mt-3 inline-flex items-center gap-1 text-sm font-medium text-primary">Открыть <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" /></span>
-              </Link>
             </div>
           </div>
         </section>
@@ -987,3 +1011,4 @@ export default function AnimalProfile() {
     </>
   );
 }
+
