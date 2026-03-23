@@ -11,6 +11,7 @@ import { Link, useLocation } from "wouter";
 import Navbar from "@/components/Navbar";
 import { trpc } from "@/lib/trpc";
 import ScrollRemaining from "@/components/ScrollRemaining";
+import PageBreadcrumbs from "@/components/PageBreadcrumbs";
 import {
   BarChart3,
   Calendar,
@@ -165,6 +166,14 @@ export default function ProductTracker() {
 
       <div className="pb-14 pt-24 md:pt-28">
         <div className="container">
+          <PageBreadcrumbs
+            className="mb-5"
+            items={[
+              { label: "Главная", href: "/" },
+              { label: "Мой кабинет", href: "/dashboard" },
+              { label: `Трекер: ${featuredAnimalName}` },
+            ]}
+          />
           <motion.section
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}

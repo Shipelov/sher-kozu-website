@@ -9,6 +9,7 @@ import { Link } from "wouter";
 import AnimalShareCard from "@/components/AnimalShareCard";
 import Navbar from "@/components/Navbar";
 import ShowMoreList from "@/components/ShowMoreList";
+import PageBreadcrumbs from "@/components/PageBreadcrumbs";
 
 const speciesConfig = {
   goat: {
@@ -441,6 +442,12 @@ export default function AnimalsCatalog() {
       <Navbar />
       <div className="bg-[#f7f1e8] pb-20 pt-28 text-stone-900 md:pt-32">
       <section className="container space-y-8">
+        <PageBreadcrumbs
+          items={[
+            { label: "Главная", href: "/" },
+            { label: "Каталог" },
+          ]}
+        />
         <div className="overflow-hidden rounded-[2.5rem] border border-stone-200 bg-white/95 shadow-xl shadow-stone-200/50">
           <div className="grid gap-8 px-6 py-8 md:grid-cols-[1.35fr_0.95fr] md:px-10 md:py-10">
             <div className="space-y-5">

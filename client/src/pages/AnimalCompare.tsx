@@ -4,6 +4,7 @@ import { Link, useSearch } from "wouter";
 import Navbar from "@/components/Navbar";
 import { trpc } from "@/lib/trpc";
 import { ComparisonRadarChart } from "@/components/RadarChart";
+import PageBreadcrumbs from "@/components/PageBreadcrumbs";
 import {
   ArrowLeft,
   ChevronDown,
@@ -247,26 +248,17 @@ export default function AnimalCompare() {
       <Navbar />
       <main className="container max-w-4xl pt-24 pb-12">
         {/* Breadcrumbs */}
-        <nav className="mb-6 flex items-center gap-1.5 text-sm text-muted-foreground" aria-label="Breadcrumb">
-          <Link href="/" className="inline-flex items-center gap-1 hover:text-foreground transition-colors">
-            <Home className="h-3.5 w-3.5" />
-            <span>Главная</span>
-          </Link>
-          <ChevronRight className="h-3.5 w-3.5 shrink-0" />
-          <Link href="/animals" className="hover:text-foreground transition-colors">
-            Каталог
-          </Link>
-          {animalA && (
-            <>
-              <ChevronRight className="h-3.5 w-3.5 shrink-0" />
-              <Link href={`/animal/${animalA.slug || animalA.id}`} className="hover:text-foreground transition-colors">
-                {animalA.name}
-              </Link>
-            </>
-          )}
-          <ChevronRight className="h-3.5 w-3.5 shrink-0" />
-          <span className="font-medium text-foreground">Сравнение</span>
-        </nav>
+        <PageBreadcrumbs
+          className="mb-6"
+          items={[
+            { label: "Главная", href: "/" },
+            { label: "Каталог", href: "/animals" },
+            ...(animalA
+              ? [{ label: animalA.name, href: `/animal/${animalA.slug || animalA.id}` }]
+              : []),
+            { label: "Сравнение" },
+          ]}
+        />
 
         {/* Header */}
         <div className="mb-8">

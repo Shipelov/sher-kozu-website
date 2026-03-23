@@ -16,6 +16,7 @@
 import { motion } from "framer-motion";
 import { Link } from "wouter";
 import Navbar from "@/components/Navbar";
+import PageBreadcrumbs from "@/components/PageBreadcrumbs";
 import {
   ArrowRight,
   Heart,
@@ -152,6 +153,13 @@ export default function AboutFarm() {
         </div>
 
         <div className="container relative">
+          <PageBreadcrumbs
+            className="mb-6"
+            items={[
+              { label: "Главная", href: "/" },
+              { label: "О ферме" },
+            ]}
+          />
           <div className="grid gap-10 lg:grid-cols-2 lg:gap-16 items-center">
             {/* Text */}
             <motion.div

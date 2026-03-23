@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
+import PageBreadcrumbs from "@/components/PageBreadcrumbs";
 import {
   Heart,
   LogIn,
@@ -79,6 +80,12 @@ export default function Profile() {
       <Navbar />
       <div className="pb-14 pt-24 md:pt-28">
         <div className="container max-w-2xl space-y-5">
+          <PageBreadcrumbs
+            items={[
+              { label: "Главная", href: "/" },
+              { label: "Профиль" },
+            ]}
+          />
           {/* Header card */}
           <motion.div
             initial={{ opacity: 0, y: 12 }}

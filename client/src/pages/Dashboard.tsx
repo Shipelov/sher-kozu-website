@@ -40,6 +40,7 @@ import {
 import { toast } from "sonner";
 import ScrollRemaining from "@/components/ScrollRemaining";
 import { BadgeGrid } from "@/components/BadgeCard";
+import PageBreadcrumbs from "@/components/PageBreadcrumbs";
 import { Award } from "lucide-react";
 
 /** Badges section for the owner dashboard */
@@ -369,6 +370,13 @@ export default function Dashboard() {
 
       <div className="pb-14 pt-24 md:pt-28">
         <div className="container space-y-5">
+          <PageBreadcrumbs
+            className="mb-1"
+            items={[
+              { label: "Главная", href: "/" },
+              { label: "Мой кабинет" },
+            ]}
+          />
           <motion.section
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}

@@ -48,6 +48,7 @@ import {
 } from "lucide-react";
 import OwnerProductPlanSection from "./OwnerProductPlanSection";
 import WellnessRadarChart from "@/components/WellnessRadarChart";
+import PageBreadcrumbs from "@/components/PageBreadcrumbs";
 
 /* ── constants ── */
 const MAX_UPLOAD_SIZE_BYTES = 8 * 1024 * 1024;
@@ -623,9 +624,14 @@ export default function AnimalProfile() {
             <div className="grid items-start gap-8 lg:grid-cols-[1fr_1.1fr]">
               {/* Left: info */}
               <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="min-w-0">
-                <Link href="/animals" className="mb-3 inline-flex items-center gap-2 text-sm text-muted-foreground transition hover:text-foreground">
-                  <ChevronLeft className="h-4 w-4" /> Каталог животных
-                </Link>
+                <PageBreadcrumbs
+                  className="mb-3"
+                  items={[
+                    { label: "Главная", href: "/" },
+                    { label: "Каталог", href: "/animals" },
+                    { label: displayName },
+                  ]}
+                />
 
                 <div className="mt-2 flex items-center gap-3">
                   <span className={`inline-flex rounded-full px-3 py-1 text-xs font-medium ${data?.status === "fully_booked" ? "border border-rose-200 bg-rose-50 text-rose-700" : "border border-emerald-200 bg-emerald-50 text-emerald-700"}`}>

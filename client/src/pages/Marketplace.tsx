@@ -24,6 +24,7 @@ import { Link } from "wouter";
 import { getLoginUrl } from "@/const";
 import ShowMoreList from "@/components/ShowMoreList";
 import ScrollRemaining from "@/components/ScrollRemaining";
+import PageBreadcrumbs from "@/components/PageBreadcrumbs";
 
 type MetricEffect = {
   happiness?: number;
@@ -105,6 +106,13 @@ export default function Marketplace() {
       <section className="relative overflow-hidden border-b">
         <div className="absolute inset-0 bg-gradient-to-br from-[var(--forest-green-pale)] via-white to-[var(--amber-light)] opacity-60" />
         <div className="container relative pt-24 pb-16 md:pt-28 md:pb-20">
+          <PageBreadcrumbs
+            className="mb-5 relative z-10"
+            items={[
+              { label: "Главная", href: "/" },
+              { label: "Маркетплейс" },
+            ]}
+          />
           <div className="max-w-2xl">
             <Badge className="mb-4 bg-[var(--forest-green)] text-white">
               <Gift className="h-3 w-3 mr-1" /> Маркетплейс фермы

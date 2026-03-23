@@ -17,6 +17,7 @@ import ScrollRemaining from "@/components/ScrollRemaining";
 import { motion } from "framer-motion";
 import { Link } from "wouter";
 import Navbar from "@/components/Navbar";
+import PageBreadcrumbs from "@/components/PageBreadcrumbs";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -482,10 +483,13 @@ export default function Partners() {
           ═══════════════════════════════════════════════════════ */}
       <section className="relative border-b border-border/60 bg-stone-50/60 pt-28 pb-14 md:pt-36 md:pb-18">
         <div className="container max-w-5xl">
-          <Link href="/" className="inline-flex items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-foreground mb-8">
-            <ArrowLeft className="h-4 w-4" />
-            Вернуться на главную
-          </Link>
+          <PageBreadcrumbs
+            className="mb-8"
+            items={[
+              { label: "Главная", href: "/" },
+              { label: "Партнёры" },
+            ]}
+          />
 
           <motion.div
             initial={{ opacity: 0, y: 16 }}

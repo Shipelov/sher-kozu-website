@@ -19,6 +19,7 @@ import {
 import WellnessRadarChart from "@/components/WellnessRadarChart";
 import ShowMoreList from "@/components/ShowMoreList";
 import RatingHistoryChart from "@/components/RatingHistoryChart";
+import PageBreadcrumbs from "@/components/PageBreadcrumbs";
 
 /* ── Title helpers ── */
 const TITLE_LABELS: Record<string, { label: string; color: string; bg: string }> = {
@@ -88,16 +89,18 @@ export default function Leaderboard() {
       <Navbar />
       <div className="pb-14 pt-24 md:pt-28">
         <div className="container space-y-6">
+          <PageBreadcrumbs
+            items={[
+              { label: "Главная", href: "/" },
+              { label: "Мой кабинет", href: "/dashboard" },
+              { label: "Рейтинг" },
+            ]}
+          />
           {/* Header */}
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Link href="/dashboard" className="rounded-full border border-border p-2 transition hover:bg-muted">
-                <ChevronLeft className="h-4 w-4" />
-              </Link>
-              <div>
-                <h1 className="text-3xl font-bold text-foreground">Рейтинг фермы</h1>
-                <p className="text-sm text-muted-foreground">Чем больше заботы — тем выше рейтинг</p>
-              </div>
+            <div>
+              <h1 className="text-3xl font-bold text-foreground">Рейтинг фермы</h1>
+              <p className="text-sm text-muted-foreground">Чем больше заботы — тем выше рейтинг</p>
             </div>
             <Link
               href="/compare"

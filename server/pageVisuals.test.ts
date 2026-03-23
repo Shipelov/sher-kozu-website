@@ -141,8 +141,8 @@ describe("page visual integration source smoke", () => {
 
   /* ─── Partners.tsx — Dedicated partner page ─── */
   it("renders the partner page with CRM form, FAQ, and sync status", () => {
-    // Navigation
-    expect(partnersSource).toContain("Вернуться на главную");
+    // Navigation — breadcrumbs replaced the old back link
+    expect(partnersSource).toContain("PageBreadcrumbs");
     expect(partnersSource).toContain('href="/"');
 
     // Hero
