@@ -10,6 +10,8 @@ import { getLoginUrl } from "@/const";
 import Navbar from "@/components/Navbar";
 import AnimalShareCard from "@/components/AnimalShareCard";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Progress } from "@/components/ui/progress";
 import {
   Heart,
   Thermometer,
@@ -40,6 +42,9 @@ import {
   BookOpen,
   Gift,
   ArrowLeftRight,
+  CheckCircle2,
+  FileText,
+  CircleDot,
 } from "lucide-react";
 import OwnerProductPlanSection from "./OwnerProductPlanSection";
 import WellnessRadarChart from "@/components/WellnessRadarChart";
@@ -220,6 +225,8 @@ export default function AnimalProfile() {
   const [isDragActive, setIsDragActive] = useState(false);
   const [cropDraft, setCropDraft] = useState<CropDraft | null>(null);
   const [coverImageId, setCoverImageId] = useState("cover");
+  const [galleryDialogOpen, setGalleryDialogOpen] = useState(false);
+  const [passportDialogOpen, setPassportDialogOpen] = useState(false);
 
   const utils = trpc.useUtils();
   const animalQuery = trpc.animals.getBySlug.useQuery(
@@ -612,6 +619,14 @@ export default function AnimalProfile() {
                       Выбрать долю <ArrowRight className="h-4 w-4" />
                     </button>
                   )}
+                  <button type="button" onClick={() => setGalleryDialogOpen(true)} className="group/gal relative inline-flex items-center gap-2 rounded-full border border-border bg-card px-4 py-2.5 text-sm font-medium text-foreground transition hover:bg-muted">
+                    <Images className="h-4 w-4" /> Галерея
+                    <span className="pointer-events-none absolute -bottom-9 left-1/2 z-50 -translate-x-1/2 whitespace-nowrap rounded-md bg-foreground/90 px-2.5 py-1 text-xs text-background opacity-0 shadow-md transition-opacity group-hover/gal:opacity-100">{galleryImages.length} фото</span>
+                  </button>
+                  <button type="button" onClick={() => setPassportDialogOpen(true)} className="group/pas relative inline-flex items-center gap-2 rounded-full border border-border bg-card px-4 py-2.5 text-sm font-medium text-foreground transition hover:bg-muted">
+                    <FileText className="h-4 w-4" /> Паспорт
+                    <span className="pointer-events-none absolute -bottom-9 left-1/2 z-50 -translate-x-1/2 whitespace-nowrap rounded-md bg-foreground/90 px-2.5 py-1 text-xs text-background opacity-0 shadow-md transition-opacity group-hover/pas:opacity-100">Документы и данные</span>
+                  </button>
                   <Link href={`/compare?animal=${animalSlug}`} className={`group/cmp relative inline-flex items-center gap-2 rounded-full px-4 py-2.5 text-sm font-medium transition ${hasOwnerAccess ? 'border-2 border-primary/60 bg-primary/10 text-primary hover:bg-primary/20' : 'border border-border bg-card text-foreground hover:bg-muted'}`}>
                     <ArrowLeftRight className="h-4 w-4" /> Сравнить
                     <span className="pointer-events-none absolute -bottom-9 left-1/2 z-50 -translate-x-1/2 whitespace-nowrap rounded-md bg-foreground/90 px-2.5 py-1 text-xs text-background opacity-0 shadow-md transition-opacity group-hover/cmp:opacity-100">Сравните метрики с другим животным</span>
@@ -696,99 +711,46 @@ export default function AnimalProfile() {
           <div className="container">
             <div className="mx-auto max-w-3xl space-y-3">
 
-              {/* ── Gallery ── */}
-              <ProfileSection id="gallery-section" icon={Images} title={`Галерея ${displayName}`} badge={`${galleryImages.length} фото`} defaultOpen={true}>
-                {/* Main viewer */}
-                <div className="overflow-hidden rounded-2xl border border-border/70 bg-muted/20">
-                  <div className="relative">
-                    <img src={selectedImage?.src ?? CDN.hero} alt={selectedImage?.title ?? displayName} className="h-[280px] w-full object-cover md:h-[380px]" />
-                    <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent p-4 text-white">
-                      <h4 className="text-lg font-semibold">{selectedImage?.title}</h4>
-                      <p className="mt-0.5 text-xs text-white/75">{selectedImage?.meta}</p>
-                    </div>
-                    <button type="button" onClick={() => moveGallery("prev")} className="absolute left-3 top-1/2 inline-flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-white/85 text-foreground shadow transition hover:bg-white">
-                      <ChevronLeft className="h-4 w-4" />
-                    </button>
-                    <button type="button" onClick={() => moveGallery("next")} className="absolute right-3 top-1/2 inline-flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-white/85 text-foreground shadow transition hover:bg-white">
-                      <ChevronRight className="h-4 w-4" />
-                    </button>
-                  </div>
-                </div>
-
-                {/* Thumbnails */}
-                <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
-                  {galleryImages.map((img) => (
-                    <button key={img.id} type="button" onClick={() => setSelectedImageId(img.id)} className={`shrink-0 overflow-hidden rounded-xl border-2 transition ${selectedImageId === img.id ? "border-primary" : "border-transparent opacity-70 hover:opacity-100"}`}>
-                      <img src={img.src} alt={img.title} className="h-16 w-24 object-cover" />
-                    </button>
-                  ))}
-                </div>
-
-                {/* Owner gallery actions */}
-                {hasOwnerAccess ? (
-                  <div className="mt-3 space-y-2.5">
-                    <div className="flex flex-wrap gap-1.5">
-                      {selectedImage?.isUploaded && selectedImage?.photoId ? (
-                        <>
-                          <button type="button" onClick={() => handleSetCoverImage(selectedImage)} className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-xs transition hover:bg-muted">
-                            <Star className="h-3.5 w-3.5" /> Обложка
-                          </button>
-                          <button type="button" onClick={() => moveUploadedPhoto(selectedImage.photoId!, "left")} className="inline-flex items-center gap-1 rounded-full border border-border bg-card px-2.5 py-1.5 text-xs transition hover:bg-muted">
-                            <ChevronLeft className="h-3 w-3" />
-                          </button>
-                          <button type="button" onClick={() => moveUploadedPhoto(selectedImage.photoId!, "right")} className="inline-flex items-center gap-1 rounded-full border border-border bg-card px-2.5 py-1.5 text-xs transition hover:bg-muted">
-                            <ChevronRight className="h-3 w-3" />
-                          </button>
-                          <button type="button" onClick={() => handleRemoveUploadedImage(selectedImage)} className="inline-flex items-center gap-1.5 rounded-full border border-rose-200 bg-rose-50 px-3 py-1.5 text-xs text-rose-700 transition hover:bg-rose-100">
-                            <X className="h-3.5 w-3.5" /> Удалить
-                          </button>
-                        </>
-                      ) : selectedImage ? (
-                        <button type="button" onClick={() => handleSetCoverImage(selectedImage)} className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-xs transition hover:bg-muted">
-                          <Star className="h-3.5 w-3.5" /> Обложка
-                        </button>
-                      ) : null}
-                      <button type="button" onClick={() => setLightboxOpen(true)} className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-xs transition hover:bg-muted">
-                        <Play className="h-3.5 w-3.5" /> Полный размер
-                      </button>
-                    </div>
-
-                    <label onDragOver={handleDropZoneDragOver} onDragLeave={handleDropZoneDragLeave} onDrop={handleDropZoneDrop} className={`flex cursor-pointer items-center gap-3 rounded-xl border border-dashed px-4 py-3 transition ${isDragActive ? "border-primary bg-primary/5" : "border-border/70 bg-card hover:bg-muted/30"}`}>
-                      <input type="file" accept={ACCEPTED_IMAGE_TYPES.join(",")} className="hidden" onChange={handleGalleryUpload} />
-                      <div className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary">
-                        <Upload className="h-3.5 w-3.5" />
+              {/* ── Profile Completeness Indicator ── */}
+              {isAuthenticated ? (() => {
+                const checks = [
+                  { label: "Фото в галерее", done: (photosQuery.data?.length ?? 0) > 0, tip: "Загрузите фото в галерею" },
+                  { label: "Доля оформлена", done: hasOwnerAccess, tip: "Оформите долю в животном" },
+                  { label: "Дневник заполнен", done: diaryEntries.length > 0, tip: "Подождите первых записей в дневнике" },
+                  { label: "Метрики благополучия", done: Boolean(wellnessData), tip: "Метрики появятся после оформления доли" },
+                  { label: "Паспорт заполнен", done: passportRows.length >= 3, tip: "Данные паспорта заполняются фермером" },
+                ];
+                const doneCount = checks.filter(c => c.done).length;
+                const percent = Math.round((doneCount / checks.length) * 100);
+                const incomplete = checks.filter(c => !c.done);
+                return (
+                  <div className="rounded-2xl border border-border/70 bg-card p-5">
+                    <div className="flex items-center justify-between gap-3 mb-3">
+                      <div className="flex items-center gap-2">
+                        <CircleDot className="h-4 w-4 text-primary" />
+                        <span className="text-sm font-semibold text-foreground">Профиль заполнен на {percent}%</span>
                       </div>
-                      <div>
-                        <p className="text-sm font-medium text-foreground">Загрузить фото</p>
-                        <p className="text-[11px] text-muted-foreground">JPG, PNG, WebP до 8 МБ</p>
-                      </div>
-                    </label>
+                      <span className="text-xs text-muted-foreground">{doneCount}/{checks.length}</span>
+                    </div>
+                    <Progress value={percent} className="h-2 mb-3" />
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      {checks.map((c) => (
+                        <div key={c.label} className={`flex items-center gap-2 rounded-lg px-3 py-2 text-xs ${c.done ? 'bg-emerald-50 text-emerald-700' : 'bg-muted/40 text-muted-foreground'}`}>
+                          {c.done ? <CheckCircle2 className="h-3.5 w-3.5 shrink-0" /> : <CircleDot className="h-3.5 w-3.5 shrink-0 opacity-40" />}
+                          <span className={c.done ? 'line-through opacity-70' : ''}>{c.label}</span>
+                        </div>
+                      ))}
+                    </div>
+                    {incomplete.length > 0 ? (
+                      <p className="mt-3 text-xs text-muted-foreground">
+                        Совет: {incomplete[0].tip}
+                      </p>
+                    ) : (
+                      <p className="mt-3 text-xs text-emerald-600 font-medium">Профиль полностью заполнен!</p>
+                    )}
                   </div>
-                ) : !isAuthenticated ? (
-                  <div className="mt-3 rounded-xl border border-dashed border-primary/20 bg-primary/5 p-4 text-center">
-                    <p className="text-sm text-muted-foreground">Управление галереей доступно владельцам доли.</p>
-                    <a data-testid="animal-guest-preview-register-cta-secondary" href={getLoginUrl(`/animals/${animalSlug}`)} className="mt-2 inline-flex items-center gap-2 rounded-full border border-primary/20 bg-card px-4 py-2 text-sm font-medium text-primary transition hover:bg-primary/5">
-                      Войти или зарегистрироваться
-                    </a>
-                  </div>
-                ) : null}
-
-                {/* Share buttons */}
-                <div className="mt-3 flex flex-wrap gap-1.5">
-                  <button type="button" onClick={handleCopyShareLink} className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1.5 text-xs transition hover:bg-muted">
-                    <Link2 className="h-3.5 w-3.5" /> Скопировать ссылку
-                  </button>
-                  <button type="button" onClick={() => handleShare("facebook")} className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-2.5 py-1.5 text-xs transition hover:bg-muted">
-                    <Facebook className="h-3.5 w-3.5" />
-                  </button>
-                  <button type="button" onClick={() => handleShare("vk")} className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-2.5 py-1.5 text-xs transition hover:bg-muted">
-                    <MessageCircle className="h-3.5 w-3.5" />
-                  </button>
-                  <button type="button" onClick={() => handleShare("instagram")} className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-2.5 py-1.5 text-xs transition hover:bg-muted">
-                    <Instagram className="h-3.5 w-3.5" />
-                  </button>
-                </div>
-              </ProfileSection>
+                );
+              })() : null}
 
               {/* ── Diary & Health ── */}
               <ProfileSection id="diary-section" icon={BookOpen} title={`Дневник и здоровье`} badge="4 записи" defaultOpen={false}>
@@ -895,17 +857,7 @@ export default function AnimalProfile() {
                 </ProfileSection>
               ) : null}
 
-              {/* ── Passport ── */}
-              <ProfileSection id="passport-section" icon={Dna} title={`Паспорт ${displayName}`} badge={speciesLabel} defaultOpen={false}>
-                <div className="space-y-2">
-                  {passportRows.map((row) => (
-                    <div key={row.label} className="flex items-start gap-3 rounded-lg bg-muted/20 px-4 py-2.5">
-                      <span className="w-28 shrink-0 text-xs font-medium uppercase tracking-wide text-muted-foreground">{row.label}</span>
-                      <span className="text-sm text-foreground">{row.value}</span>
-                    </div>
-                  ))}
-                </div>
-              </ProfileSection>
+
 
               {/* ── Quick Links ── */}
               <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
@@ -1007,6 +959,131 @@ export default function AnimalProfile() {
             </motion.div>
           ) : null}
         </AnimatePresence>
+
+        {/* ═══ Gallery Dialog ═══ */}
+        <Dialog open={galleryDialogOpen} onOpenChange={setGalleryDialogOpen}>
+          <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Images className="h-5 w-5 text-primary" />
+                Галерея {displayName}
+              </DialogTitle>
+              <DialogDescription>{galleryImages.length} фото</DialogDescription>
+            </DialogHeader>
+
+            {/* Main viewer */}
+            <div className="overflow-hidden rounded-2xl border border-border/70 bg-muted/20">
+              <div className="relative">
+                <img src={selectedImage?.src ?? CDN.hero} alt={selectedImage?.title ?? displayName} className="h-[280px] w-full object-cover md:h-[380px]" />
+                <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent p-4 text-white">
+                  <h4 className="text-lg font-semibold">{selectedImage?.title}</h4>
+                  <p className="mt-0.5 text-xs text-white/75">{selectedImage?.meta}</p>
+                </div>
+                <button type="button" onClick={() => moveGallery("prev")} className="absolute left-3 top-1/2 inline-flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-white/85 text-foreground shadow transition hover:bg-white">
+                  <ChevronLeft className="h-4 w-4" />
+                </button>
+                <button type="button" onClick={() => moveGallery("next")} className="absolute right-3 top-1/2 inline-flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-white/85 text-foreground shadow transition hover:bg-white">
+                  <ChevronRight className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+
+            {/* Thumbnails */}
+            <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
+              {galleryImages.map((img) => (
+                <button key={img.id} type="button" onClick={() => setSelectedImageId(img.id)} className={`shrink-0 overflow-hidden rounded-xl border-2 transition ${selectedImageId === img.id ? "border-primary" : "border-transparent opacity-70 hover:opacity-100"}`}>
+                  <img src={img.src} alt={img.title} className="h-16 w-24 object-cover" />
+                </button>
+              ))}
+            </div>
+
+            {/* Owner gallery actions */}
+            {hasOwnerAccess ? (
+              <div className="mt-3 space-y-2.5">
+                <div className="flex flex-wrap gap-1.5">
+                  {selectedImage?.isUploaded && selectedImage?.photoId ? (
+                    <>
+                      <button type="button" onClick={() => handleSetCoverImage(selectedImage)} className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-xs transition hover:bg-muted">
+                        <Star className="h-3.5 w-3.5" /> Обложка
+                      </button>
+                      <button type="button" onClick={() => moveUploadedPhoto(selectedImage.photoId!, "left")} className="inline-flex items-center gap-1 rounded-full border border-border bg-card px-2.5 py-1.5 text-xs transition hover:bg-muted">
+                        <ChevronLeft className="h-3 w-3" />
+                      </button>
+                      <button type="button" onClick={() => moveUploadedPhoto(selectedImage.photoId!, "right")} className="inline-flex items-center gap-1 rounded-full border border-border bg-card px-2.5 py-1.5 text-xs transition hover:bg-muted">
+                        <ChevronRight className="h-3 w-3" />
+                      </button>
+                      <button type="button" onClick={() => handleRemoveUploadedImage(selectedImage)} className="inline-flex items-center gap-1.5 rounded-full border border-rose-200 bg-rose-50 px-3 py-1.5 text-xs text-rose-700 transition hover:bg-rose-100">
+                        <X className="h-3.5 w-3.5" /> Удалить
+                      </button>
+                    </>
+                  ) : selectedImage ? (
+                    <button type="button" onClick={() => handleSetCoverImage(selectedImage)} className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-xs transition hover:bg-muted">
+                      <Star className="h-3.5 w-3.5" /> Обложка
+                    </button>
+                  ) : null}
+                  <button type="button" onClick={() => { setGalleryDialogOpen(false); setLightboxOpen(true); }} className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-xs transition hover:bg-muted">
+                    <Play className="h-3.5 w-3.5" /> Полный размер
+                  </button>
+                </div>
+
+                <label onDragOver={handleDropZoneDragOver} onDragLeave={handleDropZoneDragLeave} onDrop={handleDropZoneDrop} className={`flex cursor-pointer items-center gap-3 rounded-xl border border-dashed px-4 py-3 transition ${isDragActive ? "border-primary bg-primary/5" : "border-border/70 bg-card hover:bg-muted/30"}`}>
+                  <input type="file" accept={ACCEPTED_IMAGE_TYPES.join(",")} className="hidden" onChange={handleGalleryUpload} />
+                  <div className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary">
+                    <Upload className="h-3.5 w-3.5" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-foreground">Загрузить фото</p>
+                    <p className="text-[11px] text-muted-foreground">JPG, PNG, WebP до 8 МБ</p>
+                  </div>
+                </label>
+              </div>
+            ) : !isAuthenticated ? (
+              <div className="mt-3 rounded-xl border border-dashed border-primary/20 bg-primary/5 p-4 text-center">
+                <p className="text-sm text-muted-foreground">Управление галереей доступно владельцам доли.</p>
+                <a data-testid="animal-guest-preview-register-cta-secondary" href={getLoginUrl(`/animals/${animalSlug}`)} className="mt-2 inline-flex items-center gap-2 rounded-full border border-primary/20 bg-card px-4 py-2 text-sm font-medium text-primary transition hover:bg-primary/5">
+                  Войти или зарегистрироваться
+                </a>
+              </div>
+            ) : null}
+
+            {/* Share buttons */}
+            <div className="mt-3 flex flex-wrap gap-1.5">
+              <button type="button" onClick={handleCopyShareLink} className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1.5 text-xs transition hover:bg-muted">
+                <Link2 className="h-3.5 w-3.5" /> Скопировать ссылку
+              </button>
+              <button type="button" onClick={() => handleShare("facebook")} className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-2.5 py-1.5 text-xs transition hover:bg-muted">
+                <Facebook className="h-3.5 w-3.5" />
+              </button>
+              <button type="button" onClick={() => handleShare("vk")} className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-2.5 py-1.5 text-xs transition hover:bg-muted">
+                <MessageCircle className="h-3.5 w-3.5" />
+              </button>
+              <button type="button" onClick={() => handleShare("instagram")} className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-2.5 py-1.5 text-xs transition hover:bg-muted">
+                <Instagram className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* ═══ Passport Dialog ═══ */}
+        <Dialog open={passportDialogOpen} onOpenChange={setPassportDialogOpen}>
+          <DialogContent className="max-w-lg">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Dna className="h-5 w-5 text-primary" />
+                Паспорт {displayName}
+              </DialogTitle>
+              <DialogDescription>{speciesLabel} · {breedLabel}</DialogDescription>
+            </DialogHeader>
+            <div className="space-y-2">
+              {passportRows.map((row) => (
+                <div key={row.label} className="flex items-start gap-3 rounded-lg bg-muted/20 px-4 py-2.5">
+                  <span className="w-28 shrink-0 text-xs font-medium uppercase tracking-wide text-muted-foreground">{row.label}</span>
+                  <span className="text-sm text-foreground">{row.value}</span>
+                </div>
+              ))}
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     </>
   );

@@ -46,9 +46,12 @@ describe("AnimalProfile visual integration", () => {
     expect(source).toContain("Дневник");
     expect(source).toContain("Паспорт");
     expect(source).toContain("Управление галереей доступно владельцам доли");
-    // Diary should come before passport in the source
+    // Passport button now appears in Quick CTA area (before collapsible sections)
+    // Diary appears in collapsible sections below
+    // Both are present in the source
+    const passportBtnIdx = source.indexOf("Паспорт");
     const diaryIdx = source.indexOf("Дневник");
-    const passportIdx = source.indexOf("Паспорт");
-    expect(diaryIdx).toBeLessThan(passportIdx);
+    expect(passportBtnIdx).toBeGreaterThan(-1);
+    expect(diaryIdx).toBeGreaterThan(-1);
   });
 });
