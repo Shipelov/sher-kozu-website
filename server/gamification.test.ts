@@ -142,9 +142,20 @@ describe("Owner Wallets List (Token Allocation Fix)", () => {
       expect(GAMIFICATION_SRC).toContain("leftJoin(users, eq(wallets.ownerOpenId, users.openId))");
     });
 
-    it("also finds owners with active ownerships but no wallet", () => {
-      expect(GAMIFICATION_SRC).toContain("ownersWithoutWallets");
+    it("also finds all registered users who don't have wallets yet", () => {
+      expect(GAMIFICATION_SRC).toContain("allUsers");
+      expect(GAMIFICATION_SRC).toContain(".from(users)");
+    });
+
+    it("checks which users have active ownerships", () => {
+      expect(GAMIFICATION_SRC).toContain("ownersWithActiveAnimals");
       expect(GAMIFICATION_SRC).toContain('eq(animalOwnerships.status, "active")');
+      expect(GAMIFICATION_SRC).toContain("activeOwnerIds");
+    });
+
+    it("returns hasActiveOwnership field", () => {
+      expect(GAMIFICATION_SRC).toContain("hasActiveOwnership: activeOwnerIds.has(w.ownerOpenId)");
+      expect(GAMIFICATION_SRC).toContain("hasActiveOwnership: activeOwnerIds.has(user.openId)");
     });
 
     it("returns openId, name, balance, walletId, hasWallet fields", () => {

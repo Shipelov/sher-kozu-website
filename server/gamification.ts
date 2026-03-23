@@ -336,33 +336,43 @@ export async function listOwnerWallets() {
     .leftJoin(users, eq(wallets.ownerOpenId, users.openId))
     .orderBy(desc(wallets.balanceMinor));
 
-  // Also find owners with active ownerships who don't have wallets yet
+  // Also find all registered users who don't have wallets yet
+  // (includes owners with active ownerships AND any other registered users)
   const existingOpenIds = walletRows.map((w: typeof walletRows[number]) => w.ownerOpenId);
-  const ownersWithoutWallets = await db.selectDistinct({
-    ownerOpenId: animalOwnerships.ownerOpenId,
+  const allUsers = await db.select({
+    openId: users.openId,
     name: users.name,
   })
-    .from(animalOwnerships)
-    .leftJoin(users, eq(animalOwnerships.ownerOpenId, users.openId))
-    .where(eq(animalOwnerships.status, "active"));
+    .from(users)
+    .orderBy(asc(users.name));
 
-  const result: Array<{ openId: string; name: string; balance: number; walletId: number; hasWallet: boolean }> = walletRows.map((w: typeof walletRows[number]) => ({
+  // Also check which users have active ownerships
+  const ownersWithActiveAnimals = await db.selectDistinct({
+    ownerOpenId: animalOwnerships.ownerOpenId,
+  })
+    .from(animalOwnerships)
+    .where(eq(animalOwnerships.status, "active"));
+  const activeOwnerIds = new Set(ownersWithActiveAnimals.map((o: { ownerOpenId: string }) => o.ownerOpenId));
+
+  const result: Array<{ openId: string; name: string; balance: number; walletId: number; hasWallet: boolean; hasActiveOwnership: boolean }> = walletRows.map((w: typeof walletRows[number]) => ({
     openId: w.ownerOpenId,
     name: w.name || w.ownerOpenId,
     balance: w.balance,
     walletId: w.walletId,
     hasWallet: true,
+    hasActiveOwnership: activeOwnerIds.has(w.ownerOpenId),
   }));
 
-  // Add owners with active animals but no wallet yet
-  for (const owner of ownersWithoutWallets) {
-    if (!existingOpenIds.includes(owner.ownerOpenId)) {
+  // Add all registered users who don't have a wallet yet
+  for (const user of allUsers) {
+    if (!existingOpenIds.includes(user.openId)) {
       result.push({
-        openId: owner.ownerOpenId,
-        name: owner.name || owner.ownerOpenId,
+        openId: user.openId,
+        name: user.name || user.openId,
         balance: 0,
         walletId: 0,
         hasWallet: false,
+        hasActiveOwnership: activeOwnerIds.has(user.openId),
       });
     }
   }

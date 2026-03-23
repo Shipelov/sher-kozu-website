@@ -1,0 +1,20 @@
+{
+  "query": "SELECT ownerOpenId, ownershipStatus, COUNT(*) as cnt FROM animalOwnerships GROUP BY ownerOpenId, ownershipStatus;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3J2fXRHx8d1YjF6.root --database mLhmg5VmBsEBpZiYqdnhMQ --execute SELECT ownerOpenId, ownershipStatus, COUNT(*) as cnt FROM animalOwnerships GROUP BY ownerOpenId, ownershipStatus;",
+  "rows": [
+    {
+      "ownerOpenId": "jP5iBYMcdYguBWJPw5Sruu",
+      "ownershipStatus": "cancelled",
+      "cnt": "9"
+    },
+    {
+      "ownerOpenId": "jP5iBYMcdYguBWJPw5Sruu",
+      "ownershipStatus": "active",
+      "cnt": "21"
+    }
+  ],
+  "messages": [],
+  "stdout": "ownerOpenId\townershipStatus\tcnt\njP5iBYMcdYguBWJPw5Sruu\tcancelled\t9\njP5iBYMcdYguBWJPw5Sruu\tactive\t21\n",
+  "stderr": "",
+  "execution_time_ms": 58
+}

@@ -1,0 +1,8 @@
+{
+  "query": "SELECT * FROM wallets WHERE ownerOpenId = 'local_ebc58cac93b64ae2b8cafa2c'; SELECT * FROM animal_ownerships WHERE ownerOpenId = 'local_ebc58cac93b64ae2b8cafa2c';",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3J2fXRHx8d1YjF6.root --database mLhmg5VmBsEBpZiYqdnhMQ --execute SELECT * FROM wallets WHERE ownerOpenId = 'local_ebc58cac93b64ae2b8cafa2c'; SELECT * FROM animal_ownerships WHERE ownerOpenId = 'local_ebc58cac93b64ae2b8cafa2c';",
+  "returncode": 1,
+  "logs": [
+    "ERROR 1146 (42S02) at line 1: Table 'mlhmg5vmbsebpziyqdnhmq.animal_ownerships' doesn't exist"
+  ]
+}
