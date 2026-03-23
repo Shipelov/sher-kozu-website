@@ -559,6 +559,9 @@ export default function AnimalProfile() {
                   <button type="button" onClick={() => document.getElementById("gallery-section")?.scrollIntoView({ behavior: "smooth" })} className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-5 py-3 text-sm font-medium text-foreground transition hover:bg-muted">
                     <Images className="h-4 w-4" /> Галерея
                   </button>
+                  <Link href={`/compare?animal=${animalSlug}`} className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-5 py-3 text-sm font-medium text-foreground transition hover:bg-muted">
+                    <ArrowLeftRight className="h-4 w-4" /> Сравнить
+                  </Link>
                 </div>
               </motion.div>
 
