@@ -7,6 +7,7 @@ import { ComparisonRadarChart } from "@/components/RadarChart";
 import {
   ArrowLeft,
   ChevronDown,
+  ChevronRight,
   Check,
   Loader2,
   ArrowLeftRight,
@@ -16,6 +17,7 @@ import {
   Smile,
   Star,
   Brain,
+  Home,
 } from "lucide-react";
 
 const METRIC_LABELS = [
@@ -244,15 +246,30 @@ export default function AnimalCompare() {
     <div className="min-h-screen bg-background">
       <Navbar />
       <main className="container max-w-4xl pt-24 pb-12">
-        {/* Header with back navigation */}
+        {/* Breadcrumbs */}
+        <nav className="mb-6 flex items-center gap-1.5 text-sm text-muted-foreground" aria-label="Breadcrumb">
+          <Link href="/" className="inline-flex items-center gap-1 hover:text-foreground transition-colors">
+            <Home className="h-3.5 w-3.5" />
+            <span>Главная</span>
+          </Link>
+          <ChevronRight className="h-3.5 w-3.5 shrink-0" />
+          <Link href="/animals" className="hover:text-foreground transition-colors">
+            Каталог
+          </Link>
+          {animalA && (
+            <>
+              <ChevronRight className="h-3.5 w-3.5 shrink-0" />
+              <Link href={`/animal/${animalA.slug || animalA.id}`} className="hover:text-foreground transition-colors">
+                {animalA.name}
+              </Link>
+            </>
+          )}
+          <ChevronRight className="h-3.5 w-3.5 shrink-0" />
+          <span className="font-medium text-foreground">Сравнение</span>
+        </nav>
+
+        {/* Header */}
         <div className="mb-8">
-          <button
-            onClick={() => window.history.length > 1 ? window.history.back() : (window.location.href = '/animals')}
-            className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors mb-4"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Назад
-          </button>
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-primary/10 text-primary">
               <ArrowLeftRight className="h-5 w-5" />

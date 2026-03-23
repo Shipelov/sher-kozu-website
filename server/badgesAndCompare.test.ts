@@ -546,9 +546,11 @@ describe("Animal Comparison Page (AnimalCompare.tsx)", () => {
     expect(COMPARE_SRC).toContain("Выберите двух животных для сравнения");
   });
 
-  it("has back navigation button", () => {
-    expect(COMPARE_SRC).toContain('Назад');
-    expect(COMPARE_SRC).toContain('window.history.back');
+  it("has breadcrumb navigation", () => {
+    expect(COMPARE_SRC).toContain('Главная');
+    expect(COMPARE_SRC).toContain('Каталог');
+    expect(COMPARE_SRC).toContain('Сравнение');
+    expect(COMPARE_SRC).toContain('Breadcrumb');
   });
 
   it("uses framer-motion for animations", () => {
