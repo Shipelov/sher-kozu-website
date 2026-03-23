@@ -8,6 +8,7 @@ import { protectedProcedure, router } from "../_core/trpc";
 import {
   ensureFarmAccounts,
   getFarmAccounts,
+  adjustBankBalance,
   grantTokensToOwner,
   bulkGrantTokens,
   refundTokensToOwner,
@@ -58,6 +59,15 @@ export const gamificationRouter = router({
     get: adminProcedure.query(async () => {
       return getFarmAccounts();
     }),
+
+    adjustBank: adminProcedure
+      .input(z.object({
+        newBalanceSKC: z.number().int().min(0).max(10000000),
+        memo: z.string().max(500).default("Корректировка баланса Банка"),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        return adjustBankBalance(input.newBalanceSKC, input.memo, ctx.user.openId);
+      }),
 
     grantTokens: adminProcedure
       .input(z.object({

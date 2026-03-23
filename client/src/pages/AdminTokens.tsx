@@ -17,6 +17,7 @@ import {
   Banknote,
   Coins,
   Loader2,
+  Pencil,
   RefreshCw,
   Send,
   Users,
@@ -41,6 +42,9 @@ export default function AdminTokens() {
   const [bulkReason, setBulkReason] = useState("");
   const [txPage, setTxPage] = useState(1);
   const [txType, setTxType] = useState<string>("all");
+  const [bankAdjustOpen, setBankAdjustOpen] = useState(false);
+  const [bankNewBalance, setBankNewBalance] = useState(0);
+  const [bankAdjustMemo, setBankAdjustMemo] = useState("");
 
   // Queries
   const accountsQuery = trpc.gamification.farmAccounts.get.useQuery(undefined, { enabled: isAdmin });
@@ -70,6 +74,21 @@ export default function AdminTokens() {
       toast.success("Массовое начисление выполнено");
       utils.gamification.farmAccounts.get.invalidate();
       utils.gamification.farmAccounts.transactions.invalidate();
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  const adjustBank = trpc.gamification.farmAccounts.adjustBank.useMutation({
+    onSuccess: (data: any) => {
+      if (data.changed) {
+        toast.success(`Баланс Банка изменён: ${data.oldBalance} → ${data.newBalance} SKC`);
+      } else {
+        toast.info("Баланс не изменился");
+      }
+      utils.gamification.farmAccounts.get.invalidate();
+      utils.gamification.farmAccounts.transactions.invalidate();
+      setBankAdjustOpen(false);
+      setBankAdjustMemo("");
     },
     onError: (e: any) => toast.error(e.message),
   });
@@ -153,14 +172,28 @@ export default function AdminTokens() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <Card className="border-emerald-200 bg-emerald-50/50">
               <CardContent className="p-5">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center">
-                    <Banknote className="h-5 w-5 text-emerald-700" />
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center">
+                      <Banknote className="h-5 w-5 text-emerald-700" />
+                    </div>
+                    <div>
+                      <p className="text-xs text-emerald-600 font-medium">Банк фермы</p>
+                      <p className="text-2xl font-bold text-emerald-800">{overview.bank.toLocaleString()} SKC</p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-xs text-emerald-600 font-medium">Банк фермы</p>
-                    <p className="text-2xl font-bold text-emerald-800">{overview.bank.toLocaleString()} SKC</p>
-                  </div>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 text-emerald-600 hover:text-emerald-800 hover:bg-emerald-100"
+                    onClick={() => {
+                      setBankNewBalance(overview.bank);
+                      setBankAdjustOpen(true);
+                    }}
+                    title="Корректировать баланс"
+                  >
+                    <Pencil className="h-4 w-4" />
+                  </Button>
                 </div>
               </CardContent>
             </Card>
@@ -465,6 +498,68 @@ export default function AdminTokens() {
             </Card>
           </TabsContent>
         </Tabs>
+
+        {/* ─── Bank Balance Adjustment Dialog ─── */}
+        <Dialog open={bankAdjustOpen} onOpenChange={setBankAdjustOpen}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Banknote className="h-5 w-5 text-emerald-600" />
+                Корректировка баланса Банка
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 pt-2">
+              <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-3">
+                <p className="text-xs text-emerald-600 font-medium">Текущий баланс</p>
+                <p className="text-xl font-bold text-emerald-800">{overview?.bank.toLocaleString() ?? 0} SKC</p>
+              </div>
+              <div className="space-y-2">
+                <Label>Новый баланс (SKC)</Label>
+                <Input
+                  type="number"
+                  min={0}
+                  max={10000000}
+                  value={bankNewBalance}
+                  onChange={(e) => setBankNewBalance(Number(e.target.value))}
+                  placeholder="Введите новый баланс"
+                />
+                {overview && bankNewBalance !== overview.bank && (
+                  <p className={`text-xs font-medium ${
+                    bankNewBalance > overview.bank ? "text-emerald-600" : "text-red-600"
+                  }`}>
+                    {bankNewBalance > overview.bank ? "+" : ""}
+                    {(bankNewBalance - overview.bank).toLocaleString()} SKC
+                  </p>
+                )}
+              </div>
+              <div className="space-y-2">
+                <Label>Причина корректировки</Label>
+                <Input
+                  value={bankAdjustMemo}
+                  onChange={(e) => setBankAdjustMemo(e.target.value)}
+                  placeholder="Пополнение Банка, исправление ошибки и т.д."
+                  maxLength={500}
+                />
+              </div>
+              <div className="flex gap-2 justify-end pt-2">
+                <Button variant="outline" onClick={() => setBankAdjustOpen(false)}>
+                  Отмена
+                </Button>
+                <Button
+                  onClick={() => adjustBank.mutate({
+                    newBalanceSKC: bankNewBalance,
+                    memo: bankAdjustMemo || "Корректировка баланса Банка",
+                  })}
+                  disabled={adjustBank.isPending || bankNewBalance === (overview?.bank ?? 0)}
+                  className="bg-emerald-600 hover:bg-emerald-700"
+                >
+                  {adjustBank.isPending && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+                  Применить
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     </DashboardLayout>
   );

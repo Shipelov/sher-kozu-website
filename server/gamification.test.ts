@@ -28,6 +28,107 @@ const RADAR_CHART_SRC = fs.readFileSync(path.resolve(__dirname, "../client/src/c
 const APP_SRC = fs.readFileSync(path.resolve(__dirname, "../client/src/App.tsx"), "utf-8");
 
 // ═══════════════════════════════════════════════════════════
+// 0. BANK BALANCE ADJUSTMENT
+// ═══════════════════════════════════════════════════════════
+
+describe("Bank Balance Adjustment", () => {
+  describe("Server: adjustBankBalance function", () => {
+    it("exports adjustBankBalance from gamification.ts", () => {
+      expect(GAMIFICATION_SRC).toContain("export async function adjustBankBalance");
+    });
+
+    it("accepts newBalanceSKC, memo, and initiatedByOpenId parameters", () => {
+      expect(GAMIFICATION_SRC).toContain("newBalanceSKC: number");
+      expect(GAMIFICATION_SRC).toContain("memo: string");
+      expect(GAMIFICATION_SRC).toContain("initiatedByOpenId: string");
+    });
+
+    it("calculates diff between old and new balance", () => {
+      expect(GAMIFICATION_SRC).toContain("const diff = newBalanceSKC - oldBalance");
+    });
+
+    it("returns unchanged result when diff is 0", () => {
+      expect(GAMIFICATION_SRC).toContain("if (diff === 0) return { bank, changed: false }");
+    });
+
+    it("updates bank balanceSKC in database", () => {
+      expect(GAMIFICATION_SRC).toContain("balanceSKC: newBalanceSKC");
+    });
+
+    it("records adjustment transaction with correct txType", () => {
+      expect(GAMIFICATION_SRC).toContain('txType: "adjustment"');
+    });
+
+    it("sets direction to credit when increasing and debit when decreasing", () => {
+      expect(GAMIFICATION_SRC).toContain('direction: diff > 0 ? "credit" : "debit"');
+    });
+
+    it("uses Math.abs for amountSKC in transaction", () => {
+      expect(GAMIFICATION_SRC).toContain("amountSKC: Math.abs(diff)");
+    });
+
+    it("returns changed: true with oldBalance, newBalance, and diff", () => {
+      expect(GAMIFICATION_SRC).toContain("changed: true, oldBalance, newBalance: newBalanceSKC, diff");
+    });
+  });
+
+  describe("Router: adjustBank procedure", () => {
+    it("has adjustBank procedure in farmAccounts router", () => {
+      expect(ROUTER_SRC).toContain("adjustBank: adminProcedure");
+    });
+
+    it("imports adjustBankBalance from gamification", () => {
+      expect(ROUTER_SRC).toContain("adjustBankBalance");
+    });
+
+    it("validates newBalanceSKC as non-negative integer up to 10M", () => {
+      expect(ROUTER_SRC).toContain("newBalanceSKC: z.number().int().min(0).max(10000000)");
+    });
+
+    it("validates memo with max 500 chars", () => {
+      expect(ROUTER_SRC).toContain('memo: z.string().max(500)');
+    });
+  });
+
+  describe("UI: AdminTokens bank adjustment", () => {
+    it("has Pencil icon for bank adjustment button", () => {
+      expect(ADMIN_TOKENS_SRC).toContain("Pencil");
+    });
+
+    it("has bank adjustment dialog state", () => {
+      expect(ADMIN_TOKENS_SRC).toContain("bankAdjustOpen");
+      expect(ADMIN_TOKENS_SRC).toContain("bankNewBalance");
+      expect(ADMIN_TOKENS_SRC).toContain("bankAdjustMemo");
+    });
+
+    it("uses adjustBank mutation", () => {
+      expect(ADMIN_TOKENS_SRC).toContain("gamification.farmAccounts.adjustBank.useMutation");
+    });
+
+    it("shows current balance in dialog", () => {
+      expect(ADMIN_TOKENS_SRC).toContain("Текущий баланс");
+    });
+
+    it("shows diff indicator when balance changes", () => {
+      expect(ADMIN_TOKENS_SRC).toContain("bankNewBalance - overview.bank");
+    });
+
+    it("has reason input field", () => {
+      expect(ADMIN_TOKENS_SRC).toContain("Причина корректировки");
+    });
+
+    it("disables submit when balance unchanged", () => {
+      expect(ADMIN_TOKENS_SRC).toContain("bankNewBalance === (overview?.bank ?? 0)");
+    });
+
+    it("invalidates farm accounts and transactions on success", () => {
+      expect(ADMIN_TOKENS_SRC).toContain("utils.gamification.farmAccounts.get.invalidate");
+      expect(ADMIN_TOKENS_SRC).toContain("utils.gamification.farmAccounts.transactions.invalidate");
+    });
+  });
+});
+
+// ═══════════════════════════════════════════════════════════
 // 1. DATABASE SCHEMA
 // ═══════════════════════════════════════════════════════════
 

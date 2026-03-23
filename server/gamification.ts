@@ -110,6 +110,47 @@ export async function getFarmAccounts() {
   return ensureFarmAccounts();
 }
 
+/** Admin adjusts the Bank balance directly (top-up or correction) */
+export async function adjustBankBalance(
+  newBalanceSKC: number,
+  memo: string,
+  initiatedByOpenId: string
+) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+
+  const { bank } = await ensureFarmAccounts();
+  const oldBalance = bank.balanceSKC;
+  const diff = newBalanceSKC - oldBalance;
+
+  if (diff === 0) return { bank, changed: false };
+
+  // Update bank balance
+  await db.update(farmAccounts)
+    .set({
+      balanceSKC: newBalanceSKC,
+      totalLifetimeSKC: diff > 0 ? bank.totalLifetimeSKC + diff : bank.totalLifetimeSKC,
+    })
+    .where(eq(farmAccounts.id, bank.id));
+
+  // Record adjustment transaction
+  await db.insert(farmAccountTransactions).values({
+    farmAccountId: bank.id,
+    walletId: null,
+    ownerOpenId: null,
+    txType: "adjustment",
+    direction: diff > 0 ? "credit" : "debit",
+    amountSKC: Math.abs(diff),
+    farmBalanceAfterSKC: newBalanceSKC,
+    walletBalanceAfterSKC: null,
+    memo: memo || `Корректировка баланса Банка: ${oldBalance} → ${newBalanceSKC}`,
+    initiatedByOpenId,
+  });
+
+  const [updated] = await db.select().from(farmAccounts).where(eq(farmAccounts.id, bank.id));
+  return { bank: updated, changed: true, oldBalance, newBalance: newBalanceSKC, diff };
+}
+
 /** Grant tokens from Bank to an owner's wallet */
 export async function grantTokensToOwner(
   ownerOpenId: string,
