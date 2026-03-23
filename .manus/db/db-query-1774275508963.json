@@ -1,0 +1,178 @@
+{
+  "query": "DESCRIBE marketplaceItems;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3J2fXRHx8d1YjF6.root --database mLhmg5VmBsEBpZiYqdnhMQ --execute DESCRIBE marketplaceItems;",
+  "rows": [
+    {
+      "Field": "id",
+      "Type": "int",
+      "Null": "NO",
+      "Key": "PRI",
+      "Default": "NULL",
+      "Extra": "auto_increment"
+    },
+    {
+      "Field": "categoryId",
+      "Type": "int",
+      "Null": "NO",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "name",
+      "Type": "varchar(160)",
+      "Null": "NO",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "slug",
+      "Type": "varchar(120)",
+      "Null": "NO",
+      "Key": "UNI",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "description",
+      "Type": "text",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "imageUrl",
+      "Type": "text",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "priceSKC",
+      "Type": "int",
+      "Null": "NO",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "stock",
+      "Type": "int",
+      "Null": "NO",
+      "Key": "",
+      "Default": "-1",
+      "Extra": ""
+    },
+    {
+      "Field": "dailyLimitPerOwner",
+      "Type": "int",
+      "Null": "NO",
+      "Key": "",
+      "Default": "0",
+      "Extra": ""
+    },
+    {
+      "Field": "weeklyLimitPerOwner",
+      "Type": "int",
+      "Null": "NO",
+      "Key": "",
+      "Default": "0",
+      "Extra": ""
+    },
+    {
+      "Field": "monthlyLimitPerOwner",
+      "Type": "int",
+      "Null": "NO",
+      "Key": "",
+      "Default": "0",
+      "Extra": ""
+    },
+    {
+      "Field": "marketplaceItemSeason",
+      "Type": "enum('all','spring','summer','autumn','winter')",
+      "Null": "NO",
+      "Key": "",
+      "Default": "all",
+      "Extra": ""
+    },
+    {
+      "Field": "metricEffectsJson",
+      "Type": "text",
+      "Null": "NO",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "requiresChecklist",
+      "Type": "int",
+      "Null": "NO",
+      "Key": "",
+      "Default": "1",
+      "Extra": ""
+    },
+    {
+      "Field": "checklistTemplateJson",
+      "Type": "text",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "feedbackTemplate",
+      "Type": "text",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "isVisible",
+      "Type": "int",
+      "Null": "NO",
+      "Key": "",
+      "Default": "1",
+      "Extra": ""
+    },
+    {
+      "Field": "applicableSpecies",
+      "Type": "varchar(16)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "sortOrder",
+      "Type": "int",
+      "Null": "NO",
+      "Key": "",
+      "Default": "0",
+      "Extra": ""
+    },
+    {
+      "Field": "createdAt",
+      "Type": "timestamp",
+      "Null": "NO",
+      "Key": "",
+      "Default": "CURRENT_TIMESTAMP",
+      "Extra": ""
+    },
+    {
+      "Field": "updatedAt",
+      "Type": "timestamp",
+      "Null": "NO",
+      "Key": "",
+      "Default": "CURRENT_TIMESTAMP",
+      "Extra": "DEFAULT_GENERATED on update CURRENT_TIMESTAMP"
+    }
+  ],
+  "messages": [],
+  "stdout": "Field\tType\tNull\tKey\tDefault\tExtra\nid\tint\tNO\tPRI\tNULL\tauto_increment\ncategoryId\tint\tNO\t\tNULL\t\nname\tvarchar(160)\tNO\t\tNULL\t\nslug\tvarchar(120)\tNO\tUNI\tNULL\t\ndescription\ttext\tYES\t\tNULL\t\nimageUrl\ttext\tYES\t\tNULL\t\npriceSKC\tint\tNO\t\tNULL\t\nstock\tint\tNO\t\t-1\t\ndailyLimitPerOwner\tint\tNO\t\t0\t\nweeklyLimitPerOwner\tint\tNO\t\t0\t\nmonthlyLimitPerOwner\tint\tNO\t\t0\t\nmarketplaceItemSeason\tenum('all','spring','summer','autumn','winter')\tNO\t\tall\t\nmetricEffectsJson\ttext\tNO\t\tNULL\t\nrequiresChecklist\tint\tNO\t\t1\t\nchecklistTemplateJson\ttext\tYES\t\tNULL\t\nfeedbackTemplate\ttext\tYES\t\tNULL\t\nisVisible\tint\tNO\t\t1\t\napplicableSpecies\tvarchar(16)\tYES\t\tNULL\t\nsortOrder\tint\tNO\t\t0\t\ncreatedAt\ttimestamp\tNO\t\tCURRENT_TIMESTAMP\t\nupdatedAt\ttimestamp\tNO\t\tCURRENT_TIMESTAMP\tDEFAULT_GENERATED on update CURRENT_TIMESTAMP\n",
+  "stderr": "",
+  "execution_time_ms": 131
+}

@@ -183,7 +183,8 @@ export default function Marketplace() {
                     const effects: MetricEffect = item.metricEffects ? (typeof item.metricEffects === "string" ? JSON.parse(item.metricEffects) : item.metricEffects) : {};
                     const effectEntries = Object.entries(effects).filter(([, v]) => (v as number) > 0);
                     const canAfford = balance >= item.priceSKC;
-                    const inStock = item.stock === null || item.stock > 0;
+                    const isUnlimited = item.stock === null || item.stock === -1;
+                    const inStock = isUnlimited || item.stock > 0;
 
                     return (
                       <Card
@@ -224,7 +225,7 @@ export default function Marketplace() {
 
                           {/* Stock & Season */}
                           <div className="flex items-center gap-2 mb-3">
-                            {item.stock !== null && (
+                            {!isUnlimited && item.stock !== null && (
                               <span className="text-[10px] text-muted-foreground">
                                 {inStock ? `Осталось: ${item.stock}` : "Нет в наличии"}
                               </span>
