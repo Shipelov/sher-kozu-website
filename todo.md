@@ -491,3 +491,12 @@
 - [x] UI: toast уведомления при успехе/ошибке (sonner)
 - [x] Unit-тесты для setPrimaryAnimal (29 тестов — schema, db, router, dashboard data, UI)
 - [x] Исправить сломанные тесты multiOwnership и animalProfileVisuals после рефакторинга
+
+## Автоматическое переключение контекста при смене основного животного
+- [x] Изучить текущую архитектуру данных ProductTracker и ClubFeed
+- [x] Обновить серверные запросы ProductTracker для использования primaryAnimalId
+- [x] Обновить серверные запросы ClubFeed для использования primaryAnimalId
+- [x] Обновить Dashboard: при смене основного животного инвалидировать кеш ProductTracker и ClubFeed
+- [x] Обновить навигацию/заголовки ProductTracker и ClubFeed для отображения имени текущего животного
+- [x] Написать тесты для переключения контекста (32 теста в contextSwitching.test.ts)
+- [x] Визуальная проверка и чекпоинт

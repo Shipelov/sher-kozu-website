@@ -198,10 +198,13 @@ export default function Dashboard() {
   const utils = trpc.useUtils();
   const setPrimaryMutation = trpc.animals.setPrimaryAnimal.useMutation({
     onSuccess: (_data, variables) => {
+      // Invalidate all queries that depend on the primary animal context
       utils.animals.ownerDashboard.invalidate();
+      utils.productTracker.getByAnimal.invalidate();
+      utils.club.feed.invalidate();
       if (variables.animalId) {
         toast.success("Основное животное обновлено", {
-          description: "Кабинет теперь показывает выбранное вами животное.",
+          description: "Кабинет, трекер продукции и клуб теперь показывают выбранное вами животное.",
         });
       } else {
         toast.success("Сброшено на автоматический выбор", {
