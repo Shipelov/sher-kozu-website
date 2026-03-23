@@ -174,8 +174,8 @@ export default function Leaderboard() {
                         </div>
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-2">
-                            <Link href={`/animals/${animal.animalSlug ?? animal.animalId}`} className="font-semibold text-foreground hover:text-primary truncate">
-                              {animal.animalName ?? `Животное #${animal.animalId}`}
+                            <Link href={`/animals/${animal.animal?.slug ?? animal.animalId}`} className="font-semibold text-foreground hover:text-primary truncate">
+                              {animal.animal?.name ?? `Животное #${animal.animalId}`}
                             </Link>
                             {idx === 0 && <Crown className="h-4 w-4 text-amber-500 shrink-0" />}
                           </div>

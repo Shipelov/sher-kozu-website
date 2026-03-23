@@ -711,3 +711,7 @@
 - [x] Создан компонент ScrollRemaining (градиент + счётчик оставшихся элементов)
 - [x] Применено к 16 страницам: Dashboard, AdminTokens, AdminAnalytics, AdminHub, AdminAnimals, AdminProductTrack, AdminUsers, AdminMarketplace, AnimalProfile, ClubFeed, Marketplace, OwnerProductPlanSection, Partners, ProductTracker, adminClubRemainingTabs, adminClubUi
 - [x] 962 теста пройдены, 0 ошибок TypeScript
+
+## BUG: Клик на животное в рейтинге фермы (Leaderboard) вызывает ошибку
+- [x] Причина: использовался animal.animalSlug вместо animal.animal?.slug (slug вложен в объект animal)
+- [x] Исправлено: Link теперь использует animal.animal?.slug, имя — animal.animal?.name
