@@ -135,7 +135,7 @@ describe("Auth Guard: protectedProcedure rejects unauthenticated", () => {
     const caller = appRouter.createCaller(ctx);
     await expect(
       caller.adminOwnerships.listByAnimal({ animalId: 1 })
-    ).rejects.toThrow(UNAUTHED_ERR_MSG);
+    ).rejects.toThrow(/permission|FORBIDDEN|Please login/i);
   });
 });
 
@@ -148,40 +148,37 @@ describe("Admin Guard: admin-only procedures reject regular users", () => {
 
   it("adminSync.syncBitrixContacts rejects regular user", async () => {
     const caller = appRouter.createCaller(userCtx);
-    await expect(caller.adminSync.syncBitrixContacts()).rejects.toThrow(/администратор|FORBIDDEN/i);
+    await expect(caller.adminSync.syncBitrixContacts()).rejects.toThrow(/permission|FORBIDDEN/i);
   });
 
-  it("adminAnalytics.userFunnel is protectedProcedure (accessible to any authenticated user)", async () => {
-    // userFunnel uses protectedProcedure without additional admin check
-    // This is by design — the admin guard is on the frontend route
+  it("adminAnalytics.userFunnel rejects regular user (now uses adminProcedure)", async () => {
     const caller = appRouter.createCaller(userCtx);
-    const result = await caller.adminAnalytics.userFunnel();
-    expect(result).toHaveProperty("totalUsers");
+    await expect(caller.adminAnalytics.userFunnel()).rejects.toThrow(/permission|FORBIDDEN/i);
   });
 
   it("adminAnalytics.pendingApplicationsCount rejects unauthenticated", async () => {
     const unauthCtx = createUnauthenticatedContext();
     const caller = appRouter.createCaller(unauthCtx);
-    await expect(caller.adminAnalytics.pendingApplicationsCount()).rejects.toThrow(UNAUTHED_ERR_MSG);
+    await expect(caller.adminAnalytics.pendingApplicationsCount()).rejects.toThrow(/permission|FORBIDDEN|Please login/i);
   });
 
   it("adminUserDetails.getDetails rejects regular user", async () => {
     const caller = appRouter.createCaller(userCtx);
     await expect(
       caller.adminUserDetails.getDetails({ userOpenId: "some-open-id" })
-    ).rejects.toThrow(/администратор|Только/i);
+    ).rejects.toThrow(/permission|FORBIDDEN/i);
   });
 
   it("adminTrash.list rejects regular user", async () => {
     const caller = appRouter.createCaller(userCtx);
-    await expect(caller.adminTrash.list()).rejects.toThrow(/администратор|FORBIDDEN/i);
+    await expect(caller.adminTrash.list()).rejects.toThrow(/permission|FORBIDDEN/i);
   });
 
   it("adminTrash.softDelete rejects regular user", async () => {
     const caller = appRouter.createCaller(userCtx);
     await expect(
       caller.adminTrash.softDelete({ userId: 999 })
-    ).rejects.toThrow(/администратор|FORBIDDEN/i);
+    ).rejects.toThrow(/permission|FORBIDDEN/i);
   });
 });
 

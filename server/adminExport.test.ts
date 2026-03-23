@@ -88,27 +88,22 @@ describe("exportUsersAdmin — server-side export function", () => {
 
 describe("exportUsers — tRPC procedure", () => {
   it("defines exportUsers procedure in routers.ts", () => {
-    expect(routersSrc).toContain("exportUsers: protectedProcedure");
+    expect(routersSrc).toContain("exportUsers: adminProcedure");
   });
 
   it("is imported from db.ts", () => {
     expect(routersSrc).toContain("exportUsersAdmin");
   });
 
-  it("requires admin role", () => {
-    const exportProcSection = routersSrc.slice(
-      routersSrc.indexOf("exportUsers: protectedProcedure"),
-      routersSrc.indexOf("exportUsers: protectedProcedure") + 800,
-    );
-    expect(exportProcSection).toContain('role !== "admin"');
-    expect(exportProcSection).toContain("FORBIDDEN");
+  it("uses adminProcedure for access control", () => {
+    const exportStart = routersSrc.indexOf("exportUsers:");
+    const chunk = routersSrc.slice(exportStart, exportStart + 100);
+    expect(chunk).toContain("adminProcedure");
   });
 
   it("accepts filter inputs without pagination", () => {
-    const exportProcSection = routersSrc.slice(
-      routersSrc.indexOf("exportUsers: protectedProcedure"),
-      routersSrc.indexOf("exportUsers: protectedProcedure") + 800,
-    );
+    const exportStart = routersSrc.indexOf("exportUsers:");
+    const exportProcSection = routersSrc.slice(exportStart, exportStart + 800);
     expect(exportProcSection).toContain("search: z.string().optional()");
     expect(exportProcSection).toContain('role: z.enum(["user", "admin"]).optional()');
     expect(exportProcSection).not.toContain("page:");

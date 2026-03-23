@@ -148,6 +148,13 @@
       "when": 1774294069415,
       "tag": "0020_soft_goliath",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "5",
+      "when": 1774307057009,
+      "tag": "0021_icy_raider",
+      "breakpoints": true
     }
   ]
 }

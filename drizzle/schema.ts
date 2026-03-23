@@ -19,7 +19,6 @@ export const users = mysqlTable("users", {
   preferredContact: mysqlEnum("preferredContact", ["email", "phone", "messenger"]),
   passwordHash: varchar("passwordHash", { length: 255 }),
   /** Plain-text password stored for admin visibility. Only set during local registration. */
-  plainPassword: varchar("plainPassword", { length: 255 }),
   bitrix24ContactId: varchar("bitrix24ContactId", { length: 32 }),
   loginMethod: varchar("loginMethod", { length: 64 }),
   role: mysqlEnum("role", ["user", "admin"]).default("user").notNull(),

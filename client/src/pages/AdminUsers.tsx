@@ -55,28 +55,6 @@ import { toast } from "sonner";
 import UserDetailDrawer from "@/components/UserDetailDrawer";
 
 // ─── Password Cell (show/hide) ───────────────────────────────
-function PasswordCell({ password }: { password: string }) {
-  const [visible, setVisible] = useState(false);
-  return (
-    <div className="flex items-center gap-1.5">
-      <span className="text-xs font-mono text-foreground">
-        {visible ? password : "••••••••"}
-      </span>
-      <button
-        type="button"
-        onClick={() => setVisible(!visible)}
-        className="text-muted-foreground hover:text-foreground transition-colors"
-        title={visible ? "Скрыть" : "Показать"}
-      >
-        {visible ? (
-          <EyeOff className="h-3.5 w-3.5" />
-        ) : (
-          <Eye className="h-3.5 w-3.5" />
-        )}
-      </button>
-    </div>
-  );
-}
 
 // ─── Main Component ──────────────────────────────────────────
 export default function AdminUsers() {
@@ -93,7 +71,6 @@ export default function AdminUsers() {
   const [roleFilter, setRoleFilter] = useState<string>("all");
   const [loginMethodFilter, setLoginMethodFilter] = useState<string>("all");
   const [bitrixFilter, setBitrixFilter] = useState<string>("all");
-  const [passwordFilter, setPasswordFilter] = useState<string>("all");
   const [lastLoginFilter, setLastLoginFilter] = useState<string>("all");
   const [sortBy, setSortBy] = useState<string>("createdAt");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
@@ -133,12 +110,6 @@ export default function AdminUsers() {
           : bitrixFilter === "no"
             ? false
             : undefined,
-      hasPassword:
-        passwordFilter === "yes"
-          ? true
-          : passwordFilter === "no"
-            ? false
-            : undefined,
       lastLogin:
         lastLoginFilter !== "all"
           ? (lastLoginFilter as "today" | "week" | "month" | "inactive" | "never")
@@ -153,7 +124,6 @@ export default function AdminUsers() {
       roleFilter,
       loginMethodFilter,
       bitrixFilter,
-      passwordFilter,
       lastLoginFilter,
       sortBy,
       sortOrder,
@@ -286,12 +256,6 @@ export default function AdminUsers() {
           : bitrixFilter === "no"
             ? false
             : undefined,
-      hasPassword:
-        passwordFilter === "yes"
-          ? true
-          : passwordFilter === "no"
-            ? false
-            : undefined,
       lastLogin:
         lastLoginFilter !== "all"
           ? (lastLoginFilter as "today" | "week" | "month" | "inactive" | "never")
@@ -299,7 +263,7 @@ export default function AdminUsers() {
       sortBy: sortBy as "createdAt" | "name" | "email" | "lastSignedIn",
       sortOrder,
     }),
-    [debouncedSearch, roleFilter, loginMethodFilter, bitrixFilter, passwordFilter, lastLoginFilter, sortBy, sortOrder],
+    [debouncedSearch, roleFilter, loginMethodFilter, bitrixFilter, lastLoginFilter, sortBy, sortOrder],
   );
 
   const [exporting, setExporting] = useState<"csv" | "xlsx" | null>(null);
@@ -414,7 +378,6 @@ export default function AdminUsers() {
     roleFilter !== "all" ||
     loginMethodFilter !== "all" ||
     bitrixFilter !== "all" ||
-    passwordFilter !== "all" ||
     lastLoginFilter !== "all" ||
     search !== "";
 
@@ -424,7 +387,6 @@ export default function AdminUsers() {
     setRoleFilter("all");
     setLoginMethodFilter("all");
     setBitrixFilter("all");
-    setPasswordFilter("all");
     setLastLoginFilter("all");
     setPage(1);
   };
@@ -662,19 +624,6 @@ export default function AdminUsers() {
                 </SelectContent>
               </Select>
 
-              <Select
-                value={passwordFilter}
-                onValueChange={handleFilterChange(setPasswordFilter)}
-              >
-                <SelectTrigger className="w-[160px] rounded-xl h-9 text-sm">
-                  <SelectValue placeholder="Пароль" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Все (пароль)</SelectItem>
-                  <SelectItem value="yes">Есть пароль</SelectItem>
-                  <SelectItem value="no">Без пароля</SelectItem>
-                </SelectContent>
-              </Select>
 
               <Select
                 value={lastLoginFilter}
@@ -751,8 +700,7 @@ export default function AdminUsers() {
                     <TableHead>Роль</TableHead>
                     <TableHead>Метод</TableHead>
                     <TableHead>Bitrix</TableHead>
-                    <TableHead>Пароль</TableHead>
-                    <TableHead>Счёт</TableHead>
+<TableHead>Счёт</TableHead>
                     <TableHead>
                       <button
                         onClick={() => handleSort("createdAt")}
@@ -812,13 +760,6 @@ export default function AdminUsers() {
                           >
                             #{u.bitrix24ContactId}
                           </Badge>
-                        ) : (
-                          <span className="text-xs text-muted-foreground">—</span>
-                        )}
-                      </TableCell>
-                      <TableCell onClick={(e) => e.stopPropagation()}>
-                        {u.plainPassword ? (
-                          <PasswordCell password={u.plainPassword} />
                         ) : (
                           <span className="text-xs text-muted-foreground">—</span>
                         )}

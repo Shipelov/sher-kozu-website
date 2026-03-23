@@ -87,8 +87,8 @@ describe("Last Login Filter Feature", () => {
 
   describe("Router: listUsers input schema", () => {
     const listUsersBlock = routersSrc.slice(
-      routersSrc.indexOf("listUsers: protectedProcedure"),
-      routersSrc.indexOf("listUsers: protectedProcedure") + 600
+      routersSrc.indexOf("listUsers: adminProcedure"),
+      routersSrc.indexOf("listUsers: adminProcedure") + 600
     );
 
     it("should accept lastLogin enum in listUsers input", () => {
@@ -103,8 +103,8 @@ describe("Last Login Filter Feature", () => {
 
   describe("Router: exportUsers input schema", () => {
     const exportBlock = routersSrc.slice(
-      routersSrc.indexOf("exportUsers: protectedProcedure"),
-      routersSrc.indexOf("exportUsers: protectedProcedure") + 600
+      routersSrc.indexOf("exportUsers: adminProcedure"),
+      routersSrc.indexOf("exportUsers: adminProcedure") + 600
     );
 
     it("should accept lastLogin enum in exportUsers input", () => {

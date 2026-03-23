@@ -6,65 +6,39 @@ function readSource(relPath: string): string {
   return fs.readFileSync(path.resolve(import.meta.dirname, "..", relPath), "utf-8");
 }
 
-describe("Admin: plainPassword field and Bitrix24 sync button", () => {
+describe("Admin: password security and Bitrix24 sync button", () => {
   const schemaSrc = readSource("drizzle/schema.ts");
   const localAuthSrc = readSource("server/localAuth.ts");
   const dbSrc = readSource("server/db.ts");
   const adminHubSrc = readSource("client/src/pages/AdminHub.tsx");
   const routersSrc = readSource("server/routers.ts");
 
-  describe("plainPassword field in schema", () => {
-    it("defines plainPassword column in users table", () => {
-      expect(schemaSrc).toContain("plainPassword");
-      expect(schemaSrc).toContain('varchar("plainPassword"');
+  describe("plainPassword column REMOVED from schema", () => {
+    it("does NOT define plainPassword column in users table", () => {
+      expect(schemaSrc).not.toContain("plainPassword");
+    });
+
+    it("still has passwordHash for secure storage", () => {
+      expect(schemaSrc).toContain("passwordHash");
     });
   });
 
-  describe("plainPassword saved during registration", () => {
-    it("sets plainPassword in registerLocalUser insert", () => {
-      const registerSection = localAuthSrc.slice(
-        localAuthSrc.indexOf("async function registerLocalUser"),
-        localAuthSrc.indexOf("async function registerLocalUser") + 800,
-      );
-      expect(registerSection).toContain("plainPassword: data.password");
+  describe("plainPassword removed from registration", () => {
+    it("does NOT set plainPassword in registerLocalUser", () => {
+      expect(localAuthSrc).not.toContain("plainPassword");
     });
   });
 
-  describe("plainPassword updated on password change", () => {
-    it("sets plainPassword in updateUserPassword", () => {
-      const updateSection = localAuthSrc.slice(
-        localAuthSrc.indexOf("async function updateUserPassword"),
-        localAuthSrc.indexOf("async function updateUserPassword") + 400,
-      );
-      expect(updateSection).toContain("plainPassword: newPassword");
+  describe("plainPassword removed from db helpers", () => {
+    it("does NOT reference plainPassword in db.ts", () => {
+      expect(dbSrc).not.toContain("plainPassword");
     });
   });
 
-  describe("plainPassword returned in funnel analytics", () => {
-    it("selects plainPassword in getUserFunnelAnalytics recentUsers", () => {
-      const funnelSection = dbSrc.slice(
-        dbSrc.indexOf("async function getUserFunnelAnalytics"),
-        dbSrc.indexOf("async function getUserFunnelAnalytics") + 2000,
-      );
-      expect(funnelSection).toContain("plainPassword: users.plainPassword");
-    });
-  });
-
-  describe("AdminHub displays password column", () => {
-    it("renders Пароль table header", () => {
-      expect(adminHubSrc).toContain("Пароль");
-    });
-
-    it("uses PasswordCell component", () => {
-      expect(adminHubSrc).toContain("PasswordCell");
-      expect(adminHubSrc).toContain("u.plainPassword");
-    });
-
-    it("has show/hide toggle with Eye icons", () => {
-      expect(adminHubSrc).toContain("Eye");
-      expect(adminHubSrc).toContain("EyeOff");
-      expect(adminHubSrc).toContain("Показать пароль");
-      expect(adminHubSrc).toContain("Скрыть пароль");
+  describe("AdminHub does NOT display password column", () => {
+    it("does NOT use PasswordCell component", () => {
+      expect(adminHubSrc).not.toContain("PasswordCell");
+      expect(adminHubSrc).not.toContain("u.plainPassword");
     });
   });
 
@@ -102,22 +76,20 @@ describe("Admin: plainPassword field and Bitrix24 sync button", () => {
   describe("Server-side sync procedure exists", () => {
     it("defines syncBitrixContacts in adminSync router", () => {
       expect(routersSrc).toContain("adminSync: router({");
-      expect(routersSrc).toContain("syncBitrixContacts: protectedProcedure.mutation");
+      expect(routersSrc).toContain("syncBitrixContacts:");
     });
 
-    it("checks admin role before sync", () => {
-      const syncSection = routersSrc.slice(
-        routersSrc.indexOf("syncBitrixContacts: protectedProcedure"),
-        routersSrc.indexOf("syncBitrixContacts: protectedProcedure") + 300,
-      );
-      expect(syncSection).toContain('ctx.user.role !== "admin"');
+    it("uses adminProcedure for sync", () => {
+      const syncStart = routersSrc.indexOf("syncBitrixContacts:");
+      const chunk = routersSrc.slice(Math.max(0, syncStart - 50), syncStart + 200);
+      expect(chunk).toContain("adminProcedure");
     });
   });
 
   describe("Sync optimization: pre-loaded Maps and batch operations", () => {
     // Get the full sync procedure source
-    const syncStart = routersSrc.indexOf("syncBitrixContacts: protectedProcedure");
-    const syncEnd = routersSrc.indexOf("resetUserPassword: protectedProcedure");
+    const syncStart = routersSrc.indexOf("syncBitrixContacts:");
+    const syncEnd = routersSrc.indexOf("resetUserPassword:");
     const syncSrc = routersSrc.slice(syncStart, syncEnd);
 
     it("pre-loads all users into lookup Maps", () => {
@@ -169,48 +141,37 @@ describe("Admin: plainPassword field and Bitrix24 sync button", () => {
 
   describe("Admin password reset procedure", () => {
     it("defines resetUserPassword in adminSync router", () => {
-      expect(routersSrc).toContain("resetUserPassword: protectedProcedure");
+      expect(routersSrc).toContain("resetUserPassword:");
     });
 
     it("accepts userId input", () => {
-      const resetSection = routersSrc.slice(
-        routersSrc.indexOf("resetUserPassword: protectedProcedure"),
-        routersSrc.indexOf("resetUserPassword: protectedProcedure") + 200,
-      );
+      const resetStart = routersSrc.indexOf("resetUserPassword:");
+      const resetSection = routersSrc.slice(resetStart, resetStart + 200);
       expect(resetSection).toContain("userId: z.number()");
     });
 
-    it("checks admin role before reset", () => {
-      const resetSection = routersSrc.slice(
-        routersSrc.indexOf("resetUserPassword: protectedProcedure"),
-        routersSrc.indexOf("resetUserPassword: protectedProcedure") + 400,
-      );
-      expect(resetSection).toContain('ctx.user.role !== "admin"');
+    it("uses adminProcedure for reset", () => {
+      const resetStart = routersSrc.indexOf("resetUserPassword:");
+      const chunk = routersSrc.slice(resetStart, resetStart + 100);
+      expect(chunk).toContain("adminProcedure");
     });
 
     it("generates new password and hashes it", () => {
-      const resetSection = routersSrc.slice(
-        routersSrc.indexOf("resetUserPassword: protectedProcedure"),
-        routersSrc.indexOf("resetUserPassword: protectedProcedure") + 1200,
-      );
+      const resetStart = routersSrc.indexOf("resetUserPassword:");
+      const resetSection = routersSrc.slice(resetStart, resetStart + 1200);
       expect(resetSection).toContain("crypto.randomBytes");
       expect(resetSection).toContain("hashPassword(newPassword)");
     });
 
-    it("saves both passwordHash and plainPassword", () => {
-      const resetSection = routersSrc.slice(
-        routersSrc.indexOf("resetUserPassword: protectedProcedure"),
-        routersSrc.indexOf("resetUserPassword: protectedProcedure") + 1800,
-      );
-      expect(resetSection).toContain("passwordHash: newHash");
-      expect(resetSection).toContain("plainPassword: newPassword");
+    it("does NOT save plainPassword during reset", () => {
+      const resetStart = routersSrc.indexOf("resetUserPassword:");
+      const resetSection = routersSrc.slice(resetStart, resetStart + 1800);
+      expect(resetSection).not.toContain("plainPassword");
     });
 
     it("returns newPassword in response", () => {
-      const resetSection = routersSrc.slice(
-        routersSrc.indexOf("resetUserPassword: protectedProcedure"),
-        routersSrc.indexOf("resetUserPassword: protectedProcedure") + 1800,
-      );
+      const resetStart = routersSrc.indexOf("resetUserPassword:");
+      const resetSection = routersSrc.slice(resetStart, resetStart + 1800);
       expect(resetSection).toContain("newPassword");
       expect(resetSection).toContain("userName");
     });

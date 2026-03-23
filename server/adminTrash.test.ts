@@ -141,7 +141,7 @@ describe("Soft-Delete / Trash Feature", () => {
         routersSrc.indexOf("adminTrash: router({") + 1500
       );
       expect(trashSection).toContain("softDelete:");
-      expect(trashSection).toContain("FORBIDDEN");
+      expect(trashSection).toContain("adminProcedure");
     });
 
     it("should have restore procedure with admin check", () => {

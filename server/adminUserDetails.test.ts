@@ -37,7 +37,7 @@ describe("User Detail Card Feature", () => {
       expect(fnBody).toContain("users.name");
       expect(fnBody).toContain("users.email");
       expect(fnBody).toContain("users.phone");
-      expect(fnBody).toContain("users.plainPassword");
+      // plainPassword removed for security — no longer selected
       expect(fnBody).toContain("users.role");
       expect(fnBody).toContain("users.createdAt");
       expect(fnBody).toContain("users.lastSignedIn");
@@ -134,21 +134,12 @@ describe("User Detail Card Feature", () => {
       expect(section).toContain("userOpenId: z.string()");
     });
 
-    it("should use protectedProcedure", () => {
+    it("should use adminProcedure", () => {
       const section = routersSrc.slice(
         routersSrc.indexOf("adminUserDetails: router({"),
         routersSrc.indexOf("adminUserDetails: router({") + 800
       );
-      expect(section).toContain("protectedProcedure");
-    });
-
-    it("should check admin role", () => {
-      const section = routersSrc.slice(
-        routersSrc.indexOf("adminUserDetails: router({"),
-        routersSrc.indexOf("adminUserDetails: router({") + 800
-      );
-      expect(section).toContain("FORBIDDEN");
-      expect(section).toContain('ctx.user.role !== "admin"');
+      expect(section).toContain("adminProcedure");
     });
 
     it("should throw NOT_FOUND when user does not exist", () => {
@@ -243,9 +234,8 @@ describe("User Detail Card Feature", () => {
       expect(drawerSrc).toContain("onClose");
     });
 
-    it("should show password with toggle visibility", () => {
-      expect(drawerSrc).toContain("data.user.plainPassword");
-      expect(drawerSrc).toContain("showPassword");
+    it("should NOT show plainPassword (removed for security)", () => {
+      expect(drawerSrc).not.toContain("data.user.plainPassword");
     });
 
     it("should show Bitrix24 contact ID badge", () => {
@@ -308,16 +298,8 @@ describe("User Detail Card Feature", () => {
       expect(adminUsersSrc).toContain("e.stopPropagation()");
     });
 
-    it("should stop propagation on password cell", () => {
-      // Password cell should have stopPropagation on the TableCell wrapping it
-      // Find the TableCell that contains stopPropagation before the password cell
-      const passwordIdx = adminUsersSrc.indexOf("u.plainPassword");
-      // Look backwards from the password reference to find the enclosing TableCell
-      const precedingArea = adminUsersSrc.slice(
-        Math.max(0, passwordIdx - 200),
-        passwordIdx
-      );
-      expect(precedingArea).toContain("stopPropagation");
+    it("should stop propagation on action buttons", () => {
+      expect(adminUsersSrc).toContain("stopPropagation");
     });
   });
 });

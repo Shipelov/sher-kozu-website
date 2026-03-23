@@ -50,22 +50,6 @@ type AdminSectionCard = {
   quickActionPath?: string;
 };
 
-function PasswordCell({ password }: { password: string }) {
-  const [visible, setVisible] = useState(false);
-  return (
-    <div className="flex items-center gap-1.5">
-      <span className="text-xs font-mono text-foreground">{visible ? password : "••••••••"}</span>
-      <button
-        type="button"
-        onClick={() => setVisible(!visible)}
-        className="text-muted-foreground hover:text-foreground transition-colors"
-        title={visible ? "Скрыть пароль" : "Показать пароль"}
-      >
-        {visible ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
-      </button>
-    </div>
-  );
-}
 
 function StatusPill({ label, tone = "neutral" }: { label: string; tone?: "neutral" | "success" | "warning" }) {
   const className = tone === "success"
@@ -471,13 +455,6 @@ export default function AdminHub() {
                                   <span className="text-xs text-muted-foreground/60">Не указаны</span>
                                 )}
                               </div>
-                            </td>
-                            <td className="px-4 py-2.5">
-                              {u.plainPassword ? (
-                                <PasswordCell password={u.plainPassword} />
-                              ) : (
-                                <span className="text-xs text-muted-foreground/60">—</span>
-                              )}
                             </td>
                             <td className="px-4 py-2.5">
                               {u.preferredContact ? (

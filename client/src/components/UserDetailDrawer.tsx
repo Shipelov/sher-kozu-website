@@ -164,23 +164,6 @@ export default function UserDetailDrawer({ userOpenId, onClose }: UserDetailDraw
                         </div>
                       </div>
 
-                      {/* Password */}
-                      {data.user.plainPassword && (
-                        <div className="flex items-center gap-2 text-sm">
-                          <span className="text-muted-foreground">Пароль:</span>
-                          <code className="bg-muted px-2 py-0.5 rounded text-xs font-mono">
-                            {showPassword ? data.user.plainPassword : "••••••••"}
-                          </code>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-6 w-6"
-                            onClick={() => setShowPassword(!showPassword)}
-                          >
-                            {showPassword ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
-                          </Button>
-                        </div>
-                      )}
                     </div>
                   </div>
                 </CardContent>

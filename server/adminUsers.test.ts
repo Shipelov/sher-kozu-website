@@ -23,7 +23,7 @@ describe("listUsersAdmin — DB helper", () => {
     expect(dbSource).toContain('role?: "user" | "admin"');
     expect(dbSource).toContain("loginMethod?: string");
     expect(dbSource).toContain("hasBitrix?: boolean");
-    expect(dbSource).toContain("hasPassword?: boolean");
+    // hasPassword filter removed for security
     expect(dbSource).toContain('sortBy?: "createdAt" | "name" | "email" | "lastSignedIn"');
     expect(dbSource).toContain('sortOrder?: "asc" | "desc"');
   });
@@ -53,9 +53,10 @@ describe("listUsersAdmin — DB helper", () => {
     expect(dbSource).toContain("isNull(users.bitrix24ContactId)");
   });
 
-  it("applies hasPassword filter with isNotNull/isNull on passwordHash", () => {
-    expect(dbSource).toContain("isNotNull(users.passwordHash)");
-    expect(dbSource).toContain("isNull(users.passwordHash)");
+  it("does not have hasPassword filter (removed)", () => {
+    const fnStart = dbSource.indexOf("export async function listUsersAdmin");
+    const fnBody = dbSource.slice(fnStart, fnStart + 4000);
+    expect(fnBody).not.toContain("hasPassword");
   });
 
   it("calculates offset from page and pageSize", () => {
@@ -81,7 +82,7 @@ describe("listUsersAdmin — DB helper", () => {
       "users.phone",
       "users.preferredContact",
       "users.role",
-      "users.plainPassword",
+      // users.plainPassword removed for security
       "users.loginMethod",
       "users.bitrix24ContactId",
       "users.onboardingCompleted",
@@ -118,7 +119,10 @@ describe("listUsersAdmin — DB helper", () => {
 
 describe("adminAnalytics.listUsers — tRPC procedure", () => {
   it("is defined in the adminAnalytics router", () => {
-    expect(routersSource).toContain("listUsers: protectedProcedure");
+    expect(routersSource).toContain("listUsers:");
+    const listStart = routersSource.indexOf("listUsers:");
+    const chunk = routersSource.slice(listStart, listStart + 100);
+    expect(chunk).toContain("adminProcedure");
   });
 
   it("validates page as min(1)", () => {
@@ -129,10 +133,10 @@ describe("adminAnalytics.listUsers — tRPC procedure", () => {
     expect(routersSource).toContain("pageSize: z.number().min(5).max(100).default(20)");
   });
 
-  it("enforces admin-only access", () => {
-    expect(routersSource).toContain('ctx.user.role !== "admin"');
-    expect(routersSource).toContain("process.env.OWNER_OPEN_ID");
-    expect(routersSource).toContain('code: "FORBIDDEN"');
+  it("uses adminProcedure for access control", () => {
+    const listStart = routersSource.indexOf("listUsers:");
+    const chunk = routersSource.slice(listStart, listStart + 100);
+    expect(chunk).toContain("adminProcedure");
   });
 
   it("calls listUsersAdmin with the validated input", () => {

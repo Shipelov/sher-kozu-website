@@ -3,7 +3,7 @@ import { z } from "zod";
 import { COOKIE_NAME } from "../shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
-import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
+import { adminProcedure, protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import {
   createAnimalPhoto,
   createAnimalWithMedia,
@@ -941,11 +941,11 @@ export const appRouter = router({
     }),
   }),
   adminAnimals: router({
-    list: protectedProcedure.query(async ({ ctx }) => {
+    list: adminProcedure.query(async ({ ctx }) => {
       await ensureSprintOneSeed(ctx.user.openId);
       return listAdminAnimals(ctx.user.openId);
     }),
-    create: protectedProcedure.input(animalUpsertInput).mutation(async ({ ctx, input }) => {
+    create: adminProcedure.input(animalUpsertInput).mutation(async ({ ctx, input }) => {
       const created = await createAnimalWithMedia({
         ownerOpenId: ctx.user.openId,
         name: input.name,
@@ -981,7 +981,7 @@ export const appRouter = router({
 
       return created;
     }),
-    update: protectedProcedure.input(animalUpdateInput).mutation(async ({ ctx, input }) => {
+    update: adminProcedure.input(animalUpdateInput).mutation(async ({ ctx, input }) => {
       const updated = await updateAnimalWithMedia(input.id, ctx.user.openId, {
         name: input.name,
         slug: input.slug,
@@ -1020,21 +1020,21 @@ export const appRouter = router({
 
       return updated;
     }),
-    setVisibility: protectedProcedure.input(animalVisibilityInput).mutation(async ({ ctx, input }) => {
+    setVisibility: adminProcedure.input(animalVisibilityInput).mutation(async ({ ctx, input }) => {
       const updated = await setAnimalVisibility(input.id, ctx.user.openId, input.mode);
       if (!updated) {
         throw new TRPCError({ code: "NOT_FOUND", message: "Животное не найдено или недоступно для изменения статуса." });
       }
       return updated;
     }),
-    delete: protectedProcedure.input(idInput).mutation(async ({ ctx, input }) => {
+    delete: adminProcedure.input(idInput).mutation(async ({ ctx, input }) => {
       const archived = await archiveAnimalProfile(input.id, ctx.user.openId);
       if (!archived) {
         throw new TRPCError({ code: "NOT_FOUND", message: "Животное не найдено или уже архивировано." });
       }
       return archived;
     }),
-    restore: protectedProcedure.input(idInput).mutation(async ({ ctx, input }) => {
+    restore: adminProcedure.input(idInput).mutation(async ({ ctx, input }) => {
       const restored = await restoreAnimalProfile(input.id, ctx.user.openId);
       if (!restored) {
         throw new TRPCError({ code: "NOT_FOUND", message: "Животное не найдено или недоступно для восстановления." });
@@ -1173,10 +1173,10 @@ export const appRouter = router({
   }),
   bitrixAdmin: router({
     // Legacy smoke-test marker preserved: adminDashboard: adminProcedure.input(bitrixAdminDashboardInput)
-    dashboard: protectedProcedure.input(bitrixAdminDashboardInput).query(async ({ ctx, input }) => {
+    dashboard: adminProcedure.input(bitrixAdminDashboardInput).query(async ({ ctx, input }) => {
       return listBitrixAdminData(ctx.user.openId, input);
     }),
-    retryLeadSync: protectedProcedure.input(retryPartnerLeadInput).mutation(async ({ ctx, input }) => {
+    retryLeadSync: adminProcedure.input(retryPartnerLeadInput).mutation(async ({ ctx, input }) => {
       const lead = await getPartnerLeadById(input.leadId, ctx.user.openId);
       if (!lead) {
         throw new TRPCError({ code: "NOT_FOUND", message: "Заявка не найдена." });
@@ -1208,7 +1208,7 @@ export const appRouter = router({
 
       return result.syncResult;
     }),
-    dealSnapshot: protectedProcedure
+    dealSnapshot: adminProcedure
       .input(z.object({ dealId: z.string().min(1).max(64), leadId: z.number().int().positive().optional() }))
       .query(async ({ ctx, input }) => {
         if (!isBitrixConfigured()) {
@@ -1256,7 +1256,7 @@ export const appRouter = router({
           throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: `Snapshot failed: ${errorMessage}` });
         }
       }),
-    integrationAudit: protectedProcedure.input(idInput).query(async ({ ctx, input }) => {
+    integrationAudit: adminProcedure.input(idInput).query(async ({ ctx, input }) => {
       const record = await getIntegrationAuditById(input.id, ctx.user.openId);
       if (!record) {
         throw new TRPCError({ code: "NOT_FOUND", message: "Запись аудита не найдена." });
@@ -1295,43 +1295,43 @@ export const appRouter = router({
     }),
   }),
   adminClub: router({
-    dashboard: protectedProcedure.query(async ({ ctx }) => {
+    dashboard: adminProcedure.query(async ({ ctx }) => {
       return listClubAdminData(ctx.user.openId);
     }),
-    createPost: protectedProcedure.input(clubPostInput).mutation(async ({ ctx, input }) => {
+    createPost: adminProcedure.input(clubPostInput).mutation(async ({ ctx, input }) => {
       return createClubPost({ ownerOpenId: ctx.user.openId, ...input, tagsCsv: "", pinned: input.isPinned ? 1 : 0 });
     }),
-    updatePost: protectedProcedure.input(updateClubPostInput).mutation(async ({ ctx, input }) => {
+    updatePost: adminProcedure.input(updateClubPostInput).mutation(async ({ ctx, input }) => {
       return updateClubPost({ ownerOpenId: ctx.user.openId, ...input, tagsCsv: "", pinned: input.isPinned ? 1 : 0 });
     }),
-    deletePost: protectedProcedure.input(idInput).mutation(async ({ ctx, input }) => {
+    deletePost: adminProcedure.input(idInput).mutation(async ({ ctx, input }) => {
       return deleteClubPost(input.id, ctx.user.openId);
     }),
-    createEvent: protectedProcedure.input(clubEventInput).mutation(async ({ ctx, input }) => {
+    createEvent: adminProcedure.input(clubEventInput).mutation(async ({ ctx, input }) => {
       return createClubEvent({ ownerOpenId: ctx.user.openId, ...input });
     }),
-    updateEvent: protectedProcedure.input(updateClubEventInput).mutation(async ({ ctx, input }) => {
+    updateEvent: adminProcedure.input(updateClubEventInput).mutation(async ({ ctx, input }) => {
       return updateClubEvent({ ownerOpenId: ctx.user.openId, ...input });
     }),
-    deleteEvent: protectedProcedure.input(idInput).mutation(async ({ ctx, input }) => {
+    deleteEvent: adminProcedure.input(idInput).mutation(async ({ ctx, input }) => {
       return deleteClubEvent(input.id, ctx.user.openId);
     }),
-    createMember: protectedProcedure.input(clubMemberInput).mutation(async ({ ctx, input }) => {
+    createMember: adminProcedure.input(clubMemberInput).mutation(async ({ ctx, input }) => {
       return createClubMember({ ownerOpenId: ctx.user.openId, ...input });
     }),
-    updateMember: protectedProcedure.input(updateClubMemberInput).mutation(async ({ ctx, input }) => {
+    updateMember: adminProcedure.input(updateClubMemberInput).mutation(async ({ ctx, input }) => {
       return updateClubMember({ ownerOpenId: ctx.user.openId, ...input });
     }),
-    deleteMember: protectedProcedure.input(idInput).mutation(async ({ ctx, input }) => {
+    deleteMember: adminProcedure.input(idInput).mutation(async ({ ctx, input }) => {
       return deleteClubMember(input.id, ctx.user.openId);
     }),
-    createPreset: protectedProcedure.input(clubAdminPresetInput).mutation(async ({ ctx, input }) => {
+    createPreset: adminProcedure.input(clubAdminPresetInput).mutation(async ({ ctx, input }) => {
       return createClubAdminPreset({ ownerOpenId: ctx.user.openId, tab: input.tab, name: input.name, configJson: JSON.stringify(input.config), sortOrder: input.sortOrder });
     }),
-    updatePreset: protectedProcedure.input(updateClubAdminPresetInput).mutation(async ({ ctx, input }) => {
+    updatePreset: adminProcedure.input(updateClubAdminPresetInput).mutation(async ({ ctx, input }) => {
       return updateClubAdminPreset({ ownerOpenId: ctx.user.openId, id: input.id, tab: input.tab, name: input.name, configJson: JSON.stringify(input.config), sortOrder: input.sortOrder });
     }),
-    deletePreset: protectedProcedure.input(idInput).mutation(async ({ ctx, input }) => {
+    deletePreset: adminProcedure.input(idInput).mutation(async ({ ctx, input }) => {
       return deleteClubAdminPreset(input.id, ctx.user.openId);
     }),
   }),
@@ -1390,10 +1390,10 @@ export const appRouter = router({
     }),
   }),
   adminOwnerships: router({
-    listByAnimal: protectedProcedure.input(z.object({ animalId: z.number().int().positive() })).query(async ({ input }) => {
+    listByAnimal: adminProcedure.input(z.object({ animalId: z.number().int().positive() })).query(async ({ input }) => {
       return listAnimalOwnerships(input.animalId);
     }),
-    updateStatus: protectedProcedure
+    updateStatus: adminProcedure
       .input(
         z.object({
           ownershipId: z.number().int().positive(),
@@ -1414,10 +1414,7 @@ export const appRouter = router({
      * Optimized: pre-loads all users into lookup Maps to eliminate N+1 queries,
      * batches DB writes, and moves imports outside the processing loop.
      */
-    syncBitrixContacts: protectedProcedure.mutation(async ({ ctx }) => {
-      if (ctx.user.role !== "admin" && ctx.user.openId !== process.env.OWNER_OPEN_ID) {
-        throw new TRPCError({ code: "FORBIDDEN", message: "Только администратор может запускать синхронизацию" });
-      }
+    syncBitrixContacts: adminProcedure.mutation(async ({ ctx }) => {
 
       const { pullBitrixContacts, isBitrixConfigured: isBxConfigured } = await import("./bitrix24");
       if (!isBxConfigured()) {
@@ -1582,12 +1579,9 @@ export const appRouter = router({
     }),
 
     /** Admin resets a user's password — generates a new random password, saves hash + plaintext */
-    resetUserPassword: protectedProcedure
+    resetUserPassword: adminProcedure
       .input(z.object({ userId: z.number() }))
       .mutation(async ({ ctx, input }) => {
-        if (ctx.user.role !== "admin" && ctx.user.openId !== process.env.OWNER_OPEN_ID) {
-          throw new TRPCError({ code: "FORBIDDEN", message: "Только администратор может сбрасывать пароли" });
-        }
 
         const crypto = await import("crypto");
         const { eq: eqR } = await import("drizzle-orm");
@@ -1612,21 +1606,21 @@ export const appRouter = router({
 
         await db
           .update(usersT)
-          .set({ passwordHash: newHash, plainPassword: newPassword, updatedAt: new Date() })
+          .set({ passwordHash: newHash, updatedAt: new Date() })
           .where(eqR(usersT.id, input.userId));
 
         return { success: true, newPassword, userName: targetUser.name, userEmail: targetUser.email };
       }),
   }),
   adminAnalytics: router({
-    userFunnel: protectedProcedure.query(async () => {
+    userFunnel: adminProcedure.query(async () => {
       return getUserFunnelAnalytics();
     }),
-    pendingApplicationsCount: protectedProcedure.query(async () => {
+    pendingApplicationsCount: adminProcedure.query(async () => {
       return getPendingApplicationsCount();
     }),
     /** Admin: paginated user list with search and filters */
-    listUsers: protectedProcedure
+    listUsers: adminProcedure
       .input(
         z.object({
           page: z.number().min(1).default(1),
@@ -1642,13 +1636,10 @@ export const appRouter = router({
         }),
       )
       .query(async ({ ctx, input }) => {
-        if (ctx.user.role !== "admin" && ctx.user.openId !== process.env.OWNER_OPEN_ID) {
-          throw new TRPCError({ code: "FORBIDDEN", message: "Только администратор может просматривать список пользователей" });
-        }
         return listUsersAdmin(input);
       }),
     /** Admin: export all users matching filters (no pagination) */
-    exportUsers: protectedProcedure
+    exportUsers: adminProcedure
       .input(
         z.object({
           search: z.string().optional(),
@@ -1662,21 +1653,15 @@ export const appRouter = router({
         }),
       )
       .query(async ({ ctx, input }) => {
-        if (ctx.user.role !== "admin" && ctx.user.openId !== process.env.OWNER_OPEN_ID) {
-          throw new TRPCError({ code: "FORBIDDEN", message: "Только администратор может экспортировать пользователей" });
-        }
         return exportUsersAdmin(input);
       }),
   }),
 
   // ─── User Details ──────────────────────────────────────────────────
   adminUserDetails: router({
-    getDetails: protectedProcedure
+    getDetails: adminProcedure
       .input(z.object({ userOpenId: z.string().min(1) }))
       .query(async ({ ctx, input }) => {
-        if (ctx.user.role !== "admin" && ctx.user.openId !== process.env.OWNER_OPEN_ID) {
-          throw new TRPCError({ code: "FORBIDDEN", message: "Только администратор" });
-        }
         const details = await getUserDetailsAdmin(input.userOpenId);
         if (!details) {
           throw new TRPCError({ code: "NOT_FOUND", message: "Пользователь не найден" });
@@ -1688,53 +1673,38 @@ export const appRouter = router({
   // ─── Trash / Soft-Delete ──────────────────────────────────────────────────
   adminTrash: router({
     /** Move user to trash (soft-delete) */
-    softDelete: protectedProcedure
+    softDelete: adminProcedure
       .input(z.object({ userId: z.number().int().positive() }))
       .mutation(async ({ ctx, input }) => {
-        if (ctx.user.role !== "admin" && ctx.user.openId !== process.env.OWNER_OPEN_ID) {
-          throw new TRPCError({ code: "FORBIDDEN", message: "Только администратор может удалять пользователей" });
-        }
         await softDeleteUser(input.userId, ctx.user.openId);
         return { success: true };
       }),
 
     /** Restore user from trash */
-    restore: protectedProcedure
+    restore: adminProcedure
       .input(z.object({ userId: z.number().int().positive() }))
       .mutation(async ({ ctx, input }) => {
-        if (ctx.user.role !== "admin" && ctx.user.openId !== process.env.OWNER_OPEN_ID) {
-          throw new TRPCError({ code: "FORBIDDEN", message: "Только администратор может восстанавливать пользователей" });
-        }
         await restoreUser(input.userId);
         return { success: true };
       }),
 
     /** List users in trash */
-    list: protectedProcedure
+    list: adminProcedure
       .query(async ({ ctx }) => {
-        if (ctx.user.role !== "admin" && ctx.user.openId !== process.env.OWNER_OPEN_ID) {
-          throw new TRPCError({ code: "FORBIDDEN", message: "Только администратор может просматривать корзину" });
-        }
         return listTrashedUsers();
       }),
 
     /** Permanently delete a user and return shares to farm */
-    permanentDelete: protectedProcedure
+    permanentDelete: adminProcedure
       .input(z.object({ userId: z.number().int().positive() }))
       .mutation(async ({ ctx, input }) => {
-        if (ctx.user.role !== "admin" && ctx.user.openId !== process.env.OWNER_OPEN_ID) {
-          throw new TRPCError({ code: "FORBIDDEN", message: "Только администратор может окончательно удалять пользователей" });
-        }
         const result = await permanentDeleteUser(input.userId);
         return { success: true, deletedOwnerships: result.deletedOwnerships };
       }),
 
     /** Auto-cleanup: permanently delete users in trash > 30 days */
-    autoCleanup: protectedProcedure
+    autoCleanup: adminProcedure
       .mutation(async ({ ctx }) => {
-        if (ctx.user.role !== "admin" && ctx.user.openId !== process.env.OWNER_OPEN_ID) {
-          throw new TRPCError({ code: "FORBIDDEN", message: "Только администратор может запускать очистку" });
-        }
         const expired = await findExpiredTrashedUsers(30);
         let cleaned = 0;
         const allDeletedOwnerships: Array<{ animalId: number; ownershipId: number }> = [];

@@ -872,3 +872,17 @@
 - [x] AdminAnalytics: Главная > Admin > Аналитика
 - [x] Старые кнопки ArrowLeft «Назад» заменены на единообразные breadcrumbs
 - [x] 44 теста (breadcrumbs.test.ts), все 1183 проходят
+
+## Фаза 1: Критические исправления безопасности (Аудит)
+- [x] Удалён plainPassword из schema.ts, db.ts, localAuth.ts, routers.ts, AdminHub, AdminUsers, UserDetailDrawer
+- [x] Миграция БД: столбец plainPassword удалён (0021_icy_raider.sql)
+- [x] Удалён фильтр hasPassword из db.ts, routers.ts, AdminUsers UI
+- [x] Финансовые операции обёрнуты в db.transaction: adjustBankBalance, grantTokensToOwner, refundTokensToOwner, purchaseMarketplaceItem
+- [x] Admin-роутеры переведены на adminProcedure: adminAnimals, adminClub, adminOwnerships, adminSync, adminAnalytics, adminUserDetails, adminTrash, bitrixAdmin
+- [x] adminProcedure также разрешает доступ OWNER_OPEN_ID
+- [x] Body parser limit уменьшен с 50MB до 10MB
+- [x] Исправлена ошибка вложенных <li> в PageBreadcrumbs (BreadcrumbSeparator вынесен из BreadcrumbItem)
+- [x] Удалены мёртвые файлы: AnimalDetails.tsx, OwnerProductPlanSection.tsx
+- [x] Rate limiting уже был реализован (checkRateLimit в БД) — подтверждено
+- [x] Обновлены 8 тестовых файлов: adminPassword, adminExport, adminTrash, adminUserDetails, adminUsers, lastLoginFilter, localAuth, phaseD-regression
+- [x] Все 1208 тестов проходят

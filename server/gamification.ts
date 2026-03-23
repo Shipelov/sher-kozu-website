@@ -177,30 +177,32 @@ export async function adjustBankBalance(
 
   if (diff === 0) return { bank, changed: false };
 
-  // Update bank balance
-  await db.update(farmAccounts)
-    .set({
-      balanceSKC: newBalanceSKC,
-      totalLifetimeSKC: diff > 0 ? bank.totalLifetimeSKC + diff : bank.totalLifetimeSKC,
-    })
-    .where(eq(farmAccounts.id, bank.id));
+  return await db.transaction(async (tx: any) => {
+    // Update bank balance
+    await tx.update(farmAccounts)
+      .set({
+        balanceSKC: newBalanceSKC,
+        totalLifetimeSKC: diff > 0 ? bank.totalLifetimeSKC + diff : bank.totalLifetimeSKC,
+      })
+      .where(eq(farmAccounts.id, bank.id));
 
-  // Record adjustment transaction
-  await db.insert(farmAccountTransactions).values({
-    farmAccountId: bank.id,
-    walletId: null,
-    ownerOpenId: null,
-    txType: "adjustment",
-    direction: diff > 0 ? "credit" : "debit",
-    amountSKC: Math.abs(diff),
-    farmBalanceAfterSKC: newBalanceSKC,
-    walletBalanceAfterSKC: null,
-    memo: memo || `Корректировка баланса Банка: ${oldBalance} → ${newBalanceSKC}`,
-    initiatedByOpenId,
+    // Record adjustment transaction
+    await tx.insert(farmAccountTransactions).values({
+      farmAccountId: bank.id,
+      walletId: null,
+      ownerOpenId: null,
+      txType: "adjustment",
+      direction: diff > 0 ? "credit" : "debit",
+      amountSKC: Math.abs(diff),
+      farmBalanceAfterSKC: newBalanceSKC,
+      walletBalanceAfterSKC: null,
+      memo: memo || `Корректировка баланса Банка: ${oldBalance} → ${newBalanceSKC}`,
+      initiatedByOpenId,
+    });
+
+    const [updated] = await tx.select().from(farmAccounts).where(eq(farmAccounts.id, bank.id));
+    return { bank: updated, changed: true, oldBalance, newBalance: newBalanceSKC, diff };
   });
-
-  const [updated] = await db.select().from(farmAccounts).where(eq(farmAccounts.id, bank.id));
-  return { bank: updated, changed: true, oldBalance, newBalance: newBalanceSKC, diff };
 }
 
 /** Grant tokens from Bank to an owner's wallet */
@@ -238,45 +240,47 @@ export async function grantTokensToOwner(
   const newBankBalance = bank.balanceSKC - amountSKC;
   const newWalletBalance = wallet.balanceMinor + amountSKC;
 
-  // Update bank
-  await db.update(farmAccounts)
-    .set({ balanceSKC: newBankBalance })
-    .where(eq(farmAccounts.id, bank.id));
+  return await db.transaction(async (tx: any) => {
+    // Update bank
+    await tx.update(farmAccounts)
+      .set({ balanceSKC: newBankBalance })
+      .where(eq(farmAccounts.id, bank.id));
 
-  // Update wallet
-  await db.update(wallets)
-    .set({ balanceMinor: newWalletBalance })
-    .where(eq(wallets.id, wallet.id));
+    // Update wallet
+    await tx.update(wallets)
+      .set({ balanceMinor: newWalletBalance })
+      .where(eq(wallets.id, wallet.id));
 
-  // Record farm transaction
-  await db.insert(farmAccountTransactions).values({
-    farmAccountId: bank.id,
-    walletId: wallet.id,
-    ownerOpenId,
-    txType,
-    direction: "debit",
-    amountSKC,
-    farmBalanceAfterSKC: newBankBalance,
-    walletBalanceAfterSKC: newWalletBalance,
-    memo,
-    initiatedByOpenId,
+    // Record farm transaction
+    await tx.insert(farmAccountTransactions).values({
+      farmAccountId: bank.id,
+      walletId: wallet.id,
+      ownerOpenId,
+      txType,
+      direction: "debit",
+      amountSKC,
+      farmBalanceAfterSKC: newBankBalance,
+      walletBalanceAfterSKC: newWalletBalance,
+      memo,
+      initiatedByOpenId,
+    });
+
+    // Record wallet transaction
+    await tx.insert(walletTransactions).values({
+      ownerOpenId,
+      walletId: wallet.id,
+      familyId: wallet.familyId,
+      transactionType: "admin_grant",
+      direction: "credit",
+      amountMinor: amountSKC,
+      balanceAfterMinor: newWalletBalance,
+      memo,
+      referenceType: "farm_grant",
+      emittedByOpenId: initiatedByOpenId,
+    });
+
+    return { newBankBalance, newWalletBalance, walletId: wallet.id };
   });
-
-  // Record wallet transaction
-  await db.insert(walletTransactions).values({
-    ownerOpenId,
-    walletId: wallet.id,
-    familyId: wallet.familyId,
-    transactionType: "admin_grant",
-    direction: "credit",
-    amountMinor: amountSKC,
-    balanceAfterMinor: newWalletBalance,
-    memo,
-    referenceType: "farm_grant",
-    emittedByOpenId: initiatedByOpenId,
-  });
-
-  return { newBankBalance, newWalletBalance, walletId: wallet.id };
 }
 
 /** Bulk grant tokens to multiple owners */
@@ -319,41 +323,43 @@ export async function refundTokensToOwner(
   const newRevenueBalance = revenue.balanceSKC - amountSKC;
   const newWalletBalance = wallet.balanceMinor + amountSKC;
 
-  await db.update(farmAccounts)
-    .set({ balanceSKC: newRevenueBalance })
-    .where(eq(farmAccounts.id, revenue.id));
+  return await db.transaction(async (tx: any) => {
+    await tx.update(farmAccounts)
+      .set({ balanceSKC: newRevenueBalance })
+      .where(eq(farmAccounts.id, revenue.id));
 
-  await db.update(wallets)
-    .set({ balanceMinor: newWalletBalance })
-    .where(eq(wallets.id, wallet.id));
+    await tx.update(wallets)
+      .set({ balanceMinor: newWalletBalance })
+      .where(eq(wallets.id, wallet.id));
 
-  await db.insert(farmAccountTransactions).values({
-    farmAccountId: revenue.id,
-    walletId: wallet.id,
-    ownerOpenId,
-    txType: "refund",
-    direction: "debit",
-    amountSKC,
-    farmBalanceAfterSKC: newRevenueBalance,
-    walletBalanceAfterSKC: newWalletBalance,
-    memo,
-    initiatedByOpenId,
+    await tx.insert(farmAccountTransactions).values({
+      farmAccountId: revenue.id,
+      walletId: wallet.id,
+      ownerOpenId,
+      txType: "refund",
+      direction: "debit",
+      amountSKC,
+      farmBalanceAfterSKC: newRevenueBalance,
+      walletBalanceAfterSKC: newWalletBalance,
+      memo,
+      initiatedByOpenId,
+    });
+
+    await tx.insert(walletTransactions).values({
+      ownerOpenId,
+      walletId: wallet.id,
+      familyId: wallet.familyId,
+      transactionType: "refund",
+      direction: "credit",
+      amountMinor: amountSKC,
+      balanceAfterMinor: newWalletBalance,
+      memo,
+      referenceType: "refund",
+      emittedByOpenId: initiatedByOpenId,
+    });
+
+    return { newRevenueBalance, newWalletBalance };
   });
-
-  await db.insert(walletTransactions).values({
-    ownerOpenId,
-    walletId: wallet.id,
-    familyId: wallet.familyId,
-    transactionType: "refund",
-    direction: "credit",
-    amountMinor: amountSKC,
-    balanceAfterMinor: newWalletBalance,
-    memo,
-    referenceType: "refund",
-    emittedByOpenId: initiatedByOpenId,
-  });
-
-  return { newRevenueBalance, newWalletBalance };
 }
 
 /** Get transaction history for farm accounts (enriched with user names, paginated) */
@@ -662,81 +668,85 @@ export async function purchaseMarketplaceItem(
   if (wallet.status === "frozen") throw new Error("Ваш счёт заблокирован. Обратитесь к администратору.");
   if (wallet.balanceMinor < item.priceSKC) throw new Error("Недостаточно SKC на балансе");
 
-  // 8. Deduct from wallet
+  // 8-15. Financial operations wrapped in a single transaction
   const newWalletBalance = wallet.balanceMinor - item.priceSKC;
-  await db.update(wallets).set({ balanceMinor: newWalletBalance }).where(eq(wallets.id, wallet.id));
-
-  // 9. Credit to Revenue
   const { revenue } = await ensureFarmAccounts();
   const newRevenueBalance = revenue.balanceSKC + item.priceSKC;
-  await db.update(farmAccounts)
-    .set({
-      balanceSKC: newRevenueBalance,
-      totalLifetimeSKC: revenue.totalLifetimeSKC + item.priceSKC,
-    })
-    .where(eq(farmAccounts.id, revenue.id));
-
-  // 10. Decrease stock if limited
-  if (item.stock !== -1) {
-    await db.update(marketplaceItems)
-      .set({ stock: item.stock - 1 })
-      .where(eq(marketplaceItems.id, item.id));
-  }
-
-  // 11. Parse metric effects
   const effects = JSON.parse(item.metricEffectsJson || "{}") as Record<string, number>;
 
-  // 12. Apply metrics
-  const metricsAfter = await applyMetricEffects(animalId, effects);
+  const { purchase, metricsAfter } = await db.transaction(async (tx: any) => {
+    // 8. Deduct from wallet
+    await tx.update(wallets).set({ balanceMinor: newWalletBalance }).where(eq(wallets.id, wallet.id));
 
-  // 13. Create purchase record
-  await db.insert(marketplacePurchases).values({
-    ownerOpenId,
-    animalId,
-    itemId,
-    walletId: wallet.id,
-    pricePaidSKC: item.priceSKC,
-    metricEffectsAppliedJson: JSON.stringify(effects),
-    checklistCompleted: item.requiresChecklist ? 0 : 1,
-    feedbackSent: 0,
-  });
+    // 9. Credit to Revenue
+    await tx.update(farmAccounts)
+      .set({
+        balanceSKC: newRevenueBalance,
+        totalLifetimeSKC: revenue.totalLifetimeSKC + item.priceSKC,
+      })
+      .where(eq(farmAccounts.id, revenue.id));
 
-  const [purchase] = await db.select().from(marketplacePurchases)
-    .where(and(
-      eq(marketplacePurchases.ownerOpenId, ownerOpenId),
-      eq(marketplacePurchases.itemId, itemId),
-    ))
-    .orderBy(desc(marketplacePurchases.createdAt))
-    .limit(1);
+    // 10. Decrease stock if limited
+    if (item.stock !== -1) {
+      await tx.update(marketplaceItems)
+        .set({ stock: item.stock - 1 })
+        .where(eq(marketplaceItems.id, item.id));
+    }
 
-  // 14. Record farm transaction
-  await db.insert(farmAccountTransactions).values({
-    farmAccountId: revenue.id,
-    walletId: wallet.id,
-    ownerOpenId,
-    txType: "purchase",
-    direction: "credit",
-    amountSKC: item.priceSKC,
-    farmBalanceAfterSKC: newRevenueBalance,
-    walletBalanceAfterSKC: newWalletBalance,
-    purchaseId: purchase.id,
-    memo: `Покупка: ${item.name}`,
-    initiatedByOpenId: ownerOpenId,
-  });
+    // 12. Apply metrics (uses its own db connection, acceptable)
+    const txMetricsAfter = await applyMetricEffects(animalId, effects);
 
-  // 15. Record wallet transaction
-  await db.insert(walletTransactions).values({
-    ownerOpenId,
-    walletId: wallet.id,
-    familyId: wallet.familyId,
-    transactionType: "spend",
-    direction: "debit",
-    amountMinor: item.priceSKC,
-    balanceAfterMinor: newWalletBalance,
-    memo: `Покупка: ${item.name}`,
-    referenceType: "marketplace_purchase",
-    referenceId: String(purchase.id),
-    emittedByOpenId: ownerOpenId,
+    // 13. Create purchase record
+    await tx.insert(marketplacePurchases).values({
+      ownerOpenId,
+      animalId,
+      itemId,
+      walletId: wallet.id,
+      pricePaidSKC: item.priceSKC,
+      metricEffectsAppliedJson: JSON.stringify(effects),
+      checklistCompleted: item.requiresChecklist ? 0 : 1,
+      feedbackSent: 0,
+    });
+
+    const [txPurchase] = await tx.select().from(marketplacePurchases)
+      .where(and(
+        eq(marketplacePurchases.ownerOpenId, ownerOpenId),
+        eq(marketplacePurchases.itemId, itemId),
+      ))
+      .orderBy(desc(marketplacePurchases.createdAt))
+      .limit(1);
+
+    // 14. Record farm transaction
+    await tx.insert(farmAccountTransactions).values({
+      farmAccountId: revenue.id,
+      walletId: wallet.id,
+      ownerOpenId,
+      txType: "purchase",
+      direction: "credit",
+      amountSKC: item.priceSKC,
+      farmBalanceAfterSKC: newRevenueBalance,
+      walletBalanceAfterSKC: newWalletBalance,
+      purchaseId: txPurchase.id,
+      memo: `Покупка: ${item.name}`,
+      initiatedByOpenId: ownerOpenId,
+    });
+
+    // 15. Record wallet transaction
+    await tx.insert(walletTransactions).values({
+      ownerOpenId,
+      walletId: wallet.id,
+      familyId: wallet.familyId,
+      transactionType: "spend",
+      direction: "debit",
+      amountMinor: item.priceSKC,
+      balanceAfterMinor: newWalletBalance,
+      memo: `Покупка: ${item.name}`,
+      referenceType: "marketplace_purchase",
+      referenceId: String(txPurchase.id),
+      emittedByOpenId: ownerOpenId,
+    });
+
+    return { purchase: txPurchase, metricsAfter: txMetricsAfter };
   });
 
   // 16. Create farmer checklist if required

@@ -2971,7 +2971,6 @@ export async function getUserFunnelAnalytics() {
       phone: users.phone,
       preferredContact: users.preferredContact,
       role: users.role,
-      plainPassword: users.plainPassword,
       loginMethod: users.loginMethod,
       createdAt: users.createdAt,
     })
@@ -3030,8 +3029,7 @@ export type ListUsersParams = {
   role?: "user" | "admin";
   loginMethod?: string;
   hasBitrix?: boolean;
-  hasPassword?: boolean;
-  lastLogin?: "today" | "week" | "month" | "inactive" | "never";
+lastLogin?: "today" | "week" | "month" | "inactive" | "never";
   sortBy?: "createdAt" | "name" | "email" | "lastSignedIn";
   sortOrder?: "asc" | "desc";
 };
@@ -3074,13 +3072,7 @@ export async function listUsersAdmin(params: ListUsersParams) {
     conditions.push(isNull(users.bitrix24ContactId));
   }
 
-  // Has password filter
-  if (params.hasPassword === true) {
-    conditions.push(isNotNull(users.passwordHash));
-  } else if (params.hasPassword === false) {
-    conditions.push(isNull(users.passwordHash));
-  }
-
+  // Has password filter else
   // Last login filter
   if (params.lastLogin) {
     const now = new Date();
@@ -3135,7 +3127,6 @@ export async function listUsersAdmin(params: ListUsersParams) {
       phone: users.phone,
       preferredContact: users.preferredContact,
       role: users.role,
-      plainPassword: users.plainPassword,
       loginMethod: users.loginMethod,
       bitrix24ContactId: users.bitrix24ContactId,
       onboardingCompleted: users.onboardingCompleted,
@@ -3192,14 +3183,7 @@ export async function exportUsersAdmin(params: Omit<ListUsersParams, "page" | "p
     conditions.push(isNotNull(users.bitrix24ContactId));
   } else if (params.hasBitrix === false) {
     conditions.push(isNull(users.bitrix24ContactId));
-  }
-
-  if (params.hasPassword === true) {
-    conditions.push(isNotNull(users.passwordHash));
-  } else if (params.hasPassword === false) {
-    conditions.push(isNull(users.passwordHash));
-  }
-
+  } else
   // Last login filter
   if (params.lastLogin) {
     const now = new Date();
@@ -3428,7 +3412,6 @@ export async function getUserDetailsAdmin(userOpenId: string) {
       email: users.email,
       phone: users.phone,
       preferredContact: users.preferredContact,
-      plainPassword: users.plainPassword,
       bitrix24ContactId: users.bitrix24ContactId,
       loginMethod: users.loginMethod,
       role: users.role,
