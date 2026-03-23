@@ -986,7 +986,7 @@ export async function updateOwnerRating(ownerOpenId: string) {
   }
 }
 
-/** Recalculate owner ranks */
+/** Recalculate owner ranks and notify on position changes */
 export async function recalculateOwnerRanks() {
   const db = await getDb();
   if (!db) return;
@@ -994,10 +994,51 @@ export async function recalculateOwnerRanks() {
   const allRatings = await db.select().from(ownerRatings)
     .orderBy(desc(ownerRatings.totalScore));
 
+  // Track rank changes for notifications
+  const rankChanges: Array<{ ownerOpenId: string; oldRank: number; newRank: number; totalScore: number }> = [];
+
   for (let i = 0; i < allRatings.length; i++) {
+    const newRank = i + 1;
+    const oldRank = allRatings[i].rank ?? 0;
     await db.update(ownerRatings)
-      .set({ rank: i + 1 })
+      .set({ rank: newRank })
       .where(eq(ownerRatings.id, allRatings[i].id));
+
+    if (oldRank > 0 && oldRank !== newRank) {
+      rankChanges.push({
+        ownerOpenId: allRatings[i].ownerOpenId,
+        oldRank,
+        newRank,
+        totalScore: allRatings[i].totalScore ?? 0,
+      });
+    }
+  }
+
+  // Send notifications for rank changes (non-blocking)
+  if (rankChanges.length > 0) {
+    sendRankChangeNotifications(rankChanges).catch((err) =>
+      console.error("[Gamification] Failed to send rank notifications:", err)
+    );
+  }
+}
+
+/** Send notifications to owners whose rank changed */
+async function sendRankChangeNotifications(
+  changes: Array<{ ownerOpenId: string; oldRank: number; newRank: number; totalScore: number }>
+) {
+  const { notifyOwner } = await import("./_core/notification");
+  
+  for (const change of changes) {
+    const direction = change.newRank < change.oldRank ? "⬆️" : "⬇️";
+    const verb = change.newRank < change.oldRank ? "поднялись" : "опустились";
+    const title = `${direction} Рейтинг: вы ${verb} на ${Math.abs(change.oldRank - change.newRank)} позицию`;
+    const content = `Ваша позиция в рейтинге владельцев изменилась: #${change.oldRank} → #${change.newRank} (очки: ${change.totalScore})`;
+
+    try {
+      await notifyOwner({ title, content });
+    } catch (err) {
+      console.error(`[Gamification] Notification failed for ${change.ownerOpenId}:`, err);
+    }
   }
 }
 

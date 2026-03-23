@@ -741,3 +741,28 @@
 ## BUG: Блок «Аналитика заботы» не работает
 - [x] Причина: AdminHub ссылался на /admin/gamification, а маршрут зарегистрирован как /admin/analytics → 404
 - [x] Исправлено: path и quickActionPath в AdminHub изменены на /admin/analytics
+
+## FEATURE: Бейджи достижений
+- [x] Создана таблица achievementBadges (id, ownerOpenId, badgeType, metadata, awardedAt)
+- [x] 10 типов бейджей: first_animal, herd_of_five, first_purchase, big_spender, club_member, top_rating, rating_50, rating_100, caring_owner, happy_herd
+- [x] Серверная логика checkAndAwardBadges с идемпотентным awardBadge
+- [x] tRPC: myBadges, getByOwner, definitions, checkMyBadges
+- [x] Компоненты BadgeCard, BadgeGrid, BadgeInline с emoji, тултипом и анимацией
+- [x] Блок «Достижения» в Dashboard с кнопкой «Проверить новые»
+
+## FEATURE: Уведомления о рейтинге
+- [x] Отслеживание oldRank vs newRank в recalculateOwnerRanks
+- [x] notifyOwner с направлением (⬆️/⬇️), количеством позиций, очками
+- [x] Неблокирующая отправка (.catch), логирование ошибок
+
+## FEATURE: Сравнение животных с radar-чартами
+- [x] Создать SVG radar-chart компонент для 6 метрик
+- [x] Страница /compare с выбором 2 животных
+- [x] Бок-о-бок сравнение метрик с визуализацией
+- [x] Кнопка «Сравнить» в лидерборде с переходом на /compare
+## BUG FIX: checkMyBadges SQL column name
+- [x] Исправлена ошибка: SQL запрос использовал несуществующий столбец 'amount' вместо 'amountMinor' в walletTransactions
+
+## TESTS: Бейджи, уведомления и сравнение
+- [x] 124 новых теста: badges server logic, tRPC routes, UI components, dashboard integration, notifications, comparison page, radar chart
+- [x] Все 1086 тестов проходят (40 файлов)

@@ -26,6 +26,7 @@ import Leaderboard from "./pages/Leaderboard";
 import Profile from "./pages/Profile";
 import Partners from "./pages/Partners";
 import AboutFarm from "./pages/AboutFarm";
+import AnimalCompare from "./pages/AnimalCompare";
 
 function normalizeRoutePath(path: string) {
   const [pathname, query = ""] = path.split("?");
@@ -81,6 +82,7 @@ function Router() {
       <Route path="/admin/analytics" component={AdminAnalytics} />
       <Route path="/marketplace" component={Marketplace} />
       <Route path="/leaderboard" component={Leaderboard} />
+      <Route path="/compare" component={AnimalCompare} />
       <Route path="/about" component={AboutFarm} />
       <Route path="/partners" component={Partners} />
       <Route path="/404" component={NotFound} />

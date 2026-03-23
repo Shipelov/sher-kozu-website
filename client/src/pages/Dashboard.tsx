@@ -39,6 +39,61 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import ScrollRemaining from "@/components/ScrollRemaining";
+import { BadgeGrid } from "@/components/BadgeCard";
+import { Award } from "lucide-react";
+
+/** Badges section for the owner dashboard */
+function DashboardBadgesSection() {
+  const { data: badges, isLoading } = trpc.badges.myBadges.useQuery();
+  const checkBadges = trpc.badges.checkMyBadges.useMutation({
+    onSuccess: (result) => {
+      if (result.newBadges.length > 0) {
+        toast.success(`Новые достижения: ${result.newBadges.length}!`);
+        utils.badges.myBadges.invalidate();
+      } else {
+        toast.info("Новых достижений пока нет");
+      }
+    },
+  });
+  const utils = trpc.useUtils();
+
+  return (
+    <motion.section
+      initial={{ opacity: 0, y: 16 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 0.06 }}
+      className="rounded-[2rem] border border-border/70 bg-card p-5 shadow-sm"
+    >
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+            <Award className="h-5 w-5" />
+          </div>
+          <div>
+            <p className="text-xs uppercase tracking-[0.18em] text-primary">Достижения</p>
+            <p className="mt-0.5 text-sm text-muted-foreground">
+              {badges ? `${badges.length} из 10 бейджей` : "Загрузка..."}
+            </p>
+          </div>
+        </div>
+        <button
+          onClick={() => checkBadges.mutate()}
+          disabled={checkBadges.isPending}
+          className="text-xs text-primary hover:text-primary/80 underline underline-offset-2 transition-colors disabled:opacity-50"
+        >
+          {checkBadges.isPending ? "Проверка..." : "Проверить новые"}
+        </button>
+      </div>
+      {isLoading ? (
+        <div className="flex justify-center py-6">
+          <Loader2 className="h-6 w-6 animate-spin text-primary" />
+        </div>
+      ) : (
+        <BadgeGrid badges={badges || []} />
+      )}
+    </motion.section>
+  );
+}
 
 const CDN = {
   hero: "https://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/sherkozu_family_farm_hero-UF9QBY2UhWL9gdEpLXiEFS.webp",
@@ -818,6 +873,11 @@ export default function Dashboard() {
                 )}
               </div>
             </motion.div>
+          )}
+
+          {/* ── Achievement Badges ── */}
+          {ownership && (
+            <DashboardBadgesSection />
           )}
 
           <div className="grid grid-cols-12 gap-5">

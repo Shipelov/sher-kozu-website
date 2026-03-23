@@ -69,6 +69,7 @@ import { runDiagnostics } from "./diagnostics";
 import { notifyOwner } from "./_core/notification";
 import { productTrackRouter } from "./routers/productTrack";
 import { gamificationRouter } from "./routers/gamification";
+import { getOwnerBadges, checkAndAwardBadges, BADGE_DEFINITIONS } from "./badges";
 import {
   checkRateLimit,
   createOtp,
@@ -1336,6 +1337,58 @@ export const appRouter = router({
   }),
   productTrack: productTrackRouter,
   gamification: gamificationRouter,
+  badges: router({
+    /** Get badges for the current user */
+    myBadges: protectedProcedure.query(async ({ ctx }) => {
+      const badges = await getOwnerBadges(ctx.user.openId);
+      return badges.map((b) => ({
+        ...b,
+        definition: BADGE_DEFINITIONS[b.badgeType] || { name: b.badgeType, description: "", emoji: "🏅", category: "other" },
+      }));
+    }),
+    /** Get badges for any owner (public) */
+    getByOwner: publicProcedure
+      .input(z.object({ ownerOpenId: z.string() }))
+      .query(async ({ input }) => {
+        const badges = await getOwnerBadges(input.ownerOpenId);
+        return badges.map((b) => ({
+          ...b,
+          definition: BADGE_DEFINITIONS[b.badgeType] || { name: b.badgeType, description: "", emoji: "🏅", category: "other" },
+        }));
+      }),
+    /** Get all badge definitions */
+    definitions: publicProcedure.query(() => {
+      return Object.entries(BADGE_DEFINITIONS).map(([type, def]) => ({ type, ...def }));
+    }),
+    /** Manually trigger badge check for current user */
+    checkMyBadges: protectedProcedure.mutation(async ({ ctx }) => {
+      // Gather context from existing data
+      const { getDb } = await import("./db");
+      const db = await getDb();
+      const { animalOwnerships, walletTransactions } = await import("../drizzle/schema");
+      const { eq, sql } = await import("drizzle-orm");
+      const ownerOpenId = ctx.user.openId;
+
+      // Count animals
+      const animalRows = await db.select({ cnt: sql<number>`count(*)` }).from(animalOwnerships).where(eq(animalOwnerships.ownerOpenId, ownerOpenId));
+      const animalCount = Number(animalRows[0]?.cnt ?? 0);
+
+      // Count purchases
+      const purchaseRows = await db.select({ cnt: sql<number>`count(*)` }).from(walletTransactions).where(eq(walletTransactions.ownerOpenId, ownerOpenId));
+      const hasPurchases = Number(purchaseRows[0]?.cnt ?? 0) > 0;
+
+      // Total spent
+      const spentRows = await db.select({ total: sql<number>`COALESCE(SUM(ABS(amountMinor)), 0)` }).from(walletTransactions).where(eq(walletTransactions.ownerOpenId, ownerOpenId));
+      const totalSpent = Number(spentRows[0]?.total ?? 0);
+
+      const newBadges = await checkAndAwardBadges(ownerOpenId, {
+        animalCount,
+        hasPurchases,
+        totalSpent,
+      });
+      return { newBadges, total: (await getOwnerBadges(ownerOpenId)).length };
+    }),
+  }),
   adminOwnerships: router({
     listByAnimal: protectedProcedure.input(z.object({ animalId: z.number().int().positive() })).query(async ({ input }) => {
       return listAnimalOwnerships(input.animalId);

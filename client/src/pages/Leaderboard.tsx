@@ -14,6 +14,7 @@ import {
   Sparkles,
   Users,
   Loader2,
+  ArrowLeftRight,
 } from "lucide-react";
 import WellnessRadarChart from "@/components/WellnessRadarChart";
 import ShowMoreList from "@/components/ShowMoreList";
@@ -88,14 +89,23 @@ export default function Leaderboard() {
       <div className="pb-14 pt-24 md:pt-28">
         <div className="container space-y-6">
           {/* Header */}
-          <div className="flex items-center gap-3">
-            <Link href="/dashboard" className="rounded-full border border-border p-2 transition hover:bg-muted">
-              <ChevronLeft className="h-4 w-4" />
-            </Link>
-            <div>
-              <h1 className="text-3xl font-bold text-foreground">Рейтинг фермы</h1>
-              <p className="text-sm text-muted-foreground">Чем больше заботы — тем выше рейтинг</p>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Link href="/dashboard" className="rounded-full border border-border p-2 transition hover:bg-muted">
+                <ChevronLeft className="h-4 w-4" />
+              </Link>
+              <div>
+                <h1 className="text-3xl font-bold text-foreground">Рейтинг фермы</h1>
+                <p className="text-sm text-muted-foreground">Чем больше заботы — тем выше рейтинг</p>
+              </div>
             </div>
+            <Link
+              href="/compare"
+              className="hidden sm:flex items-center gap-2 rounded-xl border border-primary/20 bg-primary/5 px-4 py-2 text-sm font-medium text-primary hover:bg-primary/10 transition-colors"
+            >
+              <ArrowLeftRight className="h-4 w-4" />
+              Сравнить
+            </Link>
           </div>
 
           {/* My Rating Card */}

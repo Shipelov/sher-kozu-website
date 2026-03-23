@@ -932,3 +932,19 @@ export const ratingSnapshots = mysqlTable("ratingSnapshots", {
 
 export type RatingSnapshot = typeof ratingSnapshots.$inferSelect;
 export type InsertRatingSnapshot = typeof ratingSnapshots.$inferInsert;
+
+
+/**
+ * Achievement badges awarded to owners for milestones and accomplishments.
+ * Each badge is unique per owner per badgeType.
+ */
+export const achievementBadges = mysqlTable("achievementBadges", {
+  id: int("id").autoincrement().primaryKey(),
+  ownerOpenId: varchar("ownerOpenId", { length: 64 }).notNull(),
+  badgeType: varchar("badgeType", { length: 64 }).notNull(),
+  /** Optional JSON metadata (e.g. month for best_rating_month, animalId for first_animal) */
+  metadata: text("metadata"),
+  awardedAt: timestamp("awardedAt").defaultNow().notNull(),
+});
+export type AchievementBadge = typeof achievementBadges.$inferSelect;
+export type InsertAchievementBadge = typeof achievementBadges.$inferInsert;

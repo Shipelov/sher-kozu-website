@@ -141,6 +141,13 @@
       "when": 1774293016743,
       "tag": "0019_silky_blacklash",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "5",
+      "when": 1774294069415,
+      "tag": "0020_soft_goliath",
+      "breakpoints": true
     }
   ]
 }
