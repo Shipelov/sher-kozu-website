@@ -55,12 +55,16 @@ describe("Compare button in AnimalProfile", () => {
     expect(ANIMAL_PROFILE_SRC).toContain("Сравнить");
   });
 
-  it("shows description mentioning the animal name", () => {
-    expect(ANIMAL_PROFILE_SRC).toContain("Сравните {displayName} с другими животными");
+  it("shows tooltip text for the compare button", () => {
+    expect(ANIMAL_PROFILE_SRC).toContain("Сравните метрики с другим животным");
   });
 
-  it("uses 4-column grid for navigation links", () => {
-    expect(ANIMAL_PROFILE_SRC).toContain("lg:grid-cols-4");
+  it("uses 3-column grid for navigation links (Compare moved to top)", () => {
+    expect(ANIMAL_PROFILE_SRC).toContain("md:grid-cols-3");
+  });
+
+  it("applies accent styling for owners with hasOwnerAccess", () => {
+    expect(ANIMAL_PROFILE_SRC).toContain("border-primary/60 bg-primary/10");
   });
 });
 

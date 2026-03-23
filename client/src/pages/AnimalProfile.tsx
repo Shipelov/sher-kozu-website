@@ -559,8 +559,9 @@ export default function AnimalProfile() {
                   <button type="button" onClick={() => document.getElementById("gallery-section")?.scrollIntoView({ behavior: "smooth" })} className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-5 py-3 text-sm font-medium text-foreground transition hover:bg-muted">
                     <Images className="h-4 w-4" /> Галерея
                   </button>
-                  <Link href={`/compare?animal=${animalSlug}`} className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-5 py-3 text-sm font-medium text-foreground transition hover:bg-muted">
+                  <Link href={`/compare?animal=${animalSlug}`} className={`group/cmp relative inline-flex items-center gap-2 rounded-full px-5 py-3 text-sm font-medium transition ${hasOwnerAccess ? 'border-2 border-primary/60 bg-primary/10 text-primary hover:bg-primary/20' : 'border border-border bg-card text-foreground hover:bg-muted'}`}>
                     <ArrowLeftRight className="h-4 w-4" /> Сравнить
+                    <span className="pointer-events-none absolute -bottom-9 left-1/2 z-50 -translate-x-1/2 whitespace-nowrap rounded-md bg-foreground/90 px-2.5 py-1 text-xs text-background opacity-0 shadow-md transition-opacity group-hover/cmp:opacity-100">Сравните метрики с другим животным</span>
                   </Link>
                 </div>
               </motion.div>
@@ -884,7 +885,7 @@ export default function AnimalProfile() {
         {/* ═══ SECTION 6: Navigation links ═══ */}
         <section className="py-10 md:py-14">
           <div className="container">
-            <div className="mx-auto grid max-w-4xl gap-4 md:grid-cols-2 lg:grid-cols-4">
+            <div className="mx-auto grid max-w-3xl gap-4 md:grid-cols-3">
               <Link href="/dashboard" className="group rounded-2xl border border-border/70 bg-card p-5 transition hover:bg-muted/30">
                 <Package className="h-6 w-6 text-primary" />
                 <h4 className="mt-3 font-semibold text-foreground">Ваш личный кабинет</h4>
@@ -902,12 +903,6 @@ export default function AnimalProfile() {
                 <h4 className="mt-3 font-semibold text-foreground">Клуб Шерь Козу</h4>
                 <p className="mt-1 text-sm text-muted-foreground">Семейные визиты, мастер-классы и встречи с вашим животным.</p>
                 <span className="mt-3 inline-flex items-center gap-1 text-sm font-medium text-primary">Открыть <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" /></span>
-              </Link>
-              <Link href={`/compare?animal=${animalSlug}`} className="group rounded-2xl border border-border/70 bg-card p-5 transition hover:bg-muted/30">
-                <ArrowLeftRight className="h-6 w-6 text-primary" />
-                <h4 className="mt-3 font-semibold text-foreground">Сравнить</h4>
-                <p className="mt-1 text-sm text-muted-foreground">Сравните {displayName} с другими животными фермы по ключевым метрикам.</p>
-                <span className="mt-3 inline-flex items-center gap-1 text-sm font-medium text-primary">Сравнить <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" /></span>
               </Link>
             </div>
           </div>
