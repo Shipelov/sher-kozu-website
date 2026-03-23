@@ -18,6 +18,9 @@ import AdminAnimals from "./pages/AdminAnimals";
 import AdminHub from "./pages/AdminHub";
 import AdminUsers from "./pages/AdminUsers";
 import AdminProductTrack from "./pages/AdminProductTrack";
+import AdminMarketplace from "./pages/AdminMarketplace";
+import AdminTokens from "./pages/AdminTokens";
+import AdminAnalytics from "./pages/AdminAnalytics";
 import Profile from "./pages/Profile";
 import Partners from "./pages/Partners";
 import AboutFarm from "./pages/AboutFarm";
@@ -71,6 +74,9 @@ function Router() {
       <Route path="/admin/animals" component={AdminAnimals} />
       <Route path="/admin/product-track" component={AdminProductTrack} />
       <Route path="/admin/product-track/:animalId" component={AdminProductTrack} />
+      <Route path="/admin/marketplace" component={AdminMarketplace} />
+      <Route path="/admin/tokens" component={AdminTokens} />
+      <Route path="/admin/analytics" component={AdminAnalytics} />
       <Route path="/about" component={AboutFarm} />
       <Route path="/partners" component={Partners} />
       <Route path="/404" component={NotFound} />
