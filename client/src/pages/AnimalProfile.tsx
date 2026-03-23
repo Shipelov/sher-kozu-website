@@ -106,38 +106,38 @@ function formatCurrency(minor?: number | null, currencyCode: string = "RUB") {
 }
 
 function getAnimalStatusLabel(status?: string | null) {
-  if (status === "fully_booked") return "Выкуплено полностью";
-  if (status === "public_limited") return "Осталось мало долей";
+  if (status === "fully_booked") return "В заботливых руках";
+  if (status === "public_limited") return "Осталось мало свободных долей";
   if (status === "hidden") return "Скрыто";
   if (status === "archived") return "Архив";
-  return "Доступно для участия";
+  return "Ждёт свою семью";
 }
 
 function getDefaultGallery(name: string): GalleryImage[] {
   return [
-    { id: "cover", src: CDN.hero, title: `Портрет ${name}`, meta: "Главный образ профиля", isUploaded: false },
-    { id: "farm", src: CDN.farm, title: `Ферма ${name}`, meta: "Среда обитания", isUploaded: false },
-    { id: "milk", src: CDN.milk, title: `Продукция ${name}`, meta: "Именная молочная продукция", isUploaded: false },
-    { id: "club", src: CDN.club, title: `Клубный визит`, meta: "Мероприятия фермы", isUploaded: false },
-    { id: "live", src: CDN.liveCam, title: `${name} в стойле`, meta: "Наблюдение", isUploaded: false },
+    { id: "cover", src: CDN.hero, title: `Портрет ${name}`, meta: "Знакомьтесь — это ваше животное", isUploaded: false },
+    { id: "farm", src: CDN.farm, title: `Ферма ${name}`, meta: "Семейная ферма Шерь Козу", isUploaded: false },
+    { id: "milk", src: CDN.milk, title: `Именная коробка ${name}`, meta: "Молоко, сыры и йогурты с историей", isUploaded: false },
+    { id: "club", src: CDN.club, title: `Визит на ферму`, meta: "Семейные мероприятия и встречи", isUploaded: false },
+    { id: "live", src: CDN.liveCam, title: `${name} на ферме`, meta: "Наблюдайте в реальном времени", isUploaded: false },
   ];
 }
 
 function getDiaryEntries(name: string) {
   return [
-    { date: "13 марта 2026", mood: "😊", title: `Новый ритм дня`, text: `${name} провёл(а) спокойное утро с дополнительным уходом.`, tags: ["дневник", "ритм"] },
-    { date: "12 марта 2026", mood: "✨", title: "День заботы", text: `Обновлён уходовый протокол для ${name}.`, tags: ["уход"] },
-    { date: "11 марта 2026", mood: "🌿", title: "Прогулка", text: `${name} провёл(а) несколько часов на свежем воздухе.`, tags: ["прогулка"] },
-    { date: "8 марта 2026", mood: "🎉", title: "Семейный визит", text: `Визит семьи к ${name} — новые фотографии и впечатления.`, tags: ["семья", "визит"] },
+    { date: "13 марта 2026", mood: "😊", title: `Спокойное утро`, text: `${name} провёл(а) утро на свежем воздухе с дополнительной порцией заботы от фермера.`, tags: ["дневник", "забота"] },
+    { date: "12 марта 2026", mood: "✨", title: "Новый рацион", text: `Фермер обновил рацион ${name} — больше зелени и витаминов для здорового молока.`, tags: ["питание"] },
+    { date: "11 марта 2026", mood: "🌿", title: "Прогулка по лугу", text: `${name} провёл(а) несколько часов на лугу — любимое время дня.`, tags: ["прогулка"] },
+    { date: "8 марта 2026", mood: "🎉", title: "Семейный визит", text: `Семья приехала навестить ${name} — новые фотографии и тёплые впечатления.`, tags: ["семья", "визит"] },
   ];
 }
 
 function getHealthHistory(name: string) {
   return [
-    { date: "10 марта", event: "Плановый осмотр ветеринара", status: "ok" as const, note: `Состояние ${name} стабильное` },
-    { date: "1 марта", event: "Проверка кормления", status: "ok" as const, note: "Рацион соответствует рекомендациям" },
-    { date: "15 февраля", event: "Контроль молока", status: "ok" as const, note: "Параметры в норме" },
-    { date: "1 февраля", event: "Профилактический уход", status: "ok" as const, note: "Процедура завершена" },
+    { date: "10 марта", event: "Плановый осмотр ветеринара", status: "ok" as const, note: `${name} здоров(а), все показатели в норме` },
+    { date: "1 марта", event: "Обновление рациона", status: "ok" as const, note: "Рацион подобран с учётом сезона и породы" },
+    { date: "15 февраля", event: "Анализ молока", status: "ok" as const, note: "Жирность и белок соответствуют стандартам элитных пород" },
+    { date: "1 февраля", event: "Профилактический уход", status: "ok" as const, note: "Все процедуры завершены, животное чувствует себя прекрасно" },
   ];
 }
 
@@ -443,7 +443,7 @@ export default function AnimalProfile() {
         <div className="flex min-h-[60vh] flex-col items-center justify-center gap-4 px-4 text-center">
           <ShieldCheck className="h-12 w-12 text-muted-foreground" />
           <h2 className="text-2xl font-semibold text-foreground">Животное не найдено</h2>
-          <p className="max-w-md text-muted-foreground">Профиль с адресом «{animalSlug}» не существует или был архивирован.</p>
+          <p className="max-w-md text-muted-foreground">Профиль «{animalSlug}» не найден — возможно, животное уже нашло свою семью или страница была перемещена.</p>
           <Link href="/animals" className="inline-flex items-center gap-2 rounded-full bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground transition hover:bg-primary/95">
             Перейти в каталог <ArrowRight className="h-4 w-4" />
           </Link>
@@ -572,16 +572,16 @@ export default function AnimalProfile() {
           <div className="container">
             <div className="mx-auto max-w-3xl">
               <div className="mb-6 text-center">
-                <p className="text-xs uppercase tracking-widest text-primary">Долевое участие</p>
-                <h2 className="mt-2 text-2xl font-semibold text-foreground md:text-3xl">Выберите долю {displayName}</h2>
+                <p className="text-xs uppercase tracking-widest text-primary">Персональное участие</p>
+                <h2 className="mt-2 text-2xl font-semibold text-foreground md:text-3xl">Станьте частью истории {displayName}</h2>
                 <p className="mt-2 text-sm text-muted-foreground">
-                  Шаг продажи — {shareUnitPercent}%. Полная стоимость — {formatCurrency(fullPriceMinor, currencyCode)}.
+                  Минимальная доля — {shareUnitPercent}%. Полная стоимость участия — {formatCurrency(fullPriceMinor, currencyCode)}.
                 </p>
               </div>
 
               {isGuestPreview ? (
                 <div data-testid="animal-guest-preview-banner" className="mb-6 rounded-2xl border border-primary/15 bg-primary/5 p-4 text-center">
-                  <p className="text-sm text-muted-foreground">Для покупки доли необходимо войти в аккаунт.</p>
+                  <p className="text-sm text-muted-foreground">Чтобы стать частью истории {displayName}, войдите в аккаунт или зарегистрируйтесь.</p>
                   <a href={getLoginUrl(`/animals/${animalSlug}`)} className="mt-3 inline-flex items-center gap-2 rounded-full bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground transition hover:opacity-90">
                     Войти или зарегистрироваться
                   </a>
@@ -600,9 +600,9 @@ export default function AnimalProfile() {
                 primarySharePercent={availableSharePercents[0] ?? shareUnitPercent}
                 primarySharePriceLabel={formatCurrency(data?.primarySharePriceMinor ?? Math.round((fullPriceMinor * (availableSharePercents[0] ?? shareUnitPercent)) / 100), currencyCode)}
                 availableSharePercents={availableSharePercents}
-                helperText={hasOwnerAccess ? `У вас ${mySharePercent}% участия в ${displayName}.` : `Выберите долю и забронируйте участие.`}
-                description={hasOwnerAccess ? "Вы можете оформить дополнительную долю, если она свободна." : "После бронирования вам откроются маршруты владельца."}
-                ctaLabel={hasOwnerAccess ? "Увеличить долю" : isAuthenticated ? "Забронировать долю" : "Войдите, чтобы продолжить"}
+                helperText={hasOwnerAccess ? `Вы уже заботитесь о ${displayName} — ваша доля ${mySharePercent}%.` : `Выберите долю — и начните свою историю с ${displayName}.`}
+                description={hasOwnerAccess ? "Хотите увеличить участие? Оформите дополнительную долю, пока она свободна." : "После оформления вам откроется личный кабинет, дневник и именная коробка с продуктами."}
+                ctaLabel={hasOwnerAccess ? "Увеличить свою долю" : isAuthenticated ? "Забронировать долю" : "Войдите, чтобы познакомиться"}
                 onCtaClick={handlePurchaseShare}
                 ctaDisabled={!availableSharePercents.length || purchaseShare.isPending}
                 ctaPending={purchaseShare.isPending}
@@ -614,9 +614,9 @@ export default function AnimalProfile() {
                 defaultPlanMeta={data?.plans?.[0]?.durations?.[0] ? `${data.plans[0].durations[0].months} мес. · ${data.plans[0].durations[0].label}` : "Срок будет подтверждён фермером"}
                 footer={
                   <div className="rounded-2xl border border-primary/10 bg-primary/5 p-4">
-                    <div className="text-xs uppercase tracking-wide text-muted-foreground">Стоимость выбранной доли</div>
+                    <div className="text-xs uppercase tracking-wide text-muted-foreground">Стоимость вашей доли</div>
                     <div className="mt-2 text-3xl font-semibold text-foreground">{formatCurrency(selectedSharePriceMinor, currencyCode)}</div>
-                    <p className="mt-1 text-sm text-muted-foreground">Бронь с последующим подтверждением оплаты.</p>
+                    <p className="mt-1 text-sm text-muted-foreground">Бронирование с подтверждением — фермер свяжется с вами лично.</p>
                   </div>
                 }
               />
@@ -836,20 +836,20 @@ export default function AnimalProfile() {
             <div className="mx-auto grid max-w-4xl gap-4 md:grid-cols-3">
               <Link href="/dashboard" className="group rounded-2xl border border-border/70 bg-card p-5 transition hover:bg-muted/30">
                 <Package className="h-6 w-6 text-primary" />
-                <h4 className="mt-3 font-semibold text-foreground">Кабинет владельца</h4>
-                <p className="mt-1 text-sm text-muted-foreground">Управление животными, продукцией и участием.</p>
+                <h4 className="mt-3 font-semibold text-foreground">Ваш личный кабинет</h4>
+                <p className="mt-1 text-sm text-muted-foreground">Всё о ваших животных, именной коробке и жизни фермы.</p>
                 <span className="mt-3 inline-flex items-center gap-1 text-sm font-medium text-primary">Открыть <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" /></span>
               </Link>
               <Link href={`/tracker?animal=${animalSlug}`} className="group rounded-2xl border border-border/70 bg-card p-5 transition hover:bg-muted/30">
                 <Milk className="h-6 w-6 text-primary" />
-                <h4 className="mt-3 font-semibold text-foreground">Трекер продукции</h4>
-                <p className="mt-1 text-sm text-muted-foreground">Путь молока от {displayName} до именной коробки.</p>
+                <h4 className="mt-3 font-semibold text-foreground">Путь продукта</h4>
+                <p className="mt-1 text-sm text-muted-foreground">От молока {displayName} до вашей именной коробки — каждый шаг прозрачен.</p>
                 <span className="mt-3 inline-flex items-center gap-1 text-sm font-medium text-primary">Открыть <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" /></span>
               </Link>
               <Link href={`/club?animal=${animalSlug}`} className="group rounded-2xl border border-border/70 bg-card p-5 transition hover:bg-muted/30">
                 <Heart className="h-6 w-6 text-primary" />
-                <h4 className="mt-3 font-semibold text-foreground">Клуб фермы</h4>
-                <p className="mt-1 text-sm text-muted-foreground">События, визиты и мероприятия.</p>
+                <h4 className="mt-3 font-semibold text-foreground">Клуб Шерь Козу</h4>
+                <p className="mt-1 text-sm text-muted-foreground">Семейные визиты, мастер-классы и встречи с вашим животным.</p>
                 <span className="mt-3 inline-flex items-center gap-1 text-sm font-medium text-primary">Открыть <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" /></span>
               </Link>
             </div>
@@ -860,7 +860,7 @@ export default function AnimalProfile() {
         {isGuestPreview ? (
           <div data-testid="animal-guest-preview-sticky-register" className="pointer-events-none fixed inset-x-0 bottom-4 z-40 px-4">
             <div className="pointer-events-auto mx-auto flex max-w-2xl items-center justify-between gap-4 rounded-2xl border border-primary/15 bg-white/92 px-5 py-3 shadow-lg backdrop-blur">
-              <p className="text-sm text-muted-foreground">Войдите, чтобы приобрести долю {displayName}</p>
+              <p className="text-sm text-muted-foreground">Войдите, чтобы стать частью истории {displayName}</p>
               <a href={getLoginUrl(`/animals/${animalSlug}`)} className="shrink-0 rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition hover:opacity-90">
                 Войти
               </a>

@@ -334,10 +334,10 @@ describe("page visual integration source smoke", () => {
   /* ─── Animal profile ─── */
   it("keeps animal profile focused on one share-selection flow without plan and duration branching", () => {
     expect(animalProfileSource).toContain("AnimalShareCard");
-    expect(animalProfileSource).toContain("Долевое участие");
-    expect(animalProfileSource).toContain("Выберите долю");
+    expect(animalProfileSource).toContain("Персональное участие");
+    expect(animalProfileSource).toContain("Станьте частью истории");
     expect(animalProfileSource).toContain("mySharePercent");
-    expect(animalProfileSource).toContain("Увеличить долю");
+    expect(animalProfileSource).toContain("Увеличить свою долю");
     expect(animalProfileSource).toContain("Забронировать долю");
     expect(animalProfileSource).toContain("Дневник");
     expect(animalProfileSource).toContain("Паспорт");
@@ -378,7 +378,7 @@ describe("page visual integration source smoke", () => {
     expect(animalProfileSource).toContain('new URLSearchParams(window.location.search).get("share")');
     expect(animalProfileSource).toContain('params.set("share", String(selectedSharePercent))');
     expect(animalProfileSource).toContain("Забронировать долю");
-    expect(animalProfileSource).toContain("Долевое участие");
+    expect(animalProfileSource).toContain("Персональное участие");
     expect(animalProfileSource).toContain("Управление галереей доступно владельцам доли");
 
     // Shared components
