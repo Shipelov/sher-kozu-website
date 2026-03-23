@@ -207,7 +207,9 @@ describe("page visual integration source smoke", () => {
   it("registers /partners route in App.tsx", () => {
     expect(appSource).toContain('path="/partners"');
     expect(appSource).toContain("component={Partners}");
-    expect(appSource).toContain("import Partners");
+    // Partners is lazy-loaded via React.lazy
+    expect(appSource).toContain("Partners");
+    expect(appSource).toContain("lazy(");
   });
 
   it("registers universal animal profile routes in app", () => {

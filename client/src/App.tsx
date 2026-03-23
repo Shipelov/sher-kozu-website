@@ -1,32 +1,44 @@
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import NotFound from "@/pages/NotFound";
 import { Route, Switch, useLocation } from "wouter";
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, lazy, Suspense } from "react";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { useAuth } from "@/_core/hooks/useAuth";
 import WelcomeOnboarding from "@/components/WelcomeOnboarding";
-import Home from "./pages/Home";
-import Dashboard from "./pages/Dashboard";
-import AnimalProfile from "./pages/AnimalProfile";
-import ProductTracker from "./pages/ProductTracker";
-import ClubFeed from "./pages/ClubFeed";
-import AdminClub from "./pages/AdminClub";
-import AnimalsCatalog from "./pages/AnimalsCatalog";
-import AdminAnimals from "./pages/AdminAnimals";
-import AdminHub from "./pages/AdminHub";
-import AdminUsers from "./pages/AdminUsers";
-import AdminProductTrack from "./pages/AdminProductTrack";
-import AdminMarketplace from "./pages/AdminMarketplace";
-import AdminTokens from "./pages/AdminTokens";
-import AdminAnalytics from "./pages/AdminAnalytics";
-import Marketplace from "./pages/Marketplace";
-import Leaderboard from "./pages/Leaderboard";
-import Profile from "./pages/Profile";
-import Partners from "./pages/Partners";
-import AboutFarm from "./pages/AboutFarm";
-import AnimalCompare from "./pages/AnimalCompare";
+import { Loader2 } from "lucide-react";
+
+/* ─── Lazy-loaded page components (code-split per route) ─── */
+const Home = lazy(() => import("./pages/Home"));
+const Dashboard = lazy(() => import("./pages/Dashboard"));
+const AnimalProfile = lazy(() => import("./pages/AnimalProfile"));
+const ProductTracker = lazy(() => import("./pages/ProductTracker"));
+const ClubFeed = lazy(() => import("./pages/ClubFeed"));
+const AdminClub = lazy(() => import("./pages/AdminClub"));
+const AnimalsCatalog = lazy(() => import("./pages/AnimalsCatalog"));
+const AdminAnimals = lazy(() => import("./pages/AdminAnimals"));
+const AdminHub = lazy(() => import("./pages/AdminHub"));
+const AdminUsers = lazy(() => import("./pages/AdminUsers"));
+const AdminProductTrack = lazy(() => import("./pages/AdminProductTrack"));
+const AdminMarketplace = lazy(() => import("./pages/AdminMarketplace"));
+const AdminTokens = lazy(() => import("./pages/AdminTokens"));
+const AdminAnalytics = lazy(() => import("./pages/AdminAnalytics"));
+const Marketplace = lazy(() => import("./pages/Marketplace"));
+const Leaderboard = lazy(() => import("./pages/Leaderboard"));
+const Profile = lazy(() => import("./pages/Profile"));
+const Partners = lazy(() => import("./pages/Partners"));
+const AboutFarm = lazy(() => import("./pages/AboutFarm"));
+const AnimalCompare = lazy(() => import("./pages/AnimalCompare"));
+const NotFound = lazy(() => import("./pages/NotFound"));
+
+/* ─── Suspense fallback spinner ─── */
+function PageLoader() {
+  return (
+    <div className="flex items-center justify-center min-h-screen bg-background">
+      <Loader2 className="h-8 w-8 animate-spin text-primary" />
+    </div>
+  );
+}
 
 function normalizeRoutePath(path: string) {
   const [pathname, query = ""] = path.split("?");
@@ -62,32 +74,34 @@ function Router() {
   return (
     <>
       <RouteNormalizer />
-      <Switch>
-      <Route path="/" component={Home} />
-      <Route path="/dashboard" component={Dashboard} />
-      <Route path="/profile" component={Profile} />
-      <Route path="/animal/:slug" component={AnimalProfile} />
-      <Route path="/animals" component={AnimalsCatalog} />
-      <Route path="/animals/:slug" component={AnimalProfile} />
-      <Route path="/tracker" component={ProductTracker} />
-      <Route path="/club" component={ClubFeed} />
-      <Route path="/admin" component={AdminHub} />
-      <Route path="/admin/users" component={AdminUsers} />
-      <Route path="/admin/club" component={AdminClub} />
-      <Route path="/admin/animals" component={AdminAnimals} />
-      <Route path="/admin/product-track" component={AdminProductTrack} />
-      <Route path="/admin/product-track/:animalId" component={AdminProductTrack} />
-      <Route path="/admin/marketplace" component={AdminMarketplace} />
-      <Route path="/admin/tokens" component={AdminTokens} />
-      <Route path="/admin/analytics" component={AdminAnalytics} />
-      <Route path="/marketplace" component={Marketplace} />
-      <Route path="/leaderboard" component={Leaderboard} />
-      <Route path="/compare" component={AnimalCompare} />
-      <Route path="/about" component={AboutFarm} />
-      <Route path="/partners" component={Partners} />
-      <Route path="/404" component={NotFound} />
-      <Route component={NotFound} />
-      </Switch>
+      <Suspense fallback={<PageLoader />}>
+        <Switch>
+        <Route path="/" component={Home} />
+        <Route path="/dashboard" component={Dashboard} />
+        <Route path="/profile" component={Profile} />
+        <Route path="/animal/:slug" component={AnimalProfile} />
+        <Route path="/animals" component={AnimalsCatalog} />
+        <Route path="/animals/:slug" component={AnimalProfile} />
+        <Route path="/tracker" component={ProductTracker} />
+        <Route path="/club" component={ClubFeed} />
+        <Route path="/admin" component={AdminHub} />
+        <Route path="/admin/users" component={AdminUsers} />
+        <Route path="/admin/club" component={AdminClub} />
+        <Route path="/admin/animals" component={AdminAnimals} />
+        <Route path="/admin/product-track" component={AdminProductTrack} />
+        <Route path="/admin/product-track/:animalId" component={AdminProductTrack} />
+        <Route path="/admin/marketplace" component={AdminMarketplace} />
+        <Route path="/admin/tokens" component={AdminTokens} />
+        <Route path="/admin/analytics" component={AdminAnalytics} />
+        <Route path="/marketplace" component={Marketplace} />
+        <Route path="/leaderboard" component={Leaderboard} />
+        <Route path="/compare" component={AnimalCompare} />
+        <Route path="/about" component={AboutFarm} />
+        <Route path="/partners" component={Partners} />
+        <Route path="/404" component={NotFound} />
+        <Route component={NotFound} />
+        </Switch>
+      </Suspense>
     </>
   );
 }

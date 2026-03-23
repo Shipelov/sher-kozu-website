@@ -1,4 +1,4 @@
-import { boolean, int, mysqlEnum, mysqlTable, text, timestamp, varchar } from "drizzle-orm/mysql-core";
+import { boolean, index, int, mysqlEnum, mysqlTable, text, timestamp, varchar } from "drizzle-orm/mysql-core";
 
 /**
  * Core user table backing auth flow.
@@ -32,7 +32,11 @@ export const users = mysqlTable("users", {
   deletedAt: timestamp("deletedAt"),
   /** Admin openId who moved the user to trash. */
   deletedBy: varchar("deletedBy", { length: 64 }),
-});
+}, (t) => ([
+  index("idx_users_email").on(t.email),
+  index("idx_users_role").on(t.role),
+  index("idx_users_deletedAt").on(t.deletedAt),
+]));
 
 export const animalSpeciesEnum = mysqlEnum("animalSpecies", ["goat", "sheep"]);
 export const animalStatusEnum = mysqlEnum("animalStatus", ["public_available", "public_limited", "fully_booked", "hidden", "archived"]);
@@ -53,7 +57,9 @@ export const families = mysqlTable("families", {
   notes: text("notes"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
+}, (t) => ([
+  index("idx_families_ownerOpenId").on(t.ownerOpenId),
+]));
 
 export const animals = mysqlTable("animals", {
   id: int("id").autoincrement().primaryKey(),
@@ -79,7 +85,10 @@ export const animals = mysqlTable("animals", {
   publishedAt: timestamp("publishedAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
+}, (t) => ([
+  index("idx_animals_ownerOpenId").on(t.ownerOpenId),
+  index("idx_animals_status").on(t.status),
+]));
 
 export const animalMedia = mysqlTable("animalMedia", {
   id: int("id").autoincrement().primaryKey(),
@@ -94,7 +103,9 @@ export const animalMedia = mysqlTable("animalMedia", {
   isCover: int("isCover").default(0).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
+}, (t) => ([
+  index("idx_animalMedia_animalId").on(t.animalId),
+]));
 
 export const plans = mysqlTable("plans", {
   id: int("id").autoincrement().primaryKey(),
@@ -140,7 +151,11 @@ export const animalOwnerships = mysqlTable("animalOwnerships", {
   notes: text("notes"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
+}, (t) => ([
+  index("idx_ownerships_ownerOpenId").on(t.ownerOpenId),
+  index("idx_ownerships_animalId").on(t.animalId),
+  index("idx_ownerships_status").on(t.status),
+]));
 
 export const wallets = mysqlTable("wallets", {
   id: int("id").autoincrement().primaryKey(),
@@ -151,7 +166,10 @@ export const wallets = mysqlTable("wallets", {
   currencyCode: varchar("currencyCode", { length: 12 }).default("SKC").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
+}, (t) => ([
+  index("idx_wallets_ownerOpenId").on(t.ownerOpenId),
+  index("idx_wallets_familyId").on(t.familyId),
+]));
 
 export const walletTransactions = mysqlTable("walletTransactions", {
   id: int("id").autoincrement().primaryKey(),
@@ -168,7 +186,10 @@ export const walletTransactions = mysqlTable("walletTransactions", {
   emittedByOpenId: varchar("emittedByOpenId", { length: 64 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
+}, (t) => ([
+  index("idx_walletTx_ownerOpenId").on(t.ownerOpenId),
+  index("idx_walletTx_walletId").on(t.walletId),
+]));
 
 export const animalPhotos = mysqlTable("animalPhotos", {
   id: int("id").autoincrement().primaryKey(),
@@ -184,7 +205,9 @@ export const animalPhotos = mysqlTable("animalPhotos", {
   isCover: int("isCover").default(0).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
+}, (t) => ([
+  index("idx_animalPhotos_animalSlug").on(t.animalSlug),
+]));
 
 export const productBatches = mysqlTable("productBatches", {
   id: int("id").autoincrement().primaryKey(),
@@ -202,7 +225,9 @@ export const productBatches = mysqlTable("productBatches", {
   sortOrder: int("sortOrder").default(0).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
+}, (t) => ([
+  index("idx_productBatches_animalSlug").on(t.animalSlug),
+]));
 
 export const productCompositionSnapshots = mysqlTable("productCompositionSnapshots", {
   id: int("id").autoincrement().primaryKey(),
@@ -262,7 +287,10 @@ export const clubPosts = mysqlTable("clubPosts", {
   sortOrder: int("sortOrder").default(0).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
+}, (t) => ([
+  index("idx_clubPosts_ownerOpenId").on(t.ownerOpenId),
+  index("idx_clubPosts_category").on(t.category),
+]));
 
 export const clubEvents = mysqlTable("clubEvents", {
   id: int("id").autoincrement().primaryKey(),
@@ -523,7 +551,10 @@ export const chatMessages = mysqlTable("chatMessages", {
   isRead: int("isRead").default(0).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
+}, (t) => ([
+  index("idx_chatMessages_animalId").on(t.animalId),
+  index("idx_chatMessages_ownerOpenId").on(t.ownerOpenId),
+]));
 
 export type AnimalProductionProfile = typeof animalProductionProfiles.$inferSelect;
 export type InsertAnimalProductionProfile = typeof animalProductionProfiles.$inferInsert;
@@ -750,7 +781,9 @@ export const marketplaceItems = mysqlTable("marketplaceItems", {
   sortOrder: int("sortOrder").default(0).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
+}, (t) => ([
+  index("idx_marketplaceItems_categoryId").on(t.categoryId),
+]));
 
 /**
  * Record of each marketplace purchase by an owner for their animal.
@@ -771,7 +804,11 @@ export const marketplacePurchases = mysqlTable("marketplacePurchases", {
   feedbackSent: int("feedbackSent").default(0).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
+}, (t) => ([
+  index("idx_purchases_ownerOpenId").on(t.ownerOpenId),
+  index("idx_purchases_animalId").on(t.animalId),
+  index("idx_purchases_itemId").on(t.itemId),
+]));
 
 /**
  * Farmer checklists generated after a marketplace purchase.
@@ -796,7 +833,11 @@ export const farmerChecklists = mysqlTable("farmerChecklists", {
   completedByOpenId: varchar("completedByOpenId", { length: 64 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
+}, (t) => ([
+  index("idx_checklists_purchaseId").on(t.purchaseId),
+  index("idx_checklists_animalId").on(t.animalId),
+  index("idx_checklists_ownerOpenId").on(t.ownerOpenId),
+]));
 
 /**
  * Messages from the animal's perspective after a care action is completed.
@@ -813,7 +854,11 @@ export const animalFeedbackMessages = mysqlTable("animalFeedbackMessages", {
   photoUrl: text("photoUrl"),
   isRead: int("isRead").default(0).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
-});
+}, (t) => ([
+  index("idx_feedback_purchaseId").on(t.purchaseId),
+  index("idx_feedback_animalId").on(t.animalId),
+  index("idx_feedback_ownerOpenId").on(t.ownerOpenId),
+]));
 
 /**
  * Wellness metrics for each animal. Updated on purchases and decayed daily.
@@ -927,7 +972,10 @@ export const ratingSnapshots = mysqlTable("ratingSnapshots", {
   activityBonus: int("activityBonus").default(0).notNull(),
   rank: int("rank").default(0).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
-});
+}, (t) => ([
+  index("idx_ratingSnapshots_ownerOpenId").on(t.ownerOpenId),
+  index("idx_ratingSnapshots_date").on(t.snapshotDate),
+]));
 
 export type RatingSnapshot = typeof ratingSnapshots.$inferSelect;
 export type InsertRatingSnapshot = typeof ratingSnapshots.$inferInsert;
@@ -944,6 +992,9 @@ export const achievementBadges = mysqlTable("achievementBadges", {
   /** Optional JSON metadata (e.g. month for best_rating_month, animalId for first_animal) */
   metadata: text("metadata"),
   awardedAt: timestamp("awardedAt").defaultNow().notNull(),
-});
+}, (t) => ([
+  index("idx_badges_ownerOpenId").on(t.ownerOpenId),
+  index("idx_badges_type").on(t.badgeType),
+]));
 export type AchievementBadge = typeof achievementBadges.$inferSelect;
 export type InsertAchievementBadge = typeof achievementBadges.$inferInsert;

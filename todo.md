@@ -886,3 +886,10 @@
 - [x] Rate limiting уже был реализован (checkRateLimit в БД) — подтверждено
 - [x] Обновлены 8 тестовых файлов: adminPassword, adminExport, adminTrash, adminUserDetails, adminUsers, lastLoginFilter, localAuth, phaseD-regression
 - [x] Все 1208 тестов проходят
+
+## Оптимизация: Lazy Loading, Индексы БД, Разделение монолитов
+- [x] React.lazy() для всех 28 страниц с Suspense fallback
+- [x] Индексы БД: 34 индекса на 15 таблицах (animals.slug, ownerships.ownerOpenId/animalId, users.email, wallets.ownerOpenId, animalPhotos.animalSlug, productBatches.animalSlug, clubPosts.ownerOpenId, chatMessages, marketplacePurchases, ratingSnapshots, achievementBadges)
+- [x] Разделение routers.ts: productTrack.ts, gamification.ts, localAuth.ts уже вынесены в server/routers/
+- [ ] Разделение db.ts на доменные модули (server/db/*.ts) — отложено, требует осторожного подхода
+- [x] Тесты обновлены для lazy-loaded импортов, все 1208 проходят
