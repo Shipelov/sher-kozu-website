@@ -7,6 +7,7 @@ import { ThemeProvider } from "./contexts/ThemeContext";
 import { useAuth } from "@/_core/hooks/useAuth";
 import WelcomeOnboarding from "@/components/WelcomeOnboarding";
 import { Loader2 } from "lucide-react";
+import MashaFloatingChat from "@/components/MashaFloatingChat";
 
 /* ─── Lazy-loaded page components (code-split per route) ─── */
 const Home = lazy(() => import("./pages/Home"));
@@ -131,6 +132,7 @@ function App() {
           <Toaster />
           <OnboardingGate />
           <Router />
+          <MashaFloatingChat />
         </TooltipProvider>
       </ThemeProvider>
     </ErrorBoundary>

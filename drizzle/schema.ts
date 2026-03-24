@@ -998,3 +998,29 @@ export const achievementBadges = mysqlTable("achievementBadges", {
 ]));
 export type AchievementBadge = typeof achievementBadges.$inferSelect;
 export type InsertAchievementBadge = typeof achievementBadges.$inferInsert;
+
+/**
+ * FAQ analytics — tracks every question asked to Masha AI assistant.
+ * Used to identify popular topics and improve the knowledge base.
+ */
+export const faqQuestions = mysqlTable("faqQuestions", {
+  id: int("id").autoincrement().primaryKey(),
+  /** The user's question text */
+  question: text("question").notNull(),
+  /** Masha's response text */
+  answer: text("answer").notNull(),
+  /** Anonymous session identifier to group conversations */
+  sessionId: varchar("sessionId", { length: 64 }).notNull(),
+  /** Source page where the question was asked */
+  source: varchar("source", { length: 32 }).default("faq").notNull(),
+  /** Authenticated user openId (nullable — anonymous users can also ask) */
+  userOpenId: varchar("userOpenId", { length: 64 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, (t) => ([
+  index("idx_faqQuestions_sessionId").on(t.sessionId),
+  index("idx_faqQuestions_source").on(t.source),
+  index("idx_faqQuestions_createdAt").on(t.createdAt),
+  index("idx_faqQuestions_userOpenId").on(t.userOpenId),
+]));
+export type FaqQuestion = typeof faqQuestions.$inferSelect;
+export type InsertFaqQuestion = typeof faqQuestions.$inferInsert;

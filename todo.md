@@ -928,3 +928,20 @@
 - [x] Добавить ссылку FAQ в Navbar + футеры
 - [x] Написать тесты (8 тестов чата + 7 структурных)
 - [x] Все 1219 тестов проходят
+
+## Плавающая кнопка чата Маши (глобальная)
+- [x] Создать компонент MashaFloatingChat — мини-аватар Маши с пульсирующим кольцом в правом нижнем углу
+- [x] При клике — раскрывается чат-окно 360x520px с полным функционалом (suggested prompts, markdown, typing indicator)
+- [x] Анимация открытия/закрытия (spring animation via framer-motion)
+- [x] Не показывать на странице /faq (там уже есть чат)
+- [x] Интегрировать в App.tsx (глобально на всех страницах)
+- [x] Адаптивность: 360px на мобильных, 400px на десктопе
+
+## Аналитика FAQ
+- [x] Создать таблицу faq_questions в БД (question, answer, sessionId, source, createdAt)
+- [x] Миграция БД (pnpm db:push)
+- [x] Сохранять каждый вопрос и ответ Маши в БД (fire-and-forget, не блокирует ответ)
+- [x] Создать admin-процедуру analytics (totalCount, periodCount, uniqueSessions, sourceBreakdown, dailyStats)
+- [x] Создать admin-процедуру clearOld для очистки старых записей
+- [x] Тесты: 15 новых тестов (analytics, clearOld, floating widget, schema)
+- [x] Все 1233 теста проходят

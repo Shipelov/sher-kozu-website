@@ -3,12 +3,17 @@
  *
  * Provides an LLM-powered chat endpoint where "Masha" answers questions
  * about the Sher Kozu farm, breeds, products, ownership model, and platform usage.
+ * Tracks all questions in DB for analytics.
  */
 
 import { z } from "zod";
-import { publicProcedure, router } from "../_core/trpc";
+import { publicProcedure, protectedProcedure, router } from "../_core/trpc";
 import { invokeLLM } from "../_core/llm";
 import type { Message } from "../_core/llm";
+import { TRPCError } from "@trpc/server";
+import { desc, sql, eq, gte, lt, and } from "drizzle-orm";
+import { faqQuestions } from "../../drizzle/schema";
+import { getDb } from "../db";
 
 /* ─── Masha's knowledge base as system prompt ─── */
 const MASHA_SYSTEM_PROMPT = `Ты — Маша, AI-управляющая семейной фермой «Шерь Козу» (Sher Family Farm, SFF).
@@ -118,6 +123,29 @@ function checkChatRateLimit(ip: string): boolean {
   return true;
 }
 
+/* ─── Helper: save question to DB (fire-and-forget) ─── */
+async function trackQuestion(
+  question: string,
+  answer: string,
+  sessionId: string,
+  source: string,
+  userOpenId?: string | null
+) {
+  try {
+    const db = await getDb();
+    if (!db) return;
+    await db.insert(faqQuestions).values({
+      question,
+      answer,
+      sessionId,
+      source,
+      userOpenId: userOpenId ?? undefined,
+    });
+  } catch (err) {
+    console.error("[FAQ Analytics] Failed to track question:", err);
+  }
+}
+
 /* ─── Router ─── */
 export const faqChatRouter = router({
   /** Send a message to Masha and get her response */
@@ -133,9 +161,11 @@ export const faqChatRouter = router({
           )
           .min(1)
           .max(50),
+        sessionId: z.string().min(1).max(64).optional(),
+        source: z.enum(["faq", "floating"]).optional(),
       })
     )
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
       // Build LLM messages with system prompt
       const llmMessages: Message[] = [
         { role: "system", content: MASHA_SYSTEM_PROMPT },
@@ -144,6 +174,11 @@ export const faqChatRouter = router({
           content: m.content,
         })),
       ];
+
+      // Extract the last user question for analytics
+      const lastUserMessage = [...input.messages]
+        .reverse()
+        .find((m) => m.role === "user");
 
       try {
         const result = await invokeLLM({
@@ -159,6 +194,17 @@ export const faqChatRouter = router({
           };
         }
 
+        // Track question in DB (fire-and-forget, don't block response)
+        if (lastUserMessage && input.sessionId) {
+          trackQuestion(
+            lastUserMessage.content,
+            content,
+            input.sessionId,
+            input.source || "faq",
+            ctx.user?.openId
+          );
+        }
+
         return { reply: content };
       } catch (error) {
         console.error("[Masha Chat] LLM error:", error);
@@ -167,5 +213,109 @@ export const faqChatRouter = router({
             "Ой, что-то пошло не так с моей стороны. Пожалуйста, попробуйте позже или свяжитесь с фермой напрямую! 🐐",
         };
       }
+    }),
+
+  /** Admin: get FAQ analytics — top questions, recent questions, stats */
+  analytics: protectedProcedure
+    .input(
+      z.object({
+        limit: z.number().min(1).max(100).optional(),
+        days: z.number().min(1).max(365).optional(),
+      }).optional()
+    )
+    .query(async ({ ctx }) => {
+      if (ctx.user.role !== "admin") {
+        throw new TRPCError({ code: "FORBIDDEN" });
+      }
+
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+      const limit = 50;
+      const days = 30;
+      const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+
+      // Recent questions
+      const recent = await db
+        .select()
+        .from(faqQuestions)
+        .where(gte(faqQuestions.createdAt, since))
+        .orderBy(desc(faqQuestions.createdAt))
+        .limit(limit);
+
+      // Total count
+      const [totalResult] = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(faqQuestions);
+      const totalCount = totalResult?.count ?? 0;
+
+      // Count in period
+      const [periodResult] = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(faqQuestions)
+        .where(gte(faqQuestions.createdAt, since));
+      const periodCount = periodResult?.count ?? 0;
+
+      // Unique sessions in period
+      const [sessionsResult] = await db
+        .select({ count: sql<number>`count(distinct ${faqQuestions.sessionId})` })
+        .from(faqQuestions)
+        .where(gte(faqQuestions.createdAt, since));
+      const uniqueSessions = sessionsResult?.count ?? 0;
+
+      // Source breakdown
+      const sourceBreakdown = await db
+        .select({
+          source: faqQuestions.source,
+          count: sql<number>`count(*)`,
+        })
+        .from(faqQuestions)
+        .where(gte(faqQuestions.createdAt, since))
+        .groupBy(faqQuestions.source);
+
+      // Questions per day (last 7 days)
+      const dailyStats = await db
+        .select({
+          date: sql<string>`DATE(${faqQuestions.createdAt})`,
+          count: sql<number>`count(*)`,
+        })
+        .from(faqQuestions)
+        .where(gte(faqQuestions.createdAt, new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)))
+        .groupBy(sql`DATE(${faqQuestions.createdAt})`)
+        .orderBy(sql`DATE(${faqQuestions.createdAt})`);
+
+      return {
+        recent,
+        stats: {
+          totalCount,
+          periodCount,
+          uniqueSessions,
+          days,
+          sourceBreakdown,
+          dailyStats,
+        },
+      };
+    }),
+
+  /** Admin: clear old FAQ analytics data */
+  clearOld: protectedProcedure
+    .input(
+      z.object({
+        olderThanDays: z.number().min(1).max(365),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      if (ctx.user.role !== "admin") {
+        throw new TRPCError({ code: "FORBIDDEN" });
+      }
+
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+      const cutoff = new Date(Date.now() - input.olderThanDays * 24 * 60 * 60 * 1000);
+
+      const result = await db
+        .delete(faqQuestions)
+        .where(lt(faqQuestions.createdAt, cutoff));
+
+      return { success: true, message: `Удалены записи старше ${input.olderThanDays} дней` };
     }),
 });
