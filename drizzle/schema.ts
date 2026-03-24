@@ -1076,3 +1076,32 @@ export const abTestSessions = mysqlTable("abTestSessions", {
 ]));
 export type AbTestSession = typeof abTestSessions.$inferSelect;
 export type InsertAbTestSession = typeof abTestSessions.$inferInsert;
+
+/**
+ * Uncertain answers log.
+ * Stores questions where Masha was not confident in her answer,
+ * allowing admins to review and enrich the knowledge base.
+ */
+export const uncertainAnswers = mysqlTable("uncertainAnswers", {
+  id: int("id").autoincrement().primaryKey(),
+  /** The user's question text */
+  question: text("question").notNull(),
+  /** Masha's uncertain response text */
+  answer: text("answer").notNull(),
+  /** Source page where the question was asked */
+  source: varchar("source", { length: 32 }).default("faq").notNull(),
+  /** Anonymous session identifier */
+  sessionId: varchar("sessionId", { length: 64 }).notNull(),
+  /** Whether the admin has reviewed and resolved this entry */
+  resolved: boolean("resolved").default(false).notNull(),
+  /** Admin note about how the issue was resolved */
+  adminNote: text("adminNote"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  resolvedAt: timestamp("resolvedAt"),
+}, (t) => ([
+  index("idx_uncertainAnswers_resolved").on(t.resolved),
+  index("idx_uncertainAnswers_createdAt").on(t.createdAt),
+  index("idx_uncertainAnswers_sessionId").on(t.sessionId),
+]));
+export type UncertainAnswer = typeof uncertainAnswers.$inferSelect;
+export type InsertUncertainAnswer = typeof uncertainAnswers.$inferInsert;

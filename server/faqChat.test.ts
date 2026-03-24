@@ -939,3 +939,435 @@ describe("A/B testing frontend integration", () => {
     expect(content).toContain("responseRate");
   });
 });
+
+/* ─── Feature: Admin Greeting Variant Management ─── */
+describe("faqChat.deleteGreetingVariant", () => {
+  it("is accessible by admin users", async () => {
+    const ctx = createAdminContext();
+    const caller = faqChatRouter.createCaller(ctx);
+
+    const result = await caller.deleteGreetingVariant({
+      variantKey: "test_variant",
+    });
+
+    expect(result).toHaveProperty("success", true);
+  });
+
+  it("rejects non-admin users", async () => {
+    const ctx = createUserContext();
+    const caller = faqChatRouter.createCaller(ctx);
+
+    await expect(
+      caller.deleteGreetingVariant({ variantKey: "test_variant" })
+    ).rejects.toThrow("FORBIDDEN");
+  });
+
+  it("rejects unauthenticated users", async () => {
+    const ctx = createPublicContext();
+    const caller = faqChatRouter.createCaller(ctx);
+
+    await expect(
+      caller.deleteGreetingVariant({ variantKey: "test_variant" })
+    ).rejects.toThrow();
+  });
+
+  it("validates variantKey is not empty", async () => {
+    const ctx = createAdminContext();
+    const caller = faqChatRouter.createCaller(ctx);
+
+    await expect(
+      caller.deleteGreetingVariant({ variantKey: "" })
+    ).rejects.toThrow();
+  });
+});
+
+describe("Admin variant management UI", () => {
+  it("AdminFaqAnalytics has create variant button", async () => {
+    const fs = await import("fs");
+    const content = fs.readFileSync(
+      "client/src/pages/AdminFaqAnalytics.tsx",
+      "utf-8"
+    );
+    expect(content).toContain("Новый вариант");
+    expect(content).toContain("openCreateVariant");
+    expect(content).toContain("Plus");
+  });
+
+  it("AdminFaqAnalytics has variant edit button", async () => {
+    const fs = await import("fs");
+    const content = fs.readFileSync(
+      "client/src/pages/AdminFaqAnalytics.tsx",
+      "utf-8"
+    );
+    expect(content).toContain("openEditVariant");
+    expect(content).toContain("Edit3");
+    expect(content).toContain("Редактировать");
+  });
+
+  it("AdminFaqAnalytics has variant delete button", async () => {
+    const fs = await import("fs");
+    const content = fs.readFileSync(
+      "client/src/pages/AdminFaqAnalytics.tsx",
+      "utf-8"
+    );
+    expect(content).toContain("deleteGreetingVariant");
+    expect(content).toContain("deleteVariant");
+  });
+
+  it("AdminFaqAnalytics has variant creation/edit dialog", async () => {
+    const fs = await import("fs");
+    const content = fs.readFileSync(
+      "client/src/pages/AdminFaqAnalytics.tsx",
+      "utf-8"
+    );
+    expect(content).toContain("variantDialogOpen");
+    expect(content).toContain("variantForm");
+    expect(content).toContain("Ключ варианта");
+    expect(content).toContain("Текст приветствия");
+    expect(content).toContain("upsertGreetingVariant");
+  });
+
+  it("AdminFaqAnalytics has editingVariant state for edit mode", async () => {
+    const fs = await import("fs");
+    const content = fs.readFileSync(
+      "client/src/pages/AdminFaqAnalytics.tsx",
+      "utf-8"
+    );
+    expect(content).toContain("editingVariant");
+    expect(content).toContain("Редактировать вариант");
+    expect(content).toContain("Новый вариант приветствия");
+  });
+});
+
+/* ─── Feature: CSV Export with Date/Source Filters ─── */
+describe("faqChat.exportCsv with filters", () => {
+  it("accepts dateFrom filter", async () => {
+    const ctx = createAdminContext();
+    const caller = faqChatRouter.createCaller(ctx);
+
+    const result = await caller.exportCsv({ dateFrom: "2025-01-01" });
+
+    expect(result).toHaveProperty("csv");
+    expect(typeof result.csv).toBe("string");
+  });
+
+  it("accepts dateTo filter", async () => {
+    const ctx = createAdminContext();
+    const caller = faqChatRouter.createCaller(ctx);
+
+    const result = await caller.exportCsv({ dateTo: "2025-12-31" });
+
+    expect(result).toHaveProperty("csv");
+  });
+
+  it("accepts source filter 'faq'", async () => {
+    const ctx = createAdminContext();
+    const caller = faqChatRouter.createCaller(ctx);
+
+    const result = await caller.exportCsv({ source: "faq" });
+
+    expect(result).toHaveProperty("csv");
+  });
+
+  it("accepts source filter 'floating'", async () => {
+    const ctx = createAdminContext();
+    const caller = faqChatRouter.createCaller(ctx);
+
+    const result = await caller.exportCsv({ source: "floating" });
+
+    expect(result).toHaveProperty("csv");
+  });
+
+  it("accepts source filter 'all'", async () => {
+    const ctx = createAdminContext();
+    const caller = faqChatRouter.createCaller(ctx);
+
+    const result = await caller.exportCsv({ source: "all" });
+
+    expect(result).toHaveProperty("csv");
+  });
+
+  it("accepts combined dateFrom + dateTo + source filters", async () => {
+    const ctx = createAdminContext();
+    const caller = faqChatRouter.createCaller(ctx);
+
+    const result = await caller.exportCsv({
+      dateFrom: "2025-01-01",
+      dateTo: "2025-06-30",
+      source: "floating",
+    });
+
+    expect(result).toHaveProperty("csv");
+    expect(result.csv).toContain("\uFEFF");
+  });
+
+  it("works without any filters (backward compatible)", async () => {
+    const ctx = createAdminContext();
+    const caller = faqChatRouter.createCaller(ctx);
+
+    const result = await caller.exportCsv();
+
+    expect(result).toHaveProperty("csv");
+  });
+});
+
+describe("CSV filter UI integration", () => {
+  it("AdminFaqAnalytics has CSV filter panel", async () => {
+    const fs = await import("fs");
+    const content = fs.readFileSync(
+      "client/src/pages/AdminFaqAnalytics.tsx",
+      "utf-8"
+    );
+    expect(content).toContain("csvFiltersOpen");
+    expect(content).toContain("csvDateFrom");
+    expect(content).toContain("csvDateTo");
+    expect(content).toContain("csvSource");
+    expect(content).toContain("Filter");
+  });
+
+  it("AdminFaqAnalytics has source select dropdown", async () => {
+    const fs = await import("fs");
+    const content = fs.readFileSync(
+      "client/src/pages/AdminFaqAnalytics.tsx",
+      "utf-8"
+    );
+    expect(content).toContain("Все источники");
+    expect(content).toContain("Виджет");
+    expect(content).toContain("Страница FAQ");
+    expect(content).toContain("SelectItem");
+  });
+
+  it("AdminFaqAnalytics has filter reset button", async () => {
+    const fs = await import("fs");
+    const content = fs.readFileSync(
+      "client/src/pages/AdminFaqAnalytics.tsx",
+      "utf-8"
+    );
+    expect(content).toContain("Сбросить");
+    expect(content).toContain("hasActiveFilters");
+  });
+
+  it("AdminFaqAnalytics passes filter input to exportCsv query", async () => {
+    const fs = await import("fs");
+    const content = fs.readFileSync(
+      "client/src/pages/AdminFaqAnalytics.tsx",
+      "utf-8"
+    );
+    expect(content).toContain("csvFilterInput");
+    expect(content).toContain("exportCsv.useQuery(csvFilterInput");
+  });
+});
+
+/* ─── Feature: Uncertain Answers History ─── */
+describe("uncertainAnswers DB schema", () => {
+  it("uncertainAnswers table is defined in schema", async () => {
+    const fs = await import("fs");
+    const schemaContent = fs.readFileSync("drizzle/schema.ts", "utf-8");
+    expect(schemaContent).toContain("uncertainAnswers");
+    expect(schemaContent).toContain("question");
+    expect(schemaContent).toContain("answer");
+    expect(schemaContent).toContain("resolved");
+    expect(schemaContent).toContain("adminNote");
+    expect(schemaContent).toContain("resolvedAt");
+  });
+});
+
+describe("faqChat.uncertainAnswersList", () => {
+  it("is accessible by admin users", async () => {
+    const ctx = createAdminContext();
+    const caller = faqChatRouter.createCaller(ctx);
+
+    const result = await caller.uncertainAnswersList();
+
+    expect(result).toHaveProperty("items");
+    expect(result).toHaveProperty("totalCount");
+    expect(result).toHaveProperty("unresolvedCount");
+    expect(Array.isArray(result.items)).toBe(true);
+  });
+
+  it("rejects non-admin users", async () => {
+    const ctx = createUserContext();
+    const caller = faqChatRouter.createCaller(ctx);
+
+    await expect(caller.uncertainAnswersList()).rejects.toThrow("FORBIDDEN");
+  });
+
+  it("accepts resolved filter", async () => {
+    const ctx = createAdminContext();
+    const caller = faqChatRouter.createCaller(ctx);
+
+    const result = await caller.uncertainAnswersList({ resolved: false });
+
+    expect(result).toHaveProperty("items");
+  });
+
+  it("accepts limit parameter", async () => {
+    const ctx = createAdminContext();
+    const caller = faqChatRouter.createCaller(ctx);
+
+    const result = await caller.uncertainAnswersList({ limit: 10 });
+
+    expect(result).toHaveProperty("items");
+  });
+});
+
+describe("faqChat.resolveUncertainAnswer", () => {
+  it("is accessible by admin users", async () => {
+    const ctx = createAdminContext();
+    const caller = faqChatRouter.createCaller(ctx);
+
+    const result = await caller.resolveUncertainAnswer({
+      id: 1,
+      resolved: true,
+      adminNote: "Добавлено в базу знаний",
+    });
+
+    expect(result).toHaveProperty("success", true);
+  });
+
+  it("rejects non-admin users", async () => {
+    const ctx = createUserContext();
+    const caller = faqChatRouter.createCaller(ctx);
+
+    await expect(
+      caller.resolveUncertainAnswer({ id: 1, resolved: true })
+    ).rejects.toThrow("FORBIDDEN");
+  });
+
+  it("accepts resolve without admin note", async () => {
+    const ctx = createAdminContext();
+    const caller = faqChatRouter.createCaller(ctx);
+
+    const result = await caller.resolveUncertainAnswer({
+      id: 1,
+      resolved: true,
+    });
+
+    expect(result).toHaveProperty("success", true);
+  });
+
+  it("can unresolve an answer", async () => {
+    const ctx = createAdminContext();
+    const caller = faqChatRouter.createCaller(ctx);
+
+    const result = await caller.resolveUncertainAnswer({
+      id: 1,
+      resolved: false,
+    });
+
+    expect(result).toHaveProperty("success", true);
+  });
+});
+
+describe("faqChat.deleteUncertainAnswer", () => {
+  it("is accessible by admin users", async () => {
+    const ctx = createAdminContext();
+    const caller = faqChatRouter.createCaller(ctx);
+
+    const result = await caller.deleteUncertainAnswer({ id: 1 });
+
+    expect(result).toHaveProperty("success", true);
+  });
+
+  it("rejects non-admin users", async () => {
+    const ctx = createUserContext();
+    const caller = faqChatRouter.createCaller(ctx);
+
+    await expect(
+      caller.deleteUncertainAnswer({ id: 1 })
+    ).rejects.toThrow("FORBIDDEN");
+  });
+});
+
+describe("Uncertain answers UI integration", () => {
+  it("AdminFaqAnalytics has uncertain answers section", async () => {
+    const fs = await import("fs");
+    const content = fs.readFileSync(
+      "client/src/pages/AdminFaqAnalytics.tsx",
+      "utf-8"
+    );
+    expect(content).toContain("Неуверенные ответы Маши");
+    expect(content).toContain("AlertTriangle");
+    expect(content).toContain("uncertainAnswersList");
+  });
+
+  it("AdminFaqAnalytics has uncertain answers filter tabs", async () => {
+    const fs = await import("fs");
+    const content = fs.readFileSync(
+      "client/src/pages/AdminFaqAnalytics.tsx",
+      "utf-8"
+    );
+    expect(content).toContain("uncertainFilter");
+    expect(content).toContain("Открытые");
+    expect(content).toContain("Решённые");
+  });
+
+  it("AdminFaqAnalytics has resolve functionality", async () => {
+    const fs = await import("fs");
+    const content = fs.readFileSync(
+      "client/src/pages/AdminFaqAnalytics.tsx",
+      "utf-8"
+    );
+    expect(content).toContain("resolveUncertainAnswer");
+    expect(content).toContain("resolveUncertain");
+    expect(content).toContain("Отметить как решённое");
+  });
+
+  it("AdminFaqAnalytics has admin note dialog", async () => {
+    const fs = await import("fs");
+    const content = fs.readFileSync(
+      "client/src/pages/AdminFaqAnalytics.tsx",
+      "utf-8"
+    );
+    expect(content).toContain("noteDialogOpen");
+    expect(content).toContain("adminNote");
+    expect(content).toContain("Заметка");
+    expect(content).toContain("Textarea");
+  });
+
+  it("AdminFaqAnalytics has delete uncertain answer functionality", async () => {
+    const fs = await import("fs");
+    const content = fs.readFileSync(
+      "client/src/pages/AdminFaqAnalytics.tsx",
+      "utf-8"
+    );
+    expect(content).toContain("deleteUncertainAnswer");
+    expect(content).toContain("deleteUncertain");
+  });
+
+  it("AdminFaqAnalytics shows unresolved count", async () => {
+    const fs = await import("fs");
+    const content = fs.readFileSync(
+      "client/src/pages/AdminFaqAnalytics.tsx",
+      "utf-8"
+    );
+    expect(content).toContain("unresolvedCount");
+    expect(content).toContain("totalCount");
+  });
+
+  it("AdminFaqAnalytics has undo resolve functionality", async () => {
+    const fs = await import("fs");
+    const content = fs.readFileSync(
+      "client/src/pages/AdminFaqAnalytics.tsx",
+      "utf-8"
+    );
+    expect(content).toContain("Вернуть в открытые");
+    expect(content).toContain("Undo2");
+    expect(content).toContain("resolved: false");
+  });
+});
+
+describe("notifyUncertainAnswer saves to DB", () => {
+  it("notifyUncertainAnswer inserts into uncertainAnswers table", async () => {
+    const fs = await import("fs");
+    const content = fs.readFileSync(
+      "server/routers/faqChat.ts",
+      "utf-8"
+    );
+    expect(content).toContain("db.insert(uncertainAnswers)");
+    expect(content).toContain("question,");
+    expect(content).toContain("answer,");
+    expect(content).toContain("source,");
+    expect(content).toContain("sessionId,");
+  });
+});

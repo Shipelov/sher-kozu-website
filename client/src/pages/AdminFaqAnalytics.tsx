@@ -2,7 +2,7 @@
  * AdminFaqAnalytics — Admin page for viewing FAQ chat analytics.
  *
  * Shows: daily question chart, source breakdown, recent questions table,
- * and a cleanup tool for old records.
+ * CSV export with filters, A/B testing management, and uncertain answers history.
  */
 
 import { useAuth } from "@/_core/hooks/useAuth";
@@ -37,14 +37,27 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
 import {
   BarChart3,
   Calendar,
+  Check,
+  CheckCircle2,
   Download,
+  Edit3,
+  Filter,
   Loader2,
   MessageSquare,
+  Plus,
   ShieldAlert,
   Trash2,
   Users,
@@ -57,6 +70,9 @@ import {
   Percent,
   Timer,
   Hash,
+  AlertTriangle,
+  X,
+  Undo2,
 } from "lucide-react";
 import { useState, useMemo } from "react";
 import { toast } from "sonner";
@@ -124,7 +140,7 @@ export default function AdminFaqAnalytics() {
   const analyticsQuery = trpc.faqChat.analytics.useQuery(undefined, {
     enabled: isAdmin,
     retry: false,
-    refetchInterval: 30_000, // refresh every 30s
+    refetchInterval: 30_000,
   });
 
   const utils = trpc.useUtils();
@@ -136,6 +152,19 @@ export default function AdminFaqAnalytics() {
     refetchInterval: 30_000,
   });
 
+  // Uncertain answers data
+  const [uncertainFilter, setUncertainFilter] = useState<"all" | "unresolved" | "resolved">("unresolved");
+  const uncertainQuery = trpc.faqChat.uncertainAnswersList.useQuery(
+    {
+      resolved: uncertainFilter === "all" ? undefined : uncertainFilter === "resolved",
+    },
+    {
+      enabled: isAdmin,
+      retry: false,
+      refetchInterval: 30_000,
+    }
+  );
+
   const toggleVariant = trpc.faqChat.toggleGreetingVariant.useMutation({
     onSuccess: () => {
       toast.success("Вариант обновлён");
@@ -146,12 +175,99 @@ export default function AdminFaqAnalytics() {
     },
   });
 
-  const [cleanupDays, setCleanupDays] = useState("90");
-  const [cleanupOpen, setCleanupOpen] = useState(false);
-  const [csvLoading, setCsvLoading] = useState(false);
+  const upsertVariant = trpc.faqChat.upsertGreetingVariant.useMutation({
+    onSuccess: () => {
+      toast.success("Вариант сохранён");
+      void utils.faqChat.abTestResults.invalidate();
+      setVariantDialogOpen(false);
+      resetVariantForm();
+    },
+    onError: (err) => {
+      toast.error("Ошибка", { description: err.message });
+    },
+  });
 
-  const exportCsvQuery = trpc.faqChat.exportCsv.useQuery(undefined, {
-    enabled: false, // manual fetch only
+  const deleteVariant = trpc.faqChat.deleteGreetingVariant.useMutation({
+    onSuccess: () => {
+      toast.success("Вариант удалён");
+      void utils.faqChat.abTestResults.invalidate();
+    },
+    onError: (err) => {
+      toast.error("Ошибка", { description: err.message });
+    },
+  });
+
+  const resolveUncertain = trpc.faqChat.resolveUncertainAnswer.useMutation({
+    onSuccess: () => {
+      toast.success("Статус обновлён");
+      void utils.faqChat.uncertainAnswersList.invalidate();
+    },
+    onError: (err) => {
+      toast.error("Ошибка", { description: err.message });
+    },
+  });
+
+  const deleteUncertain = trpc.faqChat.deleteUncertainAnswer.useMutation({
+    onSuccess: () => {
+      toast.success("Запись удалена");
+      void utils.faqChat.uncertainAnswersList.invalidate();
+    },
+    onError: (err) => {
+      toast.error("Ошибка", { description: err.message });
+    },
+  });
+
+  // State for variant creation/editing dialog
+  const [variantDialogOpen, setVariantDialogOpen] = useState(false);
+  const [editingVariant, setEditingVariant] = useState<string | null>(null);
+  const [variantForm, setVariantForm] = useState({
+    variantKey: "",
+    greetingText: "",
+    description: "",
+  });
+
+  const resetVariantForm = () => {
+    setVariantForm({ variantKey: "", greetingText: "", description: "" });
+    setEditingVariant(null);
+  };
+
+  const openCreateVariant = () => {
+    resetVariantForm();
+    setVariantDialogOpen(true);
+  };
+
+  const openEditVariant = (v: any) => {
+    setEditingVariant(v.variantKey);
+    setVariantForm({
+      variantKey: v.variantKey,
+      greetingText: v.greetingText,
+      description: v.description || "",
+    });
+    setVariantDialogOpen(true);
+  };
+
+  // State for uncertain answer note dialog
+  const [noteDialogOpen, setNoteDialogOpen] = useState(false);
+  const [noteTarget, setNoteTarget] = useState<{ id: number; question: string } | null>(null);
+  const [adminNote, setAdminNote] = useState("");
+
+  // State for CSV filters
+  const [csvDateFrom, setCsvDateFrom] = useState("");
+  const [csvDateTo, setCsvDateTo] = useState("");
+  const [csvSource, setCsvSource] = useState<"all" | "faq" | "floating">("all");
+  const [csvLoading, setCsvLoading] = useState(false);
+  const [csvFiltersOpen, setCsvFiltersOpen] = useState(false);
+
+  const csvFilterInput = useMemo(() => {
+    const input: { dateFrom?: string; dateTo?: string; source?: "all" | "faq" | "floating" } = {};
+    if (csvDateFrom) input.dateFrom = csvDateFrom;
+    if (csvDateTo) input.dateTo = csvDateTo;
+    if (csvSource !== "all") input.source = csvSource;
+    return Object.keys(input).length > 0 ? input : undefined;
+  }, [csvDateFrom, csvDateTo, csvSource]);
+
+  const exportCsvQuery = trpc.faqChat.exportCsv.useQuery(csvFilterInput, {
+    enabled: false,
   });
 
   const handleExportCsv = async () => {
@@ -159,23 +275,29 @@ export default function AdminFaqAnalytics() {
     try {
       const result = await exportCsvQuery.refetch();
       if (result.data?.csv) {
-        const blob = new Blob([result.data.csv], { type: 'text/csv;charset=utf-8;' });
+        const blob = new Blob([result.data.csv], { type: "text/csv;charset=utf-8;" });
         const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
+        const a = document.createElement("a");
         a.href = url;
-        a.download = `faq-analytics-${new Date().toISOString().split('T')[0]}.csv`;
+        const suffix = csvDateFrom || csvDateTo ? `_${csvDateFrom || "start"}_${csvDateTo || "end"}` : "";
+        a.download = `faq-analytics${suffix}-${new Date().toISOString().split("T")[0]}.csv`;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
-        toast.success('Экспорт завершён', { description: 'Файл CSV скачан' });
+        toast.success("Экспорт завершён", { description: "Файл CSV скачан" });
       }
     } catch (err) {
-      toast.error('Ошибка экспорта');
+      toast.error("Ошибка экспорта");
     } finally {
       setCsvLoading(false);
     }
   };
+
+  const hasActiveFilters = csvDateFrom || csvDateTo || csvSource !== "all";
+
+  const [cleanupDays, setCleanupDays] = useState("90");
+  const [cleanupOpen, setCleanupOpen] = useState(false);
 
   const clearMutation = trpc.faqChat.clearOld.useMutation({
     onSuccess: (data) => {
@@ -289,7 +411,7 @@ export default function AdminFaqAnalytics() {
         />
 
         {/* Header */}
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
           <div>
             <h1 className="text-2xl font-bold text-foreground">
               FAQ Аналитика
@@ -298,80 +420,159 @@ export default function AdminFaqAnalytics() {
               Статистика вопросов к AI-управляющей Маше
             </p>
           </div>
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              className="rounded-full gap-2"
-              disabled={csvLoading}
-              onClick={handleExportCsv}
-            >
-              {csvLoading ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Download className="h-4 w-4" />
-              )}
-              Экспорт CSV
-            </Button>
-          <Dialog open={cleanupOpen} onOpenChange={setCleanupOpen}>
-            <DialogTrigger asChild>
-              <Button variant="outline" className="rounded-full gap-2">
-                <Trash2 className="h-4 w-4" />
-                Очистка
+          <div className="flex items-center gap-2 flex-wrap">
+            {/* CSV Export with Filters */}
+            <div className="flex items-center gap-1">
+              <Button
+                variant="outline"
+                className="rounded-full gap-2"
+                disabled={csvLoading}
+                onClick={handleExportCsv}
+              >
+                {csvLoading ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Download className="h-4 w-4" />
+                )}
+                Экспорт CSV
+                {hasActiveFilters && (
+                  <Badge variant="secondary" className="text-[9px] rounded-full ml-1 px-1.5">
+                    <Filter className="h-2.5 w-2.5" />
+                  </Badge>
+                )}
               </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Очистка старых записей</DialogTitle>
-                <DialogDescription>
-                  Удалить вопросы и ответы старше указанного количества дней.
-                  Данные будут удалены безвозвратно.
-                </DialogDescription>
-              </DialogHeader>
-              <div className="flex items-center gap-3 py-4">
-                <span className="text-sm text-muted-foreground whitespace-nowrap">
-                  Старше
-                </span>
-                <Input
-                  type="number"
-                  min={1}
-                  max={365}
-                  value={cleanupDays}
-                  onChange={(e) => setCleanupDays(e.target.value)}
-                  className="w-24"
-                />
-                <span className="text-sm text-muted-foreground">дней</span>
-              </div>
-              <DialogFooter>
-                <Button
-                  variant="outline"
-                  onClick={() => setCleanupOpen(false)}
-                  className="rounded-full"
-                >
-                  Отмена
+              <Button
+                variant={csvFiltersOpen ? "secondary" : "outline"}
+                size="icon"
+                className="rounded-full h-9 w-9"
+                onClick={() => setCsvFiltersOpen(!csvFiltersOpen)}
+                title="Фильтры экспорта"
+              >
+                <Filter className="h-4 w-4" />
+              </Button>
+            </div>
+
+            <Dialog open={cleanupOpen} onOpenChange={setCleanupOpen}>
+              <DialogTrigger asChild>
+                <Button variant="outline" className="rounded-full gap-2">
+                  <Trash2 className="h-4 w-4" />
+                  Очистка
                 </Button>
-                <Button
-                  variant="destructive"
-                  className="rounded-full gap-2"
-                  disabled={clearMutation.isPending}
-                  onClick={() => {
-                    const days = parseInt(cleanupDays, 10);
-                    if (isNaN(days) || days < 1 || days > 365) {
-                      toast.error("Укажите число от 1 до 365");
-                      return;
-                    }
-                    clearMutation.mutate({ olderThanDays: days });
-                  }}
-                >
-                  {clearMutation.isPending && (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  )}
-                  Удалить
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Очистка старых записей</DialogTitle>
+                  <DialogDescription>
+                    Удалить вопросы и ответы старше указанного количества дней.
+                    Данные будут удалены безвозвратно.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="flex items-center gap-3 py-4">
+                  <span className="text-sm text-muted-foreground whitespace-nowrap">
+                    Старше
+                  </span>
+                  <Input
+                    type="number"
+                    min={1}
+                    max={365}
+                    value={cleanupDays}
+                    onChange={(e) => setCleanupDays(e.target.value)}
+                    className="w-24"
+                  />
+                  <span className="text-sm text-muted-foreground">дней</span>
+                </div>
+                <DialogFooter>
+                  <Button
+                    variant="outline"
+                    onClick={() => setCleanupOpen(false)}
+                    className="rounded-full"
+                  >
+                    Отмена
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    className="rounded-full gap-2"
+                    disabled={clearMutation.isPending}
+                    onClick={() => {
+                      const days = parseInt(cleanupDays, 10);
+                      if (isNaN(days) || days < 1 || days > 365) {
+                        toast.error("Укажите число от 1 до 365");
+                        return;
+                      }
+                      clearMutation.mutate({ olderThanDays: days });
+                    }}
+                  >
+                    {clearMutation.isPending && (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    )}
+                    Удалить
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
           </div>
         </div>
+
+        {/* CSV Filter Panel (collapsible) */}
+        {csvFiltersOpen && (
+          <Card className="rounded-2xl border-primary/20 bg-primary/5">
+            <CardContent className="pt-5 pb-4">
+              <div className="flex flex-col sm:flex-row items-start sm:items-end gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-muted-foreground">Дата от</label>
+                  <Input
+                    type="date"
+                    value={csvDateFrom}
+                    onChange={(e) => setCsvDateFrom(e.target.value)}
+                    className="w-40 h-9"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-muted-foreground">Дата до</label>
+                  <Input
+                    type="date"
+                    value={csvDateTo}
+                    onChange={(e) => setCsvDateTo(e.target.value)}
+                    className="w-40 h-9"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-muted-foreground">Источник</label>
+                  <Select value={csvSource} onValueChange={(v) => setCsvSource(v as "all" | "faq" | "floating")}>
+                    <SelectTrigger className="w-40 h-9">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Все источники</SelectItem>
+                      <SelectItem value="floating">Виджет</SelectItem>
+                      <SelectItem value="faq">Страница FAQ</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                {hasActiveFilters && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="rounded-full gap-1 text-xs"
+                    onClick={() => {
+                      setCsvDateFrom("");
+                      setCsvDateTo("");
+                      setCsvSource("all");
+                    }}
+                  >
+                    <X className="h-3 w-3" />
+                    Сбросить
+                  </Button>
+                )}
+              </div>
+              {hasActiveFilters && (
+                <p className="text-xs text-muted-foreground mt-3">
+                  Фильтры применяются к экспорту CSV. Нажмите «Экспорт CSV» для скачивания отфильтрованных данных.
+                </p>
+              )}
+            </CardContent>
+          </Card>
+        )}
 
         {analyticsQuery.isLoading ? (
           <div className="flex items-center justify-center py-20">
@@ -613,17 +814,232 @@ export default function AdminFaqAnalytics() {
               </CardContent>
             </Card>
 
-            {/* A/B Testing Section */}
+            {/* ═══ Uncertain Answers Section ═══ */}
+            <Card className="rounded-2xl border-amber-200/50 bg-amber-50/10">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <AlertTriangle className="h-4 w-4 text-amber-500" />
+                      Неуверенные ответы Маши
+                    </CardTitle>
+                    <CardDescription className="mt-1">
+                      Вопросы, на которые Маша не смогла ответить уверенно.
+                      {uncertainQuery.data && (
+                        <> Нерешённых: <span className="font-semibold text-amber-600">{uncertainQuery.data.unresolvedCount}</span> из {uncertainQuery.data.totalCount}</>
+                      )}
+                    </CardDescription>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    {(["unresolved", "all", "resolved"] as const).map((f) => (
+                      <Button
+                        key={f}
+                        variant={uncertainFilter === f ? "secondary" : "ghost"}
+                        size="sm"
+                        className="rounded-full text-xs h-7 px-3"
+                        onClick={() => setUncertainFilter(f)}
+                      >
+                        {f === "unresolved" ? "Открытые" : f === "resolved" ? "Решённые" : "Все"}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {uncertainQuery.isLoading ? (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="h-6 w-6 animate-spin text-amber-500" />
+                  </div>
+                ) : !uncertainQuery.data?.items?.length ? (
+                  <div className="flex flex-col items-center justify-center py-12 text-center">
+                    <CheckCircle2 className="h-10 w-10 text-green-400/50 mb-3" />
+                    <p className="text-sm text-muted-foreground">
+                      {uncertainFilter === "unresolved"
+                        ? "Нет нерешённых вопросов. Маша справляется отлично!"
+                        : "Нет записей по выбранному фильтру."}
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {uncertainQuery.data.items.map((item: any) => (
+                      <div
+                        key={item.id}
+                        className={cn(
+                          "rounded-xl border p-4 space-y-2 transition-colors",
+                          item.resolved
+                            ? "border-green-200/50 bg-green-50/30"
+                            : "border-amber-200/50 bg-amber-50/20"
+                        )}
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex-1 space-y-1.5">
+                            <div className="flex items-center gap-2">
+                              <Badge
+                                variant="outline"
+                                className={cn(
+                                  "text-[10px] rounded-full",
+                                  item.resolved
+                                    ? "border-green-200 bg-green-50 text-green-700"
+                                    : "border-amber-200 bg-amber-50 text-amber-700"
+                                )}
+                              >
+                                {item.resolved ? (
+                                  <><CheckCircle2 className="h-2.5 w-2.5 mr-0.5" /> Решено</>
+                                ) : (
+                                  <><AlertTriangle className="h-2.5 w-2.5 mr-0.5" /> Открыто</>
+                                )}
+                              </Badge>
+                              <SourceBadge source={item.source} />
+                              <span className="text-[10px] text-muted-foreground">
+                                {item.createdAt
+                                  ? new Date(item.createdAt).toLocaleString("ru-RU", {
+                                      day: "numeric",
+                                      month: "short",
+                                      hour: "2-digit",
+                                      minute: "2-digit",
+                                    })
+                                  : "—"}
+                              </span>
+                            </div>
+                            <p className="text-sm font-medium text-foreground">
+                              {item.question}
+                            </p>
+                            <p className="text-xs text-muted-foreground line-clamp-3">
+                              {item.answer}
+                            </p>
+                            {item.adminNote && (
+                              <div className="rounded-lg bg-background/80 border border-border/40 p-2 mt-1">
+                                <p className="text-xs text-foreground/70">
+                                  <span className="font-medium">Заметка:</span> {item.adminNote}
+                                </p>
+                              </div>
+                            )}
+                          </div>
+                          <div className="flex flex-col gap-1">
+                            {!item.resolved ? (
+                              <Button
+                                variant="outline"
+                                size="icon"
+                                className="h-7 w-7 rounded-full border-green-200 hover:bg-green-50"
+                                title="Отметить как решённое"
+                                onClick={() => {
+                                  setNoteTarget({ id: item.id, question: item.question });
+                                  setAdminNote("");
+                                  setNoteDialogOpen(true);
+                                }}
+                              >
+                                <Check className="h-3.5 w-3.5 text-green-600" />
+                              </Button>
+                            ) : (
+                              <Button
+                                variant="outline"
+                                size="icon"
+                                className="h-7 w-7 rounded-full"
+                                title="Вернуть в открытые"
+                                onClick={() =>
+                                  resolveUncertain.mutate({
+                                    id: item.id,
+                                    resolved: false,
+                                  })
+                                }
+                              >
+                                <Undo2 className="h-3.5 w-3.5 text-muted-foreground" />
+                              </Button>
+                            )}
+                            <Button
+                              variant="outline"
+                              size="icon"
+                              className="h-7 w-7 rounded-full border-red-200 hover:bg-red-50"
+                              title="Удалить"
+                              onClick={() => deleteUncertain.mutate({ id: item.id })}
+                            >
+                              <Trash2 className="h-3.5 w-3.5 text-red-500" />
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Resolve Note Dialog */}
+            <Dialog open={noteDialogOpen} onOpenChange={setNoteDialogOpen}>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Отметить как решённое</DialogTitle>
+                  <DialogDescription>
+                    {noteTarget?.question && (
+                      <span className="line-clamp-2">Вопрос: «{noteTarget.question}»</span>
+                    )}
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-2 py-2">
+                  <label className="text-sm font-medium">Заметка (необязательно)</label>
+                  <Textarea
+                    value={adminNote}
+                    onChange={(e) => setAdminNote(e.target.value)}
+                    placeholder="Например: добавлено в базу знаний Маши, раздел «Доставка»"
+                    rows={3}
+                  />
+                </div>
+                <DialogFooter>
+                  <Button
+                    variant="outline"
+                    onClick={() => setNoteDialogOpen(false)}
+                    className="rounded-full"
+                  >
+                    Отмена
+                  </Button>
+                  <Button
+                    className="rounded-full gap-2"
+                    disabled={resolveUncertain.isPending}
+                    onClick={() => {
+                      if (noteTarget) {
+                        resolveUncertain.mutate({
+                          id: noteTarget.id,
+                          resolved: true,
+                          adminNote: adminNote || undefined,
+                        });
+                        setNoteDialogOpen(false);
+                      }
+                    }}
+                  >
+                    {resolveUncertain.isPending && (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    )}
+                    <Check className="h-4 w-4" />
+                    Решено
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+
+            {/* ═══ A/B Testing Section ═══ */}
             <Card className="rounded-2xl border-border/70">
               <CardHeader>
-                <CardTitle className="text-base flex items-center gap-2">
-                  <FlaskConical className="h-4 w-4 text-primary" />
-                  A/B Тестирование приветствий
-                </CardTitle>
-                <CardDescription>
-                  Сравнение эффективности разных стилей приветствия Маши.
-                  Всего сессий: {abTestQuery.data?.totalSessions ?? 0}
-                </CardDescription>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <FlaskConical className="h-4 w-4 text-primary" />
+                      A/B Тестирование приветствий
+                    </CardTitle>
+                    <CardDescription>
+                      Сравнение эффективности разных стилей приветствия Маши.
+                      Всего сессий: {abTestQuery.data?.totalSessions ?? 0}
+                    </CardDescription>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="rounded-full gap-1.5"
+                    onClick={openCreateVariant}
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                    Новый вариант
+                  </Button>
+                </div>
               </CardHeader>
               <CardContent>
                 {abTestQuery.isLoading ? (
@@ -634,7 +1050,7 @@ export default function AdminFaqAnalytics() {
                   <div className="flex flex-col items-center justify-center py-12 text-center">
                     <FlaskConical className="h-10 w-10 text-muted-foreground/30 mb-3" />
                     <p className="text-sm text-muted-foreground">
-                      Нет вариантов приветствий. Они будут добавлены автоматически.
+                      Нет вариантов приветствий. Нажмите «Новый вариант» для создания.
                     </p>
                   </div>
                 ) : (
@@ -677,22 +1093,42 @@ export default function AdminFaqAnalytics() {
                                 </Badge>
                               )}
                             </div>
-                            <button
-                              onClick={() =>
-                                toggleVariant.mutate({
-                                  variantKey: v.variantKey,
-                                  isActive: !v.isActive,
-                                })
-                              }
-                              className="text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
-                              title={v.isActive ? "Отключить" : "Включить"}
-                            >
-                              {v.isActive ? (
-                                <ToggleRight className="h-5 w-5 text-primary" />
-                              ) : (
-                                <ToggleLeft className="h-5 w-5" />
-                              )}
-                            </button>
+                            <div className="flex items-center gap-1">
+                              <button
+                                onClick={() => openEditVariant(v)}
+                                className="text-muted-foreground hover:text-foreground transition-colors cursor-pointer p-0.5"
+                                title="Редактировать"
+                              >
+                                <Edit3 className="h-4 w-4" />
+                              </button>
+                              <button
+                                onClick={() =>
+                                  toggleVariant.mutate({
+                                    variantKey: v.variantKey,
+                                    isActive: !v.isActive,
+                                  })
+                                }
+                                className="text-muted-foreground hover:text-foreground transition-colors cursor-pointer p-0.5"
+                                title={v.isActive ? "Отключить" : "Включить"}
+                              >
+                                {v.isActive ? (
+                                  <ToggleRight className="h-5 w-5 text-primary" />
+                                ) : (
+                                  <ToggleLeft className="h-5 w-5" />
+                                )}
+                              </button>
+                              <button
+                                onClick={() => {
+                                  if (confirm(`Удалить вариант «${v.variantKey}»?`)) {
+                                    deleteVariant.mutate({ variantKey: v.variantKey });
+                                  }
+                                }}
+                                className="text-muted-foreground hover:text-red-500 transition-colors cursor-pointer p-0.5"
+                                title="Удалить"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </button>
+                            </div>
                           </div>
 
                           {/* Description */}
@@ -763,6 +1199,99 @@ export default function AdminFaqAnalytics() {
                 )}
               </CardContent>
             </Card>
+
+            {/* Create/Edit Variant Dialog */}
+            <Dialog open={variantDialogOpen} onOpenChange={(open) => {
+              setVariantDialogOpen(open);
+              if (!open) resetVariantForm();
+            }}>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>
+                    {editingVariant ? "Редактировать вариант" : "Новый вариант приветствия"}
+                  </DialogTitle>
+                  <DialogDescription>
+                    {editingVariant
+                      ? "Измените текст приветствия или описание варианта."
+                      : "Создайте новый вариант приветствия для A/B тестирования."}
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4 py-2">
+                  <div className="space-y-1.5">
+                    <label className="text-sm font-medium">Ключ варианта</label>
+                    <Input
+                      value={variantForm.variantKey}
+                      onChange={(e) =>
+                        setVariantForm((f) => ({ ...f, variantKey: e.target.value }))
+                      }
+                      placeholder="Например: warm_v2, playful_v1"
+                      disabled={!!editingVariant}
+                      maxLength={64}
+                    />
+                    {!editingVariant && (
+                      <p className="text-[10px] text-muted-foreground">
+                        Уникальный идентификатор. Нельзя изменить после создания.
+                      </p>
+                    )}
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-sm font-medium">Текст приветствия</label>
+                    <Textarea
+                      value={variantForm.greetingText}
+                      onChange={(e) =>
+                        setVariantForm((f) => ({ ...f, greetingText: e.target.value }))
+                      }
+                      placeholder="Привет! 🌿 Я Маша, управляющая фермой..."
+                      rows={4}
+                      maxLength={2000}
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-sm font-medium">Описание (необязательно)</label>
+                    <Input
+                      value={variantForm.description}
+                      onChange={(e) =>
+                        setVariantForm((f) => ({ ...f, description: e.target.value }))
+                      }
+                      placeholder="Например: Тёплый и дружеский стиль"
+                      maxLength={255}
+                    />
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setVariantDialogOpen(false);
+                      resetVariantForm();
+                    }}
+                    className="rounded-full"
+                  >
+                    Отмена
+                  </Button>
+                  <Button
+                    className="rounded-full gap-2"
+                    disabled={
+                      upsertVariant.isPending ||
+                      !variantForm.variantKey.trim() ||
+                      !variantForm.greetingText.trim()
+                    }
+                    onClick={() => {
+                      upsertVariant.mutate({
+                        variantKey: variantForm.variantKey.trim(),
+                        greetingText: variantForm.greetingText.trim(),
+                        description: variantForm.description.trim() || undefined,
+                      });
+                    }}
+                  >
+                    {upsertVariant.isPending && (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    )}
+                    {editingVariant ? "Сохранить" : "Создать"}
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
 
             {/* Footer note */}
             <p className="text-xs text-muted-foreground text-center">

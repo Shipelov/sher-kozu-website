@@ -12,7 +12,7 @@ import { invokeLLM } from "../_core/llm";
 import type { Message } from "../_core/llm";
 import { TRPCError } from "@trpc/server";
 import { desc, sql, eq, gte, lt, and } from "drizzle-orm";
-import { faqQuestions, greetingVariants, abTestSessions } from "../../drizzle/schema";
+import { faqQuestions, greetingVariants, abTestSessions, uncertainAnswers } from "../../drizzle/schema";
 import { getDb } from "../db";
 import { notifyOwner } from "../_core/notification";
 
@@ -37,13 +37,29 @@ function isUncertainAnswer(answer: string): boolean {
   return UNCERTAIN_PHRASES.some((phrase) => lower.includes(phrase));
 }
 
-/** Fire-and-forget notification to owner about uncertain answer */
+/** Fire-and-forget: notify owner AND save to uncertainAnswers table */
 async function notifyUncertainAnswer(
   question: string,
   answer: string,
   source: string,
   sessionId: string
 ) {
+  // Save to DB for admin review
+  try {
+    const db = await getDb();
+    if (db) {
+      await db.insert(uncertainAnswers).values({
+        question,
+        answer,
+        source,
+        sessionId,
+      });
+    }
+  } catch (err) {
+    console.error("[FAQ] Failed to save uncertain answer to DB:", err);
+  }
+
+  // Notify owner
   try {
     await notifyOwner({
       title: `🤔 Маша не смогла уверенно ответить`,
@@ -360,14 +376,16 @@ export const faqChatRouter = router({
       };
     }),
 
-  /** Admin: export FAQ analytics data as CSV */
+  /** Admin: export FAQ analytics data as CSV with optional filters */
   exportCsv: protectedProcedure
     .input(
       z.object({
-        days: z.number().min(1).max(365).optional(),
+        dateFrom: z.string().optional(), // ISO date string e.g. "2025-01-01"
+        dateTo: z.string().optional(),   // ISO date string e.g. "2025-12-31"
+        source: z.enum(["faq", "floating", "all"]).optional(),
       }).optional()
     )
-    .query(async ({ ctx }) => {
+    .query(async ({ ctx, input }) => {
       if (ctx.user.role !== "admin") {
         throw new TRPCError({ code: "FORBIDDEN" });
       }
@@ -375,11 +393,28 @@ export const faqChatRouter = router({
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
 
-      const rows = await db
+      // Build where conditions based on filters
+      const conditions = [];
+      if (input?.dateFrom) {
+        conditions.push(gte(faqQuestions.createdAt, new Date(input.dateFrom)));
+      }
+      if (input?.dateTo) {
+        // Add 1 day to include the entire end date
+        const endDate = new Date(input.dateTo);
+        endDate.setDate(endDate.getDate() + 1);
+        conditions.push(lt(faqQuestions.createdAt, endDate));
+      }
+      if (input?.source && input.source !== "all") {
+        conditions.push(eq(faqQuestions.source, input.source));
+      }
+
+      const query = db
         .select()
-        .from(faqQuestions)
-        .orderBy(desc(faqQuestions.createdAt))
-        .limit(5000);
+        .from(faqQuestions);
+
+      const rows = conditions.length > 0
+        ? await query.where(and(...conditions)).orderBy(desc(faqQuestions.createdAt)).limit(5000)
+        : await query.orderBy(desc(faqQuestions.createdAt)).limit(5000);
 
       // Build CSV
       const escapeCsv = (val: string) => {
@@ -619,6 +654,28 @@ export const faqChatRouter = router({
       return { success: true };
     }),
 
+  /** Admin: delete a greeting variant */
+  deleteGreetingVariant: protectedProcedure
+    .input(
+      z.object({
+        variantKey: z.string().min(1).max(64),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      if (ctx.user.role !== "admin") {
+        throw new TRPCError({ code: "FORBIDDEN" });
+      }
+
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+
+      await db
+        .delete(greetingVariants)
+        .where(eq(greetingVariants.variantKey, input.variantKey));
+
+      return { success: true };
+    }),
+
   /** Admin: toggle a greeting variant active/inactive */
   toggleGreetingVariant: protectedProcedure
     .input(
@@ -639,6 +696,97 @@ export const faqChatRouter = router({
         .update(greetingVariants)
         .set({ isActive: input.isActive })
         .where(eq(greetingVariants.variantKey, input.variantKey));
+
+      return { success: true };
+    }),
+
+  /* ─── Uncertain Answers History ─── */
+
+  /** Admin: list uncertain answers with optional filters */
+  uncertainAnswersList: protectedProcedure
+    .input(
+      z.object({
+        resolved: z.boolean().optional(), // filter by resolved status
+        limit: z.number().min(1).max(200).optional(),
+      }).optional()
+    )
+    .query(async ({ ctx, input }) => {
+      if (ctx.user.role !== "admin") {
+        throw new TRPCError({ code: "FORBIDDEN" });
+      }
+
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+
+      const conditions = [];
+      if (input?.resolved !== undefined) {
+        conditions.push(eq(uncertainAnswers.resolved, input.resolved));
+      }
+
+      const limit = input?.limit ?? 100;
+
+      const rows = conditions.length > 0
+        ? await db.select().from(uncertainAnswers).where(and(...conditions)).orderBy(desc(uncertainAnswers.createdAt)).limit(limit)
+        : await db.select().from(uncertainAnswers).orderBy(desc(uncertainAnswers.createdAt)).limit(limit);
+
+      // Count totals
+      const [totalRow] = await db.select({ count: sql<number>`count(*)` }).from(uncertainAnswers);
+      const [unresolvedRow] = await db.select({ count: sql<number>`count(*)` }).from(uncertainAnswers).where(eq(uncertainAnswers.resolved, false));
+
+      return {
+        items: rows,
+        totalCount: totalRow?.count ?? 0,
+        unresolvedCount: unresolvedRow?.count ?? 0,
+      };
+    }),
+
+  /** Admin: mark an uncertain answer as resolved with optional note */
+  resolveUncertainAnswer: protectedProcedure
+    .input(
+      z.object({
+        id: z.number(),
+        resolved: z.boolean(),
+        adminNote: z.string().max(2000).optional(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      if (ctx.user.role !== "admin") {
+        throw new TRPCError({ code: "FORBIDDEN" });
+      }
+
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+
+      await db
+        .update(uncertainAnswers)
+        .set({
+          resolved: input.resolved,
+          adminNote: input.adminNote ?? null,
+          resolvedAt: input.resolved ? new Date() : null,
+        })
+        .where(eq(uncertainAnswers.id, input.id));
+
+      return { success: true };
+    }),
+
+  /** Admin: delete an uncertain answer entry */
+  deleteUncertainAnswer: protectedProcedure
+    .input(
+      z.object({
+        id: z.number(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      if (ctx.user.role !== "admin") {
+        throw new TRPCError({ code: "FORBIDDEN" });
+      }
+
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+
+      await db
+        .delete(uncertainAnswers)
+        .where(eq(uncertainAnswers.id, input.id));
 
       return { success: true };
     }),
