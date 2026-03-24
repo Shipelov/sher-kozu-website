@@ -3,18 +3,13 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 
 /**
- * Tests for "Primary Animal Indicator in Navbar" feature.
+ * Tests for Navbar features:
  *
- * When authenticated, the Navbar shows the primary animal name
- * from ownerDashboard data in the live indicator area (desktop)
- * and in the mobile user info section.
- *
- * Covers:
- * 1. Navbar queries ownerDashboard for primary animal
- * 2. Desktop: shows primary animal name with link to profile
- * 3. Mobile: shows primary animal name in user info section
- * 4. Fallback: shows generic animal name for unauthenticated users
- * 5. Invalidation: Navbar updates when primary animal changes
+ * 1. Navbar still queries ownerDashboard for primary animal data
+ *    (used for authenticated nav items, dashboard link, etc.)
+ * 2. The "онлайн" live indicator was intentionally removed from both
+ *    desktop and mobile views as a non-functional element.
+ * 3. Navbar retains core navigation, auth, and admin features.
  */
 
 const NAVBAR_SRC = fs.readFileSync(
@@ -48,73 +43,48 @@ describe("Navbar Primary Animal: data fetching", () => {
   });
 });
 
-describe("Navbar Primary Animal: desktop indicator", () => {
-  it("has data-testid for the primary animal indicator", () => {
-    expect(NAVBAR_SRC).toContain('data-testid="navbar-primary-animal"');
+describe("Navbar: online indicator removed (intentional)", () => {
+  it("does NOT contain the desktop online indicator data-testid", () => {
+    expect(NAVBAR_SRC).not.toContain('data-testid="navbar-primary-animal"');
   });
 
-  it("shows primary animal name with 'онлайн' suffix", () => {
-    expect(NAVBAR_SRC).toContain("{primaryAnimalName} онлайн");
+  it("does NOT contain the mobile online indicator data-testid", () => {
+    expect(NAVBAR_SRC).not.toContain('data-testid="navbar-primary-animal-mobile"');
   });
 
-  it("wraps primary animal name in a Link to the animal profile", () => {
-    // The link should go to /animals/{slug}
-    expect(NAVBAR_SRC).toContain("`/animals/${primaryAnimal?.slug");
+  it("does NOT contain pulse-dot animation (removed with online indicator)", () => {
+    expect(NAVBAR_SRC).not.toContain("pulse-dot");
   });
 
-  it("has hover effect for the primary animal link", () => {
-    expect(NAVBAR_SRC).toContain("hover:text-primary");
-  });
-
-  it("only shows linked version for authenticated users with primary animal", () => {
-    expect(NAVBAR_SRC).toContain("isAuthenticated && primaryAnimalName");
-  });
-
-  it("shows generic fallback for unauthenticated users", () => {
-    // The else branch shows featuredAnimalName without a link
-    const fallbackSection = NAVBAR_SRC.substring(
-      NAVBAR_SRC.indexOf('data-testid="navbar-primary-animal"'),
-      NAVBAR_SRC.indexOf('data-testid="navbar-primary-animal"') + 500,
-    );
-    expect(fallbackSection).toContain("{featuredAnimalName} онлайн");
-  });
-
-  it("uses pulse-dot animation for live status", () => {
-    expect(NAVBAR_SRC).toContain("pulse-dot");
+  it("does NOT show 'онлайн' text anywhere in Navbar", () => {
+    expect(NAVBAR_SRC).not.toContain("онлайн");
   });
 });
 
-describe("Navbar Primary Animal: mobile indicator", () => {
-  it("has data-testid for the mobile primary animal indicator", () => {
-    expect(NAVBAR_SRC).toContain('data-testid="navbar-primary-animal-mobile"');
+describe("Navbar: core navigation preserved", () => {
+  it("has link to animals catalog", () => {
+    expect(NAVBAR_SRC).toContain('"/animals"');
+    expect(NAVBAR_SRC).toContain("Каталог животных");
   });
 
-  it("shows primary animal name in mobile user info section", () => {
-    const mobileSection = NAVBAR_SRC.substring(
-      NAVBAR_SRC.indexOf("navbar-primary-animal-mobile"),
-      NAVBAR_SRC.indexOf("navbar-primary-animal-mobile") + 200,
-    );
-    expect(mobileSection).toContain("{primaryAnimalName} онлайн");
+  it("has link to about page", () => {
+    expect(NAVBAR_SRC).toContain('"/about"');
+    expect(NAVBAR_SRC).toContain("О ферме");
   });
 
-  it("only shows mobile indicator when primaryAnimalName is available", () => {
-    expect(NAVBAR_SRC).toContain("{primaryAnimalName && (");
+  it("has link to club page", () => {
+    expect(NAVBAR_SRC).toContain('"/club"');
+    expect(NAVBAR_SRC).toContain("Клуб");
   });
 
-  it("uses pulse-dot in mobile indicator", () => {
-    const mobileSection = NAVBAR_SRC.substring(
-      NAVBAR_SRC.indexOf("navbar-primary-animal-mobile"),
-      NAVBAR_SRC.indexOf("navbar-primary-animal-mobile") + 200,
-    );
-    expect(mobileSection).toContain("pulse-dot");
+  it("has authenticated-only dashboard link", () => {
+    expect(NAVBAR_SRC).toContain('"/dashboard"');
+    expect(NAVBAR_SRC).toContain("Мой кабинет");
   });
 
-  it("mobile indicator is styled with primary color", () => {
-    const mobileSection = NAVBAR_SRC.substring(
-      NAVBAR_SRC.indexOf("navbar-primary-animal-mobile") - 100,
-      NAVBAR_SRC.indexOf("navbar-primary-animal-mobile") + 50,
-    );
-    expect(mobileSection).toContain("text-primary");
+  it("has admin panel link for admin users", () => {
+    expect(NAVBAR_SRC).toContain('"/admin"');
+    expect(NAVBAR_SRC).toContain("Админ-панель");
   });
 });
 

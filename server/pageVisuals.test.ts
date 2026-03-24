@@ -259,11 +259,12 @@ describe("page visual integration source smoke", () => {
   });
 
   /* ─── Navbar ─── */
-  it("uses static catalog link and shows featured animal status", () => {
+  it("uses static catalog link and core navigation", () => {
     expect(navbarSource).toContain("trpc.animals.listPublic.useQuery");
     expect(navbarSource).toContain('"/animals"');
     expect(navbarSource).toContain("Каталог животных");
-    expect(navbarSource).toContain("онлайн");
+    // "онлайн" indicator was intentionally removed as non-functional
+    expect(navbarSource).not.toContain("онлайн");
   });
 
   /* ─── Admin layout ─── */

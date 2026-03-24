@@ -14,8 +14,8 @@
   Internal language (ecosystem routes, AI curator) removed.
 */
 
-import { useState, useMemo } from "react";
-import { motion } from "framer-motion";
+import { useState, useMemo, useCallback, useRef, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { Link } from "wouter";
 import { useAuth } from "@/_core/hooks/useAuth";
 import Navbar from "@/components/Navbar";
@@ -37,6 +37,7 @@ import {
   Quote,
   Eye,
   Truck,
+  X,
 } from "lucide-react";
 
 const CDN = {
@@ -148,11 +149,31 @@ export default function Home() {
   const { isAuthenticated } = useAuth();
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [authModalView, setAuthModalView] = useState<"login" | "register">("register");
+  const [mashaVideoOpen, setMashaVideoOpen] = useState(false);
+  const videoRef = useRef<HTMLVideoElement>(null);
 
   const openAuthRegister = () => {
     setAuthModalView("register");
     setAuthModalOpen(true);
   };
+
+  const closeMashaVideo = useCallback(() => {
+    setMashaVideoOpen(false);
+    if (videoRef.current) {
+      videoRef.current.pause();
+      videoRef.current.currentTime = 0;
+    }
+  }, []);
+
+  // Close video on Escape key
+  useEffect(() => {
+    if (!mashaVideoOpen) return;
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") closeMashaVideo();
+    };
+    document.addEventListener("keydown", handleKey);
+    return () => document.removeEventListener("keydown", handleKey);
+  }, [mashaVideoOpen, closeMashaVideo]);
 
   return (
     <div className="min-h-screen overflow-hidden bg-background text-foreground">
@@ -273,25 +294,34 @@ export default function Home() {
                 </div>
               </div>
 
-              {/* Floating card */}
+              {/* Masha AI Manager avatar */}
               <motion.div
                 initial={{ opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.35 }}
-                className="absolute -bottom-6 -left-6 z-10 rounded-2xl border border-border/70 bg-white p-4 shadow-lg md:-left-10"
+                className="absolute -bottom-6 -left-6 z-10 md:-left-10"
               >
-                <div className="flex items-center gap-3">
-                  <img
-                    src={CDN.goat}
-                    alt="Коза Марта"
-                    className="h-14 w-14 rounded-xl object-cover"
-                  />
-                  <div>
-                    <p className="text-sm font-semibold text-foreground">Коза Марта</p>
-                    <p className="text-xs text-muted-foreground">Зааненская, 2 года</p>
-                    <p className="mt-1 text-xs text-primary font-medium">Доступна для выбора</p>
+                <button
+                  type="button"
+                  onClick={() => setMashaVideoOpen(true)}
+                  className="group flex items-center gap-3 rounded-2xl border border-primary/20 bg-white p-3 pr-5 shadow-lg transition-all duration-300 hover:shadow-xl hover:-translate-y-0.5 hover:border-primary/40 cursor-pointer"
+                >
+                  <div className="relative">
+                    <img
+                      src="https://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/manager-v1_e0256177.jpg"
+                      alt="Маша — AI Управляющая"
+                      className="h-14 w-14 rounded-xl object-cover ring-2 ring-primary/20 group-hover:ring-primary/40 transition-all"
+                    />
+                    <div className="absolute -bottom-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-primary shadow-sm">
+                      <svg className="h-3 w-3 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                    </div>
                   </div>
-                </div>
+                  <div className="text-left">
+                    <p className="text-sm font-semibold text-foreground">Маша</p>
+                    <p className="text-xs text-primary font-medium">AI Управляющая фермой</p>
+                    <p className="text-[11px] text-muted-foreground group-hover:text-foreground transition-colors">Нажмите, чтобы познакомиться</p>
+                  </div>
+                </button>
               </motion.div>
             </motion.div>
           </div>
@@ -703,6 +733,65 @@ export default function Home() {
         onOpenChange={setAuthModalOpen}
         defaultView={authModalView}
       />
+
+      {/* Masha Video Modal */}
+      <AnimatePresence>
+        {mashaVideoOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.25 }}
+            className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4"
+            onClick={closeMashaVideo}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.92, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.92, y: 20 }}
+              transition={{ duration: 0.3, ease: "easeOut" }}
+              className="relative w-full max-w-4xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Close button */}
+              <button
+                type="button"
+                onClick={closeMashaVideo}
+                className="absolute -top-12 right-0 flex items-center gap-2 rounded-full bg-white/10 px-4 py-2 text-sm text-white/80 backdrop-blur transition-colors hover:bg-white/20 hover:text-white"
+              >
+                <X className="h-4 w-4" />
+                Закрыть
+              </button>
+
+              {/* Video container */}
+              <div className="overflow-hidden rounded-2xl border border-white/10 bg-black shadow-2xl">
+                {/* Header */}
+                <div className="flex items-center gap-3 bg-gradient-to-r from-primary/90 to-primary/70 px-5 py-3">
+                  <img
+                    src="https://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/manager-v1_e0256177.jpg"
+                    alt="Маша"
+                    className="h-10 w-10 rounded-full object-cover ring-2 ring-white/30"
+                  />
+                  <div>
+                    <p className="text-sm font-semibold text-white">Маша — AI Управляющая фермой</p>
+                    <p className="text-xs text-white/70">Добро пожаловать на ферму Шерь Козу!</p>
+                  </div>
+                </div>
+
+                {/* Video */}
+                <video
+                  ref={videoRef}
+                  src="https://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/masha-intro-video_ad205f48.mp4"
+                  controls
+                  autoPlay
+                  className="w-full aspect-video bg-black"
+                  playsInline
+                />
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
