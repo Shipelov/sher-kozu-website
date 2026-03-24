@@ -12,8 +12,47 @@ import { invokeLLM } from "../_core/llm";
 import type { Message } from "../_core/llm";
 import { TRPCError } from "@trpc/server";
 import { desc, sql, eq, gte, lt, and } from "drizzle-orm";
-import { faqQuestions } from "../../drizzle/schema";
+import { faqQuestions, greetingVariants, abTestSessions } from "../../drizzle/schema";
 import { getDb } from "../db";
+import { notifyOwner } from "../_core/notification";
+
+/* ─── Uncertainty detection ─── */
+const UNCERTAIN_PHRASES = [
+  "извините",
+  "не знаю",
+  "не уверена",
+  "затрудняюсь",
+  "не могу сказать точно",
+  "не располагаю информацией",
+  "лучше связаться с фермой",
+  "свяжитесь напрямую",
+  "не в моей компетенции",
+  "к сожалению, этот вопрос",
+  "не могу ответить",
+  "у меня нет данных",
+];
+
+function isUncertainAnswer(answer: string): boolean {
+  const lower = answer.toLowerCase();
+  return UNCERTAIN_PHRASES.some((phrase) => lower.includes(phrase));
+}
+
+/** Fire-and-forget notification to owner about uncertain answer */
+async function notifyUncertainAnswer(
+  question: string,
+  answer: string,
+  source: string,
+  sessionId: string
+) {
+  try {
+    await notifyOwner({
+      title: `🤔 Маша не смогла уверенно ответить`,
+      content: `**Вопрос пользователя:** ${question}\n\n**Ответ Маши:** ${answer}\n\n**Источник:** ${source}\n**Session:** ${sessionId}\n\n_Рекомендуется дополнить базу знаний Маши по этой теме._`,
+    });
+  } catch (err) {
+    console.error("[FAQ] Failed to notify owner about uncertain answer:", err);
+  }
+}
 
 /* ─── Masha's knowledge base as system prompt ─── */
 const MASHA_SYSTEM_PROMPT = `Ты — Маша, AI-управляющая семейной фермой «Шерь Козу» (Sher Family Farm, SFF).
@@ -146,6 +185,9 @@ async function trackQuestion(
   }
 }
 
+/* ─── Default greeting (used when no A/B variant is active) ─── */
+const DEFAULT_GREETING = `Привет! 🌿 Я Маша, управляющая фермой «Шерь Козу». Спрашивайте меня о ферме, породах, продуктах или персональном фермерстве!`;
+
 /* ─── Router ─── */
 export const faqChatRouter = router({
   /** Send a message to Masha and get her response */
@@ -216,7 +258,18 @@ export const faqChatRouter = router({
           );
         }
 
-        return { reply: content };
+        // Detect uncertain answers and notify owner (fire-and-forget)
+        const uncertain = isUncertainAnswer(content);
+        if (uncertain && lastUserMessage) {
+          notifyUncertainAnswer(
+            lastUserMessage.content,
+            content,
+            input.source || "faq",
+            input.sessionId || "unknown"
+          );
+        }
+
+        return { reply: content, uncertain };
       } catch (error) {
         console.error("[Masha Chat] LLM error:", error);
         return {
@@ -307,6 +360,49 @@ export const faqChatRouter = router({
       };
     }),
 
+  /** Admin: export FAQ analytics data as CSV */
+  exportCsv: protectedProcedure
+    .input(
+      z.object({
+        days: z.number().min(1).max(365).optional(),
+      }).optional()
+    )
+    .query(async ({ ctx }) => {
+      if (ctx.user.role !== "admin") {
+        throw new TRPCError({ code: "FORBIDDEN" });
+      }
+
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+
+      const rows = await db
+        .select()
+        .from(faqQuestions)
+        .orderBy(desc(faqQuestions.createdAt))
+        .limit(5000);
+
+      // Build CSV
+      const escapeCsv = (val: string) => {
+        if (val.includes('"') || val.includes(',') || val.includes('\n')) {
+          return '"' + val.replace(/"/g, '""') + '"';
+        }
+        return val;
+      };
+
+      const header = 'ID,Дата,Вопрос,Ответ,Источник,Session ID,User OpenID';
+      const lines = rows.map((r: typeof rows[number]) => [
+        r.id,
+        r.createdAt ? new Date(r.createdAt).toISOString() : '',
+        escapeCsv(r.question || ''),
+        escapeCsv(r.answer || ''),
+        r.source || '',
+        r.sessionId || '',
+        r.userOpenId || '',
+      ].join(','));
+
+      return { csv: '\uFEFF' + header + '\n' + lines.join('\n') };
+    }),
+
   /** Admin: clear old FAQ analytics data */
   clearOld: protectedProcedure
     .input(
@@ -328,5 +424,222 @@ export const faqChatRouter = router({
         .where(lt(faqQuestions.createdAt, cutoff));
 
       return { success: true, message: `Удалены записи старше ${input.olderThanDays} дней` };
+    }),
+
+  /* ─── A/B Testing: Greeting Variants ─── */
+
+  /** Public: get a random active greeting variant for a new session */
+  getGreetingVariant: publicProcedure
+    .input(
+      z.object({
+        sessionId: z.string().min(1).max(64),
+        source: z.enum(["faq", "floating"]).optional(),
+      })
+    )
+    .query(async ({ input, ctx }) => {
+      const db = await getDb();
+      if (!db) {
+        return { variantKey: "default", greetingText: DEFAULT_GREETING };
+      }
+
+      // Check if this session already has an assigned variant
+      const [existing] = await db
+        .select()
+        .from(abTestSessions)
+        .where(eq(abTestSessions.sessionId, input.sessionId))
+        .limit(1);
+
+      if (existing) {
+        // Return the previously assigned variant
+        const [variant] = await db
+          .select()
+          .from(greetingVariants)
+          .where(eq(greetingVariants.variantKey, existing.variantKey))
+          .limit(1);
+        return {
+          variantKey: existing.variantKey,
+          greetingText: variant?.greetingText || DEFAULT_GREETING,
+        };
+      }
+
+      // Get all active variants
+      const activeVariants = await db
+        .select()
+        .from(greetingVariants)
+        .where(eq(greetingVariants.isActive, true));
+
+      if (activeVariants.length === 0) {
+        return { variantKey: "default", greetingText: DEFAULT_GREETING };
+      }
+
+      // Random assignment
+      const chosen = activeVariants[Math.floor(Math.random() * activeVariants.length)];
+
+      // Record the assignment
+      try {
+        await db.insert(abTestSessions).values({
+          sessionId: input.sessionId,
+          variantKey: chosen.variantKey,
+          source: input.source || "floating",
+          userOpenId: ctx.user?.openId,
+        });
+      } catch (err) {
+        console.error("[A/B] Failed to record session assignment:", err);
+      }
+
+      return {
+        variantKey: chosen.variantKey,
+        greetingText: chosen.greetingText,
+      };
+    }),
+
+  /** Public: track engagement metrics for an A/B test session */
+  trackAbEngagement: publicProcedure
+    .input(
+      z.object({
+        sessionId: z.string().min(1).max(64),
+        didRespond: z.boolean().optional(),
+        messageCount: z.number().min(0).max(1000).optional(),
+        durationSeconds: z.number().min(0).max(86400).optional(),
+      })
+    )
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) return { success: false };
+
+      try {
+        const updates: Record<string, unknown> = {};
+        if (input.didRespond !== undefined) updates.didRespond = input.didRespond;
+        if (input.messageCount !== undefined) updates.messageCount = input.messageCount;
+        if (input.durationSeconds !== undefined) updates.durationSeconds = input.durationSeconds;
+
+        if (Object.keys(updates).length > 0) {
+          await db
+            .update(abTestSessions)
+            .set(updates)
+            .where(eq(abTestSessions.sessionId, input.sessionId));
+        }
+        return { success: true };
+      } catch (err) {
+        console.error("[A/B] Failed to track engagement:", err);
+        return { success: false };
+      }
+    }),
+
+  /** Admin: get A/B test results with variant performance comparison */
+  abTestResults: protectedProcedure.query(async ({ ctx }) => {
+    if (ctx.user.role !== "admin") {
+      throw new TRPCError({ code: "FORBIDDEN" });
+    }
+
+    const db = await getDb();
+    if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+
+    // Get all variants
+    const variants = await db.select().from(greetingVariants).orderBy(greetingVariants.createdAt);
+
+    // Get aggregated stats per variant
+    const variantStats = await db
+      .select({
+        variantKey: abTestSessions.variantKey,
+        totalSessions: sql<number>`count(*)`,
+        respondedSessions: sql<number>`sum(case when ${abTestSessions.didRespond} = true then 1 else 0 end)`,
+        avgMessageCount: sql<number>`avg(${abTestSessions.messageCount})`,
+        avgDuration: sql<number>`avg(${abTestSessions.durationSeconds})`,
+        maxMessages: sql<number>`max(${abTestSessions.messageCount})`,
+      })
+      .from(abTestSessions)
+      .groupBy(abTestSessions.variantKey);
+
+    // Merge variants with their stats
+    const results = variants.map((v: typeof variants[number]) => {
+      const stats = variantStats.find((s: typeof variantStats[number]) => s.variantKey === v.variantKey);
+      const total = stats?.totalSessions ?? 0;
+      const responded = stats?.respondedSessions ?? 0;
+      return {
+        ...v,
+        totalSessions: total,
+        respondedSessions: responded,
+        responseRate: total > 0 ? Math.round((responded / total) * 100) : 0,
+        avgMessageCount: stats?.avgMessageCount ? Math.round(stats.avgMessageCount * 10) / 10 : 0,
+        avgDuration: stats?.avgDuration ? Math.round(stats.avgDuration) : 0,
+        maxMessages: stats?.maxMessages ?? 0,
+      };
+    });
+
+    // Total sessions across all variants
+    const totalAllSessions = results.reduce((sum: number, r: typeof results[number]) => sum + r.totalSessions, 0);
+
+    return { variants: results, totalSessions: totalAllSessions };
+  }),
+
+  /** Admin: create or update a greeting variant */
+  upsertGreetingVariant: protectedProcedure
+    .input(
+      z.object({
+        variantKey: z.string().min(1).max(64),
+        greetingText: z.string().min(1).max(2000),
+        description: z.string().max(255).optional(),
+        isActive: z.boolean().optional(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      if (ctx.user.role !== "admin") {
+        throw new TRPCError({ code: "FORBIDDEN" });
+      }
+
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+
+      // Check if variant exists
+      const [existing] = await db
+        .select()
+        .from(greetingVariants)
+        .where(eq(greetingVariants.variantKey, input.variantKey))
+        .limit(1);
+
+      if (existing) {
+        await db
+          .update(greetingVariants)
+          .set({
+            greetingText: input.greetingText,
+            description: input.description,
+            isActive: input.isActive ?? existing.isActive,
+          })
+          .where(eq(greetingVariants.variantKey, input.variantKey));
+      } else {
+        await db.insert(greetingVariants).values({
+          variantKey: input.variantKey,
+          greetingText: input.greetingText,
+          description: input.description,
+          isActive: input.isActive ?? true,
+        });
+      }
+
+      return { success: true };
+    }),
+
+  /** Admin: toggle a greeting variant active/inactive */
+  toggleGreetingVariant: protectedProcedure
+    .input(
+      z.object({
+        variantKey: z.string().min(1).max(64),
+        isActive: z.boolean(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      if (ctx.user.role !== "admin") {
+        throw new TRPCError({ code: "FORBIDDEN" });
+      }
+
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+
+      await db
+        .update(greetingVariants)
+        .set({ isActive: input.isActive })
+        .where(eq(greetingVariants.variantKey, input.variantKey));
+
+      return { success: true };
     }),
 });

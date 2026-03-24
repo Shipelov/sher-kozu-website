@@ -6,6 +6,8 @@
  * - Expands into chat panel (desktop: 400px, mobile: full-screen)
  * - Context-aware suggested prompts based on current page
  * - Personalization: Masha addresses user by name (from auth or asks)
+ * - A/B testing: greeting variants randomly assigned per session
+ * - Engagement tracking: message count, response flag, duration
  * - Hidden on the /faq page (which has its own embedded chat)
  */
 
@@ -106,6 +108,8 @@ export default function MashaFloatingChat() {
   const [input, setInput] = useState("");
   const [userName, setUserName] = useState<string | null>(null);
   const [askedForName, setAskedForName] = useState(false);
+  const [chatStartTime, setChatStartTime] = useState<number | null>(null);
+  const [userMessageCount, setUserMessageCount] = useState(0);
   const scrollRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -127,6 +131,15 @@ export default function MashaFloatingChat() {
     () => getPromptsForPage(location),
     [location]
   );
+
+  // A/B testing: fetch greeting variant for this session
+  const greetingQuery = trpc.faqChat.getGreetingVariant.useQuery(
+    { sessionId, source: "floating" },
+    { enabled: isOpen, staleTime: Infinity, refetchOnWindowFocus: false }
+  );
+
+  // A/B testing: engagement tracking mutation
+  const trackEngagement = trpc.faqChat.trackAbEngagement.useMutation();
 
   const chatMutation = trpc.faqChat.chat.useMutation({
     onSuccess: (data) => {
@@ -168,27 +181,71 @@ export default function MashaFloatingChat() {
     }
   }, [isOpen]);
 
-  // When chat opens and we don't know the name, Masha greets and asks
+  // When chat opens, use A/B greeting variant
   useEffect(() => {
-    if (isOpen && messages.length === 0 && !userName && !askedForName) {
-      setAskedForName(true);
+    if (!isOpen || messages.length > 0 || askedForName) return;
+
+    // Wait for greeting variant to load
+    const greetingText = greetingQuery.data?.greetingText;
+    if (!greetingText && greetingQuery.isLoading) return;
+
+    setAskedForName(true);
+    setChatStartTime(Date.now());
+
+    if (!userName) {
+      // Use A/B variant greeting + ask for name
+      const greeting = greetingText || "Привет! Я Маша, AI-управляющая фермой «Шерь Козу» 👋";
       setMessages([
         {
           role: "assistant",
-          content:
-            "Привет! Я Маша, AI-управляющая фермой «Шерь Козу» 👋\n\nКак я могу к вам обращаться?",
+          content: greeting + "\n\nКак я могу к вам обращаться?",
         },
       ]);
-    } else if (isOpen && messages.length === 0 && userName && !askedForName) {
-      setAskedForName(true);
+    } else {
+      // Use A/B variant greeting personalized with name
+      const greeting = greetingText || `Привет! Я Маша, AI-управляющая фермой «Шерь Козу» 👋`;
+      // Insert user name into greeting
+      const personalizedGreeting = greeting.includes("Привет")
+        ? greeting.replace("Привет", `Привет, ${userName}`)
+        : `${userName}, ${greeting.charAt(0).toLowerCase()}${greeting.slice(1)}`;
       setMessages([
         {
           role: "assistant",
-          content: `Привет, ${userName}! Я Маша, AI-управляющая фермой «Шерь Козу» 👋\n\nЧем могу помочь?`,
+          content: personalizedGreeting + "\n\nЧем могу помочь?",
         },
       ]);
     }
-  }, [isOpen, messages.length, userName, askedForName]);
+  }, [isOpen, messages.length, userName, askedForName, greetingQuery.data, greetingQuery.isLoading]);
+
+  // Track engagement when chat closes or component unmounts
+  useEffect(() => {
+    return () => {
+      if (chatStartTime && userMessageCount > 0) {
+        const durationSeconds = Math.round((Date.now() - chatStartTime) / 1000);
+        trackEngagement.mutate({
+          sessionId,
+          didRespond: true,
+          messageCount: userMessageCount,
+          durationSeconds,
+        });
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Also track on close
+  const handleClose = useCallback(() => {
+    if (chatStartTime && userMessageCount > 0) {
+      const durationSeconds = Math.round((Date.now() - chatStartTime) / 1000);
+      trackEngagement.mutate({
+        sessionId,
+        didRespond: true,
+        messageCount: userMessageCount,
+        durationSeconds,
+      });
+    }
+    setIsOpen(false);
+  }, [chatStartTime, userMessageCount, sessionId, trackEngagement]);
 
   const handleSend = useCallback(
     (text?: string) => {
@@ -201,6 +258,18 @@ export default function MashaFloatingChat() {
         if (content.length <= 30 && !content.includes("?")) {
           setUserName(content);
         }
+      }
+
+      // Track user message count for A/B engagement
+      setUserMessageCount((prev) => prev + 1);
+
+      // Track first response for A/B testing
+      if (userMessageCount === 0) {
+        trackEngagement.mutate({
+          sessionId,
+          didRespond: true,
+          messageCount: 1,
+        });
       }
 
       const newMessages: ChatMessage[] = [
@@ -218,7 +287,7 @@ export default function MashaFloatingChat() {
       });
       textareaRef.current?.focus();
     },
-    [input, messages, chatMutation, sessionId, userName, location]
+    [input, messages, chatMutation, sessionId, userName, location, userMessageCount, trackEngagement]
   );
 
   const handleKeyDown = useCallback(
@@ -308,8 +377,9 @@ export default function MashaFloatingChat() {
                   </p>
                 </div>
               </div>
+   
               <button
-                onClick={() => setIsOpen(false)}
+                onClick={handleClose}
                 className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors cursor-pointer"
                 aria-label="Закрыть чат"
               >

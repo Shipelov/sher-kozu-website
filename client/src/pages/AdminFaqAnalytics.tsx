@@ -42,6 +42,7 @@ import { cn } from "@/lib/utils";
 import {
   BarChart3,
   Calendar,
+  Download,
   Loader2,
   MessageSquare,
   ShieldAlert,
@@ -50,6 +51,12 @@ import {
   TrendingUp,
   Globe,
   MessageCircle,
+  FlaskConical,
+  ToggleLeft,
+  ToggleRight,
+  Percent,
+  Timer,
+  Hash,
 } from "lucide-react";
 import { useState, useMemo } from "react";
 import { toast } from "sonner";
@@ -122,8 +129,53 @@ export default function AdminFaqAnalytics() {
 
   const utils = trpc.useUtils();
 
+  // A/B testing data
+  const abTestQuery = trpc.faqChat.abTestResults.useQuery(undefined, {
+    enabled: isAdmin,
+    retry: false,
+    refetchInterval: 30_000,
+  });
+
+  const toggleVariant = trpc.faqChat.toggleGreetingVariant.useMutation({
+    onSuccess: () => {
+      toast.success("Вариант обновлён");
+      void utils.faqChat.abTestResults.invalidate();
+    },
+    onError: (err) => {
+      toast.error("Ошибка", { description: err.message });
+    },
+  });
+
   const [cleanupDays, setCleanupDays] = useState("90");
   const [cleanupOpen, setCleanupOpen] = useState(false);
+  const [csvLoading, setCsvLoading] = useState(false);
+
+  const exportCsvQuery = trpc.faqChat.exportCsv.useQuery(undefined, {
+    enabled: false, // manual fetch only
+  });
+
+  const handleExportCsv = async () => {
+    setCsvLoading(true);
+    try {
+      const result = await exportCsvQuery.refetch();
+      if (result.data?.csv) {
+        const blob = new Blob([result.data.csv], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `faq-analytics-${new Date().toISOString().split('T')[0]}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        toast.success('Экспорт завершён', { description: 'Файл CSV скачан' });
+      }
+    } catch (err) {
+      toast.error('Ошибка экспорта');
+    } finally {
+      setCsvLoading(false);
+    }
+  };
 
   const clearMutation = trpc.faqChat.clearOld.useMutation({
     onSuccess: (data) => {
@@ -246,6 +298,20 @@ export default function AdminFaqAnalytics() {
               Статистика вопросов к AI-управляющей Маше
             </p>
           </div>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              className="rounded-full gap-2"
+              disabled={csvLoading}
+              onClick={handleExportCsv}
+            >
+              {csvLoading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Download className="h-4 w-4" />
+              )}
+              Экспорт CSV
+            </Button>
           <Dialog open={cleanupOpen} onOpenChange={setCleanupOpen}>
             <DialogTrigger asChild>
               <Button variant="outline" className="rounded-full gap-2">
@@ -304,6 +370,7 @@ export default function AdminFaqAnalytics() {
               </DialogFooter>
             </DialogContent>
           </Dialog>
+          </div>
         </div>
 
         {analyticsQuery.isLoading ? (
@@ -541,6 +608,157 @@ export default function AdminFaqAnalytics() {
                         ))}
                       </TableBody>
                     </Table>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* A/B Testing Section */}
+            <Card className="rounded-2xl border-border/70">
+              <CardHeader>
+                <CardTitle className="text-base flex items-center gap-2">
+                  <FlaskConical className="h-4 w-4 text-primary" />
+                  A/B Тестирование приветствий
+                </CardTitle>
+                <CardDescription>
+                  Сравнение эффективности разных стилей приветствия Маши.
+                  Всего сессий: {abTestQuery.data?.totalSessions ?? 0}
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {abTestQuery.isLoading ? (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                  </div>
+                ) : !abTestQuery.data?.variants?.length ? (
+                  <div className="flex flex-col items-center justify-center py-12 text-center">
+                    <FlaskConical className="h-10 w-10 text-muted-foreground/30 mb-3" />
+                    <p className="text-sm text-muted-foreground">
+                      Нет вариантов приветствий. Они будут добавлены автоматически.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {/* Variant comparison cards */}
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      {abTestQuery.data.variants.map((v: any) => (
+                        <div
+                          key={v.variantKey}
+                          className={cn(
+                            "rounded-xl border p-4 space-y-3 transition-colors",
+                            v.isActive
+                              ? "border-primary/30 bg-primary/5"
+                              : "border-border/60 bg-muted/30 opacity-60"
+                          )}
+                        >
+                          {/* Header */}
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <Badge
+                                variant={v.isActive ? "default" : "outline"}
+                                className="text-[10px] rounded-full"
+                              >
+                                {v.variantKey}
+                              </Badge>
+                              {v.responseRate > 0 && (
+                                <Badge
+                                  variant="outline"
+                                  className={cn(
+                                    "text-[10px] rounded-full",
+                                    v.responseRate >= 70
+                                      ? "border-green-200 bg-green-50 text-green-700"
+                                      : v.responseRate >= 40
+                                      ? "border-amber-200 bg-amber-50 text-amber-700"
+                                      : "border-red-200 bg-red-50 text-red-700"
+                                  )}
+                                >
+                                  <Percent className="h-2.5 w-2.5 mr-0.5" />
+                                  {v.responseRate}% отклик
+                                </Badge>
+                              )}
+                            </div>
+                            <button
+                              onClick={() =>
+                                toggleVariant.mutate({
+                                  variantKey: v.variantKey,
+                                  isActive: !v.isActive,
+                                })
+                              }
+                              className="text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+                              title={v.isActive ? "Отключить" : "Включить"}
+                            >
+                              {v.isActive ? (
+                                <ToggleRight className="h-5 w-5 text-primary" />
+                              ) : (
+                                <ToggleLeft className="h-5 w-5" />
+                              )}
+                            </button>
+                          </div>
+
+                          {/* Description */}
+                          {v.description && (
+                            <p className="text-xs text-muted-foreground">
+                              {v.description}
+                            </p>
+                          )}
+
+                          {/* Greeting preview */}
+                          <div className="rounded-lg bg-background/80 border border-border/40 p-2.5">
+                            <p className="text-xs text-foreground/80 line-clamp-3">
+                              {v.greetingText}
+                            </p>
+                          </div>
+
+                          {/* Metrics */}
+                          <div className="grid grid-cols-3 gap-2 text-center">
+                            <div className="rounded-lg bg-background/60 p-2">
+                              <p className="text-lg font-bold text-foreground">
+                                {v.totalSessions}
+                              </p>
+                              <p className="text-[10px] text-muted-foreground flex items-center justify-center gap-0.5">
+                                <Users className="h-2.5 w-2.5" />
+                                Сессий
+                              </p>
+                            </div>
+                            <div className="rounded-lg bg-background/60 p-2">
+                              <p className="text-lg font-bold text-foreground">
+                                {v.avgMessageCount}
+                              </p>
+                              <p className="text-[10px] text-muted-foreground flex items-center justify-center gap-0.5">
+                                <Hash className="h-2.5 w-2.5" />
+                                Ср. сообщ.
+                              </p>
+                            </div>
+                            <div className="rounded-lg bg-background/60 p-2">
+                              <p className="text-lg font-bold text-foreground">
+                                {v.avgDuration > 60
+                                  ? `${Math.round(v.avgDuration / 60)}м`
+                                  : `${v.avgDuration}с`}
+                              </p>
+                              <p className="text-[10px] text-muted-foreground flex items-center justify-center gap-0.5">
+                                <Timer className="h-2.5 w-2.5" />
+                                Ср. время
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Summary */}
+                    {abTestQuery.data.variants.length > 1 && (
+                      <div className="text-xs text-muted-foreground text-center pt-2 border-t border-border/40">
+                        {(() => {
+                          const best = [...abTestQuery.data.variants]
+                            .filter((v: any) => v.totalSessions > 0)
+                            .sort((a: any, b: any) => b.responseRate - a.responseRate)[0];
+                          if (!best || best.totalSessions < 3) {
+                            return "Недостаточно данных для определения лидера. Нужно минимум 3 сессии на вариант.";
+                          }
+                          return `Лидер: «${best.variantKey}» с откликом ${best.responseRate}% и средним ${best.avgMessageCount} сообщений за сессию.`;
+                        })()}
+                      </div>
+                    )}
                   </div>
                 )}
               </CardContent>

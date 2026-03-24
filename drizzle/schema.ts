@@ -1024,3 +1024,55 @@ export const faqQuestions = mysqlTable("faqQuestions", {
 ]));
 export type FaqQuestion = typeof faqQuestions.$inferSelect;
 export type InsertFaqQuestion = typeof faqQuestions.$inferInsert;
+
+/**
+ * A/B testing — greeting variants for Masha chat.
+ * Each variant has a unique key and greeting text.
+ * Active variants are randomly assigned to new sessions.
+ */
+export const greetingVariants = mysqlTable("greetingVariants", {
+  id: int("id").autoincrement().primaryKey(),
+  /** Unique variant key, e.g. "warm_v1", "formal_v2" */
+  variantKey: varchar("variantKey", { length: 64 }).notNull().unique(),
+  /** The greeting text Masha uses for this variant */
+  greetingText: text("greetingText").notNull(),
+  /** Short description for admin dashboard */
+  description: varchar("description", { length: 255 }),
+  /** Whether this variant is active in the rotation */
+  isActive: boolean("isActive").default(true).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type GreetingVariant = typeof greetingVariants.$inferSelect;
+export type InsertGreetingVariant = typeof greetingVariants.$inferInsert;
+
+/**
+ * A/B testing — session assignments.
+ * Tracks which greeting variant was shown to each session,
+ * plus engagement metrics for that session.
+ */
+export const abTestSessions = mysqlTable("abTestSessions", {
+  id: int("id").autoincrement().primaryKey(),
+  /** Chat session identifier (same as faqQuestions.sessionId) */
+  sessionId: varchar("sessionId", { length: 64 }).notNull(),
+  /** Assigned greeting variant key */
+  variantKey: varchar("variantKey", { length: 64 }).notNull(),
+  /** Source where the chat was opened */
+  source: varchar("source", { length: 32 }).default("floating").notNull(),
+  /** Whether the user responded after seeing the greeting */
+  didRespond: boolean("didRespond").default(false).notNull(),
+  /** Total number of messages in the conversation */
+  messageCount: int("messageCount").default(0).notNull(),
+  /** Conversation duration in seconds (from first to last message) */
+  durationSeconds: int("durationSeconds").default(0).notNull(),
+  /** Authenticated user openId (nullable) */
+  userOpenId: varchar("userOpenId", { length: 64 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (t) => ([
+  index("idx_abTestSessions_sessionId").on(t.sessionId),
+  index("idx_abTestSessions_variantKey").on(t.variantKey),
+  index("idx_abTestSessions_createdAt").on(t.createdAt),
+]));
+export type AbTestSession = typeof abTestSessions.$inferSelect;
+export type InsertAbTestSession = typeof abTestSessions.$inferInsert;

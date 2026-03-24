@@ -17,38 +17,58 @@ vi.mock("./_core/llm", () => ({
 }));
 
 /* ─── Mock the DB module (fire-and-forget analytics) ─── */
-vi.mock("./db", () => ({
-  getDb: vi.fn().mockResolvedValue({
-    insert: vi.fn().mockReturnValue({
-      values: vi.fn().mockResolvedValue(undefined),
-    }),
-    select: vi.fn().mockReturnValue({
-      from: vi.fn().mockReturnValue({
-        // select().from() without where — used for totalCount: const [totalResult] = await db.select(...).from(...)
-        then: (resolve: any) => resolve([{ count: 0 }]),
-        [Symbol.iterator]: function* () { yield { count: 0 }; },
-        where: vi.fn().mockReturnValue({
-          // select().from().where() without chaining — used for periodCount/uniqueSessions
-          then: (resolve: any) => resolve([{ count: 0 }]),
-          [Symbol.iterator]: function* () { yield { count: 0 }; },
-          orderBy: vi.fn().mockReturnValue({
-            limit: vi.fn().mockResolvedValue([]),
-            then: (resolve: any) => resolve([]),
-            [Symbol.iterator]: function* () {},
-          }),
-          groupBy: vi.fn().mockReturnValue({
-            orderBy: vi.fn().mockResolvedValue([]),
-            then: (resolve: any) => resolve([]),
-            [Symbol.iterator]: function* () {},
-          }),
+vi.mock("./db", () => {
+  // Build a deeply chainable mock that supports all query patterns
+  const emptyArrayResult = {
+    then: (resolve: any) => resolve([]),
+    [Symbol.iterator]: function* () {},
+  };
+  const countResult = {
+    then: (resolve: any) => resolve([{ count: 0 }]),
+    [Symbol.iterator]: function* () { yield { count: 0 }; },
+  };
+
+  const makeChainable = (): any => {
+    const chain: any = {
+      ...emptyArrayResult,
+      where: vi.fn().mockImplementation(() => makeChainable()),
+      orderBy: vi.fn().mockImplementation(() => makeChainable()),
+      limit: vi.fn().mockImplementation(() => makeChainable()),
+      groupBy: vi.fn().mockImplementation(() => makeChainable()),
+    };
+    return chain;
+  };
+
+  const makeFromChainable = (): any => {
+    const chain: any = {
+      ...countResult,
+      where: vi.fn().mockImplementation(() => makeChainable()),
+      orderBy: vi.fn().mockImplementation(() => makeChainable()),
+      limit: vi.fn().mockImplementation(() => makeChainable()),
+      groupBy: vi.fn().mockImplementation(() => makeChainable()),
+    };
+    return chain;
+  };
+
+  return {
+    getDb: vi.fn().mockResolvedValue({
+      insert: vi.fn().mockReturnValue({
+        values: vi.fn().mockResolvedValue(undefined),
+      }),
+      select: vi.fn().mockReturnValue({
+        from: vi.fn().mockImplementation(() => makeFromChainable()),
+      }),
+      delete: vi.fn().mockReturnValue({
+        where: vi.fn().mockResolvedValue({ rowsAffected: 0 }),
+      }),
+      update: vi.fn().mockReturnValue({
+        set: vi.fn().mockReturnValue({
+          where: vi.fn().mockResolvedValue(undefined),
         }),
       }),
     }),
-    delete: vi.fn().mockReturnValue({
-      where: vi.fn().mockResolvedValue({ rowsAffected: 0 }),
-    }),
-  }),
-}));
+  };
+});
 
 function createPublicContext(): TrpcContext {
   return {
@@ -594,5 +614,328 @@ describe("Backend personalization support", () => {
     );
     expect(content).toContain("input.currentPage");
     expect(content).toContain("Учитывай это в контексте ответов");
+  });
+});
+
+/* ─── Feature: CSV Export ─── */
+describe("faqChat.exportCsv", () => {
+  it("is accessible by admin users and returns CSV string", async () => {
+    const ctx = createAdminContext();
+    const caller = faqChatRouter.createCaller(ctx);
+
+    const result = await caller.exportCsv();
+
+    expect(result).toHaveProperty("csv");
+    expect(typeof result.csv).toBe("string");
+    // Should have BOM + header
+    expect(result.csv).toContain("\uFEFF");
+    expect(result.csv).toContain("ID,Дата,Вопрос,Ответ,Источник,Session ID,User OpenID");
+  });
+
+  it("rejects non-admin users", async () => {
+    const ctx = createUserContext();
+    const caller = faqChatRouter.createCaller(ctx);
+
+    await expect(caller.exportCsv()).rejects.toThrow("FORBIDDEN");
+  });
+
+  it("rejects unauthenticated users", async () => {
+    const ctx = createPublicContext();
+    const caller = faqChatRouter.createCaller(ctx);
+
+    await expect(caller.exportCsv()).rejects.toThrow();
+  });
+});
+
+describe("CSV export UI integration", () => {
+  it("AdminFaqAnalytics has CSV export button", async () => {
+    const fs = await import("fs");
+    const content = fs.readFileSync(
+      "client/src/pages/AdminFaqAnalytics.tsx",
+      "utf-8"
+    );
+    expect(content).toContain("exportCsv");
+    expect(content).toContain("Экспорт CSV");
+    expect(content).toContain("Download");
+  });
+
+  it("CSV export creates a downloadable blob", async () => {
+    const fs = await import("fs");
+    const content = fs.readFileSync(
+      "client/src/pages/AdminFaqAnalytics.tsx",
+      "utf-8"
+    );
+    expect(content).toContain("Blob");
+    expect(content).toContain("text/csv");
+    expect(content).toContain("createObjectURL");
+    expect(content).toContain(".csv");
+  });
+});
+
+/* ─── Feature: Uncertainty Detection & Owner Notifications ─── */
+describe("Uncertainty detection and owner notifications", () => {
+  it("faqChat router imports notifyOwner", async () => {
+    const fs = await import("fs");
+    const content = fs.readFileSync(
+      "server/routers/faqChat.ts",
+      "utf-8"
+    );
+    expect(content).toContain("notifyOwner");
+    expect(content).toContain("../_core/notification");
+  });
+
+  it("defines UNCERTAIN_PHRASES array", async () => {
+    const fs = await import("fs");
+    const content = fs.readFileSync(
+      "server/routers/faqChat.ts",
+      "utf-8"
+    );
+    expect(content).toContain("UNCERTAIN_PHRASES");
+    expect(content).toContain("не знаю");
+    expect(content).toContain("не уверена");
+    expect(content).toContain("затрудняюсь");
+  });
+
+  it("has isUncertainAnswer function", async () => {
+    const fs = await import("fs");
+    const content = fs.readFileSync(
+      "server/routers/faqChat.ts",
+      "utf-8"
+    );
+    expect(content).toContain("function isUncertainAnswer");
+    expect(content).toContain("toLowerCase");
+  });
+
+  it("has notifyUncertainAnswer function", async () => {
+    const fs = await import("fs");
+    const content = fs.readFileSync(
+      "server/routers/faqChat.ts",
+      "utf-8"
+    );
+    expect(content).toContain("async function notifyUncertainAnswer");
+    expect(content).toContain("Маша не смогла уверенно ответить");
+  });
+
+  it("checks uncertainty after LLM response", async () => {
+    const fs = await import("fs");
+    const content = fs.readFileSync(
+      "server/routers/faqChat.ts",
+      "utf-8"
+    );
+    expect(content).toContain("isUncertainAnswer(content)");
+    expect(content).toContain("notifyUncertainAnswer");
+  });
+
+  it("returns uncertain flag in chat response", async () => {
+    const ctx = createPublicContext();
+    const caller = faqChatRouter.createCaller(ctx);
+
+    const result = await caller.chat({
+      messages: [{ role: "user", content: "Привет" }],
+    });
+
+    expect(result).toHaveProperty("uncertain");
+    expect(typeof result.uncertain).toBe("boolean");
+  });
+});
+
+/* ─── Feature: A/B Testing for Greeting Variants ─── */
+describe("A/B testing DB schema", () => {
+  it("greetingVariants table is defined in schema", async () => {
+    const fs = await import("fs");
+    const schemaContent = fs.readFileSync("drizzle/schema.ts", "utf-8");
+    expect(schemaContent).toContain("greetingVariants");
+    expect(schemaContent).toContain("variantKey");
+    expect(schemaContent).toContain("greetingText");
+    expect(schemaContent).toContain("isActive");
+  });
+
+  it("abTestSessions table is defined in schema", async () => {
+    const fs = await import("fs");
+    const schemaContent = fs.readFileSync("drizzle/schema.ts", "utf-8");
+    expect(schemaContent).toContain("abTestSessions");
+    expect(schemaContent).toContain("variantKey");
+    expect(schemaContent).toContain("didRespond");
+    expect(schemaContent).toContain("messageCount");
+    expect(schemaContent).toContain("durationSeconds");
+  });
+});
+
+describe("A/B testing backend procedures", () => {
+  it("getGreetingVariant procedure exists and returns default when no variants", async () => {
+    const ctx = createPublicContext();
+    const caller = faqChatRouter.createCaller(ctx);
+
+    const result = await caller.getGreetingVariant({
+      sessionId: "test-ab-session-1",
+      source: "floating",
+    });
+
+    expect(result).toHaveProperty("variantKey");
+    expect(result).toHaveProperty("greetingText");
+    expect(typeof result.variantKey).toBe("string");
+    expect(typeof result.greetingText).toBe("string");
+  });
+
+  it("trackAbEngagement procedure exists", async () => {
+    const ctx = createPublicContext();
+    const caller = faqChatRouter.createCaller(ctx);
+
+    const result = await caller.trackAbEngagement({
+      sessionId: "test-ab-session-1",
+      didRespond: true,
+      messageCount: 5,
+      durationSeconds: 120,
+    });
+
+    expect(result).toHaveProperty("success");
+  });
+
+  it("abTestResults is accessible by admin users", async () => {
+    const ctx = createAdminContext();
+    const caller = faqChatRouter.createCaller(ctx);
+
+    const result = await caller.abTestResults();
+
+    expect(result).toHaveProperty("variants");
+    expect(result).toHaveProperty("totalSessions");
+    expect(Array.isArray(result.variants)).toBe(true);
+  });
+
+  it("abTestResults rejects non-admin users", async () => {
+    const ctx = createUserContext();
+    const caller = faqChatRouter.createCaller(ctx);
+
+    await expect(caller.abTestResults()).rejects.toThrow("FORBIDDEN");
+  });
+
+  it("upsertGreetingVariant is accessible by admin users", async () => {
+    const ctx = createAdminContext();
+    const caller = faqChatRouter.createCaller(ctx);
+
+    const result = await caller.upsertGreetingVariant({
+      variantKey: "test_variant",
+      greetingText: "Тестовое приветствие",
+      description: "Тестовый вариант",
+    });
+
+    expect(result).toHaveProperty("success", true);
+  });
+
+  it("upsertGreetingVariant rejects non-admin users", async () => {
+    const ctx = createUserContext();
+    const caller = faqChatRouter.createCaller(ctx);
+
+    await expect(
+      caller.upsertGreetingVariant({
+        variantKey: "test_variant",
+        greetingText: "Тестовое приветствие",
+      })
+    ).rejects.toThrow("FORBIDDEN");
+  });
+
+  it("toggleGreetingVariant is accessible by admin users", async () => {
+    const ctx = createAdminContext();
+    const caller = faqChatRouter.createCaller(ctx);
+
+    const result = await caller.toggleGreetingVariant({
+      variantKey: "test_variant",
+      isActive: false,
+    });
+
+    expect(result).toHaveProperty("success", true);
+  });
+
+  it("toggleGreetingVariant rejects non-admin users", async () => {
+    const ctx = createUserContext();
+    const caller = faqChatRouter.createCaller(ctx);
+
+    await expect(
+      caller.toggleGreetingVariant({
+        variantKey: "test_variant",
+        isActive: false,
+      })
+    ).rejects.toThrow("FORBIDDEN");
+  });
+});
+
+describe("A/B testing frontend integration", () => {
+  it("MashaFloatingChat integrates A/B greeting variant", async () => {
+    const fs = await import("fs");
+    const content = fs.readFileSync(
+      "client/src/components/MashaFloatingChat.tsx",
+      "utf-8"
+    );
+    expect(content).toContain("getGreetingVariant");
+    expect(content).toContain("greetingQuery");
+    expect(content).toContain("greetingText");
+  });
+
+  it("MashaFloatingChat tracks engagement metrics", async () => {
+    const fs = await import("fs");
+    const content = fs.readFileSync(
+      "client/src/components/MashaFloatingChat.tsx",
+      "utf-8"
+    );
+    expect(content).toContain("trackAbEngagement");
+    expect(content).toContain("trackEngagement");
+    expect(content).toContain("userMessageCount");
+    expect(content).toContain("chatStartTime");
+    expect(content).toContain("durationSeconds");
+  });
+
+  it("MashaFloatingChat tracks engagement on close", async () => {
+    const fs = await import("fs");
+    const content = fs.readFileSync(
+      "client/src/components/MashaFloatingChat.tsx",
+      "utf-8"
+    );
+    expect(content).toContain("handleClose");
+    expect(content).toContain("trackEngagement.mutate");
+  });
+
+  it("AdminFaqAnalytics displays A/B testing section", async () => {
+    const fs = await import("fs");
+    const content = fs.readFileSync(
+      "client/src/pages/AdminFaqAnalytics.tsx",
+      "utf-8"
+    );
+    expect(content).toContain("abTestResults");
+    expect(content).toContain("A/B Тестирование приветствий");
+    expect(content).toContain("FlaskConical");
+  });
+
+  it("AdminFaqAnalytics has variant toggle functionality", async () => {
+    const fs = await import("fs");
+    const content = fs.readFileSync(
+      "client/src/pages/AdminFaqAnalytics.tsx",
+      "utf-8"
+    );
+    expect(content).toContain("toggleGreetingVariant");
+    expect(content).toContain("toggleVariant");
+    expect(content).toContain("ToggleRight");
+    expect(content).toContain("ToggleLeft");
+  });
+
+  it("AdminFaqAnalytics shows variant metrics (sessions, messages, duration)", async () => {
+    const fs = await import("fs");
+    const content = fs.readFileSync(
+      "client/src/pages/AdminFaqAnalytics.tsx",
+      "utf-8"
+    );
+    expect(content).toContain("totalSessions");
+    expect(content).toContain("avgMessageCount");
+    expect(content).toContain("avgDuration");
+    expect(content).toContain("responseRate");
+  });
+
+  it("AdminFaqAnalytics shows leader variant summary", async () => {
+    const fs = await import("fs");
+    const content = fs.readFileSync(
+      "client/src/pages/AdminFaqAnalytics.tsx",
+      "utf-8"
+    );
+    expect(content).toContain("Лидер");
+    expect(content).toContain("responseRate");
   });
 });
