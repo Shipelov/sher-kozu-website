@@ -1151,3 +1151,9 @@
 - [x] Корневая причина: пул соединений MySQL (10) исчерпан из-за Promise.all в enrichAnimalWithShareMetrics — 3 животных × 4 параллельных getDb() = 12 > 10
 - [x] Исправлено: Promise.all заменён на последовательный for-loop, пул увеличен до 20
 - [x] Все 1403 теста проходят, /animals и CMS работают
+
+## BUG: CMS блоки каталога не отображаются на странице после редактирования (FIXED)
+- [x] Блоки в БД есть (badge, heading, subtitle, status_relationship, status_available, status_shared)
+- [x] Корневая причина: AnimalsCatalog.tsx не подключал useCmsContent — все тексты были захардкожены
+- [x] Подключен useCmsContent("catalog") и заменены 6 хардкодных строк на cms.getText()
+- [x] Все 1403 теста проходят

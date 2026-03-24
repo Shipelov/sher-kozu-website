@@ -1,0 +1,8 @@
+{
+  "query": "SELECT id, page, blockKey, label, contentType, LEFT(content, 80) as content_preview, LEFT(imageUrl, 80) as image_preview, section, isVisible, sortOrder FROM cms_blocks WHERE page = 'catalog' ORDER BY sortOrder, id;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3J2fXRHx8d1YjF6.root --database mLhmg5VmBsEBpZiYqdnhMQ --execute SELECT id, page, blockKey, label, contentType, LEFT(content, 80) as content_preview, LEFT(imageUrl, 80) as image_preview, section, isVisible, sortOrder FROM cms_blocks WHERE page = 'catalog' ORDER BY sortOrder, id;",
+  "returncode": 1,
+  "logs": [
+    "ERROR 1146 (42S02) at line 1: Table 'mlhmg5vmbsebpziyqdnhmq.cms_blocks' doesn't exist"
+  ]
+}

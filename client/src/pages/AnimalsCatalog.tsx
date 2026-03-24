@@ -10,6 +10,7 @@ import AnimalShareCard from "@/components/AnimalShareCard";
 import Navbar from "@/components/Navbar";
 import ShowMoreList from "@/components/ShowMoreList";
 import PageBreadcrumbs from "@/components/PageBreadcrumbs";
+import { useCmsContent } from "@/hooks/useCmsContent";
 
 const speciesConfig = {
   goat: {
@@ -412,6 +413,7 @@ function AnimalSpeciesSection({
 
 export default function AnimalsCatalog() {
   const { data, isLoading } = trpc.animals.listPublic.useQuery();
+  const cms = useCmsContent("catalog");
   const [goatFilter, setGoatFilter] = useState<StatusFilter>("available");
   const [sheepFilter, setSheepFilter] = useState<StatusFilter>("available");
   const selectedSharePercent = useMemo(() => {
@@ -452,14 +454,14 @@ export default function AnimalsCatalog() {
           <div className="grid gap-8 px-6 py-8 md:grid-cols-[1.35fr_0.95fr] md:px-10 md:py-10">
             <div className="space-y-5">
               <Badge className="rounded-full border border-stone-300 bg-stone-100 px-4 py-1.5 text-xs font-medium uppercase tracking-[0.28em] text-stone-700">
-                Каталог животных
+                {cms.getText("badge", "Каталог животных")}
               </Badge>
               <div className="space-y-4">
                 <h1 className="max-w-3xl text-4xl font-semibold tracking-tight text-stone-900 md:text-5xl">
-                  Найдите своё животное элитной породы
+                  {cms.getText("heading", "Найдите своё животное элитной породы")}
                 </h1>
                 <p className="max-w-3xl text-base leading-8 text-stone-600 md:text-lg">
-                  Козы и овцы с именем, характером и историей. Выберите по породе или статусу участия — и начните свою историю персонального фермерства.
+                  {cms.getText("subtitle", "Козы и овцы с именем, характером и историей. Выберите по породе или статусу участия — и начните свою историю персонального фермерства.")}
                 </p>
               </div>
               <div className="flex flex-wrap gap-3">
@@ -494,19 +496,19 @@ export default function AnimalsCatalog() {
             <p className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.2em] text-rose-700 min-h-[1.5rem]">
               <Sparkles className="h-4 w-4 shrink-0" /> В отношениях
             </p>
-            <p className="mt-2">Животное уже нашло свою семью. Все доли оформлены, владелец получает именные продукты.</p>
+            <p className="mt-2">{cms.getText("status_relationship", "Животное уже нашло свою семью. Все доли оформлены, владелец получает именные продукты.")}</p>
           </div>
           <div className="flex flex-col rounded-[1.5rem] bg-emerald-50 p-4">
             <p className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.2em] text-emerald-700 min-h-[1.5rem]">
               <Heart className="h-4 w-4 shrink-0" /> На выданье
             </p>
-            <p className="mt-2">Животное ждёт свою семью. Все доли свободны — можно стать единственным владельцем.</p>
+            <p className="mt-2">{cms.getText("status_available", "Животное ждёт свою семью. Все доли свободны — можно стать единственным владельцем.")}</p>
           </div>
           <div className="flex flex-col rounded-[1.5rem] bg-amber-50 p-4">
             <p className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.2em] text-amber-700 min-h-[1.5rem]">
               <Waves className="h-4 w-4 shrink-0" /> Доступно для участия
             </p>
-            <p className="mt-2">Одна семья уже участвует, но есть свободные доли. Можно присоединиться и разделить заботу о животном.</p>
+            <p className="mt-2">{cms.getText("status_shared", "Одна семья уже участвует, но есть свободные доли. Можно присоединиться и разделить заботу о животном.")}</p>
           </div>
         </div>
 
