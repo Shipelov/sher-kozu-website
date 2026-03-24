@@ -367,7 +367,7 @@ export async function getDb() {
   try {
     _pool = createPool({
       uri: ENV.databaseUrl,
-      connectionLimit: 10,
+      connectionLimit: 20,
       namedPlaceholders: true,
       enableKeepAlive: true,
       timezone: "Z",
@@ -1619,7 +1619,11 @@ export async function listPublicAnimals() {
     .where(ownerFilter)
     .orderBy(desc(animals.isFeatured), asc(animals.sortOrder), asc(animals.name));
 
-  return Promise.all(rows.map((animal: any) => enrichAnimalWithShareMetrics(db, animal)));
+  const results = [];
+  for (const animal of rows) {
+    results.push(await enrichAnimalWithShareMetrics(db, animal));
+  }
+  return results;
 }
 
 export async function getAnimalBySlug(slug: string, viewerOpenId?: string | null) {
@@ -1803,7 +1807,11 @@ export async function listAdminAnimals(_ownerOpenId?: string) {
     .where(whereClause)
     .orderBy(desc(animals.isFeatured), asc(animals.sortOrder), asc(animals.name));
 
-  return Promise.all(rows.map((animal: any) => enrichAnimalWithShareMetrics(db, animal)));
+  const results = [];
+  for (const animal of rows) {
+    results.push(await enrichAnimalWithShareMetrics(db, animal));
+  }
+  return results;
 }
 
 type UpsertAnimalPayload = Omit<InsertAnimal, "id" | "createdAt" | "updatedAt"> & {
