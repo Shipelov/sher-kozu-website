@@ -473,17 +473,17 @@ export default function AnimalsCatalog() {
             </div>
 
             <div className="grid gap-4 sm:grid-cols-3">
-              <div className="space-y-2 rounded-2xl bg-stone-50 p-4">
-                <p className="text-xs uppercase tracking-[0.2em] text-stone-500">В отношениях</p>
-                <p className="text-3xl font-semibold text-stone-900">{totalRelationship}</p>
+              <div className="flex flex-col justify-between rounded-2xl bg-stone-50 p-4">
+                <p className="text-xs uppercase tracking-[0.2em] text-stone-500 min-h-[2rem] flex items-end">В отношениях</p>
+                <p className="text-3xl font-semibold text-stone-900 mt-2">{totalRelationship}</p>
               </div>
-              <div className="space-y-2 rounded-2xl bg-stone-50 p-4">
-                <p className="text-xs uppercase tracking-[0.2em] text-stone-500">На выданье</p>
-                <p className="text-3xl font-semibold text-stone-900">{totalAvailable}</p>
+              <div className="flex flex-col justify-between rounded-2xl bg-stone-50 p-4">
+                <p className="text-xs uppercase tracking-[0.2em] text-stone-500 min-h-[2rem] flex items-end">На выданье</p>
+                <p className="text-3xl font-semibold text-stone-900 mt-2">{totalAvailable}</p>
               </div>
-              <div className="space-y-2 rounded-2xl bg-stone-50 p-4">
-                <p className="text-xs uppercase tracking-[0.2em] text-stone-500">Доступно для участия</p>
-                <p className="text-3xl font-semibold text-stone-900">{totalShared}</p>
+              <div className="flex flex-col justify-between rounded-2xl bg-stone-50 p-4">
+                <p className="text-xs uppercase tracking-[0.2em] text-stone-500 min-h-[2rem] flex items-end">Доступно для участия</p>
+                <p className="text-3xl font-semibold text-stone-900 mt-2">{totalShared}</p>
               </div>
             </div>
           </div>
