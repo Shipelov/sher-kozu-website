@@ -1,0 +1,19 @@
+{
+  "query": "SELECT id, animalSlug, ownerOpenId, url, isCover, sortOrder, title FROM animalPhotos ORDER BY animalSlug, sortOrder;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3J2fXRHx8d1YjF6.root --database mLhmg5VmBsEBpZiYqdnhMQ --execute SELECT id, animalSlug, ownerOpenId, url, isCover, sortOrder, title FROM animalPhotos ORDER BY animalSlug, sortOrder;",
+  "rows": [
+    {
+      "id": "90003",
+      "animalSlug": "Rufa",
+      "ownerOpenId": "jP5iBYMcdYguBWJPw5Sruu",
+      "url": "https://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/animal-photos/Rufa/jP5iBYMcdYguBWJPw5Sruu/1774387271489-lacaune-1-cropped.jpg",
+      "isCover": "1",
+      "sortOrder": "0",
+      "title": "lacaune-1-cropped"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tanimalSlug\townerOpenId\turl\tisCover\tsortOrder\ttitle\n90003\tRufa\tjP5iBYMcdYguBWJPw5Sruu\thttps://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/animal-photos/Rufa/jP5iBYMcdYguBWJPw5Sruu/1774387271489-lacaune-1-cropped.jpg\t1\t0\tlacaune-1-cropped\n",
+  "stderr": "",
+  "execution_time_ms": 377
+}

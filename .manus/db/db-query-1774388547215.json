@@ -1,0 +1,25 @@
+{
+  "query": "SELECT slug, name, coverImageUrl FROM animals;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3J2fXRHx8d1YjF6.root --database mLhmg5VmBsEBpZiYqdnhMQ --execute SELECT slug, name, coverImageUrl FROM animals;",
+  "rows": [
+    {
+      "slug": "mira",
+      "name": "Мира",
+      "coverImageUrl": "https://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/goat_portrait_80fc5726.jpg"
+    },
+    {
+      "slug": "zlata",
+      "name": "Злата",
+      "coverImageUrl": "https://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/milk_products_d3f8c13d.jpg"
+    },
+    {
+      "slug": "Rufa",
+      "name": "Руфа",
+      "coverImageUrl": "https://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/animal-photos/Rufa/jP5iBYMcdYguBWJPw5Sruu/1774387271489-lacaune-1-cropped.jpg"
+    }
+  ],
+  "messages": [],
+  "stdout": "slug\tname\tcoverImageUrl\nmira\tМира\thttps://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/goat_portrait_80fc5726.jpg\nzlata\tЗлата\thttps://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/milk_products_d3f8c13d.jpg\nRufa\tРуфа\thttps://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/animal-photos/Rufa/jP5iBYMcdYguBWJPw5Sruu/1774387271489-lacaune-1-cropped.jpg\n",
+  "stderr": "",
+  "execution_time_ms": 381
+}

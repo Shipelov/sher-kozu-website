@@ -215,7 +215,7 @@ function AnimalCard({ animal, config, selectedSharePercent }: { animal: CatalogA
         className={`group h-full cursor-pointer overflow-hidden bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-lg ${matchesSelectedShare ? "border-amber-400 ring-2 ring-amber-200 shadow-[0_18px_45px_-28px_rgba(217,119,6,0.55)]" : "border-stone-200"}`}
       >
         <div className="relative h-56 overflow-hidden bg-stone-100">
-          {animal.coverImageUrl ? (
+          {animal.coverImageUrl && animal.coverImageUrl !== "NULL" ? (
             <img
               src={animal.coverImageUrl}
               alt={animal.name}

@@ -1651,11 +1651,35 @@ async function enrichAnimalWithShareMetrics(db: any, animal: any) {
     .where(eq(animalMedia.animalId, animal.id))
     .orderBy(desc(animalMedia.isCover), asc(animalMedia.sortOrder), asc(animalMedia.id));
 
+  // Also check animalPhotos for cover (gallery photos uploaded by admin/user)
+  const photoCover = await db
+    .select({ url: animalPhotos.url })
+    .from(animalPhotos)
+    .where(and(eq(animalPhotos.animalSlug, animal.slug), eq(animalPhotos.isCover, 1)))
+    .limit(1);
+
+  // First photo fallback if no explicit cover
+  const firstPhoto = photoCover[0]
+    ? null
+    : (await db
+        .select({ url: animalPhotos.url })
+        .from(animalPhotos)
+        .where(eq(animalPhotos.animalSlug, animal.slug))
+        .orderBy(asc(animalPhotos.sortOrder), desc(animalPhotos.createdAt))
+        .limit(1))[0] ?? null;
+
   const shareMetrics = buildAnimalShareMetrics(animal, activeOwnerships);
   const occupiedValueMinor = shareDistribution.reduce(
     (sum, entry) => sum + getSharePriceMinor(animal.baseMonthlyPriceMinor, entry.percent),
     0,
   );
+
+  // Resolve cover: animalMedia cover → animalPhotos cover → first photo → animal.coverImageUrl
+  const resolvedCover =
+    media.find((item: any) => item.isCover)?.url
+    ?? photoCover[0]?.url
+    ?? firstPhoto?.url
+    ?? (animal.coverImageUrl && animal.coverImageUrl !== "NULL" ? animal.coverImageUrl : null);
 
   return {
     ...animal,
@@ -1665,7 +1689,7 @@ async function enrichAnimalWithShareMetrics(db: any, animal: any) {
     occupiedValueMinor,
     shareDistribution,
     ownersCount: shareDistribution.length,
-    coverImageUrl: media.find((item: any) => item.isCover)?.url ?? animal.coverImageUrl,
+    coverImageUrl: resolvedCover,
     media,
   };
 }

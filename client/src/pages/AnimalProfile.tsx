@@ -287,6 +287,8 @@ export default function AnimalProfile() {
   const uploadPhoto = trpc.animalPhotos.upload.useMutation({
     onSuccess: async (created) => {
       await utils.animalPhotos.list.invalidate({ animalSlug: animalSlug! });
+      await utils.animals.getBySlug.invalidate({ slug: animalSlug! });
+      await utils.animals.listPublic.invalidate();
       setSelectedImageId(created.id);
       setPhotoActivity((current) =>
         [{ id: `upload-${created.photoId}-${Date.now()}`, action: "upload" as const, title: created.title, timestamp: Date.now() }, ...current].slice(0, 4),
@@ -304,6 +306,8 @@ export default function AnimalProfile() {
       setCoverImageId(nextCoverId);
       setSelectedImageId(nextCoverId);
       await utils.animalPhotos.list.invalidate({ animalSlug: animalSlug! });
+      await utils.animals.getBySlug.invalidate({ slug: animalSlug! });
+      await utils.animals.listPublic.invalidate();
       toast.success("Обложка обновлена");
     },
     onError: (error) => {
@@ -332,6 +336,8 @@ export default function AnimalProfile() {
     onSuccess: async ({ photoId }) => {
       const removedImage = galleryImages.find((image) => image.photoId === photoId);
       await utils.animalPhotos.list.invalidate({ animalSlug: animalSlug! });
+      await utils.animals.getBySlug.invalidate({ slug: animalSlug! });
+      await utils.animals.listPublic.invalidate();
       setSelectedImageId((current) => (current === `user-${photoId}` ? defaultGallery[0].id : current));
       if (removedImage) {
         setPhotoActivity((current) =>
@@ -531,7 +537,7 @@ export default function AnimalProfile() {
     ...(data?.story ? [{ label: "История", value: data.story }] : []),
   ];
 
-    const coverUrl = data?.coverImageUrl ?? selectedImage?.src ?? CDN.hero;
+    const coverUrl = (data?.coverImageUrl && data.coverImageUrl !== "NULL") ? data.coverImageUrl : (selectedImage?.src ?? CDN.hero);
 
   /* ── Profile completeness (animated) ── */
   const profileChecks = useMemo(() => [

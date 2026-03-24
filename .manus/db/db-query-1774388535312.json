@@ -1,0 +1,9 @@
+{
+  "query": "UPDATE animals SET coverImageUrl = (SELECT url FROM animalPhotos WHERE animalSlug = 'Rufa' AND isCover = 1 LIMIT 1) WHERE slug = 'Rufa' AND (coverImageUrl = 'NULL' OR coverImageUrl IS NULL);",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3J2fXRHx8d1YjF6.root --database mLhmg5VmBsEBpZiYqdnhMQ --execute UPDATE animals SET coverImageUrl = (SELECT url FROM animalPhotos WHERE animalSlug = 'Rufa' AND isCover = 1 LIMIT 1) WHERE slug = 'Rufa' AND (coverImageUrl = 'NULL' OR coverImageUrl IS NULL);",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 388
+}

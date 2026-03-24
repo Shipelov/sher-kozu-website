@@ -1149,7 +1149,7 @@ export default function AdminProductTrack() {
                   <CardContent className="p-4">
                     <div className="flex items-center gap-3">
                       <div className="h-14 w-14 overflow-hidden rounded-2xl bg-stone-100">
-                        {a.coverImageUrl ? (
+                        {a.coverImageUrl && a.coverImageUrl !== "NULL" ? (
                           <img src={a.coverImageUrl} alt={a.name} className="h-full w-full object-cover" />
                         ) : (
                           <div className="flex h-full w-full items-center justify-center text-stone-400">
@@ -1185,7 +1185,7 @@ export default function AdminProductTrack() {
         />
         <div className="rounded-[2rem] border border-border/70 bg-white/95 p-6 shadow-sm">
           <div className="flex items-center gap-4">
-            {animal?.coverImageUrl && (
+            {animal?.coverImageUrl && animal.coverImageUrl !== "NULL" && (
               <div className="h-16 w-16 overflow-hidden rounded-2xl bg-stone-100">
                 <img src={animal.coverImageUrl} alt={animal.name} className="h-full w-full object-cover" />
               </div>

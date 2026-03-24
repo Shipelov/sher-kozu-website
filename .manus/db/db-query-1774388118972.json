@@ -1,0 +1,154 @@
+{
+  "query": "SHOW TABLES;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3J2fXRHx8d1YjF6.root --database mLhmg5VmBsEBpZiYqdnhMQ --execute SHOW TABLES;",
+  "rows": [
+    {
+      "Tables_in_mLhmg5VmBsEBpZiYqdnhMQ": "__drizzle_migrations"
+    },
+    {
+      "Tables_in_mLhmg5VmBsEBpZiYqdnhMQ": "abTestSessions"
+    },
+    {
+      "Tables_in_mLhmg5VmBsEBpZiYqdnhMQ": "achievementBadges"
+    },
+    {
+      "Tables_in_mLhmg5VmBsEBpZiYqdnhMQ": "animalFeedbackMessages"
+    },
+    {
+      "Tables_in_mLhmg5VmBsEBpZiYqdnhMQ": "animalMedia"
+    },
+    {
+      "Tables_in_mLhmg5VmBsEBpZiYqdnhMQ": "animalOwnerships"
+    },
+    {
+      "Tables_in_mLhmg5VmBsEBpZiYqdnhMQ": "animalPhotos"
+    },
+    {
+      "Tables_in_mLhmg5VmBsEBpZiYqdnhMQ": "animalProductionProfiles"
+    },
+    {
+      "Tables_in_mLhmg5VmBsEBpZiYqdnhMQ": "animalWellnessMetrics"
+    },
+    {
+      "Tables_in_mLhmg5VmBsEBpZiYqdnhMQ": "animals"
+    },
+    {
+      "Tables_in_mLhmg5VmBsEBpZiYqdnhMQ": "authRateLimits"
+    },
+    {
+      "Tables_in_mLhmg5VmBsEBpZiYqdnhMQ": "autoAllocationSettings"
+    },
+    {
+      "Tables_in_mLhmg5VmBsEBpZiYqdnhMQ": "chatMessages"
+    },
+    {
+      "Tables_in_mLhmg5VmBsEBpZiYqdnhMQ": "clubAdminPresets"
+    },
+    {
+      "Tables_in_mLhmg5VmBsEBpZiYqdnhMQ": "clubEvents"
+    },
+    {
+      "Tables_in_mLhmg5VmBsEBpZiYqdnhMQ": "clubMembers"
+    },
+    {
+      "Tables_in_mLhmg5VmBsEBpZiYqdnhMQ": "clubPosts"
+    },
+    {
+      "Tables_in_mLhmg5VmBsEBpZiYqdnhMQ": "cmsBlockHistory"
+    },
+    {
+      "Tables_in_mLhmg5VmBsEBpZiYqdnhMQ": "cmsBlocks"
+    },
+    {
+      "Tables_in_mLhmg5VmBsEBpZiYqdnhMQ": "deliverySchedule"
+    },
+    {
+      "Tables_in_mLhmg5VmBsEBpZiYqdnhMQ": "families"
+    },
+    {
+      "Tables_in_mLhmg5VmBsEBpZiYqdnhMQ": "faqQuestions"
+    },
+    {
+      "Tables_in_mLhmg5VmBsEBpZiYqdnhMQ": "farmAccountTransactions"
+    },
+    {
+      "Tables_in_mLhmg5VmBsEBpZiYqdnhMQ": "farmAccounts"
+    },
+    {
+      "Tables_in_mLhmg5VmBsEBpZiYqdnhMQ": "farmerChecklists"
+    },
+    {
+      "Tables_in_mLhmg5VmBsEBpZiYqdnhMQ": "greetingVariants"
+    },
+    {
+      "Tables_in_mLhmg5VmBsEBpZiYqdnhMQ": "integrationAudits"
+    },
+    {
+      "Tables_in_mLhmg5VmBsEBpZiYqdnhMQ": "marketplaceCategories"
+    },
+    {
+      "Tables_in_mLhmg5VmBsEBpZiYqdnhMQ": "marketplaceItems"
+    },
+    {
+      "Tables_in_mLhmg5VmBsEBpZiYqdnhMQ": "marketplacePurchases"
+    },
+    {
+      "Tables_in_mLhmg5VmBsEBpZiYqdnhMQ": "otpCodes"
+    },
+    {
+      "Tables_in_mLhmg5VmBsEBpZiYqdnhMQ": "ownerProductPlans"
+    },
+    {
+      "Tables_in_mLhmg5VmBsEBpZiYqdnhMQ": "ownerRatings"
+    },
+    {
+      "Tables_in_mLhmg5VmBsEBpZiYqdnhMQ": "partnerLeads"
+    },
+    {
+      "Tables_in_mLhmg5VmBsEBpZiYqdnhMQ": "passwordResetTokens"
+    },
+    {
+      "Tables_in_mLhmg5VmBsEBpZiYqdnhMQ": "planChangeLog"
+    },
+    {
+      "Tables_in_mLhmg5VmBsEBpZiYqdnhMQ": "planDurations"
+    },
+    {
+      "Tables_in_mLhmg5VmBsEBpZiYqdnhMQ": "plans"
+    },
+    {
+      "Tables_in_mLhmg5VmBsEBpZiYqdnhMQ": "productBatches"
+    },
+    {
+      "Tables_in_mLhmg5VmBsEBpZiYqdnhMQ": "productCompositionSnapshots"
+    },
+    {
+      "Tables_in_mLhmg5VmBsEBpZiYqdnhMQ": "productDeliveries"
+    },
+    {
+      "Tables_in_mLhmg5VmBsEBpZiYqdnhMQ": "productMonthlyMetrics"
+    },
+    {
+      "Tables_in_mLhmg5VmBsEBpZiYqdnhMQ": "productOptions"
+    },
+    {
+      "Tables_in_mLhmg5VmBsEBpZiYqdnhMQ": "ratingSnapshots"
+    },
+    {
+      "Tables_in_mLhmg5VmBsEBpZiYqdnhMQ": "uncertainAnswers"
+    },
+    {
+      "Tables_in_mLhmg5VmBsEBpZiYqdnhMQ": "users"
+    },
+    {
+      "Tables_in_mLhmg5VmBsEBpZiYqdnhMQ": "walletTransactions"
+    },
+    {
+      "Tables_in_mLhmg5VmBsEBpZiYqdnhMQ": "wallets"
+    }
+  ],
+  "messages": [],
+  "stdout": "Tables_in_mLhmg5VmBsEBpZiYqdnhMQ\n__drizzle_migrations\nabTestSessions\nachievementBadges\nanimalFeedbackMessages\nanimalMedia\nanimalOwnerships\nanimalPhotos\nanimalProductionProfiles\nanimalWellnessMetrics\nanimals\nauthRateLimits\nautoAllocationSettings\nchatMessages\nclubAdminPresets\nclubEvents\nclubMembers\nclubPosts\ncmsBlockHistory\ncmsBlocks\ndeliverySchedule\nfamilies\nfaqQuestions\nfarmAccountTransactions\nfarmAccounts\nfarmerChecklists\ngreetingVariants\nintegrationAudits\nmarketplaceCategories\nmarketplaceItems\nmarketplacePurchases\notpCodes\nownerProductPlans\nownerRatings\npartnerLeads\npasswordResetTokens\nplanChangeLog\nplanDurations\nplans\nproductBatches\nproductCompositionSnapshots\nproductDeliveries\nproductMonthlyMetrics\nproductOptions\nratingSnapshots\nuncertainAnswers\nusers\nwalletTransactions\nwallets\n",
+  "stderr": "",
+  "execution_time_ms": 358
+}

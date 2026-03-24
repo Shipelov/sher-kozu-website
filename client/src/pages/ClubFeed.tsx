@@ -421,7 +421,7 @@ export default function ClubFeed() {
                 transition={{ delay: 0.12 }}
                 className="min-w-0 overflow-hidden rounded-[2rem] border border-border/70 bg-card shadow-sm"
               >
-                <img src={ownerAnimal?.coverImageUrl ?? CDN.goat} alt={activeAnimalName} className="h-56 w-full object-cover object-top" />
+                <img src={(ownerAnimal?.coverImageUrl && ownerAnimal.coverImageUrl !== "NULL") ? ownerAnimal.coverImageUrl : CDN.goat} alt={activeAnimalName} className="h-56 w-full object-cover object-top" />
                 <div className="p-5">
                   <p className="text-sm uppercase tracking-[0.22em] text-primary">Персональный ритуал</p>
                   <h2 className="mt-3 text-2xl font-semibold text-foreground">{ritualTitle}</h2>

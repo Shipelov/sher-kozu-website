@@ -385,7 +385,7 @@ export default function Dashboard() {
             <div className="grid gap-0 lg:grid-cols-[1.08fr_0.92fr]">
               <div className="relative min-h-[420px] overflow-hidden">
                 <img
-                  src={currentAnimal?.coverImageUrl ?? CDN.hero}
+                  src={(currentAnimal?.coverImageUrl && currentAnimal.coverImageUrl !== "NULL") ? currentAnimal.coverImageUrl : CDN.hero}
                   alt={featuredAnimalName}
                   className="h-full w-full object-cover"
                 />
@@ -586,7 +586,7 @@ export default function Dashboard() {
                       )}
                       <Link href={`/animals/${item.animalSlug}`}>
                         <div className="flex items-start gap-3">
-                          {item.coverImageUrl ? (
+                          {item.coverImageUrl && item.coverImageUrl !== "NULL" ? (
                             <img
                               src={item.coverImageUrl}
                               alt={item.animalName}

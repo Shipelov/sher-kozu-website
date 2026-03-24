@@ -271,7 +271,7 @@ export default function Leaderboard() {
                         <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white border border-border/50">
                           {getRankIcon(idx + 1)}
                         </div>
-                        {animal.animal?.coverImageUrl ? (
+                        {animal.animal?.coverImageUrl && animal.animal.coverImageUrl !== "NULL" ? (
                           <Link href={`/animals/${animal.animal?.slug ?? animal.animalId}`} className="shrink-0">
                             <img
                               src={animal.animal.coverImageUrl}

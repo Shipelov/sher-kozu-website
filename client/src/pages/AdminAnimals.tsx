@@ -1007,7 +1007,7 @@ function AdminAnimalsTable({
                 <TableCell>
                   <div className="flex gap-3">
                     <div className="h-16 w-16 overflow-hidden rounded-2xl bg-stone-100">
-                      {animal.coverImageUrl ? (
+                      {animal.coverImageUrl && animal.coverImageUrl !== "NULL" ? (
                         <img src={animal.coverImageUrl} alt={animal.name} className="h-full w-full object-cover" />
                       ) : (
                         <div className="flex h-full w-full items-center justify-center text-stone-400">

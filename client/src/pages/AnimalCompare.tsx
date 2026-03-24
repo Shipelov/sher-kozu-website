@@ -63,7 +63,7 @@ function AnimalSelector({
         onClick={() => setOpen(!open)}
         className="w-full flex items-center gap-3 p-3 rounded-xl border border-border/70 bg-card hover:bg-accent/30 transition-colors text-left"
       >
-        {selected?.coverImageUrl ? (
+        {selected?.coverImageUrl && selected.coverImageUrl !== "NULL" ? (
           <img src={selected.coverImageUrl} alt="" className="w-10 h-10 rounded-full object-cover" />
         ) : (
           <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary">
@@ -98,7 +98,7 @@ function AnimalSelector({
               }}
               className="w-full flex items-center gap-3 p-3 hover:bg-accent/30 transition-colors text-left"
             >
-              {animal.coverImageUrl ? (
+              {animal.coverImageUrl && animal.coverImageUrl !== "NULL" ? (
                 <img src={animal.coverImageUrl} alt="" className="w-8 h-8 rounded-full object-cover" />
               ) : (
                 <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary text-xs">
@@ -358,7 +358,7 @@ export default function AnimalCompare() {
                         idx === 0 ? "border-[#6d8c54]/30" : "border-[#c77d3a]/30"
                       }`}
                     >
-                      {animal.coverImageUrl ? (
+                      {animal.coverImageUrl && animal.coverImageUrl !== "NULL" ? (
                         <img src={animal.coverImageUrl} alt="" className="w-12 h-12 rounded-full object-cover" />
                       ) : (
                         <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">

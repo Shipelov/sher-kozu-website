@@ -1,0 +1,34 @@
+{
+  "query": "SELECT id, slug, name, animalSpecies, animalStatus, coverImageUrl FROM animals ORDER BY id;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3J2fXRHx8d1YjF6.root --database mLhmg5VmBsEBpZiYqdnhMQ --execute SELECT id, slug, name, animalSpecies, animalStatus, coverImageUrl FROM animals ORDER BY id;",
+  "rows": [
+    {
+      "id": "30001",
+      "slug": "mira",
+      "name": "Мира",
+      "animalSpecies": "goat",
+      "animalStatus": "fully_booked",
+      "coverImageUrl": "https://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/goat_portrait_80fc5726.jpg"
+    },
+    {
+      "id": "180005",
+      "slug": "zlata",
+      "name": "Злата",
+      "animalSpecies": "sheep",
+      "animalStatus": "fully_booked",
+      "coverImageUrl": "https://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/milk_products_d3f8c13d.jpg"
+    },
+    {
+      "id": "270001",
+      "slug": "Rufa",
+      "name": "Руфа",
+      "animalSpecies": "sheep",
+      "animalStatus": "fully_booked",
+      "coverImageUrl": "NULL"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tslug\tname\tanimalSpecies\tanimalStatus\tcoverImageUrl\n30001\tmira\tМира\tgoat\tfully_booked\thttps://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/goat_portrait_80fc5726.jpg\n180005\tzlata\tЗлата\tsheep\tfully_booked\thttps://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/milk_products_d3f8c13d.jpg\n270001\tRufa\tРуфа\tsheep\tfully_booked\tNULL\n",
+  "stderr": "",
+  "execution_time_ms": 364
+}

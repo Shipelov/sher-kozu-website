@@ -1,0 +1,8 @@
+{
+  "query": "UPDATE animals SET cover_image_url = (SELECT url FROM animalPhotos WHERE animalSlug = 'Rufa' AND isCover = 1 LIMIT 1) WHERE slug = 'Rufa' AND cover_image_url = 'NULL';",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3J2fXRHx8d1YjF6.root --database mLhmg5VmBsEBpZiYqdnhMQ --execute UPDATE animals SET cover_image_url = (SELECT url FROM animalPhotos WHERE animalSlug = 'Rufa' AND isCover = 1 LIMIT 1) WHERE slug = 'Rufa' AND cover_image_url = 'NULL';",
+  "returncode": 1,
+  "logs": [
+    "ERROR 1054 (42S22) at line 1: Unknown column 'cover_image_url' in 'where clause'"
+  ]
+}
