@@ -509,13 +509,12 @@ export async function createAnimalPhoto(input: InsertAnimalPhoto) {
   return created[0];
 }
 
-export async function deleteAnimalPhoto(photoId: number, _ownerOpenId?: string) {
+export async function deleteAnimalPhoto(photoId: number, callerOpenId?: string) {
   const db = await getDb();
   if (!db) {
     throw new Error("Database not available for photo deletion");
   }
 
-  // Admin can delete any photo (single-owner farm)
   const existing = await db
     .select()
     .from(animalPhotos)
@@ -526,7 +525,19 @@ export async function deleteAnimalPhoto(photoId: number, _ownerOpenId?: string) 
     return null;
   }
 
+  const isAdmin = callerOpenId === ENV.ownerOpenId;
   const isCover = Boolean(existing[0].isCover);
+  const isAdminPhoto = existing[0].ownerOpenId === ENV.ownerOpenId;
+
+  // Non-admin users cannot delete admin-uploaded cover photos
+  if (!isAdmin && isCover && isAdminPhoto) {
+    throw new Error("Это фото установлено администратором как обложка и не может быть удалено.");
+  }
+
+  // Non-admin users can only delete their own photos
+  if (!isAdmin && existing[0].ownerOpenId !== callerOpenId) {
+    throw new Error("Вы можете удалять только свои фото.");
+  }
 
   await db.delete(animalPhotos).where(eq(animalPhotos.id, photoId));
 
@@ -545,13 +556,19 @@ export async function deleteAnimalPhoto(photoId: number, _ownerOpenId?: string) 
   return existing[0];
 }
 
-export async function setAnimalPhotoCover(photoId: number, _ownerOpenId?: string) {
+export async function setAnimalPhotoCover(photoId: number, callerOpenId?: string) {
   const db = await getDb();
   if (!db) {
     throw new Error("Database not available for setting photo cover");
   }
 
-  // Admin can set cover for any photo (single-owner farm)
+  const isAdmin = callerOpenId === ENV.ownerOpenId;
+
+  // Only admin can change the cover photo
+  if (!isAdmin) {
+    throw new Error("Только администратор может менять обложку животного.");
+  }
+
   const target = await db
     .select()
     .from(animalPhotos)
@@ -589,7 +606,6 @@ export async function updateAnimalPhotoMeta(input: { photoId: number; ownerOpenI
     throw new Error("Database not available for updating photo metadata");
   }
 
-  // Admin can update meta for any photo (single-owner farm)
   const existing = await db
     .select()
     .from(animalPhotos)
@@ -598,6 +614,19 @@ export async function updateAnimalPhotoMeta(input: { photoId: number; ownerOpenI
 
   if (!existing[0]) {
     return null;
+  }
+
+  const isAdmin = input.ownerOpenId === ENV.ownerOpenId;
+  const isAdminCover = Boolean(existing[0].isCover) && existing[0].ownerOpenId === ENV.ownerOpenId;
+
+  // Non-admin users cannot edit admin-cover photos
+  if (!isAdmin && isAdminCover) {
+    throw new Error("Это фото установлено администратором как обложка и не может быть отредактировано.");
+  }
+
+  // Non-admin users can only edit their own photos
+  if (!isAdmin && existing[0].ownerOpenId !== input.ownerOpenId) {
+    throw new Error("Вы можете редактировать только свои фото.");
   }
 
   await db

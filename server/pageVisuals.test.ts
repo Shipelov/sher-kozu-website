@@ -376,7 +376,7 @@ describe("page visual integration source smoke", () => {
     expect(animalProfileSource).toContain('params.set("share", String(selectedSharePercent))');
     expect(animalProfileSource).toContain("Забронировать долю");
     expect(animalProfileSource).toContain("Персональное участие");
-    expect(animalProfileSource).toContain("Управление галереей доступно владельцам доли");
+    expect(animalProfileSource).toContain("Войдите, чтобы загружать фото в галерею");
 
     // Shared components
     expect(shareSelectionPreviewCardSource).toContain("Выбор доли участия");

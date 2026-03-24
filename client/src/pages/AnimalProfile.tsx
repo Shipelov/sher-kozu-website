@@ -245,7 +245,7 @@ export default function AnimalProfile() {
 
   const photosQuery = trpc.animalPhotos.list.useQuery(
     { animalSlug: animalSlug! },
-    { enabled: Boolean(animalSlug) && isAuthenticated && hasOwnerAccess },
+    { enabled: Boolean(animalSlug) && isAuthenticated },
   );
 
   const initialSharePercent = useMemo(() => {
@@ -1049,35 +1049,60 @@ export default function AnimalProfile() {
             {/* Thumbnails */}
             <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
               {galleryImages.map((img) => (
-                <button key={img.id} type="button" onClick={() => setSelectedImageId(img.id)} className={`shrink-0 overflow-hidden rounded-xl border-2 transition ${selectedImageId === img.id ? "border-primary" : "border-transparent opacity-70 hover:opacity-100"}`}>
+                <button key={img.id} type="button" onClick={() => setSelectedImageId(img.id)} className={`relative shrink-0 overflow-hidden rounded-xl border-2 transition ${selectedImageId === img.id ? "border-primary" : "border-transparent opacity-70 hover:opacity-100"}`}>
                   <img src={img.src} alt={img.title} className="h-16 w-24 object-cover" />
+                  {(img as any).isAdminCover && (
+                    <div className="absolute top-0.5 right-0.5 rounded-full bg-amber-400/90 p-0.5" title="Обложка фермы">
+                      <ShieldCheck className="h-2.5 w-2.5 text-white" />
+                    </div>
+                  )}
+                  {(img as any).isOwnPhoto && !(img as any).isAdminCover && (
+                    <div className="absolute top-0.5 left-0.5 rounded-full bg-primary/80 p-0.5" title="Ваше фото">
+                      <Camera className="h-2.5 w-2.5 text-white" />
+                    </div>
+                  )}
                 </button>
               ))}
             </div>
 
-            {/* Owner gallery actions */}
-            {hasOwnerAccess ? (
+            {/* Gallery actions — available to all authenticated users */}
+            {isAuthenticated ? (
               <div className="mt-3 space-y-2.5">
+                {/* Admin-cover badge */}
+                {selectedImage && (selectedImage as any).isAdminCover && (
+                  <div className="flex items-center gap-2 rounded-lg bg-amber-50 border border-amber-200 px-3 py-2 text-xs text-amber-700">
+                    <ShieldCheck className="h-3.5 w-3.5 shrink-0" />
+                    <span>Обложка установлена администратором фермы</span>
+                  </div>
+                )}
+
                 <div className="flex flex-wrap gap-1.5">
                   {selectedImage?.isUploaded && selectedImage?.photoId ? (
                     <>
-                      <button type="button" onClick={() => handleSetCoverImage(selectedImage)} className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-xs transition hover:bg-muted">
-                        <Star className="h-3.5 w-3.5" /> Обложка
-                      </button>
-                      <button type="button" onClick={() => moveUploadedPhoto(selectedImage.photoId!, "left")} className="inline-flex items-center gap-1 rounded-full border border-border bg-card px-2.5 py-1.5 text-xs transition hover:bg-muted">
-                        <ChevronLeft className="h-3 w-3" />
-                      </button>
-                      <button type="button" onClick={() => moveUploadedPhoto(selectedImage.photoId!, "right")} className="inline-flex items-center gap-1 rounded-full border border-border bg-card px-2.5 py-1.5 text-xs transition hover:bg-muted">
-                        <ChevronRight className="h-3 w-3" />
-                      </button>
-                      <button type="button" onClick={() => handleRemoveUploadedImage(selectedImage)} className="inline-flex items-center gap-1.5 rounded-full border border-rose-200 bg-rose-50 px-3 py-1.5 text-xs text-rose-700 transition hover:bg-rose-100">
-                        <X className="h-3.5 w-3.5" /> Удалить
-                      </button>
+                      {/* Cover button — only for admins (owner) */}
+                      {(selectedImage as any).canEdit && (
+                        <button type="button" onClick={() => handleSetCoverImage(selectedImage)} className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-xs transition hover:bg-muted">
+                          <Star className="h-3.5 w-3.5" /> Обложка
+                        </button>
+                      )}
+                      {/* Reorder — only for own photos or admin */}
+                      {(selectedImage as any).canEdit && (
+                        <>
+                          <button type="button" onClick={() => moveUploadedPhoto(selectedImage.photoId!, "left")} className="inline-flex items-center gap-1 rounded-full border border-border bg-card px-2.5 py-1.5 text-xs transition hover:bg-muted">
+                            <ChevronLeft className="h-3 w-3" />
+                          </button>
+                          <button type="button" onClick={() => moveUploadedPhoto(selectedImage.photoId!, "right")} className="inline-flex items-center gap-1 rounded-full border border-border bg-card px-2.5 py-1.5 text-xs transition hover:bg-muted">
+                            <ChevronRight className="h-3 w-3" />
+                          </button>
+                        </>
+                      )}
+                      {/* Delete — only for own photos (not admin-cover) */}
+                      {(selectedImage as any).canDelete && (
+                        <button type="button" onClick={() => handleRemoveUploadedImage(selectedImage)} className="inline-flex items-center gap-1.5 rounded-full border border-rose-200 bg-rose-50 px-3 py-1.5 text-xs text-rose-700 transition hover:bg-rose-100">
+                          <X className="h-3.5 w-3.5" /> Удалить
+                        </button>
+                      )}
                     </>
-                  ) : selectedImage ? (
-                    <button type="button" onClick={() => handleSetCoverImage(selectedImage)} className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-xs transition hover:bg-muted">
-                      <Star className="h-3.5 w-3.5" /> Обложка
-                    </button>
                   ) : null}
                   <button type="button" onClick={() => { setGalleryDialogOpen(false); setLightboxOpen(true); }} className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-xs transition hover:bg-muted">
                     <Play className="h-3.5 w-3.5" /> Полный размер
@@ -1098,14 +1123,14 @@ export default function AnimalProfile() {
                   </div>
                 </button>
               </div>
-            ) : !isAuthenticated ? (
+            ) : (
               <div className="mt-3 rounded-xl border border-dashed border-primary/20 bg-primary/5 p-4 text-center">
-                <p className="text-sm text-muted-foreground">Управление галереей доступно владельцам доли.</p>
+                <p className="text-sm text-muted-foreground">Войдите, чтобы загружать фото в галерею.</p>
                 <a data-testid="animal-guest-preview-register-cta-secondary" href={getLoginUrl(`/animals/${animalSlug}`)} className="mt-2 inline-flex items-center gap-2 rounded-full border border-primary/20 bg-card px-4 py-2 text-sm font-medium text-primary transition hover:bg-primary/5">
                   Войти или зарегистрироваться
                 </a>
               </div>
-            ) : null}
+            )}
 
             {/* Share buttons */}
             <div className="mt-3 flex flex-wrap gap-1.5">

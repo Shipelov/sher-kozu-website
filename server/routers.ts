@@ -65,6 +65,7 @@ import {
   setPrimaryAnimal,
 } from "./db";
 import { storagePut } from "./storage";
+import { ENV } from "./_core/env";
 import { isBitrixConfigured, pullBitrixDealSnapshot, syncPartnerLeadToBitrix } from "./bitrix24";
 import { runDiagnostics } from "./diagnostics";
 import { notifyOwner } from "./_core/notification";
@@ -1070,6 +1071,10 @@ export const appRouter = router({
         createdAt: item.createdAt,
         isCover: Boolean(item.isCover),
         sortOrder: item.sortOrder,
+        isAdminCover: Boolean(item.isCover) && item.ownerOpenId === ENV.ownerOpenId,
+        isOwnPhoto: item.ownerOpenId === ctx.user.openId,
+        canDelete: ctx.user.openId === ENV.ownerOpenId || (item.ownerOpenId === ctx.user.openId && !(Boolean(item.isCover) && item.ownerOpenId === ENV.ownerOpenId)),
+        canEdit: ctx.user.openId === ENV.ownerOpenId || (item.ownerOpenId === ctx.user.openId && !(Boolean(item.isCover) && item.ownerOpenId === ENV.ownerOpenId)),
       }));
     }),
     upload: protectedProcedure.input(uploadPhotoInput).mutation(async ({ ctx, input }) => {

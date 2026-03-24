@@ -45,7 +45,7 @@ describe("AnimalProfile visual integration", () => {
     expect(source).toContain("Галерея");
     expect(source).toContain("Дневник");
     expect(source).toContain("Паспорт");
-    expect(source).toContain("Управление галереей доступно владельцам доли");
+    expect(source).toContain("Войдите, чтобы загружать фото в галерею");
     // Passport button now appears in Quick CTA area (before collapsible sections)
     // Diary appears in collapsible sections below
     // Both are present in the source
