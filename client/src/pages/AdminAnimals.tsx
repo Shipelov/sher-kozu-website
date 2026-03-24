@@ -1,4 +1,13 @@
 import { Badge } from "@/components/ui/badge";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -44,6 +53,7 @@ import {
   ArrowRight,
   ArrowUpRight,
   CheckCircle2,
+  ChevronDown,
   Clock,
   Eye,
   EyeOff,
@@ -51,6 +61,7 @@ import {
   Leaf,
   Loader2,
   Milk,
+  MoreVertical,
   Pencil,
   Plus,
   Search,
@@ -687,11 +698,23 @@ function ShareDistributionPanel({ animals }: { animals: AdminAnimalRecord[] }) {
   const summary = useMemo(() => createAdminShareSummary(animals), [animals]);
 
   return (
-    <Card className="rounded-[2rem] border-border/70 shadow-sm">
-      <CardHeader>
-        <CardTitle>Распределение долей</CardTitle>
-        <CardDescription>Занятость и свободные 10%-доли</CardDescription>
-      </CardHeader>
+    <Collapsible defaultOpen={true} className="rounded-[2rem] border border-border/70 bg-white shadow-sm">
+      <Card className="rounded-[2rem] border-0 shadow-none">
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div className="flex-1">
+              <CardTitle>Распределение долей</CardTitle>
+              <CardDescription>Занятость и свободные 10%-доли</CardDescription>
+            </div>
+            <CollapsibleTrigger asChild>
+              <Button variant="ghost" size="sm" className="rounded-full">
+                <ChevronDown className="h-4 w-4 transition-transform duration-200" />
+              </Button>
+            </CollapsibleTrigger>
+          </div>
+        </CardHeader>
+      </Card>
+      <CollapsibleContent>
       <CardContent className="space-y-5">
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
           <Card className="rounded-[1.5rem] border-emerald-100 bg-emerald-50/80 shadow-none">
@@ -763,7 +786,8 @@ function ShareDistributionPanel({ animals }: { animals: AdminAnimalRecord[] }) {
           </div>
         ) : null}
       </CardContent>
-    </Card>
+      </CollapsibleContent>
+    </Collapsible>
   );
 }
 
@@ -960,8 +984,8 @@ function AdminAnimalsTable({
   restoringAnimalId: number | null;
 }) {
   return (
-    <div className="overflow-hidden rounded-[1.75rem] border border-border/70 bg-white shadow-sm max-h-[640px] overflow-y-auto">
-      <Table>
+    <div className="overflow-x-auto overflow-y-auto rounded-[1.75rem] border border-border/70 bg-white shadow-sm max-h-[640px]">
+      <Table className="w-full min-w-max">
         <TableHeader>
           <TableRow className="hover:bg-transparent">
             <TableHead>Животное</TableHead>
@@ -1031,64 +1055,73 @@ function AdminAnimalsTable({
                   </div>
                 </TableCell>
                 <TableCell>
-                  <div className="flex flex-wrap justify-end gap-2">
-                    <Button variant="outline" size="sm" className="rounded-full" onClick={() => onEdit(animal)}>
-                      <Pencil className="mr-2 h-4 w-4" />
-                      Редактировать
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="rounded-full border-primary/30 text-primary hover:bg-primary/5"
-                      onClick={() => onViewOwnerships(animal)}
-                    >
-                      <Users className="mr-2 h-4 w-4" />
-                      Владельцы{animal.activeOwnerships > 0 ? ` (${animal.activeOwnerships})` : ""}
-                      {(animal.pendingOwnerships ?? 0) > 0 ? (
-                        <span className="ml-1 inline-flex items-center rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-800">
-                          {animal.pendingOwnerships} ожид.
-                        </span>
-                      ) : null}
-                    </Button>
-                    <Link href={`/animals/${animal.slug}`}>
-                      <Button variant="outline" size="sm" className="rounded-full">
-                        <ArrowUpRight className="mr-2 h-4 w-4" />
-                        Открыть
-                      </Button>
-                    </Link>
+                  <div className="flex items-center justify-end gap-2">
                     <Button
                       variant="outline"
                       size="sm"
                       className="rounded-full"
-                      onClick={() => onToggleVisibility(animal)}
-                      disabled={isUpdating || animal.status === "archived"}
+                      onClick={() => {
+                        onEdit(animal);
+                      }}
                     >
-                      {animal.status === "hidden" ? <Eye className="mr-2 h-4 w-4" /> : <EyeOff className="mr-2 h-4 w-4" />}
-                      {getVisibilityActionLabel(animal.status)}
+                      <Pencil className="mr-2 h-4 w-4" />
+                      Редактировать
                     </Button>
-                    {animal.status === "archived" ? (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="rounded-full border-emerald-200 text-emerald-700 hover:bg-emerald-50 hover:text-emerald-800"
-                        onClick={() => onRestore(animal)}
-                        disabled={restoringAnimalId === animal.id}
-                      >
-                        {restoringAnimalId === animal.id ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ArrowLeft className="mr-2 h-4 w-4" />}
-                        Восстановить
-                      </Button>
-                    ) : (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="rounded-full border-rose-200 text-rose-700 hover:bg-rose-50 hover:text-rose-800"
-                        onClick={() => onArchive(animal)}
-                        disabled={archivingAnimalId === animal.id}
-                      >
-                        {archivingAnimalId === animal.id ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}
-                        Архивировать
-                      </Button>
-                    )}
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="outline" size="sm" className="rounded-full">
+                          <MoreVertical className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-56">
+                        <DropdownMenuItem onClick={() => onViewOwnerships(animal)}>
+                          <Users className="mr-2 h-4 w-4" />
+                          <span>Владельцы</span>
+                          {animal.activeOwnerships > 0 && (
+                            <span className="ml-auto text-xs text-muted-foreground">({animal.activeOwnerships})</span>
+                          )}
+                        </DropdownMenuItem>
+                        <DropdownMenuItem asChild>
+                          <Link href={`/animals/${animal.slug}`}>
+                            <ArrowUpRight className="mr-2 h-4 w-4" />
+                            <span>Открыть профиль</span>
+                          </Link>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => onToggleVisibility(animal)}
+                          disabled={isUpdating || animal.status === "archived"}
+                        >
+                          {animal.status === "hidden" ? (
+                            <>
+                              <Eye className="mr-2 h-4 w-4" />
+                              <span>Показать</span>
+                            </>
+                          ) : (
+                            <>
+                              <EyeOff className="mr-2 h-4 w-4" />
+                              <span>Скрыть</span>
+                            </>
+                          )}
+                        </DropdownMenuItem>
+                        {animal.status === "archived" ? (
+                          <DropdownMenuItem
+                            onClick={() => onRestore(animal)}
+                            disabled={restoringAnimalId === animal.id}
+                          >
+                            <ArrowLeft className="mr-2 h-4 w-4" />
+                            <span>Восстановить</span>
+                          </DropdownMenuItem>
+                        ) : (
+                          <DropdownMenuItem
+                            onClick={() => onArchive(animal)}
+                            disabled={archivingAnimalId === animal.id}
+                          >
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            <span>Архивировать</span>
+                          </DropdownMenuItem>
+                        )}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </div>
                 </TableCell>
               </TableRow>
@@ -1663,6 +1696,7 @@ export default function AdminAnimalsPage() {
   const [restoringAnimalId, setRestoringAnimalId] = useState<number | null>(null);
   const [ownershipAnimal, setOwnershipAnimal] = useState<AdminAnimalRecord | null>(null);
   const [, navigate] = useState("");
+  const [isEditorSheetOpen, setIsEditorSheetOpen] = useState(false);
 
   const animalsQuery = trpc.adminAnimals.list.useQuery(undefined, {
     retry: false,
@@ -1775,6 +1809,7 @@ export default function AdminAnimalsPage() {
     setEditorMode("edit");
     setEditingAnimalId(animal.id);
     setFormValues(normalizeAnimalFormValues(animal));
+    setIsEditorSheetOpen(true);
   }
 
   function handleToggleVisibility(animal: AdminAnimalRecord) {
@@ -1888,7 +1923,7 @@ export default function AdminAnimalsPage() {
               { label: "Животные" },
             ]}
           />
-          <div className="grid gap-8 xl:grid-cols-[minmax(0,1.15fr)_420px] xl:items-start">
+          <div className="space-y-6">
             <section className="space-y-6">
               {isForbidden ? (
                 <Alert variant="destructive" className="rounded-[2rem]">
@@ -2026,22 +2061,37 @@ export default function AdminAnimalsPage() {
                   )}
                 </CardContent>
               </Card>
-            </section>
-
-            <aside className="space-y-6 xl:sticky xl:top-6">
-              <AnimalEditorCard
-                mode={editorMode}
-                values={formValues}
-                onChange={handleFormChange}
-                onSubmit={handleSubmit}
-                onCancel={resetEditor}
-                onApplyPreset={applyDemoPreset}
-                isSubmitting={createAnimal.isPending || updateAnimal.isPending}
-              />
-            </aside>
+             </section>
           </div>
         </div>
       </div>
+      <Sheet open={isEditorSheetOpen} onOpenChange={setIsEditorSheetOpen}>
+        <SheetContent side="right" className="w-full overflow-y-auto sm:max-w-2xl">
+          <SheetHeader>
+            <SheetTitle className="flex items-center gap-2">
+              {editorMode === "create" ? <Plus className="h-5 w-5 text-primary" /> : <Pencil className="h-5 w-5 text-primary" />}
+              {editorMode === "create" ? "Создать животное" : "Редактировать животное"}
+            </SheetTitle>
+          </SheetHeader>
+          <div className="mt-6 space-y-6">
+            <AnimalEditorCard
+              mode={editorMode}
+              values={formValues}
+              onChange={handleFormChange}
+              onSubmit={() => {
+                handleSubmit();
+                setIsEditorSheetOpen(false);
+              }}
+              onCancel={() => {
+                resetEditor();
+                setIsEditorSheetOpen(false);
+              }}
+              onApplyPreset={applyDemoPreset}
+              isSubmitting={createAnimal.isPending || updateAnimal.isPending}
+            />
+          </div>
+        </SheetContent>
+      </Sheet>
       <AlertDialog open={Boolean(animalPendingArchive)} onOpenChange={(open) => !open && setAnimalPendingArchive(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
