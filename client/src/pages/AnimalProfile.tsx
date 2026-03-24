@@ -652,6 +652,12 @@ export default function AnimalProfile() {
                     <Images className="h-4 w-4" /> Галерея
                     <span className="pointer-events-none absolute -bottom-9 left-1/2 z-50 -translate-x-1/2 whitespace-nowrap rounded-md bg-foreground/90 px-2.5 py-1 text-xs text-background opacity-0 shadow-md transition-opacity group-hover/gal:opacity-100">{galleryImages.length} фото</span>
                   </button>
+                  {isAuthenticated && (
+                    <button type="button" onClick={() => setCropDialogOpen(true)} className="group/upl relative inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-sm font-medium text-emerald-700 transition hover:bg-emerald-100 dark:border-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300 dark:hover:bg-emerald-900/50">
+                      <Camera className="h-4 w-4" /> Добавить фото
+                      <span className="pointer-events-none absolute -bottom-9 left-1/2 z-50 -translate-x-1/2 whitespace-nowrap rounded-md bg-foreground/90 px-2.5 py-1 text-xs text-background opacity-0 shadow-md transition-opacity group-hover/upl:opacity-100">Загрузить фото в галерею</span>
+                    </button>
+                  )}
                   <button type="button" onClick={() => setPassportDialogOpen(true)} className="group/pas relative inline-flex items-center gap-2 rounded-full border border-border bg-card px-4 py-2.5 text-sm font-medium text-foreground transition hover:bg-muted">
                     <FileText className="h-4 w-4" /> Паспорт
                     <span className="pointer-events-none absolute -bottom-9 left-1/2 z-50 -translate-x-1/2 whitespace-nowrap rounded-md bg-foreground/90 px-2.5 py-1 text-xs text-background opacity-0 shadow-md transition-opacity group-hover/pas:opacity-100">Документы и данные</span>
