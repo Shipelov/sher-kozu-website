@@ -1089,3 +1089,9 @@
 - [x] Seed переписан на per-block upsert (не all-or-nothing)
 - [x] getPageBlocks добавлена auto-recovery: автоматически создаёт недостающие дефолтные блоки
 - [x] Все 1363 теста проходят
+
+## BUG: CMS-редактор не даёт редактировать блоки с типом richtext (FIXED)
+- [x] Проверить как richtext обрабатывается в AdminCmsEditor.tsx — не обрабатывался
+- [x] TYPE_LABELS не содержал richtext, условия показа полей проверяли только text/json/image
+- [x] Добавлен richtext в TYPE_LABELS + во все условия отображения полей
+- [x] Все 1363 теста проходят

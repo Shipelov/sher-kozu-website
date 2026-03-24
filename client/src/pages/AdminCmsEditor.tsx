@@ -39,6 +39,7 @@ import ImageCropEditor from "@/components/ImageCropEditor";
 /* ─── Block type display helpers ─── */
 const TYPE_LABELS: Record<string, { label: string; icon: typeof Type; color: string }> = {
   text: { label: "Текст", icon: Type, color: "bg-blue-100 text-blue-800" },
+  richtext: { label: "Форматированный текст", icon: Type, color: "bg-violet-100 text-violet-800" },
   image: { label: "Изображение", icon: ImageIcon, color: "bg-emerald-100 text-emerald-800" },
   json: { label: "JSON", icon: FileJson, color: "bg-amber-100 text-amber-800" },
 };
@@ -423,20 +424,22 @@ export default function AdminCmsEditor() {
 
           {editBlock && (
             <div className="space-y-5">
-              {/* Text / JSON content */}
-              {(editBlock.contentType === "text" || editBlock.contentType === "json") && (
+              {/* Text / Richtext / JSON content */}
+              {(editBlock.contentType === "text" || editBlock.contentType === "richtext" || editBlock.contentType === "json") && (
                 <div>
                   <label className="text-sm font-medium text-foreground mb-1.5 block">
-                    {editBlock.contentType === "json" ? "JSON-контент" : "Текст"}
+                    {editBlock.contentType === "json" ? "JSON-контент" : editBlock.contentType === "richtext" ? "Форматированный текст" : "Текст"}
                   </label>
                   <Textarea
                     value={editContent}
                     onChange={(e) => setEditContent(e.target.value)}
-                    rows={editBlock.contentType === "json" ? 12 : 4}
-                    className="font-mono text-sm"
+                    rows={editBlock.contentType === "json" ? 12 : editBlock.contentType === "richtext" ? 6 : 4}
+                    className={editBlock.contentType === "json" ? "font-mono text-sm" : "text-sm"}
                     placeholder={
                       editBlock.contentType === "json"
                         ? 'Формат JSON, например: [{"title": "...", "text": "..."}]'
+                        : editBlock.contentType === "richtext"
+                        ? "Введите форматированный текст..."
                         : "Введите текст..."
                     }
                   />
@@ -476,7 +479,7 @@ export default function AdminCmsEditor() {
               )}
 
               {/* Image content */}
-              {(editBlock.contentType === "image" || editBlock.contentType === "text") && (
+              {(editBlock.contentType === "image" || editBlock.contentType === "text" || editBlock.contentType === "richtext") && (
                 <div>
                   <label className="text-sm font-medium text-foreground mb-1.5 block">
                     {editBlock.contentType === "image" ? "Изображение" : "Изображение (опционально)"}
