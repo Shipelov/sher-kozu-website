@@ -770,32 +770,32 @@ export default function AdminFaqAnalytics() {
                 ) : (
                   <div className="rounded-xl border border-border/60 overflow-hidden">
                     <div className="max-h-[480px] overflow-y-auto">
-                      <Table>
-                        <TableHeader className="sticky top-0 z-10 bg-muted/80 backdrop-blur-sm">
-                          <TableRow className="bg-muted/30">
-                            <TableHead className="w-[30%]">Вопрос</TableHead>
-                            <TableHead className="w-[40%]">Ответ Маши</TableHead>
-                            <TableHead className="w-[10%]">Источник</TableHead>
-                            <TableHead className="w-[20%]">Дата</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
+                      <table className="w-full caption-bottom text-sm">
+                        <thead className="sticky top-0 z-10 bg-muted/90 backdrop-blur-sm [&_tr]:border-b">
+                          <tr className="border-b transition-colors">
+                            <th className="text-foreground h-10 px-2 text-left align-middle font-medium w-[30%]">Вопрос</th>
+                            <th className="text-foreground h-10 px-2 text-left align-middle font-medium w-[40%]">Ответ Маши</th>
+                            <th className="text-foreground h-10 px-2 text-left align-middle font-medium w-[10%]">Источник</th>
+                            <th className="text-foreground h-10 px-2 text-left align-middle font-medium w-[20%]">Дата</th>
+                          </tr>
+                        </thead>
+                        <tbody className="[&_tr:last-child]:border-0">
                           {recent.map((q: any, i: number) => (
-                            <TableRow key={i} className="hover:bg-muted/20 transition-colors">
-                              <TableCell className="align-top">
+                            <tr key={i} className="border-b transition-colors hover:bg-muted/20">
+                              <td className="p-2 align-top">
                                 <p className="text-sm line-clamp-3">
                                   {q.question}
                                 </p>
-                              </TableCell>
-                              <TableCell className="align-top">
+                              </td>
+                              <td className="p-2 align-top">
                                 <p className="text-sm text-muted-foreground line-clamp-3">
                                   {q.answer}
                                 </p>
-                              </TableCell>
-                              <TableCell className="align-top">
+                              </td>
+                              <td className="p-2 align-top">
                                 <SourceBadge source={q.source ?? "faq"} />
-                              </TableCell>
-                              <TableCell className="align-top">
+                              </td>
+                              <td className="p-2 align-top">
                                 <span className="text-xs text-muted-foreground whitespace-nowrap">
                                   {q.createdAt
                                     ? new Date(q.createdAt).toLocaleString(
@@ -809,16 +809,16 @@ export default function AdminFaqAnalytics() {
                                       )
                                     : "—"}
                                 </span>
-                              </TableCell>
-                            </TableRow>
+                              </td>
+                            </tr>
                           ))}
-                        </TableBody>
-                      </Table>
+                        </tbody>
+                      </table>
                     </div>
-                    {recent.length >= 10 && (
+                    {recent.length >= 5 && (
                       <div className="border-t border-border/40 px-4 py-2 bg-muted/10">
                         <p className="text-[11px] text-muted-foreground text-center">
-                          Показано {recent.length} записей. Прокрутите для просмотра всех.
+                          Показано {recent.length} записей • Прокрутите таблицу вниз для просмотра всех
                         </p>
                       </div>
                     )}
