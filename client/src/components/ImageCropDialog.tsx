@@ -75,11 +75,15 @@ async function getCroppedImage(
   pixelCrop: Area,
   outputSize: number,
   quality: number,
+  aspect: number,
 ): Promise<Blob | null> {
   const image = await createImage(imageSrc);
   const canvas = document.createElement("canvas");
-  canvas.width = outputSize;
-  canvas.height = outputSize;
+  // Respect aspect ratio: for landscape (aspect > 1) width is larger, for portrait height is larger
+  const outWidth = aspect >= 1 ? outputSize : Math.round(outputSize * aspect);
+  const outHeight = aspect >= 1 ? Math.round(outputSize / aspect) : outputSize;
+  canvas.width = outWidth;
+  canvas.height = outHeight;
   const ctx = canvas.getContext("2d");
   if (!ctx) return null;
 
@@ -91,8 +95,8 @@ async function getCroppedImage(
     pixelCrop.height,
     0,
     0,
-    outputSize,
-    outputSize,
+    outWidth,
+    outHeight,
   );
 
   return new Promise((resolve) => {
@@ -166,13 +170,13 @@ export default function ImageCropDialog({
 
   async function handlePreview() {
     if (!imageSrc || !croppedAreaPixels) return;
-    const blob = await getCroppedImage(imageSrc, croppedAreaPixels, outputSize, quality);
+    const blob = await getCroppedImage(imageSrc, croppedAreaPixels, outputSize, quality, aspect);
     if (blob) setPreviewSize(blob.size);
   }
 
   async function handleConfirm() {
     if (!imageSrc || !croppedAreaPixels || !originalFile) return;
-    const blob = await getCroppedImage(imageSrc, croppedAreaPixels, outputSize, quality);
+    const blob = await getCroppedImage(imageSrc, croppedAreaPixels, outputSize, quality, aspect);
     if (!blob) return;
 
     const croppedName = originalFile.name.replace(/\.[^.]+$/, "") + "-cropped.jpg";
@@ -295,7 +299,7 @@ export default function ImageCropDialog({
                     → После сжатия: <strong className="text-foreground">{formatFileSize(previewSize)}</strong>
                   </span>
                 )}
-                <span className="ml-auto">Выход: {outputSize}×{outputSize}px · JPEG {Math.round(quality * 100)}%</span>
+                <span className="ml-auto">Выход: {aspect >= 1 ? outputSize : Math.round(outputSize * aspect)}×{aspect >= 1 ? Math.round(outputSize / aspect) : outputSize}px · JPEG {Math.round(quality * 100)}%</span>
               </div>
 
               {/* Action buttons */}

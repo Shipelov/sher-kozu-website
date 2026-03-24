@@ -566,6 +566,19 @@ export async function setAnimalPhotoCover(photoId: number, _ownerOpenId?: string
 
   await db.update(animalPhotos).set({ isCover: 1 }).where(eq(animalPhotos.id, photoId));
 
+  // Also update coverImageUrl on the animals table so the avatar/card reflects the new cover
+  const animalRow = await db
+    .select({ id: animals.id })
+    .from(animals)
+    .where(eq(animals.slug, target[0].animalSlug))
+    .limit(1);
+  if (animalRow[0] && target[0].url) {
+    await db
+      .update(animals)
+      .set({ coverImageUrl: target[0].url, updatedAt: new Date() })
+      .where(eq(animals.id, animalRow[0].id));
+  }
+
   const updated = await db.select().from(animalPhotos).where(eq(animalPhotos.id, photoId)).limit(1);
   return updated[0] ?? null;
 }

@@ -660,7 +660,7 @@ export default function AnimalProfile() {
               {/* Right: main photo */}
               <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.1 }} className="relative">
                 <div className="overflow-hidden rounded-3xl border border-border/60 shadow-lg">
-                  <img src={coverUrl} alt={displayName} className="h-[360px] w-full object-cover md:h-[440px]" />
+                  <img src={coverUrl} alt={displayName} className="h-[360px] w-full object-contain bg-muted/30 md:h-[440px]" />
                   <div className="absolute inset-0 rounded-3xl bg-gradient-to-t from-black/40 via-transparent to-transparent" />
                   <div className="absolute bottom-4 left-4 flex items-center gap-2 rounded-full bg-white/20 px-3 py-1.5 text-xs text-white backdrop-blur">
                     <span className="inline-flex h-2 w-2 rounded-full bg-emerald-400" />
@@ -992,7 +992,7 @@ export default function AnimalProfile() {
                 <button type="button" onClick={() => setLightboxOpen(false)} className="absolute right-4 top-4 z-10 inline-flex h-10 w-10 items-center justify-center rounded-full bg-white/90 text-foreground shadow transition hover:bg-white">
                   <X className="h-5 w-5" />
                 </button>
-                <img src={selectedImage.src} alt={selectedImage.title} className="max-h-[80vh] w-full object-cover" />
+                <img src={selectedImage.src} alt={selectedImage.title} className="max-h-[80vh] w-full object-contain bg-muted/30" />
                 <div className="border-t border-border/70 p-5">
                   <h4 className="text-xl font-semibold text-foreground">{selectedImage.title}</h4>
                   <p className="mt-1 text-sm text-muted-foreground">{selectedImage.meta}</p>
@@ -1026,7 +1026,7 @@ export default function AnimalProfile() {
             {/* Main viewer */}
             <div className="overflow-hidden rounded-2xl border border-border/70 bg-muted/20">
               <div className="relative">
-                <img src={selectedImage?.src ?? CDN.hero} alt={selectedImage?.title ?? displayName} className="h-[280px] w-full object-cover md:h-[380px]" />
+                <img src={selectedImage?.src ?? CDN.hero} alt={selectedImage?.title ?? displayName} className="h-[280px] w-full object-contain bg-muted/30 md:h-[380px]" />
                 <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent p-4 text-white">
                   <h4 className="text-lg font-semibold">{selectedImage?.title}</h4>
                   <p className="mt-0.5 text-xs text-white/75">{selectedImage?.meta}</p>
