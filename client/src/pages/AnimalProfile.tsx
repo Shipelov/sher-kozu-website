@@ -49,6 +49,8 @@ import {
 import OwnerProductPlanSection from "./OwnerProductPlanSection";
 import WellnessRadarChart from "@/components/WellnessRadarChart";
 import PageBreadcrumbs from "@/components/PageBreadcrumbs";
+import ImageCropDialog from "@/components/ImageCropDialog";
+import type { CropResult } from "@/components/ImageCropDialog";
 
 /* ── constants ── */
 const MAX_UPLOAD_SIZE_BYTES = 8 * 1024 * 1024;
@@ -79,14 +81,6 @@ type PhotoActivity = {
   action: "upload" | "remove";
   title: string;
   timestamp: number;
-};
-
-type CropDraft = {
-  file: File;
-  previewUrl: string;
-  zoom: number;
-  offsetX: number;
-  offsetY: number;
 };
 
 /* ── helpers ── */
@@ -223,8 +217,8 @@ export default function AnimalProfile() {
   const [selectedImageId, setSelectedImageId] = useState("cover");
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [photoActivity, setPhotoActivity] = useState<PhotoActivity[]>([]);
-  const [isDragActive, setIsDragActive] = useState(false);
-  const [cropDraft, setCropDraft] = useState<CropDraft | null>(null);
+
+  const [cropDialogOpen, setCropDialogOpen] = useState(false);
   const [coverImageId, setCoverImageId] = useState("cover");
   const [galleryDialogOpen, setGalleryDialogOpen] = useState(false);
   const [passportDialogOpen, setPassportDialogOpen] = useState(false);
@@ -431,40 +425,15 @@ export default function AnimalProfile() {
     toast.info("Instagram не поддерживает web-share по ссылке", { description: "Скопируйте ссылку и вставьте в публикацию." });
   }
 
-  function openCropperForFile(file?: File) {
-    if (!file) return;
-    if (!ACCEPTED_IMAGE_TYPES.includes(file.type as (typeof ACCEPTED_IMAGE_TYPES)[number])) { toast.error("Неподдерживаемый формат"); return; }
-    if (file.size > MAX_UPLOAD_SIZE_BYTES) { toast.error("Файл слишком большой (макс. 8 МБ)"); return; }
-    setCropDraft({ file, previewUrl: URL.createObjectURL(file), zoom: 1, offsetX: 0, offsetY: 0 });
-  }
-
-  async function handleGalleryUpload(event: ChangeEvent<HTMLInputElement>) { openCropperForFile(event.target.files?.[0]); event.target.value = ""; }
-  function handleDropZoneDragOver(event: DragEvent<HTMLLabelElement>) { event.preventDefault(); setIsDragActive(true); }
-  function handleDropZoneDragLeave(event: DragEvent<HTMLLabelElement>) { event.preventDefault(); setIsDragActive(false); }
-  function handleDropZoneDrop(event: DragEvent<HTMLLabelElement>) { event.preventDefault(); setIsDragActive(false); openCropperForFile(event.dataTransfer.files?.[0]); }
-  function closeCropDraft() { setCropDraft((c) => { if (c?.previewUrl) URL.revokeObjectURL(c.previewUrl); return null; }); }
-
-  async function handleConfirmCrop() {
-    if (!cropDraft) return;
-    const image = new Image();
-    image.src = cropDraft.previewUrl;
-    await new Promise<void>((resolve, reject) => { image.onload = () => resolve(); image.onerror = () => reject(new Error("Ошибка")); });
-    const canvas = document.createElement("canvas");
-    const size = 1200;
-    canvas.width = size;
-    canvas.height = size;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) { toast.error("Ошибка редактора"); return; }
-    const minSide = Math.min(image.width, image.height);
-    const cropSide = minSide / cropDraft.zoom;
-    const maxOX = Math.max((image.width - cropSide) / 2, 0);
-    const maxOY = Math.max((image.height - cropSide) / 2, 0);
-    ctx.drawImage(image, (image.width - cropSide) / 2 + cropDraft.offsetX * maxOX, (image.height - cropSide) / 2 + cropDraft.offsetY * maxOY, cropSide, cropSide, 0, 0, size, size);
-    const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.92));
-    if (!blob) { toast.error("Ошибка кадрирования"); return; }
-    const processedFile = new File([blob], cropDraft.file.name.replace(/\.[^.]+$/, "") + "-cropped.jpg", { type: "image/jpeg" });
-    await uploadPhoto.mutateAsync({ animalSlug: animalSlug!, fileName: processedFile.name, mimeType: processedFile.type, sizeBytes: processedFile.size, base64Data: await fileToBase64(processedFile) });
-    closeCropDraft();
+  async function handleCropConfirm(result: CropResult) {
+    await uploadPhoto.mutateAsync({
+      animalSlug: animalSlug!,
+      fileName: result.originalName,
+      mimeType: result.mimeType,
+      sizeBytes: result.sizeBytes,
+      base64Data: result.base64,
+    });
+    setCropDialogOpen(false);
   }
 
   function handleRemoveUploadedImage(img: GalleryImage) { if (img.isUploaded && img.photoId) removePhoto.mutate({ photoId: img.photoId }); }
@@ -1033,51 +1002,15 @@ export default function AnimalProfile() {
           ) : null}
         </AnimatePresence>
 
-        {/* ═══ Crop modal ═══ */}
-        <AnimatePresence>
-          {cropDraft ? (
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4 py-10" onClick={closeCropDraft}>
-              <motion.div initial={{ scale: 0.96, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.98, opacity: 0 }} className="w-full max-w-3xl rounded-3xl bg-card p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <h3 className="text-xl font-semibold text-foreground">Кадрирование фото</h3>
-                    <p className="mt-1 text-sm text-muted-foreground">Настройте масштаб и положение перед загрузкой.</p>
-                  </div>
-                  <button type="button" onClick={closeCropDraft} className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-border bg-card text-muted-foreground transition hover:text-foreground">
-                    <X className="h-4 w-4" />
-                  </button>
-                </div>
-                <div className="mt-5 grid gap-5 lg:grid-cols-[1fr_260px]">
-                  <div className="overflow-hidden rounded-2xl border border-border/70 bg-muted/30">
-                    <div className="relative aspect-square w-full overflow-hidden">
-                      <img src={cropDraft.previewUrl} alt="Предпросмотр" className="h-full w-full object-cover" style={{ transform: `scale(${cropDraft.zoom}) translate(${cropDraft.offsetX * 18}%, ${cropDraft.offsetY * 18}%)` }} />
-                    </div>
-                  </div>
-                  <div className="space-y-4 rounded-2xl border border-border/70 bg-card p-4">
-                    <div>
-                      <label className="text-sm font-medium text-foreground">Масштаб</label>
-                      <input type="range" min={1} max={2.4} step={0.05} value={cropDraft.zoom} onChange={(e) => setCropDraft((c) => c ? { ...c, zoom: Number(e.target.value) } : c)} className="mt-2 w-full" />
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium text-foreground">Смещение X</label>
-                      <input type="range" min={-1} max={1} step={0.05} value={cropDraft.offsetX} onChange={(e) => setCropDraft((c) => c ? { ...c, offsetX: Number(e.target.value) } : c)} className="mt-2 w-full" />
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium text-foreground">Смещение Y</label>
-                      <input type="range" min={-1} max={1} step={0.05} value={cropDraft.offsetY} onChange={(e) => setCropDraft((c) => c ? { ...c, offsetY: Number(e.target.value) } : c)} className="mt-2 w-full" />
-                    </div>
-                    <button type="button" onClick={handleConfirmCrop} disabled={uploadPhoto.isPending} className="w-full rounded-full bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground transition hover:bg-primary/95 disabled:opacity-70">
-                      {uploadPhoto.isPending ? <Loader2 className="mx-auto h-4 w-4 animate-spin" /> : "Сохранить фото"}
-                    </button>
-                    <button type="button" onClick={closeCropDraft} className="w-full rounded-full border border-border bg-card px-5 py-3 text-sm font-medium text-foreground transition hover:bg-muted">
-                      Отменить
-                    </button>
-                  </div>
-                </div>
-              </motion.div>
-            </motion.div>
-          ) : null}
-        </AnimatePresence>
+        {/* ═══ Crop Dialog ═══ */}
+        <ImageCropDialog
+          open={cropDialogOpen}
+          onOpenChange={setCropDialogOpen}
+          onConfirm={handleCropConfirm}
+          isUploading={uploadPhoto.isPending}
+          title="Загрузить фото"
+          description="Перетащите изображение для позиционирования. Фото автоматически сжимается до 1200×1200px JPEG."
+        />
 
         {/* ═══ Gallery Dialog ═══ */}
         <Dialog open={galleryDialogOpen} onOpenChange={setGalleryDialogOpen}>
@@ -1145,16 +1078,19 @@ export default function AnimalProfile() {
                   </button>
                 </div>
 
-                <label onDragOver={handleDropZoneDragOver} onDragLeave={handleDropZoneDragLeave} onDrop={handleDropZoneDrop} className={`flex cursor-pointer items-center gap-3 rounded-xl border border-dashed px-4 py-3 transition ${isDragActive ? "border-primary bg-primary/5" : "border-border/70 bg-card hover:bg-muted/30"}`}>
-                  <input type="file" accept={ACCEPTED_IMAGE_TYPES.join(",")} className="hidden" onChange={handleGalleryUpload} />
+                <button
+                  type="button"
+                  onClick={() => setCropDialogOpen(true)}
+                  className={`flex w-full cursor-pointer items-center gap-3 rounded-xl border border-dashed px-4 py-3 transition border-border/70 bg-card hover:bg-muted/30`}
+                >
                   <div className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary">
                     <Upload className="h-3.5 w-3.5" />
                   </div>
-                  <div>
+                  <div className="text-left">
                     <p className="text-sm font-medium text-foreground">Загрузить фото</p>
-                    <p className="text-[11px] text-muted-foreground">JPG, PNG, WebP до 8 МБ</p>
+                    <p className="text-[11px] text-muted-foreground">JPG, PNG, WebP до 8 МБ · кадрирование и сжатие</p>
                   </div>
-                </label>
+                </button>
               </div>
             ) : !isAuthenticated ? (
               <div className="mt-3 rounded-xl border border-dashed border-primary/20 bg-primary/5 p-4 text-center">

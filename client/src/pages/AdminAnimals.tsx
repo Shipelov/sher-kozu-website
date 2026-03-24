@@ -40,6 +40,8 @@ import {
 } from "@/components/ui/alert-dialog";
 import { trpc } from "@/lib/trpc";
 import ScrollRemaining from "@/components/ScrollRemaining";
+import ImageCropDialog from "@/components/ImageCropDialog";
+import type { CropResult } from "@/components/ImageCropDialog";
 import { NOT_ADMIN_ERR_MSG } from "@shared/const";
 import {
   Dialog,
@@ -1146,6 +1148,7 @@ function AnimalGalleryManager({
 }) {
   const utils = trpc.useUtils();
   const [photoDrafts, setPhotoDrafts] = useState<GalleryPhotoDrafts>({});
+  const [cropDialogOpen, setCropDialogOpen] = useState(false);
   const photosQuery = trpc.animalPhotos.list.useQuery(
     { animalSlug },
     { enabled: Boolean(animalSlug.trim()) }
@@ -1220,34 +1223,15 @@ function AnimalGalleryManager({
     },
   });
 
-  async function handleUpload(event: ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    const validation = validateGalleryUpload(file.type, file.size);
-    if (!validation.hasAllowedType) {
-      toast.error("Поддерживаются только JPG, PNG и WebP");
-      event.target.value = "";
-      return;
-    }
-    if (!validation.hasAllowedSize) {
-      toast.error("Максимальный размер файла — 8 МБ");
-      event.target.value = "";
-      return;
-    }
-
-    try {
-      const base64Data = await fileToBase64(file);
-      await uploadPhoto.mutateAsync({
-        animalSlug,
-        fileName: file.name,
-        mimeType: file.type,
-        sizeBytes: file.size,
-        base64Data,
-      });
-    } finally {
-      event.target.value = "";
-    }
+  async function handleCropConfirm(result: CropResult) {
+    await uploadPhoto.mutateAsync({
+      animalSlug,
+      fileName: result.originalName,
+      mimeType: result.mimeType,
+      sizeBytes: result.sizeBytes,
+      base64Data: result.base64,
+    });
+    setCropDialogOpen(false);
   }
 
   function movePhoto(photoId: number, direction: "left" | "right") {
@@ -1301,11 +1285,15 @@ function AnimalGalleryManager({
             Загрузите фотографии, задайте обложку и управляйте порядком показа миниатюр в карточке животного.
           </p>
         </div>
-        <Label className="inline-flex cursor-pointer items-center gap-2 rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90">
-          {uploadPhoto.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <ImagePlus className="h-4 w-4" />}
+        <Button
+          type="button"
+          className="rounded-full"
+          onClick={() => setCropDialogOpen(true)}
+          disabled={uploadPhoto.isPending}
+        >
+          {uploadPhoto.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ImagePlus className="mr-2 h-4 w-4" />}
           {uploadPhoto.isPending ? "Загрузка..." : "Добавить фото"}
-          <input type="file" accept="image/*" className="hidden" onChange={handleUpload} disabled={uploadPhoto.isPending} />
-        </Label>
+        </Button>
       </div>
 
       {!animalSlug ? (
@@ -1433,9 +1421,14 @@ function AnimalGalleryManager({
         </div>
       )}
 
-      <div className="rounded-2xl border border-border/70 bg-background/80 px-4 py-3 text-sm text-muted-foreground">
-        Текущее cover image URL карточки: <span className="font-medium text-foreground">{values.coverImageUrl || "будет заполнен после выбора обложки"}</span>
-      </div>
+      <ImageCropDialog
+        open={cropDialogOpen}
+        onOpenChange={setCropDialogOpen}
+        onConfirm={handleCropConfirm}
+        isUploading={uploadPhoto.isPending}
+        title="Добавить фото в галерею"
+        description="Перетащите изображение для позиционирования. Фото автоматически сжимается до 1200×1200px JPEG."
+      />
     </div>
   );
 }
