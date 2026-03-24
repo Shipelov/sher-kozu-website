@@ -44,6 +44,7 @@ import {
   UserRound,
 } from "lucide-react";
 import { useMemo, useState, useCallback } from "react";
+import { useCmsContent } from "@/hooks/useCmsContent";
 import { toast } from "sonner";
 
 /* ─── Types ─── */
@@ -227,6 +228,7 @@ function getStatusCopy(status: string | null | undefined) {
 /* ─── Component ─── */
 
 export default function Partners() {
+  const cms = useCmsContent("partners");
   const [partnerLeadForm, setPartnerLeadForm] = useState<PartnerLeadFormState>(defaultPartnerLeadForm);
   const [partnerAttachments, setPartnerAttachments] = useState<PartnerAttachmentDraft[]>([]);
   const [partnerAttachmentWarning, setPartnerAttachmentWarning] = useState<string | null>(null);
@@ -497,16 +499,15 @@ export default function Partners() {
           >
             <div className="inline-flex items-center gap-2 rounded-full border border-stone-200 bg-white px-4 py-2 text-sm text-stone-600 shadow-sm">
               <Building2 className="h-4 w-4" />
-              B2B и партнёрства
+              {cms.getText("hero_badge", "B2B и партнёрства")}
             </div>
 
             <h1 className="mt-6 font-display text-4xl text-foreground md:text-5xl">
-              Партнёрская программа{" "}
-              <span className="text-primary">Шерь Козу</span>
+              {cms.getText("hero_heading", "Партнёрская программа Шерь Козу")}
             </h1>
 
             <p className="mt-5 max-w-2xl text-lg leading-8 text-muted-foreground">
-              Рестораны, магазины, отели и корпоративные клиенты — мы создаём уникальные продуктовые решения на основе элитных пород с прозрачной историей происхождения. Оставьте заявку — менеджер свяжется с вами в течение одного рабочего дня.
+              {cms.getText("hero_subtitle", "Рестораны, магазины, отели и корпоративные клиенты — мы создаём уникальные продуктовые решения на основе элитных пород с прозрачной историей происхождения. Оставьте заявку — менеджер свяжется с вами в течение одного рабочего дня.")}
             </p>
           </motion.div>
         </div>
@@ -523,12 +524,11 @@ export default function Partners() {
               <CardHeader className="space-y-3 pb-4">
                 <div className="inline-flex w-fit items-center gap-2 rounded-full border border-stone-200 bg-white/90 px-3 py-1 text-[11px] font-medium uppercase tracking-[0.18em] text-stone-600">
                   <Building2 className="h-3.5 w-3.5" />
-                  Партнёрский вход
+                  {cms.getText("sidebar_badge", "Партнёрский вход")}
                 </div>
-                <CardTitle className="text-2xl text-stone-900">Коммерческий запрос</CardTitle>
+                <CardTitle className="text-2xl text-stone-900">{cms.getText("sidebar_heading", "Коммерческий запрос")}</CardTitle>
                 <CardDescription className="max-w-lg text-sm leading-6 text-stone-600">
-                  Если вам нужен опт, ресторанный формат или коллаборация, оставьте короткую заявку.
-                  Мы ответим в течение одного рабочего дня.
+                  {cms.getText("sidebar_description", "Если вам нужен опт, ресторанный формат или коллаборация, оставьте короткую заявку. Мы ответим в течение одного рабочего дня.")}
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-3 pt-0 text-sm text-stone-700">
@@ -557,9 +557,9 @@ export default function Partners() {
             {/* Right: form */}
             <Card className="border-stone-200 bg-white/95 shadow-sm">
               <CardHeader className="space-y-3 pb-4">
-                <CardTitle className="text-2xl text-stone-950">Партнёрская заявка</CardTitle>
+                <CardTitle className="text-2xl text-stone-950">{cms.getText("form_heading", "Партнёрская заявка")}</CardTitle>
                 <CardDescription className="text-sm leading-6 text-stone-600">
-                  Заполните форму, и мы свяжемся с вами для обсуждения деталей сотрудничества.
+                  {cms.getText("form_description", "Заполните форму, и мы свяжемся с вами для обсуждения деталей сотрудничества.")}
                 </CardDescription>
               </CardHeader>
               <CardContent>

@@ -1578,17 +1578,67 @@ export async function recalculateAnimalStatus(animalId: number) {
 }
 
 async function enrichAnimalWithShareMetrics(db: any, animal: any) {
-  const activeOwnerships = await countActiveOwnerships(animal.id);
-  const pendingOwnerships = await countPendingOwnerships(animal.id);
+  // Single query: fetch all ownership rows with JOINs (replaces 4 separate queries)
+  const ownershipRows = await db
+    .select({
+      ownerOpenId: animalOwnerships.ownerOpenId,
+      slotIndex: animalOwnerships.slotIndex,
+      status: animalOwnerships.status,
+      endsAt: animalOwnerships.endsAt,
+      familyName: families.name,
+      planName: plans.name,
+      durationLabel: planDurations.label,
+    })
+    .from(animalOwnerships)
+    .leftJoin(families, eq(animalOwnerships.familyId, families.id))
+    .leftJoin(plans, eq(animalOwnerships.planId, plans.id))
+    .leftJoin(planDurations, eq(animalOwnerships.planDurationId, planDurations.id))
+    .where(
+      and(
+        eq(animalOwnerships.animalId, animal.id),
+        or(eq(animalOwnerships.status, "active"), eq(animalOwnerships.status, "pending_payment")),
+      ),
+    )
+    .orderBy(asc(animalOwnerships.slotIndex));
+
+  // Derive all metrics from the single result set
+  const activeOwnerships = ownershipRows.length;
+  const pendingOwnerships = ownershipRows.filter((r: any) => r.status === "pending_payment").length;
+  const occupiedUntil = ownershipRows.reduce((max: Date | null, r: any) => {
+    if (!r.endsAt) return max;
+    return !max || new Date(r.endsAt) > new Date(max) ? r.endsAt : max;
+  }, null);
+
+  // Build share distribution from the same rows
+  const grouped = new Map<string, { familyName: string; planLabel: string; slots: number[] }>();
+  for (const row of ownershipRows) {
+    const key = row.ownerOpenId;
+    if (!grouped.has(key)) {
+      grouped.set(key, {
+        familyName: row.familyName ?? "\u0411\u0435\u0437 \u0438\u043c\u0435\u043d\u0438",
+        planLabel: row.durationLabel ?? row.planName ?? "\u2014",
+        slots: [],
+      });
+    }
+    grouped.get(key)!.slots.push(row.slotIndex);
+  }
+  const totalSlots = getStandardizedOwnershipSlots();
+  const shareUnitPercent = Math.round(getPercentPerSlot(totalSlots));
+  const shareDistribution = Array.from(grouped.values()).map((entry) => ({
+    familyName: entry.familyName,
+    percent: entry.slots.length * shareUnitPercent,
+    slots: entry.slots,
+    planLabel: entry.planLabel,
+  }));
+
+  // Media query (still separate — different table)
   const media = await db
     .select()
     .from(animalMedia)
     .where(eq(animalMedia.animalId, animal.id))
     .orderBy(desc(animalMedia.isCover), asc(animalMedia.sortOrder), asc(animalMedia.id));
-  const occupiedUntil = await getAnimalOccupiedUntil(animal.id);
-  const shareMetrics = buildAnimalShareMetrics(animal, activeOwnerships);
-  const shareDistribution = await buildShareDistribution(animal.id);
 
+  const shareMetrics = buildAnimalShareMetrics(animal, activeOwnerships);
   const occupiedValueMinor = shareDistribution.reduce(
     (sum, entry) => sum + getSharePriceMinor(animal.baseMonthlyPriceMinor, entry.percent),
     0,

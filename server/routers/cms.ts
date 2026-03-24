@@ -631,9 +631,22 @@ export const cmsRouter = router({
 /**
  * Default content blocks for each page.
  */
+const partnersDefaults: DefaultBlock[] = [
+  { page: "partners", blockKey: "hero_badge", label: "Hero — Бейдж", contentType: "text", content: "B2B и партнёрства", section: "Hero", sortOrder: 1, visible: true },
+  { page: "partners", blockKey: "hero_heading", label: "Hero — Заголовок", contentType: "richtext", content: "Партнёрская программа Шерь Козу", section: "Hero", sortOrder: 2, visible: true },
+  { page: "partners", blockKey: "hero_subtitle", label: "Hero — Описание", contentType: "richtext", content: "Рестораны, магазины, отели и корпоративные клиенты — мы создаём уникальные продуктовые решения на основе элитных пород с прозрачной историей происхождения. Оставьте заявку — менеджер свяжется с вами в течение одного рабочего дня.", section: "Hero", sortOrder: 3, visible: true },
+  { page: "partners", blockKey: "sidebar_badge", label: "Sidebar — Бейдж", contentType: "text", content: "Партнёрский вход", section: "Форма", sortOrder: 10, visible: true },
+  { page: "partners", blockKey: "sidebar_heading", label: "Sidebar — Заголовок", contentType: "text", content: "Коммерческий запрос", section: "Форма", sortOrder: 11, visible: true },
+  { page: "partners", blockKey: "sidebar_description", label: "Sidebar — Описание", contentType: "richtext", content: "Если вам нужен опт, ресторанный формат или коллаборация, оставьте короткую заявку. Мы ответим в течение одного рабочего дня.", section: "Форма", sortOrder: 12, visible: true },
+  { page: "partners", blockKey: "form_heading", label: "Форма — Заголовок", contentType: "text", content: "Партнёрская заявка", section: "Форма", sortOrder: 13, visible: true },
+  { page: "partners", blockKey: "form_description", label: "Форма — Описание", contentType: "text", content: "Заполните форму, и мы свяжемся с вами для обсуждения деталей сотрудничества.", section: "Форма", sortOrder: 14, visible: true },
+];
+
 function getDefaultBlocks(page: string): DefaultBlock[] {
   if (page === "home") return homeDefaults;
   if (page === "catalog") return catalogDefaults;
+  if (page === "about") return aboutDefaults;
+  if (page === "partners") return partnersDefaults;
   return [];
 }
 
@@ -718,6 +731,70 @@ const homeDefaults: DefaultBlock[] = [
   { page: "home", blockKey: "cta_title", label: "CTA — Подзаголовок", contentType: "text", content: "Начните сейчас", section: "Призыв к действию", sortOrder: 60, visible: true },
   { page: "home", blockKey: "cta_heading", label: "CTA — Заголовок", contentType: "text", content: "Станьте частью первого в России клуба персонального фермерства", section: "Призыв к действию", sortOrder: 61, visible: true },
   { page: "home", blockKey: "cta_subtitle", label: "CTA — Описание", contentType: "richtext", content: "Выберите животное, познакомьтесь с его историей и начните получать именные продукты. Количество мест в клубе ограничено — мы работаем с каждым владельцем лично.", section: "Призыв к действию", sortOrder: 62, visible: true },
+];
+
+const aboutDefaults: DefaultBlock[] = [
+  // Section 1 — Hero
+  { page: "about", blockKey: "hero_badge", label: "Hero — Бейдж", contentType: "text", content: "О ферме", section: "Hero", sortOrder: 1, visible: true },
+  { page: "about", blockKey: "hero_heading", label: "Hero — Заголовок", contentType: "richtext", content: "Семейная ферма, где каждое животное — член семьи", section: "Hero", sortOrder: 2, visible: true },
+  { page: "about", blockKey: "hero_subtitle", label: "Hero — Описание", contentType: "richtext", content: "Мы — семья, которая превратила любовь к животным и натуральным продуктам в дело жизни. Наша ферма — это не производство. Это место, где козы и овцы элитных пород живут в заботе, а каждый продукт несёт имя конкретного животного.", section: "Hero", sortOrder: 3, visible: true },
+  { page: "about", blockKey: "hero_image", label: "Hero — Фото", contentType: "image", content: "", imageUrl: "https://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/about_farm_family_story-YMV9ujT7krNrfNEGsYidAo.webp", section: "Hero", sortOrder: 4, visible: true },
+  { page: "about", blockKey: "hero_location", label: "Hero — Локация", contentType: "text", content: "Подмосковье", section: "Hero", sortOrder: 5, visible: true },
+  { page: "about", blockKey: "hero_since", label: "Hero — С какого года", contentType: "text", content: "Семейная ферма с 2019 года", section: "Hero", sortOrder: 6, visible: true },
+
+  // Section 2 — History
+  { page: "about", blockKey: "history_badge", label: "История — Бейдж", contentType: "text", content: "Наша история", section: "История", sortOrder: 10, visible: true },
+  { page: "about", blockKey: "history_heading", label: "История — Заголовок", contentType: "text", content: "От мечты — к первому в России клубу персонального фермерства", section: "История", sortOrder: 11, visible: true },
+  { page: "about", blockKey: "history_subtitle", label: "История — Описание", contentType: "richtext", content: "Каждый год мы росли — не ради масштаба, а ради глубины. Больше заботы, больше прозрачности, больше связи между семьями и фермой.", section: "История", sortOrder: 12, visible: true },
+  { page: "about", blockKey: "history_timeline", label: "История — Таймлайн", contentType: "json", content: JSON.stringify([
+    { year: "2019", title: "Идея", text: "Мечта о собственной ферме, где каждое животное — член семьи, а каждый продукт — результат заботы и любви." },
+    { year: "2020", title: "Первые животные", text: "Появились первые англо-нубийские козы. Начали изучать генетику, уход и традиции европейского фермерства." },
+    { year: "2022", title: "Расширение стада", text: "Добавили альпийских коз и остфризских овец. Запустили собственное сыроделие и начали работать с первыми семьями." },
+    { year: "2024", title: "Клуб «Шерь Козу»", text: "Создали закрытый клуб персонального фермерства — первый в России. Семьи выбирают своё животное и получают именные продукты." },
+    { year: "2025", title: "Цифровая ферма", text: "Запустили платформу с личными кабинетами, трекером продуктов и дневниками животных. Прозрачность стала полной." },
+  ]), section: "История", sortOrder: 13, visible: true },
+
+  // Section 3 — Philosophy
+  { page: "about", blockKey: "philosophy_badge", label: "Философия — Бейдж", contentType: "text", content: "Наша философия", section: "Философия", sortOrder: 20, visible: true },
+  { page: "about", blockKey: "philosophy_heading", label: "Философия — Заголовок", contentType: "text", content: "Три принципа, на которых стоит ферма", section: "Философия", sortOrder: 21, visible: true },
+  { page: "about", blockKey: "philosophy_subtitle", label: "Философия — Описание", contentType: "richtext", content: "Мы верим, что качество начинается с отношения — к животным, к продукту и к людям, которые нам доверяют.", section: "Философия", sortOrder: 22, visible: true },
+  { page: "about", blockKey: "philosophy_image", label: "Философия — Фото", contentType: "image", content: "", imageUrl: "https://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/about_farm_philosophy-UsPE82Ym7NqaHcQhCHFj4f.webp", section: "Философия", sortOrder: 23, visible: true },
+  { page: "about", blockKey: "philosophy_principles", label: "Философия — Принципы", contentType: "json", content: JSON.stringify([
+    { icon: "Eye", title: "Радикальная прозрачность", text: "Вы знаете всё: имя животного, породу, родословную, состав молока, условия содержания и маршрут доставки. Никаких чёрных ящиков — только открытость на каждом этапе." },
+    { icon: "Heart", title: "Эмоциональная связь", text: "Это не просто покупка продуктов. Вы выбираете конкретное животное, следите за его жизнью, приезжаете в гости. Каждая коробка — продолжение вашей личной истории с фермой." },
+    { icon: "ShieldCheck", title: "Элитная генетика", text: "Мы работаем только с лучшими породами: англо-нубийские и альпийские козы, остфризские овцы и овцы породы Лакон. Европейская генетика — основа премиального качества молока и продуктов." },
+  ]), section: "Философия", sortOrder: 24, visible: true },
+
+  // Section 4 — Breeds
+  { page: "about", blockKey: "breeds_badge", label: "Породы — Бейдж", contentType: "text", content: "Элитные породы", section: "Породы", sortOrder: 30, visible: true },
+  { page: "about", blockKey: "breeds_heading", label: "Породы — Заголовок", contentType: "text", content: "Генетика европейского уровня — основа премиального качества", section: "Породы", sortOrder: 31, visible: true },
+  { page: "about", blockKey: "breeds_subtitle", label: "Породы — Описание", contentType: "richtext", content: "Мы тщательно отбираем породы, которые дают лучшее молоко для сыров, йогуртов и свежих молочных продуктов.", section: "Породы", sortOrder: 32, visible: true },
+  { page: "about", blockKey: "breeds_image", label: "Породы — Фото", contentType: "image", content: "", imageUrl: "https://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/about_farm_breeds-CDKnxN8KzLjmZdjyKV8vE4.webp", section: "Породы", sortOrder: 33, visible: true },
+  { page: "about", blockKey: "breeds_list", label: "Породы — Список", contentType: "json", content: JSON.stringify([
+    { name: "Англо-нубийская коза", origin: "Великобритания", trait: "Молоко с высоким содержанием жира (5–8%) и сливочным вкусом. Идеально для сыров и йогуртов.", character: "Общительные, ласковые, с выразительными длинными ушами и римским профилем." },
+    { name: "Альпийская коза", origin: "Французские Альпы", trait: "Высокая молочная продуктивность, молоко с мягким, чистым вкусом. Отлично подходит для свежего молока и мягких сыров.", character: "Выносливые, любопытные, с яркой контрастной окраской." },
+    { name: "Остфризская овца", origin: "Восточная Фризия, Германия", trait: "Самая молочная порода овец в мире. Молоко с 6–7% жирности — основа для элитных овечьих сыров.", character: "Спокойные, дружелюбные, легко привыкают к людям." },
+    { name: "Овца породы Лакон", origin: "Греция", trait: "Молоко с богатым вкусом и высоким содержанием белка. Традиционная основа для фета и других средиземноморских сыров.", character: "Грациозные, неприхотливые, хорошо адаптируются к разным условиям." },
+  ]), section: "Породы", sortOrder: 34, visible: true },
+
+  // Section 5 — Gallery
+  { page: "about", blockKey: "gallery_badge", label: "Галерея — Бейдж", contentType: "text", content: "Жизнь на ферме", section: "Галерея", sortOrder: 40, visible: true },
+  { page: "about", blockKey: "gallery_heading", label: "Галерея — Заголовок", contentType: "text", content: "Каждый день — забота, каждый продукт — история", section: "Галерея", sortOrder: 41, visible: true },
+  { page: "about", blockKey: "gallery_subtitle", label: "Галерея — Описание", contentType: "richtext", content: "Ферма живёт своим ритмом: утренние надои, прогулки на пастбище, визиты семей и вечерний уход. Вот как это выглядит.", section: "Галерея", sortOrder: 42, visible: true },
+
+  // Section 6 — Values
+  { page: "about", blockKey: "values_badge", label: "Ценности — Бейдж", contentType: "text", content: "Наши ценности", section: "Ценности", sortOrder: 50, visible: true },
+  { page: "about", blockKey: "values_heading", label: "Ценности — Заголовок", contentType: "text", content: "Не масштаб, а глубина", section: "Ценности", sortOrder: 51, visible: true },
+  { page: "about", blockKey: "values_subtitle", label: "Ценности — Описание", contentType: "richtext", content: "Мы сознательно ограничиваем количество мест в клубе. Не потому что хотим создать дефицит — а потому что каждому животному нужна настоящая забота, а каждой семье — персональное внимание. Мы растём медленно, чтобы расти правильно.", section: "Ценности", sortOrder: 52, visible: true },
+  { page: "about", blockKey: "values_stats", label: "Ценности — Статистика", contentType: "json", content: JSON.stringify([
+    { value: "50", label: "семей в клубе" },
+    { value: "4", label: "элитные породы" },
+    { value: "100%", label: "прозрачность" },
+  ]), section: "Ценности", sortOrder: 53, visible: true },
+
+  // Section 7 — CTA
+  { page: "about", blockKey: "cta_heading", label: "CTA — Заголовок", contentType: "text", content: "Приезжайте к нам на ферму", section: "Призыв к действию", sortOrder: 60, visible: true },
+  { page: "about", blockKey: "cta_subtitle", label: "CTA — Описание", contentType: "richtext", content: "Познакомьтесь с животными лично, попробуйте свежие продукты и почувствуйте, каково это — знать, откуда ваша еда.", section: "Призыв к действию", sortOrder: 61, visible: true },
 ];
 
 const catalogDefaults: DefaultBlock[] = [

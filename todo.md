@@ -1157,3 +1157,22 @@
 - [x] Корневая причина: AnimalsCatalog.tsx не подключал useCmsContent — все тексты были захардкожены
 - [x] Подключен useCmsContent("catalog") и заменены 6 хардкодных строк на cms.getText()
 - [x] Все 1403 теста проходят
+
+## FEATURE: Оптимизация enrichAnimalWithShareMetrics — объединение 4 SQL в 1 JOIN (DONE)
+- [x] Проанализированы 4 запроса и объединены в 1 агрегирующий + 1 для distribution
+- [x] enrichAnimalWithShareMetrics заменён на оптимизированную версию (2 запроса вместо 4)
+- [x] Старые функции сохранены для обратной совместимости
+- [x] Все 1403 теста проходят
+
+## FEATURE: In-memory кэш для публичного каталога (60 сек TTL) (DONE)
+- [x] Создан server/utils/cache.ts с TTL-кэшем (get/set/invalidate/clear)
+- [x] listPublicAnimals обёрнут в кэш (60 сек)
+- [x] Кэш инвалидируется при create, update, archive, purchaseShare
+- [x] Все 1403 теста проходят
+
+## FEATURE: Подключить CMS ко всем оставшимся страницам (DONE)
+- [x] Аудит всех страниц: Home, Catalog, About, Partners — все подключены к CMS
+- [x] AboutFarm.tsx: 30+ блоков CMS для 7 секций (hero, history, philosophy, breeds, gallery, values, CTA)
+- [x] Partners.tsx: 8 блоков CMS для hero, sidebar, form секций
+- [x] Дефолтные блоки добавлены в seed для about и partners
+- [x] Все 1403 теста проходят

@@ -7,16 +7,17 @@
   3. Философия: Три принципа
   4. Наши породы: Элитная генетика
   5. Фотогалерея: Жизнь на ферме
-  6. CTA: Присоединяйтесь
+  6. Ценности: Не масштаб, а глубина
+  7. CTA: Присоединяйтесь
 
-  Tone of voice: тёплый, личный, без жаргона.
-  Ключевые смыслы: элитные породы, персональное фермерство, прозрачность, семейные ценности.
+  Все тексты, изображения и JSON-данные подключены к CMS через useCmsContent("about").
 */
 
 import { motion } from "framer-motion";
 import { Link } from "wouter";
 import Navbar from "@/components/Navbar";
 import PageBreadcrumbs from "@/components/PageBreadcrumbs";
+import { useCmsContent } from "@/hooks/useCmsContent";
 import {
   ArrowRight,
   Heart,
@@ -38,27 +39,27 @@ const CDN = {
   visit: "https://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/about_farm_visit-VXmkrXCZVHGawgNavuytqu.webp",
 };
 
-/* ─── Data ─── */
+/* ─── Fallback Data ─── */
 
-const principles = [
+const defaultPrinciples = [
   {
-    icon: Eye,
+    icon: "Eye",
     title: "Радикальная прозрачность",
     text: "Вы знаете всё: имя животного, породу, родословную, состав молока, условия содержания и маршрут доставки. Никаких чёрных ящиков — только открытость на каждом этапе.",
   },
   {
-    icon: Heart,
+    icon: "Heart",
     title: "Эмоциональная связь",
     text: "Это не просто покупка продуктов. Вы выбираете конкретное животное, следите за его жизнью, приезжаете в гости. Каждая коробка — продолжение вашей личной истории с фермой.",
   },
   {
-    icon: ShieldCheck,
+    icon: "ShieldCheck",
     title: "Элитная генетика",
     text: "Мы работаем только с лучшими породами: англо-нубийские и альпийские козы, остфризские овцы и овцы породы Лакон. Европейская генетика — основа премиального качества молока и продуктов.",
   },
 ];
 
-const breeds = [
+const defaultBreeds = [
   {
     name: "Англо-нубийская коза",
     origin: "Великобритания",
@@ -85,32 +86,18 @@ const breeds = [
   },
 ];
 
-const timeline = [
-  {
-    year: "2019",
-    title: "Идея",
-    text: "Мечта о собственной ферме, где каждое животное — член семьи, а каждый продукт — результат заботы и любви.",
-  },
-  {
-    year: "2020",
-    title: "Первые животные",
-    text: "Появились первые англо-нубийские козы. Начали изучать генетику, уход и традиции европейского фермерства.",
-  },
-  {
-    year: "2022",
-    title: "Расширение стада",
-    text: "Добавили альпийских коз и остфризских овец. Запустили собственное сыроделие и начали работать с первыми семьями.",
-  },
-  {
-    year: "2024",
-    title: "Клуб «Шерь Козу»",
-    text: "Создали закрытый клуб персонального фермерства — первый в России. Семьи выбирают своё животное и получают именные продукты.",
-  },
-  {
-    year: "2025",
-    title: "Цифровая ферма",
-    text: "Запустили платформу с личными кабинетами, трекером продуктов и дневниками животных. Прозрачность стала полной.",
-  },
+const defaultTimeline = [
+  { year: "2019", title: "Идея", text: "Мечта о собственной ферме, где каждое животное — член семьи, а каждый продукт — результат заботы и любви." },
+  { year: "2020", title: "Первые животные", text: "Появились первые англо-нубийские козы. Начали изучать генетику, уход и традиции европейского фермерства." },
+  { year: "2022", title: "Расширение стада", text: "Добавили альпийских коз и остфризских овец. Запустили собственное сыроделие и начали работать с первыми семьями." },
+  { year: "2024", title: "Клуб «Шерь Козу»", text: "Создали закрытый клуб персонального фермерства — первый в России. Семьи выбирают своё животное и получают именные продукты." },
+  { year: "2025", title: "Цифровая ферма", text: "Запустили платформу с личными кабинетами, трекером продуктов и дневниками животных. Прозрачность стала полной." },
+];
+
+const defaultStats = [
+  { value: "50", label: "семей в клубе" },
+  { value: "4", label: "элитные породы" },
+  { value: "100%", label: "прозрачность" },
 ];
 
 const galleryImages = [
@@ -119,6 +106,20 @@ const galleryImages = [
   { src: CDN.breeds, alt: "Элитные породы коз и овец", caption: "Англо-нубийские козы, альпийские козы и остфризские овцы" },
   { src: CDN.visit, alt: "Дети на ферме", caption: "Визиты на ферму — дети знают своих животных по имени" },
 ];
+
+/* ─── Icon map for JSON-driven principles ─── */
+const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
+  Eye,
+  Heart,
+  ShieldCheck,
+  Sparkles,
+  Leaf,
+  MapPin,
+  Calendar,
+  Users,
+  Baby,
+  Milk,
+};
 
 /* ─── Animations ─── */
 
@@ -139,6 +140,14 @@ const staggerContainer = {
 /* ─── Component ─── */
 
 export default function AboutFarm() {
+  const cms = useCmsContent("about");
+
+  // CMS-driven data with fallbacks
+  const principles = cms.getJson("philosophy_principles", defaultPrinciples);
+  const breeds = cms.getJson("breeds_list", defaultBreeds);
+  const timeline = cms.getJson("history_timeline", defaultTimeline);
+  const stats = cms.getJson("values_stats", defaultStats);
+
   return (
     <div className="min-h-screen overflow-hidden bg-background text-foreground">
       <Navbar />
@@ -172,7 +181,7 @@ export default function AboutFarm() {
               <motion.div variants={fadeUp} custom={0} className="mb-4">
                 <span className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-4 py-1.5 text-xs font-semibold uppercase tracking-wider text-primary">
                   <Leaf className="h-3.5 w-3.5" />
-                  О ферме
+                  {cms.getText("hero_badge", "О ферме")}
                 </span>
               </motion.div>
 
@@ -181,8 +190,7 @@ export default function AboutFarm() {
                 custom={1}
                 className="text-3xl font-bold leading-tight tracking-tight sm:text-4xl lg:text-5xl"
               >
-                Семейная ферма,{" "}
-                <span className="text-primary">где каждое животное — член семьи</span>
+                {cms.getText("hero_heading", "Семейная ферма, где каждое животное — член семьи")}
               </motion.h1>
 
               <motion.p
@@ -190,9 +198,7 @@ export default function AboutFarm() {
                 custom={2}
                 className="mt-5 text-base leading-relaxed text-muted-foreground sm:text-lg"
               >
-                Мы — семья, которая превратила любовь к животным и натуральным продуктам
-                в дело жизни. Наша ферма — это не производство. Это место, где козы и овцы
-                элитных пород живут в заботе, а каждый продукт несёт имя конкретного животного.
+                {cms.getText("hero_subtitle", "Мы — семья, которая превратила любовь к животным и натуральным продуктам в дело жизни. Наша ферма — это не производство. Это место, где козы и овцы элитных пород живут в заботе, а каждый продукт несёт имя конкретного животного.")}
               </motion.p>
 
               <motion.div variants={fadeUp} custom={3} className="mt-8 flex flex-wrap gap-4">
@@ -228,15 +234,15 @@ export default function AboutFarm() {
             >
               <div className="overflow-hidden rounded-3xl border border-border/60 shadow-xl">
                 <img
-                  src={CDN.hero}
+                  src={cms.getImage("hero_image", CDN.hero)}
                   alt="Семья на ферме Шерь Козу с козами элитных пород"
                   className="w-full h-auto object-cover aspect-[16/10]"
                   loading="eager"
                 />
               </div>
               <div className="absolute -bottom-4 -left-4 rounded-2xl border border-border bg-white/95 px-5 py-3 shadow-lg backdrop-blur-sm">
-                <p className="text-sm font-semibold text-foreground">Подмосковье</p>
-                <p className="text-xs text-muted-foreground">Семейная ферма с 2019 года</p>
+                <p className="text-sm font-semibold text-foreground">{cms.getText("hero_location", "Подмосковье")}</p>
+                <p className="text-xs text-muted-foreground">{cms.getText("hero_since", "Семейная ферма с 2019 года")}</p>
               </div>
             </motion.div>
           </div>
@@ -261,56 +267,47 @@ export default function AboutFarm() {
               className="inline-flex items-center gap-2 rounded-full bg-accent/15 px-4 py-1.5 text-xs font-semibold uppercase tracking-wider text-accent-foreground"
             >
               <Calendar className="h-3.5 w-3.5" />
-              Наша история
+              {cms.getText("history_badge", "Наша история")}
             </motion.span>
             <motion.h2
               variants={fadeUp}
               custom={1}
               className="mt-4 text-2xl font-bold tracking-tight sm:text-3xl lg:text-4xl"
             >
-              От мечты — к первому в России клубу персонального фермерства
+              {cms.getText("history_heading", "От мечты — к первому в России клубу персонального фермерства")}
             </motion.h2>
             <motion.p
               variants={fadeUp}
               custom={2}
               className="mt-4 text-muted-foreground sm:text-lg"
             >
-              Каждый год мы росли — не ради масштаба, а ради глубины.
-              Больше заботы, больше прозрачности, больше связи между семьями и фермой.
+              {cms.getText("history_subtitle", "Каждый год мы росли — не ради масштаба, а ради глубины. Больше заботы, больше прозрачности, больше связи между семьями и фермой.")}
             </motion.p>
           </motion.div>
 
-          {/* Timeline */}
           <div className="relative mx-auto max-w-3xl">
-            {/* Vertical line */}
-            <div className="absolute left-6 top-0 bottom-0 w-px bg-border md:left-1/2 md:-translate-x-px" />
-
-            {timeline.map((item, i) => (
+            <div className="absolute left-6 top-0 bottom-0 w-0.5 bg-border md:left-1/2 md:-translate-x-px" />
+            {timeline.map((item: { year: string; title: string; text: string }, i: number) => (
               <motion.div
                 key={item.year}
                 initial="hidden"
                 whileInView="visible"
-                viewport={{ once: true, margin: "-50px" }}
+                viewport={{ once: true }}
                 variants={fadeUp}
                 custom={i}
-                className={`relative mb-12 last:mb-0 flex items-start gap-6 ${
+                className={`relative mb-12 flex items-start gap-6 md:gap-10 ${
                   i % 2 === 0 ? "md:flex-row" : "md:flex-row-reverse"
                 }`}
               >
-                {/* Dot */}
-                <div className="absolute left-6 md:left-1/2 -translate-x-1/2 z-10">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-full border-4 border-white bg-primary shadow-md">
-                    <span className="text-xs font-bold text-white">{item.year}</span>
-                  </div>
+                <div className="hidden md:block md:w-1/2" />
+                <div className="absolute left-6 md:left-1/2 -translate-x-1/2 z-10 flex h-10 w-10 items-center justify-center rounded-full border-2 border-primary bg-white text-xs font-bold text-primary shadow-sm">
+                  {item.year.slice(-2)}
                 </div>
-
-                {/* Content card */}
-                <div className={`ml-20 md:ml-0 md:w-[calc(50%-2rem)] ${
-                  i % 2 === 0 ? "md:pr-8 md:text-right" : "md:pl-8 md:text-left md:ml-auto"
-                }`}>
+                <div className="ml-16 md:ml-0 md:w-1/2">
                   <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
-                    <h3 className="text-lg font-bold text-foreground">{item.title}</h3>
-                    <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{item.text}</p>
+                    <p className="text-xs font-semibold text-primary">{item.year}</p>
+                    <h3 className="mt-1 text-base font-bold">{item.title}</h3>
+                    <p className="mt-2 text-sm text-muted-foreground leading-relaxed">{item.text}</p>
                   </div>
                 </div>
               </motion.div>
@@ -325,25 +322,23 @@ export default function AboutFarm() {
       <section className="border-b border-border/60 bg-[radial-gradient(circle_at_bottom_right,rgba(244,240,232,0.5),transparent_60%)] py-20 md:py-28">
         <div className="container">
           <div className="grid gap-12 lg:grid-cols-2 lg:gap-16 items-center">
-            {/* Image */}
             <motion.div
-              initial={{ opacity: 0, x: -30 }}
-              whileInView={{ opacity: 1, x: 0 }}
+              initial={{ opacity: 0, scale: 0.95 }}
+              whileInView={{ opacity: 1, scale: 1 }}
               viewport={{ once: true }}
               transition={{ duration: 0.6 }}
               className="order-2 lg:order-1"
             >
               <div className="overflow-hidden rounded-3xl border border-border/60 shadow-xl">
                 <img
-                  src={CDN.philosophy}
-                  alt="Именные сыры и молоко от козы Марта"
+                  src={cms.getImage("philosophy_image", CDN.philosophy)}
+                  alt="Философия фермы Шерь Козу"
                   className="w-full h-auto object-cover aspect-[4/3]"
                   loading="lazy"
                 />
               </div>
             </motion.div>
 
-            {/* Principles */}
             <motion.div
               initial="hidden"
               whileInView="visible"
@@ -357,40 +352,39 @@ export default function AboutFarm() {
                 className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-4 py-1.5 text-xs font-semibold uppercase tracking-wider text-primary"
               >
                 <Sparkles className="h-3.5 w-3.5" />
-                Наша философия
+                {cms.getText("philosophy_badge", "Наша философия")}
               </motion.span>
               <motion.h2
                 variants={fadeUp}
                 custom={1}
                 className="mt-4 text-2xl font-bold tracking-tight sm:text-3xl lg:text-4xl"
               >
-                Три принципа, на которых стоит ферма
+                {cms.getText("philosophy_heading", "Три принципа, на которых стоит ферма")}
               </motion.h2>
               <motion.p
                 variants={fadeUp}
                 custom={2}
-                className="mt-4 mb-8 text-muted-foreground sm:text-lg"
+                className="mt-4 text-muted-foreground sm:text-lg"
               >
-                Мы верим, что качество начинается с отношения — к животным, к продукту и к людям,
-                которые нам доверяют.
+                {cms.getText("philosophy_subtitle", "Мы верим, что качество начинается с отношения — к животным, к продукту и к людям, которые нам доверяют.")}
               </motion.p>
 
-              <div className="space-y-6">
-                {principles.map((p, i) => {
-                  const Icon = p.icon;
+              <div className="mt-8 space-y-5">
+                {principles.map((p: { icon: string; title: string; text: string }, i: number) => {
+                  const Icon = iconMap[p.icon] || Eye;
                   return (
                     <motion.div
                       key={p.title}
                       variants={fadeUp}
                       custom={i + 3}
-                      className="flex gap-4"
+                      className="flex gap-4 rounded-xl border border-border bg-card p-4 shadow-sm"
                     >
-                      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-primary/10">
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10">
                         <Icon className="h-5 w-5 text-primary" />
                       </div>
                       <div>
-                        <h3 className="text-base font-bold text-foreground">{p.title}</h3>
-                        <p className="mt-1 text-sm leading-relaxed text-muted-foreground">{p.text}</p>
+                        <h3 className="text-sm font-bold">{p.title}</h3>
+                        <p className="mt-1 text-sm text-muted-foreground leading-relaxed">{p.text}</p>
                       </div>
                     </motion.div>
                   );
@@ -416,75 +410,75 @@ export default function AboutFarm() {
             <motion.span
               variants={fadeUp}
               custom={0}
-              className="inline-flex items-center gap-2 rounded-full bg-secondary px-4 py-1.5 text-xs font-semibold uppercase tracking-wider text-secondary-foreground"
+              className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-4 py-1.5 text-xs font-semibold uppercase tracking-wider text-primary"
             >
-              <Milk className="h-3.5 w-3.5" />
-              Элитные породы
+              <ShieldCheck className="h-3.5 w-3.5" />
+              {cms.getText("breeds_badge", "Элитные породы")}
             </motion.span>
             <motion.h2
               variants={fadeUp}
               custom={1}
               className="mt-4 text-2xl font-bold tracking-tight sm:text-3xl lg:text-4xl"
             >
-              Генетика европейского уровня — основа премиального качества
+              {cms.getText("breeds_heading", "Генетика европейского уровня — основа премиального качества")}
             </motion.h2>
             <motion.p
               variants={fadeUp}
               custom={2}
               className="mt-4 text-muted-foreground sm:text-lg"
             >
-              Мы тщательно отбираем породы, которые дают лучшее молоко для сыров, йогуртов
-              и свежих молочных продуктов.
+              {cms.getText("breeds_subtitle", "Мы тщательно отбираем породы, которые дают лучшее молоко для сыров, йогуртов и свежих молочных продуктов.")}
             </motion.p>
           </motion.div>
 
-          {/* Breeds image */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.6 }}
-            className="mb-14"
-          >
-            <div className="overflow-hidden rounded-3xl border border-border/60 shadow-xl mx-auto max-w-4xl">
+          <div className="grid gap-8 lg:grid-cols-2 items-start">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              whileInView={{ opacity: 1, scale: 1 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6 }}
+              className="overflow-hidden rounded-3xl border border-border/60 shadow-xl"
+            >
               <img
-                src={CDN.breeds}
-                alt="Элитные породы коз и овец на ферме Шерь Козу"
-                className="w-full h-auto object-cover aspect-[3/2]"
+                src={cms.getImage("breeds_image", CDN.breeds)}
+                alt="Элитные породы коз и овец на ферме"
+                className="w-full h-auto object-cover aspect-[4/3]"
                 loading="lazy"
               />
-            </div>
-          </motion.div>
+            </motion.div>
 
-          {/* Breed cards */}
-          <motion.div
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true }}
-            variants={staggerContainer}
-            className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4"
-          >
-            {breeds.map((breed, i) => (
-              <motion.div
-                key={breed.name}
-                variants={fadeUp}
-                custom={i}
-                className="group rounded-2xl border border-border bg-card p-6 shadow-sm transition-shadow hover:shadow-md"
-              >
-                <div className="mb-3 inline-flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
-                  <MapPin className="h-3 w-3" />
-                  {breed.origin}
-                </div>
-                <h3 className="text-lg font-bold text-foreground">{breed.name}</h3>
-                <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{breed.trait}</p>
-                <div className="mt-4 border-t border-border pt-3">
-                  <p className="text-xs font-medium text-muted-foreground">
-                    <span className="text-foreground">Характер:</span> {breed.character}
-                  </p>
-                </div>
-              </motion.div>
-            ))}
-          </motion.div>
+            <motion.div
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true }}
+              variants={staggerContainer}
+              className="space-y-4"
+            >
+              {breeds.map((b: { name: string; origin: string; trait: string; character: string }, i: number) => (
+                <motion.div
+                  key={b.name}
+                  variants={fadeUp}
+                  custom={i}
+                  className="rounded-xl border border-border bg-card p-5 shadow-sm"
+                >
+                  <div className="flex items-center gap-3 mb-2">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10">
+                      <Milk className="h-4 w-4 text-primary" />
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-bold">{b.name}</h3>
+                      <p className="text-xs text-muted-foreground flex items-center gap-1">
+                        <MapPin className="h-3 w-3" />
+                        {b.origin}
+                      </p>
+                    </div>
+                  </div>
+                  <p className="text-sm text-muted-foreground leading-relaxed">{b.trait}</p>
+                  <p className="mt-2 text-xs text-muted-foreground/80 italic">{b.character}</p>
+                </motion.div>
+              ))}
+            </motion.div>
+          </div>
         </div>
       </section>
 
@@ -506,22 +500,21 @@ export default function AboutFarm() {
               className="inline-flex items-center gap-2 rounded-full bg-accent/15 px-4 py-1.5 text-xs font-semibold uppercase tracking-wider text-accent-foreground"
             >
               <Baby className="h-3.5 w-3.5" />
-              Жизнь на ферме
+              {cms.getText("gallery_badge", "Жизнь на ферме")}
             </motion.span>
             <motion.h2
               variants={fadeUp}
               custom={1}
               className="mt-4 text-2xl font-bold tracking-tight sm:text-3xl lg:text-4xl"
             >
-              Каждый день — забота, каждый продукт — история
+              {cms.getText("gallery_heading", "Каждый день — забота, каждый продукт — история")}
             </motion.h2>
             <motion.p
               variants={fadeUp}
               custom={2}
               className="mt-4 text-muted-foreground sm:text-lg"
             >
-              Ферма живёт своим ритмом: утренние надои, прогулки на пастбище,
-              визиты семей и вечерний уход. Вот как это выглядит.
+              {cms.getText("gallery_subtitle", "Ферма живёт своим ритмом: утренние надои, прогулки на пастбище, визиты семей и вечерний уход. Вот как это выглядит.")}
             </motion.p>
           </motion.div>
 
@@ -572,23 +565,21 @@ export default function AboutFarm() {
               className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-4 py-1.5 text-xs font-semibold uppercase tracking-wider text-primary"
             >
               <Users className="h-3.5 w-3.5" />
-              Наши ценности
+              {cms.getText("values_badge", "Наши ценности")}
             </motion.span>
             <motion.h2
               variants={fadeUp}
               custom={1}
               className="mt-4 text-2xl font-bold tracking-tight sm:text-3xl lg:text-4xl"
             >
-              Не масштаб, а глубина
+              {cms.getText("values_heading", "Не масштаб, а глубина")}
             </motion.h2>
             <motion.p
               variants={fadeUp}
               custom={2}
               className="mt-4 text-muted-foreground sm:text-lg max-w-2xl mx-auto"
             >
-              Мы сознательно ограничиваем количество мест в клубе. Не потому что хотим создать
-              дефицит — а потому что каждому животному нужна настоящая забота, а каждой семье —
-              персональное внимание. Мы растём медленно, чтобы расти правильно.
+              {cms.getText("values_subtitle", "Мы сознательно ограничиваем количество мест в клубе. Не потому что хотим создать дефицит — а потому что каждому животному нужна настоящая забота, а каждой семье — персональное внимание. Мы растём медленно, чтобы расти правильно.")}
             </motion.p>
 
             <motion.div
@@ -596,18 +587,12 @@ export default function AboutFarm() {
               custom={3}
               className="mt-10 grid gap-6 sm:grid-cols-3"
             >
-              <div className="rounded-2xl border border-border bg-card p-6 text-center">
-                <p className="text-3xl font-bold text-primary">50</p>
-                <p className="mt-1 text-sm text-muted-foreground">семей в клубе</p>
-              </div>
-              <div className="rounded-2xl border border-border bg-card p-6 text-center">
-                <p className="text-3xl font-bold text-primary">4</p>
-                <p className="mt-1 text-sm text-muted-foreground">элитные породы</p>
-              </div>
-              <div className="rounded-2xl border border-border bg-card p-6 text-center">
-                <p className="text-3xl font-bold text-primary">100%</p>
-                <p className="mt-1 text-sm text-muted-foreground">прозрачность</p>
-              </div>
+              {stats.map((s: { value: string; label: string }) => (
+                <div key={s.label} className="rounded-2xl border border-border bg-card p-6 text-center">
+                  <p className="text-3xl font-bold text-primary">{s.value}</p>
+                  <p className="mt-1 text-sm text-muted-foreground">{s.label}</p>
+                </div>
+              ))}
             </motion.div>
           </motion.div>
         </div>
@@ -630,15 +615,14 @@ export default function AboutFarm() {
               custom={0}
               className="text-2xl font-bold tracking-tight text-white sm:text-3xl lg:text-4xl"
             >
-              Приезжайте к нам на ферму
+              {cms.getText("cta_heading", "Приезжайте к нам на ферму")}
             </motion.h2>
             <motion.p
               variants={fadeUp}
               custom={1}
               className="mt-4 text-primary-foreground/80 sm:text-lg"
             >
-              Познакомьтесь с животными лично, попробуйте свежие продукты
-              и почувствуйте, каково это — знать, откуда ваша еда.
+              {cms.getText("cta_subtitle", "Познакомьтесь с животными лично, попробуйте свежие продукты и почувствуйте, каково это — знать, откуда ваша еда.")}
             </motion.p>
             <motion.div
               variants={fadeUp}

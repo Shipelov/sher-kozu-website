@@ -4,6 +4,7 @@ import { COOKIE_NAME } from "../shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { adminProcedure, protectedProcedure, publicProcedure, router } from "./_core/trpc";
+import { catalogCache, CATALOG_CACHE_KEY, CATALOG_TTL_MS, invalidateCatalogCache } from "./cache";
 import {
   createAnimalPhoto,
   createAnimalWithMedia,
@@ -859,7 +860,11 @@ export const appRouter = router({
   animals: router({
     listPublic: publicProcedure.query(async () => {
       await ensureSprintOneSeed(process.env.OWNER_OPEN_ID || "owner-demo");
-      return listPublicAnimals();
+      const cached = catalogCache.get<Awaited<ReturnType<typeof listPublicAnimals>>>(CATALOG_CACHE_KEY);
+      if (cached) return cached;
+      const result = await listPublicAnimals();
+      catalogCache.set(CATALOG_CACHE_KEY, result, CATALOG_TTL_MS);
+      return result;
     }),
     getBySlug: publicProcedure.input(animalSlugInput).query(async ({ input, ctx }) => {
       return getAnimalBySlug(input.slug, ctx.user?.openId ?? null);
@@ -918,6 +923,7 @@ export const appRouter = router({
           }
         })();
 
+        invalidateCatalogCache();
         return result;
       } catch (error) {
         const code = error instanceof Error ? error.message : "PURCHASE_FAILED";
@@ -981,6 +987,7 @@ export const appRouter = router({
         })),
       });
 
+      invalidateCatalogCache();
       return created;
     }),
     update: adminProcedure.input(animalUpdateInput).mutation(async ({ ctx, input }) => {
@@ -1020,6 +1027,7 @@ export const appRouter = router({
         throw new TRPCError({ code: "NOT_FOUND", message: "Животное не найдено или недоступно для редактирования." });
       }
 
+      invalidateCatalogCache();
       return updated;
     }),
     setVisibility: adminProcedure.input(animalVisibilityInput).mutation(async ({ ctx, input }) => {
@@ -1027,6 +1035,7 @@ export const appRouter = router({
       if (!updated) {
         throw new TRPCError({ code: "NOT_FOUND", message: "Животное не найдено или недоступно для изменения статуса." });
       }
+      invalidateCatalogCache();
       return updated;
     }),
     delete: adminProcedure.input(idInput).mutation(async ({ ctx, input }) => {
@@ -1034,6 +1043,7 @@ export const appRouter = router({
       if (!archived) {
         throw new TRPCError({ code: "NOT_FOUND", message: "Животное не найдено или уже архивировано." });
       }
+      invalidateCatalogCache();
       return archived;
     }),
     restore: adminProcedure.input(idInput).mutation(async ({ ctx, input }) => {
@@ -1041,6 +1051,7 @@ export const appRouter = router({
       if (!restored) {
         throw new TRPCError({ code: "NOT_FOUND", message: "Животное не найдено или недоступно для восстановления." });
       }
+      invalidateCatalogCache();
       return restored;
     }),
   }),
