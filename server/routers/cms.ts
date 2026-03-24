@@ -171,9 +171,11 @@ export const cmsRouter = router({
       const fileKey = `cms/${input.blockId}-${suffix}-${input.fileName}`;
       const { url } = await storagePut(fileKey, buffer, input.mimeType);
 
+      // Only update imageUrl — do NOT override contentType
+      // (text blocks can also have optional images)
       await db
         .update(cmsBlocks)
-        .set({ imageUrl: url, contentType: "image" })
+        .set({ imageUrl: url })
         .where(eq(cmsBlocks.id, input.blockId));
 
       return { url };
@@ -203,7 +205,18 @@ export const cmsRouter = router({
       }
 
       for (const block of defaults) {
-        await db.insert(cmsBlocks).values(block);
+        // Ensure null fields are explicitly set to avoid Drizzle skipping them
+        await db.insert(cmsBlocks).values({
+          page: block.page,
+          blockKey: block.blockKey,
+          label: block.label,
+          contentType: block.contentType,
+          content: block.content ?? null,
+          imageUrl: (block as any).imageUrl ?? null,
+          section: block.section ?? null,
+          sortOrder: block.sortOrder,
+          visible: block.visible,
+        });
       }
 
       return { seeded: true, count: defaults.length };

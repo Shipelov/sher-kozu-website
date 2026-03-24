@@ -292,7 +292,8 @@ describe("cms.uploadImage", () => {
     expect(result.url).toBe("https://cdn.example.com/cms/test-image.png");
     expect(updatedSets).toHaveLength(1);
     expect(updatedSets[0].imageUrl).toBe("https://cdn.example.com/cms/test-image.png");
-    expect(updatedSets[0].contentType).toBe("image");
+    // uploadImage no longer overrides contentType (fix: text blocks can have optional images)
+    expect(updatedSets[0].contentType).toBeUndefined();
   });
 
   it("rejects non-admin users", async () => {
@@ -451,7 +452,8 @@ describe("Image upload with cropped base64 data", () => {
     });
 
     expect(result.url).toBeDefined();
-    expect(updatedSets[0].contentType).toBe("image");
+    // uploadImage no longer overrides contentType
+    expect(updatedSets[0].imageUrl).toBeDefined();
   });
 
   it("rejects upload with empty base64 data", async () => {

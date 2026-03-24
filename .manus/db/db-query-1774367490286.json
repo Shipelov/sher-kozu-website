@@ -1,0 +1,37 @@
+{
+  "query": "SELECT id, page, blockKey, contentType, imageUrl, visible, updatedAt FROM cmsBlocks WHERE page = 'home' AND contentType = 'image' OR imageUrl IS NOT NULL ORDER BY id LIMIT 20;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3J2fXRHx8d1YjF6.root --database mLhmg5VmBsEBpZiYqdnhMQ --execute SELECT id, page, blockKey, contentType, imageUrl, visible, updatedAt FROM cmsBlocks WHERE page = 'home' AND contentType = 'image' OR imageUrl IS NOT NULL ORDER BY id LIMIT 20;",
+  "rows": [
+    {
+      "id": "5",
+      "page": "home",
+      "blockKey": "hero_image_caption",
+      "contentType": "image",
+      "imageUrl": "https://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/cms/5-v2m9w63w-IMG_20250702_102457_552(1)_cropped.jpg",
+      "visible": "1",
+      "updatedAt": "2026-03-24 15:47:17"
+    },
+    {
+      "id": "23",
+      "page": "home",
+      "blockKey": "whyus_image",
+      "contentType": "image",
+      "imageUrl": "https://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/sherkozu_club_visit-mmi2c8j4W8VB63TUjVvZ4S.webp",
+      "visible": "1",
+      "updatedAt": "2026-03-24 15:31:09"
+    },
+    {
+      "id": "29",
+      "page": "home",
+      "blockKey": "products_image",
+      "contentType": "image",
+      "imageUrl": "https://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/sherkozu_named_dairy_box-3mP3ykmuPDWBoKghC7cnDc.webp",
+      "visible": "1",
+      "updatedAt": "2026-03-24 15:31:10"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tpage\tblockKey\tcontentType\timageUrl\tvisible\tupdatedAt\n5\thome\thero_image_caption\timage\thttps://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/cms/5-v2m9w63w-IMG_20250702_102457_552(1)_cropped.jpg\t1\t2026-03-24 15:47:17\n23\thome\twhyus_image\timage\thttps://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/sherkozu_club_visit-mmi2c8j4W8VB63TUjVvZ4S.webp\t1\t2026-03-24 15:31:09\n29\thome\tproducts_image\timage\thttps://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/sherkozu_named_dairy_box-3mP3ykmuPDWBoKghC7cnDc.webp\t1\t2026-03-24 15:31:10\n",
+  "stderr": "",
+  "execution_time_ms": 424
+}

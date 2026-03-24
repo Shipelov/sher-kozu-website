@@ -1,0 +1,38 @@
+{
+  "query": "SELECT id, blockKey, contentType, content, imageUrl FROM cmsBlocks WHERE page = 'home' AND blockKey LIKE 'hero%' ORDER BY sortOrder;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3J2fXRHx8d1YjF6.root --database mLhmg5VmBsEBpZiYqdnhMQ --execute SELECT id, blockKey, contentType, content, imageUrl FROM cmsBlocks WHERE page = 'home' AND blockKey LIKE 'hero%' ORDER BY sortOrder;",
+  "rows": [
+    {
+      "id": "1",
+      "blockKey": "hero_badge",
+      "contentType": "text",
+      "content": "Первый в России клуб персонального фермерства!!!",
+      "imageUrl": "NULL"
+    },
+    {
+      "id": "2",
+      "blockKey": "hero_title",
+      "contentType": "text",
+      "content": "Ваша ферма. Ваше молоко. Ваша история.",
+      "imageUrl": "NULL"
+    },
+    {
+      "id": "3",
+      "blockKey": "hero_subtitle",
+      "contentType": "richtext",
+      "content": "Выберите конкретную козу или овцу элитной породы, наблюдайте за её жизнью, воспитывайте её на ферме и получайте именные молочные продукты — с прозрачным процессом создания.",
+      "imageUrl": "NULL"
+    },
+    {
+      "id": "5",
+      "blockKey": "hero_image_caption",
+      "contentType": "image",
+      "content": "Конкретная ферма — конкретное животное с именем, породой и историей.",
+      "imageUrl": "https://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/cms/5-v2m9w63w-IMG_20250702_102457_552(1)_cropped.jpg"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tblockKey\tcontentType\tcontent\timageUrl\n1\thero_badge\ttext\tПервый в России клуб персонального фермерства!!!\tNULL\n2\thero_title\ttext\tВаша ферма. Ваше молоко. Ваша история.\tNULL\n3\thero_subtitle\trichtext\tВыберите конкретную козу или овцу элитной породы, наблюдайте за её жизнью, воспитывайте её на ферме и получайте именные молочные продукты — с прозрачным процессом создания.\tNULL\n5\thero_image_caption\timage\tКонкретная ферма — конкретное животное с именем, породой и историей.\thttps://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/cms/5-v2m9w63w-IMG_20250702_102457_552(1)_cropped.jpg\n",
+  "stderr": "",
+  "execution_time_ms": 360
+}
