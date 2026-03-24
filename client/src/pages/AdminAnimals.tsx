@@ -2066,29 +2066,31 @@ export default function AdminAnimalsPage() {
         </div>
       </div>
       <Sheet open={isEditorSheetOpen} onOpenChange={setIsEditorSheetOpen}>
-        <SheetContent side="right" className="w-full overflow-y-auto sm:max-w-2xl">
+        <SheetContent side="right" className="w-full sm:max-w-3xl flex flex-col overflow-hidden">
           <SheetHeader>
             <SheetTitle className="flex items-center gap-2">
               {editorMode === "create" ? <Plus className="h-5 w-5 text-primary" /> : <Pencil className="h-5 w-5 text-primary" />}
               {editorMode === "create" ? "Создать животное" : "Редактировать животное"}
             </SheetTitle>
           </SheetHeader>
-          <div className="mt-6 space-y-6">
-            <AnimalEditorCard
-              mode={editorMode}
-              values={formValues}
-              onChange={handleFormChange}
-              onSubmit={() => {
-                handleSubmit();
-                setIsEditorSheetOpen(false);
-              }}
-              onCancel={() => {
-                resetEditor();
-                setIsEditorSheetOpen(false);
-              }}
-              onApplyPreset={applyDemoPreset}
-              isSubmitting={createAnimal.isPending || updateAnimal.isPending}
-            />
+          <div className="flex-1 overflow-y-auto pr-6">
+            <div className="mt-6 space-y-6 pb-6">
+              <AnimalEditorCard
+                mode={editorMode}
+                values={formValues}
+                onChange={handleFormChange}
+                onSubmit={() => {
+                  handleSubmit();
+                  setIsEditorSheetOpen(false);
+                }}
+                onCancel={() => {
+                  resetEditor();
+                  setIsEditorSheetOpen(false);
+                }}
+                onApplyPreset={applyDemoPreset}
+                isSubmitting={createAnimal.isPending || updateAnimal.isPending}
+              />
+            </div>
           </div>
         </SheetContent>
       </Sheet>
