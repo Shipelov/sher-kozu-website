@@ -353,15 +353,16 @@ export const faqChatRouter = router({
         .groupBy(faqQuestions.source);
 
       // Questions per day (last 7 days)
-      const dailyStats = await db
-        .select({
-          date: sql<string>`DATE(${faqQuestions.createdAt})`,
-          count: sql<number>`count(*)`,
-        })
-        .from(faqQuestions)
-        .where(gte(faqQuestions.createdAt, new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)))
-        .groupBy(sql`DATE(${faqQuestions.createdAt})`)
-        .orderBy(sql`DATE(${faqQuestions.createdAt})`);
+      // Use raw SQL with subquery to avoid only_full_group_by issues on TiDB
+      const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
+        .toISOString().slice(0, 19).replace('T', ' ');
+      const dailyStatsRaw: Array<{ d: string; cnt: number }> = await db.execute(
+        sql`SELECT DATE(createdAt) as d, count(*) as cnt FROM faqQuestions WHERE createdAt >= ${sevenDaysAgo} GROUP BY d ORDER BY d`
+      ) as any;
+      const dailyStats = (Array.isArray(dailyStatsRaw) ? dailyStatsRaw : []).map((r: any) => ({
+        date: String(r.d),
+        count: Number(r.cnt),
+      }));
 
       return {
         recent,

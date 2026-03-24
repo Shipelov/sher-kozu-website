@@ -66,6 +66,7 @@ vi.mock("./db", () => {
           where: vi.fn().mockResolvedValue(undefined),
         }),
       }),
+      execute: vi.fn().mockResolvedValue([]),
     }),
   };
 });

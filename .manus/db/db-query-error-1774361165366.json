@@ -1,0 +1,8 @@
+{
+  "query": "SELECT DATE(`createdAt`), count(*) FROM `faqQuestions` WHERE `faqQuestions`.`createdAt` >= '2026-03-17 14:05:04.643' GROUP BY DATE(`faqQuestions`.`createdAt`) ORDER BY DATE(`faqQuestions`.`createdAt`);",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3J2fXRHx8d1YjF6.root --database mLhmg5VmBsEBpZiYqdnhMQ --execute SELECT DATE(`createdAt`), count(*) FROM `faqQuestions` WHERE `faqQuestions`.`createdAt` >= '2026-03-17 14:05:04.643' GROUP BY DATE(`faqQuestions`.`createdAt`) ORDER BY DATE(`faqQuestions`.`createdAt`);",
+  "returncode": 1,
+  "logs": [
+    "ERROR 1055 (42000) at line 1: Expression #1 of SELECT list is not in GROUP BY clause and contains nonaggregated column 'mLhmg5VmBsEBpZiYqdnhMQ.faqQuestions.createdAt' which is not functionally dependent on columns in GROUP BY clause; this is incompatible with sql_mode=only_full_group_by"
+  ]
+}

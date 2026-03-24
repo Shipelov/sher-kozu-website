@@ -1,0 +1,14 @@
+Bug: faqChat.analytics fails with SQL error
+
+Error: Failed query: select DATE(`createdAt`), count(*) from `faqQuestions` 
+where `faqQuestions`.`createdAt` >= ? 
+group by DATE(`faqQuestions`.`createdAt`) 
+order by DATE(`faqQuestions`.`createdAt`)
+
+The issue is using DATE() function in Drizzle ORM with groupBy.
+The error occurs at server/routers/faqChat.ts:356
+
+Root cause: Drizzle ORM's sql`` template with DATE() function is likely 
+not compatible with the TiDB/MySQL driver in the groupBy/orderBy context.
+
+Need to check line 356 of faqChat.ts and fix the dailyStats query.
