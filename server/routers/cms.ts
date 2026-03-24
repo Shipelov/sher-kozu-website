@@ -626,6 +626,42 @@ export const cmsRouter = router({
         errors: errors.length > 0 ? errors : undefined,
       };
     }),
+
+  /**
+   * Get recent changes across all pages (admin — for activity feed).
+   * Returns the latest N history entries with block labels.
+   */
+  recentChanges: adminProcedure
+    .input(z.object({
+      limit: z.number().int().min(1).max(100).default(30),
+    }).optional())
+    .query(async ({ input }) => {
+      const db = await getDb();
+      const limit = input?.limit ?? 30;
+
+      const history = await db
+        .select()
+        .from(cmsBlockHistory)
+        .orderBy(desc(cmsBlockHistory.changedAt))
+        .limit(limit);
+
+      // Enrich with block labels from cmsBlocks
+      const blockIds = Array.from(new Set(history.map((h: { blockId: number }) => h.blockId)));
+      let blockLabelMap: Record<number, string> = {};
+      if (blockIds.length > 0) {
+        const blocks = await db
+          .select({ id: cmsBlocks.id, label: cmsBlocks.label, section: cmsBlocks.section })
+          .from(cmsBlocks);
+        for (const b of blocks) {
+          blockLabelMap[b.id] = b.label ?? b.id.toString();
+        }
+      }
+
+      return history.map((h: any) => ({
+        ...h,
+        blockLabel: blockLabelMap[h.blockId] ?? h.blockKey,
+      }));
+    }),
 });
 
 /**

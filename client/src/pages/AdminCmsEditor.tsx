@@ -43,6 +43,9 @@ import {
   Search,
   X,
   GripVertical,
+  Activity,
+  Pencil,
+  ChevronRight,
 } from "lucide-react";
 import ImageCropEditor from "@/components/ImageCropEditor";
 import {
@@ -105,7 +108,52 @@ type CmsBlock = {
   section: string | null;
   sortOrder: number;
   visible: boolean;
+  updatedAt?: Date | string;
 };
+
+type RecentChange = {
+  id: number;
+  blockId: number;
+  page: string;
+  blockKey: string;
+  blockLabel: string;
+  action: string;
+  prevContent: string | null;
+  newContent: string | null;
+  prevImageUrl: string | null;
+  newImageUrl: string | null;
+  prevVisible: boolean | null;
+  newVisible: boolean | null;
+  changedByOpenId: string;
+  changedByName: string | null;
+  changedAt: Date | string;
+};
+
+/* ─── Time-relative label helper ─── */
+function getTimeAgo(date: Date | string): string {
+  const d = typeof date === "string" ? new Date(date) : date;
+  const now = new Date();
+  const diffMs = now.getTime() - d.getTime();
+  const diffMin = Math.floor(diffMs / 60_000);
+  const diffHr = Math.floor(diffMs / 3_600_000);
+  const diffDay = Math.floor(diffMs / 86_400_000);
+
+  if (diffMin < 1) return "только что";
+  if (diffMin < 60) return `${diffMin} мин. назад`;
+  if (diffHr < 24) return `${diffHr} ч. назад`;
+  if (diffDay < 7) return `${diffDay} дн. назад`;
+  return d.toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit" });
+}
+
+function getChangeFreshness(date: Date | string): "fresh" | "recent" | "old" | null {
+  const d = typeof date === "string" ? new Date(date) : date;
+  const now = new Date();
+  const diffMs = now.getTime() - d.getTime();
+  const diffHr = diffMs / 3_600_000;
+  if (diffHr < 24) return "fresh"; // < 24h — bright indicator
+  if (diffHr < 168) return "recent"; // < 7 days — subtle indicator
+  return null; // older — no indicator
+}
 
 type HistoryEntry = {
   id: number;
@@ -136,6 +184,7 @@ function SortableBlockItem({
   deleteBlock,
   formatJsonContent,
   searchQuery,
+  lastChangeInfo,
 }: {
   block: CmsBlock;
   typeInfo: { label: string; icon: typeof Type; color: string };
@@ -147,6 +196,7 @@ function SortableBlockItem({
   deleteBlock: { mutate: (input: { id: number }) => void };
   formatJsonContent: (content: string) => string;
   searchQuery: string;
+  lastChangeInfo?: { changedAt: Date | string; action: string; changedByName: string | null } | null;
 }) {
   const {
     attributes,
@@ -180,13 +230,19 @@ function SortableBlockItem({
     );
   };
 
+  const freshness = lastChangeInfo ? getChangeFreshness(lastChangeInfo.changedAt) : null;
+
   return (
     <div
       ref={setNodeRef}
       style={style}
       className={`rounded-xl border transition-colors ${
         block.visible
-          ? "border-border bg-card"
+          ? freshness === "fresh"
+            ? "border-amber-400/60 bg-amber-50/30 dark:bg-amber-950/10 dark:border-amber-500/30"
+            : freshness === "recent"
+              ? "border-blue-300/40 bg-blue-50/20 dark:bg-blue-950/10 dark:border-blue-500/20"
+              : "border-border bg-card"
           : "border-dashed border-muted-foreground/30 bg-muted/30"
       } ${isDragging ? "shadow-lg ring-2 ring-primary/30" : ""}`}
     >
@@ -220,9 +276,28 @@ function SortableBlockItem({
         </Badge>
 
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium text-foreground truncate">
-            {highlightMatch(block.blockKey)}
-          </p>
+          <div className="flex items-center gap-2">
+            <p className="text-sm font-medium text-foreground truncate">
+              {highlightMatch(block.blockKey)}
+            </p>
+            {freshness === "fresh" && lastChangeInfo && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 text-[10px] font-medium px-2 py-0.5 shrink-0">
+                <Pencil className="h-2.5 w-2.5" />
+                {getTimeAgo(lastChangeInfo.changedAt)}
+              </span>
+            )}
+            {freshness === "recent" && lastChangeInfo && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-300 text-[10px] font-medium px-2 py-0.5 shrink-0">
+                <Clock className="h-2.5 w-2.5" />
+                {getTimeAgo(lastChangeInfo.changedAt)}
+              </span>
+            )}
+          </div>
+          {lastChangeInfo?.changedByName && freshness && (
+            <p className="text-[10px] text-muted-foreground/60 mt-0.5 truncate">
+              {lastChangeInfo.changedByName}
+            </p>
+          )}
         </div>
 
         <div className="flex items-center gap-2 shrink-0">
@@ -318,6 +393,7 @@ export default function AdminCmsEditor() {
   const [rollbackConfirm, setRollbackConfirm] = useState<HistoryEntry | null>(null);
   const [activeSection, setActiveSection] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState("");
+  const [activityFeedOpen, setActivityFeedOpen] = useState(false);
 
   const utils = trpc.useUtils();
 
@@ -337,11 +413,33 @@ export default function AdminCmsEditor() {
     { enabled: !!historyBlock }
   );
 
+  const { data: recentChanges } = trpc.cms.recentChanges.useQuery(
+    { limit: 30 },
+    { staleTime: 15_000 }
+  );
+
+  /* ─── Build a map: blockId -> latest change info (for visual indicators) ─── */
+  const blockChangeMap = useMemo(() => {
+    const map: Record<number, { changedAt: Date | string; action: string; changedByName: string | null }> = {};
+    if (!recentChanges) return map;
+    for (const ch of recentChanges as RecentChange[]) {
+      if (!map[ch.blockId]) {
+        map[ch.blockId] = {
+          changedAt: ch.changedAt,
+          action: ch.action,
+          changedByName: ch.changedByName,
+        };
+      }
+    }
+    return map;
+  }, [recentChanges]);
+
   /* ─── Mutations ─── */
   const updateContent = trpc.cms.updateContent.useMutation({
     onSuccess: () => {
       utils.cms.listAll.invalidate();
       utils.cms.getPageBlocks.invalidate();
+      utils.cms.recentChanges.invalidate();
       if (historyBlock) utils.cms.getBlockHistory.invalidate();
       toast.success("Контент обновлён");
       setEditBlock(null);
@@ -354,6 +452,7 @@ export default function AdminCmsEditor() {
     onSuccess: () => {
       utils.cms.listAll.invalidate();
       utils.cms.getPageBlocks.invalidate();
+      utils.cms.recentChanges.invalidate();
       toast.success("Видимость изменена");
     },
     onError: (err: { message: string }) => toast.error(`Ошибка: ${err.message}`),
@@ -366,6 +465,7 @@ export default function AdminCmsEditor() {
       setShowCropEditor(false);
       utils.cms.listAll.invalidate();
       utils.cms.getPageBlocks.invalidate();
+      utils.cms.recentChanges.invalidate();
       toast.success("Изображение загружено и сохранено");
       setEditBlock(null);
     },
@@ -393,6 +493,7 @@ export default function AdminCmsEditor() {
     onSuccess: () => {
       utils.cms.listAll.invalidate();
       utils.cms.getPageBlocks.invalidate();
+      utils.cms.recentChanges.invalidate();
       toast.success("Блок удалён");
     },
     onError: (err: { message: string }) => toast.error(`Ошибка: ${err.message}`),
@@ -403,6 +504,7 @@ export default function AdminCmsEditor() {
       utils.cms.listAll.invalidate();
       utils.cms.getPageBlocks.invalidate();
       utils.cms.getBlockHistory.invalidate();
+      utils.cms.recentChanges.invalidate();
       setRollbackConfirm(null);
       toast.success("Блок откачен к предыдущей версии");
     },
@@ -640,6 +742,20 @@ export default function AdminCmsEditor() {
           </div>
           <div className="flex items-center gap-2">
             <Button
+              variant={activityFeedOpen ? "default" : "outline"}
+              size="sm"
+              onClick={() => setActivityFeedOpen(!activityFeedOpen)}
+              className="relative"
+            >
+              <Activity className="h-4 w-4 mr-1" />
+              Лента
+              {recentChanges && recentChanges.length > 0 && (
+                <span className="absolute -top-1.5 -right-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-amber-500 text-[10px] font-bold text-white px-1">
+                  {(recentChanges as RecentChange[]).filter((c) => getChangeFreshness(c.changedAt) === "fresh").length || ""}
+                </span>
+              )}
+            </Button>
+            <Button
               variant="outline"
               size="sm"
               onClick={() => setSeedDialogOpen(true)}
@@ -665,6 +781,95 @@ export default function AdminCmsEditor() {
           </div>
         </div>
       </div>
+
+      {/* ─── Activity Feed Panel ─── */}
+      {activityFeedOpen && (
+        <div className="border-b border-border bg-muted/30">
+          <div className="container py-4">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <Activity className="h-4 w-4 text-primary" />
+                <h2 className="text-sm font-semibold">Лента изменений</h2>
+                <Badge variant="secondary" className="text-xs">
+                  {recentChanges ? (recentChanges as RecentChange[]).length : 0}
+                </Badge>
+              </div>
+              <Button variant="ghost" size="sm" onClick={() => setActivityFeedOpen(false)}>
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+
+            {!recentChanges || (recentChanges as RecentChange[]).length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-4">
+                Нет записей об изменениях.
+              </p>
+            ) : (
+              <div className="max-h-72 overflow-y-auto space-y-1.5 pr-1">
+                {(recentChanges as RecentChange[]).map((ch) => {
+                  const actionInfo = ACTION_LABELS[ch.action] ?? { label: ch.action, color: "bg-gray-100 text-gray-800" };
+                  const freshness = getChangeFreshness(ch.changedAt);
+                  const pageLabel = PAGE_LABELS[ch.page] ?? ch.page;
+
+                  return (
+                    <div
+                      key={ch.id}
+                      className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors cursor-pointer hover:bg-muted/60 ${
+                        freshness === "fresh"
+                          ? "bg-amber-50/50 dark:bg-amber-950/10"
+                          : freshness === "recent"
+                            ? "bg-blue-50/30 dark:bg-blue-950/5"
+                            : "bg-background"
+                      }`}
+                      onClick={() => {
+                        setActivePage(ch.page);
+                        setActivityFeedOpen(false);
+                      }}
+                    >
+                      {/* Timeline dot */}
+                      <div className={`shrink-0 w-2 h-2 rounded-full ${
+                        freshness === "fresh" ? "bg-amber-500" : freshness === "recent" ? "bg-blue-400" : "bg-muted-foreground/30"
+                      }`} />
+
+                      {/* Time */}
+                      <span className="text-xs text-muted-foreground shrink-0 w-20">
+                        {getTimeAgo(ch.changedAt)}
+                      </span>
+
+                      {/* Action badge */}
+                      <Badge variant="secondary" className={`${actionInfo.color} text-[10px] shrink-0`}>
+                        {actionInfo.label}
+                      </Badge>
+
+                      {/* Block label */}
+                      <span className="text-xs font-medium truncate flex-1">
+                        {ch.blockLabel}
+                      </span>
+
+                      {/* Page badge */}
+                      <Badge variant="outline" className="text-[10px] shrink-0">
+                        {pageLabel}
+                      </Badge>
+
+                      {/* Author */}
+                      {ch.changedByName && (
+                        <span className="text-[10px] text-muted-foreground/60 shrink-0 max-w-24 truncate">
+                          {ch.changedByName}
+                        </span>
+                      )}
+
+                      <ChevronRight className="h-3 w-3 text-muted-foreground/40 shrink-0" />
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            <p className="text-[10px] text-muted-foreground/50 text-center mt-2">
+              Показаны последние 30 изменений. Нажмите на строку, чтобы перейти к странице.
+            </p>
+          </div>
+        </div>
+      )}
 
       <div className="container py-6">
         {/* Page tabs */}
@@ -814,6 +1019,7 @@ export default function AdminCmsEditor() {
                                   deleteBlock={deleteBlock}
                                   formatJsonContent={formatJsonContent}
                                   searchQuery={searchQuery}
+                                  lastChangeInfo={blockChangeMap[block.id] ?? null}
                                 />
                               );
                             })}

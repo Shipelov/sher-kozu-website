@@ -1182,3 +1182,10 @@
 - [x] Добавлены about и partners в PAGE_LABELS и PAGE_PREVIEW_URLS
 - [x] Табы и TabsContent теперь рендерятся динамически из PAGE_LABELS
 - [x] 7 новых тестов, все 1410 проходят
+
+## FEATURE: Визуальные индикаторы изменений в CMS-редакторе (DONE)
+- [x] Добавлен endpoint recentChanges — последние 30 изменений с blockLabel из cmsBlocks
+- [x] CmsBlock тип расширен updatedAt, blockChangeMap строится из recentChanges
+- [x] Блоки < 24ч получают amber-рамку + бейдж «N мин/ч. назад», < 7д — blue-рамку
+- [x] Activity Feed панель с таймлайном, кликабельными строками и счётчиком свежих изменений
+- [x] 12 новых тестов, все 1422 проходят

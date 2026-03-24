@@ -1485,3 +1485,186 @@ describe("cms.seedDefaults — partners page", () => {
     expect(formBlocks.length).toBeGreaterThan(0);
   });
 });
+
+
+/* ─── recentChanges endpoint & visual indicators ─── */
+describe("CMS recentChanges endpoint", () => {
+  beforeEach(() => {
+    mockRows = [];
+    insertedRows = [];
+    updatedSets = [];
+    deletedIds = [];
+    selectCallCount = 0;
+    mockRowsSequence = [];
+  });
+
+  it("returns recent history entries enriched with blockLabel", async () => {
+    const historyEntries = [
+      {
+        id: 1,
+        blockId: 10,
+        page: "home",
+        blockKey: "hero_title",
+        action: "update_content",
+        prevContent: "Old title",
+        newContent: "New title",
+        prevImageUrl: null,
+        newImageUrl: null,
+        prevVisible: true,
+        newVisible: true,
+        changedByOpenId: "admin-123",
+        changedByName: "Admin",
+        changedAt: new Date(),
+      },
+      {
+        id: 2,
+        blockId: 20,
+        page: "catalog",
+        blockKey: "hero_badge",
+        action: "toggle_visibility",
+        prevContent: null,
+        newContent: null,
+        prevImageUrl: null,
+        newImageUrl: null,
+        prevVisible: true,
+        newVisible: false,
+        changedByOpenId: "admin-123",
+        changedByName: "Admin",
+        changedAt: new Date(),
+      },
+    ];
+
+    const blockRows = [
+      { id: 10, label: "Hero — Заголовок", section: "Hero" },
+      { id: 20, label: "Каталог — Бейдж", section: "Hero" },
+    ];
+
+    // First select: history entries, second select: block labels
+    mockRowsSequence = [historyEntries, blockRows];
+
+    const caller = appRouter.createCaller(createAdminContext());
+    const result = await caller.cms.recentChanges({ limit: 10 });
+
+    expect(result).toHaveLength(2);
+    expect(result[0].blockLabel).toBe("Hero — Заголовок");
+    expect(result[1].blockLabel).toBe("Каталог — Бейдж");
+    expect(result[0].action).toBe("update_content");
+    expect(result[1].action).toBe("toggle_visibility");
+  });
+
+  it("returns empty array when no history exists", async () => {
+    mockRowsSequence = [[]];
+
+    const caller = appRouter.createCaller(createAdminContext());
+    const result = await caller.cms.recentChanges({ limit: 10 });
+
+    expect(result).toHaveLength(0);
+  });
+
+  it("uses blockKey as fallback label when block not found", async () => {
+    const historyEntries = [
+      {
+        id: 1,
+        blockId: 999,
+        page: "home",
+        blockKey: "deleted_block",
+        action: "delete",
+        prevContent: "Content",
+        newContent: null,
+        prevImageUrl: null,
+        newImageUrl: null,
+        prevVisible: true,
+        newVisible: null,
+        changedByOpenId: "admin-123",
+        changedByName: "Admin",
+        changedAt: new Date(),
+      },
+    ];
+
+    // Block with id 999 doesn't exist in the labels
+    mockRowsSequence = [historyEntries, [{ id: 10, label: "Other block", section: "Hero" }]];
+
+    const caller = appRouter.createCaller(createAdminContext());
+    const result = await caller.cms.recentChanges({ limit: 10 });
+
+    expect(result).toHaveLength(1);
+    expect(result[0].blockLabel).toBe("deleted_block");
+  });
+
+  it("defaults to limit 30 when no limit specified", async () => {
+    mockRowsSequence = [[]];
+
+    const caller = appRouter.createCaller(createAdminContext());
+    const result = await caller.cms.recentChanges();
+
+    expect(result).toHaveLength(0);
+    // The query ran without error — default limit applied
+  });
+
+  it("requires admin access", async () => {
+    const caller = appRouter.createCaller(createPublicContext());
+    await expect(caller.cms.recentChanges({ limit: 10 })).rejects.toThrow();
+  });
+});
+
+/* ─── Frontend helper functions ─── */
+describe("CMS visual indicator helpers", () => {
+  it("AdminCmsEditor source contains getTimeAgo helper", async () => {
+    const fs = await import("fs");
+    const source = fs.readFileSync("client/src/pages/AdminCmsEditor.tsx", "utf-8");
+    expect(source).toContain("function getTimeAgo");
+    expect(source).toContain("только что");
+    expect(source).toContain("мин. назад");
+    expect(source).toContain("ч. назад");
+    expect(source).toContain("дн. назад");
+  });
+
+  it("AdminCmsEditor source contains getChangeFreshness helper", async () => {
+    const fs = await import("fs");
+    const source = fs.readFileSync("client/src/pages/AdminCmsEditor.tsx", "utf-8");
+    expect(source).toContain("function getChangeFreshness");
+    expect(source).toContain("\"fresh\"");
+    expect(source).toContain("\"recent\"");
+  });
+
+  it("AdminCmsEditor renders Activity Feed panel", async () => {
+    const fs = await import("fs");
+    const source = fs.readFileSync("client/src/pages/AdminCmsEditor.tsx", "utf-8");
+    expect(source).toContain("Activity Feed Panel");
+    expect(source).toContain("Лента изменений");
+    expect(source).toContain("recentChanges");
+    expect(source).toContain("activityFeedOpen");
+  });
+
+  it("SortableBlockItem receives lastChangeInfo prop", async () => {
+    const fs = await import("fs");
+    const source = fs.readFileSync("client/src/pages/AdminCmsEditor.tsx", "utf-8");
+    expect(source).toContain("lastChangeInfo");
+    expect(source).toContain("blockChangeMap[block.id]");
+  });
+
+  it("blocks show visual freshness indicators", async () => {
+    const fs = await import("fs");
+    const source = fs.readFileSync("client/src/pages/AdminCmsEditor.tsx", "utf-8");
+    // Fresh blocks get amber border
+    expect(source).toContain("border-amber-400/60");
+    // Recent blocks get blue border
+    expect(source).toContain("border-blue-300/40");
+    // Fresh badge with pencil icon
+    expect(source).toContain("Pencil");
+  });
+
+  it("Activity Feed button shows count badge for fresh changes", async () => {
+    const fs = await import("fs");
+    const source = fs.readFileSync("client/src/pages/AdminCmsEditor.tsx", "utf-8");
+    expect(source).toContain("bg-amber-500");
+    expect(source).toContain("getChangeFreshness(c.changedAt) === \"fresh\"");
+  });
+
+  it("Activity Feed items are clickable and navigate to the page", async () => {
+    const fs = await import("fs");
+    const source = fs.readFileSync("client/src/pages/AdminCmsEditor.tsx", "utf-8");
+    expect(source).toContain("setActivePage(ch.page)");
+    expect(source).toContain("setActivityFeedOpen(false)");
+  });
+});
