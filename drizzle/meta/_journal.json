@@ -176,6 +176,13 @@
       "when": 1774359990387,
       "tag": "0025_eager_rhino",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "5",
+      "when": 1774364116172,
+      "tag": "0026_next_genesis",
+      "breakpoints": true
     }
   ]
 }

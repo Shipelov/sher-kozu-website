@@ -1044,3 +1044,19 @@
 
 ## Выравнивание цветных карточек статусов (розовый, зелёный, жёлтый) (DONE)
 - [x] flex-col + min-h для заголовков + shrink-0 для иконок + единый mt-2 для текста описания
+
+## Встроенная CMS-панель для управления контентом (DONE)
+- [x] Аудит главной страницы: 47 редактируемых блоков (7 секций)
+- [x] Аудит каталога: запланирован для следующего этапа
+- [x] Создана таблица cmsBlocks (page, blockKey, label, contentType, content, imageUrl, section, sortOrder, visible)
+- [x] Миграция БД (pnpm db:push)
+- [x] Backend: 8 tRPC процедур (getPageBlocks, listAll, upsertBlock, updateContent, toggleVisibility, deleteBlock, uploadImage, seedDefaults)
+- [x] Обновлён Home.tsx — все тексты и изображения читаются из CMS с fallback
+- [x] Создан useCmsContent хук (getText, getImage, getJson)
+- [x] Admin UI: /admin/content с визуальным редактором
+- [x] Редактирование текстов через диалог
+- [x] Загрузка изображений через файл-инпут + S3
+- [x] Переключатель видимости блоков (Switch)
+- [x] Предпросмотр в новой вкладке
+- [x] Карточка CMS в AdminHub
+- [x] Тесты: 24 новых теста (cms.test.ts)

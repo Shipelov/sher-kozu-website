@@ -15,6 +15,7 @@
 */
 
 import { useState, useMemo, useCallback, useRef, useEffect } from "react";
+import { useCmsContent } from "@/hooks/useCmsContent";
 import { motion, AnimatePresence } from "framer-motion";
 import { Link } from "wouter";
 import { useAuth } from "@/_core/hooks/useAuth";
@@ -151,6 +152,14 @@ export default function Home() {
   const [authModalView, setAuthModalView] = useState<"login" | "register">("register");
   const [mashaVideoOpen, setMashaVideoOpen] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const cms = useCmsContent("home");
+
+  // CMS-powered data with fallbacks to hardcoded defaults
+  const cmsSteps = cms.getJson("steps", steps.map(s => ({ index: s.index, title: s.title, text: s.text })));
+  const cmsAudiences = cms.getJson("audiences", audiences.map(a => ({ title: a.title, text: a.text })));
+  const cmsValues = cms.getJson("values", values.map(v => ({ title: v.title, text: v.text, stat: v.stat, statLabel: v.statLabel })));
+  const cmsTestimonials = cms.getJson("testimonials", testimonials);
+  const cmsProducts = cms.getJson("products_list", [{ label: "Свежее молоко", desc: "Козье или овечье молоко от вашего животного. Доставка в течение 24 часов после надоя." }, { label: "Именные сыры", desc: "Мягкие и выдержанные сыры ручной работы — с именем владельца на этикетке. Статусный подарок и семейная традиция." }, { label: "Сезонные наборы", desc: "Подарочные боксы с лучшими продуктами фермы — для себя, семьи или в подарок близким." }]);
 
   const openAuthRegister = () => {
     setAuthModalView("register");
@@ -198,7 +207,7 @@ export default function Home() {
                 className="inline-flex items-center gap-2 rounded-full border border-primary/15 bg-white/80 px-4 py-2 text-sm text-primary shadow-sm backdrop-blur"
               >
                 <Leaf className="h-4 w-4" />
-                Первый в России клуб персонального фермерства
+                {cms.getText("hero_badge", "Первый в России клуб персонального фермерства")}
               </motion.div>
 
               <motion.h1
@@ -207,9 +216,14 @@ export default function Home() {
                 transition={{ delay: 0.08 }}
                 className="mt-7 font-display text-5xl leading-[0.95] text-foreground md:text-7xl"
               >
-                Ваша ферма.{" "}
-                <span className="text-primary">Ваше молоко.</span>{" "}
-                <span className="block mt-1">Ваша история.</span>
+                {(() => {
+                  const title = cms.getText("hero_title", "Ваша ферма. Ваше молоко. Ваша история.");
+                  const parts = title.split(".").filter(Boolean);
+                  if (parts.length >= 3) {
+                    return (<>{parts[0].trim()}.{" "}<span className="text-primary">{parts[1].trim()}.</span>{" "}<span className="block mt-1">{parts[2].trim()}.</span></>);
+                  }
+                  return title;
+                })()}
               </motion.h1>
 
               <motion.p
@@ -218,8 +232,7 @@ export default function Home() {
                 transition={{ delay: 0.15 }}
                 className="mt-7 max-w-xl text-lg leading-8 text-muted-foreground"
               >
-                Выберите конкретную козу или овцу элитной породы, наблюдайте за её жизнью,
-                воспитывайте её на ферме и получайте именные молочные продукты — с прозрачным процессом создания.
+                {cms.getText("hero_subtitle", "Выберите конкретную козу или овцу элитной породы, наблюдайте за её жизнью, воспитывайте её на ферме и получайте именные молочные продукты — с прозрачным процессом создания.")}
               </motion.p>
 
               <motion.div
@@ -300,7 +313,7 @@ export default function Home() {
             >
               <div className="overflow-hidden rounded-[2rem] border border-white/60 bg-card shadow-[0_30px_70px_-35px_rgba(33,30,24,0.35)]">
                 <img
-                  src={CDN.hero}
+                  src={cms.getImage("hero_image", CDN.hero)}
                   alt="Семейная ферма Шерь Козу"
                   className="h-[540px] w-full object-cover"
                 />
@@ -311,7 +324,7 @@ export default function Home() {
                     Семейная ферма Шерь Козу
                   </div>
                   <h2 className="mt-3 font-display text-3xl leading-tight md:text-4xl">
-                    Конкретная ферма — конкретное животное с именем, породой и историей.
+                    {cms.getText("hero_image_caption", "Конкретная ферма — конкретное животное с именем, породой и историей.")}
                   </h2>
                 </div>
               </div>
@@ -328,18 +341,18 @@ export default function Home() {
       <section id="how-it-works" className="py-20 md:py-28">
         <div className="container">
           <div className="text-center max-w-2xl mx-auto">
-            <p className="text-sm font-semibold uppercase tracking-[0.22em] text-primary">Как это работает</p>
+            <p className="text-sm font-semibold uppercase tracking-[0.22em] text-primary">{cms.getText("howit_title", "Как это работает")}</p>
             <h2 className="mt-4 font-display text-4xl text-foreground md:text-5xl">
-              Три шага — от выбора животного до именной коробки с продуктами
+              {cms.getText("howit_heading", "Три шага — от выбора животного до именной коробки с продуктами")}
             </h2>
             <p className="mt-5 text-base leading-7 text-muted-foreground">
-              Персональное фермерство — это просто. Выберите животное, наблюдайте за его жизнью и получайте продукты с прозрачной историей.
+              {cms.getText("howit_subtitle", "Персональное фермерство — это просто. Выберите животное, наблюдайте за его жизнью и получайте продукты с прозрачной историей.")}
             </p>
           </div>
 
           <div className="mt-14 grid gap-6 md:grid-cols-3">
-            {steps.map((step, index) => {
-              const Icon = step.icon;
+            {cmsSteps.map((step: { index: string; title: string; text: string }, index: number) => {
+              const Icon = steps[index]?.icon ?? Heart;
               return (
                 <motion.div
                   key={step.title}
@@ -381,13 +394,12 @@ export default function Home() {
         <div className="container">
           <div className="grid gap-12 lg:grid-cols-[0.85fr_1.15fr] lg:items-start">
             <div>
-              <p className="text-sm font-semibold uppercase tracking-[0.22em] text-primary">Для кого это</p>
+              <p className="text-sm font-semibold uppercase tracking-[0.22em] text-primary">{cms.getText("audience_label", "Для кого это")}</p>
               <h2 className="mt-4 font-display text-4xl text-foreground md:text-5xl">
-                Для тех, кому важна не только еда, но и история за ней
+                {cms.getText("audience_heading", "Для тех, кому важна не только еда, но и история за ней")}
               </h2>
               <p className="mt-5 text-base leading-7 text-muted-foreground">
-                Персональное фермерство — это осознанный выбор. Не массовый продукт,
-                а личная связь с источником для тех, кто ценит прозрачность и качество.
+                {cms.getText("audience_subtitle", "Персональное фермерство — это осознанный выбор. Не массовый продукт, а личная связь с источником для тех, кто ценит прозрачность и качество.")}
               </p>
               <div className="mt-8">
                 <Link
@@ -401,8 +413,8 @@ export default function Home() {
             </div>
 
             <div className="grid gap-4 sm:grid-cols-2">
-              {audiences.map((item, index) => {
-                const Icon = item.icon;
+              {cmsAudiences.map((item: { title: string; text: string }, index: number) => {
+                const Icon = audiences[index]?.icon ?? Heart;
                 return (
                   <motion.div
                     key={item.title}
@@ -431,12 +443,12 @@ export default function Home() {
       <section className="py-20 md:py-28">
         <div className="container">
           <div className="text-center max-w-2xl mx-auto">
-            <p className="text-sm font-semibold uppercase tracking-[0.22em] text-primary">Галерея животных</p>
+            <p className="text-sm font-semibold uppercase tracking-[0.22em] text-primary">{cms.getText("gallery_label", "Галерея животных")}</p>
             <h2 className="mt-4 font-display text-4xl text-foreground md:text-5xl">
-              Познакомьтесь с животными фермы
+              {cms.getText("gallery_heading", "Познакомьтесь с животными фермы")}
             </h2>
             <p className="mt-5 text-base leading-7 text-muted-foreground">
-              Элитные породы с европейской генетикой. У каждого — имя, характер, родословная и доступные доли.
+              {cms.getText("gallery_subtitle", "Элитные породы с европейской генетикой. У каждого — имя, характер, родословная и доступные доли.")}
             </p>
           </div>
 
@@ -450,7 +462,7 @@ export default function Home() {
                 className="overflow-hidden rounded-[2rem] border border-amber-200/80 bg-gradient-to-br from-amber-50 via-white to-[#fff5dd] shadow-sm transition-transform duration-300 group-hover:-translate-y-1"
               >
                 <div className="grid md:grid-cols-[200px_1fr]">
-                  <img src={CDN.goat} alt="Козы Шерь Козу" className="h-48 w-full object-cover md:h-full" />
+                  <img src={cms.getImage("gallery_goats_image", CDN.goat)} alt="Козы Шерь Козу" className="h-48 w-full object-cover md:h-full" />
                   <div className="p-6">
                     <div className="inline-flex items-center rounded-full border border-amber-200 bg-white/80 px-3 py-1 text-xs font-medium text-amber-900">
                       Козы
@@ -480,7 +492,7 @@ export default function Home() {
                 className="overflow-hidden rounded-[2rem] border border-emerald-200/80 bg-gradient-to-br from-emerald-50 via-white to-[#eefbf4] shadow-sm transition-transform duration-300 group-hover:-translate-y-1"
               >
                 <div className="grid md:grid-cols-[200px_1fr]">
-                  <img src={CDN.family} alt="Овцы Шерь Козу" className="h-48 w-full object-cover md:h-full" />
+                  <img src={cms.getImage("gallery_sheep_image", CDN.family)} alt="Овцы Шерь Козу" className="h-48 w-full object-cover md:h-full" />
                   <div className="p-6">
                     <div className="inline-flex items-center rounded-full border border-emerald-200 bg-white/80 px-3 py-1 text-xs font-medium text-emerald-900">
                       Овцы
@@ -510,17 +522,17 @@ export default function Home() {
         <div className="container">
           <div className="grid gap-10 lg:grid-cols-[0.95fr_1.05fr] lg:items-center">
             <div className="overflow-hidden rounded-[2rem] border border-white/70 bg-card shadow-sm">
-              <img src={CDN.club} alt="Семья на клубном визите" className="h-full min-h-[380px] w-full object-cover" />
+              <img src={cms.getImage("whyus_image", CDN.club)} alt="Семья на клубном визите" className="h-full min-h-[380px] w-full object-cover" />
             </div>
             <div>
-              <p className="text-sm font-semibold uppercase tracking-[0.22em] text-primary">Почему Шерь Козу</p>
+              <p className="text-sm font-semibold uppercase tracking-[0.22em] text-primary">{cms.getText("whyus_label", "Почему Шерь Козу")}</p>
               <h2 className="mt-4 font-display text-4xl text-foreground md:text-5xl">
-                Не просто продукты — личная история с фермой
+                {cms.getText("whyus_heading", "Не просто продукты — личная история с фермой")}
               </h2>
 
               <div className="mt-8 grid gap-4 sm:grid-cols-2">
-                {values.map((item, index) => {
-                  const Icon = item.icon;
+                {cmsValues.map((item: { title: string; text: string; stat: string; statLabel: string }, index: number) => {
+                  const Icon = values[index]?.icon ?? Heart;
                   return (
                     <motion.div
                       key={item.title}
@@ -552,7 +564,7 @@ export default function Home() {
           <div className="mt-16">
             <h3 className="text-center text-sm font-semibold uppercase tracking-[0.22em] text-primary">Отзывы участников</h3>
             <div className="mt-8 grid gap-6 md:grid-cols-3">
-              {testimonials.map((item, index) => (
+              {cmsTestimonials.map((item: { text: string; author: string; role: string }, index: number) => (
                 <motion.div
                   key={item.author}
                   initial={{ opacity: 0, y: 16 }}
@@ -588,21 +600,16 @@ export default function Home() {
         <div className="container">
           <div className="grid gap-10 lg:grid-cols-[1fr_0.9fr] lg:items-center">
             <div>
-              <p className="text-sm font-semibold uppercase tracking-[0.22em] text-primary">Что вы получаете</p>
+              <p className="text-sm font-semibold uppercase tracking-[0.22em] text-primary">{cms.getText("products_label", "Что вы получаете")}</p>
               <h2 className="mt-4 font-display text-4xl text-foreground md:text-5xl">
-                Что внутри именной коробки
+                {cms.getText("products_heading", "Что внутри именной коробки")}
               </h2>
               <p className="mt-5 max-w-xl text-base leading-7 text-muted-foreground">
-                Каждый продукт — результат вашей связи с конкретным животным.
-                С трекером происхождения от надоя до двери.
+                {cms.getText("products_subtitle", "Каждый продукт — результат вашей связи с конкретным животным. С трекером происхождения от надоя до двери.")}
               </p>
 
               <div className="mt-8 space-y-4">
-                {[
-                  { label: "Свежее молоко", desc: "Козье или овечье молоко от вашего животного. Доставка в течение 24 часов после надоя." },
-                  { label: "Именные сыры", desc: "Мягкие и выдержанные сыры ручной работы — с именем владельца на этикетке. Статусный подарок и семейная традиция." },
-                  { label: "Сезонные наборы", desc: "Подарочные боксы с лучшими продуктами фермы — для себя, семьи или в подарок близким." },
-                ].map((product) => (
+                {cmsProducts.map((product: { label: string; desc: string }) => (
                   <div key={product.label} className="flex items-start gap-4 rounded-2xl border border-border/70 bg-card p-4">
                     <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
                       <Milk className="h-5 w-5" />
@@ -622,11 +629,11 @@ export default function Home() {
               viewport={{ once: true }}
               className="overflow-hidden rounded-[2rem] border border-border/70 bg-card shadow-sm"
             >
-              <img src={CDN.milk} alt="Именные молочные продукты Шерь Козу" className="h-80 w-full object-cover" />
+              <img src={cms.getImage("products_image", CDN.milk)} alt="Именные молочные продукты Шерь Козу" className="h-80 w-full object-cover" />
               <div className="p-6">
-                <p className="text-xs uppercase tracking-[0.18em] text-primary">Продуктовая линия</p>
+                <p className="text-xs uppercase tracking-[0.18em] text-primary">{cms.getText("products_card_label", "Продуктовая линия")}</p>
                 <p className="mt-2 text-lg font-semibold text-foreground">
-                  Каждый продукт — с историей происхождения и именем животного на упаковке.
+                  {cms.getText("products_card_text", "Каждый продукт — с историей происхождения и именем животного на упаковке.")}
                 </p>
                 <Link
                   href="/tracker"
@@ -649,13 +656,12 @@ export default function Home() {
           <div className="overflow-hidden rounded-[2.25rem] border border-border/70 bg-[linear-gradient(135deg,rgba(26,58,42,0.96),rgba(45,70,54,0.92))] px-7 py-10 text-white shadow-[0_34px_80px_-45px_rgba(26,58,42,0.8)] md:px-12 md:py-14">
             <div className="grid gap-8 lg:grid-cols-[1fr_auto] lg:items-center">
               <div>
-                <p className="text-sm uppercase tracking-[0.22em] text-amber-300">Начните сейчас</p>
+                <p className="text-sm uppercase tracking-[0.22em] text-amber-300">{cms.getText("cta_label", "Начните сейчас")}</p>
                 <h2 className="mt-3 max-w-2xl font-display text-4xl md:text-5xl">
-                  Станьте частью первого в России клуба персонального фермерства
+                  {cms.getText("cta_heading", "Станьте частью первого в России клуба персонального фермерства")}
                 </h2>
                 <p className="mt-4 max-w-2xl text-sm leading-7 text-white/75">
-                  Выберите животное, познакомьтесь с его историей и начните получать именные продукты.
-                  Количество мест в клубе ограничено — мы работаем с каждым владельцем лично.
+                  {cms.getText("cta_subtitle", "Выберите животное, познакомьтесь с его историей и начните получать именные продукты. Количество мест в клубе ограничено — мы работаем с каждым владельцем лично.")}
                 </p>
               </div>
               <div className="flex flex-col gap-3 sm:flex-row lg:flex-col">

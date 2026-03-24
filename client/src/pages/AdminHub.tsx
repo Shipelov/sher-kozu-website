@@ -27,6 +27,7 @@ import {
   TrendingUp,
   UserRound,
   Users,
+  FileText,
 } from "lucide-react";
 import { useState } from "react";
 import { useLocation } from "wouter";
@@ -231,6 +232,17 @@ export default function AdminHub() {
       countLabel: "Вопросы · Сессии · Источники",
       quickActionLabel: "Открыть FAQ аналитику",
       quickActionPath: "/admin/faq-analytics",
+    },
+    {
+      title: "Управление контентом",
+      description: "Визуальный редактор текстов, изображений и блоков на главной странице и каталоге. Без кода.",
+      path: "/admin/content",
+      icon: FileText,
+      statusLabel: "CMS",
+      adminOnly: true,
+      countLabel: "Тексты · Изображения · Блоки",
+      quickActionLabel: "Открыть редактор",
+      quickActionPath: "/admin/content",
     },
   ];
 

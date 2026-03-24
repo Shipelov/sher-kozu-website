@@ -25,6 +25,7 @@ const AdminMarketplace = lazy(() => import("./pages/AdminMarketplace"));
 const AdminTokens = lazy(() => import("./pages/AdminTokens"));
 const AdminAnalytics = lazy(() => import("./pages/AdminAnalytics"));
 const AdminFaqAnalytics = lazy(() => import("./pages/AdminFaqAnalytics"));
+const AdminCmsEditor = lazy(() => import("./pages/AdminCmsEditor"));
 const Marketplace = lazy(() => import("./pages/Marketplace"));
 const Leaderboard = lazy(() => import("./pages/Leaderboard"));
 const Profile = lazy(() => import("./pages/Profile"));
@@ -97,6 +98,7 @@ function Router() {
         <Route path="/admin/tokens" component={AdminTokens} />
         <Route path="/admin/analytics" component={AdminAnalytics} />
         <Route path="/admin/faq-analytics" component={AdminFaqAnalytics} />
+        <Route path="/admin/content" component={AdminCmsEditor} />
         <Route path="/marketplace" component={Marketplace} />
         <Route path="/leaderboard" component={Leaderboard} />
         <Route path="/compare" component={AnimalCompare} />

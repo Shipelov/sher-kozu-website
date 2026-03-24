@@ -1,4 +1,4 @@
-import { boolean, index, int, mysqlEnum, mysqlTable, text, timestamp, varchar } from "drizzle-orm/mysql-core";
+import { boolean, index, int, json, mysqlEnum, mysqlTable, text, timestamp, varchar } from "drizzle-orm/mysql-core";
 
 /**
  * Core user table backing auth flow.
@@ -1105,3 +1105,32 @@ export const uncertainAnswers = mysqlTable("uncertainAnswers", {
 ]));
 export type UncertainAnswer = typeof uncertainAnswers.$inferSelect;
 export type InsertUncertainAnswer = typeof uncertainAnswers.$inferInsert;
+
+
+/* ─── CMS Content Blocks ─── */
+
+export const cmsBlocks = mysqlTable("cmsBlocks", {
+  id: int("id").autoincrement().primaryKey(),
+  /** Page identifier: 'home', 'catalog', etc. */
+  page: varchar("page", { length: 64 }).notNull(),
+  /** Unique block key within the page, e.g. 'hero_title', 'steps' */
+  blockKey: varchar("blockKey", { length: 128 }).notNull(),
+  /** Human-readable label for the admin UI */
+  label: varchar("label", { length: 255 }).notNull(),
+  /** Content type: 'text' for simple strings, 'richtext' for multiline, 'image' for URLs, 'json' for arrays/objects */
+  contentType: mysqlEnum("contentType", ["text", "richtext", "image", "json"]).notNull().default("text"),
+  /** The actual content — plain text or JSON-serialized */
+  content: text("content"),
+  /** Image URL if contentType is 'image' */
+  imageUrl: text("imageUrl"),
+  /** Section grouping for admin UI navigation */
+  section: varchar("section", { length: 128 }),
+  /** Display order within section */
+  sortOrder: int("sortOrder").default(0).notNull(),
+  /** Whether this block is visible on the public site */
+  visible: boolean("visible").default(true).notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, (table) => [
+  index("cms_page_key_idx").on(table.page, table.blockKey),
+]);
