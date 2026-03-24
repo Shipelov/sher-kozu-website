@@ -1,0 +1,202 @@
+{
+  "query": "SELECT id, blockKey, contentType, imageUrl IS NOT NULL as hasImage FROM cmsBlocks WHERE page = 'home' ORDER BY sortOrder;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3J2fXRHx8d1YjF6.root --database mLhmg5VmBsEBpZiYqdnhMQ --execute SELECT id, blockKey, contentType, imageUrl IS NOT NULL as hasImage FROM cmsBlocks WHERE page = 'home' ORDER BY sortOrder;",
+  "rows": [
+    {
+      "id": "1",
+      "blockKey": "hero_badge",
+      "contentType": "text",
+      "hasImage": "0"
+    },
+    {
+      "id": "2",
+      "blockKey": "hero_title",
+      "contentType": "text",
+      "hasImage": "0"
+    },
+    {
+      "id": "3",
+      "blockKey": "hero_subtitle",
+      "contentType": "richtext",
+      "hasImage": "0"
+    },
+    {
+      "id": "5",
+      "blockKey": "hero_image_caption",
+      "contentType": "text",
+      "hasImage": "1"
+    },
+    {
+      "id": "6",
+      "blockKey": "howit_title",
+      "contentType": "text",
+      "hasImage": "0"
+    },
+    {
+      "id": "7",
+      "blockKey": "howit_heading",
+      "contentType": "text",
+      "hasImage": "0"
+    },
+    {
+      "id": "8",
+      "blockKey": "howit_subtitle",
+      "contentType": "richtext",
+      "hasImage": "0"
+    },
+    {
+      "id": "9",
+      "blockKey": "steps",
+      "contentType": "json",
+      "hasImage": "0"
+    },
+    {
+      "id": "10",
+      "blockKey": "forwhom_title",
+      "contentType": "text",
+      "hasImage": "0"
+    },
+    {
+      "id": "11",
+      "blockKey": "forwhom_heading",
+      "contentType": "text",
+      "hasImage": "0"
+    },
+    {
+      "id": "12",
+      "blockKey": "forwhom_subtitle",
+      "contentType": "richtext",
+      "hasImage": "0"
+    },
+    {
+      "id": "13",
+      "blockKey": "audiences",
+      "contentType": "json",
+      "hasImage": "0"
+    },
+    {
+      "id": "14",
+      "blockKey": "gallery_title",
+      "contentType": "text",
+      "hasImage": "0"
+    },
+    {
+      "id": "15",
+      "blockKey": "gallery_heading",
+      "contentType": "text",
+      "hasImage": "0"
+    },
+    {
+      "id": "16",
+      "blockKey": "gallery_subtitle",
+      "contentType": "richtext",
+      "hasImage": "0"
+    },
+    {
+      "id": "17",
+      "blockKey": "goats_card_title",
+      "contentType": "text",
+      "hasImage": "0"
+    },
+    {
+      "id": "18",
+      "blockKey": "goats_card_text",
+      "contentType": "richtext",
+      "hasImage": "0"
+    },
+    {
+      "id": "19",
+      "blockKey": "sheep_card_title",
+      "contentType": "text",
+      "hasImage": "0"
+    },
+    {
+      "id": "20",
+      "blockKey": "sheep_card_text",
+      "contentType": "richtext",
+      "hasImage": "0"
+    },
+    {
+      "id": "21",
+      "blockKey": "whyus_title",
+      "contentType": "text",
+      "hasImage": "0"
+    },
+    {
+      "id": "22",
+      "blockKey": "whyus_heading",
+      "contentType": "text",
+      "hasImage": "0"
+    },
+    {
+      "id": "23",
+      "blockKey": "whyus_image",
+      "contentType": "image",
+      "hasImage": "1"
+    },
+    {
+      "id": "24",
+      "blockKey": "values",
+      "contentType": "json",
+      "hasImage": "0"
+    },
+    {
+      "id": "25",
+      "blockKey": "testimonials",
+      "contentType": "json",
+      "hasImage": "0"
+    },
+    {
+      "id": "26",
+      "blockKey": "products_title",
+      "contentType": "text",
+      "hasImage": "0"
+    },
+    {
+      "id": "27",
+      "blockKey": "products_heading",
+      "contentType": "text",
+      "hasImage": "0"
+    },
+    {
+      "id": "28",
+      "blockKey": "products_subtitle",
+      "contentType": "richtext",
+      "hasImage": "0"
+    },
+    {
+      "id": "29",
+      "blockKey": "products_image",
+      "contentType": "image",
+      "hasImage": "1"
+    },
+    {
+      "id": "30",
+      "blockKey": "products_list",
+      "contentType": "json",
+      "hasImage": "0"
+    },
+    {
+      "id": "31",
+      "blockKey": "cta_title",
+      "contentType": "text",
+      "hasImage": "0"
+    },
+    {
+      "id": "32",
+      "blockKey": "cta_heading",
+      "contentType": "text",
+      "hasImage": "0"
+    },
+    {
+      "id": "33",
+      "blockKey": "cta_subtitle",
+      "contentType": "richtext",
+      "hasImage": "0"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tblockKey\tcontentType\thasImage\n1\thero_badge\ttext\t0\n2\thero_title\ttext\t0\n3\thero_subtitle\trichtext\t0\n5\thero_image_caption\ttext\t1\n6\thowit_title\ttext\t0\n7\thowit_heading\ttext\t0\n8\thowit_subtitle\trichtext\t0\n9\tsteps\tjson\t0\n10\tforwhom_title\ttext\t0\n11\tforwhom_heading\ttext\t0\n12\tforwhom_subtitle\trichtext\t0\n13\taudiences\tjson\t0\n14\tgallery_title\ttext\t0\n15\tgallery_heading\ttext\t0\n16\tgallery_subtitle\trichtext\t0\n17\tgoats_card_title\ttext\t0\n18\tgoats_card_text\trichtext\t0\n19\tsheep_card_title\ttext\t0\n20\tsheep_card_text\trichtext\t0\n21\twhyus_title\ttext\t0\n22\twhyus_heading\ttext\t0\n23\twhyus_image\timage\t1\n24\tvalues\tjson\t0\n25\ttestimonials\tjson\t0\n26\tproducts_title\ttext\t0\n27\tproducts_heading\ttext\t0\n28\tproducts_subtitle\trichtext\t0\n29\tproducts_image\timage\t1\n30\tproducts_list\tjson\t0\n31\tcta_title\ttext\t0\n32\tcta_heading\ttext\t0\n33\tcta_subtitle\trichtext\t0\n",
+  "stderr": "",
+  "execution_time_ms": 380
+}

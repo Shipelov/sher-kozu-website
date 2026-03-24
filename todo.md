@@ -1078,3 +1078,14 @@
 - [x] Исправлено: seed явно передаёт все поля; uploadImage больше не меняет contentType
 - [x] Восстановлен блок hero_image в БД с загруженным фото
 - [x] Все 1358 тестов проходят
+
+## BUG (CRITICAL): Фото в CMS возвращается к первоначальному после замены (FIXED)
+- [x] Проверить все записи hero_image в БД (дубликаты?) — дубликатов нет, id=35
+- [x] Проверить getPageBlocks — какой блок возвращается при дубликатах — OK, один блок
+- [x] Проверить useCmsContent — кэширование, staleTime — staleTime=60s, OK
+- [x] Проверить Home.tsx — fallback на CDN.hero перезатирает CMS — нет, getImage работает корректно
+- [x] Корневая причина: uploadImage.onSuccess не инвалидировал кэш + не закрывал диалог
+- [x] Исправлено: uploadImage.onSuccess теперь инвалидирует listAll + getPageBlocks + закрывает диалог
+- [x] Seed переписан на per-block upsert (не all-or-nothing)
+- [x] getPageBlocks добавлена auto-recovery: автоматически создаёт недостающие дефолтные блоки
+- [x] Все 1363 теста проходят

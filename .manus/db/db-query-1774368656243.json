@@ -1,0 +1,17 @@
+{
+  "query": "SELECT id, blockKey, contentType, imageUrl, visible FROM cmsBlocks WHERE blockKey = 'hero_image';",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3J2fXRHx8d1YjF6.root --database mLhmg5VmBsEBpZiYqdnhMQ --execute SELECT id, blockKey, contentType, imageUrl, visible FROM cmsBlocks WHERE blockKey = 'hero_image';",
+  "rows": [
+    {
+      "id": "35",
+      "blockKey": "hero_image",
+      "contentType": "image",
+      "imageUrl": "https://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/sherkozu_family_farm_hero-UF9QBY2UhWL9gdEpLXiEFS.webp",
+      "visible": "1"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tblockKey\tcontentType\timageUrl\tvisible\n35\thero_image\timage\thttps://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/sherkozu_family_farm_hero-UF9QBY2UhWL9gdEpLXiEFS.webp\t1\n",
+  "stderr": "",
+  "execution_time_ms": 365
+}

@@ -6,11 +6,14 @@ let insertedRows: any[] = [];
 let updatedSets: any[] = [];
 let deletedIds: number[] = [];
 let lastInsertId = 100;
+let selectCallCount = 0;
+let mockRowsSequence: any[][] = []; // For multi-call select scenarios
 
 const chainable = () => {
   const chain: any = {
     _wheres: [] as any[],
     _limit: undefined as number | undefined,
+    _selectFields: undefined as any,
     from: () => chain,
     where: (...args: any[]) => { chain._wheres.push(args); return chain; },
     orderBy: () => chain,
@@ -21,13 +24,25 @@ const chainable = () => {
       lastInsertId++;
       return [{ insertId: lastInsertId }];
     },
-    then: (resolve: any) => resolve(chain._limit ? mockRows.slice(0, chain._limit) : mockRows),
+    then: (resolve: any) => {
+      // If we have a sequence of mock rows, use them in order
+      if (mockRowsSequence.length > 0) {
+        const rows = mockRowsSequence[selectCallCount] ?? mockRows;
+        selectCallCount++;
+        return resolve(chain._limit ? rows.slice(0, chain._limit) : rows);
+      }
+      return resolve(chain._limit ? mockRows.slice(0, chain._limit) : mockRows);
+    },
   };
   return chain;
 };
 
 const mockDb = {
-  select: () => chainable(),
+  select: (fields?: any) => {
+    const c = chainable();
+    c._selectFields = fields;
+    return c;
+  },
   insert: () => ({ values: (data: any) => { insertedRows.push(data); lastInsertId++; return [{ insertId: lastInsertId }]; } }),
   update: () => {
     const chain: any = {
@@ -108,6 +123,8 @@ beforeEach(() => {
   updatedSets = [];
   deletedIds = [];
   lastInsertId = 100;
+  selectCallCount = 0;
+  mockRowsSequence = [];
 });
 
 /* ═══════════════════════════════════════════════════════
@@ -140,11 +157,52 @@ describe("cms.getPageBlocks", () => {
     expect(result).toHaveLength(2);
   });
 
-  it("returns empty array when no blocks exist", async () => {
+  it("returns empty array for unknown page (no defaults)", async () => {
     mockRows = [];
     const caller = appRouter.createCaller(createPublicContext());
     const result = await caller.cms.getPageBlocks({ page: "nonexistent" });
     expect(result).toHaveLength(0);
+  });
+
+  it("auto-recovers missing default blocks on read for home page", async () => {
+    // First select returns partial blocks (missing hero_image)
+    mockRows = [
+      { id: 1, page: "home", blockKey: "hero_badge", contentType: "text", content: "Badge", imageUrl: null, sortOrder: 1, visible: true, createdAt: new Date(), updatedAt: new Date() },
+      { id: 2, page: "home", blockKey: "hero_title", contentType: "text", content: "Title", imageUrl: null, sortOrder: 2, visible: true, createdAt: new Date(), updatedAt: new Date() },
+    ];
+
+    const caller = appRouter.createCaller(createPublicContext());
+    const result = await caller.cms.getPageBlocks({ page: "home" });
+
+    // Auto-recovery should have inserted missing blocks
+    expect(insertedRows.length).toBeGreaterThan(0);
+    // Should have tried to insert blocks that were missing
+    const insertedKeys = insertedRows.map((r: any) => r.blockKey);
+    expect(insertedKeys).toContain("hero_image");
+    expect(insertedKeys).toContain("hero_subtitle");
+  });
+
+  it("does not auto-recover when all default blocks exist", async () => {
+    // Simulate all home defaults present by having all blockKeys
+    const allHomeKeys = [
+      "hero_badge", "hero_title", "hero_subtitle", "hero_image", "hero_image_caption",
+      "howit_title", "howit_heading", "howit_subtitle", "steps",
+      "forwhom_title", "forwhom_heading", "forwhom_subtitle", "audiences",
+      "gallery_title", "gallery_heading", "gallery_subtitle",
+      "goats_card_title", "goats_card_text", "sheep_card_title", "sheep_card_text",
+      "whyus_title", "whyus_heading", "whyus_image", "values", "testimonials",
+      "products_title", "products_heading", "products_subtitle", "products_image", "products_list",
+      "cta_title", "cta_heading", "cta_subtitle",
+    ];
+    mockRows = allHomeKeys.map((key, i) => ({
+      id: i + 1, page: "home", blockKey: key, contentType: "text", content: "Content", imageUrl: null, sortOrder: i, visible: true, createdAt: new Date(), updatedAt: new Date(),
+    }));
+
+    const caller = appRouter.createCaller(createPublicContext());
+    await caller.cms.getPageBlocks({ page: "home" });
+
+    // No inserts should happen
+    expect(insertedRows).toHaveLength(0);
   });
 });
 
@@ -292,7 +350,7 @@ describe("cms.uploadImage", () => {
     expect(result.url).toBe("https://cdn.example.com/cms/test-image.png");
     expect(updatedSets).toHaveLength(1);
     expect(updatedSets[0].imageUrl).toBe("https://cdn.example.com/cms/test-image.png");
-    // uploadImage no longer overrides contentType (fix: text blocks can have optional images)
+    // uploadImage should NOT override contentType
     expect(updatedSets[0].contentType).toBeUndefined();
   });
 
@@ -310,7 +368,7 @@ describe("cms.uploadImage", () => {
 });
 
 describe("cms.seedDefaults", () => {
-  it("seeds default blocks for home page when empty", async () => {
+  it("seeds all default blocks for home page when empty", async () => {
     mockRows = []; // No existing blocks
     const caller = appRouter.createCaller(createAdminContext());
     const result = await caller.cms.seedDefaults({ page: "home" });
@@ -318,10 +376,44 @@ describe("cms.seedDefaults", () => {
     expect(result.seeded).toBe(true);
     expect(result.count).toBeGreaterThan(0);
     expect(insertedRows.length).toBeGreaterThan(0);
+
+    // Verify hero_image block was created with imageUrl
+    const heroImageBlock = insertedRows.find((r: any) => r.blockKey === "hero_image");
+    expect(heroImageBlock).toBeDefined();
+    expect(heroImageBlock.contentType).toBe("image");
+    expect(heroImageBlock.imageUrl).toBeTruthy();
+    // content should be empty string (not null) to avoid Drizzle issues
+    expect(heroImageBlock.content).toBe("");
   });
 
-  it("does not overwrite existing blocks", async () => {
-    mockRows = [{ id: 1, page: "home", blockKey: "hero_title" }];
+  it("uses per-block upsert — skips existing blocks, creates missing ones", async () => {
+    // Only hero_badge exists — all other blocks should be created
+    mockRows = [{ blockKey: "hero_badge" }];
+    const caller = appRouter.createCaller(createAdminContext());
+    const result = await caller.cms.seedDefaults({ page: "home" });
+
+    expect(result.seeded).toBe(true);
+    // hero_badge should NOT be in insertedRows
+    const insertedKeys = insertedRows.map((r: any) => r.blockKey);
+    expect(insertedKeys).not.toContain("hero_badge");
+    // But hero_image should be
+    expect(insertedKeys).toContain("hero_image");
+    expect(insertedKeys).toContain("hero_title");
+  });
+
+  it("returns false when all blocks already exist", async () => {
+    // Simulate all home defaults present
+    const allHomeKeys = [
+      "hero_badge", "hero_title", "hero_subtitle", "hero_image", "hero_image_caption",
+      "howit_title", "howit_heading", "howit_subtitle", "steps",
+      "forwhom_title", "forwhom_heading", "forwhom_subtitle", "audiences",
+      "gallery_title", "gallery_heading", "gallery_subtitle",
+      "goats_card_title", "goats_card_text", "sheep_card_title", "sheep_card_text",
+      "whyus_title", "whyus_heading", "whyus_image", "values", "testimonials",
+      "products_title", "products_heading", "products_subtitle", "products_image", "products_list",
+      "cta_title", "cta_heading", "cta_subtitle",
+    ];
+    mockRows = allHomeKeys.map(key => ({ blockKey: key }));
     const caller = appRouter.createCaller(createAdminContext());
     const result = await caller.cms.seedDefaults({ page: "home" });
 
@@ -340,6 +432,18 @@ describe("cms.seedDefaults", () => {
   it("rejects non-admin users", async () => {
     const caller = appRouter.createCaller(createUserContext());
     await expect(caller.cms.seedDefaults({ page: "home" })).rejects.toThrow();
+  });
+
+  it("seeds catalog page defaults", async () => {
+    mockRows = [];
+    const caller = appRouter.createCaller(createAdminContext());
+    const result = await caller.cms.seedDefaults({ page: "catalog" });
+
+    expect(result.seeded).toBe(true);
+    expect(result.count).toBeGreaterThan(0);
+    const insertedKeys = insertedRows.map((r: any) => r.blockKey);
+    expect(insertedKeys).toContain("badge");
+    expect(insertedKeys).toContain("heading");
   });
 });
 
@@ -416,6 +520,17 @@ describe("CMS content fallback logic", () => {
     expect(getImage("hero_image", "https://default.com/img.jpg")).toBe("https://cdn.example.com/custom.jpg");
     expect(getImage("missing_image", "https://default.com/img.jpg")).toBe("https://default.com/img.jpg");
   });
+
+  it("returns fallback when imageUrl is null", () => {
+    const blocks = [
+      { blockKey: "hero_image", imageUrl: null, visible: true },
+    ];
+    const getImage = (key: string, fallback: string) => {
+      const block = blocks.find((b: any) => b.blockKey === key && b.visible);
+      return block?.imageUrl ?? fallback;
+    };
+    expect(getImage("hero_image", "https://default.com/img.jpg")).toBe("https://default.com/img.jpg");
+  });
 });
 
 /* ═══════════════════════════════════════════════════════
@@ -452,8 +567,9 @@ describe("Image upload with cropped base64 data", () => {
     });
 
     expect(result.url).toBeDefined();
-    // uploadImage no longer overrides contentType
+    // uploadImage should NOT override contentType
     expect(updatedSets[0].imageUrl).toBeDefined();
+    expect(updatedSets[0].contentType).toBeUndefined();
   });
 
   it("rejects upload with empty base64 data", async () => {
@@ -473,7 +589,6 @@ describe("Image upload with cropped base64 data", () => {
 /* ─── Image compression logic tests (pure functions) ─── */
 describe("Image compression constants", () => {
   it("defines correct compression thresholds", () => {
-    // These mirror the constants in ImageCropEditor.tsx
     const MAX_FILE_SIZE_MB = 10;
     const COMPRESS_THRESHOLD_MB = 2;
     const TARGET_MAX_DIMENSION = 1920;
@@ -489,7 +604,6 @@ describe("Image compression constants", () => {
   it("calculates correct scale factor for large images", () => {
     const TARGET_MAX_DIMENSION = 1920;
 
-    // 4000x3000 image
     let width = 4000;
     let height = 3000;
     const scale = TARGET_MAX_DIMENSION / Math.max(width, height);
@@ -508,7 +622,6 @@ describe("Image compression constants", () => {
     const height = 600;
 
     if (width <= TARGET_MAX_DIMENSION && height <= TARGET_MAX_DIMENSION) {
-      // No scaling needed
       expect(width).toBe(800);
       expect(height).toBe(600);
     }
@@ -598,7 +711,6 @@ describe("Crop frame calculations", () => {
     const newPosX = centerX - imgCenterX * newZoom;
     const newPosY = centerY - imgCenterY * newZoom;
 
-    // After zooming in 2x, position should shift further negative
     expect(newPosX).toBeLessThan(posX);
     expect(newPosY).toBeLessThan(posY);
   });

@@ -106,7 +106,12 @@ export default function AdminCmsEditor() {
       setEditImageUrl(data.url);
       setUploading(false);
       setShowCropEditor(false);
-      toast.success("Изображение загружено");
+      // Invalidate caches immediately — uploadImage already saved to DB
+      utils.cms.listAll.invalidate();
+      utils.cms.getPageBlocks.invalidate();
+      toast.success("Изображение загружено и сохранено");
+      // Close the editor since the image is already saved to DB
+      setEditBlock(null);
     },
     onError: (err: { message: string }) => {
       setUploading(false);

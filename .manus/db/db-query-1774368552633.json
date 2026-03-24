@@ -1,0 +1,15 @@
+{
+  "query": "SELECT COUNT(*) as total, MAX(id) as maxId, MIN(id) as minId FROM cmsBlocks;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3J2fXRHx8d1YjF6.root --database mLhmg5VmBsEBpZiYqdnhMQ --execute SELECT COUNT(*) as total, MAX(id) as maxId, MIN(id) as minId FROM cmsBlocks;",
+  "rows": [
+    {
+      "total": "32",
+      "maxId": "33",
+      "minId": "1"
+    }
+  ],
+  "messages": [],
+  "stdout": "total\tmaxId\tminId\n32\t33\t1\n",
+  "stderr": "",
+  "execution_time_ms": 381
+}

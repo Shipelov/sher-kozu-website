@@ -1,0 +1,58 @@
+{
+  "query": "SELECT id, page, blockKey, contentType, content, imageUrl, sortOrder, visible, createdAt, updatedAt FROM cmsBlocks WHERE blockKey LIKE '%hero%' ORDER BY id;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3J2fXRHx8d1YjF6.root --database mLhmg5VmBsEBpZiYqdnhMQ --execute SELECT id, page, blockKey, contentType, content, imageUrl, sortOrder, visible, createdAt, updatedAt FROM cmsBlocks WHERE blockKey LIKE '%hero%' ORDER BY id;",
+  "rows": [
+    {
+      "id": "1",
+      "page": "home",
+      "blockKey": "hero_badge",
+      "contentType": "text",
+      "content": "Первый в России клуб персонального фермерства!!!",
+      "imageUrl": "NULL",
+      "sortOrder": "1",
+      "visible": "1",
+      "createdAt": "2026-03-24 15:31:08",
+      "updatedAt": "2026-03-24 15:34:38"
+    },
+    {
+      "id": "2",
+      "page": "home",
+      "blockKey": "hero_title",
+      "contentType": "text",
+      "content": "Ваша ферма. Ваше молоко. Ваша история.",
+      "imageUrl": "NULL",
+      "sortOrder": "2",
+      "visible": "1",
+      "createdAt": "2026-03-24 15:31:08",
+      "updatedAt": "2026-03-24 15:31:08"
+    },
+    {
+      "id": "3",
+      "page": "home",
+      "blockKey": "hero_subtitle",
+      "contentType": "richtext",
+      "content": "Выберите конкретную козу или овцу элитной породы, наблюдайте за её жизнью, воспитывайте её на ферме и получайте именные молочные продукты — с прозрачным процессом создания.",
+      "imageUrl": "NULL",
+      "sortOrder": "3",
+      "visible": "1",
+      "createdAt": "2026-03-24 15:31:08",
+      "updatedAt": "2026-03-24 15:31:08"
+    },
+    {
+      "id": "5",
+      "page": "home",
+      "blockKey": "hero_image_caption",
+      "contentType": "text",
+      "content": "Конкретная ферма — конкретное животное с именем, породой и историей.",
+      "imageUrl": "https://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/cms/5-5fndbywg-На обложку в ТГ_cropped.jpg",
+      "sortOrder": "5",
+      "visible": "1",
+      "createdAt": "2026-03-24 15:31:08",
+      "updatedAt": "2026-03-24 16:05:22"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tpage\tblockKey\tcontentType\tcontent\timageUrl\tsortOrder\tvisible\tcreatedAt\tupdatedAt\n1\thome\thero_badge\ttext\tПервый в России клуб персонального фермерства!!!\tNULL\t1\t1\t2026-03-24 15:31:08\t2026-03-24 15:34:38\n2\thome\thero_title\ttext\tВаша ферма. Ваше молоко. Ваша история.\tNULL\t2\t1\t2026-03-24 15:31:08\t2026-03-24 15:31:08\n3\thome\thero_subtitle\trichtext\tВыберите конкретную козу или овцу элитной породы, наблюдайте за её жизнью, воспитывайте её на ферме и получайте именные молочные продукты — с прозрачным процессом создания.\tNULL\t3\t1\t2026-03-24 15:31:08\t2026-03-24 15:31:08\n5\thome\thero_image_caption\ttext\tКонкретная ферма — конкретное животное с именем, породой и историей.\thttps://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/cms/5-5fndbywg-На обложку в ТГ_cropped.jpg\t5\t1\t2026-03-24 15:31:08\t2026-03-24 16:05:22\n",
+  "stderr": "",
+  "execution_time_ms": 412
+}

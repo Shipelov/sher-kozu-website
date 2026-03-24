@@ -1,0 +1,9 @@
+{
+  "query": "INSERT INTO cmsBlocks (page, blockKey, label, contentType, content, imageUrl, section, sortOrder, visible) VALUES ('home', 'hero_image', 'Hero — Фото', 'image', NULL, 'https://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/sherkozu_family_farm_hero-UF9QBY2UhWL9gdEpLXiEFS.webp', 'Hero', 4, 1);",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3J2fXRHx8d1YjF6.root --database mLhmg5VmBsEBpZiYqdnhMQ --execute INSERT INTO cmsBlocks (page, blockKey, label, contentType, content, imageUrl, section, sortOrder, visible) VALUES ('home', 'hero_image', 'Hero — Фото', 'image', NULL, 'https://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/sherkozu_family_farm_hero-UF9QBY2UhWL9gdEpLXiEFS.webp', 'Hero', 4, 1);",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 359
+}
