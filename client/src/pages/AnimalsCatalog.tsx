@@ -490,23 +490,23 @@ export default function AnimalsCatalog() {
         </div>
 
         <div className="grid gap-4 rounded-[2rem] border border-stone-200 bg-white/90 p-6 text-sm leading-7 text-stone-600 shadow-sm md:grid-cols-3">
-          <div className="space-y-2 rounded-[1.5rem] bg-rose-50 p-4">
-            <p className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.2em] text-rose-700">
-              <Sparkles className="h-4 w-4" /> В отношениях
+          <div className="flex flex-col rounded-[1.5rem] bg-rose-50 p-4">
+            <p className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.2em] text-rose-700 min-h-[1.5rem]">
+              <Sparkles className="h-4 w-4 shrink-0" /> В отношениях
             </p>
-<p>Животное уже нашло свою семью. Все доли оформлены, владелец получает именные продукты.</p>
+            <p className="mt-2">Животное уже нашло свою семью. Все доли оформлены, владелец получает именные продукты.</p>
           </div>
-          <div className="space-y-2 rounded-[1.5rem] bg-emerald-50 p-4">
-            <p className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.2em] text-emerald-700">
-              <Heart className="h-4 w-4" /> На выданье
+          <div className="flex flex-col rounded-[1.5rem] bg-emerald-50 p-4">
+            <p className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.2em] text-emerald-700 min-h-[1.5rem]">
+              <Heart className="h-4 w-4 shrink-0" /> На выданье
             </p>
-<p>Животное ждёт свою семью. Все доли свободны — можно стать единственным владельцем.</p>
+            <p className="mt-2">Животное ждёт свою семью. Все доли свободны — можно стать единственным владельцем.</p>
           </div>
-          <div className="space-y-2 rounded-[1.5rem] bg-amber-50 p-4">
-            <p className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.2em] text-amber-700">
-              <Waves className="h-4 w-4" /> Доступно для участия
+          <div className="flex flex-col rounded-[1.5rem] bg-amber-50 p-4">
+            <p className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.2em] text-amber-700 min-h-[1.5rem]">
+              <Waves className="h-4 w-4 shrink-0" /> Доступно для участия
             </p>
-<p>Одна семья уже участвует, но есть свободные доли. Можно присоединиться и разделить заботу о животном.</p>
+            <p className="mt-2">Одна семья уже участвует, но есть свободные доли. Можно присоединиться и разделить заботу о животном.</p>
           </div>
         </div>
 
