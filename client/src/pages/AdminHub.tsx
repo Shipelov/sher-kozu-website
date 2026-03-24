@@ -221,6 +221,17 @@ export default function AdminHub() {
       quickActionLabel: "Открыть аналитику",
       quickActionPath: "/admin/analytics",
     },
+    {
+      title: "FAQ Аналитика",
+      description: "Статистика вопросов к AI-управляющей Маше: топ вопросов, графики по дням, разбивка по источникам.",
+      path: "/admin/faq-analytics",
+      icon: TrendingUp,
+      statusLabel: "AI Чат",
+      adminOnly: true,
+      countLabel: "Вопросы · Сессии · Источники",
+      quickActionLabel: "Открыть FAQ аналитику",
+      quickActionPath: "/admin/faq-analytics",
+    },
   ];
 
   if (loading) {

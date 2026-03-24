@@ -161,6 +161,46 @@ describe("faqChat.chat", () => {
     expect(result).toHaveProperty("reply");
   });
 
+  it("accepts optional userName for personalization", async () => {
+    const ctx = createPublicContext();
+    const caller = faqChatRouter.createCaller(ctx);
+
+    const result = await caller.chat({
+      messages: [{ role: "user", content: "Привет!" }],
+      sessionId: "test-session",
+      userName: "Андрей",
+    });
+
+    expect(result).toHaveProperty("reply");
+  });
+
+  it("accepts optional currentPage for context-aware responses", async () => {
+    const ctx = createPublicContext();
+    const caller = faqChatRouter.createCaller(ctx);
+
+    const result = await caller.chat({
+      messages: [{ role: "user", content: "Что здесь есть?" }],
+      sessionId: "test-session",
+      currentPage: "/animals",
+    });
+
+    expect(result).toHaveProperty("reply");
+  });
+
+  it("accepts both userName and currentPage together", async () => {
+    const ctx = createPublicContext();
+    const caller = faqChatRouter.createCaller(ctx);
+
+    const result = await caller.chat({
+      messages: [{ role: "user", content: "Привет!" }],
+      sessionId: "test-session",
+      userName: "Мария",
+      currentPage: "/marketplace",
+    });
+
+    expect(result).toHaveProperty("reply");
+  });
+
   it("rejects empty messages array", async () => {
     const ctx = createPublicContext();
     const caller = faqChatRouter.createCaller(ctx);
@@ -386,6 +426,123 @@ describe("Floating Masha chat widget", () => {
     expect(content).toContain("sessionId");
     expect(content).toContain("floating-");
   });
+
+  it("MashaFloatingChat supports mobile full-screen mode", async () => {
+    const fs = await import("fs");
+    const content = fs.readFileSync(
+      "client/src/components/MashaFloatingChat.tsx",
+      "utf-8"
+    );
+    // Mobile: inset-0 for full-screen, sm:inset-auto for desktop panel
+    expect(content).toContain("inset-0");
+    expect(content).toContain("sm:inset-auto");
+  });
+
+  it("MashaFloatingChat has context-aware suggested prompts", async () => {
+    const fs = await import("fs");
+    const content = fs.readFileSync(
+      "client/src/components/MashaFloatingChat.tsx",
+      "utf-8"
+    );
+    // Should have page-specific prompts
+    expect(content).toContain("PAGE_PROMPTS");
+    expect(content).toContain("/animals");
+    expect(content).toContain("/marketplace");
+    expect(content).toContain("/club");
+    expect(content).toContain("/dashboard");
+  });
+
+  it("MashaFloatingChat sends userName for personalization", async () => {
+    const fs = await import("fs");
+    const content = fs.readFileSync(
+      "client/src/components/MashaFloatingChat.tsx",
+      "utf-8"
+    );
+    expect(content).toContain("userName");
+    expect(content).toContain("useAuth");
+  });
+
+  it("MashaFloatingChat sends currentPage for context", async () => {
+    const fs = await import("fs");
+    const content = fs.readFileSync(
+      "client/src/components/MashaFloatingChat.tsx",
+      "utf-8"
+    );
+    expect(content).toContain("currentPage");
+    expect(content).toContain("location");
+  });
+
+  it("MashaFloatingChat asks for name if user is not authenticated", async () => {
+    const fs = await import("fs");
+    const content = fs.readFileSync(
+      "client/src/components/MashaFloatingChat.tsx",
+      "utf-8"
+    );
+    expect(content).toContain("Как я могу к вам обращаться");
+  });
+});
+
+describe("Admin FAQ Analytics page", () => {
+  it("AdminFaqAnalytics page component exists", async () => {
+    const fs = await import("fs");
+    expect(fs.existsSync("client/src/pages/AdminFaqAnalytics.tsx")).toBe(true);
+  });
+
+  it("AdminFaqAnalytics route is registered in App.tsx", async () => {
+    const fs = await import("fs");
+    const appContent = fs.readFileSync("client/src/App.tsx", "utf-8");
+    expect(appContent).toContain('path="/admin/faq-analytics"');
+    expect(appContent).toContain("AdminFaqAnalytics");
+  });
+
+  it("AdminFaqAnalytics is linked from AdminHub", async () => {
+    const fs = await import("fs");
+    const hubContent = fs.readFileSync(
+      "client/src/pages/AdminHub.tsx",
+      "utf-8"
+    );
+    expect(hubContent).toContain("/admin/faq-analytics");
+    expect(hubContent).toContain("FAQ Аналитика");
+  });
+
+  it("AdminFaqAnalytics uses DashboardLayout", async () => {
+    const fs = await import("fs");
+    const content = fs.readFileSync(
+      "client/src/pages/AdminFaqAnalytics.tsx",
+      "utf-8"
+    );
+    expect(content).toContain("DashboardLayout");
+  });
+
+  it("AdminFaqAnalytics calls faqChat.analytics", async () => {
+    const fs = await import("fs");
+    const content = fs.readFileSync(
+      "client/src/pages/AdminFaqAnalytics.tsx",
+      "utf-8"
+    );
+    expect(content).toContain("faqChat.analytics");
+  });
+
+  it("AdminFaqAnalytics displays key metrics", async () => {
+    const fs = await import("fs");
+    const content = fs.readFileSync(
+      "client/src/pages/AdminFaqAnalytics.tsx",
+      "utf-8"
+    );
+    expect(content).toContain("totalCount");
+    expect(content).toContain("periodCount");
+    expect(content).toContain("uniqueSessions");
+    expect(content).toContain("sourceBreakdown");
+  });
+
+  it("AdminFaqAnalytics has clearOld functionality", async () => {
+    const fs = await import("fs");
+    const content = fs.readFileSync(
+      "client/src/pages/AdminFaqAnalytics.tsx",
+      "utf-8"
+    );
+    expect(content).toContain("clearOld");
+  });
 });
 
 describe("FAQ analytics DB schema", () => {
@@ -397,5 +554,45 @@ describe("FAQ analytics DB schema", () => {
     expect(schemaContent).toContain("answer");
     expect(schemaContent).toContain("sessionId");
     expect(schemaContent).toContain("source");
+  });
+});
+
+describe("Backend personalization support", () => {
+  it("faqChat.chat input schema accepts userName", async () => {
+    const fs = await import("fs");
+    const content = fs.readFileSync(
+      "server/routers/faqChat.ts",
+      "utf-8"
+    );
+    expect(content).toContain("userName: z.string()");
+  });
+
+  it("faqChat.chat input schema accepts currentPage", async () => {
+    const fs = await import("fs");
+    const content = fs.readFileSync(
+      "server/routers/faqChat.ts",
+      "utf-8"
+    );
+    expect(content).toContain("currentPage: z.string()");
+  });
+
+  it("system prompt is personalized with userName when provided", async () => {
+    const fs = await import("fs");
+    const content = fs.readFileSync(
+      "server/routers/faqChat.ts",
+      "utf-8"
+    );
+    expect(content).toContain("input.userName");
+    expect(content).toContain("Обращайся к нему/ней по имени");
+  });
+
+  it("system prompt includes currentPage context when provided", async () => {
+    const fs = await import("fs");
+    const content = fs.readFileSync(
+      "server/routers/faqChat.ts",
+      "utf-8"
+    );
+    expect(content).toContain("input.currentPage");
+    expect(content).toContain("Учитывай это в контексте ответов");
   });
 });

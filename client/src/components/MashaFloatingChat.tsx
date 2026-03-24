@@ -1,20 +1,24 @@
 /**
  * MashaFloatingChat — Floating AI chat widget available on all pages.
  *
- * Shows a small avatar button in the bottom-right corner.
- * On click, expands into a chat panel with Masha AI assistant.
- * Hidden on the /faq page (which has its own embedded chat).
+ * Features:
+ * - Small avatar button in the bottom-right corner with pulse animation
+ * - Expands into chat panel (desktop: 400px, mobile: full-screen)
+ * - Context-aware suggested prompts based on current page
+ * - Personalization: Masha addresses user by name (from auth or asks)
+ * - Hidden on the /faq page (which has its own embedded chat)
  */
 
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
+import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
 import { Streamdown } from "streamdown";
-import { Send, Loader2, X, MessageCircle } from "lucide-react";
+import { Send, Loader2, X, MessageCircle, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const MASHA_AVATAR =
@@ -25,11 +29,83 @@ type ChatMessage = {
   content: string;
 };
 
+/* ─── Context-aware suggested prompts by page ─── */
+const PAGE_PROMPTS: Record<string, string[]> = {
+  "/": [
+    "Как работает персональное фермерство?",
+    "Расскажи о ферме Шипеловых",
+    "Какие породы есть на ферме?",
+  ],
+  "/animals": [
+    "Чем отличаются козы от овец?",
+    "Какая порода даёт самое жирное молоко?",
+    "Как выбрать своё животное?",
+  ],
+  "/marketplace": [
+    "Какие продукты можно заказать?",
+    "Как работает доставка?",
+    "Расскажи о подарочных наборах",
+  ],
+  "/club": [
+    "Какие мероприятия проходят в клубе?",
+    "Как попасть на ужин на ферме?",
+    "Что даёт членство в клубе?",
+  ],
+  "/dashboard": [
+    "Как следить за моим животным?",
+    "Когда будет следующая доставка?",
+    "Как работает трекер продуктов?",
+  ],
+  "/tracker": [
+    "Как отслеживать путь молока?",
+    "Что означают статусы в трекере?",
+    "Когда ожидать следующую партию?",
+  ],
+  "/about": [
+    "Расскажи историю фермы",
+    "Где расположена ферма?",
+    "Какие ценности у Шерь Козу?",
+  ],
+  "/leaderboard": [
+    "Как заработать баллы?",
+    "Что дают достижения?",
+    "Как стать лидером рейтинга?",
+  ],
+  "/compare": [
+    "По каким параметрам сравнивать?",
+    "Какая коза лучше для семьи?",
+    "Чем Нубийская отличается от Альпийской?",
+  ],
+  "/partners": [
+    "Как стать партнёром фермы?",
+    "Какие условия сотрудничества?",
+    "Есть ли корпоративные программы?",
+  ],
+};
+
+const DEFAULT_PROMPTS = [
+  "Как выбрать козу?",
+  "Какие продукты я получу?",
+  "Расскажи о породах",
+];
+
+function getPromptsForPage(path: string): string[] {
+  // Exact match first
+  if (PAGE_PROMPTS[path]) return PAGE_PROMPTS[path];
+  // Prefix match for nested routes (e.g., /animals/bella -> /animals)
+  const base = "/" + path.split("/").filter(Boolean)[0];
+  if (PAGE_PROMPTS[base]) return PAGE_PROMPTS[base];
+  return DEFAULT_PROMPTS;
+}
+
 export default function MashaFloatingChat() {
   const [location] = useLocation();
+  const { user } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
+  const [userName, setUserName] = useState<string | null>(null);
+  const [askedForName, setAskedForName] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -37,6 +113,19 @@ export default function MashaFloatingChat() {
   const sessionId = useMemo(
     () => `floating-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
     []
+  );
+
+  // Get user name from auth profile
+  useEffect(() => {
+    if (user?.name) {
+      setUserName(user.name);
+    }
+  }, [user]);
+
+  // Context-aware prompts
+  const suggestedPrompts = useMemo(
+    () => getPromptsForPage(location),
+    [location]
   );
 
   const chatMutation = trpc.faqChat.chat.useMutation({
@@ -79,10 +168,40 @@ export default function MashaFloatingChat() {
     }
   }, [isOpen]);
 
+  // When chat opens and we don't know the name, Masha greets and asks
+  useEffect(() => {
+    if (isOpen && messages.length === 0 && !userName && !askedForName) {
+      setAskedForName(true);
+      setMessages([
+        {
+          role: "assistant",
+          content:
+            "Привет! Я Маша, AI-управляющая фермой «Шерь Козу» 👋\n\nКак я могу к вам обращаться?",
+        },
+      ]);
+    } else if (isOpen && messages.length === 0 && userName && !askedForName) {
+      setAskedForName(true);
+      setMessages([
+        {
+          role: "assistant",
+          content: `Привет, ${userName}! Я Маша, AI-управляющая фермой «Шерь Козу» 👋\n\nЧем могу помочь?`,
+        },
+      ]);
+    }
+  }, [isOpen, messages.length, userName, askedForName]);
+
   const handleSend = useCallback(
     (text?: string) => {
       const content = (text || input).trim();
       if (!content || chatMutation.isPending) return;
+
+      // If Masha asked for name and user responds (first user message)
+      if (!userName && messages.length === 1 && messages[0].role === "assistant") {
+        // Treat the first response as the user's name if it's short enough
+        if (content.length <= 30 && !content.includes("?")) {
+          setUserName(content);
+        }
+      }
 
       const newMessages: ChatMessage[] = [
         ...messages,
@@ -94,10 +213,12 @@ export default function MashaFloatingChat() {
         messages: newMessages,
         sessionId,
         source: "floating",
+        userName: userName || undefined,
+        currentPage: location,
       });
       textareaRef.current?.focus();
     },
-    [input, messages, chatMutation, sessionId]
+    [input, messages, chatMutation, sessionId, userName, location]
   );
 
   const handleKeyDown = useCallback(
@@ -108,11 +229,6 @@ export default function MashaFloatingChat() {
       }
     },
     [handleSend]
-  );
-
-  const suggestedPrompts = useMemo(
-    () => ["Как выбрать козу?", "Какие продукты я получу?", "Расскажи о породах"],
-    []
   );
 
   // Hide on /faq page (it has its own chat)
@@ -158,7 +274,7 @@ export default function MashaFloatingChat() {
         )}
       </AnimatePresence>
 
-      {/* Chat Panel */}
+      {/* Chat Panel — desktop: fixed bottom-right, mobile: full-screen */}
       <AnimatePresence>
         {isOpen && (
           <motion.div
@@ -166,7 +282,13 @@ export default function MashaFloatingChat() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.95 }}
             transition={{ type: "spring", stiffness: 300, damping: 25 }}
-            className="fixed bottom-6 right-6 z-50 w-[360px] sm:w-[400px] h-[520px] flex flex-col rounded-2xl border border-border/60 bg-card shadow-2xl overflow-hidden"
+            className={cn(
+              "fixed z-50 flex flex-col bg-card shadow-2xl overflow-hidden",
+              // Mobile: full-screen
+              "inset-0 rounded-none",
+              // Desktop: bottom-right panel
+              "sm:inset-auto sm:bottom-6 sm:right-6 sm:w-[400px] sm:h-[540px] sm:rounded-2xl sm:border sm:border-border/60"
+            )}
           >
             {/* Header */}
             <div className="flex items-center justify-between border-b border-border/60 bg-gradient-to-r from-primary/5 to-transparent px-4 py-3">
@@ -191,7 +313,9 @@ export default function MashaFloatingChat() {
                 className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors cursor-pointer"
                 aria-label="Закрыть чат"
               >
-                <X className="h-4 w-4" />
+                {/* On mobile show chevron down, on desktop show X */}
+                <X className="h-4 w-4 hidden sm:block" />
+                <ChevronDown className="h-5 w-5 sm:hidden" />
               </button>
             </div>
 
@@ -206,19 +330,19 @@ export default function MashaFloatingChat() {
                       className="h-16 w-16 rounded-full object-cover ring-2 ring-primary/10 shadow-md"
                     />
                     <p className="mt-1.5 text-sm font-medium text-foreground">
-                      Привет! Я Маша 👋
+                      {userName ? `Привет, ${userName}! 👋` : "Привет! Я Маша 👋"}
                     </p>
-                    <p className="max-w-[260px] text-xs leading-relaxed text-muted-foreground">
+                    <p className="max-w-[280px] text-xs leading-relaxed text-muted-foreground">
                       Спросите меня о ферме, животных, продуктах или клубе
                     </p>
                   </div>
-                  <div className="flex flex-wrap justify-center gap-1.5">
+                  <div className="flex flex-wrap justify-center gap-1.5 max-w-[320px]">
                     {suggestedPrompts.map((prompt) => (
                       <button
                         key={prompt}
                         onClick={() => handleSend(prompt)}
                         disabled={chatMutation.isPending}
-                        className="rounded-full border border-border bg-background px-3 py-1 text-[11px] text-foreground transition-all hover:border-primary/40 hover:bg-primary/5 disabled:opacity-50 cursor-pointer"
+                        className="rounded-full border border-border bg-background px-3 py-1.5 text-[11px] text-foreground transition-all hover:border-primary/40 hover:bg-primary/5 disabled:opacity-50 cursor-pointer"
                       >
                         {prompt}
                       </button>
@@ -291,7 +415,7 @@ export default function MashaFloatingChat() {
                 e.preventDefault();
                 handleSend();
               }}
-              className="flex items-end gap-2 border-t border-border/60 bg-background/50 p-2.5"
+              className="flex items-end gap-2 border-t border-border/60 bg-background/50 p-2.5 pb-safe"
             >
               <Textarea
                 ref={textareaRef}

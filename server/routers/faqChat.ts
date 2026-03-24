@@ -163,12 +163,23 @@ export const faqChatRouter = router({
           .max(50),
         sessionId: z.string().min(1).max(64).optional(),
         source: z.enum(["faq", "floating"]).optional(),
+        userName: z.string().max(100).optional(),
+        currentPage: z.string().max(200).optional(),
       })
     )
     .mutation(async ({ input, ctx }) => {
+      // Build personalized system prompt
+      let systemPrompt = MASHA_SYSTEM_PROMPT;
+      if (input.userName) {
+        systemPrompt += `\n\nСобеседника зовут ${input.userName}. Обращайся к нему/ней по имени.`;
+      }
+      if (input.currentPage) {
+        systemPrompt += `\nСобеседник сейчас на странице: ${input.currentPage}. Учитывай это в контексте ответов.`;
+      }
+
       // Build LLM messages with system prompt
       const llmMessages: Message[] = [
-        { role: "system", content: MASHA_SYSTEM_PROMPT },
+        { role: "system", content: systemPrompt },
         ...input.messages.map((m) => ({
           role: m.role as "user" | "assistant",
           content: m.content,
