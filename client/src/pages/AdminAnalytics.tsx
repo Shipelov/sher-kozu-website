@@ -315,7 +315,7 @@ export default function AdminAnalytics() {
                     <CardTitle className="text-base flex items-center gap-2">
                       <Heart className="h-4 w-4 text-rose-500" /> Средние метрики стада
                     </CardTitle>
-                    <CardDescription>Агрегированные показатели здоровья и благополучия</CardDescription>
+                    <CardDescription>Здоровье и благополучие</CardDescription>
                   </CardHeader>
                   <CardContent>
                     {herdData ? (

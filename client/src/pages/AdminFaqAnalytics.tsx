@@ -837,9 +837,8 @@ export default function AdminFaqAnalytics() {
                       Неуверенные ответы Маши
                     </CardTitle>
                     <CardDescription className="mt-1">
-                      Вопросы, на которые Маша не смогла ответить уверенно.
                       {uncertainQuery.data && (
-                        <> Нерешённых: <span className="font-semibold text-amber-600">{uncertainQuery.data.unresolvedCount}</span> из {uncertainQuery.data.totalCount}</>
+                        <>Нерешённых: <span className="font-semibold text-amber-600">{uncertainQuery.data.unresolvedCount}</span> из {uncertainQuery.data.totalCount}</>
                       )}
                     </CardDescription>
                   </div>
@@ -1038,10 +1037,7 @@ export default function AdminFaqAnalytics() {
                       <FlaskConical className="h-4 w-4 text-primary" />
                       A/B Тестирование приветствий
                     </CardTitle>
-                    <CardDescription>
-                      Сравнение эффективности разных стилей приветствия Маши.
-                      Всего сессий: {abTestQuery.data?.totalSessions ?? 0}
-                    </CardDescription>
+                    <CardDescription>Сессий: {abTestQuery.data?.totalSessions ?? 0}</CardDescription>
                   </div>
                   <Button
                     variant="outline"

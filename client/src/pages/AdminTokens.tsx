@@ -494,9 +494,7 @@ export default function AdminTokens() {
                 <CardTitle className="text-base flex items-center gap-2">
                   <Settings className="h-4 w-4" /> Автоматические начисления
                 </CardTitle>
-                <CardDescription>
-                  Настройте регулярные начисления SKC всем владельцам с активными животными
-                </CardDescription>
+                <CardDescription>Регулярные начисления владельцам</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="flex items-center gap-3">

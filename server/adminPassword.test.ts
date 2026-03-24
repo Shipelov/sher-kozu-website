@@ -44,7 +44,7 @@ describe("Admin: password security and Bitrix24 sync button", () => {
 
   describe("Bitrix24 sync button in AdminHub", () => {
     it("renders sync button with Bitrix24 label", () => {
-      expect(adminHubSrc).toContain("Синхронизация с Bitrix24");
+      expect(adminHubSrc).toContain("Синхронизация Bitrix24");
     });
 
     it("uses adminSync.syncBitrixContacts mutation", () => {
@@ -196,8 +196,8 @@ describe("Admin: password security and Bitrix24 sync button", () => {
       expect(adminHubSrc).toContain("data.newPassword");
     });
 
-    it("has Actions column header", () => {
-      expect(adminHubSrc).toContain("Действия");
+    it("has password reset column header", () => {
+      expect(adminHubSrc).toContain("Пароль");
     });
 
     it("invalidates funnel after reset", () => {

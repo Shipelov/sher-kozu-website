@@ -173,9 +173,7 @@ function ProductionProfileEditor({ animalId, animalName }: { animalId: number; a
           <Milk className="h-5 w-5 text-primary" />
           Производственный профиль — {animalName}
         </CardTitle>
-        <CardDescription>
-          Задайте годовой объём молока для этого животного. Этот бюджет определяет, сколько продуктов могут выбрать владельцы.
-        </CardDescription>
+        <CardDescription>Годовой объём молока и бюджет продуктов</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         {profileQuery.isLoading ? (
@@ -318,9 +316,7 @@ function ProductOptionsManager({ animalId }: { animalId: number }) {
               <Package className="h-5 w-5 text-primary" />
               Доступные продукты
             </CardTitle>
-            <CardDescription>
-              Настройте, какие молочные продукты можно производить из молока этого животного.
-            </CardDescription>
+
           </div>
           <Button onClick={openNewOption} className="rounded-full" size="sm">
             <Plus className="mr-2 h-4 w-4" /> Добавить продукт
@@ -625,9 +621,7 @@ function OwnerPlansOverview({ animalId }: { animalId: number }) {
             <BarChart3 className="h-5 w-5 text-primary" />
             Продуктовые планы владельцев
           </CardTitle>
-          <CardDescription>
-            Управляйте продуктовыми планами владельцев. Вы можете изменить количества или сбросить план.
-          </CardDescription>
+
         </CardHeader>
         <CardContent>
           {trackData.isLoading ? (
@@ -880,9 +874,7 @@ function DeliveryScheduleOverview({ animalId, ownerPlans }: { animalId: number; 
           <Calendar className="h-5 w-5 text-primary" />
           График доставки — {currentYear}
         </CardTitle>
-        <CardDescription>
-          Помесячный план доставки продукции. Обновляйте статусы по мере готовности.
-        </CardDescription>
+
       </CardHeader>
       <CardContent>
         {!firstPlan ? (
@@ -1034,9 +1026,7 @@ function ChatConversationsOverview({ animalId, animalName }: { animalId: number;
             )
           )}
         </div>
-        <CardDescription>
-          Переписки по этому животному. Откройте чат для ответа.
-        </CardDescription>
+
       </CardHeader>
       <CardContent>
         {conversationsQuery.isLoading ? (
@@ -1373,9 +1363,7 @@ function PlanChangeLogView({ animalId }: { animalId: number }) {
             )
           )}
         </div>
-        <CardDescription>
-          История всех действий с продуктовыми планами владельцев. Записи хранятся 30 дней.
-        </CardDescription>
+        <CardDescription>Записи хранятся 30 дней</CardDescription>
       </CardHeader>
       <CardContent>
         {logQuery.isLoading ? (

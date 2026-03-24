@@ -690,9 +690,7 @@ function ShareDistributionPanel({ animals }: { animals: AdminAnimalRecord[] }) {
     <Card className="rounded-[2rem] border-border/70 shadow-sm">
       <CardHeader>
         <CardTitle>Распределение долей</CardTitle>
-        <CardDescription>
-          Блок показывает, как в каталоге распределяются 10%-доли: сколько уже занято, сколько свободно и где нужно усилить продажи.
-        </CardDescription>
+        <CardDescription>Занятость и свободные 10%-доли</CardDescription>
       </CardHeader>
       <CardContent className="space-y-5">
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
@@ -1436,9 +1434,7 @@ function AnimalEditorCard({
           {mode === "create" ? <Plus className="h-5 w-5 text-primary" /> : <Pencil className="h-5 w-5 text-primary" />}
           {mode === "create" ? "Создать животное" : "Редактировать животное"}
         </CardTitle>
-        <CardDescription>
-          Заполните базовую информацию карточки, а затем управляйте постоянной галереей прямо из этой формы без ручной вставки URL.
-        </CardDescription>
+
       </CardHeader>
       <CardContent className="space-y-6">
         <div className="grid gap-4 md:grid-cols-2">
@@ -1983,9 +1979,7 @@ export default function AdminAnimalsPage() {
               <Card className="rounded-[2rem] border-border/70 shadow-sm">
                 <CardHeader>
                   <CardTitle>Каталог животных</CardTitle>
-                  <CardDescription>
-                    Используйте поиск и фильтры, чтобы быстро находить карточки и управлять их публичной доступностью.
-                  </CardDescription>
+
                 </CardHeader>
                 <CardContent className="space-y-5">
                   <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_200px_200px_220px]">

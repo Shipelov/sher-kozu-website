@@ -197,7 +197,7 @@ export default function AdminClub() {
           <Card>
             <CardHeader>
               <CardTitle>Загрузка админ-панели</CardTitle>
-              <CardDescription>Проверяем права доступа и подтягиваем данные клуба.</CardDescription>
+              <CardDescription>Загрузка…</CardDescription>
             </CardHeader>
           </Card>
         </div>

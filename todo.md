@@ -1206,3 +1206,10 @@
 ## CHANGE: Поменять местами B2B и Трекер в навбаре (DONE)
 - [x] Трекер → primary: true (в основной строке), B2B → primary: false (в «Ещё»)
 - [x] Все 1434 теста проходят
+
+## FEATURE: Причёсывание админ-панели — UX, текст, overflow (DONE)
+- [x] Аудит 7 страниц: AdminHub, AdminAnimals, AdminClub, AdminProductTrack, AdminTokens, AdminAnalytics, AdminFaqAnalytics
+- [x] AdminHub полностью переписан: компактный grid секций, воронка, таблица регистраций
+- [x] Убраны английские заголовки, сокращены CardDescription на 6 страницах
+- [x] DashboardLayout sidebar переведён на русский
+- [x] Все 1434 теста проходят

@@ -523,7 +523,7 @@ describe("Admin FAQ Analytics page", () => {
       "utf-8"
     );
     expect(hubContent).toContain("/admin/faq-analytics");
-    expect(hubContent).toContain("FAQ Аналитика");
+    expect(hubContent).toContain("FAQ аналитика");
   });
 
   it("AdminFaqAnalytics uses DashboardLayout", async () => {

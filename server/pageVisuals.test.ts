@@ -269,31 +269,26 @@ describe("page visual integration source smoke", () => {
 
   /* ─── Admin layout ─── */
   it("shows admin-only entries and current role in the shared dashboard layout", () => {
-    expect(dashboardLayoutSource).toContain('label: "Admin Overview"');
-    expect(dashboardLayoutSource).toContain('label: "Admin Animals"');
-    expect(dashboardLayoutSource).toContain('label: "Admin Club"');
+    expect(dashboardLayoutSource).toContain('Админ-панель');
+    expect(dashboardLayoutSource).toContain('Животные');
+    expect(dashboardLayoutSource).toContain('/admin/club');
     expect(dashboardLayoutSource).toContain('user?.role === "admin"');
     expect(dashboardLayoutSource).toContain('{roleLabel}');
   });
 
   /* ─── Admin hub ─── */
-  it("shows admin overview cards, live counters and quick actions on the admin page", () => {
-    expect(adminHubSource).toContain("Служебный центр управления Sher Kozu");
-    expect(adminHubSource).toContain("Страница `/admin`");
-    expect(adminHubSource).toContain("Admin Animals");
-    expect(adminHubSource).toContain("Admin Club");
-    expect(adminHubSource).toContain("Роль:");
-    expect(adminHubSource).toContain("Доступ открыт");
-    expect(adminHubSource).toContain("Живой счётчик карточек из adminAnimals.list");
-    expect(adminHubSource).toContain("Опубликовано:");
-    expect(adminHubSource).toContain("Скрыто:");
-    expect(adminHubSource).toContain("В архиве:");
-    expect(adminHubSource).toContain("/admin/animals?status=published");
-    expect(adminHubSource).toContain("/admin/animals?status=hidden");
-    expect(adminHubSource).toContain("/admin/animals?status=archived");
-    expect(adminHubSource).toContain("Посты, события и участники из adminClub.dashboard");
-    expect(adminHubSource).toContain("Открыть каталог животных");
-    expect(adminHubSource).toContain("Открыть управление клубом");
+  it("shows compact admin dashboard with section grid and funnel", () => {
+    expect(adminHubSource).toContain("Админ-панель");
+    expect(adminHubSource).toContain("/admin/animals");
+    expect(adminHubSource).toContain("/admin/club");
+    expect(adminHubSource).toContain("/admin/users");
+    expect(adminHubSource).toContain("/admin/marketplace");
+    expect(adminHubSource).toContain("/admin/tokens");
+    expect(adminHubSource).toContain("/admin/content");
+    expect(adminHubSource).toContain("/admin/faq-analytics");
+    expect(adminHubSource).toContain("Воронка");
+    expect(adminHubSource).toContain("Последние регистрации");
+    expect(adminHubSource).toContain("syncBitrixContacts");
   });
 
   /* ─── Admin animals ─── */

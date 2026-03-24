@@ -29,14 +29,14 @@ import { DashboardLayoutSkeleton } from './DashboardLayoutSkeleton';
 import { Button } from "./ui/button";
 
 const baseMenuItems = [
-  { icon: LayoutDashboard, label: "Dashboard", path: "/dashboard" },
-  { icon: Users, label: "Club Feed", path: "/club" },
+  { icon: LayoutDashboard, label: "Мой кабинет", path: "/dashboard" },
+  { icon: Users, label: "Клуб", path: "/club" },
 ];
 
 const adminMenuItems = [
-  { icon: ShieldEllipsis, label: "Admin Overview", path: "/admin" },
-  { icon: ShieldCheck, label: "Admin Animals", path: "/admin/animals" },
-  { icon: Crown, label: "Admin Club", path: "/admin/club" },
+  { icon: ShieldEllipsis, label: "Админ-панель", path: "/admin" },
+  { icon: ShieldCheck, label: "Животные", path: "/admin/animals" },
+  { icon: Crown, label: "Клуб", path: "/admin/club" },
   { icon: Milk, label: "Трек продукции", path: "/admin/product-track" },
 ];
 
