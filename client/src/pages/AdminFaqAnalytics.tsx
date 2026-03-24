@@ -451,65 +451,6 @@ export default function AdminFaqAnalytics() {
                 <Filter className="h-4 w-4" />
               </Button>
             </div>
-
-            <Dialog open={cleanupOpen} onOpenChange={setCleanupOpen}>
-              <DialogTrigger asChild>
-                <Button variant="outline" className="rounded-full gap-2">
-                  <Trash2 className="h-4 w-4" />
-                  Очистка
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Очистка старых записей</DialogTitle>
-                  <DialogDescription>
-                    Удалить вопросы и ответы старше указанного количества дней.
-                    Данные будут удалены безвозвратно.
-                  </DialogDescription>
-                </DialogHeader>
-                <div className="flex items-center gap-3 py-4">
-                  <span className="text-sm text-muted-foreground whitespace-nowrap">
-                    Старше
-                  </span>
-                  <Input
-                    type="number"
-                    min={1}
-                    max={365}
-                    value={cleanupDays}
-                    onChange={(e) => setCleanupDays(e.target.value)}
-                    className="w-24"
-                  />
-                  <span className="text-sm text-muted-foreground">дней</span>
-                </div>
-                <DialogFooter>
-                  <Button
-                    variant="outline"
-                    onClick={() => setCleanupOpen(false)}
-                    className="rounded-full"
-                  >
-                    Отмена
-                  </Button>
-                  <Button
-                    variant="destructive"
-                    className="rounded-full gap-2"
-                    disabled={clearMutation.isPending}
-                    onClick={() => {
-                      const days = parseInt(cleanupDays, 10);
-                      if (isNaN(days) || days < 1 || days > 365) {
-                        toast.error("Укажите число от 1 до 365");
-                        return;
-                      }
-                      clearMutation.mutate({ olderThanDays: days });
-                    }}
-                  >
-                    {clearMutation.isPending && (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    )}
-                    Удалить
-                  </Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
           </div>
         </div>
 
@@ -745,14 +686,77 @@ export default function AdminFaqAnalytics() {
             {/* Recent Questions Table */}
             <Card className="rounded-2xl border-border/70">
               <CardHeader>
-                <CardTitle className="text-base flex items-center gap-2">
-                  <MessageSquare className="h-4 w-4 text-primary" />
-                  Последние вопросы
-                </CardTitle>
-                <CardDescription>
-                  {recent.length} из последних записей за {stats?.days ?? 30}{" "}
-                  дней
-                </CardDescription>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <MessageSquare className="h-4 w-4 text-primary" />
+                      Последние вопросы
+                    </CardTitle>
+                    <CardDescription className="mt-1">
+                      {recent.length} записей за {stats?.days ?? 30} дней
+                    </CardDescription>
+                  </div>
+                  {recent.length > 0 && (
+                    <Dialog open={cleanupOpen} onOpenChange={setCleanupOpen}>
+                      <DialogTrigger asChild>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="rounded-full gap-1.5 text-xs border-red-200 hover:bg-red-50 text-red-600"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                          Очистить
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent>
+                        <DialogHeader>
+                          <DialogTitle>Очистка старых записей</DialogTitle>
+                          <DialogDescription>
+                            Удалить вопросы старше указанного количества дней. Это действие необратимо.
+                          </DialogDescription>
+                        </DialogHeader>
+                        <div className="space-y-2 py-2">
+                          <label className="text-sm font-medium">Удалить записи старше (дней)</label>
+                          <Input
+                            type="number"
+                            min="1"
+                            max="365"
+                            value={cleanupDays}
+                            onChange={(e) => setCleanupDays(e.target.value)}
+                            className="w-32"
+                          />
+                        </div>
+                        <DialogFooter>
+                          <Button
+                            variant="outline"
+                            onClick={() => setCleanupOpen(false)}
+                            className="rounded-full"
+                          >
+                            Отмена
+                          </Button>
+                          <Button
+                            variant="destructive"
+                            className="rounded-full gap-2"
+                            disabled={clearMutation.isPending}
+                            onClick={() => {
+                              const days = parseInt(cleanupDays);
+                              if (isNaN(days) || days < 1) {
+                                toast.error("Укажите корректное количество дней");
+                                return;
+                              }
+                              clearMutation.mutate({ olderThanDays: days });
+                            }}
+                          >
+                            {clearMutation.isPending && (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            )}
+                            Удалить
+                          </Button>
+                        </DialogFooter>
+                      </DialogContent>
+                    </Dialog>
+                  )}
+                </div>
               </CardHeader>
               <CardContent>
                 {recent.length === 0 ? (
@@ -765,50 +769,59 @@ export default function AdminFaqAnalytics() {
                   </div>
                 ) : (
                   <div className="rounded-xl border border-border/60 overflow-hidden">
-                    <Table>
-                      <TableHeader>
-                        <TableRow className="bg-muted/30">
-                          <TableHead className="w-[30%]">Вопрос</TableHead>
-                          <TableHead className="w-[40%]">Ответ Маши</TableHead>
-                          <TableHead className="w-[10%]">Источник</TableHead>
-                          <TableHead className="w-[20%]">Дата</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {recent.map((q: any, i: number) => (
-                          <TableRow key={i}>
-                            <TableCell className="align-top">
-                              <p className="text-sm line-clamp-3">
-                                {q.question}
-                              </p>
-                            </TableCell>
-                            <TableCell className="align-top">
-                              <p className="text-sm text-muted-foreground line-clamp-3">
-                                {q.answer}
-                              </p>
-                            </TableCell>
-                            <TableCell className="align-top">
-                              <SourceBadge source={q.source ?? "faq"} />
-                            </TableCell>
-                            <TableCell className="align-top">
-                              <span className="text-xs text-muted-foreground whitespace-nowrap">
-                                {q.createdAt
-                                  ? new Date(q.createdAt).toLocaleString(
-                                      "ru-RU",
-                                      {
-                                        day: "numeric",
-                                        month: "short",
-                                        hour: "2-digit",
-                                        minute: "2-digit",
-                                      }
-                                    )
-                                  : "—"}
-                              </span>
-                            </TableCell>
+                    <div className="max-h-[480px] overflow-y-auto">
+                      <Table>
+                        <TableHeader className="sticky top-0 z-10 bg-muted/80 backdrop-blur-sm">
+                          <TableRow className="bg-muted/30">
+                            <TableHead className="w-[30%]">Вопрос</TableHead>
+                            <TableHead className="w-[40%]">Ответ Маши</TableHead>
+                            <TableHead className="w-[10%]">Источник</TableHead>
+                            <TableHead className="w-[20%]">Дата</TableHead>
                           </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
+                        </TableHeader>
+                        <TableBody>
+                          {recent.map((q: any, i: number) => (
+                            <TableRow key={i} className="hover:bg-muted/20 transition-colors">
+                              <TableCell className="align-top">
+                                <p className="text-sm line-clamp-3">
+                                  {q.question}
+                                </p>
+                              </TableCell>
+                              <TableCell className="align-top">
+                                <p className="text-sm text-muted-foreground line-clamp-3">
+                                  {q.answer}
+                                </p>
+                              </TableCell>
+                              <TableCell className="align-top">
+                                <SourceBadge source={q.source ?? "faq"} />
+                              </TableCell>
+                              <TableCell className="align-top">
+                                <span className="text-xs text-muted-foreground whitespace-nowrap">
+                                  {q.createdAt
+                                    ? new Date(q.createdAt).toLocaleString(
+                                        "ru-RU",
+                                        {
+                                          day: "numeric",
+                                          month: "short",
+                                          hour: "2-digit",
+                                          minute: "2-digit",
+                                        }
+                                      )
+                                    : "—"}
+                                </span>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                    {recent.length >= 10 && (
+                      <div className="border-t border-border/40 px-4 py-2 bg-muted/10">
+                        <p className="text-[11px] text-muted-foreground text-center">
+                          Показано {recent.length} записей. Прокрутите для просмотра всех.
+                        </p>
+                      </div>
+                    )}
                   </div>
                 )}
               </CardContent>
