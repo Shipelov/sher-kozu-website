@@ -29,6 +29,7 @@ const Profile = lazy(() => import("./pages/Profile"));
 const Partners = lazy(() => import("./pages/Partners"));
 const AboutFarm = lazy(() => import("./pages/AboutFarm"));
 const AnimalCompare = lazy(() => import("./pages/AnimalCompare"));
+const FAQ = lazy(() => import("./pages/FAQ"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 /* ─── Suspense fallback spinner ─── */
@@ -98,6 +99,7 @@ function Router() {
         <Route path="/compare" component={AnimalCompare} />
         <Route path="/about" component={AboutFarm} />
         <Route path="/partners" component={Partners} />
+        <Route path="/faq" component={FAQ} />
         <Route path="/404" component={NotFound} />
         <Route component={NotFound} />
         </Switch>

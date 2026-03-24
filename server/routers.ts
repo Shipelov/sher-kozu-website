@@ -69,6 +69,7 @@ import { runDiagnostics } from "./diagnostics";
 import { notifyOwner } from "./_core/notification";
 import { productTrackRouter } from "./routers/productTrack";
 import { gamificationRouter } from "./routers/gamification";
+import { faqChatRouter } from "./routers/faqChat";
 import { getOwnerBadges, checkAndAwardBadges, BADGE_DEFINITIONS } from "./badges";
 import {
   checkRateLimit,
@@ -1671,6 +1672,7 @@ export const appRouter = router({
   }),
 
   // ─── Trash / Soft-Delete ──────────────────────────────────────────────────
+  faqChat: faqChatRouter,
   adminTrash: router({
     /** Move user to trash (soft-delete) */
     softDelete: adminProcedure

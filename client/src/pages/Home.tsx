@@ -713,6 +713,7 @@ export default function Home() {
               <Link href="/club" className="transition-colors hover:text-foreground">Клуб</Link>
               <Link href="/tracker" className="transition-colors hover:text-foreground">Трекер</Link>
               <Link href="/partners" className="transition-colors hover:text-foreground">Для партнёров</Link>
+              <Link href="/faq" className="transition-colors hover:text-foreground">FAQ</Link>
             </div>
           </div>
           <div className="mt-6 text-center text-xs text-muted-foreground">

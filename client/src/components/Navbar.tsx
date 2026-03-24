@@ -12,6 +12,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Leaf,
   Home,
+  HelpCircle,
   LayoutDashboard,
   Menu,
   Milk,
@@ -88,6 +89,7 @@ export default function Navbar() {
       { href: "/animals", label: "Каталог животных", icon: PawPrint },
       { href: "/about", label: "О ферме", icon: Leaf },
       { href: "/club", label: "Клуб", icon: Users },
+      { href: "/faq", label: "FAQ", icon: HelpCircle },
     ],
     [],
   );
