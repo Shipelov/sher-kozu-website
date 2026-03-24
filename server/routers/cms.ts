@@ -1,8 +1,8 @@
 import { z } from "zod";
-import { eq, and, asc } from "drizzle-orm";
+import { eq, and, asc, desc, lt } from "drizzle-orm";
 import { adminProcedure, publicProcedure, router } from "../_core/trpc";
 import { getDb } from "../db";
-import { cmsBlocks } from "../../drizzle/schema";
+import { cmsBlocks, cmsBlockHistory } from "../../drizzle/schema";
 import { storagePut } from "../storage";
 
 /**
@@ -15,7 +15,57 @@ import { storagePut } from "../storage";
  * - getPageBlocks auto-recovers missing default blocks on read
  * - Image blocks store imageUrl (content may be null or empty string)
  * - uploadImage only updates imageUrl, never touches contentType
+ * - Every mutation records a history entry in cmsBlockHistory for audit & rollback
  */
+
+/* ─── Helper: record a history entry ─── */
+async function recordHistory(
+  db: Awaited<ReturnType<typeof getDb>>,
+  opts: {
+    blockId: number;
+    page: string;
+    blockKey: string;
+    action: string;
+    prevContent: string | null;
+    prevImageUrl: string | null;
+    prevVisible: boolean | null;
+    newContent: string | null;
+    newImageUrl: string | null;
+    newVisible: boolean | null;
+    changedByOpenId: string;
+    changedByName: string | null;
+  }
+) {
+  try {
+    await db.insert(cmsBlockHistory).values({
+      blockId: opts.blockId,
+      page: opts.page,
+      blockKey: opts.blockKey,
+      action: opts.action,
+      prevContent: opts.prevContent,
+      prevImageUrl: opts.prevImageUrl,
+      prevVisible: opts.prevVisible,
+      newContent: opts.newContent,
+      newImageUrl: opts.newImageUrl,
+      newVisible: opts.newVisible,
+      changedByOpenId: opts.changedByOpenId,
+      changedByName: opts.changedByName,
+    });
+  } catch (err) {
+    console.error("[CMS History] Failed to record history:", err);
+  }
+}
+
+/* ─── Helper: fetch current block state ─── */
+async function fetchBlock(db: Awaited<ReturnType<typeof getDb>>, blockId: number) {
+  const rows = await db
+    .select()
+    .from(cmsBlocks)
+    .where(eq(cmsBlocks.id, blockId))
+    .limit(1);
+  return rows[0] ?? null;
+}
+
 export const cmsRouter = router({
   /**
    * Get all blocks for a page (public — used by frontend pages).
@@ -56,11 +106,9 @@ export const cmsRouter = router({
                 visible: block.visible,
               });
             } catch (err) {
-              // Log but don't fail — block may have been created by concurrent request
               console.warn(`[CMS] Auto-recovery: failed to create block "${block.blockKey}" for page "${block.page}":`, err);
             }
           }
-          // Re-fetch after auto-recovery
           rows = await db
             .select()
             .from(cmsBlocks)
@@ -100,9 +148,8 @@ export const cmsRouter = router({
       sortOrder: z.number().int().min(0).max(9999).default(0),
       visible: z.boolean().default(true),
     }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
       const db = await getDb();
-      // Check if block exists
       const existing = await db
         .select()
         .from(cmsBlocks)
@@ -115,6 +162,7 @@ export const cmsRouter = router({
         .limit(1);
 
       if (existing.length > 0) {
+        const prev = existing[0];
         await db
           .update(cmsBlocks)
           .set({
@@ -126,8 +174,24 @@ export const cmsRouter = router({
             sortOrder: input.sortOrder,
             visible: input.visible,
           })
-          .where(eq(cmsBlocks.id, existing[0].id));
-        return { id: existing[0].id, action: "updated" as const };
+          .where(eq(cmsBlocks.id, prev.id));
+
+        await recordHistory(db, {
+          blockId: prev.id,
+          page: prev.page,
+          blockKey: prev.blockKey,
+          action: "upsert_update",
+          prevContent: prev.content,
+          prevImageUrl: prev.imageUrl,
+          prevVisible: prev.visible,
+          newContent: input.content ?? null,
+          newImageUrl: input.imageUrl ?? null,
+          newVisible: input.visible,
+          changedByOpenId: ctx.user!.openId,
+          changedByName: ctx.user!.name ?? null,
+        });
+
+        return { id: prev.id, action: "updated" as const };
       }
 
       const result = await db.insert(cmsBlocks).values({
@@ -146,6 +210,7 @@ export const cmsRouter = router({
 
   /**
    * Update only the content of an existing block (quick inline edit).
+   * Records history before applying changes.
    */
   updateContent: adminProcedure
     .input(z.object({
@@ -153,7 +218,7 @@ export const cmsRouter = router({
       content: z.string().max(50000).nullable().optional(),
       imageUrl: z.string().max(2048).nullable().optional(),
     }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
       const db = await getDb();
       const updates: Record<string, unknown> = {};
       if (input.content !== undefined) updates.content = input.content;
@@ -163,20 +228,59 @@ export const cmsRouter = router({
         return { success: true };
       }
 
+      // Fetch current state before update
+      const prev = await fetchBlock(db, input.id);
+      if (prev) {
+        await recordHistory(db, {
+          blockId: prev.id,
+          page: prev.page,
+          blockKey: prev.blockKey,
+          action: "update_content",
+          prevContent: prev.content,
+          prevImageUrl: prev.imageUrl,
+          prevVisible: prev.visible,
+          newContent: input.content !== undefined ? (input.content ?? null) : prev.content,
+          newImageUrl: input.imageUrl !== undefined ? (input.imageUrl ?? null) : prev.imageUrl,
+          newVisible: prev.visible,
+          changedByOpenId: ctx.user!.openId,
+          changedByName: ctx.user!.name ?? null,
+        });
+      }
+
       await db.update(cmsBlocks).set(updates).where(eq(cmsBlocks.id, input.id));
       return { success: true };
     }),
 
   /**
    * Toggle block visibility.
+   * Records history before applying changes.
    */
   toggleVisibility: adminProcedure
     .input(z.object({
       id: z.number().int().positive(),
       visible: z.boolean(),
     }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
       const db = await getDb();
+
+      const prev = await fetchBlock(db, input.id);
+      if (prev) {
+        await recordHistory(db, {
+          blockId: prev.id,
+          page: prev.page,
+          blockKey: prev.blockKey,
+          action: "toggle_visibility",
+          prevContent: prev.content,
+          prevImageUrl: prev.imageUrl,
+          prevVisible: prev.visible,
+          newContent: prev.content,
+          newImageUrl: prev.imageUrl,
+          newVisible: input.visible,
+          changedByOpenId: ctx.user!.openId,
+          changedByName: ctx.user!.name ?? null,
+        });
+      }
+
       await db
         .update(cmsBlocks)
         .set({ visible: input.visible })
@@ -186,17 +290,38 @@ export const cmsRouter = router({
 
   /**
    * Delete a content block.
+   * Records history before deletion.
    */
   deleteBlock: adminProcedure
     .input(z.object({ id: z.number().int().positive() }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
       const db = await getDb();
+
+      const prev = await fetchBlock(db, input.id);
+      if (prev) {
+        await recordHistory(db, {
+          blockId: prev.id,
+          page: prev.page,
+          blockKey: prev.blockKey,
+          action: "delete",
+          prevContent: prev.content,
+          prevImageUrl: prev.imageUrl,
+          prevVisible: prev.visible,
+          newContent: null,
+          newImageUrl: null,
+          newVisible: null,
+          changedByOpenId: ctx.user!.openId,
+          changedByName: ctx.user!.name ?? null,
+        });
+      }
+
       await db.delete(cmsBlocks).where(eq(cmsBlocks.id, input.id));
       return { success: true };
     }),
 
   /**
    * Upload an image for a CMS block and update the block's imageUrl.
+   * Records history before applying changes.
    */
   uploadImage: adminProcedure
     .input(z.object({
@@ -205,15 +330,32 @@ export const cmsRouter = router({
       mimeType: z.string().min(1).max(120),
       base64Data: z.string().min(1),
     }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
       const db = await getDb();
       const buffer = Buffer.from(input.base64Data, "base64");
       const suffix = Math.random().toString(36).slice(2, 10);
       const fileKey = `cms/${input.blockId}-${suffix}-${input.fileName}`;
       const { url } = await storagePut(fileKey, buffer, input.mimeType);
 
-      // Only update imageUrl — do NOT override contentType
-      // (text blocks can also have optional images)
+      // Fetch current state before update
+      const prev = await fetchBlock(db, input.blockId);
+      if (prev) {
+        await recordHistory(db, {
+          blockId: prev.id,
+          page: prev.page,
+          blockKey: prev.blockKey,
+          action: "upload_image",
+          prevContent: prev.content,
+          prevImageUrl: prev.imageUrl,
+          prevVisible: prev.visible,
+          newContent: prev.content,
+          newImageUrl: url,
+          newVisible: prev.visible,
+          changedByOpenId: ctx.user!.openId,
+          changedByName: ctx.user!.name ?? null,
+        });
+      }
+
       await db
         .update(cmsBlocks)
         .set({ imageUrl: url })
@@ -223,9 +365,112 @@ export const cmsRouter = router({
     }),
 
   /**
+   * Get change history for a specific block.
+   * Returns entries ordered by most recent first.
+   */
+  getBlockHistory: adminProcedure
+    .input(z.object({
+      blockId: z.number().int().positive(),
+      limit: z.number().int().min(1).max(100).default(50),
+    }))
+    .query(async ({ input }) => {
+      const db = await getDb();
+      return db
+        .select()
+        .from(cmsBlockHistory)
+        .where(eq(cmsBlockHistory.blockId, input.blockId))
+        .orderBy(desc(cmsBlockHistory.changedAt))
+        .limit(input.limit);
+    }),
+
+  /**
+   * Rollback a block to a specific history entry.
+   * Restores the previous content, imageUrl, and visibility from the history record.
+   * Also records the rollback itself as a new history entry.
+   */
+  rollbackBlock: adminProcedure
+    .input(z.object({
+      historyId: z.number().int().positive(),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      const db = await getDb();
+
+      // Fetch the history entry to rollback to
+      const historyRows = await db
+        .select()
+        .from(cmsBlockHistory)
+        .where(eq(cmsBlockHistory.id, input.historyId))
+        .limit(1);
+
+      if (historyRows.length === 0) {
+        throw new Error("История не найдена");
+      }
+
+      const historyEntry = historyRows[0];
+
+      // Fetch current block state
+      const currentBlock = await fetchBlock(db, historyEntry.blockId);
+      if (!currentBlock) {
+        throw new Error("Блок не найден");
+      }
+
+      // Record the rollback as a history entry (before applying)
+      await recordHistory(db, {
+        blockId: currentBlock.id,
+        page: currentBlock.page,
+        blockKey: currentBlock.blockKey,
+        action: "rollback",
+        prevContent: currentBlock.content,
+        prevImageUrl: currentBlock.imageUrl,
+        prevVisible: currentBlock.visible,
+        newContent: historyEntry.prevContent,
+        newImageUrl: historyEntry.prevImageUrl,
+        newVisible: historyEntry.prevVisible,
+        changedByOpenId: ctx.user!.openId,
+        changedByName: ctx.user!.name ?? null,
+      });
+
+      // Apply the rollback — restore the previous state from the history entry
+      await db
+        .update(cmsBlocks)
+        .set({
+          content: historyEntry.prevContent,
+          imageUrl: historyEntry.prevImageUrl,
+          visible: historyEntry.prevVisible ?? true,
+        })
+        .where(eq(cmsBlocks.id, historyEntry.blockId));
+
+      return {
+        success: true,
+        restoredFrom: {
+          action: historyEntry.action,
+          changedAt: historyEntry.changedAt,
+        },
+      };
+    }),
+
+  /**
+   * Clear old history entries (admin cleanup).
+   * Deletes entries older than the specified number of days.
+   */
+  clearOldHistory: adminProcedure
+    .input(z.object({
+      olderThanDays: z.number().int().min(1).max(365).default(30),
+    }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      const cutoff = new Date();
+      cutoff.setDate(cutoff.getDate() - input.olderThanDays);
+
+      await db.delete(cmsBlockHistory)
+        .where(lt(cmsBlockHistory.changedAt, cutoff));
+
+      return { success: true };
+    }),
+
+  /**
    * Seed default blocks for a page.
    * Uses per-block upsert: creates only missing blocks, skips existing ones.
-   * This ensures partial failures don't leave the page in a broken state.
    */
   seedDefaults: adminProcedure
     .input(z.object({ page: z.string().min(1).max(64) }))
@@ -237,7 +482,6 @@ export const cmsRouter = router({
         return { seeded: false, message: "No default blocks defined for this page" };
       }
 
-      // Fetch all existing blocks for this page
       const existing = await db
         .select({ blockKey: cmsBlocks.blockKey })
         .from(cmsBlocks)
@@ -250,7 +494,7 @@ export const cmsRouter = router({
 
       for (const block of defaults) {
         if (existingKeys.has(block.blockKey)) {
-          continue; // Block already exists, skip
+          continue;
         }
 
         try {
@@ -259,7 +503,6 @@ export const cmsRouter = router({
             blockKey: block.blockKey,
             label: block.label,
             contentType: block.contentType,
-            // Use empty string instead of null for content to avoid Drizzle/TiDB issues
             content: block.content ?? "",
             imageUrl: block.imageUrl ?? null,
             section: block.section ?? null,
@@ -289,7 +532,6 @@ export const cmsRouter = router({
 
 /**
  * Default content blocks for each page.
- * These match the hardcoded content in the current page components.
  */
 function getDefaultBlocks(page: string): DefaultBlock[] {
   if (page === "home") return homeDefaults;
@@ -297,7 +539,6 @@ function getDefaultBlocks(page: string): DefaultBlock[] {
   return [];
 }
 
-/** Type for default block definitions */
 type DefaultBlock = {
   page: string;
   blockKey: string;

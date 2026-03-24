@@ -715,3 +715,299 @@ describe("Crop frame calculations", () => {
     expect(newPosY).toBeLessThan(posY);
   });
 });
+
+
+/* ═══════════════════════════════════════════════════════
+   CMS History & Rollback Tests
+   ═══════════════════════════════════════════════════════ */
+
+describe("cms.getBlockHistory", () => {
+  it("returns history entries for a block (admin only)", async () => {
+    mockRows = [
+      {
+        id: 1,
+        blockId: 10,
+        page: "home",
+        blockKey: "hero_title",
+        action: "update_content",
+        prevContent: "Old title",
+        prevImageUrl: null,
+        prevVisible: true,
+        newContent: "New title",
+        newImageUrl: null,
+        newVisible: true,
+        changedByOpenId: "admin-user",
+        changedByName: "Admin",
+        changedAt: new Date("2026-03-20T10:00:00Z"),
+      },
+      {
+        id: 2,
+        blockId: 10,
+        page: "home",
+        blockKey: "hero_title",
+        action: "toggle_visibility",
+        prevContent: "New title",
+        prevImageUrl: null,
+        prevVisible: true,
+        newContent: "New title",
+        newImageUrl: null,
+        newVisible: false,
+        changedByOpenId: "admin-user",
+        changedByName: "Admin",
+        changedAt: new Date("2026-03-21T10:00:00Z"),
+      },
+    ];
+
+    const caller = appRouter.createCaller(createAdminContext());
+    const result = await caller.cms.getBlockHistory({ blockId: 10 });
+    expect(result).toHaveLength(2);
+    expect(result[0].action).toBe("update_content");
+  });
+
+  it("returns empty array when no history exists", async () => {
+    mockRows = [];
+    const caller = appRouter.createCaller(createAdminContext());
+    const result = await caller.cms.getBlockHistory({ blockId: 999 });
+    expect(result).toHaveLength(0);
+  });
+
+  it("rejects non-admin users", async () => {
+    const caller = appRouter.createCaller(createUserContext());
+    await expect(caller.cms.getBlockHistory({ blockId: 10 })).rejects.toThrow();
+  });
+
+  it("rejects public users", async () => {
+    const caller = appRouter.createCaller(createPublicContext());
+    await expect(caller.cms.getBlockHistory({ blockId: 10 })).rejects.toThrow();
+  });
+
+  it("respects limit parameter", async () => {
+    mockRows = Array.from({ length: 20 }, (_, i) => ({
+      id: i + 1,
+      blockId: 10,
+      page: "home",
+      blockKey: "hero_title",
+      action: "update_content",
+      prevContent: `Content v${i}`,
+      prevImageUrl: null,
+      prevVisible: true,
+      newContent: `Content v${i + 1}`,
+      newImageUrl: null,
+      newVisible: true,
+      changedByOpenId: "admin-user",
+      changedByName: "Admin",
+      changedAt: new Date(),
+    }));
+
+    const caller = appRouter.createCaller(createAdminContext());
+    const result = await caller.cms.getBlockHistory({ blockId: 10, limit: 5 });
+    expect(result).toHaveLength(5);
+  });
+});
+
+describe("cms.rollbackBlock", () => {
+  it("restores block to previous state from history entry", async () => {
+    // Mock: first call = history entry lookup, second call = current block fetch
+    mockRowsSequence = [
+      // getBlockHistory select (historyRows)
+      [{
+        id: 42,
+        blockId: 10,
+        page: "home",
+        blockKey: "hero_title",
+        action: "update_content",
+        prevContent: "Original title",
+        prevImageUrl: null,
+        prevVisible: true,
+        newContent: "Changed title",
+        newImageUrl: null,
+        newVisible: true,
+        changedByOpenId: "admin-user",
+        changedByName: "Admin",
+        changedAt: new Date("2026-03-20T10:00:00Z"),
+      }],
+      // fetchBlock select (currentBlock)
+      [{
+        id: 10,
+        page: "home",
+        blockKey: "hero_title",
+        contentType: "text",
+        content: "Changed title",
+        imageUrl: null,
+        sortOrder: 1,
+        visible: true,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      }],
+    ];
+
+    const caller = appRouter.createCaller(createAdminContext());
+    const result = await caller.cms.rollbackBlock({ historyId: 42 });
+
+    expect(result.success).toBe(true);
+    expect(result.restoredFrom.action).toBe("update_content");
+
+    // Should have recorded rollback history (insert) + applied rollback (update)
+    expect(insertedRows.length).toBeGreaterThanOrEqual(1);
+    expect(updatedSets.length).toBeGreaterThanOrEqual(1);
+
+    // The update should restore previous content
+    const lastUpdate = updatedSets[updatedSets.length - 1];
+    expect(lastUpdate.content).toBe("Original title");
+    expect(lastUpdate.imageUrl).toBeNull();
+    expect(lastUpdate.visible).toBe(true);
+  });
+
+  it("throws error when history entry not found", async () => {
+    mockRows = []; // No history entry
+    const caller = appRouter.createCaller(createAdminContext());
+    await expect(caller.cms.rollbackBlock({ historyId: 999 })).rejects.toThrow("История не найдена");
+  });
+
+  it("rejects non-admin users", async () => {
+    const caller = appRouter.createCaller(createUserContext());
+    await expect(caller.cms.rollbackBlock({ historyId: 1 })).rejects.toThrow();
+  });
+});
+
+describe("cms.clearOldHistory", () => {
+  it("clears old history entries", async () => {
+    const caller = appRouter.createCaller(createAdminContext());
+    const result = await caller.cms.clearOldHistory({ olderThanDays: 30 });
+    expect(result.success).toBe(true);
+    // Should have called delete
+    expect(deletedIds.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("rejects non-admin users", async () => {
+    const caller = appRouter.createCaller(createUserContext());
+    await expect(caller.cms.clearOldHistory({ olderThanDays: 30 })).rejects.toThrow();
+  });
+
+  it("validates olderThanDays range", async () => {
+    const caller = appRouter.createCaller(createAdminContext());
+    await expect(caller.cms.clearOldHistory({ olderThanDays: 0 })).rejects.toThrow();
+    await expect(caller.cms.clearOldHistory({ olderThanDays: 400 })).rejects.toThrow();
+  });
+});
+
+describe("CMS history recording on mutations", () => {
+  it("records history when updateContent is called", async () => {
+    // fetchBlock returns a block
+    mockRows = [{
+      id: 5,
+      page: "home",
+      blockKey: "hero_title",
+      contentType: "text",
+      content: "Old content",
+      imageUrl: null,
+      sortOrder: 1,
+      visible: true,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    }];
+
+    const caller = appRouter.createCaller(createAdminContext());
+    await caller.cms.updateContent({ id: 5, content: "New content" });
+
+    // Should have inserted a history record
+    expect(insertedRows.length).toBeGreaterThanOrEqual(1);
+    const historyRecord = insertedRows.find((r: any) => r.action === "update_content");
+    expect(historyRecord).toBeDefined();
+    expect(historyRecord.prevContent).toBe("Old content");
+    expect(historyRecord.newContent).toBe("New content");
+    expect(historyRecord.changedByOpenId).toBe("admin-user");
+  });
+
+  it("records history when toggleVisibility is called", async () => {
+    mockRows = [{
+      id: 5,
+      page: "home",
+      blockKey: "hero_title",
+      contentType: "text",
+      content: "Content",
+      imageUrl: null,
+      sortOrder: 1,
+      visible: true,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    }];
+
+    const caller = appRouter.createCaller(createAdminContext());
+    await caller.cms.toggleVisibility({ id: 5, visible: false });
+
+    expect(insertedRows.length).toBeGreaterThanOrEqual(1);
+    const historyRecord = insertedRows.find((r: any) => r.action === "toggle_visibility");
+    expect(historyRecord).toBeDefined();
+    expect(historyRecord.prevVisible).toBe(true);
+    expect(historyRecord.newVisible).toBe(false);
+  });
+
+  it("records history when uploadImage is called", async () => {
+    mockRows = [{
+      id: 5,
+      page: "home",
+      blockKey: "hero_image",
+      contentType: "image",
+      content: "",
+      imageUrl: "https://old-image.com/img.jpg",
+      sortOrder: 1,
+      visible: true,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    }];
+
+    const caller = appRouter.createCaller(createAdminContext());
+    await caller.cms.uploadImage({
+      blockId: 5,
+      fileName: "new.png",
+      mimeType: "image/png",
+      base64Data: "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==",
+    });
+
+    expect(insertedRows.length).toBeGreaterThanOrEqual(1);
+    const historyRecord = insertedRows.find((r: any) => r.action === "upload_image");
+    expect(historyRecord).toBeDefined();
+    expect(historyRecord.prevImageUrl).toBe("https://old-image.com/img.jpg");
+    expect(historyRecord.newImageUrl).toBe("https://cdn.example.com/cms/test-image.png");
+  });
+
+  it("records history when deleteBlock is called", async () => {
+    mockRows = [{
+      id: 5,
+      page: "home",
+      blockKey: "hero_title",
+      contentType: "text",
+      content: "Content to delete",
+      imageUrl: null,
+      sortOrder: 1,
+      visible: true,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    }];
+
+    const caller = appRouter.createCaller(createAdminContext());
+    await caller.cms.deleteBlock({ id: 5 });
+
+    expect(insertedRows.length).toBeGreaterThanOrEqual(1);
+    const historyRecord = insertedRows.find((r: any) => r.action === "delete");
+    expect(historyRecord).toBeDefined();
+    expect(historyRecord.prevContent).toBe("Content to delete");
+    expect(historyRecord.newContent).toBeNull();
+    expect(historyRecord.newImageUrl).toBeNull();
+    expect(historyRecord.newVisible).toBeNull();
+  });
+
+  it("does not fail if history recording fails (graceful degradation)", async () => {
+    // Simulate: fetchBlock returns null (block not found before update)
+    mockRows = [];
+
+    const caller = appRouter.createCaller(createAdminContext());
+    // updateContent should still succeed even if no block found for history
+    const result = await caller.cms.updateContent({ id: 999, content: "New content" });
+    expect(result.success).toBe(true);
+    // No history should be recorded since block wasn't found
+    const historyRecords = insertedRows.filter((r: any) => r.action);
+    expect(historyRecords).toHaveLength(0);
+  });
+});

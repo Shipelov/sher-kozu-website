@@ -33,6 +33,10 @@ import {
   ChevronUp,
   ExternalLink,
   Crop,
+  History,
+  Undo2,
+  Clock,
+  User,
 } from "lucide-react";
 import ImageCropEditor from "@/components/ImageCropEditor";
 
@@ -42,6 +46,16 @@ const TYPE_LABELS: Record<string, { label: string; icon: typeof Type; color: str
   richtext: { label: "Форматированный текст", icon: Type, color: "bg-violet-100 text-violet-800" },
   image: { label: "Изображение", icon: ImageIcon, color: "bg-emerald-100 text-emerald-800" },
   json: { label: "JSON", icon: FileJson, color: "bg-amber-100 text-amber-800" },
+};
+
+/* ─── Action labels for history ─── */
+const ACTION_LABELS: Record<string, { label: string; color: string }> = {
+  update_content: { label: "Изменение контента", color: "bg-blue-100 text-blue-800" },
+  upload_image: { label: "Загрузка изображения", color: "bg-emerald-100 text-emerald-800" },
+  toggle_visibility: { label: "Изменение видимости", color: "bg-amber-100 text-amber-800" },
+  upsert_update: { label: "Обновление блока", color: "bg-purple-100 text-purple-800" },
+  delete: { label: "Удаление", color: "bg-red-100 text-red-800" },
+  rollback: { label: "Откат", color: "bg-orange-100 text-orange-800" },
 };
 
 /* ─── Page labels ─── */
@@ -63,6 +77,23 @@ type CmsBlock = {
   updatedAt: Date | string;
 };
 
+type HistoryEntry = {
+  id: number;
+  blockId: number;
+  page: string;
+  blockKey: string;
+  action: string;
+  prevContent: string | null;
+  prevImageUrl: string | null;
+  prevVisible: boolean | null;
+  newContent: string | null;
+  newImageUrl: string | null;
+  newVisible: boolean | null;
+  changedByOpenId: string;
+  changedByName: string | null;
+  changedAt: Date | string;
+};
+
 export default function AdminCmsEditor() {
   const { user, loading: authLoading } = useAuth();
   const [activePage, setActivePage] = useState("home");
@@ -73,6 +104,8 @@ export default function AdminCmsEditor() {
   const [expandedBlocks, setExpandedBlocks] = useState<Set<number>>(new Set());
   const [seedDialogOpen, setSeedDialogOpen] = useState(false);
   const [showCropEditor, setShowCropEditor] = useState(false);
+  const [historyBlock, setHistoryBlock] = useState<CmsBlock | null>(null);
+  const [rollbackConfirm, setRollbackConfirm] = useState<HistoryEntry | null>(null);
 
   const utils = trpc.useUtils();
 
@@ -81,11 +114,18 @@ export default function AdminCmsEditor() {
     staleTime: 30_000,
   });
 
+  // History query — only fetches when historyBlock is set
+  const { data: historyData, isLoading: historyLoading } = trpc.cms.getBlockHistory.useQuery(
+    { blockId: historyBlock?.id ?? 0, limit: 50 },
+    { enabled: !!historyBlock }
+  );
+
   /* ─── Mutations ─── */
   const updateContent = trpc.cms.updateContent.useMutation({
     onSuccess: () => {
       utils.cms.listAll.invalidate();
       utils.cms.getPageBlocks.invalidate();
+      if (historyBlock) utils.cms.getBlockHistory.invalidate();
       toast.success("Контент обновлён");
       setEditBlock(null);
       setShowCropEditor(false);
@@ -107,11 +147,9 @@ export default function AdminCmsEditor() {
       setEditImageUrl(data.url);
       setUploading(false);
       setShowCropEditor(false);
-      // Invalidate caches immediately — uploadImage already saved to DB
       utils.cms.listAll.invalidate();
       utils.cms.getPageBlocks.invalidate();
       toast.success("Изображение загружено и сохранено");
-      // Close the editor since the image is already saved to DB
       setEditBlock(null);
     },
     onError: (err: { message: string }) => {
@@ -141,6 +179,19 @@ export default function AdminCmsEditor() {
       toast.success("Блок удалён");
     },
     onError: (err: { message: string }) => toast.error(`Ошибка: ${err.message}`),
+  });
+
+  const rollbackBlock = trpc.cms.rollbackBlock.useMutation({
+    onSuccess: () => {
+      utils.cms.listAll.invalidate();
+      utils.cms.getPageBlocks.invalidate();
+      utils.cms.getBlockHistory.invalidate();
+      setRollbackConfirm(null);
+      toast.success("Блок откачен к предыдущей версии");
+    },
+    onError: (err: { message: string }) => {
+      toast.error(`Ошибка отката: ${err.message}`);
+    },
   });
 
   /* ─── Filtered blocks for active page ─── */
@@ -178,7 +229,6 @@ export default function AdminCmsEditor() {
     });
   }, [editBlock, editContent, editImageUrl, updateContent]);
 
-  /* ─── Crop complete handler ─── */
   const handleCropComplete = useCallback(
     (data: { base64Data: string; fileName: string; mimeType: string }) => {
       if (!editBlock) return;
@@ -199,6 +249,23 @@ export default function AdminCmsEditor() {
     } catch {
       return content;
     }
+  }, []);
+
+  const formatDate = useCallback((date: Date | string): string => {
+    const d = typeof date === "string" ? new Date(date) : date;
+    return d.toLocaleString("ru-RU", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  }, []);
+
+  const truncateText = useCallback((text: string | null, maxLen: number = 80): string => {
+    if (!text) return "—";
+    if (text.length <= maxLen) return text;
+    return text.slice(0, maxLen) + "…";
   }, []);
 
   /* ─── Auth guard ─── */
@@ -335,6 +402,15 @@ export default function AdminCmsEditor() {
                                 }
                               />
                             </div>
+
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setHistoryBlock(block)}
+                            >
+                              <History className="h-3.5 w-3.5 mr-1" />
+                              История
+                            </Button>
 
                             <Button
                               variant="outline"
@@ -522,14 +598,11 @@ export default function AdminCmsEditor() {
                     </div>
                   ) : (
                     <div className="space-y-3">
-                      {/* URL input */}
                       <Input
                         value={editImageUrl}
                         onChange={(e) => setEditImageUrl(e.target.value)}
                         placeholder="URL изображения или загрузите файл ниже"
                       />
-
-                      {/* Upload with crop button */}
                       <Button
                         variant="outline"
                         className="w-full"
@@ -538,7 +611,6 @@ export default function AdminCmsEditor() {
                         <Crop className="h-4 w-4 mr-2" />
                         Загрузить и обрезать изображение
                       </Button>
-
                       <p className="text-xs text-muted-foreground text-center">
                         Большие изображения (&gt;2 МБ) будут автоматически сжаты. Вы сможете визуально обрезать фото перед загрузкой.
                       </p>
@@ -564,6 +636,235 @@ export default function AdminCmsEditor() {
               </Button>
             </DialogFooter>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* ─── History dialog ─── */}
+      <Dialog
+        open={!!historyBlock}
+        onOpenChange={(open) => {
+          if (!open) setHistoryBlock(null);
+        }}
+      >
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <History className="h-5 w-5" />
+              История изменений: {historyBlock?.blockKey}
+            </DialogTitle>
+          </DialogHeader>
+
+          {historyLoading ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="h-6 w-6 animate-spin text-primary" />
+              <span className="ml-2 text-sm text-muted-foreground">Загрузка истории...</span>
+            </div>
+          ) : !historyData || historyData.length === 0 ? (
+            <div className="text-center py-12">
+              <History className="h-10 w-10 text-muted-foreground/40 mx-auto mb-3" />
+              <p className="text-muted-foreground">
+                Нет записей об изменениях для этого блока.
+              </p>
+              <p className="text-xs text-muted-foreground/60 mt-1">
+                История будет записываться при каждом изменении контента, загрузке изображения или переключении видимости.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-1">
+              {historyData.map((entry: HistoryEntry) => {
+                const actionInfo = ACTION_LABELS[entry.action] ?? { label: entry.action, color: "bg-gray-100 text-gray-800" };
+
+                return (
+                  <div
+                    key={entry.id}
+                    className="rounded-lg border border-border bg-card p-4 space-y-3"
+                  >
+                    {/* Header row */}
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <Badge variant="secondary" className={`${actionInfo.color} text-xs`}>
+                          {actionInfo.label}
+                        </Badge>
+                        <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                          <Clock className="h-3 w-3" />
+                          {formatDate(entry.changedAt)}
+                        </div>
+                        <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                          <User className="h-3 w-3" />
+                          {entry.changedByName || entry.changedByOpenId.slice(0, 8)}
+                        </div>
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setRollbackConfirm(entry)}
+                        disabled={rollbackBlock.isPending}
+                        className="shrink-0"
+                      >
+                        <Undo2 className="h-3.5 w-3.5 mr-1" />
+                        Откатить
+                      </Button>
+                    </div>
+
+                    {/* Changes diff */}
+                    <div className="space-y-2">
+                      {/* Content change */}
+                      {entry.prevContent !== entry.newContent && (
+                        <div className="text-xs space-y-1">
+                          <p className="font-medium text-muted-foreground">Контент:</p>
+                          <div className="grid grid-cols-2 gap-2">
+                            <div className="rounded-md bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800/30 p-2">
+                              <p className="text-[10px] font-medium text-red-600 dark:text-red-400 mb-1">Было:</p>
+                              <p className="text-muted-foreground whitespace-pre-wrap break-words max-h-24 overflow-y-auto">
+                                {truncateText(entry.prevContent, 200)}
+                              </p>
+                            </div>
+                            <div className="rounded-md bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800/30 p-2">
+                              <p className="text-[10px] font-medium text-emerald-600 dark:text-emerald-400 mb-1">Стало:</p>
+                              <p className="text-muted-foreground whitespace-pre-wrap break-words max-h-24 overflow-y-auto">
+                                {truncateText(entry.newContent, 200)}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Image change */}
+                      {entry.prevImageUrl !== entry.newImageUrl && (
+                        <div className="text-xs space-y-1">
+                          <p className="font-medium text-muted-foreground">Изображение:</p>
+                          <div className="grid grid-cols-2 gap-2">
+                            <div className="rounded-md bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800/30 p-2">
+                              <p className="text-[10px] font-medium text-red-600 dark:text-red-400 mb-1">Было:</p>
+                              {entry.prevImageUrl ? (
+                                <img
+                                  src={entry.prevImageUrl}
+                                  alt="Previous"
+                                  className="h-16 w-auto rounded object-cover"
+                                />
+                              ) : (
+                                <p className="text-muted-foreground italic">нет изображения</p>
+                              )}
+                            </div>
+                            <div className="rounded-md bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800/30 p-2">
+                              <p className="text-[10px] font-medium text-emerald-600 dark:text-emerald-400 mb-1">Стало:</p>
+                              {entry.newImageUrl ? (
+                                <img
+                                  src={entry.newImageUrl}
+                                  alt="New"
+                                  className="h-16 w-auto rounded object-cover"
+                                />
+                              ) : (
+                                <p className="text-muted-foreground italic">нет изображения</p>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Visibility change */}
+                      {entry.prevVisible !== entry.newVisible && (
+                        <div className="text-xs flex items-center gap-2">
+                          <p className="font-medium text-muted-foreground">Видимость:</p>
+                          <Badge variant="secondary" className={entry.prevVisible ? "bg-emerald-100 text-emerald-800" : "bg-gray-100 text-gray-800"}>
+                            {entry.prevVisible ? "Видим" : "Скрыт"}
+                          </Badge>
+                          <span className="text-muted-foreground">→</span>
+                          <Badge variant="secondary" className={entry.newVisible ? "bg-emerald-100 text-emerald-800" : "bg-gray-100 text-gray-800"}>
+                            {entry.newVisible ? "Видим" : "Скрыт"}
+                          </Badge>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+
+              <p className="text-xs text-muted-foreground/60 text-center pt-2">
+                Показаны последние {historyData.length} записей. История хранится 30 дней.
+              </p>
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setHistoryBlock(null)}>
+              Закрыть
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ─── Rollback confirmation dialog ─── */}
+      <Dialog
+        open={!!rollbackConfirm}
+        onOpenChange={(open) => {
+          if (!open) setRollbackConfirm(null);
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Undo2 className="h-5 w-5 text-amber-600" />
+              Подтвердите откат
+            </DialogTitle>
+          </DialogHeader>
+
+          {rollbackConfirm && (
+            <div className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                Вы собираетесь откатить блок <strong>{rollbackConfirm.blockKey}</strong> к состоянию
+                до изменения «{ACTION_LABELS[rollbackConfirm.action]?.label ?? rollbackConfirm.action}»
+                от {formatDate(rollbackConfirm.changedAt)}.
+              </p>
+
+              <div className="rounded-lg bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800/30 p-3">
+                <p className="text-xs font-medium text-amber-700 dark:text-amber-400 mb-2">
+                  Блок будет восстановлен к:
+                </p>
+                <div className="space-y-1 text-xs text-muted-foreground">
+                  <p><strong>Контент:</strong> {truncateText(rollbackConfirm.prevContent, 120)}</p>
+                  {rollbackConfirm.prevImageUrl && (
+                    <div>
+                      <strong>Изображение:</strong>
+                      <img
+                        src={rollbackConfirm.prevImageUrl}
+                        alt="Restore preview"
+                        className="h-16 w-auto rounded mt-1 object-cover"
+                      />
+                    </div>
+                  )}
+                  <p><strong>Видимость:</strong> {rollbackConfirm.prevVisible ? "Видим" : "Скрыт"}</p>
+                </div>
+              </div>
+
+              <p className="text-xs text-muted-foreground">
+                Текущее состояние блока будет сохранено в истории перед откатом.
+              </p>
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRollbackConfirm(null)}>
+              Отмена
+            </Button>
+            <Button
+              variant="default"
+              onClick={() => {
+                if (rollbackConfirm) {
+                  rollbackBlock.mutate({ historyId: rollbackConfirm.id });
+                }
+              }}
+              disabled={rollbackBlock.isPending}
+              className="bg-amber-600 hover:bg-amber-700 text-white"
+            >
+              {rollbackBlock.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-1" />
+              ) : (
+                <Undo2 className="h-4 w-4 mr-1" />
+              )}
+              Откатить
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 

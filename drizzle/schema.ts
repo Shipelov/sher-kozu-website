@@ -1134,3 +1134,42 @@ export const cmsBlocks = mysqlTable("cmsBlocks", {
 }, (table) => [
   index("cms_page_key_idx").on(table.page, table.blockKey),
 ]);
+
+/**
+ * CMS Block History — audit trail for content changes.
+ * Records the previous state of a block before each modification,
+ * enabling rollback to any previous version.
+ */
+export const cmsBlockHistory = mysqlTable("cmsBlockHistory", {
+  id: int("id").autoincrement().primaryKey(),
+  /** Reference to the CMS block that was changed */
+  blockId: int("blockId").notNull(),
+  /** Page identifier (denormalized for query convenience) */
+  page: varchar("page", { length: 64 }).notNull(),
+  /** Block key (denormalized for query convenience) */
+  blockKey: varchar("blockKey", { length: 128 }).notNull(),
+  /** Type of change: 'update_content', 'upload_image', 'toggle_visibility', 'delete', 'rollback' */
+  action: varchar("action", { length: 64 }).notNull(),
+  /** Previous content value before the change (null if unchanged) */
+  prevContent: text("prevContent"),
+  /** Previous imageUrl value before the change (null if unchanged) */
+  prevImageUrl: text("prevImageUrl"),
+  /** Previous visibility value before the change */
+  prevVisible: boolean("prevVisible"),
+  /** New content value after the change */
+  newContent: text("newContent"),
+  /** New imageUrl value after the change */
+  newImageUrl: text("newImageUrl"),
+  /** New visibility value after the change */
+  newVisible: boolean("newVisible"),
+  /** OpenId of the admin who made the change */
+  changedByOpenId: varchar("changedByOpenId", { length: 64 }).notNull(),
+  /** Name of the admin who made the change */
+  changedByName: varchar("changedByName", { length: 255 }),
+  /** When the change was made */
+  changedAt: timestamp("changedAt").defaultNow().notNull(),
+}, (table) => [
+  index("cms_history_blockId_idx").on(table.blockId),
+  index("cms_history_page_idx").on(table.page),
+  index("cms_history_changedAt_idx").on(table.changedAt),
+]);

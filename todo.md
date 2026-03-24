@@ -1095,3 +1095,14 @@
 - [x] TYPE_LABELS не содержал richtext, условия показа полей проверяли только text/json/image
 - [x] Добавлен richtext в TYPE_LABELS + во все условия отображения полей
 - [x] Все 1363 теста проходят
+
+## FEATURE: История изменений CMS с возможностью отката (DONE)
+- [x] Создать таблицу cmsBlockHistory в schema.ts (blockId, changedBy, changedAt, prevContent, prevImageUrl, action)
+- [x] Выполнить миграцию БД (pnpm db:push)
+- [x] Добавить серверные процедуры: запись истории при каждом изменении, список истории, откат
+- [x] Записывать историю при updateContent, uploadImage, toggleVisibility, deleteBlock, upsertBlock
+- [x] Добавить процедуру getBlockHistory — список изменений блока
+- [x] Добавить процедуру rollbackBlock — откат к предыдущей версии
+- [x] Добавить процедуру clearOldHistory — очистка старых записей (>30 дней)
+- [x] Построить UI истории в AdminCmsEditor: кнопка «История», диалог с лентой изменений (diff), кнопка «Откатить» с подтверждением
+- [x] Написать 16 новых тестов, все 1379 проходят
