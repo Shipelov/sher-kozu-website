@@ -226,7 +226,7 @@ export default function Home() {
                 initial={{ opacity: 0, y: 22 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.22 }}
-                className="mt-9 flex flex-col gap-3 sm:flex-row sm:flex-wrap"
+                className="mt-9 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center"
               >
                 <Link
                   href="/animals"
@@ -242,6 +242,28 @@ export default function Home() {
                   Как это устроено
                   <ChevronRight className="h-4 w-4" />
                 </a>
+
+                {/* Masha AI Manager — inline with CTA buttons */}
+                <button
+                  type="button"
+                  onClick={() => setMashaVideoOpen(true)}
+                  className="group inline-flex items-center gap-2.5 rounded-full border border-primary/20 bg-white/90 py-2 pl-2 pr-5 shadow-md backdrop-blur transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5 hover:border-primary/40 cursor-pointer"
+                >
+                  <div className="relative">
+                    <img
+                      src="https://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/manager-v1_e0256177.jpg"
+                      alt="Маша — AI Управляющая"
+                      className="h-10 w-10 rounded-full object-cover ring-2 ring-primary/20 group-hover:ring-primary/40 transition-all"
+                    />
+                    <div className="absolute -bottom-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-primary shadow-sm">
+                      <svg className="h-2.5 w-2.5 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                    </div>
+                  </div>
+                  <div className="text-left">
+                    <p className="text-xs font-semibold text-foreground leading-tight">Маша — AI Управляющая</p>
+                    <p className="text-[11px] text-muted-foreground group-hover:text-primary transition-colors">Познакомиться ▶</p>
+                  </div>
+                </button>
               </motion.div>
 
               {/* Trust signals */}
@@ -294,35 +316,7 @@ export default function Home() {
                 </div>
               </div>
 
-              {/* Masha AI Manager avatar */}
-              <motion.div
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.35 }}
-                className="absolute -bottom-6 -left-6 z-10 md:-left-10"
-              >
-                <button
-                  type="button"
-                  onClick={() => setMashaVideoOpen(true)}
-                  className="group flex items-center gap-3 rounded-2xl border border-primary/20 bg-white p-3 pr-5 shadow-lg transition-all duration-300 hover:shadow-xl hover:-translate-y-0.5 hover:border-primary/40 cursor-pointer"
-                >
-                  <div className="relative">
-                    <img
-                      src="https://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/manager-v1_e0256177.jpg"
-                      alt="Маша — AI Управляющая"
-                      className="h-14 w-14 rounded-xl object-cover ring-2 ring-primary/20 group-hover:ring-primary/40 transition-all"
-                    />
-                    <div className="absolute -bottom-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-primary shadow-sm">
-                      <svg className="h-3 w-3 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
-                    </div>
-                  </div>
-                  <div className="text-left">
-                    <p className="text-sm font-semibold text-foreground">Маша</p>
-                    <p className="text-xs text-primary font-medium">AI Управляющая фермой</p>
-                    <p className="text-[11px] text-muted-foreground group-hover:text-foreground transition-colors">Нажмите, чтобы познакомиться</p>
-                  </div>
-                </button>
-              </motion.div>
+
             </motion.div>
           </div>
         </div>
@@ -781,7 +775,7 @@ export default function Home() {
                 {/* Video */}
                 <video
                   ref={videoRef}
-                  src="https://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/masha-intro-video_ad205f48.mp4"
+                  src="https://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/masha-intro-video-compressed_ee7518ad.mp4"
                   controls
                   autoPlay
                   className="w-full aspect-video bg-black"
