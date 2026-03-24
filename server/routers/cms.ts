@@ -469,6 +469,82 @@ export const cmsRouter = router({
     }),
 
   /**
+   * Export history as CSV for external audit.
+   * Optionally filter by blockId. Returns CSV string.
+   */
+  exportHistoryCsv: adminProcedure
+    .input(z.object({
+      blockId: z.number().int().positive().optional(),
+    }).optional())
+    .query(async ({ input }) => {
+      const db = await getDb();
+
+      const conditions = [];
+      if (input?.blockId) {
+        conditions.push(eq(cmsBlockHistory.blockId, input.blockId));
+      }
+
+      const rows = conditions.length > 0
+        ? await db.select().from(cmsBlockHistory)
+            .where(and(...conditions))
+            .orderBy(desc(cmsBlockHistory.changedAt))
+        : await db.select().from(cmsBlockHistory)
+            .orderBy(desc(cmsBlockHistory.changedAt));
+
+      // Build CSV
+      const headers = [
+        "ID",
+        "Block ID",
+        "Page",
+        "Block Key",
+        "Action",
+        "Previous Content",
+        "New Content",
+        "Previous Image URL",
+        "New Image URL",
+        "Previous Visible",
+        "New Visible",
+        "Changed By (OpenID)",
+        "Changed By (Name)",
+        "Changed At",
+      ];
+
+      const escapeCsv = (val: string | number | boolean | null | undefined): string => {
+        if (val === null || val === undefined) return "";
+        const str = String(val);
+        if (str.includes('"') || str.includes(',') || str.includes('\n') || str.includes('\r')) {
+          return '"' + str.replace(/"/g, '""') + '"';
+        }
+        return str;
+      };
+
+      const csvRows = [headers.join(",")];
+      for (const row of rows) {
+        csvRows.push([
+          escapeCsv(row.id),
+          escapeCsv(row.blockId),
+          escapeCsv(row.page),
+          escapeCsv(row.blockKey),
+          escapeCsv(row.action),
+          escapeCsv(row.prevContent),
+          escapeCsv(row.newContent),
+          escapeCsv(row.prevImageUrl),
+          escapeCsv(row.newImageUrl),
+          escapeCsv(row.prevVisible),
+          escapeCsv(row.newVisible),
+          escapeCsv(row.changedByOpenId),
+          escapeCsv(row.changedByName),
+          escapeCsv(row.changedAt ? new Date(row.changedAt).toISOString() : null),
+        ].join(","));
+      }
+
+      return {
+        csv: csvRows.join("\n"),
+        rowCount: rows.length,
+      };
+    }),
+
+  /**
    * Seed default blocks for a page.
    * Uses per-block upsert: creates only missing blocks, skips existing ones.
    */

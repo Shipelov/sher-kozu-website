@@ -1011,3 +1011,290 @@ describe("CMS history recording on mutations", () => {
     expect(historyRecords).toHaveLength(0);
   });
 });
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   CSV EXPORT TESTS
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+describe("CMS History CSV Export", () => {
+  beforeEach(() => {
+    mockRows = [];
+    insertedRows = [];
+    updatedSets = [];
+    deletedIds = [];
+    selectCallCount = 0;
+    mockRowsSequence = [];
+  });
+
+  it("returns empty CSV with only headers when no history exists", async () => {
+    mockRows = [];
+    const caller = appRouter.createCaller(createAdminContext());
+    const result = await caller.cms.exportHistoryCsv();
+
+    expect(result.rowCount).toBe(0);
+    expect(result.csv).toContain("ID,Block ID,Page,Block Key,Action");
+    // Only header row
+    const lines = result.csv.split("\n");
+    expect(lines).toHaveLength(1);
+  });
+
+  it("returns CSV with correct headers", async () => {
+    mockRows = [];
+    const caller = appRouter.createCaller(createAdminContext());
+    const result = await caller.cms.exportHistoryCsv();
+
+    const headers = result.csv.split("\n")[0];
+    expect(headers).toBe(
+      "ID,Block ID,Page,Block Key,Action,Previous Content,New Content,Previous Image URL,New Image URL,Previous Visible,New Visible,Changed By (OpenID),Changed By (Name),Changed At"
+    );
+  });
+
+  it("exports history rows as CSV data", async () => {
+    const testDate = new Date("2026-03-20T10:00:00Z");
+    mockRows = [
+      {
+        id: 1,
+        blockId: 5,
+        page: "home",
+        blockKey: "hero_title",
+        action: "update_content",
+        prevContent: "Old title",
+        prevImageUrl: null,
+        prevVisible: null,
+        newContent: "New title",
+        newImageUrl: null,
+        newVisible: null,
+        changedByOpenId: "admin-user",
+        changedByName: "Admin",
+        changedAt: testDate,
+      },
+    ];
+
+    const caller = appRouter.createCaller(createAdminContext());
+    const result = await caller.cms.exportHistoryCsv();
+
+    expect(result.rowCount).toBe(1);
+    const lines = result.csv.split("\n");
+    expect(lines).toHaveLength(2); // header + 1 data row
+    expect(lines[1]).toContain("hero_title");
+    expect(lines[1]).toContain("update_content");
+    expect(lines[1]).toContain("Old title");
+    expect(lines[1]).toContain("New title");
+    expect(lines[1]).toContain("admin-user");
+    expect(lines[1]).toContain("Admin");
+  });
+
+  it("properly escapes CSV values with commas", async () => {
+    mockRows = [
+      {
+        id: 1,
+        blockId: 5,
+        page: "home",
+        blockKey: "hero_title",
+        action: "update_content",
+        prevContent: "Hello, world",
+        prevImageUrl: null,
+        prevVisible: null,
+        newContent: "Goodbye, world",
+        newImageUrl: null,
+        newVisible: null,
+        changedByOpenId: "admin-user",
+        changedByName: "Admin",
+        changedAt: new Date("2026-03-20T10:00:00Z"),
+      },
+    ];
+
+    const caller = appRouter.createCaller(createAdminContext());
+    const result = await caller.cms.exportHistoryCsv();
+
+    // Values with commas should be quoted
+    expect(result.csv).toContain('"Hello, world"');
+    expect(result.csv).toContain('"Goodbye, world"');
+  });
+
+  it("properly escapes CSV values with double quotes", async () => {
+    mockRows = [
+      {
+        id: 1,
+        blockId: 5,
+        page: "home",
+        blockKey: "hero_title",
+        action: "update_content",
+        prevContent: 'He said "hello"',
+        prevImageUrl: null,
+        prevVisible: null,
+        newContent: "Normal text",
+        newImageUrl: null,
+        newVisible: null,
+        changedByOpenId: "admin-user",
+        changedByName: "Admin",
+        changedAt: new Date("2026-03-20T10:00:00Z"),
+      },
+    ];
+
+    const caller = appRouter.createCaller(createAdminContext());
+    const result = await caller.cms.exportHistoryCsv();
+
+    // Double quotes should be escaped as ""
+    expect(result.csv).toContain('"He said ""hello"""');
+  });
+
+  it("properly escapes CSV values with newlines", async () => {
+    mockRows = [
+      {
+        id: 1,
+        blockId: 5,
+        page: "home",
+        blockKey: "hero_subtitle",
+        action: "update_content",
+        prevContent: "Line 1\nLine 2",
+        prevImageUrl: null,
+        prevVisible: null,
+        newContent: "Single line",
+        newImageUrl: null,
+        newVisible: null,
+        changedByOpenId: "admin-user",
+        changedByName: "Admin",
+        changedAt: new Date("2026-03-20T10:00:00Z"),
+      },
+    ];
+
+    const caller = appRouter.createCaller(createAdminContext());
+    const result = await caller.cms.exportHistoryCsv();
+
+    // Values with newlines should be quoted
+    expect(result.csv).toContain('"Line 1\nLine 2"');
+  });
+
+  it("handles null values as empty strings in CSV", async () => {
+    mockRows = [
+      {
+        id: 1,
+        blockId: 5,
+        page: "home",
+        blockKey: "hero_image",
+        action: "upload_image",
+        prevContent: null,
+        prevImageUrl: null,
+        prevVisible: null,
+        newContent: null,
+        newImageUrl: "https://cdn.example.com/new.jpg",
+        newVisible: null,
+        changedByOpenId: "admin-user",
+        changedByName: null,
+        changedAt: new Date("2026-03-20T10:00:00Z"),
+      },
+    ];
+
+    const caller = appRouter.createCaller(createAdminContext());
+    const result = await caller.cms.exportHistoryCsv();
+
+    expect(result.rowCount).toBe(1);
+    // Null values should appear as empty fields (consecutive commas)
+    const dataRow = result.csv.split("\n")[1];
+    expect(dataRow).toBeDefined();
+  });
+
+  it("accepts optional blockId filter", async () => {
+    mockRows = [
+      {
+        id: 1,
+        blockId: 5,
+        page: "home",
+        blockKey: "hero_title",
+        action: "update_content",
+        prevContent: "Old",
+        prevImageUrl: null,
+        prevVisible: null,
+        newContent: "New",
+        newImageUrl: null,
+        newVisible: null,
+        changedByOpenId: "admin-user",
+        changedByName: "Admin",
+        changedAt: new Date("2026-03-20T10:00:00Z"),
+      },
+    ];
+
+    const caller = appRouter.createCaller(createAdminContext());
+    const result = await caller.cms.exportHistoryCsv({ blockId: 5 });
+
+    expect(result.rowCount).toBe(1);
+    expect(result.csv).toContain("hero_title");
+  });
+
+  it("exports multiple rows correctly", async () => {
+    mockRows = [
+      {
+        id: 2,
+        blockId: 5,
+        page: "home",
+        blockKey: "hero_title",
+        action: "update_content",
+        prevContent: "Second old",
+        prevImageUrl: null,
+        prevVisible: null,
+        newContent: "Second new",
+        newImageUrl: null,
+        newVisible: null,
+        changedByOpenId: "admin-user",
+        changedByName: "Admin",
+        changedAt: new Date("2026-03-21T10:00:00Z"),
+      },
+      {
+        id: 1,
+        blockId: 5,
+        page: "home",
+        blockKey: "hero_title",
+        action: "update_content",
+        prevContent: "First old",
+        prevImageUrl: null,
+        prevVisible: null,
+        newContent: "First new",
+        newImageUrl: null,
+        newVisible: null,
+        changedByOpenId: "admin-user",
+        changedByName: "Admin",
+        changedAt: new Date("2026-03-20T10:00:00Z"),
+      },
+    ];
+
+    const caller = appRouter.createCaller(createAdminContext());
+    const result = await caller.cms.exportHistoryCsv();
+
+    expect(result.rowCount).toBe(2);
+    const lines = result.csv.split("\n");
+    expect(lines).toHaveLength(3); // header + 2 data rows
+  });
+
+  it("requires admin access for CSV export", async () => {
+    const caller = appRouter.createCaller(createPublicContext());
+    await expect(caller.cms.exportHistoryCsv()).rejects.toThrow();
+  });
+
+  it("formats changedAt as ISO string", async () => {
+    const testDate = new Date("2026-03-20T10:30:45.000Z");
+    mockRows = [
+      {
+        id: 1,
+        blockId: 5,
+        page: "home",
+        blockKey: "hero_title",
+        action: "update_content",
+        prevContent: "Old",
+        prevImageUrl: null,
+        prevVisible: null,
+        newContent: "New",
+        newImageUrl: null,
+        newVisible: null,
+        changedByOpenId: "admin-user",
+        changedByName: "Admin",
+        changedAt: testDate,
+      },
+    ];
+
+    const caller = appRouter.createCaller(createAdminContext());
+    const result = await caller.cms.exportHistoryCsv();
+
+    expect(result.csv).toContain("2026-03-20T10:30:45.000Z");
+  });
+});

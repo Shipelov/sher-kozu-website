@@ -37,6 +37,7 @@ import {
   Undo2,
   Clock,
   User,
+  Download,
 } from "lucide-react";
 import ImageCropEditor from "@/components/ImageCropEditor";
 
@@ -251,6 +252,37 @@ export default function AdminCmsEditor() {
     }
   }, []);
 
+  /* ─── CSV Export handler ─── */
+  const handleExportCsv = useCallback(async (blockId?: number) => {
+    try {
+      const result = await utils.client.cms.exportHistoryCsv.query(
+        blockId ? { blockId } : undefined
+      );
+      if (result.rowCount === 0) {
+        toast.info("Нет записей для экспорта");
+        return;
+      }
+      // Add BOM for Excel UTF-8 compatibility
+      const bom = "\uFEFF";
+      const blob = new Blob([bom + result.csv], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      const dateStr = new Date().toISOString().slice(0, 10);
+      a.download = blockId
+        ? `cms-history-block-${blockId}-${dateStr}.csv`
+        : `cms-history-all-${dateStr}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      toast.success(`Экспортировано ${result.rowCount} записей`);
+    } catch (err) {
+      toast.error("Ошибка экспорта CSV");
+      console.error("[CMS CSV Export]", err);
+    }
+  }, [utils]);
+
   const formatDate = useCallback((date: Date | string): string => {
     const d = typeof date === "string" ? new Date(date) : date;
     return d.toLocaleString("ru-RU", {
@@ -312,6 +344,14 @@ export default function AdminCmsEditor() {
             >
               <RotateCcw className="h-4 w-4 mr-1" />
               Инициализировать
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handleExportCsv()}
+            >
+              <Download className="h-4 w-4 mr-1" />
+              Экспорт CSV
             </Button>
             <a href={activePage === "home" ? "/" : "/animals"} target="_blank" rel="noreferrer">
               <Button variant="outline" size="sm">
@@ -652,6 +692,20 @@ export default function AdminCmsEditor() {
               <History className="h-5 w-5" />
               История изменений: {historyBlock?.blockKey}
             </DialogTitle>
+            <div className="flex items-center gap-2 pt-1">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => historyBlock && handleExportCsv(historyBlock.id)}
+                disabled={!historyData || historyData.length === 0}
+              >
+                <Download className="h-3.5 w-3.5 mr-1" />
+                Экспорт CSV блока
+              </Button>
+              <span className="text-xs text-muted-foreground">
+                История хранится 30 дней
+              </span>
+            </div>
           </DialogHeader>
 
           {historyLoading ? (
