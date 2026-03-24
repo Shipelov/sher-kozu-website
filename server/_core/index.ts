@@ -27,6 +27,29 @@ async function findAvailablePort(startPort: number = 3000): Promise<number> {
   throw new Error(`No available port found starting from ${startPort}`);
 }
 
+async function runCmsHistoryCleanup() {
+  try {
+    const { getDb } = await import("../db");
+    const { cmsBlockHistory } = await import("../../drizzle/schema");
+    const { lt } = await import("drizzle-orm");
+    const db = await getDb();
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - 30);
+
+    const result = await db.delete(cmsBlockHistory)
+      .where(lt(cmsBlockHistory.changedAt, cutoff));
+
+    const deleted = (result as any)[0]?.affectedRows ?? 0;
+    if (deleted > 0) {
+      console.log(`[CMS History Cleanup] Deleted ${deleted} record(s) older than 30 days`);
+    } else {
+      console.log(`[CMS History Cleanup] No old records to clean up`);
+    }
+  } catch (err) {
+    console.error("[CMS History Cleanup] Error during cleanup:", err);
+  }
+}
+
 async function runTrashCleanup() {
   try {
     const { findExpiredTrashedUsers, permanentDeleteUser } = await import("../db");
@@ -83,6 +106,10 @@ async function startServer() {
     // Run trash cleanup on startup and then every 24 hours
     runTrashCleanup();
     setInterval(runTrashCleanup, 24 * 60 * 60 * 1000);
+
+    // Run CMS history cleanup on startup and then every 24 hours
+    runCmsHistoryCleanup();
+    setInterval(runCmsHistoryCleanup, 24 * 60 * 60 * 1000);
   });
 }
 
