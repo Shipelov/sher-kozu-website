@@ -74,6 +74,15 @@ const TYPE_LABELS: Record<string, { label: string; icon: typeof Type; color: str
 const PAGE_LABELS: Record<string, string> = {
   home: "Главная",
   catalog: "Каталог",
+  about: "О ферме",
+  partners: "Партнёры",
+};
+
+const PAGE_PREVIEW_URLS: Record<string, string> = {
+  home: "/",
+  catalog: "/animals",
+  about: "/about",
+  partners: "/partners",
 };
 
 const ACTION_LABELS: Record<string, { label: string; color: string }> = {
@@ -647,7 +656,7 @@ export default function AdminCmsEditor() {
               <Download className="h-4 w-4 mr-1" />
               Экспорт CSV
             </Button>
-            <a href={activePage === "home" ? "/" : "/animals"} target="_blank" rel="noreferrer">
+            <a href={PAGE_PREVIEW_URLS[activePage] || "/"} target="_blank" rel="noreferrer">
               <Button variant="outline" size="sm">
                 <ExternalLink className="h-4 w-4 mr-1" />
                 Предпросмотр
@@ -661,8 +670,9 @@ export default function AdminCmsEditor() {
         {/* Page tabs */}
         <Tabs value={activePage} onValueChange={handlePageChange}>
           <TabsList className="mb-4">
-            <TabsTrigger value="home">Главная</TabsTrigger>
-            <TabsTrigger value="catalog">Каталог</TabsTrigger>
+            {Object.entries(PAGE_LABELS).map(([key, label]) => (
+              <TabsTrigger key={key} value={key}>{label}</TabsTrigger>
+            ))}
           </TabsList>
 
           {/* Search bar */}
@@ -729,7 +739,7 @@ export default function AdminCmsEditor() {
             </div>
           )}
 
-          {["home", "catalog"].map((page) => (
+          {Object.keys(PAGE_LABELS).map((page) => (
             <TabsContent key={page} value={page}>
               {isLoading ? (
                 <div className="flex items-center justify-center py-20">

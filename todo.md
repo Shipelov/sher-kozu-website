@@ -1176,3 +1176,9 @@
 - [x] Partners.tsx: 8 блоков CMS для hero, sidebar, form секций
 - [x] Дефолтные блоки добавлены в seed для about и partners
 - [x] Все 1403 теста проходят
+
+## BUG: В CMS-редакторе видны ## BUG: В CMS-редакторе видны только Главная и Каталог других нет (FIXED)
+- [x] Корневая причина: PAGE_LABELS, TabsTrigger и TabsContent были захардкожены только для home/catalog
+- [x] Добавлены about и partners в PAGE_LABELS и PAGE_PREVIEW_URLS
+- [x] Табы и TabsContent теперь рендерятся динамически из PAGE_LABELS
+- [x] 7 новых тестов, все 1410 проходят

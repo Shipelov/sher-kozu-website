@@ -1370,3 +1370,118 @@ describe("cms.reorderBlocks", () => {
     ).rejects.toThrow();
   });
 });
+
+
+/* ─── CMS Editor: all pages visible ─── */
+describe("CMS Editor page list completeness", () => {
+  const editorSource = require("fs").readFileSync(
+    "/home/ubuntu/sher-kozu-website/client/src/pages/AdminCmsEditor.tsx",
+    "utf8"
+  );
+
+  it("PAGE_LABELS includes all 4 pages", () => {
+    expect(editorSource).toContain('home: "Главная"');
+    expect(editorSource).toContain('catalog: "Каталог"');
+    expect(editorSource).toContain('about: "О ферме"');
+    expect(editorSource).toContain('partners: "Партнёры"');
+  });
+
+  it("PAGE_PREVIEW_URLS maps all pages to correct routes", () => {
+    expect(editorSource).toContain('home: "/"');
+    expect(editorSource).toContain('catalog: "/animals"');
+    expect(editorSource).toContain('about: "/about"');
+    expect(editorSource).toContain('partners: "/partners"');
+  });
+
+  it("tabs are rendered dynamically from PAGE_LABELS (not hardcoded)", () => {
+    expect(editorSource).toContain("Object.entries(PAGE_LABELS)");
+    expect(editorSource).toContain("Object.keys(PAGE_LABELS)");
+    // Should NOT have hardcoded tab list
+    expect(editorSource).not.toContain('["home", "catalog"].map');
+  });
+});
+
+/* ─── seedDefaults for about and partners pages ─── */
+describe("cms.seedDefaults — about page", () => {
+  beforeEach(() => {
+    mockRows = [];
+    insertedRows = [];
+    updatedSets = [];
+    deletedIds = [];
+    lastInsertId = 100;
+    selectCallCount = 0;
+    mockRowsSequence = [];
+  });
+
+  it("seeds about page defaults when empty", async () => {
+    mockRows = [];
+    const caller = appRouter.createCaller(createAdminContext());
+    const result = await caller.cms.seedDefaults({ page: "about" });
+
+    expect(result.seeded).toBe(true);
+    expect(result.count).toBeGreaterThan(0);
+    const insertedKeys = insertedRows.map((r: any) => r.blockKey);
+    expect(insertedKeys).toContain("hero_badge");
+    expect(insertedKeys).toContain("hero_heading");
+    expect(insertedKeys).toContain("hero_subtitle");
+    expect(insertedKeys).toContain("hero_image");
+    expect(insertedKeys).toContain("history_badge");
+    expect(insertedKeys).toContain("philosophy_badge");
+    expect(insertedKeys).toContain("breeds_badge");
+    expect(insertedKeys).toContain("gallery_badge");
+    expect(insertedKeys).toContain("values_badge");
+    expect(insertedKeys).toContain("cta_heading");
+  });
+
+  it("about page blocks have correct sections", async () => {
+    mockRows = [];
+    const caller = appRouter.createCaller(createAdminContext());
+    await caller.cms.seedDefaults({ page: "about" });
+
+    const heroBlocks = insertedRows.filter((r: any) => r.section === "Hero");
+    expect(heroBlocks.length).toBeGreaterThan(0);
+    const historyBlocks = insertedRows.filter((r: any) => r.section === "История");
+    expect(historyBlocks.length).toBeGreaterThan(0);
+    const philosophyBlocks = insertedRows.filter((r: any) => r.section === "Философия");
+    expect(philosophyBlocks.length).toBeGreaterThan(0);
+  });
+});
+
+describe("cms.seedDefaults — partners page", () => {
+  beforeEach(() => {
+    mockRows = [];
+    insertedRows = [];
+    updatedSets = [];
+    deletedIds = [];
+    lastInsertId = 100;
+    selectCallCount = 0;
+    mockRowsSequence = [];
+  });
+
+  it("seeds partners page defaults when empty", async () => {
+    mockRows = [];
+    const caller = appRouter.createCaller(createAdminContext());
+    const result = await caller.cms.seedDefaults({ page: "partners" });
+
+    expect(result.seeded).toBe(true);
+    expect(result.count).toBeGreaterThan(0);
+    const insertedKeys = insertedRows.map((r: any) => r.blockKey);
+    expect(insertedKeys).toContain("hero_badge");
+    expect(insertedKeys).toContain("hero_heading");
+    expect(insertedKeys).toContain("hero_subtitle");
+    expect(insertedKeys).toContain("sidebar_badge");
+    expect(insertedKeys).toContain("sidebar_heading");
+    expect(insertedKeys).toContain("form_heading");
+  });
+
+  it("partners page blocks have correct sections", async () => {
+    mockRows = [];
+    const caller = appRouter.createCaller(createAdminContext());
+    await caller.cms.seedDefaults({ page: "partners" });
+
+    const heroBlocks = insertedRows.filter((r: any) => r.section === "Hero");
+    expect(heroBlocks.length).toBeGreaterThan(0);
+    const formBlocks = insertedRows.filter((r: any) => r.section === "Форма");
+    expect(formBlocks.length).toBeGreaterThan(0);
+  });
+});
