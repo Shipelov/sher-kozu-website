@@ -1169,6 +1169,7 @@ function AnimalGalleryManager({
   const uploadPhoto = trpc.animalPhotos.upload.useMutation({
     onSuccess: async () => {
       await utils.animalPhotos.list.invalidate({ animalSlug });
+      await utils.adminAnimals.list.invalidate();
       toast.success("Фото загружено", {
         description: "Новое изображение добавлено в галерею животного.",
       });
@@ -1181,6 +1182,7 @@ function AnimalGalleryManager({
   const removePhoto = trpc.animalPhotos.remove.useMutation({
     onSuccess: async () => {
       await utils.animalPhotos.list.invalidate({ animalSlug });
+      await utils.adminAnimals.list.invalidate();
       toast.success("Фото удалено");
     },
     onError: (error) => {
@@ -1191,6 +1193,7 @@ function AnimalGalleryManager({
   const setCoverPhoto = trpc.animalPhotos.setCover.useMutation({
     onSuccess: async () => {
       await utils.animalPhotos.list.invalidate({ animalSlug });
+      await utils.adminAnimals.list.invalidate();
       toast.success("Обложка обновлена");
     },
     onError: (error) => {
@@ -1460,15 +1463,7 @@ function AnimalEditorCard({
   const isCreateMode = mode === "create";
 
   return (
-    <Card className="rounded-[2rem] border-border/70 shadow-sm">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-lg">
-          {mode === "create" ? <Plus className="h-5 w-5 text-primary" /> : <Pencil className="h-5 w-5 text-primary" />}
-          {mode === "create" ? "Создать животное" : "Редактировать животное"}
-        </CardTitle>
-
-      </CardHeader>
-      <CardContent className="space-y-6">
+    <div className="space-y-6">
         <div className="grid gap-4 md:grid-cols-2">
           <div className="space-y-2">
             <Label htmlFor="animal-name">Имя</Label>
@@ -1668,17 +1663,18 @@ function AnimalEditorCard({
           isCreateMode={isCreateMode}
         />
 
-        <div className="grid gap-3 sm:grid-cols-2">
-          <Button type="button" className="rounded-full" onClick={onSubmit} disabled={isSubmitting}>
-            {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-            {mode === "create" ? "Создать карточку" : "Сохранить изменения"}
-          </Button>
-          <Button type="button" variant="outline" className="rounded-full" onClick={onCancel}>
-            Сбросить форму
-          </Button>
+        <div className="sticky bottom-0 -mx-6 border-t border-border/60 bg-background px-6 py-4">
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Button type="button" className="rounded-full" onClick={onSubmit} disabled={isSubmitting}>
+              {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+              {mode === "create" ? "Создать карточку" : "Сохранить изменения"}
+            </Button>
+            <Button type="button" variant="outline" className="rounded-full" onClick={onCancel}>
+              Сбросить форму
+            </Button>
+          </div>
         </div>
-      </CardContent>
-    </Card>
+    </div>
   );
 }
 
@@ -2066,31 +2062,29 @@ export default function AdminAnimalsPage() {
         </div>
       </div>
       <Sheet open={isEditorSheetOpen} onOpenChange={setIsEditorSheetOpen}>
-        <SheetContent side="right" className="w-full sm:max-w-3xl flex flex-col overflow-hidden">
-          <SheetHeader>
+        <SheetContent side="right" className="w-full sm:max-w-[90vw] lg:max-w-[70vw] xl:max-w-[60vw] 2xl:max-w-[50vw] flex flex-col overflow-hidden p-0">
+          <SheetHeader className="shrink-0 border-b border-border/60 px-6 py-4">
             <SheetTitle className="flex items-center gap-2">
               {editorMode === "create" ? <Plus className="h-5 w-5 text-primary" /> : <Pencil className="h-5 w-5 text-primary" />}
               {editorMode === "create" ? "Создать животное" : "Редактировать животное"}
             </SheetTitle>
           </SheetHeader>
-          <div className="flex-1 overflow-y-auto pr-6">
-            <div className="mt-6 space-y-6 pb-6">
-              <AnimalEditorCard
-                mode={editorMode}
-                values={formValues}
-                onChange={handleFormChange}
-                onSubmit={() => {
-                  handleSubmit();
-                  setIsEditorSheetOpen(false);
-                }}
-                onCancel={() => {
-                  resetEditor();
-                  setIsEditorSheetOpen(false);
-                }}
-                onApplyPreset={applyDemoPreset}
-                isSubmitting={createAnimal.isPending || updateAnimal.isPending}
-              />
-            </div>
+          <div className="flex-1 overflow-y-auto px-6 py-6">
+            <AnimalEditorCard
+              mode={editorMode}
+              values={formValues}
+              onChange={handleFormChange}
+              onSubmit={() => {
+                handleSubmit();
+                setIsEditorSheetOpen(false);
+              }}
+              onCancel={() => {
+                resetEditor();
+                setIsEditorSheetOpen(false);
+              }}
+              onApplyPreset={applyDemoPreset}
+              isSubmitting={createAnimal.isPending || updateAnimal.isPending}
+            />
           </div>
         </SheetContent>
       </Sheet>
