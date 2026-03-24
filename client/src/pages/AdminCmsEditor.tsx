@@ -38,6 +38,8 @@ import {
   Clock,
   User,
   Download,
+  Filter,
+  Layers,
 } from "lucide-react";
 import ImageCropEditor from "@/components/ImageCropEditor";
 
@@ -72,6 +74,7 @@ type CmsBlock = {
   contentType: string;
   content: string | null;
   imageUrl: string | null;
+  section: string | null;
   sortOrder: number;
   visible: boolean;
   createdAt: Date | string;
@@ -107,6 +110,7 @@ export default function AdminCmsEditor() {
   const [showCropEditor, setShowCropEditor] = useState(false);
   const [historyBlock, setHistoryBlock] = useState<CmsBlock | null>(null);
   const [rollbackConfirm, setRollbackConfirm] = useState<HistoryEntry | null>(null);
+  const [activeSection, setActiveSection] = useState<string>("all");
 
   const utils = trpc.useUtils();
 
@@ -203,6 +207,42 @@ export default function AdminCmsEditor() {
         .sort((a: CmsBlock, b: CmsBlock) => a.sortOrder - b.sortOrder),
     [allBlocks, activePage]
   );
+
+  /* ─── Unique sections for current page ─── */
+  const pageSections = useMemo(() => {
+    const sections: string[] = [];
+    const seen = new Set<string>();
+    for (const block of pageBlocks) {
+      const sec = block.section || "Без секции";
+      if (!seen.has(sec)) {
+        seen.add(sec);
+        sections.push(sec);
+      }
+    }
+    return sections;
+  }, [pageBlocks]);
+
+  /* ─── Grouped blocks by section (respecting filter) ─── */
+  const groupedBlocks = useMemo(() => {
+    const groups: { section: string; blocks: CmsBlock[] }[] = [];
+    const map = new Map<string, CmsBlock[]>();
+    for (const block of pageBlocks) {
+      const sec = block.section || "Без секции";
+      if (activeSection !== "all" && sec !== activeSection) continue;
+      if (!map.has(sec)) {
+        map.set(sec, []);
+        groups.push({ section: sec, blocks: map.get(sec)! });
+      }
+      map.get(sec)!.push(block);
+    }
+    return groups;
+  }, [pageBlocks, activeSection]);
+
+  /* Reset section filter when page changes */
+  const handlePageChange = useCallback((page: string) => {
+    setActivePage(page);
+    setActiveSection("all");
+  }, []);
 
   /* ─── Handlers ─── */
   const openEditor = useCallback((block: CmsBlock) => {
@@ -365,11 +405,48 @@ export default function AdminCmsEditor() {
 
       <div className="container py-6">
         {/* Page tabs */}
-        <Tabs value={activePage} onValueChange={setActivePage}>
-          <TabsList className="mb-6">
+        <Tabs value={activePage} onValueChange={handlePageChange}>
+          <TabsList className="mb-4">
             <TabsTrigger value="home">Главная</TabsTrigger>
             <TabsTrigger value="catalog">Каталог</TabsTrigger>
           </TabsList>
+
+          {/* Section filter bar */}
+          {pageSections.length > 1 && (
+            <div className="mb-6">
+              <div className="flex items-center gap-2 mb-2">
+                <Filter className="h-4 w-4 text-muted-foreground" />
+                <span className="text-sm font-medium text-muted-foreground">Секции:</span>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  variant={activeSection === "all" ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setActiveSection("all")}
+                  className="text-xs"
+                >
+                  <Layers className="h-3.5 w-3.5 mr-1" />
+                  Все ({pageBlocks.length})
+                </Button>
+                {pageSections.map((sec) => {
+                  const count = pageBlocks.filter(
+                    (b: CmsBlock) => (b.section || "Без секции") === sec
+                  ).length;
+                  return (
+                    <Button
+                      key={sec}
+                      variant={activeSection === sec ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setActiveSection(sec)}
+                      className="text-xs"
+                    >
+                      {sec} ({count})
+                    </Button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
           {["home", "catalog"].map((page) => (
             <TabsContent key={page} value={page}>
@@ -387,9 +464,26 @@ export default function AdminCmsEditor() {
                     Инициализировать блоки
                   </Button>
                 </div>
+              ) : groupedBlocks.length === 0 ? (
+                <div className="text-center py-12">
+                  <Filter className="h-8 w-8 text-muted-foreground/40 mx-auto mb-3" />
+                  <p className="text-muted-foreground">Нет блоков в выбранной секции</p>
+                  <Button variant="link" size="sm" onClick={() => setActiveSection("all")} className="mt-2">
+                    Показать все
+                  </Button>
+                </div>
               ) : (
-                <div className="space-y-3">
-                  {pageBlocks.map((block: CmsBlock) => {
+                <div className="space-y-6">
+                  {groupedBlocks.map(({ section, blocks }) => (
+                    <div key={section}>
+                      {/* Section header */}
+                      <div className="flex items-center gap-2 mb-3 pb-2 border-b border-border/60">
+                        <Layers className="h-4 w-4 text-primary" />
+                        <h3 className="text-sm font-semibold text-foreground">{section}</h3>
+                        <Badge variant="secondary" className="text-xs">{blocks.length}</Badge>
+                      </div>
+                      <div className="space-y-3">
+                  {blocks.map((block: CmsBlock) => {
                     const typeInfo = TYPE_LABELS[block.contentType] ?? TYPE_LABELS.text;
                     const TypeIcon = typeInfo.icon;
                     const isExpanded = expandedBlocks.has(block.id);
@@ -506,6 +600,9 @@ export default function AdminCmsEditor() {
                       </div>
                     );
                   })}
+                      </div>
+                    </div>
+                  ))}
                 </div>
               )}
             </TabsContent>
