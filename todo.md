@@ -1130,3 +1130,19 @@
 - [x] Фильтр сбрасывается при смене страницы, пустое состояние обработано
 - [x] Все 1397 тестов проходят
 - [x] Сохранить чекпоинт
+
+## FEATURE: Поиск по блокам в CMS-редакторе (DONE)
+- [x] Добавлено поле поиска с иконкой Search и кнопкой очистки X
+- [x] Фильтрация по blockKey, label, content, section (case-insensitive)
+- [x] Счётчик результатов «Найдено: N из M» + подсветка совпадений в blockKey (highlight)
+- [x] Пустое состояние с кнопкой «Очистить поиск»
+- [x] Поиск совмещён с фильтром по секциям
+
+## FEATURE: Drag-and-drop сортировка блоков в CMS-редакторе (DONE)
+- [x] Установлены @dnd-kit/core 6.3.1, @dnd-kit/sortable 10.0.0, @dnd-kit/utilities 3.2.2
+- [x] Добавлена серверная процедура reorderBlocks (batch update sortOrder)
+- [x] Drag handle (GripVertical) на каждом блоке с cursor-grab/grabbing
+- [x] DnD внутри секций с сохранением sortOrder на сервер (offset-based)
+- [x] SortableBlockItem компонент с подсветкой при перетаскивании (opacity, shadow, ring)
+- [x] 6 новых тестов для reorderBlocks, все 1403 проходят
+- [x] Сохранить чекпоинт

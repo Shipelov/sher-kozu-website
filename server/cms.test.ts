@@ -1298,3 +1298,75 @@ describe("CMS History CSV Export", () => {
     expect(result.csv).toContain("2026-03-20T10:30:45.000Z");
   });
 });
+
+
+/* ─── reorderBlocks tests ─── */
+describe("cms.reorderBlocks", () => {
+  beforeEach(() => {
+    mockRows = [];
+    insertedRows = [];
+    updatedSets = [];
+    deletedIds = [];
+    lastInsertId = 100;
+    selectCallCount = 0;
+    mockRowsSequence = [];
+  });
+
+  it("should update sortOrder for each item", async () => {
+    const caller = appRouter.createCaller(createAdminContext());
+    const result = await caller.cms.reorderBlocks({
+      items: [
+        { id: 1, sortOrder: 0 },
+        { id: 2, sortOrder: 1 },
+        { id: 3, sortOrder: 2 },
+      ],
+    });
+
+    expect(result.success).toBe(true);
+    expect(result.updated).toBe(3);
+    expect(updatedSets).toHaveLength(3);
+    expect(updatedSets[0]).toEqual({ sortOrder: 0 });
+    expect(updatedSets[1]).toEqual({ sortOrder: 1 });
+    expect(updatedSets[2]).toEqual({ sortOrder: 2 });
+  });
+
+  it("should handle single item reorder", async () => {
+    const caller = appRouter.createCaller(createAdminContext());
+    const result = await caller.cms.reorderBlocks({
+      items: [{ id: 5, sortOrder: 10 }],
+    });
+
+    expect(result.success).toBe(true);
+    expect(result.updated).toBe(1);
+    expect(updatedSets).toHaveLength(1);
+    expect(updatedSets[0]).toEqual({ sortOrder: 10 });
+  });
+
+  it("should reject empty items array", async () => {
+    const caller = appRouter.createCaller(createAdminContext());
+    await expect(
+      caller.cms.reorderBlocks({ items: [] })
+    ).rejects.toThrow();
+  });
+
+  it("should reject negative sortOrder", async () => {
+    const caller = appRouter.createCaller(createAdminContext());
+    await expect(
+      caller.cms.reorderBlocks({ items: [{ id: 1, sortOrder: -1 }] })
+    ).rejects.toThrow();
+  });
+
+  it("should reject non-positive id", async () => {
+    const caller = appRouter.createCaller(createAdminContext());
+    await expect(
+      caller.cms.reorderBlocks({ items: [{ id: 0, sortOrder: 0 }] })
+    ).rejects.toThrow();
+  });
+
+  it("should require admin access", async () => {
+    const caller = appRouter.createCaller(createPublicContext());
+    await expect(
+      caller.cms.reorderBlocks({ items: [{ id: 1, sortOrder: 0 }] })
+    ).rejects.toThrow();
+  });
+});

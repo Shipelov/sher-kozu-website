@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
 import { Link } from "wouter";
@@ -40,8 +40,28 @@ import {
   Download,
   Filter,
   Layers,
+  Search,
+  X,
+  GripVertical,
 } from "lucide-react";
 import ImageCropEditor from "@/components/ImageCropEditor";
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 
 /* ─── Block type display helpers ─── */
 const TYPE_LABELS: Record<string, { label: string; icon: typeof Type; color: string }> = {
@@ -51,34 +71,31 @@ const TYPE_LABELS: Record<string, { label: string; icon: typeof Type; color: str
   json: { label: "JSON", icon: FileJson, color: "bg-amber-100 text-amber-800" },
 };
 
-/* ─── Action labels for history ─── */
-const ACTION_LABELS: Record<string, { label: string; color: string }> = {
-  update_content: { label: "Изменение контента", color: "bg-blue-100 text-blue-800" },
-  upload_image: { label: "Загрузка изображения", color: "bg-emerald-100 text-emerald-800" },
-  toggle_visibility: { label: "Изменение видимости", color: "bg-amber-100 text-amber-800" },
-  upsert_update: { label: "Обновление блока", color: "bg-purple-100 text-purple-800" },
-  delete: { label: "Удаление", color: "bg-red-100 text-red-800" },
-  rollback: { label: "Откат", color: "bg-orange-100 text-orange-800" },
+const PAGE_LABELS: Record<string, string> = {
+  home: "Главная",
+  catalog: "Каталог",
 };
 
-/* ─── Page labels ─── */
-const PAGE_LABELS: Record<string, string> = {
-  home: "Главная страница",
-  catalog: "Каталог животных",
+const ACTION_LABELS: Record<string, { label: string; color: string }> = {
+  update_content: { label: "Обновление контента", color: "bg-blue-100 text-blue-800" },
+  upload_image: { label: "Загрузка изображения", color: "bg-emerald-100 text-emerald-800" },
+  toggle_visibility: { label: "Изменение видимости", color: "bg-amber-100 text-amber-800" },
+  delete: { label: "Удаление", color: "bg-red-100 text-red-800" },
+  rollback: { label: "Откат", color: "bg-purple-100 text-purple-800" },
+  upsert: { label: "Создание/обновление", color: "bg-cyan-100 text-cyan-800" },
 };
 
 type CmsBlock = {
   id: number;
   page: string;
   blockKey: string;
+  label: string | null;
   contentType: string;
   content: string | null;
   imageUrl: string | null;
   section: string | null;
   sortOrder: number;
   visible: boolean;
-  createdAt: Date | string;
-  updatedAt: Date | string;
 };
 
 type HistoryEntry = {
@@ -88,15 +105,195 @@ type HistoryEntry = {
   blockKey: string;
   action: string;
   prevContent: string | null;
-  prevImageUrl: string | null;
-  prevVisible: boolean | null;
   newContent: string | null;
+  prevImageUrl: string | null;
   newImageUrl: string | null;
+  prevVisible: boolean | null;
   newVisible: boolean | null;
   changedByOpenId: string;
   changedByName: string | null;
   changedAt: Date | string;
 };
+
+/* ─── Sortable block item component ─── */
+function SortableBlockItem({
+  block,
+  typeInfo,
+  isExpanded,
+  toggleExpand,
+  openEditor,
+  setHistoryBlock,
+  toggleVisibility,
+  deleteBlock,
+  formatJsonContent,
+  searchQuery,
+}: {
+  block: CmsBlock;
+  typeInfo: { label: string; icon: typeof Type; color: string };
+  isExpanded: boolean;
+  toggleExpand: (id: number) => void;
+  openEditor: (block: CmsBlock) => void;
+  setHistoryBlock: (block: CmsBlock) => void;
+  toggleVisibility: { mutate: (input: { id: number; visible: boolean }) => void };
+  deleteBlock: { mutate: (input: { id: number }) => void };
+  formatJsonContent: (content: string) => string;
+  searchQuery: string;
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: block.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+    zIndex: isDragging ? 50 : undefined,
+  };
+
+  const TypeIcon = typeInfo.icon;
+
+  /* Highlight matching text */
+  const highlightMatch = (text: string) => {
+    if (!searchQuery) return text;
+    const idx = text.toLowerCase().indexOf(searchQuery.toLowerCase());
+    if (idx === -1) return text;
+    return (
+      <>
+        {text.slice(0, idx)}
+        <mark className="bg-yellow-200 dark:bg-yellow-800 rounded px-0.5">{text.slice(idx, idx + searchQuery.length)}</mark>
+        {text.slice(idx + searchQuery.length)}
+      </>
+    );
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={`rounded-xl border transition-colors ${
+        block.visible
+          ? "border-border bg-card"
+          : "border-dashed border-muted-foreground/30 bg-muted/30"
+      } ${isDragging ? "shadow-lg ring-2 ring-primary/30" : ""}`}
+    >
+      {/* Block header */}
+      <div className="flex items-center gap-3 px-4 py-3">
+        {/* Drag handle */}
+        <button
+          type="button"
+          className="shrink-0 cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground transition-colors touch-none"
+          {...attributes}
+          {...listeners}
+        >
+          <GripVertical className="h-4 w-4" />
+        </button>
+
+        <button
+          type="button"
+          onClick={() => toggleExpand(block.id)}
+          className="shrink-0 text-muted-foreground hover:text-foreground transition-colors"
+        >
+          {isExpanded ? (
+            <ChevronUp className="h-4 w-4" />
+          ) : (
+            <ChevronDown className="h-4 w-4" />
+          )}
+        </button>
+
+        <Badge variant="secondary" className={`${typeInfo.color} text-xs shrink-0`}>
+          <TypeIcon className="h-3 w-3 mr-1" />
+          {typeInfo.label}
+        </Badge>
+
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-medium text-foreground truncate">
+            {highlightMatch(block.blockKey)}
+          </p>
+        </div>
+
+        <div className="flex items-center gap-2 shrink-0">
+          <div className="flex items-center gap-1.5">
+            {block.visible ? (
+              <Eye className="h-3.5 w-3.5 text-emerald-600" />
+            ) : (
+              <EyeOff className="h-3.5 w-3.5 text-muted-foreground" />
+            )}
+            <Switch
+              checked={block.visible}
+              onCheckedChange={(checked: boolean) =>
+                toggleVisibility.mutate({ id: block.id, visible: checked })
+              }
+            />
+          </div>
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setHistoryBlock(block)}
+          >
+            <History className="h-3.5 w-3.5 mr-1" />
+            История
+          </Button>
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => openEditor(block)}
+          >
+            Редактировать
+          </Button>
+        </div>
+      </div>
+
+      {/* Expanded preview */}
+      {isExpanded && (
+        <div className="border-t border-border/50 px-4 py-3 bg-muted/20">
+          {block.contentType === "image" && block.imageUrl && (
+            <div className="mb-3">
+              <img
+                src={block.imageUrl}
+                alt={block.blockKey}
+                className="h-32 w-auto rounded-lg object-cover border border-border"
+              />
+            </div>
+          )}
+          {block.content && (
+            <pre className="text-xs text-muted-foreground whitespace-pre-wrap break-words max-h-40 overflow-y-auto font-mono bg-background rounded-lg p-3 border border-border/50">
+              {block.contentType === "json"
+                ? formatJsonContent(block.content)
+                : block.content}
+            </pre>
+          )}
+          {!block.content && !block.imageUrl && (
+            <p className="text-xs text-muted-foreground italic">
+              Пусто — используется значение по умолчанию из кода
+            </p>
+          )}
+          <div className="mt-2 flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-destructive hover:text-destructive"
+              onClick={() => {
+                if (confirm(`Удалить блок "${block.blockKey}"?`)) {
+                  deleteBlock.mutate({ id: block.id });
+                }
+              }}
+            >
+              <Trash2 className="h-3.5 w-3.5 mr-1" />
+              Удалить
+            </Button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function AdminCmsEditor() {
   const { user, loading: authLoading } = useAuth();
@@ -111,15 +308,21 @@ export default function AdminCmsEditor() {
   const [historyBlock, setHistoryBlock] = useState<CmsBlock | null>(null);
   const [rollbackConfirm, setRollbackConfirm] = useState<HistoryEntry | null>(null);
   const [activeSection, setActiveSection] = useState<string>("all");
+  const [searchQuery, setSearchQuery] = useState("");
 
   const utils = trpc.useUtils();
+
+  /* ─── DnD sensors ─── */
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  );
 
   /* ─── Queries ─── */
   const { data: allBlocks, isLoading } = trpc.cms.listAll.useQuery(undefined, {
     staleTime: 30_000,
   });
 
-  // History query — only fetches when historyBlock is set
   const { data: historyData, isLoading: historyLoading } = trpc.cms.getBlockHistory.useQuery(
     { blockId: historyBlock?.id ?? 0, limit: 50 },
     { enabled: !!historyBlock }
@@ -199,6 +402,15 @@ export default function AdminCmsEditor() {
     },
   });
 
+  const reorderBlocks = trpc.cms.reorderBlocks.useMutation({
+    onSuccess: () => {
+      utils.cms.listAll.invalidate();
+      utils.cms.getPageBlocks.invalidate();
+      toast.success("Порядок блоков обновлён");
+    },
+    onError: (err: { message: string }) => toast.error(`Ошибка сортировки: ${err.message}`),
+  });
+
   /* ─── Filtered blocks for active page ─── */
   const pageBlocks = useMemo(
     () =>
@@ -208,11 +420,25 @@ export default function AdminCmsEditor() {
     [allBlocks, activePage]
   );
 
+  /* ─── Search filter ─── */
+  const searchFilteredBlocks = useMemo(() => {
+    if (!searchQuery.trim()) return pageBlocks;
+    const q = searchQuery.toLowerCase().trim();
+    return pageBlocks.filter((b: CmsBlock) => {
+      return (
+        b.blockKey.toLowerCase().includes(q) ||
+        (b.label && b.label.toLowerCase().includes(q)) ||
+        (b.content && b.content.toLowerCase().includes(q)) ||
+        (b.section && b.section.toLowerCase().includes(q))
+      );
+    });
+  }, [pageBlocks, searchQuery]);
+
   /* ─── Unique sections for current page ─── */
   const pageSections = useMemo(() => {
     const sections: string[] = [];
     const seen = new Set<string>();
-    for (const block of pageBlocks) {
+    for (const block of searchFilteredBlocks) {
       const sec = block.section || "Без секции";
       if (!seen.has(sec)) {
         seen.add(sec);
@@ -220,13 +446,13 @@ export default function AdminCmsEditor() {
       }
     }
     return sections;
-  }, [pageBlocks]);
+  }, [searchFilteredBlocks]);
 
   /* ─── Grouped blocks by section (respecting filter) ─── */
   const groupedBlocks = useMemo(() => {
     const groups: { section: string; blocks: CmsBlock[] }[] = [];
     const map = new Map<string, CmsBlock[]>();
-    for (const block of pageBlocks) {
+    for (const block of searchFilteredBlocks) {
       const sec = block.section || "Без секции";
       if (activeSection !== "all" && sec !== activeSection) continue;
       if (!map.has(sec)) {
@@ -236,13 +462,42 @@ export default function AdminCmsEditor() {
       map.get(sec)!.push(block);
     }
     return groups;
-  }, [pageBlocks, activeSection]);
+  }, [searchFilteredBlocks, activeSection]);
 
-  /* Reset section filter when page changes */
+  /* Reset section filter and search when page changes */
   const handlePageChange = useCallback((page: string) => {
     setActivePage(page);
     setActiveSection("all");
+    setSearchQuery("");
   }, []);
+
+  /* ─── DnD handler ─── */
+  const handleDragEnd = useCallback(
+    (event: DragEndEvent, sectionBlocks: CmsBlock[]) => {
+      const { active, over } = event;
+      if (!over || active.id === over.id) return;
+
+      const oldIndex = sectionBlocks.findIndex((b) => b.id === active.id);
+      const newIndex = sectionBlocks.findIndex((b) => b.id === over.id);
+      if (oldIndex === -1 || newIndex === -1) return;
+
+      const reordered = arrayMove(sectionBlocks, oldIndex, newIndex);
+      const items = reordered.map((block, idx) => ({
+        id: block.id,
+        sortOrder: idx,
+      }));
+
+      // Find the base sortOrder for this section (min sortOrder of blocks in this section)
+      const minSort = Math.min(...sectionBlocks.map((b) => b.sortOrder));
+      const itemsWithOffset = items.map((item, idx) => ({
+        id: item.id,
+        sortOrder: minSort + idx,
+      }));
+
+      reorderBlocks.mutate({ items: itemsWithOffset });
+    },
+    [reorderBlocks]
+  );
 
   /* ─── Handlers ─── */
   const openEditor = useCallback((block: CmsBlock) => {
@@ -302,7 +557,6 @@ export default function AdminCmsEditor() {
         toast.info("Нет записей для экспорта");
         return;
       }
-      // Add BOM for Excel UTF-8 compatibility
       const bom = "\uFEFF";
       const blob = new Blob([bom + result.csv], { type: "text/csv;charset=utf-8;" });
       const url = URL.createObjectURL(blob);
@@ -411,6 +665,33 @@ export default function AdminCmsEditor() {
             <TabsTrigger value="catalog">Каталог</TabsTrigger>
           </TabsList>
 
+          {/* Search bar */}
+          <div className="mb-4">
+            <div className="relative max-w-md">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Поиск по ключу, содержимому или секции..."
+                className="pl-9 pr-9"
+              />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery("")}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+            {searchQuery && (
+              <p className="text-xs text-muted-foreground mt-1.5">
+                Найдено: <strong>{searchFilteredBlocks.length}</strong> из {pageBlocks.length} блоков
+              </p>
+            )}
+          </div>
+
           {/* Section filter bar */}
           {pageSections.length > 1 && (
             <div className="mb-6">
@@ -426,10 +707,10 @@ export default function AdminCmsEditor() {
                   className="text-xs"
                 >
                   <Layers className="h-3.5 w-3.5 mr-1" />
-                  Все ({pageBlocks.length})
+                  Все ({searchFilteredBlocks.length})
                 </Button>
                 {pageSections.map((sec) => {
-                  const count = pageBlocks.filter(
+                  const count = searchFilteredBlocks.filter(
                     (b: CmsBlock) => (b.section || "Без секции") === sec
                   ).length;
                   return (
@@ -466,11 +747,19 @@ export default function AdminCmsEditor() {
                 </div>
               ) : groupedBlocks.length === 0 ? (
                 <div className="text-center py-12">
-                  <Filter className="h-8 w-8 text-muted-foreground/40 mx-auto mb-3" />
-                  <p className="text-muted-foreground">Нет блоков в выбранной секции</p>
-                  <Button variant="link" size="sm" onClick={() => setActiveSection("all")} className="mt-2">
-                    Показать все
-                  </Button>
+                  <Search className="h-8 w-8 text-muted-foreground/40 mx-auto mb-3" />
+                  <p className="text-muted-foreground">
+                    {searchQuery ? "Ничего не найдено по запросу" : "Нет блоков в выбранной секции"}
+                  </p>
+                  {searchQuery ? (
+                    <Button variant="link" size="sm" onClick={() => setSearchQuery("")} className="mt-2">
+                      Очистить поиск
+                    </Button>
+                  ) : (
+                    <Button variant="link" size="sm" onClick={() => setActiveSection("all")} className="mt-2">
+                      Показать все
+                    </Button>
+                  )}
                 </div>
               ) : (
                 <div className="space-y-6">
@@ -481,126 +770,46 @@ export default function AdminCmsEditor() {
                         <Layers className="h-4 w-4 text-primary" />
                         <h3 className="text-sm font-semibold text-foreground">{section}</h3>
                         <Badge variant="secondary" className="text-xs">{blocks.length}</Badge>
-                      </div>
-                      <div className="space-y-3">
-                  {blocks.map((block: CmsBlock) => {
-                    const typeInfo = TYPE_LABELS[block.contentType] ?? TYPE_LABELS.text;
-                    const TypeIcon = typeInfo.icon;
-                    const isExpanded = expandedBlocks.has(block.id);
-
-                    return (
-                      <div
-                        key={block.id}
-                        className={`rounded-xl border transition-colors ${
-                          block.visible
-                            ? "border-border bg-card"
-                            : "border-dashed border-muted-foreground/30 bg-muted/30"
-                        }`}
-                      >
-                        {/* Block header */}
-                        <div className="flex items-center gap-3 px-4 py-3">
-                          <button
-                            type="button"
-                            onClick={() => toggleExpand(block.id)}
-                            className="shrink-0 text-muted-foreground hover:text-foreground transition-colors"
-                          >
-                            {isExpanded ? (
-                              <ChevronUp className="h-4 w-4" />
-                            ) : (
-                              <ChevronDown className="h-4 w-4" />
-                            )}
-                          </button>
-
-                          <Badge variant="secondary" className={`${typeInfo.color} text-xs shrink-0`}>
-                            <TypeIcon className="h-3 w-3 mr-1" />
-                            {typeInfo.label}
-                          </Badge>
-
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium text-foreground truncate">
-                              {block.blockKey}
-                            </p>
-                          </div>
-
-                          <div className="flex items-center gap-2 shrink-0">
-                            <div className="flex items-center gap-1.5">
-                              {block.visible ? (
-                                <Eye className="h-3.5 w-3.5 text-emerald-600" />
-                              ) : (
-                                <EyeOff className="h-3.5 w-3.5 text-muted-foreground" />
-                              )}
-                              <Switch
-                                checked={block.visible}
-                                onCheckedChange={(checked: boolean) =>
-                                  toggleVisibility.mutate({ id: block.id, visible: checked })
-                                }
-                              />
-                            </div>
-
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => setHistoryBlock(block)}
-                            >
-                              <History className="h-3.5 w-3.5 mr-1" />
-                              История
-                            </Button>
-
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => openEditor(block)}
-                            >
-                              Редактировать
-                            </Button>
-                          </div>
-                        </div>
-
-                        {/* Expanded preview */}
-                        {isExpanded && (
-                          <div className="border-t border-border/50 px-4 py-3 bg-muted/20">
-                            {block.contentType === "image" && block.imageUrl && (
-                              <div className="mb-3">
-                                <img
-                                  src={block.imageUrl}
-                                  alt={block.blockKey}
-                                  className="h-32 w-auto rounded-lg object-cover border border-border"
-                                />
-                              </div>
-                            )}
-                            {block.content && (
-                              <pre className="text-xs text-muted-foreground whitespace-pre-wrap break-words max-h-40 overflow-y-auto font-mono bg-background rounded-lg p-3 border border-border/50">
-                                {block.contentType === "json"
-                                  ? formatJsonContent(block.content)
-                                  : block.content}
-                              </pre>
-                            )}
-                            {!block.content && !block.imageUrl && (
-                              <p className="text-xs text-muted-foreground italic">
-                                Пусто — используется значение по умолчанию из кода
-                              </p>
-                            )}
-                            <div className="mt-2 flex items-center gap-2">
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="text-destructive hover:text-destructive"
-                                onClick={() => {
-                                  if (confirm(`Удалить блок "${block.blockKey}"?`)) {
-                                    deleteBlock.mutate({ id: block.id });
-                                  }
-                                }}
-                              >
-                                <Trash2 className="h-3.5 w-3.5 mr-1" />
-                                Удалить
-                              </Button>
-                            </div>
-                          </div>
+                        {!searchQuery && (
+                          <span className="text-[10px] text-muted-foreground/60 ml-auto">
+                            <GripVertical className="h-3 w-3 inline mr-0.5" />
+                            Перетащите для сортировки
+                          </span>
                         )}
                       </div>
-                    );
-                  })}
-                      </div>
+
+                      {/* Sortable block list */}
+                      <DndContext
+                        sensors={sensors}
+                        collisionDetection={closestCenter}
+                        onDragEnd={(event) => handleDragEnd(event, blocks)}
+                      >
+                        <SortableContext
+                          items={blocks.map((b) => b.id)}
+                          strategy={verticalListSortingStrategy}
+                        >
+                          <div className="space-y-3">
+                            {blocks.map((block: CmsBlock) => {
+                              const typeInfo = TYPE_LABELS[block.contentType] ?? TYPE_LABELS.text;
+                              return (
+                                <SortableBlockItem
+                                  key={block.id}
+                                  block={block}
+                                  typeInfo={typeInfo}
+                                  isExpanded={expandedBlocks.has(block.id)}
+                                  toggleExpand={toggleExpand}
+                                  openEditor={openEditor}
+                                  setHistoryBlock={setHistoryBlock}
+                                  toggleVisibility={toggleVisibility}
+                                  deleteBlock={deleteBlock}
+                                  formatJsonContent={formatJsonContent}
+                                  searchQuery={searchQuery}
+                                />
+                              );
+                            })}
+                          </div>
+                        </SortableContext>
+                      </DndContext>
                     </div>
                   ))}
                 </div>
@@ -698,7 +907,6 @@ export default function AdminCmsEditor() {
                     {editBlock.contentType === "image" ? "Изображение" : "Изображение (опционально)"}
                   </label>
 
-                  {/* Current image preview */}
                   {editImageUrl && !showCropEditor && (
                     <div className="mb-3 relative inline-block">
                       <img
@@ -716,7 +924,6 @@ export default function AdminCmsEditor() {
                     </div>
                   )}
 
-                  {/* Crop editor or upload buttons */}
                   {showCropEditor ? (
                     <div className="border border-border rounded-xl p-4 bg-muted/30">
                       <ImageCropEditor
@@ -830,7 +1037,6 @@ export default function AdminCmsEditor() {
                     key={entry.id}
                     className="rounded-lg border border-border bg-card p-4 space-y-3"
                   >
-                    {/* Header row */}
                     <div className="flex items-center justify-between gap-2">
                       <div className="flex items-center gap-2 flex-wrap">
                         <Badge variant="secondary" className={`${actionInfo.color} text-xs`}>
@@ -857,9 +1063,7 @@ export default function AdminCmsEditor() {
                       </Button>
                     </div>
 
-                    {/* Changes diff */}
                     <div className="space-y-2">
-                      {/* Content change */}
                       {entry.prevContent !== entry.newContent && (
                         <div className="text-xs space-y-1">
                           <p className="font-medium text-muted-foreground">Контент:</p>
@@ -880,7 +1084,6 @@ export default function AdminCmsEditor() {
                         </div>
                       )}
 
-                      {/* Image change */}
                       {entry.prevImageUrl !== entry.newImageUrl && (
                         <div className="text-xs space-y-1">
                           <p className="font-medium text-muted-foreground">Изображение:</p>
@@ -913,7 +1116,6 @@ export default function AdminCmsEditor() {
                         </div>
                       )}
 
-                      {/* Visibility change */}
                       {entry.prevVisible !== entry.newVisible && (
                         <div className="text-xs flex items-center gap-2">
                           <p className="font-medium text-muted-foreground">Видимость:</p>

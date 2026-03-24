@@ -545,6 +545,28 @@ export const cmsRouter = router({
     }),
 
   /**
+   * Reorder blocks within a page by updating their sortOrder.
+   * Accepts an array of { id, sortOrder } pairs.
+   */
+  reorderBlocks: adminProcedure
+    .input(z.object({
+      items: z.array(z.object({
+        id: z.number().int().positive(),
+        sortOrder: z.number().int().min(0),
+      })).min(1).max(200),
+    }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      for (const item of input.items) {
+        await db
+          .update(cmsBlocks)
+          .set({ sortOrder: item.sortOrder })
+          .where(eq(cmsBlocks.id, item.id));
+      }
+      return { success: true, updated: input.items.length };
+    }),
+
+  /**
    * Seed default blocks for a page.
    * Uses per-block upsert: creates only missing blocks, skips existing ones.
    */
