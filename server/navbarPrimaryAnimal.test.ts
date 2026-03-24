@@ -64,7 +64,7 @@ describe("Navbar: online indicator removed (intentional)", () => {
 describe("Navbar: core navigation preserved", () => {
   it("has link to animals catalog", () => {
     expect(NAVBAR_SRC).toContain('"/animals"');
-    expect(NAVBAR_SRC).toContain("Каталог животных");
+    expect(NAVBAR_SRC).toContain("Каталог");
   });
 
   it("has link to about page", () => {
@@ -100,7 +100,7 @@ describe("Navbar: core navigation preserved", () => {
 
   it("has tracker link for authenticated users", () => {
     expect(NAVBAR_SRC).toContain('"/tracker"');
-    expect(NAVBAR_SRC).toContain("Трекер продуктов");
+    expect(NAVBAR_SRC).toContain("Трекер");
   });
 });
 
@@ -118,8 +118,8 @@ describe("Navbar: fixed button order", () => {
       "Главная",
       "Мой кабинет",
       "О ферме",
-      "Каталог животных",
-      "Трекер продуктов",
+      "Каталог",
+      "Трекер",
       "Клуб",
       "FAQ",
       "B2B",
@@ -136,7 +136,7 @@ describe("Navbar: fixed button order", () => {
     // Check that authOnly: true appears on the same line as the label (skip comment lines)
     const dashboardLine = NAVBAR_SRC.split("\n").find((l: string) => l.includes('"\u041c\u043e\u0439 \u043a\u0430\u0431\u0438\u043d\u0435\u0442"') && l.includes("authOnly"));
     expect(dashboardLine).toContain("authOnly: true");
-    const trackerLine = NAVBAR_SRC.split("\n").find((l: string) => l.includes('"\u0422\u0440\u0435\u043a\u0435\u0440 \u043f\u0440\u043e\u0434\u0443\u043a\u0442\u043e\u0432"') && l.includes("authOnly"));
+    const trackerLine = NAVBAR_SRC.split("\n").find((l: string) => l.includes('"\u0422\u0440\u0435\u043a\u0435\u0440"') && l.includes("authOnly"));
     expect(trackerLine).toContain("authOnly: true");
   });
 
@@ -150,11 +150,34 @@ describe("Navbar: fixed button order", () => {
     expect(NAVBAR_SRC).toContain("!item.authOnly || isAuthenticated");
   });
 
-  it("uses visibleNavItems for both desktop and mobile rendering", () => {
+  it("uses visibleNavItems for mobile rendering", () => {
     const matches = NAVBAR_SRC.match(/visibleNavItems\.map/g);
-    // At least 2 occurrences: desktop nav and mobile nav
+    // At least 1 occurrence for mobile nav
     expect(matches).not.toBeNull();
-    expect(matches!.length).toBeGreaterThanOrEqual(2);
+    expect(matches!.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("splits items into primary (shown directly) and secondary (in Ещё dropdown)", () => {
+    expect(NAVBAR_SRC).toContain("primaryNavItems");
+    expect(NAVBAR_SRC).toContain("secondaryNavItems");
+    expect(NAVBAR_SRC).toContain("primary: true");
+    expect(NAVBAR_SRC).toContain("primary: false");
+  });
+
+  it("has Ещё dropdown for secondary items on desktop", () => {
+    expect(NAVBAR_SRC).toContain("Ещё");
+    expect(NAVBAR_SRC).toContain("moreMenuOpen");
+    expect(NAVBAR_SRC).toContain("secondaryNavItems.length > 0");
+  });
+
+  it("desktop primary nav uses compact text-only buttons (no icons in primary items)", () => {
+    // primaryNavItems.map section should NOT render Icon — only item.label
+    // Extract just the primaryNavItems.map block up to the next map/dropdown
+    const afterPrimaryMap = NAVBAR_SRC.split("primaryNavItems.map")[1] ?? "";
+    const primarySection = afterPrimaryMap.split("secondaryNavItems")[0] ?? "";
+    // Primary items render {item.label} without <Icon
+    expect(primarySection).toContain("item.label");
+    expect(primarySection).not.toContain("<Icon");
   });
 });
 

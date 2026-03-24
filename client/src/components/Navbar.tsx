@@ -27,6 +27,7 @@ import {
   UserPlus,
   ChevronDown,
   Briefcase,
+  MoreHorizontal,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import AuthModal from "./AuthModal";
@@ -35,7 +36,9 @@ export default function Navbar() {
   const [location] = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [moreMenuOpen, setMoreMenuOpen] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
+  const moreMenuRef = useRef<HTMLDivElement>(null);
   const animalsQuery = trpc.animals.listPublic.useQuery();
   const { user, isAuthenticated, loading: authLoading, logout } = useAuth();
 
@@ -87,14 +90,14 @@ export default function Navbar() {
   /* Фиксированный порядок: Главная, Мой кабинет, О ферме, Каталог, Трекер, Клуб, FAQ, B2B */
   const allNavItems = useMemo(
     () => [
-      { href: "/", label: "Главная", icon: Home, authOnly: false },
-      { href: "/dashboard", label: "Мой кабинет", icon: LayoutDashboard, authOnly: true },
-      { href: "/about", label: "О ферме", icon: Leaf, authOnly: false },
-      { href: "/animals", label: "Каталог животных", icon: PawPrint, authOnly: false },
-      { href: "/tracker", label: "Трекер продуктов", icon: Milk, authOnly: true },
-      { href: "/club", label: "Клуб", icon: Users, authOnly: false },
-      { href: "/faq", label: "FAQ", icon: HelpCircle, authOnly: false },
-      { href: "/partners", label: "B2B", icon: Briefcase, authOnly: false },
+      { href: "/", label: "Главная", icon: Home, authOnly: false, primary: true },
+      { href: "/dashboard", label: "Мой кабинет", icon: LayoutDashboard, authOnly: true, primary: true },
+      { href: "/about", label: "О ферме", icon: Leaf, authOnly: false, primary: true },
+      { href: "/animals", label: "Каталог", icon: PawPrint, authOnly: false, primary: true },
+      { href: "/tracker", label: "Трекер", icon: Milk, authOnly: true, primary: false },
+      { href: "/club", label: "Клуб", icon: Users, authOnly: false, primary: true },
+      { href: "/faq", label: "FAQ", icon: HelpCircle, authOnly: false, primary: false },
+      { href: "/partners", label: "B2B", icon: Briefcase, authOnly: false, primary: true },
     ],
     [],
   );
@@ -104,18 +107,31 @@ export default function Navbar() {
     [allNavItems, isAuthenticated],
   );
 
+  /* Desktop: primary items shown directly, secondary items go into "Ещё" dropdown */
+  const primaryNavItems = useMemo(
+    () => visibleNavItems.filter((item) => item.primary),
+    [visibleNavItems],
+  );
+  const secondaryNavItems = useMemo(
+    () => visibleNavItems.filter((item) => !item.primary),
+    [visibleNavItems],
+  );
+
   // Close user menu on outside click
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
       if (userMenuRef.current && !userMenuRef.current.contains(e.target as Node)) {
         setUserMenuOpen(false);
       }
+      if (moreMenuRef.current && !moreMenuRef.current.contains(e.target as Node)) {
+        setMoreMenuOpen(false);
+      }
     }
-    if (userMenuOpen) {
+    if (userMenuOpen || moreMenuOpen) {
       document.addEventListener("mousedown", handleClickOutside);
       return () => document.removeEventListener("mousedown", handleClickOutside);
     }
-  }, [userMenuOpen]);
+  }, [userMenuOpen, moreMenuOpen]);
 
   const userInitials = user?.name
     ? user.name
@@ -140,27 +156,76 @@ export default function Navbar() {
             </span>
           </Link>
 
-          {/* Desktop nav — fixed order */}
-          <nav className="hidden items-center gap-1 md:flex">
-            {visibleNavItems.map((item) => {
+          {/* Desktop nav — fixed order, compact */}
+          <nav className="hidden items-center gap-0.5 md:flex">
+            {primaryNavItems.map((item) => {
               const isActive = location === item.href;
-              const Icon = item.icon;
               return (
                 <Link key={item.href} href={item.href}>
                   <motion.div
                     whileHover={{ scale: 1.03 }}
-                    className={`flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+                    className={`rounded-lg px-2.5 py-1.5 text-[13px] font-medium transition-colors ${
                       isActive
                         ? "bg-primary/10 text-primary"
                         : "text-muted-foreground hover:bg-muted hover:text-foreground"
                     }`}
                   >
-                    <Icon className="h-4 w-4" />
                     {item.label}
                   </motion.div>
                 </Link>
               );
             })}
+
+            {/* "Ещё" dropdown for secondary items */}
+            {secondaryNavItems.length > 0 && (
+              <div ref={moreMenuRef} className="relative">
+                <button
+                  type="button"
+                  onClick={() => setMoreMenuOpen((v) => !v)}
+                  className={`flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-[13px] font-medium transition-colors ${
+                    secondaryNavItems.some((i) => location === i.href)
+                      ? "bg-primary/10 text-primary"
+                      : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                  }`}
+                >
+                  Ещё
+                  <ChevronDown className={`h-3 w-3 transition-transform ${moreMenuOpen ? "rotate-180" : ""}`} />
+                </button>
+
+                <AnimatePresence>
+                  {moreMenuOpen && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -6, scale: 0.95 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: -6, scale: 0.95 }}
+                      transition={{ duration: 0.12 }}
+                      className="absolute left-0 top-full mt-1.5 w-48 rounded-xl border border-border bg-card shadow-lg py-1 z-50"
+                    >
+                      {secondaryNavItems.map((item) => {
+                        const isActive = location === item.href;
+                        const Icon = item.icon;
+                        return (
+                          <Link key={item.href} href={item.href}>
+                            <button
+                              type="button"
+                              onClick={() => setMoreMenuOpen(false)}
+                              className={`flex w-full items-center gap-3 px-4 py-2.5 text-sm transition-colors ${
+                                isActive
+                                  ? "bg-primary/10 text-primary"
+                                  : "text-foreground hover:bg-muted"
+                              }`}
+                            >
+                              <Icon className="h-4 w-4 text-muted-foreground" />
+                              {item.label}
+                            </button>
+                          </Link>
+                        );
+                      })}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            )}
           </nav>
 
           {/* Right side: auth state */}

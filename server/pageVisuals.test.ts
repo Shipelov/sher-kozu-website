@@ -262,7 +262,7 @@ describe("page visual integration source smoke", () => {
   it("uses static catalog link and core navigation", () => {
     expect(navbarSource).toContain("trpc.animals.listPublic.useQuery");
     expect(navbarSource).toContain('"/animals"');
-    expect(navbarSource).toContain("Каталог животных");
+    expect(navbarSource).toContain("Каталог");
     // "онлайн" indicator was intentionally removed as non-functional
     expect(navbarSource).not.toContain("онлайн");
   });
