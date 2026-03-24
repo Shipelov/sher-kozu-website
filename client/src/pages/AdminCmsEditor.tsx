@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
 import { Link } from "wouter";
@@ -32,7 +32,9 @@ import {
   ChevronDown,
   ChevronUp,
   ExternalLink,
+  Crop,
 } from "lucide-react";
+import ImageCropEditor from "@/components/ImageCropEditor";
 
 /* ─── Block type display helpers ─── */
 const TYPE_LABELS: Record<string, { label: string; icon: typeof Type; color: string }> = {
@@ -69,7 +71,7 @@ export default function AdminCmsEditor() {
   const [uploading, setUploading] = useState(false);
   const [expandedBlocks, setExpandedBlocks] = useState<Set<number>>(new Set());
   const [seedDialogOpen, setSeedDialogOpen] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [showCropEditor, setShowCropEditor] = useState(false);
 
   const utils = trpc.useUtils();
 
@@ -85,8 +87,9 @@ export default function AdminCmsEditor() {
       utils.cms.getPageBlocks.invalidate();
       toast.success("Контент обновлён");
       setEditBlock(null);
+      setShowCropEditor(false);
     },
-    onError: (err) => toast.error(`Ошибка: ${err.message}`),
+    onError: (err: { message: string }) => toast.error(`Ошибка: ${err.message}`),
   });
 
   const toggleVisibility = trpc.cms.toggleVisibility.useMutation({
@@ -95,29 +98,34 @@ export default function AdminCmsEditor() {
       utils.cms.getPageBlocks.invalidate();
       toast.success("Видимость изменена");
     },
-    onError: (err) => toast.error(`Ошибка: ${err.message}`),
+    onError: (err: { message: string }) => toast.error(`Ошибка: ${err.message}`),
   });
 
   const uploadImage = trpc.cms.uploadImage.useMutation({
-    onSuccess: (data) => {
+    onSuccess: (data: { url: string }) => {
       setEditImageUrl(data.url);
       setUploading(false);
+      setShowCropEditor(false);
       toast.success("Изображение загружено");
     },
-    onError: (err) => {
+    onError: (err: { message: string }) => {
       setUploading(false);
       toast.error(`Ошибка загрузки: ${err.message}`);
     },
   });
 
   const seedDefaults = trpc.cms.seedDefaults.useMutation({
-    onSuccess: (data) => {
+    onSuccess: (data: { seeded: boolean; count?: number }) => {
       utils.cms.listAll.invalidate();
       utils.cms.getPageBlocks.invalidate();
       setSeedDialogOpen(false);
-      toast.success(`Инициализировано ${data.seeded} блоков для страницы "${activePage}"`);
+      if (data.seeded) {
+        toast.success(`Инициализировано ${data.count} блоков`);
+      } else {
+        toast.info("Блоки уже существуют");
+      }
     },
-    onError: (err) => toast.error(`Ошибка: ${err.message}`),
+    onError: (err: { message: string }) => toast.error(`Ошибка: ${err.message}`),
   });
 
   const deleteBlock = trpc.cms.deleteBlock.useMutation({
@@ -126,12 +134,15 @@ export default function AdminCmsEditor() {
       utils.cms.getPageBlocks.invalidate();
       toast.success("Блок удалён");
     },
-    onError: (err) => toast.error(`Ошибка: ${err.message}`),
+    onError: (err: { message: string }) => toast.error(`Ошибка: ${err.message}`),
   });
 
   /* ─── Filtered blocks for active page ─── */
   const pageBlocks = useMemo(
-    () => (allBlocks ?? []).filter((b: CmsBlock) => b.page === activePage).sort((a: CmsBlock, b: CmsBlock) => a.sortOrder - b.sortOrder),
+    () =>
+      (allBlocks ?? [])
+        .filter((b: CmsBlock) => b.page === activePage)
+        .sort((a: CmsBlock, b: CmsBlock) => a.sortOrder - b.sortOrder),
     [allBlocks, activePage]
   );
 
@@ -140,6 +151,7 @@ export default function AdminCmsEditor() {
     setEditBlock(block);
     setEditContent(block.content ?? "");
     setEditImageUrl(block.imageUrl ?? "");
+    setShowCropEditor(false);
   }, []);
 
   const toggleExpand = useCallback((id: number) => {
@@ -160,28 +172,17 @@ export default function AdminCmsEditor() {
     });
   }, [editBlock, editContent, editImageUrl, updateContent]);
 
-  const handleFileUpload = useCallback(
-    async (e: React.ChangeEvent<HTMLInputElement>) => {
-      const file = e.target.files?.[0];
-      if (!file || !editBlock) return;
-
-      if (file.size > 5 * 1024 * 1024) {
-        toast.error("Файл слишком большой (макс. 5 МБ)");
-        return;
-      }
-
+  /* ─── Crop complete handler ─── */
+  const handleCropComplete = useCallback(
+    (data: { base64Data: string; fileName: string; mimeType: string }) => {
+      if (!editBlock) return;
       setUploading(true);
-      const reader = new FileReader();
-      reader.onload = () => {
-        const base64 = (reader.result as string).split(",")[1];
-        uploadImage.mutate({
-          blockId: editBlock.id,
-          fileName: file.name,
-          mimeType: file.type,
-          base64Data: base64,
-        });
-      };
-      reader.readAsDataURL(file);
+      uploadImage.mutate({
+        blockId: editBlock.id,
+        fileName: data.fileName,
+        mimeType: data.mimeType,
+        base64Data: data.base64Data,
+      });
     },
     [editBlock, uploadImage]
   );
@@ -323,7 +324,7 @@ export default function AdminCmsEditor() {
                               )}
                               <Switch
                                 checked={block.visible}
-                                onCheckedChange={(checked) =>
+                                onCheckedChange={(checked: boolean) =>
                                   toggleVisibility.mutate({ id: block.id, visible: checked })
                                 }
                               />
@@ -391,13 +392,24 @@ export default function AdminCmsEditor() {
       </div>
 
       {/* ─── Edit dialog ─── */}
-      <Dialog open={!!editBlock} onOpenChange={(open) => !open && setEditBlock(null)}>
-        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+      <Dialog
+        open={!!editBlock}
+        onOpenChange={(open) => {
+          if (!open) {
+            setEditBlock(null);
+            setShowCropEditor(false);
+          }
+        }}
+      >
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               Редактирование: {editBlock?.blockKey}
               {editBlock && (
-                <Badge variant="secondary" className={`${TYPE_LABELS[editBlock.contentType]?.color ?? ""} text-xs`}>
+                <Badge
+                  variant="secondary"
+                  className={`${TYPE_LABELS[editBlock.contentType]?.color ?? ""} text-xs`}
+                >
                   {TYPE_LABELS[editBlock.contentType]?.label ?? editBlock.contentType}
                 </Badge>
               )}
@@ -465,7 +477,8 @@ export default function AdminCmsEditor() {
                     {editBlock.contentType === "image" ? "Изображение" : "Изображение (опционально)"}
                   </label>
 
-                  {editImageUrl && (
+                  {/* Current image preview */}
+                  {editImageUrl && !showCropEditor && (
                     <div className="mb-3 relative inline-block">
                       <img
                         src={editImageUrl}
@@ -482,53 +495,67 @@ export default function AdminCmsEditor() {
                     </div>
                   )}
 
-                  <div className="flex gap-2">
-                    <Input
-                      value={editImageUrl}
-                      onChange={(e) => setEditImageUrl(e.target.value)}
-                      placeholder="URL изображения или загрузите файл"
-                      className="flex-1"
-                    />
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={handleFileUpload}
-                    />
-                    <Button
-                      variant="outline"
-                      onClick={() => fileInputRef.current?.click()}
-                      disabled={uploading}
-                    >
-                      {uploading ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <Upload className="h-4 w-4" />
+                  {/* Crop editor or upload buttons */}
+                  {showCropEditor ? (
+                    <div className="border border-border rounded-xl p-4 bg-muted/30">
+                      <ImageCropEditor
+                        onCropComplete={handleCropComplete}
+                        onCancel={() => setShowCropEditor(false)}
+                        aspectRatio={16 / 9}
+                        maxOutputWidth={1200}
+                        frameLabel="Область обрезки"
+                      />
+                      {uploading && (
+                        <div className="flex items-center justify-center gap-2 mt-3 text-sm text-muted-foreground">
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          Загрузка на сервер...
+                        </div>
                       )}
-                    </Button>
-                  </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {/* URL input */}
+                      <Input
+                        value={editImageUrl}
+                        onChange={(e) => setEditImageUrl(e.target.value)}
+                        placeholder="URL изображения или загрузите файл ниже"
+                      />
+
+                      {/* Upload with crop button */}
+                      <Button
+                        variant="outline"
+                        className="w-full"
+                        onClick={() => setShowCropEditor(true)}
+                      >
+                        <Crop className="h-4 w-4 mr-2" />
+                        Загрузить и обрезать изображение
+                      </Button>
+
+                      <p className="text-xs text-muted-foreground text-center">
+                        Большие изображения (&gt;2 МБ) будут автоматически сжаты. Вы сможете визуально обрезать фото перед загрузкой.
+                      </p>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
           )}
 
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setEditBlock(null)}>
-              Отмена
-            </Button>
-            <Button
-              onClick={handleSave}
-              disabled={updateContent.isPending}
-            >
-              {updateContent.isPending ? (
-                <Loader2 className="h-4 w-4 animate-spin mr-1" />
-              ) : (
-                <Save className="h-4 w-4 mr-1" />
-              )}
-              Сохранить
-            </Button>
-          </DialogFooter>
+          {!showCropEditor && (
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setEditBlock(null)}>
+                Отмена
+              </Button>
+              <Button onClick={handleSave} disabled={updateContent.isPending}>
+                {updateContent.isPending ? (
+                  <Loader2 className="h-4 w-4 animate-spin mr-1" />
+                ) : (
+                  <Save className="h-4 w-4 mr-1" />
+                )}
+                Сохранить
+              </Button>
+            </DialogFooter>
+          )}
         </DialogContent>
       </Dialog>
 
@@ -539,8 +566,8 @@ export default function AdminCmsEditor() {
             <DialogTitle>Инициализация контент-блоков</DialogTitle>
           </DialogHeader>
           <p className="text-sm text-muted-foreground">
-            Будут созданы все контент-блоки для страницы «{PAGE_LABELS[activePage]}» с текущими значениями из кода.
-            Существующие блоки не будут перезаписаны.
+            Будут созданы все контент-блоки для страницы «{PAGE_LABELS[activePage]}» с текущими
+            значениями из кода. Существующие блоки не будут перезаписаны.
           </p>
           <DialogFooter>
             <Button variant="outline" onClick={() => setSeedDialogOpen(false)}>

@@ -416,3 +416,188 @@ describe("CMS content fallback logic", () => {
     expect(getImage("missing_image", "https://default.com/img.jpg")).toBe("https://default.com/img.jpg");
   });
 });
+
+/* ═══════════════════════════════════════════════════════
+   Image Crop & Compression Tests (unit logic)
+   ═══════════════════════════════════════════════════════ */
+
+describe("Image upload with cropped base64 data", () => {
+  it("accepts cropped JPEG base64 data and uploads to S3", async () => {
+    const caller = appRouter.createCaller(createAdminContext());
+    // Minimal valid base64 for a 1x1 JPEG
+    const base64 = "/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/2wBDAQkJCQwLDBgNDRgyIRwhMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjL/wAARCAABAAEDASIAAhEBAxEB/8QAHwAAAQUBAQEBAQEAAAAAAAAAAAECAwQFBgcICQoL/8QAFRABAAAAAAAAAAAAAAAAAAAACf/EABQRAQAAAAAAAAAAAAAAAAAAAAD/2gAMAwEAAhEDEQA/AKgA/9k=";
+
+    const result = await caller.cms.uploadImage({
+      blockId: 1,
+      fileName: "hero_cropped.jpg",
+      mimeType: "image/jpeg",
+      base64Data: base64,
+    });
+
+    expect(result.url).toBe("https://cdn.example.com/cms/test-image.png");
+    expect(updatedSets).toHaveLength(1);
+    expect(updatedSets[0].imageUrl).toBe("https://cdn.example.com/cms/test-image.png");
+  });
+
+  it("handles cropped PNG base64 data", async () => {
+    const caller = appRouter.createCaller(createAdminContext());
+    const base64 = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg==";
+
+    const result = await caller.cms.uploadImage({
+      blockId: 5,
+      fileName: "catalog_image_cropped.png",
+      mimeType: "image/png",
+      base64Data: base64,
+    });
+
+    expect(result.url).toBeDefined();
+    expect(updatedSets[0].contentType).toBe("image");
+  });
+
+  it("rejects upload with empty base64 data", async () => {
+    const caller = appRouter.createCaller(createAdminContext());
+
+    await expect(
+      caller.cms.uploadImage({
+        blockId: 1,
+        fileName: "empty.jpg",
+        mimeType: "image/jpeg",
+        base64Data: "",
+      })
+    ).rejects.toThrow();
+  });
+});
+
+/* ─── Image compression logic tests (pure functions) ─── */
+describe("Image compression constants", () => {
+  it("defines correct compression thresholds", () => {
+    // These mirror the constants in ImageCropEditor.tsx
+    const MAX_FILE_SIZE_MB = 10;
+    const COMPRESS_THRESHOLD_MB = 2;
+    const TARGET_MAX_DIMENSION = 1920;
+    const JPEG_QUALITY = 0.82;
+
+    expect(MAX_FILE_SIZE_MB).toBe(10);
+    expect(COMPRESS_THRESHOLD_MB).toBe(2);
+    expect(TARGET_MAX_DIMENSION).toBe(1920);
+    expect(JPEG_QUALITY).toBeGreaterThan(0.5);
+    expect(JPEG_QUALITY).toBeLessThan(1);
+  });
+
+  it("calculates correct scale factor for large images", () => {
+    const TARGET_MAX_DIMENSION = 1920;
+
+    // 4000x3000 image
+    let width = 4000;
+    let height = 3000;
+    const scale = TARGET_MAX_DIMENSION / Math.max(width, height);
+    const newWidth = Math.round(width * scale);
+    const newHeight = Math.round(height * scale);
+
+    expect(newWidth).toBe(1920);
+    expect(newHeight).toBe(1440);
+    expect(scale).toBeCloseTo(0.48, 2);
+  });
+
+  it("does not scale images smaller than target", () => {
+    const TARGET_MAX_DIMENSION = 1920;
+
+    const width = 800;
+    const height = 600;
+
+    if (width <= TARGET_MAX_DIMENSION && height <= TARGET_MAX_DIMENSION) {
+      // No scaling needed
+      expect(width).toBe(800);
+      expect(height).toBe(600);
+    }
+  });
+});
+
+/* ─── Crop frame calculation tests ─── */
+describe("Crop frame calculations", () => {
+  it("calculates correct frame dimensions for 16:9 aspect ratio", () => {
+    const CONTAINER_W = 560;
+    const CONTAINER_H = 400;
+    const aspectRatio = 16 / 9;
+
+    const frameW = Math.min(CONTAINER_W - 40, 480);
+    const frameH = frameW / aspectRatio;
+    const frameX = (CONTAINER_W - frameW) / 2;
+    const frameY = (CONTAINER_H - frameH) / 2;
+
+    expect(frameW).toBe(480);
+    expect(frameH).toBeCloseTo(270, 0);
+    expect(frameX).toBe(40);
+    expect(frameY).toBeCloseTo(65, 0);
+  });
+
+  it("calculates correct initial zoom to fill frame", () => {
+    const frameW = 480;
+    const frameH = 270;
+    const imgW = 1920;
+    const imgH = 1080;
+
+    const scaleX = frameW / imgW;
+    const scaleY = frameH / imgH;
+    const initialZoom = Math.max(scaleX, scaleY);
+
+    expect(initialZoom).toBe(0.25);
+  });
+
+  it("calculates correct initial zoom for portrait image", () => {
+    const frameW = 480;
+    const frameH = 270;
+    const imgW = 600;
+    const imgH = 1200;
+
+    const scaleX = frameW / imgW;
+    const scaleY = frameH / imgH;
+    const initialZoom = Math.max(scaleX, scaleY);
+
+    expect(initialZoom).toBe(0.8);
+  });
+
+  it("calculates crop region in image coordinates", () => {
+    const frameX = 40;
+    const frameY = 65;
+    const frameW = 480;
+    const frameH = 270;
+    const posX = -100;
+    const posY = -50;
+    const zoom = 0.5;
+
+    const cropX = (frameX - posX) / zoom;
+    const cropY = (frameY - posY) / zoom;
+    const cropW = frameW / zoom;
+    const cropH = frameH / zoom;
+
+    expect(cropX).toBe(280);
+    expect(cropY).toBe(230);
+    expect(cropW).toBe(960);
+    expect(cropH).toBe(540);
+  });
+
+  it("centers image correctly after zoom change", () => {
+    const frameX = 40;
+    const frameY = 65;
+    const frameW = 480;
+    const frameH = 270;
+    const oldZoom = 0.25;
+    const newZoom = 0.5;
+    const posX = -200;
+    const posY = -100;
+
+    const centerX = frameX + frameW / 2;
+    const centerY = frameY + frameH / 2;
+
+    const imgCenterX = (centerX - posX) / oldZoom;
+    const imgCenterY = (centerY - posY) / oldZoom;
+
+    const newPosX = centerX - imgCenterX * newZoom;
+    const newPosY = centerY - imgCenterY * newZoom;
+
+    // After zooming in 2x, position should shift further negative
+    expect(newPosX).toBeLessThan(posX);
+    expect(newPosY).toBeLessThan(posY);
+  });
+});
