@@ -24,7 +24,7 @@
 - Badge: "ЭЛИТНЫЕ ПОРОДЫ" ✓
 - Title: "Генетика европейского уровня — основа премиального качества" ✓
 - Large photo of goats and sheep ✓
-- 4 breed cards: Англо-нубийская коза, Альпийская коза, Остфризская овца, Лаконская овца ✓
+- 4 breed cards: Англо-нубийская коза, Альпийская коза, Остфризская овца, Овца породы Лакон ✓
 - Each card has: origin badge, name, description, character ✓
 
 ## Remaining sections (gallery, stats, CTA, footer) — need to scroll further

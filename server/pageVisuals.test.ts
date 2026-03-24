@@ -116,7 +116,7 @@ describe("page visual integration source smoke", () => {
     expect(aboutFarmSource).toContain("Англо-нубийская коза");
     expect(aboutFarmSource).toContain("Альпийская коза");
     expect(aboutFarmSource).toContain("Остфризская овца");
-    expect(aboutFarmSource).toContain("Лаконская овца");
+    expect(aboutFarmSource).toContain("Овца породы Лакон");
 
     // Gallery
     expect(aboutFarmSource).toContain("Жизнь на ферме");
