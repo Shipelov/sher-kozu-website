@@ -86,6 +86,76 @@ describe("Navbar: core navigation preserved", () => {
     expect(NAVBAR_SRC).toContain('"/admin"');
     expect(NAVBAR_SRC).toContain("Админ-панель");
   });
+
+  it("has B2B partners link in navbar", () => {
+    expect(NAVBAR_SRC).toContain('"/partners"');
+    expect(NAVBAR_SRC).toContain('"B2B"');
+    expect(NAVBAR_SRC).toContain("Briefcase");
+  });
+
+  it("has FAQ link in navbar", () => {
+    expect(NAVBAR_SRC).toContain('"/faq"');
+    expect(NAVBAR_SRC).toContain('"FAQ"');
+  });
+
+  it("has tracker link for authenticated users", () => {
+    expect(NAVBAR_SRC).toContain('"/tracker"');
+    expect(NAVBAR_SRC).toContain("Трекер продуктов");
+  });
+});
+
+describe("Navbar: fixed button order", () => {
+  it("uses a single allNavItems array with fixed order", () => {
+    expect(NAVBAR_SRC).toContain("allNavItems");
+    expect(NAVBAR_SRC).toContain("visibleNavItems");
+    // Should NOT have separate navItems and authNavItems
+    expect(NAVBAR_SRC).not.toMatch(/\bconst navItems\b/);
+    expect(NAVBAR_SRC).not.toMatch(/\bconst authNavItems\b/);
+  });
+
+  it("defines items in correct order: Главная, Мой кабинет, О ферме, Каталог, Трекер, Клуб, FAQ, B2B", () => {
+    const expectedOrder = [
+      "Главная",
+      "Мой кабинет",
+      "О ферме",
+      "Каталог животных",
+      "Трекер продуктов",
+      "Клуб",
+      "FAQ",
+      "B2B",
+    ];
+    let lastIndex = -1;
+    for (const label of expectedOrder) {
+      const idx = NAVBAR_SRC.indexOf(`"${label}"`);
+      expect(idx).toBeGreaterThan(lastIndex);
+      lastIndex = idx;
+    }
+  });
+
+  it("marks Мой кабинет and Трекер as authOnly", () => {
+    // Check that authOnly: true appears on the same line as the label (skip comment lines)
+    const dashboardLine = NAVBAR_SRC.split("\n").find((l: string) => l.includes('"\u041c\u043e\u0439 \u043a\u0430\u0431\u0438\u043d\u0435\u0442"') && l.includes("authOnly"));
+    expect(dashboardLine).toContain("authOnly: true");
+    const trackerLine = NAVBAR_SRC.split("\n").find((l: string) => l.includes('"\u0422\u0440\u0435\u043a\u0435\u0440 \u043f\u0440\u043e\u0434\u0443\u043a\u0442\u043e\u0432"') && l.includes("authOnly"));
+    expect(trackerLine).toContain("authOnly: true");
+  });
+
+  it("marks B2B as publicly visible (authOnly: false)", () => {
+    const b2bLine = NAVBAR_SRC.split("\n").find((l: string) => l.includes('"B2B"'));
+    expect(b2bLine).toContain("authOnly: false");
+  });
+
+  it("filters visibleNavItems based on authentication state", () => {
+    expect(NAVBAR_SRC).toContain("allNavItems.filter");
+    expect(NAVBAR_SRC).toContain("!item.authOnly || isAuthenticated");
+  });
+
+  it("uses visibleNavItems for both desktop and mobile rendering", () => {
+    const matches = NAVBAR_SRC.match(/visibleNavItems\.map/g);
+    // At least 2 occurrences: desktop nav and mobile nav
+    expect(matches).not.toBeNull();
+    expect(matches!.length).toBeGreaterThanOrEqual(2);
+  });
 });
 
 describe("Navbar Primary Animal: invalidation integration", () => {

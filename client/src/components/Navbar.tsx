@@ -26,6 +26,7 @@ import {
   User,
   UserPlus,
   ChevronDown,
+  Briefcase,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import AuthModal from "./AuthModal";
@@ -83,23 +84,24 @@ export default function Navbar() {
 
   const isAdmin = user?.role === "admin";
 
-  const navItems = useMemo(
+  /* Фиксированный порядок: Главная, Мой кабинет, О ферме, Каталог, Трекер, Клуб, FAQ, B2B */
+  const allNavItems = useMemo(
     () => [
-      { href: "/", label: "Главная", icon: Home },
-      { href: "/animals", label: "Каталог животных", icon: PawPrint },
-      { href: "/about", label: "О ферме", icon: Leaf },
-      { href: "/club", label: "Клуб", icon: Users },
-      { href: "/faq", label: "FAQ", icon: HelpCircle },
+      { href: "/", label: "Главная", icon: Home, authOnly: false },
+      { href: "/dashboard", label: "Мой кабинет", icon: LayoutDashboard, authOnly: true },
+      { href: "/about", label: "О ферме", icon: Leaf, authOnly: false },
+      { href: "/animals", label: "Каталог животных", icon: PawPrint, authOnly: false },
+      { href: "/tracker", label: "Трекер продуктов", icon: Milk, authOnly: true },
+      { href: "/club", label: "Клуб", icon: Users, authOnly: false },
+      { href: "/faq", label: "FAQ", icon: HelpCircle, authOnly: false },
+      { href: "/partners", label: "B2B", icon: Briefcase, authOnly: false },
     ],
     [],
   );
 
-  const authNavItems = useMemo(
-    () => [
-      { href: "/dashboard", label: "Мой кабинет", icon: LayoutDashboard },
-      { href: "/tracker", label: "Трекер продуктов", icon: Milk },
-    ],
-    [],
+  const visibleNavItems = useMemo(
+    () => allNavItems.filter((item) => !item.authOnly || isAuthenticated),
+    [allNavItems, isAuthenticated],
   );
 
   // Close user menu on outside click
@@ -138,9 +140,9 @@ export default function Navbar() {
             </span>
           </Link>
 
-          {/* Desktop nav */}
+          {/* Desktop nav — fixed order */}
           <nav className="hidden items-center gap-1 md:flex">
-            {navItems.map((item) => {
+            {visibleNavItems.map((item) => {
               const isActive = location === item.href;
               const Icon = item.icon;
               return (
@@ -159,26 +161,6 @@ export default function Navbar() {
                 </Link>
               );
             })}
-            {isAuthenticated &&
-              authNavItems.map((item) => {
-                const isActive = location === item.href;
-                const Icon = item.icon;
-                return (
-                  <Link key={item.href} href={item.href}>
-                    <motion.div
-                      whileHover={{ scale: 1.03 }}
-                      className={`flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
-                        isActive
-                          ? "bg-primary/10 text-primary"
-                          : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                      }`}
-                    >
-                      <Icon className="h-4 w-4" />
-                      {item.label}
-                    </motion.div>
-                  </Link>
-                );
-              })}
           </nav>
 
           {/* Right side: auth state */}
@@ -321,8 +303,8 @@ export default function Navbar() {
                 </div>
               )}
 
-              {/* Nav items */}
-              {navItems.map((item) => {
+              {/* Nav items — fixed order */}
+              {visibleNavItems.map((item) => {
                 const isActive = location === item.href;
                 const Icon = item.icon;
                 return (
@@ -345,32 +327,6 @@ export default function Navbar() {
                   </Link>
                 );
               })}
-
-              {/* Auth-only nav items */}
-              {isAuthenticated &&
-                authNavItems.map((item) => {
-                  const isActive = location === item.href;
-                  const Icon = item.icon;
-                  return (
-                    <Link key={item.href} href={item.href}>
-                      <button
-                        type="button"
-                        onClick={() => setMobileOpen(false)}
-                        className={`flex w-full items-center justify-between rounded-2xl px-4 py-3 text-left transition-colors ${
-                          isActive
-                            ? "bg-primary/10 text-primary"
-                            : "bg-card text-foreground hover:bg-muted"
-                        }`}
-                      >
-                        <span className="flex items-center gap-3 text-sm font-medium">
-                          <Icon className="h-4 w-4" />
-                          {item.label}
-                        </span>
-                        <ChevronRight className="h-4 w-4" />
-                      </button>
-                    </Link>
-                  );
-                })}
 
               {/* Profile link (mobile) */}
               {isAuthenticated && (
