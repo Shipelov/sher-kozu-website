@@ -1,0 +1,25 @@
+{
+  "query": "SELECT DISTINCT breed, animalSpecies, COUNT(*) as cnt FROM animals GROUP BY breed, animalSpecies;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3J2fXRHx8d1YjF6.root --database mLhmg5VmBsEBpZiYqdnhMQ --execute SELECT DISTINCT breed, animalSpecies, COUNT(*) as cnt FROM animals GROUP BY breed, animalSpecies;",
+  "rows": [
+    {
+      "breed": "Лакон",
+      "animalSpecies": "sheep",
+      "cnt": "1"
+    },
+    {
+      "breed": "Зааненская",
+      "animalSpecies": "goat",
+      "cnt": "1"
+    },
+    {
+      "breed": "Казахская тонкорунная",
+      "animalSpecies": "sheep",
+      "cnt": "1"
+    }
+  ],
+  "messages": [],
+  "stdout": "breed\tanimalSpecies\tcnt\nЛакон\tsheep\t1\nЗааненская\tgoat\t1\nКазахская тонкорунная\tsheep\t1\n",
+  "stderr": "",
+  "execution_time_ms": 371
+}
