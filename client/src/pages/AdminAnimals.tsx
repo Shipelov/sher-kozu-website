@@ -1173,6 +1173,9 @@ function AnimalGalleryManager({
     onSuccess: async () => {
       await utils.animalPhotos.list.invalidate({ animalSlug });
       await utils.adminAnimals.list.invalidate();
+      await utils.animals.listPublic.invalidate();
+      await utils.animals.getBySlug.invalidate({ slug: animalSlug });
+      await utils.animals.ownerDashboard.invalidate();
       toast.success("Фото загружено", {
         description: "Новое изображение добавлено в галерею животного.",
       });
@@ -1186,6 +1189,9 @@ function AnimalGalleryManager({
     onSuccess: async () => {
       await utils.animalPhotos.list.invalidate({ animalSlug });
       await utils.adminAnimals.list.invalidate();
+      await utils.animals.listPublic.invalidate();
+      await utils.animals.getBySlug.invalidate({ slug: animalSlug });
+      await utils.animals.ownerDashboard.invalidate();
       toast.success("Фото удалено");
     },
     onError: (error) => {
@@ -1197,6 +1203,9 @@ function AnimalGalleryManager({
     onSuccess: async () => {
       await utils.animalPhotos.list.invalidate({ animalSlug });
       await utils.adminAnimals.list.invalidate();
+      await utils.animals.listPublic.invalidate();
+      await utils.animals.getBySlug.invalidate({ slug: animalSlug });
+      await utils.animals.ownerDashboard.invalidate();
       toast.success("Обложка обновлена");
     },
     onError: (error) => {

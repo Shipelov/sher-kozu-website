@@ -731,20 +731,58 @@ export async function getOwnerDashboardData(ownerOpenId: string) {
   const primaryOwnership = primaryOwnershipGroup?.[0] ?? null;
 
   // Build allOwnerships — one entry per animal the owner has booked/paid
-  const allOwnerships = sortedGroups.map((group) => {
+  // Resolve cover images for all owned animals using the same chain as enrichAnimalWithShareMetrics
+  const allOwnerships = await Promise.all(sortedGroups.map(async (group) => {
     const first = group[0];
     const slotsCount = group.length;
     const totalSlots = normalizeOwnershipSlots(first.totalOwnershipSlots ?? 10);
     const sharePercent = slotsCount * Math.round(getPercentPerSlot(totalSlots));
     const hasPending = group.some((item: any) => item.status === "pending_payment");
     const hasActive = group.some((item: any) => item.status === "active");
+
+    // Resolve cover: animalMedia cover → animalPhotos cover → first photo → animal.coverImageUrl
+    let resolvedCover = first.coverImageUrl;
+    if (!resolvedCover || resolvedCover === "NULL") {
+      resolvedCover = null;
+    }
+    // Check animalMedia for cover
+    const mediaCover = await db
+      .select({ url: animalMedia.url })
+      .from(animalMedia)
+      .where(and(eq(animalMedia.animalId, first.animalId), eq(animalMedia.isCover, 1)))
+      .limit(1);
+    if (mediaCover[0]?.url) {
+      resolvedCover = mediaCover[0].url;
+    } else {
+      // Check animalPhotos for cover
+      const photoCover = await db
+        .select({ url: animalPhotos.url })
+        .from(animalPhotos)
+        .where(and(eq(animalPhotos.animalSlug, first.animalSlug), eq(animalPhotos.isCover, 1)))
+        .limit(1);
+      if (photoCover[0]?.url) {
+        resolvedCover = photoCover[0].url;
+      } else {
+        // Fallback to first photo
+        const firstPhoto = await db
+          .select({ url: animalPhotos.url })
+          .from(animalPhotos)
+          .where(eq(animalPhotos.animalSlug, first.animalSlug))
+          .orderBy(asc(animalPhotos.sortOrder), desc(animalPhotos.createdAt))
+          .limit(1);
+        if (firstPhoto[0]?.url) {
+          resolvedCover = firstPhoto[0].url;
+        }
+      }
+    }
+
     return {
       animalId: first.animalId,
       animalSlug: first.animalSlug,
       animalName: first.animalName,
       species: first.species,
       breed: first.breed,
-      coverImageUrl: first.coverImageUrl,
+      coverImageUrl: resolvedCover,
       sharePercent,
       slotsCount,
       status: hasPending ? "pending_payment" as const : "active" as const,
@@ -754,7 +792,7 @@ export async function getOwnerDashboardData(ownerOpenId: string) {
       priceMinorTotal: group.reduce((sum: number, item: any) => sum + Number(item.priceMinor ?? 0), 0),
       slotIndexes: group.map((item: any) => item.slotIndex).sort((a: number, b: number) => a - b),
     };
-  });
+  }));
   const currentAnimal = primaryOwnership ? await getAnimalBySlug(primaryOwnership.animalSlug, ownerOpenId) : null;
   const mySharePercent = currentAnimal?.mySharePercent ?? (primaryOwnershipGroup ? primaryOwnershipGroup.length * Math.round(getPercentPerSlot(normalizeOwnershipSlots(primaryOwnership.totalOwnershipSlots ?? 10))) : 0);
   const trackerData = primaryOwnership ? await getProductTrackerData(ownerOpenId, primaryOwnership.animalSlug) : { productBatches: [], compositionSnapshots: [], monthlyMetrics: [], deliveries: [] };
