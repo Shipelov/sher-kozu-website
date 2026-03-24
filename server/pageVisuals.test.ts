@@ -292,15 +292,14 @@ describe("page visual integration source smoke", () => {
   });
 
   /* ─── Admin animals ─── */
-  it("shows explicit auth, role diagnostics, share metrics and admin fallbacks on admin animals page", () => {
-    expect(adminAnimalsSource).toContain("Маршрут `/admin/animals` доступен только после авторизации.");
+  it("shows auth, role diagnostics, share metrics and admin fallbacks on admin animals page", () => {
+    expect(adminAnimalsSource).toContain("необходимо войти в аккаунт");
     expect(adminAnimalsSource).toContain("NOT_ADMIN_ERR_MSG");
-    expect(adminAnimalsSource).toContain("Войти и открыть админку животных");
-    expect(adminAnimalsSource).toContain("Роль:");
+    expect(adminAnimalsSource).toContain("getLoginUrl");
     expect(adminAnimalsSource).toContain("Распределение долей");
     expect(adminAnimalsSource).toContain("bg-emerald-500");
     expect(adminAnimalsSource).toContain("bg-stone-200");
-    expect(adminAnimalsSource).toContain("фактическое распределение 10%-долей");
+    expect(adminAnimalsSource).toContain("Избранное");
   });
 
   /* ─── Animals catalog ─── */

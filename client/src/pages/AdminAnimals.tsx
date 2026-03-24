@@ -705,14 +705,14 @@ function ShareDistributionPanel({ animals }: { animals: AdminAnimalRecord[] }) {
             <CardContent className="p-4">
               <p className="text-xs uppercase tracking-[0.18em] text-stone-700/80">Свободно слотов</p>
               <p className="mt-2 text-2xl font-semibold text-stone-900">{summary.freeSlots}</p>
-              <p className="text-sm text-stone-700/80">готово к продаже в профилях животных</p>
+              <p className="text-sm text-stone-700/80">к продаже</p>
             </CardContent>
           </Card>
           <Card className="rounded-[1.5rem] border-amber-100 bg-amber-50/80 shadow-none">
             <CardContent className="p-4">
               <p className="text-xs uppercase tracking-[0.18em] text-amber-800/80">Средняя занятость</p>
               <p className="mt-2 text-2xl font-semibold text-amber-900">{summary.averageOccupancy}%</p>
-              <p className="text-sm text-amber-800/80">по всем карточкам каталога</p>
+              <p className="text-sm text-amber-800/80">по каталогу</p>
             </CardContent>
           </Card>
           <Card className="rounded-[1.5rem] border-primary/15 bg-primary/5 shadow-none">
@@ -838,7 +838,6 @@ function OwnershipManagementDialog({
           </DialogTitle>
           <DialogDescription>
             {activeCount} активных из {animal?.totalOwnershipSlots ?? 10} слотов.
-            Здесь можно просмотреть все ownerships и изменить их статус.
           </DialogDescription>
         </DialogHeader>
 
@@ -848,7 +847,7 @@ function OwnershipManagementDialog({
           </div>
         ) : ownerships.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-border bg-secondary/20 px-5 py-8 text-center text-sm text-muted-foreground">
-            У этого животного пока нет ни одного ownership. Покупки появятся здесь автоматически.
+            Пока нет владельцев. Покупки появятся автоматически.
           </div>
         ) : (
           <ScrollRemaining totalItems={ownerships.length} itemHeight={100} className="space-y-3 max-h-[520px] overflow-y-auto pr-1">
@@ -994,11 +993,11 @@ function AdminAnimalsTable({
                       <div className="flex flex-wrap items-center gap-2">
                         <p className="font-semibold text-foreground">{animal.name}</p>
                         {animal.isFeatured ? (
-                          <Badge className="rounded-full border border-primary/20 bg-primary/10 text-primary">Featured</Badge>
+                          <Badge className="rounded-full border border-primary/20 bg-primary/10 text-primary">Избранное</Badge>
                         ) : null}
                       </div>
                       <p className="text-xs text-muted-foreground">{getSpeciesLabel(animal.species)} · {animal.breed || "Порода уточняется"}</p>
-                      <p className="text-xs text-muted-foreground">slug: {animal.slug}</p>
+
                     </div>
                   </div>
                 </TableCell>
@@ -1028,7 +1027,7 @@ function AdminAnimalsTable({
                   <div className="space-y-1.5">
                     <p className="font-medium text-foreground">{formatPrice(animal.fullPriceMinor)}</p>
                     <p className="text-xs text-muted-foreground">1 слот: {formatPrice(animal.shareUnitPriceMinor)}</p>
-                    <p className="text-xs text-muted-foreground">sort: {animal.sortOrder ?? 0}</p>
+
                   </div>
                 </TableCell>
                 <TableCell>
@@ -1505,7 +1504,7 @@ function AnimalEditorCard({
             <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:gap-5">
               <div className="min-w-0 lg:w-[180px] lg:flex-none">
                 <Label htmlFor="animal-price">Полная цена животного в рублях</Label>
-                <p className="mt-1 text-sm font-medium text-primary">Enter price in ₽</p>
+
               </div>
               <div className="min-w-0 lg:flex-[0_1_620px]">
                 <div className="flex h-14 items-center overflow-hidden rounded-2xl border border-primary/20 bg-white shadow-sm focus-within:border-primary/40 focus-within:ring-2 focus-within:ring-primary/10">
@@ -1524,7 +1523,7 @@ function AnimalEditorCard({
                 </div>
               </div>
             </div>
-            <p className="mt-3 text-xs text-muted-foreground">Вводите стоимость в ₽. Система автоматически переведёт её во внутренний формат и рассчитает цену доли 10%.</p>
+            <p className="mt-3 text-xs text-muted-foreground">Цена доли 10% рассчитывается автоматически.</p>
           </div>
 
           <div className="rounded-[1.75rem] border border-primary/15 bg-primary/5 p-4 shadow-sm">
@@ -1533,15 +1532,15 @@ function AnimalEditorCard({
               <div className="rounded-2xl border border-white/60 bg-white px-4 py-3">
                 <p className="text-xs uppercase tracking-[0.14em] text-muted-foreground">100% животного</p>
                 <p className="mt-2 text-xl font-semibold text-foreground">{formatRublesFromMinor(values.baseMonthlyPriceMinor)}</p>
-                <p className="mt-1 text-xs text-muted-foreground">Эта сумма увидится в admin и в карточке животного как полная цена.</p>
+
               </div>
               <div className="rounded-2xl border border-white/60 bg-white px-4 py-3">
                 <p className="text-xs uppercase tracking-[0.14em] text-muted-foreground">1 доля · 10%</p>
                 <p className="mt-2 text-xl font-semibold text-foreground">{formatRublesFromMinor(sharePriceMinor)}</p>
-                <p className="mt-1 text-xs text-muted-foreground">Эту цену увидит семья при выборе одной доли в каталоге и профиле.</p>
+
               </div>
             </div>
-            <p className="mt-3 text-xs text-muted-foreground">Модель шеринга фиксирована: 10 слотов по 10%, поэтому изменение полной цены сразу обновляет весь customer-facing сценарий.</p>
+
           </div>
         </div>
 
@@ -1597,7 +1596,7 @@ function AnimalEditorCard({
           <div className="flex items-end rounded-2xl border border-border/70 bg-stone-50/70 px-4 py-3">
             <Label className="flex items-center gap-3 text-sm font-medium text-foreground">
               <Checkbox checked={values.isFeatured} onCheckedChange={(checked) => onChange("isFeatured", Boolean(checked))} />
-              Показать как featured
+              Избранное
             </Label>
           </div>
         </div>
@@ -1619,8 +1618,8 @@ function AnimalEditorCard({
               </p>
               <p className="text-sm text-muted-foreground">
                 {isCreateMode
-                  ? "Сначала сохраните карточку. После этого форма автоматически останется в режиме редактирования, и вы сможете сразу загружать фотографии, выбирать обложку и редактировать подписи."
-                  : "Карточка уже сохранена. Загружайте новые фотографии, меняйте обложку и редактируйте подписи — изменения сразу синхронизируются с публичным профилем животного."}
+                  ? "Сначала сохраните карточку, затем загрузите фото."
+                  : "Загружайте фото и меняйте обложку — изменения применяются сразу."}
               </p>
             </div>
             <Badge className={`w-fit rounded-full border ${isCreateMode ? "border-amber-200 bg-white text-amber-800" : "border-emerald-200 bg-white text-emerald-800"}`}>
@@ -1698,9 +1697,7 @@ export default function AdminAnimalsPage() {
       } else {
         resetEditor();
       }
-      toast.success("Животное создано", {
-        description: "Новая карточка добавлена в каталог и доступна для дальнейшей настройки.",
-      });
+      toast.success("Животное создано");
     },
     onError: (error) => {
       toast.error("Не удалось создать карточку", {
@@ -1712,9 +1709,7 @@ export default function AdminAnimalsPage() {
   const updateAnimal = trpc.adminAnimals.update.useMutation({
     onSuccess: async () => {
       await utils.adminAnimals.list.invalidate();
-      toast.success("Изменения сохранены", {
-        description: "Карточка животного обновлена.",
-      });
+      toast.success("Изменения сохранены");
     },
     onError: (error) => {
       toast.error("Не удалось сохранить изменения", {
@@ -1726,9 +1721,7 @@ export default function AdminAnimalsPage() {
   const setVisibility = trpc.adminAnimals.setVisibility.useMutation({
     onSuccess: async () => {
       await utils.adminAnimals.list.invalidate();
-      toast.success("Статус обновлён", {
-        description: "Видимость карточки животного изменена.",
-      });
+      toast.success("Видимость изменена");
     },
     onError: (error) => {
       toast.error("Не удалось изменить статус", {
@@ -1744,11 +1737,7 @@ export default function AdminAnimalsPage() {
         resetEditor();
       }
       setAnimalPendingArchive(null);
-      toast.success("Карточка архивирована", {
-        description: archived?.name
-          ? `Профиль «${archived.name}» скрыт из каталога и доступен для восстановления в админ-панели.`
-          : "Профиль животного перемещён в архив.",
-      });
+      toast.success(archived?.name ? `«${archived.name}» в архиве` : "Архивировано");
     },
     onError: (error) => {
       toast.error("Не удалось архивировать профиль", { description: error.message });
@@ -1758,11 +1747,7 @@ export default function AdminAnimalsPage() {
   const restoreAnimal = trpc.adminAnimals.restore.useMutation({
     onSuccess: async (restored) => {
       await utils.adminAnimals.list.invalidate();
-      toast.success("Карточка восстановлена", {
-        description: restored?.name
-          ? `Профиль «${restored.name}» возвращён в админ-панель со статусом «Скрыто».`
-          : "Профиль животного восстановлен из архива.",
-      });
+      toast.success(restored?.name ? `«${restored.name}» восстановлено` : "Восстановлено");
     },
     onError: (error) => {
       toast.error("Не удалось восстановить профиль", { description: error.message });
@@ -1880,7 +1865,7 @@ export default function AdminAnimalsPage() {
             <ShieldAlert className="h-4 w-4" />
             <AlertTitle>Нужен вход в аккаунт</AlertTitle>
             <AlertDescription className="mt-2 space-y-3">
-              <p>Маршрут `/admin/animals` доступен только после авторизации.</p>
+              <p>Для доступа к управлению животными необходимо войти в аккаунт.</p>
               <Button asChild className="mt-1 rounded-full">
                 <a href={getLoginUrl("/admin/animals")}>Войти и открыть админку животных</a>
               </Button>
@@ -1910,7 +1895,7 @@ export default function AdminAnimalsPage() {
                   <ShieldAlert className="h-4 w-4" />
                   <AlertTitle>Недостаточно прав</AlertTitle>
                   <AlertDescription>
-                    Сервер вернул ограничение по роли. Проверьте, что у вашего пользователя в таблице `user` установлена роль `admin`.
+                    Недостаточно прав для доступа к этому разделу.
                   </AlertDescription>
                 </Alert>
               ) : null}
@@ -1918,19 +1903,8 @@ export default function AdminAnimalsPage() {
               <div className="rounded-[2rem] border border-border/70 bg-white/95 p-6 shadow-sm">
                 <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
                   <div className="max-w-2xl space-y-3">
-                    <div className="flex flex-wrap items-center gap-3">
-                      <Badge className="rounded-full border border-primary/20 bg-primary/10 text-primary">
-                        Операционный каталог
-                      </Badge>
-                      <Badge variant="secondary" className="rounded-full px-3 py-1 text-[11px] uppercase tracking-[0.16em]">
-                        Роль: {String((user as { role?: string } | null)?.role ?? "user")}
-                      </Badge>
-                    </div>
-                    <h1 className="text-3xl font-semibold tracking-tight text-foreground">Управление животными Sprint 1</h1>
-                    <p className="text-sm leading-6 text-muted-foreground">
-                      Команда фермы может управлять каталогом животных, быстро переключать видимость карточек, редактировать
-                      ключевые показатели и видеть фактическое распределение 10%-долей по каждому животному без обращения к базе вручную.
-                    </p>
+                    <h1 className="text-2xl font-semibold tracking-tight text-foreground">Животные</h1>
+                    <p className="text-sm text-muted-foreground">Каталог, доли и показатели</p>
                   </div>
 
                   <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
@@ -1947,7 +1921,7 @@ export default function AdminAnimalsPage() {
                       <CardContent className="flex items-center gap-3 p-4">
                         <ShieldCheck className="h-5 w-5 text-amber-700" />
                         <div>
-                          <p className="text-xs uppercase tracking-[0.18em] text-amber-800/80">Featured</p>
+                          <p className="text-xs uppercase tracking-[0.18em] text-amber-800/80">Избранные</p>
                           <p className="text-lg font-semibold text-amber-900">{animals.filter((animal) => Boolean(animal.isFeatured)).length}</p>
                         </div>
                       </CardContent>
@@ -2034,7 +2008,7 @@ export default function AdminAnimalsPage() {
                     </div>
                   ) : filteredAnimals.length === 0 ? (
                     <div className="rounded-2xl border border-dashed border-border bg-secondary/20 px-5 py-8 text-center text-sm text-muted-foreground">
-                      По текущим фильтрам карточки не найдены. Попробуйте изменить условия поиска или создать новое животное справа.
+                      Ничего не найдено. Попробуйте изменить фильтры.
                     </div>
                   ) : (
                       <AdminAnimalsTable
@@ -2074,8 +2048,8 @@ export default function AdminAnimalsPage() {
             <AlertDialogTitle>Архивировать профиль животного?</AlertDialogTitle>
             <AlertDialogDescription>
               {animalPendingArchive
-                ? `Карточка «${animalPendingArchive.name}» будет скрыта из публичного каталога и страницы животного, но все связанные фото, медиа и доли сохранятся. При необходимости профиль можно будет восстановить из архива.`
-                : "Профиль будет перемещён в архив с возможностью восстановления."}
+                ? `«${animalPendingArchive.name}» будет скрыто из каталога. Данные сохранятся, можно восстановить.`
+                : "Профиль уйдёт в архив. Можно восстановить."}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
