@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, gte, isNotNull, isNull, like, lt, lte, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gte, isNotNull, isNull, like, lt, lte, ne, or, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import { createPool, type Pool } from "mysql2/promise";
 import {
@@ -456,19 +456,31 @@ export async function getUserByOpenId(openId: string) {
   return user;
 }
 
-export async function listAnimalPhotos(animalSlug: string, _ownerOpenId?: string) {
+export async function listAnimalPhotos(animalSlug: string, callerOpenId?: string) {
   const db = await getDb();
   if (!db) return [];
 
   try {
-    // Admin can view photos for any animal (single-owner farm)
+    const isAdmin = callerOpenId === ENV.ownerOpenId;
+
+    // Admin sees all photos (including pending and rejected)
+    // Regular users see: approved photos + their own pending photos
     const items = await db
       .select()
       .from(animalPhotos)
       .where(eq(animalPhotos.animalSlug, animalSlug))
       .orderBy(asc(animalPhotos.sortOrder), desc(animalPhotos.createdAt));
 
-    return items;
+    if (isAdmin) {
+      return items;
+    }
+
+    // Filter for regular users: approved OR own pending
+    return items.filter((item: any) => {
+      if (item.moderationStatus === "approved") return true;
+      if (item.moderationStatus === "pending" && item.ownerOpenId === callerOpenId) return true;
+      return false;
+    });
   } catch (error) {
     console.error("[Database] Failed to list animal photos:", error);
     throw error;
@@ -545,7 +557,7 @@ export async function deleteAnimalPhoto(photoId: number, callerOpenId?: string) 
     const fallback = await db
       .select()
       .from(animalPhotos)
-      .where(eq(animalPhotos.animalSlug, existing[0].animalSlug))
+      .where(and(eq(animalPhotos.animalSlug, existing[0].animalSlug), eq(animalPhotos.moderationStatus, "approved")))
       .orderBy(asc(animalPhotos.sortOrder), desc(animalPhotos.createdAt));
 
     if (fallback[0]) {
@@ -639,6 +651,114 @@ export async function updateAnimalPhotoMeta(input: { photoId: number; ownerOpenI
 
   const updated = await db.select().from(animalPhotos).where(eq(animalPhotos.id, input.photoId)).limit(1);
   return updated[0] ?? null;
+}
+
+export async function moderateAnimalPhoto(input: {
+  photoId: number;
+  moderatorOpenId: string;
+  action: "approve" | "reject";
+  rejectionReason?: string;
+}) {
+  const db = await getDb();
+  if (!db) {
+    throw new Error("Database not available for photo moderation");
+  }
+
+  const isAdmin = input.moderatorOpenId === ENV.ownerOpenId;
+  if (!isAdmin) {
+    throw new Error("Только администратор может модерировать фото.");
+  }
+
+  const existing = await db
+    .select()
+    .from(animalPhotos)
+    .where(eq(animalPhotos.id, input.photoId))
+    .limit(1);
+
+  if (!existing[0]) {
+    return null;
+  }
+
+  const newStatus = input.action === "approve" ? "approved" : "rejected";
+
+  await db
+    .update(animalPhotos)
+    .set({
+      moderationStatus: newStatus as any,
+      moderatedBy: input.moderatorOpenId,
+      moderatedAt: new Date(),
+      rejectionReason: input.action === "reject" ? (input.rejectionReason || null) : null,
+    })
+    .where(eq(animalPhotos.id, input.photoId));
+
+  const updated = await db.select().from(animalPhotos).where(eq(animalPhotos.id, input.photoId)).limit(1);
+  return updated[0] ?? null;
+}
+
+export async function listPendingPhotos(moderatorOpenId: string) {
+  const db = await getDb();
+  if (!db) return [];
+
+  const isAdmin = moderatorOpenId === ENV.ownerOpenId;
+  if (!isAdmin) return [];
+
+  try {
+    const items = await db
+      .select({
+        id: animalPhotos.id,
+        animalSlug: animalPhotos.animalSlug,
+        ownerOpenId: animalPhotos.ownerOpenId,
+        title: animalPhotos.title,
+        meta: animalPhotos.meta,
+        url: animalPhotos.url,
+        mimeType: animalPhotos.mimeType,
+        sizeBytes: animalPhotos.sizeBytes,
+        moderationStatus: animalPhotos.moderationStatus,
+        createdAt: animalPhotos.createdAt,
+      })
+      .from(animalPhotos)
+      .where(eq(animalPhotos.moderationStatus, "pending" as any))
+      .orderBy(asc(animalPhotos.createdAt));
+
+    // Enrich with uploader name
+    const enriched = await Promise.all(
+      items.map(async (item: any) => {
+        const user = await db
+          .select({ name: users.name })
+          .from(users)
+          .where(eq(users.openId, item.ownerOpenId))
+          .limit(1);
+        return {
+          ...item,
+          uploaderName: user[0]?.name || "Неизвестный",
+        };
+      }),
+    );
+
+    return enriched;
+  } catch (error) {
+    console.error("[Database] Failed to list pending photos:", error);
+    throw error;
+  }
+}
+
+export async function countPendingPhotos(moderatorOpenId: string): Promise<number> {
+  const db = await getDb();
+  if (!db) return 0;
+
+  const isAdmin = moderatorOpenId === ENV.ownerOpenId;
+  if (!isAdmin) return 0;
+
+  try {
+    const result = await db
+      .select({ count: sql<number>`COUNT(*)` })
+      .from(animalPhotos)
+      .where(eq(animalPhotos.moderationStatus, "pending" as any));
+    return Number(result[0]?.count ?? 0);
+  } catch (error) {
+    console.error("[Database] Failed to count pending photos:", error);
+    return 0;
+  }
 }
 
 export async function reorderAnimalPhotos(photoIds: number[], _ownerOpenId: string, animalSlug: string) {
@@ -783,20 +903,20 @@ export async function getOwnerDashboardData(ownerOpenId: string) {
     if (mediaCover[0]?.url) {
       resolvedCover = mediaCover[0].url;
     } else {
-      // Check animalPhotos for cover
+      // Check animalPhotos for cover (only approved)
       const photoCover = await db
         .select({ url: animalPhotos.url })
         .from(animalPhotos)
-        .where(and(eq(animalPhotos.animalSlug, first.animalSlug), eq(animalPhotos.isCover, 1)))
+        .where(and(eq(animalPhotos.animalSlug, first.animalSlug), eq(animalPhotos.isCover, 1), eq(animalPhotos.moderationStatus, "approved")))
         .limit(1);
       if (photoCover[0]?.url) {
         resolvedCover = photoCover[0].url;
       } else {
-        // Fallback to first photo
+        // Fallback to first approved photo
         const firstPhoto = await db
           .select({ url: animalPhotos.url })
           .from(animalPhotos)
-          .where(eq(animalPhotos.animalSlug, first.animalSlug))
+          .where(and(eq(animalPhotos.animalSlug, first.animalSlug), eq(animalPhotos.moderationStatus, "approved")))
           .orderBy(asc(animalPhotos.sortOrder), desc(animalPhotos.createdAt))
           .limit(1);
         if (firstPhoto[0]?.url) {
@@ -1718,20 +1838,20 @@ async function enrichAnimalWithShareMetrics(db: any, animal: any) {
     .where(eq(animalMedia.animalId, animal.id))
     .orderBy(desc(animalMedia.isCover), asc(animalMedia.sortOrder), asc(animalMedia.id));
 
-  // Also check animalPhotos for cover (gallery photos uploaded by admin/user)
+  // Also check animalPhotos for cover (gallery photos uploaded by admin/user — only approved)
   const photoCover = await db
     .select({ url: animalPhotos.url })
     .from(animalPhotos)
-    .where(and(eq(animalPhotos.animalSlug, animal.slug), eq(animalPhotos.isCover, 1)))
+    .where(and(eq(animalPhotos.animalSlug, animal.slug), eq(animalPhotos.isCover, 1), eq(animalPhotos.moderationStatus, "approved")))
     .limit(1);
 
-  // First photo fallback if no explicit cover
+  // First approved photo fallback if no explicit cover
   const firstPhoto = photoCover[0]
     ? null
     : (await db
         .select({ url: animalPhotos.url })
         .from(animalPhotos)
-        .where(eq(animalPhotos.animalSlug, animal.slug))
+        .where(and(eq(animalPhotos.animalSlug, animal.slug), eq(animalPhotos.moderationStatus, "approved")))
         .orderBy(asc(animalPhotos.sortOrder), desc(animalPhotos.createdAt))
         .limit(1))[0] ?? null;
 

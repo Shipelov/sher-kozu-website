@@ -46,6 +46,7 @@ import {
   FileText,
   CircleDot,
   Trash2,
+  XCircle,
 } from "lucide-react";
 import OwnerProductPlanSection from "./OwnerProductPlanSection";
 import WellnessRadarChart from "@/components/WellnessRadarChart";
@@ -1057,14 +1058,28 @@ export default function AnimalProfile() {
             <div className="mt-3 flex items-center gap-2">
               <div className="flex flex-1 gap-2 overflow-x-auto pb-1">
                 {galleryImages.map((img) => (
-                  <button key={img.id} type="button" onClick={() => setSelectedImageId(img.id)} className={`relative shrink-0 overflow-hidden rounded-xl border-2 transition ${selectedImageId === img.id ? "border-primary" : "border-transparent opacity-70 hover:opacity-100"}`}>
+                  <button key={img.id} type="button" onClick={() => setSelectedImageId(img.id)} className={`relative shrink-0 overflow-hidden rounded-xl border-2 transition ${selectedImageId === img.id ? "border-primary" : "border-transparent opacity-70 hover:opacity-100"} ${(img as any).moderationStatus === "pending" ? "opacity-60" : ""}`}>
                     <img src={img.src} alt={img.title} className="h-16 w-24 object-cover" />
-                    {(img as any).isAdminCover && (
+                    {(img as any).moderationStatus === "pending" && (
+                      <div className="absolute inset-0 flex items-center justify-center bg-amber-500/20">
+                        <div className="rounded-full bg-amber-500/90 p-0.5" title="На проверке">
+                          <Clock3 className="h-3 w-3 text-white" />
+                        </div>
+                      </div>
+                    )}
+                    {(img as any).moderationStatus === "rejected" && (
+                      <div className="absolute inset-0 flex items-center justify-center bg-rose-500/20">
+                        <div className="rounded-full bg-rose-500/90 p-0.5" title="Отклонено">
+                          <XCircle className="h-3 w-3 text-white" />
+                        </div>
+                      </div>
+                    )}
+                    {(img as any).isAdminCover && (img as any).moderationStatus !== "pending" && (img as any).moderationStatus !== "rejected" && (
                       <div className="absolute top-0.5 right-0.5 rounded-full bg-amber-400/90 p-0.5" title="Обложка фермы">
                         <ShieldCheck className="h-2.5 w-2.5 text-white" />
                       </div>
                     )}
-                    {(img as any).isOwnPhoto && !(img as any).isAdminCover && (
+                    {(img as any).isOwnPhoto && !(img as any).isAdminCover && (img as any).moderationStatus !== "pending" && (img as any).moderationStatus !== "rejected" && (
                       <div className="absolute top-0.5 left-0.5 rounded-full bg-primary/80 p-0.5" title="Ваше фото">
                         <Camera className="h-2.5 w-2.5 text-white" />
                       </div>
@@ -1089,6 +1104,22 @@ export default function AnimalProfile() {
             {/* Gallery actions — available to all authenticated users */}
             {isAuthenticated ? (
               <div className="mt-3 space-y-2.5">
+                {/* Moderation status: pending */}
+                {selectedImage && (selectedImage as any).moderationStatus === "pending" && (
+                  <div className="flex items-center gap-2 rounded-lg bg-amber-50 border border-amber-300 px-3 py-2 text-xs text-amber-700 dark:bg-amber-900/20 dark:border-amber-700 dark:text-amber-300">
+                    <Clock3 className="h-3.5 w-3.5 shrink-0 animate-pulse" />
+                    <span>Это фото ожидает проверки администратором. После одобрения оно появится в галерее для всех.</span>
+                  </div>
+                )}
+
+                {/* Moderation status: rejected */}
+                {selectedImage && (selectedImage as any).moderationStatus === "rejected" && (
+                  <div className="flex items-center gap-2 rounded-lg bg-rose-50 border border-rose-300 px-3 py-2 text-xs text-rose-700 dark:bg-rose-900/20 dark:border-rose-700 dark:text-rose-300">
+                    <XCircle className="h-3.5 w-3.5 shrink-0" />
+                    <span>Фото отклонено администратором. Вы можете удалить его и загрузить новое.</span>
+                  </div>
+                )}
+
                 {/* Admin-cover badge */}
                 {selectedImage && (selectedImage as any).isAdminCover && (
                   <div className="flex items-center gap-2 rounded-lg bg-amber-50 border border-amber-200 px-3 py-2 text-xs text-amber-700 dark:bg-amber-900/20 dark:border-amber-700 dark:text-amber-300">

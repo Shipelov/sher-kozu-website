@@ -191,6 +191,8 @@ export const walletTransactions = mysqlTable("walletTransactions", {
   index("idx_walletTx_walletId").on(t.walletId),
 ]));
 
+export const photoModerationStatusEnum = mysqlEnum("photoModerationStatus", ["pending", "approved", "rejected"]);
+
 export const animalPhotos = mysqlTable("animalPhotos", {
   id: int("id").autoincrement().primaryKey(),
   animalSlug: varchar("animalSlug", { length: 64 }).notNull(),
@@ -203,10 +205,15 @@ export const animalPhotos = mysqlTable("animalPhotos", {
   sizeBytes: int("sizeBytes").notNull(),
   sortOrder: int("sortOrder").default(0).notNull(),
   isCover: int("isCover").default(0).notNull(),
+  moderationStatus: photoModerationStatusEnum.default("approved").notNull(),
+  moderatedBy: varchar("moderatedBy", { length: 64 }),
+  moderatedAt: timestamp("moderatedAt"),
+  rejectionReason: varchar("rejectionReason", { length: 255 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 }, (t) => ([
   index("idx_animalPhotos_animalSlug").on(t.animalSlug),
+  index("idx_animalPhotos_moderationStatus").on(t.moderationStatus),
 ]));
 
 export const productBatches = mysqlTable("productBatches", {

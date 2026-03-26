@@ -31,6 +31,9 @@ import {
   purchaseAnimalShare,
   listAdminAnimals,
   listAnimalPhotos,
+  listPendingPhotos,
+  countPendingPhotos,
+  moderateAnimalPhoto,
   listBitrixAdminData,
   listClubAdminData,
   listPublicAnimals,
@@ -1071,6 +1074,7 @@ export const appRouter = router({
         createdAt: item.createdAt,
         isCover: Boolean(item.isCover),
         sortOrder: item.sortOrder,
+        moderationStatus: item.moderationStatus || "approved",
         isAdminCover: Boolean(item.isCover) && item.ownerOpenId === ENV.ownerOpenId,
         isOwnPhoto: item.ownerOpenId === ctx.user.openId,
         canDelete: ctx.user.openId === ENV.ownerOpenId || (item.ownerOpenId === ctx.user.openId && !(Boolean(item.isCover) && item.ownerOpenId === ENV.ownerOpenId)),
@@ -1083,6 +1087,7 @@ export const appRouter = router({
         throw new TRPCError({ code: "BAD_REQUEST", message: "Файл пустой или повреждён." });
       }
 
+      const isAdmin = ctx.user.openId === ENV.ownerOpenId;
       const extension = input.fileName.includes(".") ? input.fileName.split(".").pop() : "jpg";
       const safeName = sanitizeFileName(input.fileName);
       const fileKey = `animal-photos/${input.animalSlug}/${ctx.user.openId}/${Date.now()}-${safeName}`;
@@ -1098,7 +1103,16 @@ export const appRouter = router({
         mimeType: input.mimeType,
         sizeBytes: input.sizeBytes,
         isCover: 0,
+        moderationStatus: isAdmin ? "approved" : "pending",
       });
+
+      // Notify admin about new user photo upload (non-blocking)
+      if (!isAdmin) {
+        notifyOwner({
+          title: "📷 Новое фото на модерации",
+          content: `Пользователь ${ctx.user.name || ctx.user.openId} загрузил фото для животного «${input.animalSlug}». Проверьте в разделе Модерация фото.`,
+        }).catch(() => {});
+      }
 
       return {
         id: `user-${created.id}`,
@@ -1112,6 +1126,7 @@ export const appRouter = router({
         createdAt: created.createdAt,
         isCover: Boolean(created.isCover),
         sortOrder: created.sortOrder,
+        moderationStatus: created.moderationStatus,
       };
     }),
     updateMeta: protectedProcedure.input(updatePhotoMetaInput).mutation(async ({ ctx, input }) => {
@@ -1172,6 +1187,32 @@ export const appRouter = router({
           message: error instanceof Error ? error.message : "Не удалось сохранить порядок фото.",
         });
       }
+    }),
+    pendingList: adminProcedure.query(async ({ ctx }) => {
+      return listPendingPhotos(ctx.user.openId);
+    }),
+    pendingCount: adminProcedure.query(async ({ ctx }) => {
+      return countPendingPhotos(ctx.user.openId);
+    }),
+    moderate: adminProcedure.input(z.object({
+      photoId: z.number().int().positive(),
+      action: z.enum(["approve", "reject"]),
+      rejectionReason: z.string().max(255).optional(),
+    })).mutation(async ({ ctx, input }) => {
+      const result = await moderateAnimalPhoto({
+        photoId: input.photoId,
+        moderatorOpenId: ctx.user.openId,
+        action: input.action,
+        rejectionReason: input.rejectionReason,
+      });
+      if (!result) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Фото не найдено." });
+      }
+      return {
+        success: true,
+        photoId: result.id,
+        moderationStatus: result.moderationStatus,
+      } as const;
     }),
   }),
   productTracker: router({
