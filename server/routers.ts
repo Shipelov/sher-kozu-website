@@ -67,6 +67,11 @@ import {
   permanentDeleteUser,
   findExpiredTrashedUsers,
   setPrimaryAnimal,
+  createUserNotification,
+  listUserNotifications,
+  countUnreadNotifications,
+  markNotificationRead,
+  markAllNotificationsRead,
 } from "./db";
 import { storagePut } from "./storage";
 import { ENV } from "./_core/env";
@@ -1230,6 +1235,35 @@ export const appRouter = router({
         moderationStatus: result.moderationStatus,
       } as const;
     }),
+    batchModerate: adminProcedure.input(z.object({
+      photoIds: z.array(z.number().int().positive()).min(1).max(50),
+      action: z.enum(["approve", "reject"]),
+      rejectionReason: z.string().max(255).optional(),
+    })).mutation(async ({ ctx, input }) => {
+      const results: Array<{ photoId: number; success: boolean; moderationStatus?: string }> = [];
+      for (const photoId of input.photoIds) {
+        try {
+          const result = await moderateAnimalPhoto({
+            photoId,
+            moderatorOpenId: ctx.user.openId,
+            action: input.action,
+            rejectionReason: input.rejectionReason,
+          });
+          results.push({
+            photoId,
+            success: !!result,
+            moderationStatus: result?.moderationStatus ?? undefined,
+          });
+        } catch {
+          results.push({ photoId, success: false });
+        }
+      }
+      return {
+        processed: results.length,
+        succeeded: results.filter(r => r.success).length,
+        results,
+      } as const;
+    }),
   }),
   productTracker: router({
     getByAnimal: protectedProcedure.input(trackerSummaryInput).query(async ({ ctx, input }) => {
@@ -1792,6 +1826,24 @@ export const appRouter = router({
         }
         return { cleaned, deletedOwnerships: allDeletedOwnerships };
       }),
+  }),
+  notifications: router({
+    list: protectedProcedure.query(async ({ ctx }) => {
+      return listUserNotifications(ctx.user.openId);
+    }),
+    unreadCount: protectedProcedure.query(async ({ ctx }) => {
+      return countUnreadNotifications(ctx.user.openId);
+    }),
+    markRead: protectedProcedure
+      .input(z.object({ notificationId: z.number().int().positive() }))
+      .mutation(async ({ ctx, input }) => {
+        const ok = await markNotificationRead(input.notificationId, ctx.user.openId);
+        return { success: ok };
+      }),
+    markAllRead: protectedProcedure.mutation(async ({ ctx }) => {
+      const ok = await markAllNotificationsRead(ctx.user.openId);
+      return { success: ok };
+    }),
   }),
 });
 

@@ -1180,3 +1180,26 @@ export const cmsBlockHistory = mysqlTable("cmsBlockHistory", {
   index("cms_history_page_idx").on(table.page),
   index("cms_history_changedAt_idx").on(table.changedAt),
 ]);
+
+
+/** User-facing in-app notifications (photo moderation results, etc.) */
+export const userNotifications = mysqlTable("userNotifications", {
+  id: int("id").autoincrement().primaryKey(),
+  /** Recipient user openId */
+  userOpenId: varchar("userOpenId", { length: 64 }).notNull(),
+  /** Notification type for filtering/grouping */
+  type: varchar("type", { length: 64 }).notNull(),
+  /** Short title shown in the notification list */
+  title: varchar("title", { length: 512 }).notNull(),
+  /** Longer body text with details */
+  body: text("body"),
+  /** Optional link to navigate to when notification is clicked */
+  link: varchar("link", { length: 512 }),
+  /** Whether the user has read this notification */
+  isRead: boolean("isRead").default(false).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, (table) => [
+  index("notif_userOpenId_idx").on(table.userOpenId),
+  index("notif_isRead_idx").on(table.isRead),
+  index("notif_createdAt_idx").on(table.createdAt),
+]);

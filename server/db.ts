@@ -48,6 +48,7 @@ import {
   otpCodes,
   passwordResetTokens,
   authRateLimits,
+  userNotifications,
 } from "../drizzle/schema";
 import { ENV } from "./_core/env";
 
@@ -750,7 +751,32 @@ export async function moderateAnimalPhoto(input: {
     .where(eq(animalPhotos.id, input.photoId));
 
   const updated = await db.select().from(animalPhotos).where(eq(animalPhotos.id, input.photoId)).limit(1);
-  return updated[0] ?? null;
+  const photo = updated[0];
+
+  // Send in-app notification to the photo uploader
+  if (photo && photo.ownerOpenId && photo.ownerOpenId !== input.moderatorOpenId) {
+    const animalSlug = photo.animalSlug;
+    if (input.action === "approve") {
+      await createUserNotification({
+        userOpenId: photo.ownerOpenId,
+        type: "photo_approved",
+        title: "\u0424\u043e\u0442\u043e \u043e\u0434\u043e\u0431\u0440\u0435\u043d\u043e \u2705",
+        body: `\u0412\u0430\u0448\u0435 \u0444\u043e\u0442\u043e \u00ab${photo.title || "\u0411\u0435\u0437 \u043d\u0430\u0437\u0432\u0430\u043d\u0438\u044f"}\u00bb \u043f\u0440\u043e\u0448\u043b\u043e \u043c\u043e\u0434\u0435\u0440\u0430\u0446\u0438\u044e \u0438 \u0442\u0435\u043f\u0435\u0440\u044c \u0432\u0438\u0434\u043d\u043e \u0432 \u0433\u0430\u043b\u0435\u0440\u0435\u0435.`,
+        link: `/animals/${animalSlug}`,
+      });
+    } else {
+      const reason = input.rejectionReason ? ` \u041f\u0440\u0438\u0447\u0438\u043d\u0430: ${input.rejectionReason}` : "";
+      await createUserNotification({
+        userOpenId: photo.ownerOpenId,
+        type: "photo_rejected",
+        title: "\u0424\u043e\u0442\u043e \u043e\u0442\u043a\u043b\u043e\u043d\u0435\u043d\u043e \u274c",
+        body: `\u0412\u0430\u0448\u0435 \u0444\u043e\u0442\u043e \u00ab${photo.title || "\u0411\u0435\u0437 \u043d\u0430\u0437\u0432\u0430\u043d\u0438\u044f"}\u00bb \u043d\u0435 \u043f\u0440\u043e\u0448\u043b\u043e \u043c\u043e\u0434\u0435\u0440\u0430\u0446\u0438\u044e.${reason}`,
+        link: `/animals/${animalSlug}`,
+      });
+    }
+  }
+
+  return photo ?? null;
 }
 
 export async function listPendingPhotos(moderatorOpenId: string) {
@@ -3936,4 +3962,108 @@ export async function setPrimaryAnimal(ownerOpenId: string, animalId: number | n
     .where(eq(users.openId, ownerOpenId));
 
   return { success: true, primaryAnimalId: animalId };
+}
+
+
+/* ───────────────────────────────────────────────────────────
+   User In-App Notifications
+   ─────────────────────────────────────────────────────────── */
+
+export async function createUserNotification(input: {
+  userOpenId: string;
+  type: string;
+  title: string;
+  body?: string;
+  link?: string;
+}) {
+  const db = await getDb();
+  if (!db) return null;
+
+  try {
+    const result = await db.insert(userNotifications).values({
+      userOpenId: input.userOpenId,
+      type: input.type,
+      title: input.title,
+      body: input.body ?? null,
+      link: input.link ?? null,
+    });
+    return { id: Number(result[0].insertId) };
+  } catch (error) {
+    console.error("[Database] Failed to create user notification:", error);
+    return null;
+  }
+}
+
+export async function listUserNotifications(userOpenId: string, limit = 30) {
+  const db = await getDb();
+  if (!db) return [];
+
+  try {
+    return await db
+      .select()
+      .from(userNotifications)
+      .where(eq(userNotifications.userOpenId, userOpenId))
+      .orderBy(desc(userNotifications.createdAt))
+      .limit(limit);
+  } catch (error) {
+    console.error("[Database] Failed to list user notifications:", error);
+    return [];
+  }
+}
+
+export async function countUnreadNotifications(userOpenId: string): Promise<number> {
+  const db = await getDb();
+  if (!db) return 0;
+
+  try {
+    const result = await db
+      .select({ count: sql<number>`COUNT(*)` })
+      .from(userNotifications)
+      .where(and(
+        eq(userNotifications.userOpenId, userOpenId),
+        eq(userNotifications.isRead, false),
+      ));
+    return Number(result[0]?.count ?? 0);
+  } catch (error) {
+    console.error("[Database] Failed to count unread notifications:", error);
+    return 0;
+  }
+}
+
+export async function markNotificationRead(notificationId: number, userOpenId: string) {
+  const db = await getDb();
+  if (!db) return false;
+
+  try {
+    await db
+      .update(userNotifications)
+      .set({ isRead: true })
+      .where(and(
+        eq(userNotifications.id, notificationId),
+        eq(userNotifications.userOpenId, userOpenId),
+      ));
+    return true;
+  } catch (error) {
+    console.error("[Database] Failed to mark notification read:", error);
+    return false;
+  }
+}
+
+export async function markAllNotificationsRead(userOpenId: string) {
+  const db = await getDb();
+  if (!db) return false;
+
+  try {
+    await db
+      .update(userNotifications)
+      .set({ isRead: true })
+      .where(and(
+        eq(userNotifications.userOpenId, userOpenId),
+        eq(userNotifications.isRead, false),
+      ));
+    return true;
+  } catch (error) {
+    console.error("[Database] Failed to mark all notifications read:", error);
+    return false;
+  }
 }

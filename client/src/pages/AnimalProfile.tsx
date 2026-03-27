@@ -1050,8 +1050,48 @@ export default function AnimalProfile() {
               <DialogDescription>{galleryImages.length} фото</DialogDescription>
             </DialogHeader>
 
+            {/* Empty gallery state */}
+            {(photosQuery.data?.length ?? 0) === 0 && (
+              <div className="rounded-2xl border border-dashed border-border bg-muted/10 p-8 text-center">
+                <Camera className="mx-auto h-12 w-12 text-muted-foreground/40" />
+                <h3 className="mt-4 text-lg font-semibold text-foreground">Галерея пуста</h3>
+                {isAuthenticated && uploadLimitData && uploadLimitData.limit > 0 ? (
+                  <>
+                    <p className="mt-2 text-sm text-muted-foreground">
+                      Загрузите первое фото! У вас {uploadLimitData.limit} {uploadLimitData.limit === 1 ? "слот" : uploadLimitData.limit < 5 ? "слота" : "слотов"} для фото (по количеству долей).
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => setCropDialogOpen(true)}
+                      className="mt-4 inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition hover:bg-primary/90"
+                    >
+                      <Camera className="h-4 w-4" />
+                      Загрузить фото
+                    </button>
+                  </>
+                ) : isAuthenticated && uploadLimitData && uploadLimitData.limit === 0 ? (
+                  <>
+                    <p className="mt-2 text-sm text-muted-foreground">
+                      Чтобы загружать фото, приобретите долю. Количество фото = количеству долей.
+                    </p>
+                    <a
+                      href={`/animals/${animalSlug}`}
+                      className="mt-4 inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-emerald-700"
+                    >
+                      <Heart className="h-4 w-4" />
+                      Приобрести долю
+                    </a>
+                  </>
+                ) : (
+                  <p className="mt-2 text-sm text-muted-foreground">
+                    Войдите в аккаунт, чтобы загружать фото.
+                  </p>
+                )}
+              </div>
+            )}
+
             {/* Main viewer */}
-            <div className="overflow-hidden rounded-2xl border border-border/70 bg-muted/20">
+            {(photosQuery.data?.length ?? 0) > 0 && (<div className="overflow-hidden rounded-2xl border border-border/70 bg-muted/20">
               <div className="relative">
                 <img src={selectedImage?.src ?? CDN.hero} alt={selectedImage?.title ?? displayName} className="h-[280px] w-full object-contain bg-muted/30 md:h-[380px]" />
                 <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent p-4 text-white">
@@ -1065,7 +1105,7 @@ export default function AnimalProfile() {
                   <ChevronRight className="h-4 w-4" />
                 </button>
               </div>
-            </div>
+            </div>)}
 
             {/* Thumbnails + Upload button */}
             <div className="mt-3 flex items-center gap-2">

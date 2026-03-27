@@ -197,6 +197,13 @@
       "when": 1774522118834,
       "tag": "0028_stale_baron_strucker",
       "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "5",
+      "when": 1774597465657,
+      "tag": "0029_red_shape",
+      "breakpoints": true
     }
   ]
 }

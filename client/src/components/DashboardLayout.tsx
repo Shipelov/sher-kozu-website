@@ -27,6 +27,7 @@ import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { DashboardLayoutSkeleton } from './DashboardLayoutSkeleton';
 import { Button } from "./ui/button";
+import { trpc } from "@/lib/trpc";
 
 const baseMenuItems = [
   { icon: LayoutDashboard, label: "Мой кабинет", path: "/dashboard" },
@@ -40,6 +41,20 @@ const adminMenuItems = [
   { icon: Crown, label: "Клуб", path: "/admin/club" },
   { icon: Milk, label: "Трек продукции", path: "/admin/product-track" },
 ];
+
+/** Small badge showing count of pending photos for admin sidebar */
+function PendingPhotoBadge() {
+  const { data } = trpc.animalPhotos.pendingCount.useQuery(undefined, {
+    refetchInterval: 30_000,
+  });
+  const count = typeof data === "number" ? data : 0;
+  if (count === 0) return null;
+  return (
+    <span className="ml-auto inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-amber-500 px-1.5 text-[10px] font-bold text-white">
+      {count > 99 ? "99+" : count}
+    </span>
+  );
+}
 
 const SIDEBAR_WIDTH_KEY = "sidebar-width";
 const DEFAULT_WIDTH = 280;
@@ -205,6 +220,7 @@ function DashboardLayoutContent({
                         className={`h-4 w-4 ${isActive ? "text-primary" : ""}`}
                       />
                       <span>{item.label}</span>
+                      {item.path === "/admin/photo-moderation" && <PendingPhotoBadge />}
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                 );
