@@ -1344,7 +1344,24 @@ export async function createClubPost(input: InsertClubPost) {
 
   await db.insert(clubPosts).values(input);
   const created = await db.select().from(clubPosts).where(and(eq(clubPosts.ownerOpenId, input.ownerOpenId), eq(clubPosts.title, input.title))).orderBy(desc(clubPosts.id)).limit(1);
-  return created[0] ?? null;
+  const post = created[0] ?? null;
+
+  // Notify all active users about the new club post
+  if (post) {
+    try {
+      await notifyAllActiveUsers({
+        type: "club_post",
+        title: `Новый пост в клубе 📝`,
+        body: `${post.author}: ${post.title}`,
+        link: "/club",
+        excludeOpenId: input.ownerOpenId,
+      });
+    } catch (e) {
+      console.error("[Notifications] Failed to notify about new club post:", e);
+    }
+  }
+
+  return post;
 }
 
 export async function updateClubPost(input: InsertClubPost & { id: number }) {
@@ -1393,7 +1410,24 @@ export async function createClubEvent(input: InsertClubEvent) {
 
   await db.insert(clubEvents).values(input);
   const created = await db.select().from(clubEvents).where(and(eq(clubEvents.ownerOpenId, input.ownerOpenId), eq(clubEvents.title, input.title))).orderBy(desc(clubEvents.id)).limit(1);
-  return created[0] ?? null;
+  const event = created[0] ?? null;
+
+  // Notify all active users about the new club event
+  if (event) {
+    try {
+      await notifyAllActiveUsers({
+        type: "club_event",
+        title: `Новое событие в клубе 🎉`,
+        body: `${event.title} — ${event.dateLabel}`,
+        link: "/club",
+        excludeOpenId: input.ownerOpenId,
+      });
+    } catch (e) {
+      console.error("[Notifications] Failed to notify about new club event:", e);
+    }
+  }
+
+  return event;
 }
 
 export async function updateClubEvent(input: InsertClubEvent & { id: number }) {
@@ -4065,5 +4099,54 @@ export async function markAllNotificationsRead(userOpenId: string) {
   } catch (error) {
     console.error("[Database] Failed to mark all notifications read:", error);
     return false;
+  }
+}
+
+
+/**
+ * Send a notification to all active (non-deleted, non-admin) users.
+ * Used for club-wide announcements like new posts and events.
+ * Optionally excludes a specific openId (e.g. the admin who created the content).
+ */
+export async function notifyAllActiveUsers(input: {
+  type: string;
+  title: string;
+  body?: string;
+  link?: string;
+  excludeOpenId?: string;
+}) {
+  const db = await getDb();
+  if (!db) return 0;
+
+  try {
+    const activeUsers = await db
+      .select({ openId: users.openId })
+      .from(users)
+      .where(
+        and(
+          isNull(users.deletedAt),
+          ne(users.role, "admin"),
+        ),
+      );
+
+    const recipients = input.excludeOpenId
+      ? activeUsers.filter((u: { openId: string }) => u.openId !== input.excludeOpenId)
+      : activeUsers;
+
+    if (recipients.length === 0) return 0;
+
+    const rows = recipients.map((u: { openId: string }) => ({
+      userOpenId: u.openId,
+      type: input.type,
+      title: input.title,
+      body: input.body ?? null,
+      link: input.link ?? null,
+    }));
+
+    await db.insert(userNotifications).values(rows);
+    return recipients.length;
+  } catch (error) {
+    console.error("[Database] Failed to notify all active users:", error);
+    return 0;
   }
 }

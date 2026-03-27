@@ -5,7 +5,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { Bell, BellDot, Check, CheckCheck, Camera, Info, ExternalLink } from "lucide-react";
+import { Bell, BellDot, Check, CheckCheck, Camera, Info, ExternalLink, Newspaper, CalendarHeart } from "lucide-react";
 import { useState } from "react";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
@@ -33,6 +33,10 @@ function notificationIcon(type: string) {
       return <Camera className="h-4 w-4 text-emerald-500 shrink-0" />;
     case "photo_rejected":
       return <Camera className="h-4 w-4 text-rose-500 shrink-0" />;
+    case "club_post":
+      return <Newspaper className="h-4 w-4 text-sky-500 shrink-0" />;
+    case "club_event":
+      return <CalendarHeart className="h-4 w-4 text-amber-500 shrink-0" />;
     default:
       return <Info className="h-4 w-4 text-primary shrink-0" />;
   }
