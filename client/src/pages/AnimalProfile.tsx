@@ -289,6 +289,7 @@ export default function AnimalProfile() {
   const uploadPhoto = trpc.animalPhotos.upload.useMutation({
     onSuccess: async (created) => {
       await utils.animalPhotos.list.invalidate({ animalSlug: animalSlug! });
+      await utils.animalPhotos.uploadLimit.invalidate({ animalSlug: animalSlug! });
       await utils.animals.getBySlug.invalidate({ slug: animalSlug! });
       await utils.animals.listPublic.invalidate();
       setSelectedImageId(created.id);
@@ -338,6 +339,7 @@ export default function AnimalProfile() {
     onSuccess: async ({ photoId }) => {
       const removedImage = galleryImages.find((image) => image.photoId === photoId);
       await utils.animalPhotos.list.invalidate({ animalSlug: animalSlug! });
+      await utils.animalPhotos.uploadLimit.invalidate({ animalSlug: animalSlug! });
       await utils.animals.getBySlug.invalidate({ slug: animalSlug! });
       await utils.animals.listPublic.invalidate();
       setSelectedImageId((current) => (current === `user-${photoId}` ? defaultGallery[0].id : current));
@@ -353,18 +355,29 @@ export default function AnimalProfile() {
     },
   });
 
+  /* ── upload limit ── */
+  const uploadLimitQuery = trpc.animalPhotos.uploadLimit.useQuery(
+    { animalSlug: animalSlug! },
+    { enabled: Boolean(animalSlug) && isAuthenticated },
+  );
+  const uploadLimitData = uploadLimitQuery.data;
+
   /* ── gallery logic ── */
   const galleryImages = useMemo<GalleryImage[]>(() => {
     const persistent = [...(photosQuery.data ?? [])].sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
-    const coverFromServer = persistent.find((image) => image.isCover)?.id;
-    const fallbackCoverId = persistent.length > 0 ? persistent[0].id : coverImageId;
-    const merged = [
-      ...persistent.map((image, index) => ({ ...image, sortOrder: image.sortOrder ?? index })),
-      ...defaultGallery.map((image, index) => ({ ...image, sortOrder: persistent.length + index })),
-    ];
-    return merged.map((image) => ({
+    if (persistent.length > 0) {
+      const coverFromServer = persistent.find((image) => image.isCover)?.id;
+      const fallbackCoverId = persistent[0].id;
+      return persistent.map((image, index) => ({
+        ...image,
+        sortOrder: image.sortOrder ?? index,
+        isCover: coverFromServer ? image.id === coverFromServer : image.id === fallbackCoverId,
+      }));
+    }
+    // Fallback to default gallery only when no uploaded photos exist
+    return defaultGallery.map((image, index) => ({
       ...image,
-      isCover: coverFromServer ? image.id === coverFromServer : image.id === fallbackCoverId,
+      sortOrder: index,
     }));
   }, [coverImageId, photosQuery.data, defaultGallery]);
 
@@ -1088,16 +1101,25 @@ export default function AnimalProfile() {
                 ))}
               </div>
               {/* Upload button inline with thumbnails */}
-              {isAuthenticated && (
+              {isAuthenticated && uploadLimitData && uploadLimitData.remaining > 0 && (
                 <button
                   type="button"
                   onClick={() => setCropDialogOpen(true)}
                   className="shrink-0 flex flex-col items-center justify-center h-16 w-20 rounded-xl border-2 border-dashed border-emerald-300 bg-emerald-50 text-emerald-600 transition hover:bg-emerald-100 hover:border-emerald-400 dark:border-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400 dark:hover:bg-emerald-900/40"
-                  title="Загрузить фото"
+                  title={`Загрузить фото (${uploadLimitData.used}/${uploadLimitData.limit})`}
                 >
                   <Camera className="h-5 w-5" />
-                  <span className="mt-0.5 text-[10px] font-medium">Добавить</span>
+                  <span className="mt-0.5 text-[10px] font-medium">{uploadLimitData.used}/{uploadLimitData.limit}</span>
                 </button>
+              )}
+              {isAuthenticated && uploadLimitData && uploadLimitData.remaining <= 0 && uploadLimitData.limit > 0 && (
+                <div
+                  className="shrink-0 flex flex-col items-center justify-center h-16 w-20 rounded-xl border-2 border-dashed border-muted-foreground/30 bg-muted/30 text-muted-foreground cursor-not-allowed"
+                  title={`Все ${uploadLimitData.limit} слотов использованы`}
+                >
+                  <Camera className="h-5 w-5 opacity-40" />
+                  <span className="mt-0.5 text-[10px] font-medium">{uploadLimitData.used}/{uploadLimitData.limit}</span>
+                </div>
               )}
             </div>
 
@@ -1128,11 +1150,24 @@ export default function AnimalProfile() {
                   </div>
                 )}
 
-                {/* Hint for CDN placeholder photos */}
-                {selectedImage && !selectedImage.isUploaded && (
+                {/* Upload limit info */}
+                {isAuthenticated && uploadLimitData && uploadLimitData.limit > 0 && (
+                  <div className={`flex items-center gap-2 rounded-lg px-3 py-2 text-xs ${uploadLimitData.remaining > 0 ? "bg-emerald-50 border border-emerald-200 text-emerald-700 dark:bg-emerald-900/20 dark:border-emerald-700 dark:text-emerald-300" : "bg-amber-50 border border-amber-200 text-amber-700 dark:bg-amber-900/20 dark:border-amber-700 dark:text-amber-300"}`}>
+                    <Camera className="h-3.5 w-3.5 shrink-0" />
+                    <span>
+                      {uploadLimitData.isAdmin
+                        ? `Админ: ${uploadLimitData.used}/1 фото-обложка`
+                        : uploadLimitData.remaining > 0
+                          ? `Фото: ${uploadLimitData.used} из ${uploadLimitData.limit} (по количеству долей). Можно загрузить ещё ${uploadLimitData.remaining}.`
+                          : `Все ${uploadLimitData.limit} слотов использованы. Удалите фото, чтобы загрузить новое.`
+                      }
+                    </span>
+                  </div>
+                )}
+                {isAuthenticated && uploadLimitData && uploadLimitData.limit === 0 && !uploadLimitData.isAdmin && (
                   <div className="flex items-center gap-2 rounded-lg bg-blue-50 border border-blue-200 px-3 py-2 text-xs text-blue-700 dark:bg-blue-900/20 dark:border-blue-700 dark:text-blue-300">
                     <Camera className="h-3.5 w-3.5 shrink-0" />
-                    <span>Это стандартное фото. Загрузите своё фото через кнопку «Добавить» справа от миниатюр!</span>
+                    <span>Чтобы загружать фото, приобретите долю. Количество фото = количеству долей.</span>
                   </div>
                 )}
 

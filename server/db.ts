@@ -487,6 +487,64 @@ export async function listAnimalPhotos(animalSlug: string, callerOpenId?: string
   }
 }
 
+/**
+ * Get photo upload limit for a user on a specific animal.
+ * - Admin: 1 photo (cover)
+ * - User: number of active ownership slots (max 10)
+ * Returns { limit, used, remaining }
+ */
+export async function getPhotoUploadLimit(animalSlug: string, callerOpenId: string) {
+  const db = await getDb();
+  if (!db) return { limit: 0, used: 0, remaining: 0, isAdmin: false };
+
+  const isAdmin = callerOpenId === ENV.ownerOpenId;
+
+  // Count existing photos by this user for this animal (exclude rejected)
+  const userPhotos = await db
+    .select({ id: animalPhotos.id })
+    .from(animalPhotos)
+    .where(
+      and(
+        eq(animalPhotos.animalSlug, animalSlug),
+        eq(animalPhotos.ownerOpenId, callerOpenId),
+        ne(animalPhotos.moderationStatus, "rejected"),
+      ),
+    );
+  const used = userPhotos.length;
+
+  if (isAdmin) {
+    // Admin can upload 1 cover photo per animal
+    return { limit: 1, used, remaining: Math.max(0, 1 - used), isAdmin: true };
+  }
+
+  // Get animal id from slug
+  const animalRows = await db
+    .select({ id: animals.id })
+    .from(animals)
+    .where(eq(animals.slug, animalSlug))
+    .limit(1);
+  const animalId = animalRows[0]?.id;
+  if (!animalId) return { limit: 0, used, remaining: 0, isAdmin: false };
+
+  // Count user's active ownership slots for this animal
+  const ownerSlots = await db
+    .select({ id: animalOwnerships.id })
+    .from(animalOwnerships)
+    .where(
+      and(
+        eq(animalOwnerships.ownerOpenId, callerOpenId),
+        eq(animalOwnerships.animalId, animalId),
+        or(eq(animalOwnerships.status, "active"), eq(animalOwnerships.status, "pending_payment")),
+      ),
+    );
+
+  const slotsCount = ownerSlots.length;
+  // Limit = number of slots, capped at 10
+  const limit = Math.min(10, slotsCount);
+
+  return { limit, used, remaining: Math.max(0, limit - used), isAdmin: false };
+}
+
 export async function createAnimalPhoto(input: InsertAnimalPhoto) {
   const db = await getDb();
   if (!db) {

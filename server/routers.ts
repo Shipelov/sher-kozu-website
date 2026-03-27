@@ -7,6 +7,7 @@ import { adminProcedure, protectedProcedure, publicProcedure, router } from "./_
 import { catalogCache, CATALOG_CACHE_KEY, CATALOG_TTL_MS, invalidateCatalogCache } from "./cache";
 import {
   createAnimalPhoto,
+  getPhotoUploadLimit,
   createAnimalWithMedia,
   createClubAdminPreset,
   createClubEvent,
@@ -1081,6 +1082,9 @@ export const appRouter = router({
         canEdit: ctx.user.openId === ENV.ownerOpenId || (item.ownerOpenId === ctx.user.openId && !(Boolean(item.isCover) && item.ownerOpenId === ENV.ownerOpenId)),
       }));
     }),
+    uploadLimit: protectedProcedure.input(animalPhotoListInput).query(async ({ ctx, input }) => {
+      return getPhotoUploadLimit(input.animalSlug, ctx.user.openId);
+    }),
     upload: protectedProcedure.input(uploadPhotoInput).mutation(async ({ ctx, input }) => {
       const buffer = Buffer.from(input.base64Data, "base64");
       if (!buffer.byteLength) {
@@ -1088,6 +1092,18 @@ export const appRouter = router({
       }
 
       const isAdmin = ctx.user.openId === ENV.ownerOpenId;
+
+      // Check upload limit
+      const uploadLimit = await getPhotoUploadLimit(input.animalSlug, ctx.user.openId);
+      if (uploadLimit.remaining <= 0) {
+        if (isAdmin) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Администратор может загрузить только 1 фото-обложку для каждого животного." });
+        }
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: `Вы использовали все ${uploadLimit.limit} слотов для фото. Количество фото равно количеству ваших долей. Удалите старое фото, чтобы загрузить новое.`,
+        });
+      }
       const extension = input.fileName.includes(".") ? input.fileName.split(".").pop() : "jpg";
       const safeName = sanitizeFileName(input.fileName);
       const fileKey = `animal-photos/${input.animalSlug}/${ctx.user.openId}/${Date.now()}-${safeName}`;
