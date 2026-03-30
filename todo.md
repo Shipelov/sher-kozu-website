@@ -1376,3 +1376,8 @@
 - [x] Удалить seed-код создания демо-животных из ensureSprintOneSeed() — оставлены только планы и длительности
 - [x] Аудит всех страниц и кода на ссылки к старым тестовым данным
 - [x] Исправлено: fallback slugs в db.ts, routers.ts, ClubFeed.tsx, ProductTracker.tsx; имена в clubMembers seed; alt-текст в AboutFarm.tsx
+
+## Очистка seed-данных clubMembers
+- [x] Удалено 565 seed-записей clubMembers с именами Марта/Злата (283+282). Осталось 2 записи: Белла, Луна
+- [x] Обновлен clubPost id=1 — убрана ссылка на Марту в заголовке и тексте
+- [x] Проверены clubEvents, cmsBlocks, faqQuestions — ссылок на Марту/Злату нет

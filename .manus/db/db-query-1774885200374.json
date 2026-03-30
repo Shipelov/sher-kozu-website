@@ -1,0 +1,15 @@
+{
+  "query": "SELECT id, title, text FROM clubPosts WHERE text LIKE '%Марта%' OR text LIKE '%Злата%' OR title LIKE '%Марта%' OR title LIKE '%Злата%' LIMIT 5;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3J2fXRHx8d1YjF6.root --database mLhmg5VmBsEBpZiYqdnhMQ --execute SELECT id, title, text FROM clubPosts WHERE text LIKE '%Марта%' OR text LIKE '%Злата%' OR title LIKE '%Марта%' OR title LIKE '%Злата%' LIMIT 5;",
+  "rows": [
+    {
+      "id": "1",
+      "title": "Утренний круг на дворе Марты",
+      "text": "Марта первой вышла на круг, а затем спокойно перешла в доильный блок. Для владельцев это значит, что сегодняшняя партия уже в работе и скоро отразится в трекере."
+    }
+  ],
+  "messages": [],
+  "stdout": "id\ttitle\ttext\n1\tУтренний круг на дворе Марты\tМарта первой вышла на круг, а затем спокойно перешла в доильный блок. Для владельцев это значит, что сегодняшняя партия уже в работе и скоро отразится в трекере.\n",
+  "stderr": "",
+  "execution_time_ms": 358
+}

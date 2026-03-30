@@ -1,0 +1,28 @@
+{
+  "query": "SELECT id, ownerOpenId, name, animal, sinceLabel, badge, sortOrder FROM clubMembers WHERE animal NOT IN ('Марта', 'Злата') ORDER BY id;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3J2fXRHx8d1YjF6.root --database mLhmg5VmBsEBpZiYqdnhMQ --execute SELECT id, ownerOpenId, name, animal, sinceLabel, badge, sortOrder FROM clubMembers WHERE animal NOT IN ('Марта', 'Злата') ORDER BY id;",
+  "rows": [
+    {
+      "id": "2",
+      "ownerOpenId": "jP5iBYMcdYguBWJPw5Sruu",
+      "name": "Семья Ковалёвых",
+      "animal": "Белла",
+      "sinceLabel": "С клубом с февраля",
+      "badge": "Гостевой стол",
+      "sortOrder": "1"
+    },
+    {
+      "id": "30001",
+      "ownerOpenId": "jP5iBYMcdYguBWJPw5Sruu",
+      "name": "Иван Петров",
+      "animal": "Луна",
+      "sinceLabel": "03.05.2025",
+      "badge": "23к35",
+      "sortOrder": "3"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\townerOpenId\tname\tanimal\tsinceLabel\tbadge\tsortOrder\n2\tjP5iBYMcdYguBWJPw5Sruu\tСемья Ковалёвых\tБелла\tС клубом с февраля\tГостевой стол\t1\n30001\tjP5iBYMcdYguBWJPw5Sruu\tИван Петров\tЛуна\t03.05.2025\t23к35\t3\n",
+  "stderr": "",
+  "execution_time_ms": 372
+}

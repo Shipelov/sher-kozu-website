@@ -1,0 +1,22 @@
+{
+  "query": "SELECT COUNT(*) as total FROM clubMembers; SELECT id, name, animal, badge FROM clubMembers ORDER BY id;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3J2fXRHx8d1YjF6.root --database mLhmg5VmBsEBpZiYqdnhMQ --execute SELECT COUNT(*) as total FROM clubMembers; SELECT id, name, animal, badge FROM clubMembers ORDER BY id;",
+  "rows": [
+    {
+      "total": "2"
+    },
+    {
+      "total": "id\tname\tanimal\tbadge"
+    },
+    {
+      "total": "2\tСемья Ковалёвых\tБелла\tГостевой стол"
+    },
+    {
+      "total": "30001\tИван Петров\tЛуна\t23к35"
+    }
+  ],
+  "messages": [],
+  "stdout": "total\n2\nid\tname\tanimal\tbadge\n2\tСемья Ковалёвых\tБелла\tГостевой стол\n30001\tИван Петров\tЛуна\t23к35\n",
+  "stderr": "",
+  "execution_time_ms": 400
+}

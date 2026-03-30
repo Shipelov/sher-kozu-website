@@ -1,0 +1,18 @@
+{
+  "query": "SELECT animal, COUNT(*) as cnt FROM clubMembers WHERE animal IN ('Марта', 'Злата') GROUP BY animal;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3J2fXRHx8d1YjF6.root --database mLhmg5VmBsEBpZiYqdnhMQ --execute SELECT animal, COUNT(*) as cnt FROM clubMembers WHERE animal IN ('Марта', 'Злата') GROUP BY animal;",
+  "rows": [
+    {
+      "animal": "Марта",
+      "cnt": "283"
+    },
+    {
+      "animal": "Злата",
+      "cnt": "282"
+    }
+  ],
+  "messages": [],
+  "stdout": "animal\tcnt\nМарта\t283\nЗлата\t282\n",
+  "stderr": "",
+  "execution_time_ms": 382
+}
