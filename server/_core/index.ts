@@ -110,6 +110,20 @@ async function startServer() {
     next();
   });
 
+  // Analytics beacon endpoint (for sendBeacon on page unload)
+  app.post("/api/analytics/time", async (req, res) => {
+    try {
+      const { sessionId, pagePath, timeOnPage } = req.body;
+      if (sessionId && pagePath && typeof timeOnPage === "number") {
+        const { updateVisitTimeOnPage } = await import("../db");
+        await updateVisitTimeOnPage(sessionId, pagePath, timeOnPage);
+      }
+      res.status(204).end();
+    } catch {
+      res.status(204).end();
+    }
+  });
+
   // OAuth callback under /api/oauth/callback
   registerOAuthRoutes(app);
   // tRPC API

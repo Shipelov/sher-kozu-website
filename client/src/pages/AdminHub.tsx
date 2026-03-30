@@ -9,6 +9,7 @@ import ScrollRemaining from "@/components/ScrollRemaining";
 import PageBreadcrumbs from "@/components/PageBreadcrumbs";
 import { cn } from "@/lib/utils";
 import {
+  Activity,
   ArrowRight,
   Bell,
   Coins,
@@ -89,7 +90,8 @@ export default function AdminHub() {
     { title: "Пользователи", path: "/admin/users", icon: Users, stat: isAdmin ? `${funnel?.totalUsers ?? 0}` : undefined },
     { title: "Маркетплейс", path: "/admin/marketplace", icon: ShoppingBag },
     { title: "Токены SKC", path: "/admin/tokens", icon: Coins },
-    { title: "Аналитика", path: "/admin/analytics", icon: Gamepad2 },
+    { title: "Аналитика «Забота»", path: "/admin/analytics", icon: Gamepad2 },
+    { title: "Аналитика сайта", path: "/admin/site-analytics", icon: Activity },
     { title: "FAQ аналитика", path: "/admin/faq-analytics", icon: TrendingUp },
     { title: "Контент (CMS)", path: "/admin/content", icon: FileText },
   ];

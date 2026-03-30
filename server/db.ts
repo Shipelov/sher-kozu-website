@@ -50,6 +50,10 @@ import {
   authRateLimits,
   userNotifications,
   notificationPreferences,
+  siteVisits,
+  siteEvents,
+  InsertSiteVisit,
+  InsertSiteEvent,
 } from "../drizzle/schema";
 import { ENV } from "./_core/env";
 
@@ -4460,4 +4464,281 @@ export async function notifyOwnersAboutMetricsUpdate(input: {
     if (result) sent++;
   }
   return sent;
+}
+
+
+/* ─── Site Analytics Helpers ─── */
+
+export async function recordSiteVisit(data: InsertSiteVisit) {
+  const db = await getDb();
+  await db.insert(siteVisits).values(data);
+}
+
+export async function recordSiteEvent(data: InsertSiteEvent) {
+  const db = await getDb();
+  await db.insert(siteEvents).values(data);
+}
+
+export async function updateVisitTimeOnPage(sessionId: string, pagePath: string, timeOnPage: number) {
+  const db = await getDb();
+  await db
+    .update(siteVisits)
+    .set({ timeOnPage, isExit: true })
+    .where(and(eq(siteVisits.sessionId, sessionId), eq(siteVisits.pagePath, pagePath)));
+  // Unset isExit for previous pages in same session
+  await db
+    .update(siteVisits)
+    .set({ isExit: false })
+    .where(and(eq(siteVisits.sessionId, sessionId), sql`${siteVisits.pagePath} != ${pagePath}`));
+}
+
+/**
+ * Get analytics overview for admin dashboard.
+ * Returns metrics for a given date range.
+ */
+export async function getAnalyticsOverview(fromDate: Date, toDate: Date) {
+  const db = await getDb();
+
+  // Total page views
+  const [pvRow] = await db
+    .select({ count: sql<number>`COUNT(*)` })
+    .from(siteVisits)
+    .where(and(gte(siteVisits.createdAt, fromDate), lte(siteVisits.createdAt, toDate)));
+
+  // Unique visitors
+  const [uvRow] = await db
+    .select({ count: sql<number>`COUNT(DISTINCT ${siteVisits.visitorId})` })
+    .from(siteVisits)
+    .where(and(gte(siteVisits.createdAt, fromDate), lte(siteVisits.createdAt, toDate)));
+
+  // Unique sessions
+  const [sessRow] = await db
+    .select({ count: sql<number>`COUNT(DISTINCT ${siteVisits.sessionId})` })
+    .from(siteVisits)
+    .where(and(gte(siteVisits.createdAt, fromDate), lte(siteVisits.createdAt, toDate)));
+
+  // Average time on page (only where timeOnPage is not null)
+  const [avgTimeRow] = await db
+    .select({ avg: sql<number>`COALESCE(AVG(${siteVisits.timeOnPage}), 0)` })
+    .from(siteVisits)
+    .where(and(
+      gte(siteVisits.createdAt, fromDate),
+      lte(siteVisits.createdAt, toDate),
+      sql`${siteVisits.timeOnPage} IS NOT NULL`
+    ));
+
+  // Bounce rate: sessions with only 1 page view / total sessions
+  const bounceData = await db
+    .select({
+      sessionId: siteVisits.sessionId,
+      pageCount: sql<number>`COUNT(*)`,
+    })
+    .from(siteVisits)
+    .where(and(gte(siteVisits.createdAt, fromDate), lte(siteVisits.createdAt, toDate)))
+    .groupBy(siteVisits.sessionId);
+
+  const totalSessions = bounceData.length;
+  const bounceSessions = bounceData.filter((s: any) => s.pageCount === 1).length;
+  const bounceRate = totalSessions > 0 ? Math.round((bounceSessions / totalSessions) * 100) : 0;
+
+  return {
+    pageViews: Number(pvRow?.count ?? 0),
+    uniqueVisitors: Number(uvRow?.count ?? 0),
+    sessions: Number(sessRow?.count ?? 0),
+    avgTimeOnPage: Math.round(Number(avgTimeRow?.avg ?? 0)),
+    bounceRate,
+  };
+}
+
+/**
+ * Get page views grouped by day for a chart.
+ */
+export async function getPageViewsByDay(fromDate: Date, toDate: Date) {
+  const db = await getDb();
+  const rows: any[] = await db.execute(
+    sql`SELECT DATE(createdAt) as d, COUNT(*) as views, COUNT(DISTINCT visitorId) as visitors
+        FROM siteVisits
+        WHERE createdAt >= ${fromDate} AND createdAt <= ${toDate}
+        GROUP BY d ORDER BY d`
+  );
+
+  return rows.map((r: any) => ({
+    date: String(r.d),
+    views: Number(r.views),
+    visitors: Number(r.visitors),
+  }));
+}
+
+/**
+ * Get top pages by views.
+ */
+export async function getTopPages(fromDate: Date, toDate: Date, limit = 20) {
+  const db = await getDb();
+  const rows = await db
+    .select({
+      pagePath: siteVisits.pagePath,
+      views: sql<number>`COUNT(*)`.as("views"),
+      visitors: sql<number>`COUNT(DISTINCT ${siteVisits.visitorId})`.as("visitors"),
+      avgTime: sql<number>`COALESCE(AVG(${siteVisits.timeOnPage}), 0)`.as("avgTime"),
+    })
+    .from(siteVisits)
+    .where(and(gte(siteVisits.createdAt, fromDate), lte(siteVisits.createdAt, toDate)))
+    .groupBy(siteVisits.pagePath)
+    .orderBy(sql`COUNT(*) DESC`)
+    .limit(limit);
+
+  return rows.map((r: any) => ({
+    pagePath: r.pagePath,
+    views: Number(r.views),
+    visitors: Number(r.visitors),
+    avgTime: Math.round(Number(r.avgTime)),
+  }));
+}
+
+/**
+ * Get referrer breakdown.
+ */
+export async function getReferrerBreakdown(fromDate: Date, toDate: Date, limit = 15) {
+  const db = await getDb();
+  const rows: any[] = await db.execute(
+    sql`SELECT COALESCE(referrer, 'Прямой заход') as ref, COUNT(*) as visits, COUNT(DISTINCT visitorId) as visitors
+        FROM siteVisits
+        WHERE createdAt >= ${fromDate} AND createdAt <= ${toDate}
+        GROUP BY ref ORDER BY visits DESC LIMIT ${limit}`
+  );
+
+  return rows.map((r: any) => ({
+    referrer: String(r.ref),
+    visits: Number(r.visits),
+    visitors: Number(r.visitors),
+  }));
+}
+
+/**
+ * Get device/browser/OS breakdown.
+ */
+export async function getDeviceBreakdown(fromDate: Date, toDate: Date) {
+  const db = await getDb();
+
+  const deviceRows: any[] = await db.execute(
+    sql`SELECT COALESCE(deviceType, 'unknown') as dt, COUNT(DISTINCT visitorId) as cnt
+        FROM siteVisits WHERE createdAt >= ${fromDate} AND createdAt <= ${toDate}
+        GROUP BY dt ORDER BY cnt DESC`
+  );
+
+  const browserRows: any[] = await db.execute(
+    sql`SELECT COALESCE(browser, 'unknown') as br, COUNT(DISTINCT visitorId) as cnt
+        FROM siteVisits WHERE createdAt >= ${fromDate} AND createdAt <= ${toDate}
+        GROUP BY br ORDER BY cnt DESC LIMIT 10`
+  );
+
+  const osRows: any[] = await db.execute(
+    sql`SELECT COALESCE(os, 'unknown') as osName, COUNT(DISTINCT visitorId) as cnt
+        FROM siteVisits WHERE createdAt >= ${fromDate} AND createdAt <= ${toDate}
+        GROUP BY osName ORDER BY cnt DESC LIMIT 10`
+  );
+
+  return {
+    devices: deviceRows.map((r: any) => ({ type: String(r.dt), count: Number(r.cnt) })),
+    browsers: browserRows.map((r: any) => ({ name: String(r.br), count: Number(r.cnt) })),
+    os: osRows.map((r: any) => ({ name: String(r.osName), count: Number(r.cnt) })),
+  };
+}
+
+/**
+ * Get UTM campaign breakdown.
+ */
+export async function getUtmBreakdown(fromDate: Date, toDate: Date) {
+  const db = await getDb();
+  const rows: any[] = await db.execute(
+    sql`SELECT COALESCE(utmSource, 'organic') as src, COALESCE(utmMedium, 'none') as med,
+               COALESCE(utmCampaign, 'none') as camp, COUNT(*) as visits, COUNT(DISTINCT visitorId) as visitors
+        FROM siteVisits
+        WHERE createdAt >= ${fromDate} AND createdAt <= ${toDate} AND utmSource IS NOT NULL
+        GROUP BY src, med, camp ORDER BY visits DESC LIMIT 20`
+  );
+
+  return rows.map((r: any) => ({
+    source: String(r.src),
+    medium: String(r.med),
+    campaign: String(r.camp),
+    visits: Number(r.visits),
+    visitors: Number(r.visitors),
+  }));
+}
+
+/**
+ * Get conversion funnel: visitors who viewed key pages.
+ */
+export async function getConversionFunnel(fromDate: Date, toDate: Date) {
+  const db = await getDb();
+  const funnelSteps = [
+    { name: "Главная", pattern: "/" },
+    { name: "Каталог", pattern: "/animals" },
+    { name: "Профиль животного", pattern: "/animal/" },
+    { name: "Трекер продуктов", pattern: "/tracker" },
+    { name: "Клуб", pattern: "/club" },
+    { name: "Кабинет", pattern: "/dashboard" },
+  ];
+
+  const results = [];
+  for (const step of funnelSteps) {
+    const [row] = await db
+      .select({ count: sql<number>`COUNT(DISTINCT ${siteVisits.visitorId})` })
+      .from(siteVisits)
+      .where(and(
+        gte(siteVisits.createdAt, fromDate),
+        lte(siteVisits.createdAt, toDate),
+        step.pattern === "/" 
+          ? eq(siteVisits.pagePath, "/")
+          : sql`${siteVisits.pagePath} LIKE ${step.pattern + "%"}`,
+      ));
+    results.push({ step: step.name, visitors: Number(row?.count ?? 0) });
+  }
+  return results;
+}
+
+/**
+ * Get site events grouped by category and action.
+ */
+export async function getEventsSummary(fromDate: Date, toDate: Date) {
+  const db = await getDb();
+  const rows = await db
+    .select({
+      category: siteEvents.category,
+      action: siteEvents.action,
+      label: siteEvents.label,
+      count: sql<number>`COUNT(*)`.as("count"),
+    })
+    .from(siteEvents)
+    .where(and(gte(siteEvents.createdAt, fromDate), lte(siteEvents.createdAt, toDate)))
+    .groupBy(siteEvents.category, siteEvents.action, siteEvents.label)
+    .orderBy(sql`COUNT(*) DESC`)
+    .limit(30);
+
+  return rows.map((r: any) => ({
+    category: r.category,
+    action: r.action,
+    label: r.label ?? "",
+    count: Number(r.count),
+  }));
+}
+
+/**
+ * Get hourly traffic distribution for heatmap.
+ */
+export async function getHourlyTraffic(fromDate: Date, toDate: Date) {
+  const db = await getDb();
+  const rows: any[] = await db.execute(
+    sql`SELECT HOUR(createdAt) as h, DAYOFWEEK(createdAt) as dow, COUNT(*) as cnt
+        FROM siteVisits
+        WHERE createdAt >= ${fromDate} AND createdAt <= ${toDate}
+        GROUP BY h, dow ORDER BY dow, h`
+  );
+
+  return rows.map((r: any) => ({
+    hour: Number(r.h),
+    dayOfWeek: Number(r.dow),
+    count: Number(r.cnt),
+  }));
 }

@@ -8,6 +8,7 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import WelcomeOnboarding from "@/components/WelcomeOnboarding";
 import { Loader2 } from "lucide-react";
 import MashaFloatingChat from "@/components/MashaFloatingChat";
+import AnalyticsTracker from "@/components/AnalyticsTracker";
 
 /* ─── Lazy-loaded page components (code-split per route) ─── */
 const Home = lazy(() => import("./pages/Home"));
@@ -24,6 +25,7 @@ const AdminProductTrack = lazy(() => import("./pages/AdminProductTrack"));
 const AdminMarketplace = lazy(() => import("./pages/AdminMarketplace"));
 const AdminTokens = lazy(() => import("./pages/AdminTokens"));
 const AdminAnalytics = lazy(() => import("./pages/AdminAnalytics"));
+const AdminSiteAnalytics = lazy(() => import("./pages/AdminSiteAnalytics"));
 const AdminFaqAnalytics = lazy(() => import("./pages/AdminFaqAnalytics"));
 const AdminCmsEditor = lazy(() => import("./pages/AdminCmsEditor"));
 const AdminPhotoModeration = lazy(() => import("./pages/AdminPhotoModeration"));
@@ -78,7 +80,7 @@ function RouteNormalizer() {
 function Router() {
   // make sure to consider if you need authentication for certain routes
   return (
-    <>
+    <AnalyticsTracker>
       <RouteNormalizer />
       <Suspense fallback={<PageLoader />}>
         <Switch>
@@ -100,6 +102,7 @@ function Router() {
         <Route path="/admin/marketplace" component={AdminMarketplace} />
         <Route path="/admin/tokens" component={AdminTokens} />
         <Route path="/admin/analytics" component={AdminAnalytics} />
+        <Route path="/admin/site-analytics" component={AdminSiteAnalytics} />
         <Route path="/admin/faq-analytics" component={AdminFaqAnalytics} />
         <Route path="/admin/content" component={AdminCmsEditor} />
         <Route path="/admin/photo-moderation" component={AdminPhotoModeration} />
@@ -113,7 +116,7 @@ function Router() {
         <Route component={NotFound} />
         </Switch>
       </Suspense>
-    </>
+    </AnalyticsTracker>
   );
 }
 

@@ -225,6 +225,13 @@
       "when": 1774902566567,
       "tag": "0032_curved_raza",
       "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "5",
+      "when": 1774905751294,
+      "tag": "0033_typical_speed",
+      "breakpoints": true
     }
   ]
 }

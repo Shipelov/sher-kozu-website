@@ -1228,3 +1228,90 @@ export const notificationPreferences = mysqlTable("notificationPreferences", {
 });
 
 export type InsertNotificationPreference = typeof notificationPreferences.$inferInsert;
+
+
+/* ─── Site Analytics ─── */
+
+/**
+ * Site Visits — tracks every page view with device, referrer, UTM and session info.
+ * Used for traffic analysis, conversion funnels, and device breakdown.
+ */
+export const siteVisits = mysqlTable("siteVisits", {
+  id: int("id").autoincrement().primaryKey(),
+  /** Anonymous visitor fingerprint (hashed IP + UA, no PII stored) */
+  visitorId: varchar("visitorId", { length: 64 }).notNull(),
+  /** Session identifier (generated per browser session via cookie) */
+  sessionId: varchar("sessionId", { length: 64 }).notNull(),
+  /** Authenticated user openId (null for anonymous visitors) */
+  userOpenId: varchar("userOpenId", { length: 64 }),
+  /** Page path visited, e.g. '/animals', '/tracker?animal=mira' */
+  pagePath: varchar("pagePath", { length: 512 }).notNull(),
+  /** Referrer URL (external source that brought the visitor) */
+  referrer: varchar("referrer", { length: 1024 }),
+  /** UTM source parameter */
+  utmSource: varchar("utmSource", { length: 128 }),
+  /** UTM medium parameter */
+  utmMedium: varchar("utmMedium", { length: 128 }),
+  /** UTM campaign parameter */
+  utmCampaign: varchar("utmCampaign", { length: 256 }),
+  /** Device type: 'desktop', 'tablet', 'mobile' */
+  deviceType: varchar("deviceType", { length: 16 }),
+  /** Browser name: 'Chrome', 'Safari', 'Firefox', etc. */
+  browser: varchar("browser", { length: 64 }),
+  /** Operating system: 'Windows', 'macOS', 'iOS', 'Android', etc. */
+  os: varchar("os", { length: 64 }),
+  /** Screen width in pixels */
+  screenWidth: int("screenWidth"),
+  /** Country code (ISO 3166-1 alpha-2, derived from IP if available) */
+  country: varchar("country", { length: 8 }),
+  /** Time spent on page in seconds (updated on next navigation or unload) */
+  timeOnPage: int("timeOnPage"),
+  /** Whether this is the first visit in the session (entry page) */
+  isEntry: boolean("isEntry").default(false).notNull(),
+  /** Whether this is the last visit in the session (exit page) */
+  isExit: boolean("isExit").default(false).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, (t) => [
+  index("sv_visitorId_idx").on(t.visitorId),
+  index("sv_sessionId_idx").on(t.sessionId),
+  index("sv_pagePath_idx").on(t.pagePath),
+  index("sv_createdAt_idx").on(t.createdAt),
+  index("sv_userOpenId_idx").on(t.userOpenId),
+]);
+export type SiteVisit = typeof siteVisits.$inferSelect;
+export type InsertSiteVisit = typeof siteVisits.$inferInsert;
+
+/**
+ * Site Events — tracks specific user interactions (CTA clicks, form submissions, etc.).
+ * Used for conversion tracking and engagement analysis.
+ */
+export const siteEvents = mysqlTable("siteEvents", {
+  id: int("id").autoincrement().primaryKey(),
+  /** Anonymous visitor fingerprint */
+  visitorId: varchar("visitorId", { length: 64 }).notNull(),
+  /** Session identifier */
+  sessionId: varchar("sessionId", { length: 64 }).notNull(),
+  /** Authenticated user openId (null for anonymous) */
+  userOpenId: varchar("userOpenId", { length: 64 }),
+  /** Event category: 'cta', 'navigation', 'engagement', 'conversion', 'error' */
+  category: varchar("category", { length: 64 }).notNull(),
+  /** Event action: 'click', 'submit', 'scroll', 'view', 'share' */
+  action: varchar("action", { length: 64 }).notNull(),
+  /** Event label for specifics: 'hero_cta', 'catalog_filter', 'animal_share_buy' */
+  label: varchar("label", { length: 256 }),
+  /** Numeric value associated with the event (e.g. scroll depth %) */
+  value: int("value"),
+  /** Page where the event occurred */
+  pagePath: varchar("pagePath", { length: 512 }),
+  /** Additional JSON metadata */
+  metadata: text("metadata"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, (t) => [
+  index("se_visitorId_idx").on(t.visitorId),
+  index("se_sessionId_idx").on(t.sessionId),
+  index("se_category_idx").on(t.category),
+  index("se_action_idx").on(t.action),
+  index("se_createdAt_idx").on(t.createdAt),
+]);
+export type SiteEvent = typeof siteEvents.$inferSelect;
+export type InsertSiteEvent = typeof siteEvents.$inferInsert;
