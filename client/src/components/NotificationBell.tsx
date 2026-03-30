@@ -6,7 +6,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Bell, BellDot, Check, CheckCheck, Camera, Info, ExternalLink, Newspaper, CalendarHeart } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
 
@@ -45,6 +45,8 @@ function notificationIcon(type: string) {
 export default function NotificationBell() {
   const [open, setOpen] = useState(false);
   const [, setLocation] = useLocation();
+  const [isShaking, setIsShaking] = useState(false);
+  const prevUnreadRef = useRef<number | null>(null);
 
   const unreadCountQuery = trpc.notifications.unreadCount.useQuery(undefined, {
     refetchInterval: 30_000,
@@ -75,6 +77,18 @@ export default function NotificationBell() {
   const notifications = listQuery.data ?? [];
   const hasUnread = unreadCount > 0;
 
+  // Detect when unread count increases → trigger shake
+  useEffect(() => {
+    const prev = prevUnreadRef.current;
+    // Only shake if count increased (not on initial load when prev is null)
+    if (prev !== null && unreadCount > prev) {
+      setIsShaking(true);
+      const timer = setTimeout(() => setIsShaking(false), 1200);
+      return () => clearTimeout(timer);
+    }
+    prevUnreadRef.current = unreadCount;
+  }, [unreadCount]);
+
   const handleNotificationClick = (notification: any) => {
     if (!notification.isRead) {
       markReadMutation.mutate({ notificationId: notification.id });
@@ -89,7 +103,9 @@ export default function NotificationBell() {
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <button
-          className="relative h-9 w-9 flex items-center justify-center rounded-lg hover:bg-accent transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className={`relative h-9 w-9 flex items-center justify-center rounded-lg hover:bg-accent transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+            isShaking ? "animate-bell-shake" : ""
+          }`}
           aria-label={hasUnread ? `${unreadCount} непрочитанных уведомлений` : "Уведомления"}
         >
           {hasUnread ? (
