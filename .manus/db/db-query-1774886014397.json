@@ -1,0 +1,194 @@
+{
+  "query": "DESCRIBE animals;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3J2fXRHx8d1YjF6.root --database mLhmg5VmBsEBpZiYqdnhMQ --execute DESCRIBE animals;",
+  "rows": [
+    {
+      "Field": "id",
+      "Type": "int",
+      "Null": "NO",
+      "Key": "PRI",
+      "Default": "NULL",
+      "Extra": "auto_increment"
+    },
+    {
+      "Field": "ownerOpenId",
+      "Type": "varchar(64)",
+      "Null": "NO",
+      "Key": "MUL",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "name",
+      "Type": "varchar(160)",
+      "Null": "NO",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "slug",
+      "Type": "varchar(120)",
+      "Null": "NO",
+      "Key": "UNI",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "animalSpecies",
+      "Type": "enum('goat','sheep')",
+      "Null": "NO",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "breed",
+      "Type": "varchar(160)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "birthDate",
+      "Type": "timestamp",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "shortDescription",
+      "Type": "varchar(255)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "story",
+      "Type": "text",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "coverImageUrl",
+      "Type": "text",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "galleryIntro",
+      "Type": "text",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "animalStatus",
+      "Type": "enum('public_available','public_limited','fully_booked','hidden','archived')",
+      "Null": "NO",
+      "Key": "MUL",
+      "Default": "public_available",
+      "Extra": ""
+    },
+    {
+      "Field": "totalOwnershipSlots",
+      "Type": "int",
+      "Null": "NO",
+      "Key": "",
+      "Default": "3",
+      "Extra": ""
+    },
+    {
+      "Field": "baseMonthlyPriceMinor",
+      "Type": "int",
+      "Null": "NO",
+      "Key": "",
+      "Default": "0",
+      "Extra": ""
+    },
+    {
+      "Field": "healthScore",
+      "Type": "int",
+      "Null": "NO",
+      "Key": "",
+      "Default": "50",
+      "Extra": ""
+    },
+    {
+      "Field": "happinessScore",
+      "Type": "int",
+      "Null": "NO",
+      "Key": "",
+      "Default": "50",
+      "Extra": ""
+    },
+    {
+      "Field": "milkPotentialScore",
+      "Type": "int",
+      "Null": "NO",
+      "Key": "",
+      "Default": "50",
+      "Extra": ""
+    },
+    {
+      "Field": "careLevelScore",
+      "Type": "int",
+      "Null": "NO",
+      "Key": "",
+      "Default": "0",
+      "Extra": ""
+    },
+    {
+      "Field": "isFeatured",
+      "Type": "int",
+      "Null": "NO",
+      "Key": "",
+      "Default": "0",
+      "Extra": ""
+    },
+    {
+      "Field": "sortOrder",
+      "Type": "int",
+      "Null": "NO",
+      "Key": "",
+      "Default": "0",
+      "Extra": ""
+    },
+    {
+      "Field": "publishedAt",
+      "Type": "timestamp",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "createdAt",
+      "Type": "timestamp",
+      "Null": "NO",
+      "Key": "",
+      "Default": "CURRENT_TIMESTAMP",
+      "Extra": ""
+    },
+    {
+      "Field": "updatedAt",
+      "Type": "timestamp",
+      "Null": "NO",
+      "Key": "",
+      "Default": "CURRENT_TIMESTAMP",
+      "Extra": "DEFAULT_GENERATED on update CURRENT_TIMESTAMP"
+    }
+  ],
+  "messages": [],
+  "stdout": "Field\tType\tNull\tKey\tDefault\tExtra\nid\tint\tNO\tPRI\tNULL\tauto_increment\nownerOpenId\tvarchar(64)\tNO\tMUL\tNULL\t\nname\tvarchar(160)\tNO\t\tNULL\t\nslug\tvarchar(120)\tNO\tUNI\tNULL\t\nanimalSpecies\tenum('goat','sheep')\tNO\t\tNULL\t\nbreed\tvarchar(160)\tYES\t\tNULL\t\nbirthDate\ttimestamp\tYES\t\tNULL\t\nshortDescription\tvarchar(255)\tYES\t\tNULL\t\nstory\ttext\tYES\t\tNULL\t\ncoverImageUrl\ttext\tYES\t\tNULL\t\ngalleryIntro\ttext\tYES\t\tNULL\t\nanimalStatus\tenum('public_available','public_limited','fully_booked','hidden','archived')\tNO\tMUL\tpublic_available\t\ntotalOwnershipSlots\tint\tNO\t\t3\t\nbaseMonthlyPriceMinor\tint\tNO\t\t0\t\nhealthScore\tint\tNO\t\t50\t\nhappinessScore\tint\tNO\t\t50\t\nmilkPotentialScore\tint\tNO\t\t50\t\ncareLevelScore\tint\tNO\t\t0\t\nisFeatured\tint\tNO\t\t0\t\nsortOrder\tint\tNO\t\t0\t\npublishedAt\ttimestamp\tYES\t\tNULL\t\ncreatedAt\ttimestamp\tNO\t\tCURRENT_TIMESTAMP\t\nupdatedAt\ttimestamp\tNO\t\tCURRENT_TIMESTAMP\tDEFAULT_GENERATED on update CURRENT_TIMESTAMP\n",
+  "stderr": "",
+  "execution_time_ms": 360
+}

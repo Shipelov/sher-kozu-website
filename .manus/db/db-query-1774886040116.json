@@ -1,0 +1,45 @@
+{
+  "query": "SELECT id, slug, name, animalStatus, ownerOpenId FROM animals ORDER BY id;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3J2fXRHx8d1YjF6.root --database mLhmg5VmBsEBpZiYqdnhMQ --execute SELECT id, slug, name, animalStatus, ownerOpenId FROM animals ORDER BY id;",
+  "rows": [
+    {
+      "id": "30001",
+      "slug": "mira",
+      "name": "Мира",
+      "animalStatus": "fully_booked",
+      "ownerOpenId": "jP5iBYMcdYguBWJPw5Sruu"
+    },
+    {
+      "id": "180005",
+      "slug": "zlata",
+      "name": "Злата",
+      "animalStatus": "fully_booked",
+      "ownerOpenId": "jP5iBYMcdYguBWJPw5Sruu"
+    },
+    {
+      "id": "270001",
+      "slug": "Rufa",
+      "name": "Руфа",
+      "animalStatus": "fully_booked",
+      "ownerOpenId": "jP5iBYMcdYguBWJPw5Sruu"
+    },
+    {
+      "id": "330001",
+      "slug": "marta-ownerdemo",
+      "name": "Марта",
+      "animalStatus": "public_available",
+      "ownerOpenId": "owner-demo"
+    },
+    {
+      "id": "330002",
+      "slug": "zlata-ownerdemo",
+      "name": "Злата",
+      "animalStatus": "public_available",
+      "ownerOpenId": "owner-demo"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tslug\tname\tanimalStatus\townerOpenId\n30001\tmira\tМира\tfully_booked\tjP5iBYMcdYguBWJPw5Sruu\n180005\tzlata\tЗлата\tfully_booked\tjP5iBYMcdYguBWJPw5Sruu\n270001\tRufa\tРуфа\tfully_booked\tjP5iBYMcdYguBWJPw5Sruu\n330001\tmarta-ownerdemo\tМарта\tpublic_available\towner-demo\n330002\tzlata-ownerdemo\tЗлата\tpublic_available\towner-demo\n",
+  "stderr": "",
+  "execution_time_ms": 376
+}
