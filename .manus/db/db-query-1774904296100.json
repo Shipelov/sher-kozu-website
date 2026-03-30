@@ -1,0 +1,34 @@
+{
+  "query": "SELECT a.name, a.slug, a.coverImageUrl AS animals_coverUrl, p.id AS photoId, p.url AS photos_coverUrl, p.isCover FROM animals a LEFT JOIN animalPhotos p ON p.animalSlug = a.slug AND p.isCover = 1 ORDER BY a.id;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3J2fXRHx8d1YjF6.root --database mLhmg5VmBsEBpZiYqdnhMQ --execute SELECT a.name, a.slug, a.coverImageUrl AS animals_coverUrl, p.id AS photoId, p.url AS photos_coverUrl, p.isCover FROM animals a LEFT JOIN animalPhotos p ON p.animalSlug = a.slug AND p.isCover = 1 ORDER BY a.id;",
+  "rows": [
+    {
+      "name": "Мира",
+      "slug": "mira",
+      "animals_coverUrl": "https://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/animal-photos/mira/jP5iBYMcdYguBWJPw5Sruu/1774388989732-alpine-1-cropped.jpg",
+      "photoId": "90004",
+      "photos_coverUrl": "https://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/animal-photos/mira/jP5iBYMcdYguBWJPw5Sruu/1774388989732-alpine-1-cropped.jpg",
+      "isCover": "1"
+    },
+    {
+      "name": "Злата",
+      "slug": "zlata",
+      "animals_coverUrl": "https://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/animal-photos/zlata/jP5iBYMcdYguBWJPw5Sruu/1774389118629-ostfriesian-1-cropped.jpg",
+      "photoId": "NULL",
+      "photos_coverUrl": "NULL",
+      "isCover": "NULL"
+    },
+    {
+      "name": "Руфа",
+      "slug": "Rufa",
+      "animals_coverUrl": "https://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/animal-photos/Rufa/jP5iBYMcdYguBWJPw5Sruu/1774390902913-lacaune-2-cropped.jpg",
+      "photoId": "90006",
+      "photos_coverUrl": "https://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/animal-photos/Rufa/jP5iBYMcdYguBWJPw5Sruu/1774390902913-lacaune-2-cropped.jpg",
+      "isCover": "1"
+    }
+  ],
+  "messages": [],
+  "stdout": "name\tslug\tanimals_coverUrl\tphotoId\tphotos_coverUrl\tisCover\nМира\tmira\thttps://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/animal-photos/mira/jP5iBYMcdYguBWJPw5Sruu/1774388989732-alpine-1-cropped.jpg\t90004\thttps://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/animal-photos/mira/jP5iBYMcdYguBWJPw5Sruu/1774388989732-alpine-1-cropped.jpg\t1\nЗлата\tzlata\thttps://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/animal-photos/zlata/jP5iBYMcdYguBWJPw5Sruu/1774389118629-ostfriesian-1-cropped.jpg\tNULL\tNULL\tNULL\nРуфа\tRufa\thttps://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/animal-photos/Rufa/jP5iBYMcdYguBWJPw5Sruu/1774390902913-lacaune-2-cropped.jpg\t90006\thttps://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/animal-photos/Rufa/jP5iBYMcdYguBWJPw5Sruu/1774390902913-lacaune-2-cropped.jpg\t1\n",
+  "stderr": "",
+  "execution_time_ms": 378
+}

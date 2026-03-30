@@ -1,0 +1,31 @@
+{
+  "query": "SELECT name, slug, breed, animalSpecies, coverImageUrl FROM animals ORDER BY id;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3J2fXRHx8d1YjF6.root --database mLhmg5VmBsEBpZiYqdnhMQ --execute SELECT name, slug, breed, animalSpecies, coverImageUrl FROM animals ORDER BY id;",
+  "rows": [
+    {
+      "name": "Мира",
+      "slug": "mira",
+      "breed": "Зааненская",
+      "animalSpecies": "goat",
+      "coverImageUrl": "https://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/animal-photos/mira/jP5iBYMcdYguBWJPw5Sruu/1774388989732-alpine-1-cropped.jpg"
+    },
+    {
+      "name": "Злата",
+      "slug": "zlata",
+      "breed": "Казахская тонкорунная",
+      "animalSpecies": "sheep",
+      "coverImageUrl": "https://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/animal-photos/zlata/jP5iBYMcdYguBWJPw5Sruu/1774389118629-ostfriesian-1-cropped.jpg"
+    },
+    {
+      "name": "Руфа",
+      "slug": "Rufa",
+      "breed": "Лакон",
+      "animalSpecies": "sheep",
+      "coverImageUrl": "https://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/animal-photos/Rufa/jP5iBYMcdYguBWJPw5Sruu/1774390902913-lacaune-2-cropped.jpg"
+    }
+  ],
+  "messages": [],
+  "stdout": "name\tslug\tbreed\tanimalSpecies\tcoverImageUrl\nМира\tmira\tЗааненская\tgoat\thttps://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/animal-photos/mira/jP5iBYMcdYguBWJPw5Sruu/1774388989732-alpine-1-cropped.jpg\nЗлата\tzlata\tКазахская тонкорунная\tsheep\thttps://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/animal-photos/zlata/jP5iBYMcdYguBWJPw5Sruu/1774389118629-ostfriesian-1-cropped.jpg\nРуфа\tRufa\tЛакон\tsheep\thttps://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/animal-photos/Rufa/jP5iBYMcdYguBWJPw5Sruu/1774390902913-lacaune-2-cropped.jpg\n",
+  "stderr": "",
+  "execution_time_ms": 375
+}
