@@ -1,0 +1,30 @@
+{
+  "query": "SELECT 'animalMedia' as tbl, COUNT(*) as cnt FROM animalMedia WHERE animalId IN (300001, 300002) UNION ALL SELECT 'animalOwnerships', COUNT(*) FROM animalOwnerships WHERE animalId IN (300001, 300002) UNION ALL SELECT 'animalPhotos', COUNT(*) FROM animalPhotos WHERE animalSlug IN ('marta-ownerdemo', 'zlata-ownerdemo') UNION ALL SELECT 'productBatches', COUNT(*) FROM productBatches WHERE animalSlug IN ('marta-ownerdemo', 'zlata-ownerdemo') UNION ALL SELECT 'chatMessages', COUNT(*) FROM chatMessages WHERE animalId IN (300001, 300002);",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3J2fXRHx8d1YjF6.root --database mLhmg5VmBsEBpZiYqdnhMQ --execute SELECT 'animalMedia' as tbl, COUNT(*) as cnt FROM animalMedia WHERE animalId IN (300001, 300002) UNION ALL SELECT 'animalOwnerships', COUNT(*) FROM animalOwnerships WHERE animalId IN (300001, 300002) UNION ALL SELECT 'animalPhotos', COUNT(*) FROM animalPhotos WHERE animalSlug IN ('marta-ownerdemo', 'zlata-ownerdemo') UNION ALL SELECT 'productBatches', COUNT(*) FROM productBatches WHERE animalSlug IN ('marta-ownerdemo', 'zlata-ownerdemo') UNION ALL SELECT 'chatMessages', COUNT(*) FROM chatMessages WHERE animalId IN (300001, 300002);",
+  "rows": [
+    {
+      "tbl": "productBatches",
+      "cnt": "0"
+    },
+    {
+      "tbl": "animalOwnerships",
+      "cnt": "0"
+    },
+    {
+      "tbl": "animalMedia",
+      "cnt": "2"
+    },
+    {
+      "tbl": "chatMessages",
+      "cnt": "0"
+    },
+    {
+      "tbl": "animalPhotos",
+      "cnt": "0"
+    }
+  ],
+  "messages": [],
+  "stdout": "tbl\tcnt\nproductBatches\t0\nanimalOwnerships\t0\nanimalMedia\t2\nchatMessages\t0\nanimalPhotos\t0\n",
+  "stderr": "",
+  "execution_time_ms": 387
+}

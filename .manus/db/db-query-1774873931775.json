@@ -1,0 +1,28 @@
+{
+  "query": "SELECT id, slug, name, animalStatus FROM animals ORDER BY id;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3J2fXRHx8d1YjF6.root --database mLhmg5VmBsEBpZiYqdnhMQ --execute SELECT id, slug, name, animalStatus FROM animals ORDER BY id;",
+  "rows": [
+    {
+      "id": "30001",
+      "slug": "mira",
+      "name": "Мира",
+      "animalStatus": "fully_booked"
+    },
+    {
+      "id": "180005",
+      "slug": "zlata",
+      "name": "Злата",
+      "animalStatus": "fully_booked"
+    },
+    {
+      "id": "270001",
+      "slug": "Rufa",
+      "name": "Руфа",
+      "animalStatus": "fully_booked"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tslug\tname\tanimalStatus\n30001\tmira\tМира\tfully_booked\n180005\tzlata\tЗлата\tfully_booked\n270001\tRufa\tРуфа\tfully_booked\n",
+  "stderr": "",
+  "execution_time_ms": 345
+}

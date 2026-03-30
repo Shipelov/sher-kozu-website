@@ -198,7 +198,7 @@ export default function ClubFeed() {
   const ownership = dashboardQuery.data?.ownership ?? null;
   const fallbackAnimal = animalsQuery.data?.find((animal) => animal.slug === requestedAnimalSlug) ?? animalsQuery.data?.[0] ?? null;
 
-  const activeAnimalSlug = ownerAnimal?.slug ?? requestedAnimalSlug ?? fallbackAnimal?.slug ?? "marta";
+  const activeAnimalSlug = ownerAnimal?.slug ?? requestedAnimalSlug ?? fallbackAnimal?.slug ?? "";
   const activeAnimalName = ownerAnimal?.name ?? fallbackAnimal?.name ?? "вашего животного";
   const activeAnimalSharePercent = ownership?.sharePercent ?? ownerAnimal?.mySharePercent ?? 0;
 

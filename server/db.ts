@@ -66,10 +66,14 @@ async function ensureOwnerExperienceSeed(ownerOpenId: string) {
   const db = await getDb();
   if (!db) return;
 
-  // Resolve actual animal slugs for this owner
+  // Resolve actual animal slugs for this owner — skip experience seed if no animals exist
   const ownerAnimals = await db.select({ slug: animals.slug, name: animals.name }).from(animals).where(eq(animals.ownerOpenId, ownerOpenId)).orderBy(animals.sortOrder).limit(2);
-  const slugA = ownerAnimals[0]?.slug ?? "marta";
-  const slugB = ownerAnimals[1]?.slug ?? "zlata";
+  if (!ownerAnimals.length) {
+    seededOwners.add(ownerOpenId);
+    return;
+  }
+  const slugA = ownerAnimals[0]!.slug;
+  const slugB = ownerAnimals[1]?.slug ?? ownerAnimals[0]!.slug;
 
   const existingBatch = await db.select({ id: productBatches.id }).from(productBatches).where(eq(productBatches.ownerOpenId, ownerOpenId)).limit(1);
   if (!existingBatch.length) {
@@ -307,13 +311,15 @@ async function ensureOwnerExperienceSeed(ownerOpenId: string) {
     ]);
   }
 
+  const nameA = ownerAnimals[0]?.name ?? "Животное";
+  const nameB = ownerAnimals[1]?.name ?? nameA;
   const existingMembers = await db.select({ id: clubMembers.id }).from(clubMembers).where(eq(clubMembers.ownerOpenId, ownerOpenId)).limit(1);
   if (!existingMembers.length) {
     await db.insert(clubMembers).values([
       {
         ownerOpenId,
         name: "Алия и семья",
-        animal: "Марта",
+        animal: nameA,
         sinceLabel: "с ноября 2025",
         badge: "семейный круг",
         sortOrder: 0,
@@ -321,7 +327,7 @@ async function ensureOwnerExperienceSeed(ownerOpenId: string) {
       {
         ownerOpenId,
         name: "Тимур",
-        animal: "Злата",
+        animal: nameB,
         sinceLabel: "с января 2026",
         badge: "городской гастроном",
         sortOrder: 1,
@@ -2374,66 +2380,13 @@ export async function ensureSprintOneSeed(ownerOpenId: string) {
     return;
   }
   const db = await getDb();
-  const existingAnimals = await db.select({ id: animals.id, species: animals.species }).from(animals).where(eq(animals.ownerOpenId, ownerOpenId));
-  const hasGoat = existingAnimals.some((a: any) => a.species === 'goat');
-  const hasSheep = existingAnimals.some((a: any) => a.species === 'sheep');
-  if (hasGoat && hasSheep) {
-    // Both species exist — just ensure plan durations
-    await ensurePlanDurationsExist(db, ownerOpenId);
-    return;
-  }
-  if (existingAnimals.length && hasGoat && !hasSheep) {
-    // Has goats but no sheep — create Zlata only, then return
-    await ensurePlanDurationsExist(db, ownerOpenId);
-    const ownerSuffix = ownerOpenId.toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 12);
-    try {
-      await createAnimalWithMedia({
-        ownerOpenId,
-        name: "Злата",
-        slug: `zlata-${ownerSuffix}`,
-        species: "sheep",
-        breed: "Казахская тонкорунная",
-        shortDescription: "Мягкий темперамент, ровный ритм ухода и стабильная сезонная отдача.",
-        story: "Злата хорошо подходит семьям, которые хотят мягкое вхождение в формат опеки и регулярных визитов.",
-        coverImageUrl: "https://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/milk_products_d3f8c13d.jpg",
-        galleryIntro: "Подборка фотографий Златы для витрины и карточки животного.",
-        status: "hidden",
-        totalOwnershipSlots: 10,
-        baseMonthlyPriceMinor: 118000,
-        healthScore: 86,
-        happinessScore: 89,
-        milkPotentialScore: 78,
-        careLevelScore: 59,
-        isFeatured: 0,
-        sortOrder: 1,
-        publishedAt: new Date(),
-        media: [{
-          animalId: 0,
-          kind: "image",
-          title: "Образ Златы",
-          alt: "Овца Злата на ферме",
-          fileKey: "seed/zlata-hero",
-          url: "https://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/hero_farm_ab0d054b.jpg",
-          mimeType: "image/jpeg",
-          sortOrder: 0,
-          isCover: 1,
-        }],
-      });
-    } catch (err) {
-      if (!(err as any)?.message?.includes('Duplicate')) throw err;
-    }
-    return;
-  }
-  if (existingAnimals.length) {
-    // Has animals but missing goat — just ensure durations
-    await ensurePlanDurationsExist(db, ownerOpenId);
-    return;
-  }
 
-  const ownerSuffix = ownerOpenId.toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 12);
+  // Ensure plan and durations exist for the owner (no demo animals are created)
+  await ensurePlanDurationsExist(db, ownerOpenId);
 
   const existingPlans = await db.select({ id: plans.id }).from(plans).where(eq(plans.ownerOpenId, ownerOpenId)).limit(1);
   if (!existingPlans.length) {
+    const ownerSuffix = ownerOpenId.toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 12);
     const planCode = `core-care-${ownerSuffix}-${Date.now().toString(36)}`;
     const planResult = await db.insert(plans).values({
       ownerOpenId,
@@ -2489,87 +2442,6 @@ export async function ensureSprintOneSeed(ownerOpenId: string) {
         sortOrder: 2,
       },
     ] as InsertPlanDuration[]);
-  }
-
-  // Create animals — ignore duplicate slug errors (animals may already exist from another owner seed)
-  try {
-    await createAnimalWithMedia({
-      ownerOpenId,
-      name: "Марта",
-      slug: `marta-${ownerSuffix}`,
-      species: "goat",
-      breed: "Зааненская",
-      shortDescription: "Спокойная и общительная коза с выраженным молочным профилем.",
-      story: "Марта быстро идёт на контакт с семьями и хорошо реагирует на регулярные визиты и кормление.",
-      coverImageUrl: "https://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/goat_portrait_80fc5726.jpg",
-      galleryIntro: "Подборка фотографий Марты для витрины и карточки животного.",
-      status: "hidden",
-      totalOwnershipSlots: 10,
-      baseMonthlyPriceMinor: 135000,
-      healthScore: 88,
-      happinessScore: 91,
-      milkPotentialScore: 84,
-      careLevelScore: 67,
-      isFeatured: 1,
-      sortOrder: 0,
-      publishedAt: new Date(),
-      media: [
-        {
-          animalId: 0,
-          kind: "image",
-          title: "Портрет Марты",
-          alt: "Коза Марта на ферме",
-          fileKey: "seed/marta-hero",
-          url: "https://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/goat_portrait_80fc5726.jpg",
-          mimeType: "image/jpeg",
-          sortOrder: 0,
-          isCover: 1,
-        },
-      ],
-    });
-  } catch (err) {
-    // Duplicate slug — animal already exists, continue
-    if (!(err as any)?.message?.includes('Duplicate')) throw err;
-  }
-
-  try {
-    await createAnimalWithMedia({
-      ownerOpenId,
-      name: "Злата",
-      slug: `zlata-${ownerSuffix}`,
-      species: "sheep",
-      breed: "Казахская тонкорунная",
-      shortDescription: "Мягкий темперамент, ровный ритм ухода и стабильная сезонная отдача.",
-      story: "Злата хорошо подходит семьям, которые хотят мягкое вхождение в формат опеки и регулярных визитов.",
-      coverImageUrl: "https://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/milk_products_d3f8c13d.jpg",
-      galleryIntro: "Подборка фотографий Златы для витрины и карточки животного.",
-      status: "hidden",
-      totalOwnershipSlots: 10,
-      baseMonthlyPriceMinor: 118000,
-      healthScore: 86,
-      happinessScore: 89,
-      milkPotentialScore: 78,
-      careLevelScore: 59,
-      isFeatured: 0,
-      sortOrder: 1,
-      publishedAt: new Date(),
-      media: [
-        {
-          animalId: 0,
-          kind: "image",
-          title: "Образ Златы",
-          alt: "Овца Злата на ферме",
-          fileKey: "seed/zlata-hero",
-          url: "https://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/hero_farm_ab0d054b.jpg",
-          mimeType: "image/jpeg",
-          sortOrder: 0,
-          isCover: 1,
-        },
-      ],
-    });
-  } catch (err) {
-    // Duplicate slug — animal already exists, continue
-    if (!(err as any)?.message?.includes('Duplicate')) throw err;
   }
 
 }

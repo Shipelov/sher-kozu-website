@@ -130,7 +130,7 @@ export default function ProductTracker() {
   });
   const requestedAnimalSlug = getRequestedAnimalSlug();
   const ownerAnimalSlug = ownerDashboardQuery.data?.animal?.slug ?? ownerDashboardQuery.data?.ownership?.animalSlug ?? null;
-  const fallbackAnimalSlug = requestedAnimalSlug ?? ownerAnimalSlug ?? "marta";
+  const fallbackAnimalSlug = requestedAnimalSlug ?? ownerAnimalSlug ?? "";
 
   const trackerQuery = trpc.productTracker.getByAnimal.useQuery(
     { animalSlug: fallbackAnimalSlug },

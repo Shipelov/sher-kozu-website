@@ -135,7 +135,7 @@ const reorderPhotosInput = z.object({
 });
 
 const trackerSummaryInput = z.object({
-  animalSlug: z.string().min(1).max(64).default("marta"),
+  animalSlug: z.string().min(1).max(64),
 });
 
 const clubPostInput = z.object({

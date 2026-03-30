@@ -58,13 +58,13 @@ describe("Admin ↔ Catalog sync (single-owner farm model)", () => {
     expect(fnBody).not.toContain("eq(animals.ownerOpenId");
   });
 
-  it("ensureSprintOneSeed creates sheep (Zlata) if owner has goats but no sheep", () => {
+  it("ensureSprintOneSeed no longer creates demo animals", () => {
     const fnStart = dbSrc.indexOf("export async function ensureSprintOneSeed");
     const fnEnd = dbSrc.indexOf("async function ensurePlanDurationsExist", fnStart);
     const fnBody = dbSrc.slice(fnStart, fnEnd);
-    expect(fnBody).toContain("hasSheep");
-    expect(fnBody).toContain("hasGoat");
-    expect(fnBody).toContain("Has goats but no sheep");
+    // Demo animal creation has been removed — only plan/duration seeding remains
+    expect(fnBody).not.toContain('createAnimalWithMedia');
+    expect(fnBody).toContain("ensurePlanDurationsExist");
   });
 
   it("ensureSprintOneSeed skips seeding for non-farm-owner accounts", () => {

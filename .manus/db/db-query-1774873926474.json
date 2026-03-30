@@ -1,0 +1,9 @@
+{
+  "query": "DELETE FROM animalMedia WHERE animalId IN (300001, 300002); DELETE FROM animals WHERE id IN (300001, 300002);",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3J2fXRHx8d1YjF6.root --database mLhmg5VmBsEBpZiYqdnhMQ --execute DELETE FROM animalMedia WHERE animalId IN (300001, 300002); DELETE FROM animals WHERE id IN (300001, 300002);",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 410
+}
