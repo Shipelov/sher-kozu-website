@@ -1361,3 +1361,8 @@
 - [x] Интегрировать CMS-контент в Dashboard страницу
 - [x] Добавить раздел «Мой кабинет» в AdminCmsEditor
 - [x] Тесты и верификация
+
+## QA Report — Critical Fixes
+- [x] Фикс: Добавить security headers middleware (X-Content-Type-Options, X-XSS-Protection, HSTS, CSP, Referrer-Policy, X-Frame-Options SAMEORIGIN, Permissions-Policy)
+- [x] Фикс: Красивая 404-страница для несуществующих животных (/animal/nonexistent)
+- [x] Перевод NotFound.tsx на русский язык с навигацией (Назад, Каталог, На главную)
