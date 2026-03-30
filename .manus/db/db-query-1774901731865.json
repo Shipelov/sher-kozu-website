@@ -1,0 +1,26 @@
+{
+  "query": "SELECT 'zlata batches' as info, COUNT(*) as cnt FROM productBatches WHERE animalSlug = 'zlata' UNION ALL SELECT 'zlata compositions', COUNT(*) FROM productCompositionSnapshots WHERE animalSlug = 'zlata' UNION ALL SELECT 'zlata metrics', COUNT(*) FROM productMonthlyMetrics WHERE animalSlug = 'zlata' UNION ALL SELECT 'zlata deliveries', COUNT(*) FROM productDeliveries WHERE animalSlug = 'zlata';",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3J2fXRHx8d1YjF6.root --database mLhmg5VmBsEBpZiYqdnhMQ --execute SELECT 'zlata batches' as info, COUNT(*) as cnt FROM productBatches WHERE animalSlug = 'zlata' UNION ALL SELECT 'zlata compositions', COUNT(*) FROM productCompositionSnapshots WHERE animalSlug = 'zlata' UNION ALL SELECT 'zlata metrics', COUNT(*) FROM productMonthlyMetrics WHERE animalSlug = 'zlata' UNION ALL SELECT 'zlata deliveries', COUNT(*) FROM productDeliveries WHERE animalSlug = 'zlata';",
+  "rows": [
+    {
+      "info": "zlata deliveries",
+      "cnt": "0"
+    },
+    {
+      "info": "zlata batches",
+      "cnt": "0"
+    },
+    {
+      "info": "zlata compositions",
+      "cnt": "0"
+    },
+    {
+      "info": "zlata metrics",
+      "cnt": "0"
+    }
+  ],
+  "messages": [],
+  "stdout": "info\tcnt\nzlata deliveries\t0\nzlata batches\t0\nzlata compositions\t0\nzlata metrics\t0\n",
+  "stderr": "",
+  "execution_time_ms": 493
+}

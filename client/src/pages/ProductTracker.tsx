@@ -7,7 +7,7 @@ Must connect milk, delivery, named products and animal origin in one readable ro
 
 import { useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Link, useLocation } from "wouter";
+import { Link, useLocation, useSearch } from "wouter";
 import Navbar from "@/components/Navbar";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
@@ -208,18 +208,16 @@ function iconForStat(icon: TrackerSummary["stats"][number]["icon"]) {
   }
 }
 
-function getRequestedAnimalSlug() {
-  if (typeof window === "undefined") return null;
-  return new URLSearchParams(window.location.search).get("animal");
-}
-
 export default function ProductTracker() {
   const [location] = useLocation();
+  const searchString = useSearch();
   const { isAuthenticated } = useAuth();
   const ownerDashboardQuery = trpc.animals.ownerDashboard.useQuery(undefined, {
     enabled: isAuthenticated,
   });
-  const requestedAnimalSlug = getRequestedAnimalSlug();
+  const requestedAnimalSlug = useMemo(() => {
+    return new URLSearchParams(searchString).get("animal") || null;
+  }, [searchString]);
   const ownerAnimalSlug = ownerDashboardQuery.data?.animal?.slug ?? ownerDashboardQuery.data?.ownership?.animalSlug ?? null;
   const fallbackAnimalSlug = requestedAnimalSlug ?? ownerAnimalSlug ?? "";
 

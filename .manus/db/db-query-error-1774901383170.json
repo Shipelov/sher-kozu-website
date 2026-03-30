@@ -1,0 +1,8 @@
+{
+  "query": "SELECT u.open_id, u.display_name, u.primary_animal_id, ao.animal_id, ao.status, a.name as animal_name, a.slug as animal_slug FROM users u LEFT JOIN animalOwnerships ao ON u.open_id = ao.owner_open_id LEFT JOIN animals a ON ao.animal_id = a.id ORDER BY u.open_id, ao.animal_id;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3J2fXRHx8d1YjF6.root --database mLhmg5VmBsEBpZiYqdnhMQ --execute SELECT u.open_id, u.display_name, u.primary_animal_id, ao.animal_id, ao.status, a.name as animal_name, a.slug as animal_slug FROM users u LEFT JOIN animalOwnerships ao ON u.open_id = ao.owner_open_id LEFT JOIN animals a ON ao.animal_id = a.id ORDER BY u.open_id, ao.animal_id;",
+  "returncode": 1,
+  "logs": [
+    "ERROR 1054 (42S22) at line 1: Unknown column 'u.open_id' in 'on clause'"
+  ]
+}

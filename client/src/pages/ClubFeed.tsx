@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { motion } from "framer-motion";
-import { Link, useLocation } from "wouter";
+import { Link, useLocation, useSearch } from "wouter";
 import Navbar from "@/components/Navbar";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
@@ -171,16 +171,13 @@ function PostCard({ post }: { post: ClubPost }) {
   );
 }
 
-function getRequestedAnimalSlug() {
-  if (typeof window === "undefined") return null;
-  const params = new URLSearchParams(window.location.search);
-  return params.get("animal");
-}
-
 export default function ClubFeed() {
   const [activeFilter, setActiveFilter] = useState<FilterKey>("all");
   const [location] = useLocation();
-  const requestedAnimalSlug = useMemo(() => getRequestedAnimalSlug(), [location]);
+  const searchString = useSearch();
+  const requestedAnimalSlug = useMemo(() => {
+    return new URLSearchParams(searchString).get("animal") || null;
+  }, [searchString]);
 
   const { isAuthenticated } = useAuth();
 
@@ -198,7 +195,7 @@ export default function ClubFeed() {
   const ownership = dashboardQuery.data?.ownership ?? null;
   const fallbackAnimal = animalsQuery.data?.find((animal) => animal.slug === requestedAnimalSlug) ?? animalsQuery.data?.[0] ?? null;
 
-  const activeAnimalSlug = ownerAnimal?.slug ?? requestedAnimalSlug ?? fallbackAnimal?.slug ?? "";
+  const activeAnimalSlug = requestedAnimalSlug ?? ownerAnimal?.slug ?? fallbackAnimal?.slug ?? "";
   const activeAnimalName = ownerAnimal?.name ?? fallbackAnimal?.name ?? "вашего животного";
   const activeAnimalSharePercent = ownership?.sharePercent ?? ownerAnimal?.mySharePercent ?? 0;
 

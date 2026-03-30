@@ -1,0 +1,31 @@
+{
+  "query": "SELECT id, name, slug, ownerOpenId, sortOrder FROM animals ORDER BY sortOrder;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3J2fXRHx8d1YjF6.root --database mLhmg5VmBsEBpZiYqdnhMQ --execute SELECT id, name, slug, ownerOpenId, sortOrder FROM animals ORDER BY sortOrder;",
+  "rows": [
+    {
+      "id": "30001",
+      "name": "Мира",
+      "slug": "mira",
+      "ownerOpenId": "jP5iBYMcdYguBWJPw5Sruu",
+      "sortOrder": "0"
+    },
+    {
+      "id": "270001",
+      "name": "Руфа",
+      "slug": "Rufa",
+      "ownerOpenId": "jP5iBYMcdYguBWJPw5Sruu",
+      "sortOrder": "0"
+    },
+    {
+      "id": "180005",
+      "name": "Злата",
+      "slug": "zlata",
+      "ownerOpenId": "jP5iBYMcdYguBWJPw5Sruu",
+      "sortOrder": "1"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tname\tslug\townerOpenId\tsortOrder\n30001\tМира\tmira\tjP5iBYMcdYguBWJPw5Sruu\t0\n270001\tРуфа\tRufa\tjP5iBYMcdYguBWJPw5Sruu\t0\n180005\tЗлата\tzlata\tjP5iBYMcdYguBWJPw5Sruu\t1\n",
+  "stderr": "",
+  "execution_time_ms": 374
+}

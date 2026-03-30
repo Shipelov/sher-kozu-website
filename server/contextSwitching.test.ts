@@ -108,8 +108,8 @@ describe("Context Switching: ClubFeed derives animal from ownerDashboard", () =>
     expect(CLUB_SRC).toContain("dashboardQuery.data?.animal");
   });
 
-  it("uses ownerAnimal slug as primary active animal slug", () => {
-    expect(CLUB_SRC).toContain("ownerAnimal?.slug ?? requestedAnimalSlug");
+  it("uses requestedAnimalSlug from URL as primary active animal slug", () => {
+    expect(CLUB_SRC).toContain("requestedAnimalSlug ?? ownerAnimal?.slug");
   });
 
   it("uses ownerAnimal name as active animal name", () => {
@@ -179,13 +179,13 @@ describe("Context Switching: Server-side data flow", () => {
 });
 
 describe("Context Switching: URL-based animal override", () => {
-  it("ProductTracker supports ?animal= query parameter", () => {
-    expect(TRACKER_SRC).toContain('getRequestedAnimalSlug');
+  it("ProductTracker supports ?animal= query parameter via useSearch", () => {
+    expect(TRACKER_SRC).toContain('useSearch');
     expect(TRACKER_SRC).toContain('.get("animal")');
   });
 
-  it("ClubFeed supports ?animal= query parameter", () => {
-    expect(CLUB_SRC).toContain('getRequestedAnimalSlug');
+  it("ClubFeed supports ?animal= query parameter via useSearch", () => {
+    expect(CLUB_SRC).toContain('useSearch');
     expect(CLUB_SRC).toContain('.get("animal")');
   });
 

@@ -1,0 +1,50 @@
+{
+  "query": "SELECT animalSlug, COUNT(*) as cnt, 'batches' as type FROM productBatches GROUP BY animalSlug UNION ALL SELECT animalSlug, COUNT(*), 'compositions' FROM productCompositionSnapshots GROUP BY animalSlug UNION ALL SELECT animalSlug, COUNT(*), 'metrics' FROM productMonthlyMetrics GROUP BY animalSlug UNION ALL SELECT animalSlug, COUNT(*), 'deliveries' FROM productDeliveries GROUP BY animalSlug ORDER BY animalSlug, type;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3J2fXRHx8d1YjF6.root --database mLhmg5VmBsEBpZiYqdnhMQ --execute SELECT animalSlug, COUNT(*) as cnt, 'batches' as type FROM productBatches GROUP BY animalSlug UNION ALL SELECT animalSlug, COUNT(*), 'compositions' FROM productCompositionSnapshots GROUP BY animalSlug UNION ALL SELECT animalSlug, COUNT(*), 'metrics' FROM productMonthlyMetrics GROUP BY animalSlug UNION ALL SELECT animalSlug, COUNT(*), 'deliveries' FROM productDeliveries GROUP BY animalSlug ORDER BY animalSlug, type;",
+  "rows": [
+    {
+      "animalSlug": "Rufa",
+      "cnt": "1",
+      "type": "batches"
+    },
+    {
+      "animalSlug": "Rufa",
+      "cnt": "2",
+      "type": "compositions"
+    },
+    {
+      "animalSlug": "Rufa",
+      "cnt": "1",
+      "type": "deliveries"
+    },
+    {
+      "animalSlug": "Rufa",
+      "cnt": "3",
+      "type": "metrics"
+    },
+    {
+      "animalSlug": "mira",
+      "cnt": "2",
+      "type": "batches"
+    },
+    {
+      "animalSlug": "mira",
+      "cnt": "2",
+      "type": "compositions"
+    },
+    {
+      "animalSlug": "mira",
+      "cnt": "1",
+      "type": "deliveries"
+    },
+    {
+      "animalSlug": "mira",
+      "cnt": "4",
+      "type": "metrics"
+    }
+  ],
+  "messages": [],
+  "stdout": "animalSlug\tcnt\ttype\nRufa\t1\tbatches\nRufa\t2\tcompositions\nRufa\t1\tdeliveries\nRufa\t3\tmetrics\nmira\t2\tbatches\nmira\t2\tcompositions\nmira\t1\tdeliveries\nmira\t4\tmetrics\n",
+  "stderr": "",
+  "execution_time_ms": 355
+}

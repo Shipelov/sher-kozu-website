@@ -982,7 +982,7 @@ export default function AnimalProfile() {
                   <p className="mt-1 text-sm text-muted-foreground">Управляйте долями, следите за рейтингом и получайте обновления.</p>
                   <span className="mt-3 inline-flex items-center gap-1 text-sm font-medium text-primary">Открыть <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" /></span>
                 </Link>
-                <Link href="/tracker" className="group rounded-2xl border border-border/70 bg-card p-5 transition hover:bg-muted/30">
+                <Link href={`/tracker?animal=${animalSlug}`} className="group rounded-2xl border border-border/70 bg-card p-5 transition hover:bg-muted/30">
                   <MapPin className="h-6 w-6 text-primary" />
                   <h4 className="mt-3 font-semibold text-foreground">Трекер продуктов</h4>
                   <p className="mt-1 text-sm text-muted-foreground">Отслеживайте путь молока и продуктов от фермы до вашего дома.</p>

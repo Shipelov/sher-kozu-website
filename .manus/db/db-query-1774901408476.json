@@ -1,0 +1,330 @@
+{
+  "query": "SELECT u.openId, u.name, u.primaryAnimalId, ao.animalId, a.name as animal_name, a.slug FROM users u LEFT JOIN animalOwnerships ao ON u.openId = ao.ownerOpenId LEFT JOIN animals a ON ao.animalId = a.id ORDER BY u.openId, ao.animalId;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3J2fXRHx8d1YjF6.root --database mLhmg5VmBsEBpZiYqdnhMQ --execute SELECT u.openId, u.name, u.primaryAnimalId, ao.animalId, a.name as animal_name, a.slug FROM users u LEFT JOIN animalOwnerships ao ON u.openId = ao.ownerOpenId LEFT JOIN animals a ON ao.animalId = a.id ORDER BY u.openId, ao.animalId;",
+  "rows": [
+    {
+      "openId": "jP5iBYMcdYguBWJPw5Sruu",
+      "name": "Andrey Shipelov",
+      "primaryAnimalId": "270001",
+      "animalId": "30001",
+      "animal_name": "Мира",
+      "slug": "mira"
+    },
+    {
+      "openId": "jP5iBYMcdYguBWJPw5Sruu",
+      "name": "Andrey Shipelov",
+      "primaryAnimalId": "270001",
+      "animalId": "30001",
+      "animal_name": "Мира",
+      "slug": "mira"
+    },
+    {
+      "openId": "jP5iBYMcdYguBWJPw5Sruu",
+      "name": "Andrey Shipelov",
+      "primaryAnimalId": "270001",
+      "animalId": "30001",
+      "animal_name": "Мира",
+      "slug": "mira"
+    },
+    {
+      "openId": "jP5iBYMcdYguBWJPw5Sruu",
+      "name": "Andrey Shipelov",
+      "primaryAnimalId": "270001",
+      "animalId": "30001",
+      "animal_name": "Мира",
+      "slug": "mira"
+    },
+    {
+      "openId": "jP5iBYMcdYguBWJPw5Sruu",
+      "name": "Andrey Shipelov",
+      "primaryAnimalId": "270001",
+      "animalId": "30001",
+      "animal_name": "Мира",
+      "slug": "mira"
+    },
+    {
+      "openId": "jP5iBYMcdYguBWJPw5Sruu",
+      "name": "Andrey Shipelov",
+      "primaryAnimalId": "270001",
+      "animalId": "30001",
+      "animal_name": "Мира",
+      "slug": "mira"
+    },
+    {
+      "openId": "jP5iBYMcdYguBWJPw5Sruu",
+      "name": "Andrey Shipelov",
+      "primaryAnimalId": "270001",
+      "animalId": "30001",
+      "animal_name": "Мира",
+      "slug": "mira"
+    },
+    {
+      "openId": "jP5iBYMcdYguBWJPw5Sruu",
+      "name": "Andrey Shipelov",
+      "primaryAnimalId": "270001",
+      "animalId": "30001",
+      "animal_name": "Мира",
+      "slug": "mira"
+    },
+    {
+      "openId": "jP5iBYMcdYguBWJPw5Sruu",
+      "name": "Andrey Shipelov",
+      "primaryAnimalId": "270001",
+      "animalId": "30001",
+      "animal_name": "Мира",
+      "slug": "mira"
+    },
+    {
+      "openId": "jP5iBYMcdYguBWJPw5Sruu",
+      "name": "Andrey Shipelov",
+      "primaryAnimalId": "270001",
+      "animalId": "30001",
+      "animal_name": "Мира",
+      "slug": "mira"
+    },
+    {
+      "openId": "jP5iBYMcdYguBWJPw5Sruu",
+      "name": "Andrey Shipelov",
+      "primaryAnimalId": "270001",
+      "animalId": "30001",
+      "animal_name": "Мира",
+      "slug": "mira"
+    },
+    {
+      "openId": "jP5iBYMcdYguBWJPw5Sruu",
+      "name": "Andrey Shipelov",
+      "primaryAnimalId": "270001",
+      "animalId": "30001",
+      "animal_name": "Мира",
+      "slug": "mira"
+    },
+    {
+      "openId": "jP5iBYMcdYguBWJPw5Sruu",
+      "name": "Andrey Shipelov",
+      "primaryAnimalId": "270001",
+      "animalId": "30001",
+      "animal_name": "Мира",
+      "slug": "mira"
+    },
+    {
+      "openId": "jP5iBYMcdYguBWJPw5Sruu",
+      "name": "Andrey Shipelov",
+      "primaryAnimalId": "270001",
+      "animalId": "30001",
+      "animal_name": "Мира",
+      "slug": "mira"
+    },
+    {
+      "openId": "jP5iBYMcdYguBWJPw5Sruu",
+      "name": "Andrey Shipelov",
+      "primaryAnimalId": "270001",
+      "animalId": "30001",
+      "animal_name": "Мира",
+      "slug": "mira"
+    },
+    {
+      "openId": "jP5iBYMcdYguBWJPw5Sruu",
+      "name": "Andrey Shipelov",
+      "primaryAnimalId": "270001",
+      "animalId": "30001",
+      "animal_name": "Мира",
+      "slug": "mira"
+    },
+    {
+      "openId": "jP5iBYMcdYguBWJPw5Sruu",
+      "name": "Andrey Shipelov",
+      "primaryAnimalId": "270001",
+      "animalId": "30001",
+      "animal_name": "Мира",
+      "slug": "mira"
+    },
+    {
+      "openId": "jP5iBYMcdYguBWJPw5Sruu",
+      "name": "Andrey Shipelov",
+      "primaryAnimalId": "270001",
+      "animalId": "180005",
+      "animal_name": "Злата",
+      "slug": "zlata"
+    },
+    {
+      "openId": "jP5iBYMcdYguBWJPw5Sruu",
+      "name": "Andrey Shipelov",
+      "primaryAnimalId": "270001",
+      "animalId": "180005",
+      "animal_name": "Злата",
+      "slug": "zlata"
+    },
+    {
+      "openId": "jP5iBYMcdYguBWJPw5Sruu",
+      "name": "Andrey Shipelov",
+      "primaryAnimalId": "270001",
+      "animalId": "180005",
+      "animal_name": "Злата",
+      "slug": "zlata"
+    },
+    {
+      "openId": "jP5iBYMcdYguBWJPw5Sruu",
+      "name": "Andrey Shipelov",
+      "primaryAnimalId": "270001",
+      "animalId": "180005",
+      "animal_name": "Злата",
+      "slug": "zlata"
+    },
+    {
+      "openId": "jP5iBYMcdYguBWJPw5Sruu",
+      "name": "Andrey Shipelov",
+      "primaryAnimalId": "270001",
+      "animalId": "180005",
+      "animal_name": "Злата",
+      "slug": "zlata"
+    },
+    {
+      "openId": "jP5iBYMcdYguBWJPw5Sruu",
+      "name": "Andrey Shipelov",
+      "primaryAnimalId": "270001",
+      "animalId": "180005",
+      "animal_name": "Злата",
+      "slug": "zlata"
+    },
+    {
+      "openId": "jP5iBYMcdYguBWJPw5Sruu",
+      "name": "Andrey Shipelov",
+      "primaryAnimalId": "270001",
+      "animalId": "180005",
+      "animal_name": "Злата",
+      "slug": "zlata"
+    },
+    {
+      "openId": "jP5iBYMcdYguBWJPw5Sruu",
+      "name": "Andrey Shipelov",
+      "primaryAnimalId": "270001",
+      "animalId": "180005",
+      "animal_name": "Злата",
+      "slug": "zlata"
+    },
+    {
+      "openId": "jP5iBYMcdYguBWJPw5Sruu",
+      "name": "Andrey Shipelov",
+      "primaryAnimalId": "270001",
+      "animalId": "180005",
+      "animal_name": "Злата",
+      "slug": "zlata"
+    },
+    {
+      "openId": "jP5iBYMcdYguBWJPw5Sruu",
+      "name": "Andrey Shipelov",
+      "primaryAnimalId": "270001",
+      "animalId": "180005",
+      "animal_name": "Злата",
+      "slug": "zlata"
+    },
+    {
+      "openId": "jP5iBYMcdYguBWJPw5Sruu",
+      "name": "Andrey Shipelov",
+      "primaryAnimalId": "270001",
+      "animalId": "180005",
+      "animal_name": "Злата",
+      "slug": "zlata"
+    },
+    {
+      "openId": "jP5iBYMcdYguBWJPw5Sruu",
+      "name": "Andrey Shipelov",
+      "primaryAnimalId": "270001",
+      "animalId": "180005",
+      "animal_name": "Злата",
+      "slug": "zlata"
+    },
+    {
+      "openId": "jP5iBYMcdYguBWJPw5Sruu",
+      "name": "Andrey Shipelov",
+      "primaryAnimalId": "270001",
+      "animalId": "270001",
+      "animal_name": "Руфа",
+      "slug": "Rufa"
+    },
+    {
+      "openId": "jP5iBYMcdYguBWJPw5Sruu",
+      "name": "Andrey Shipelov",
+      "primaryAnimalId": "270001",
+      "animalId": "270001",
+      "animal_name": "Руфа",
+      "slug": "Rufa"
+    },
+    {
+      "openId": "jP5iBYMcdYguBWJPw5Sruu",
+      "name": "Andrey Shipelov",
+      "primaryAnimalId": "270001",
+      "animalId": "270001",
+      "animal_name": "Руфа",
+      "slug": "Rufa"
+    },
+    {
+      "openId": "jP5iBYMcdYguBWJPw5Sruu",
+      "name": "Andrey Shipelov",
+      "primaryAnimalId": "270001",
+      "animalId": "270001",
+      "animal_name": "Руфа",
+      "slug": "Rufa"
+    },
+    {
+      "openId": "jP5iBYMcdYguBWJPw5Sruu",
+      "name": "Andrey Shipelov",
+      "primaryAnimalId": "270001",
+      "animalId": "270001",
+      "animal_name": "Руфа",
+      "slug": "Rufa"
+    },
+    {
+      "openId": "jP5iBYMcdYguBWJPw5Sruu",
+      "name": "Andrey Shipelov",
+      "primaryAnimalId": "270001",
+      "animalId": "270001",
+      "animal_name": "Руфа",
+      "slug": "Rufa"
+    },
+    {
+      "openId": "jP5iBYMcdYguBWJPw5Sruu",
+      "name": "Andrey Shipelov",
+      "primaryAnimalId": "270001",
+      "animalId": "270001",
+      "animal_name": "Руфа",
+      "slug": "Rufa"
+    },
+    {
+      "openId": "jP5iBYMcdYguBWJPw5Sruu",
+      "name": "Andrey Shipelov",
+      "primaryAnimalId": "270001",
+      "animalId": "270001",
+      "animal_name": "Руфа",
+      "slug": "Rufa"
+    },
+    {
+      "openId": "jP5iBYMcdYguBWJPw5Sruu",
+      "name": "Andrey Shipelov",
+      "primaryAnimalId": "270001",
+      "animalId": "270001",
+      "animal_name": "Руфа",
+      "slug": "Rufa"
+    },
+    {
+      "openId": "jP5iBYMcdYguBWJPw5Sruu",
+      "name": "Andrey Shipelov",
+      "primaryAnimalId": "270001",
+      "animalId": "270001",
+      "animal_name": "Руфа",
+      "slug": "Rufa"
+    },
+    {
+      "openId": "local_ebc58cac93b64ae2b8cafa2c",
+      "name": "Сигаева Александра Борисовна",
+      "primaryAnimalId": "NULL",
+      "animalId": "NULL",
+      "animal_name": "NULL",
+      "slug": "NULL"
+    }
+  ],
+  "messages": [],
+  "stdout": "openId\tname\tprimaryAnimalId\tanimalId\tanimal_name\tslug\njP5iBYMcdYguBWJPw5Sruu\tAndrey Shipelov\t270001\t30001\tМира\tmira\njP5iBYMcdYguBWJPw5Sruu\tAndrey Shipelov\t270001\t30001\tМира\tmira\njP5iBYMcdYguBWJPw5Sruu\tAndrey Shipelov\t270001\t30001\tМира\tmira\njP5iBYMcdYguBWJPw5Sruu\tAndrey Shipelov\t270001\t30001\tМира\tmira\njP5iBYMcdYguBWJPw5Sruu\tAndrey Shipelov\t270001\t30001\tМира\tmira\njP5iBYMcdYguBWJPw5Sruu\tAndrey Shipelov\t270001\t30001\tМира\tmira\njP5iBYMcdYguBWJPw5Sruu\tAndrey Shipelov\t270001\t30001\tМира\tmira\njP5iBYMcdYguBWJPw5Sruu\tAndrey Shipelov\t270001\t30001\tМира\tmira\njP5iBYMcdYguBWJPw5Sruu\tAndrey Shipelov\t270001\t30001\tМира\tmira\njP5iBYMcdYguBWJPw5Sruu\tAndrey Shipelov\t270001\t30001\tМира\tmira\njP5iBYMcdYguBWJPw5Sruu\tAndrey Shipelov\t270001\t30001\tМира\tmira\njP5iBYMcdYguBWJPw5Sruu\tAndrey Shipelov\t270001\t30001\tМира\tmira\njP5iBYMcdYguBWJPw5Sruu\tAndrey Shipelov\t270001\t30001\tМира\tmira\njP5iBYMcdYguBWJPw5Sruu\tAndrey Shipelov\t270001\t30001\tМира\tmira\njP5iBYMcdYguBWJPw5Sruu\tAndrey Shipelov\t270001\t30001\tМира\tmira\njP5iBYMcdYguBWJPw5Sruu\tAndrey Shipelov\t270001\t30001\tМира\tmira\njP5iBYMcdYguBWJPw5Sruu\tAndrey Shipelov\t270001\t30001\tМира\tmira\njP5iBYMcdYguBWJPw5Sruu\tAndrey Shipelov\t270001\t180005\tЗлата\tzlata\njP5iBYMcdYguBWJPw5Sruu\tAndrey Shipelov\t270001\t180005\tЗлата\tzlata\njP5iBYMcdYguBWJPw5Sruu\tAndrey Shipelov\t270001\t180005\tЗлата\tzlata\njP5iBYMcdYguBWJPw5Sruu\tAndrey Shipelov\t270001\t180005\tЗлата\tzlata\njP5iBYMcdYguBWJPw5Sruu\tAndrey Shipelov\t270001\t180005\tЗлата\tzlata\njP5iBYMcdYguBWJPw5Sruu\tAndrey Shipelov\t270001\t180005\tЗлата\tzlata\njP5iBYMcdYguBWJPw5Sruu\tAndrey Shipelov\t270001\t180005\tЗлата\tzlata\njP5iBYMcdYguBWJPw5Sruu\tAndrey Shipelov\t270001\t180005\tЗлата\tzlata\njP5iBYMcdYguBWJPw5Sruu\tAndrey Shipelov\t270001\t180005\tЗлата\tzlata\njP5iBYMcdYguBWJPw5Sruu\tAndrey Shipelov\t270001\t180005\tЗлата\tzlata\njP5iBYMcdYguBWJPw5Sruu\tAndrey Shipelov\t270001\t180005\tЗлата\tzlata\njP5iBYMcdYguBWJPw5Sruu\tAndrey Shipelov\t270001\t180005\tЗлата\tzlata\njP5iBYMcdYguBWJPw5Sruu\tAndrey Shipelov\t270001\t270001\tРуфа\tRufa\njP5iBYMcdYguBWJPw5Sruu\tAndrey Shipelov\t270001\t270001\tРуфа\tRufa\njP5iBYMcdYguBWJPw5Sruu\tAndrey Shipelov\t270001\t270001\tРуфа\tRufa\njP5iBYMcdYguBWJPw5Sruu\tAndrey Shipelov\t270001\t270001\tРуфа\tRufa\njP5iBYMcdYguBWJPw5Sruu\tAndrey Shipelov\t270001\t270001\tРуфа\tRufa\njP5iBYMcdYguBWJPw5Sruu\tAndrey Shipelov\t270001\t270001\tРуфа\tRufa\njP5iBYMcdYguBWJPw5Sruu\tAndrey Shipelov\t270001\t270001\tРуфа\tRufa\njP5iBYMcdYguBWJPw5Sruu\tAndrey Shipelov\t270001\t270001\tРуфа\tRufa\njP5iBYMcdYguBWJPw5Sruu\tAndrey Shipelov\t270001\t270001\tРуфа\tRufa\njP5iBYMcdYguBWJPw5Sruu\tAndrey Shipelov\t270001\t270001\tРуфа\tRufa\nlocal_ebc58cac93b64ae2b8cafa2c\tСигаева Александра Борисовна\tNULL\tNULL\tNULL\tNULL\n",
+  "stderr": "",
+  "execution_time_ms": 367
+}
