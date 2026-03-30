@@ -1366,3 +1366,4 @@
 - [x] Фикс: Добавить security headers middleware (X-Content-Type-Options, X-XSS-Protection, HSTS, CSP, Referrer-Policy, X-Frame-Options SAMEORIGIN, Permissions-Policy)
 - [x] Фикс: Красивая 404-страница для несуществующих животных (/animal/nonexistent)
 - [x] Перевод NotFound.tsx на русский язык с навигацией (Назад, Каталог, На главную)
+- [x] Фикс: CSP блокировал manus-analytics.com и Vite HMR websocket в dev-режиме — CSP теперь применяется только в production

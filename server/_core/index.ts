@@ -89,10 +89,20 @@ async function startServer() {
         "max-age=31536000; includeSubDomains"
       );
     }
-    res.setHeader(
-      "Content-Security-Policy",
-      "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://*.cloudfront.net https://*.amazonaws.com; connect-src 'self' https://*.manus.im https://*.cloudfront.net https://*.amazonaws.com; frame-ancestors 'self' https://*.manus.im https://*.manus.space https://*.manus.computer"
-    );
+    if (process.env.NODE_ENV === "production") {
+      res.setHeader(
+        "Content-Security-Policy",
+        [
+          "default-src 'self'",
+          "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://manus-analytics.com",
+          "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net",
+          "font-src 'self' https://fonts.gstatic.com",
+          "img-src 'self' data: blob: https://*.cloudfront.net https://*.amazonaws.com",
+          "connect-src 'self' ws: wss: https://*.manus.im https://*.manus.computer https://*.cloudfront.net https://*.amazonaws.com https://manus-analytics.com",
+          "frame-ancestors 'self' https://*.manus.im https://*.manus.space https://*.manus.computer",
+        ].join("; ")
+      );
+    }
     res.setHeader(
       "Permissions-Policy",
       "camera=(), microphone=(), geolocation=(), payment=(), usb=(), magnetometer=(), gyroscope=(), accelerometer=()"

@@ -46,11 +46,30 @@ describe("Security Headers Middleware", () => {
     expect(serverEntry).toContain("payment=()");
   });
 
-  it("sets Content-Security-Policy with frame-ancestors for Manus domains", () => {
-    expect(serverEntry).toContain("Content-Security-Policy");
+  it("sets Content-Security-Policy only in production (to avoid blocking Vite HMR in dev)", () => {
+    const cspIndex = serverEntry.indexOf("Content-Security-Policy");
+    expect(cspIndex).toBeGreaterThan(-1);
+    // Find the production check before CSP
+    const beforeCsp = serverEntry.substring(0, cspIndex);
+    const lastProdCheck = beforeCsp.lastIndexOf('NODE_ENV === "production"');
+    expect(lastProdCheck).toBeGreaterThan(-1);
+    // The production check should be close to CSP (within ~200 chars)
+    expect(cspIndex - lastProdCheck).toBeLessThan(200);
+  });
+
+  it("CSP includes frame-ancestors for Manus domains", () => {
     expect(serverEntry).toContain("frame-ancestors");
     expect(serverEntry).toContain("https://*.manus.im");
     expect(serverEntry).toContain("https://*.manus.space");
+  });
+
+  it("CSP includes manus-analytics.com in script-src and connect-src", () => {
+    expect(serverEntry).toContain("https://manus-analytics.com");
+  });
+
+  it("CSP includes ws: and wss: in connect-src for websocket support", () => {
+    expect(serverEntry).toContain("ws:");
+    expect(serverEntry).toContain("wss:");
   });
 
   it("security headers middleware is applied before routes", () => {
