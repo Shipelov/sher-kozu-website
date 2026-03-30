@@ -15,6 +15,7 @@ import {
   Eye,
   Globe,
   Loader2,
+  MapPin,
   Monitor,
   MousePointerClick,
   Smartphone,
@@ -22,7 +23,8 @@ import {
   TrendingUp,
   Users,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
+import { MapView } from "@/components/Map";
 import {
   AreaChart,
   Area,
@@ -121,6 +123,8 @@ export default function AdminSiteAnalytics() {
 
   const dateRange = useMemo(() => getDateRange(period), [period]);
 
+  const geoQ = trpc.analytics.geoBreakdown.useQuery({ ...dateRange, limit: 30 }, { enabled: isAdmin });
+  const locationsQ = trpc.analytics.visitorLocations.useQuery({ ...dateRange, limit: 200 }, { enabled: isAdmin });
   const overviewQ = trpc.analytics.overview.useQuery(dateRange, { enabled: isAdmin });
   const pageViewsQ = trpc.analytics.pageViewsByDay.useQuery(dateRange, { enabled: isAdmin });
   const topPagesQ = trpc.analytics.topPages.useQuery({ ...dateRange, limit: 20 }, { enabled: isAdmin });
@@ -236,11 +240,12 @@ export default function AdminSiteAnalytics() {
             </div>
 
             <Tabs value={activeTab} onValueChange={setActiveTab}>
-              <TabsList className="grid w-full grid-cols-5">
+              <TabsList className="grid w-full grid-cols-6">
                 <TabsTrigger value="overview">Обзор</TabsTrigger>
                 <TabsTrigger value="pages">Страницы</TabsTrigger>
                 <TabsTrigger value="sources">Источники</TabsTrigger>
                 <TabsTrigger value="devices">Устройства</TabsTrigger>
+                <TabsTrigger value="geo">География</TabsTrigger>
                 <TabsTrigger value="funnel">Воронка</TabsTrigger>
               </TabsList>
 
@@ -594,6 +599,54 @@ export default function AdminSiteAnalytics() {
                 </div>
               </TabsContent>
 
+              {/* ─── Geography Tab ─── */}
+              <TabsContent value="geo" className="space-y-4">
+                <GeoMapSection locations={locationsQ.data ?? []} isLoading={locationsQ.isLoading} />
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <MapPin className="h-4 w-4" />
+                      Топ городов по посещениям
+                    </CardTitle>
+                    <CardDescription>Города, откуда приходят посетители</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {geoQ.isLoading ? (
+                      <div className="flex justify-center py-10"><Loader2 className="h-5 w-5 animate-spin" /></div>
+                    ) : geoQ.data && geoQ.data.length > 0 ? (
+                      <ScrollRemaining totalItems={geoQ.data.length} itemHeight={40}>
+                        <table className="w-full text-sm">
+                          <thead>
+                            <tr className="border-b text-left text-muted-foreground">
+                              <th className="py-2 font-medium">Город</th>
+                              <th className="py-2 font-medium">Регион</th>
+                              <th className="py-2 font-medium">Страна</th>
+                              <th className="py-2 font-medium text-right">Просмотры</th>
+                              <th className="py-2 font-medium text-right">Уникальные</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {geoQ.data.map((row: { city: string; region: string; country: string; views: number; visitors: number }, i: number) => (
+                              <tr key={i} className="border-b last:border-0">
+                                <td className="py-2 font-medium">{row.city || "—"}</td>
+                                <td className="py-2 text-muted-foreground">{row.region || "—"}</td>
+                                <td className="py-2">
+                                  <Badge variant="outline" className="text-xs">{row.country}</Badge>
+                                </td>
+                                <td className="py-2 text-right">{row.views.toLocaleString()}</td>
+                                <td className="py-2 text-right">{row.visitors.toLocaleString()}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </ScrollRemaining>
+                    ) : (
+                      <p className="text-center text-muted-foreground py-10">Нет данных о геолокации за выбранный период</p>
+                    )}
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
               {/* ─── Funnel Tab ─── */}
               <TabsContent value="funnel" className="space-y-4">
                 <Card>
@@ -654,6 +707,111 @@ export default function AdminSiteAnalytics() {
         )}
       </div>
     </DashboardLayout>
+  );
+}
+
+/* ─── GeoMap Section Component ─── */
+
+type GeoLocation = { lat: number; lng: number; city: string; region: string; country: string; pagePath: string };
+
+function GeoMapSection({ locations, isLoading }: { locations: GeoLocation[]; isLoading: boolean }) {
+  const mapRef = useRef<google.maps.Map | null>(null);
+  const markersRef = useRef<google.maps.marker.AdvancedMarkerElement[]>([]);
+
+  const handleMapReady = useCallback((map: google.maps.Map) => {
+    mapRef.current = map;
+    if (locations.length > 0) {
+      addMarkers(map, locations);
+    }
+  }, [locations]);
+
+  // Update markers when locations change
+  const prevLocationsRef = useRef<GeoLocation[]>([]);
+  if (mapRef.current && locations !== prevLocationsRef.current && locations.length > 0) {
+    prevLocationsRef.current = locations;
+    // Clear old markers
+    for (const m of markersRef.current) {
+      m.map = null;
+    }
+    markersRef.current = [];
+    addMarkers(mapRef.current, locations);
+  }
+
+  function addMarkers(map: google.maps.Map, locs: GeoLocation[]) {
+    // Aggregate by city to avoid too many markers
+    const cityMap = new Map<string, { lat: number; lng: number; city: string; count: number }>();
+    for (const loc of locs) {
+      const key = `${loc.lat.toFixed(2)},${loc.lng.toFixed(2)}`;
+      const existing = cityMap.get(key);
+      if (existing) {
+        existing.count++;
+      } else {
+        cityMap.set(key, { lat: loc.lat, lng: loc.lng, city: loc.city || loc.region || loc.country, count: 1 });
+      }
+    }
+
+    const bounds = new google.maps.LatLngBounds();
+    const entries = Array.from(cityMap.values());
+    for (const entry of entries) {
+      const pos = { lat: entry.lat, lng: entry.lng };
+      bounds.extend(pos);
+
+      // Create a custom pin element
+      const pinEl = document.createElement("div");
+      pinEl.style.cssText = `
+        background: #10b981; color: white; border-radius: 50%; width: ${Math.min(16 + entry.count * 3, 40)}px;
+        height: ${Math.min(16 + entry.count * 3, 40)}px; display: flex; align-items: center; justify-content: center;
+        font-size: 10px; font-weight: 600; border: 2px solid white; box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+      `;
+      pinEl.textContent = entry.count > 1 ? String(entry.count) : "";
+      pinEl.title = `${entry.city}: ${entry.count} посещений`;
+
+      const marker = new google.maps.marker.AdvancedMarkerElement({
+        map,
+        position: pos,
+        content: pinEl,
+        title: `${entry.city}: ${entry.count} посещений`,
+      });
+      markersRef.current.push(marker);
+    }
+
+    if (entries.length > 0) {
+      map.fitBounds(bounds, { top: 50, bottom: 50, left: 50, right: 50 });
+    }
+  }
+
+  if (isLoading) {
+    return (
+      <Card>
+        <CardContent className="p-6">
+          <div className="flex justify-center py-20"><Loader2 className="h-6 w-6 animate-spin" /></div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base flex items-center gap-2">
+          <Globe className="h-4 w-4" />
+          Карта посещений
+        </CardTitle>
+        <CardDescription>География посетителей сайта за выбранный период</CardDescription>
+      </CardHeader>
+      <CardContent>
+        {locations.length === 0 ? (
+          <p className="text-center text-muted-foreground py-10">Нет данных о геолокации. Данные появятся после накопления посещений.</p>
+        ) : (
+          <MapView
+            className="h-[400px] rounded-lg overflow-hidden"
+            initialCenter={{ lat: 55.75, lng: 37.62 }}
+            initialZoom={4}
+            onMapReady={handleMapReady}
+          />
+        )}
+      </CardContent>
+    </Card>
   );
 }
 

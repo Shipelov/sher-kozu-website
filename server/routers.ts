@@ -86,6 +86,8 @@ import { gamificationRouter } from "./routers/gamification";
 import { faqChatRouter } from "./routers/faqChat";
 import { cmsRouter } from "./routers/cms";
 import { analyticsRouter } from "./routers/analytics";
+import { analyticsAlertsRouter } from "./routers/analyticsAlerts";
+import { abExperimentsRouter } from "./routers/abExperiments";
 import { getOwnerBadges, checkAndAwardBadges, BADGE_DEFINITIONS } from "./badges";
 import {
   checkRateLimit,
@@ -1453,6 +1455,8 @@ export const appRouter = router({
   productTrack: productTrackRouter,
   gamification: gamificationRouter,
   analytics: analyticsRouter,
+  analyticsAlerts: analyticsAlertsRouter,
+  abExperiments: abExperimentsRouter,
   badges: router({
     /** Get badges for the current user */
     myBadges: protectedProcedure.query(async ({ ctx }) => {

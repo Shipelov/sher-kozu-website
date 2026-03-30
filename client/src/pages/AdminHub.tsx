@@ -15,6 +15,7 @@ import {
   Coins,
   Crown,
   FileText,
+  FlaskConical,
   Gamepad2,
   KeyRound,
   Loader2,
@@ -94,6 +95,8 @@ export default function AdminHub() {
     { title: "Аналитика сайта", path: "/admin/site-analytics", icon: Activity },
     { title: "FAQ аналитика", path: "/admin/faq-analytics", icon: TrendingUp },
     { title: "Контент (CMS)", path: "/admin/content", icon: FileText },
+    { title: "Уведомления аналитики", path: "/admin/analytics-alerts", icon: Bell },
+    { title: "A/B тестирование", path: "/admin/ab-experiments", icon: FlaskConical },
   ];
 
   // ── Loading ──

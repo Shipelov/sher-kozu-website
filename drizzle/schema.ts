@@ -1,4 +1,4 @@
-import { boolean, index, int, json, mysqlEnum, mysqlTable, text, timestamp, varchar } from "drizzle-orm/mysql-core";
+import { boolean, double, index, int, json, mysqlEnum, mysqlTable, text, timestamp, varchar } from "drizzle-orm/mysql-core";
 
 /**
  * Core user table backing auth flow.
@@ -1264,6 +1264,14 @@ export const siteVisits = mysqlTable("siteVisits", {
   screenWidth: int("screenWidth"),
   /** Country code (ISO 3166-1 alpha-2, derived from IP if available) */
   country: varchar("country", { length: 8 }),
+  /** City name (derived from IP via GeoIP service) */
+  city: varchar("city", { length: 128 }),
+  /** Region/state name (derived from IP via GeoIP service) */
+  region: varchar("region", { length: 128 }),
+  /** Latitude coordinate (derived from IP via GeoIP service) */
+  latitude: double("latitude"),
+  /** Longitude coordinate (derived from IP via GeoIP service) */
+  longitude: double("longitude"),
   /** Time spent on page in seconds (updated on next navigation or unload) */
   timeOnPage: int("timeOnPage"),
   /** Whether this is the first visit in the session (entry page) */
@@ -1315,3 +1323,134 @@ export const siteEvents = mysqlTable("siteEvents", {
 ]);
 export type SiteEvent = typeof siteEvents.$inferSelect;
 export type InsertSiteEvent = typeof siteEvents.$inferInsert;
+
+/**
+ * Analytics Alerts — rules and history for anomaly detection.
+ * Each rule defines a metric, threshold, and comparison method.
+ * When triggered, a notification is sent to the owner.
+ */
+export const analyticsAlertRules = mysqlTable("analyticsAlertRules", {
+  id: int("id").autoincrement().primaryKey(),
+  /** Human-readable name for the rule */
+  name: varchar("name", { length: 256 }).notNull(),
+  /** Metric to monitor: 'page_views', 'unique_visitors', 'sessions', 'bounce_rate', 'avg_time' */
+  metric: varchar("metric", { length: 64 }).notNull(),
+  /** Comparison operator: 'gt' (greater than), 'lt' (less than), 'change_pct_up', 'change_pct_down' */
+  operator: varchar("operator", { length: 32 }).notNull(),
+  /** Threshold value (absolute number or percentage depending on operator) */
+  threshold: double("threshold").notNull(),
+  /** Time window for comparison in hours (e.g. 24 = compare today vs yesterday) */
+  windowHours: int("windowHours").default(24).notNull(),
+  /** Whether this rule is currently active */
+  enabled: boolean("enabled").default(true).notNull(),
+  /** Admin openId who created the rule */
+  createdBy: varchar("createdBy", { length: 64 }).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type AnalyticsAlertRule = typeof analyticsAlertRules.$inferSelect;
+export type InsertAnalyticsAlertRule = typeof analyticsAlertRules.$inferInsert;
+
+/**
+ * Analytics Alert History — log of triggered alerts.
+ */
+export const analyticsAlertHistory = mysqlTable("analyticsAlertHistory", {
+  id: int("id").autoincrement().primaryKey(),
+  /** Reference to the rule that triggered */
+  ruleId: int("ruleId").notNull(),
+  /** Rule name at time of trigger (denormalized for history) */
+  ruleName: varchar("ruleName", { length: 256 }).notNull(),
+  /** Metric that triggered */
+  metric: varchar("metric", { length: 64 }).notNull(),
+  /** Current value of the metric */
+  currentValue: double("currentValue").notNull(),
+  /** Previous/comparison value */
+  previousValue: double("previousValue"),
+  /** Change percentage (if applicable) */
+  changePct: double("changePct"),
+  /** Human-readable message describing the anomaly */
+  message: text("message").notNull(),
+  /** Whether notification was successfully sent */
+  notified: boolean("notified").default(false).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, (t) => [
+  index("aah_ruleId_idx").on(t.ruleId),
+  index("aah_createdAt_idx").on(t.createdAt),
+]);
+export type AnalyticsAlertHistoryRow = typeof analyticsAlertHistory.$inferSelect;
+export type InsertAnalyticsAlertHistory = typeof analyticsAlertHistory.$inferInsert;
+
+/**
+ * A/B Experiments — defines experiments with multiple variants.
+ */
+export const abExperiments = mysqlTable("abExperiments", {
+  id: int("id").autoincrement().primaryKey(),
+  /** Human-readable experiment name */
+  name: varchar("name", { length: 256 }).notNull(),
+  /** Description of what is being tested */
+  description: text("description"),
+  /** Status: 'draft', 'running', 'paused', 'completed' */
+  status: varchar("status", { length: 32 }).default("draft").notNull(),
+  /** Target page path pattern (e.g. '/', '/animals', '/animals/*') */
+  targetPage: varchar("targetPage", { length: 512 }).notNull(),
+  /** Conversion goal event label (e.g. 'share_purchase', 'registration') */
+  goalEvent: varchar("goalEvent", { length: 256 }).notNull(),
+  /** Start date of the experiment */
+  startDate: timestamp("startDate"),
+  /** End date of the experiment */
+  endDate: timestamp("endDate"),
+  /** Admin openId who created */
+  createdBy: varchar("createdBy", { length: 64 }).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type AbExperiment = typeof abExperiments.$inferSelect;
+export type InsertAbExperiment = typeof abExperiments.$inferInsert;
+
+/**
+ * A/B Experiment Variants — each experiment has 2+ variants.
+ */
+export const abExperimentVariants = mysqlTable("abExperimentVariants", {
+  id: int("id").autoincrement().primaryKey(),
+  /** Parent experiment */
+  experimentId: int("experimentId").notNull(),
+  /** Variant key (e.g. 'control', 'variant_a', 'variant_b') */
+  variantKey: varchar("variantKey", { length: 64 }).notNull(),
+  /** Human-readable label */
+  label: varchar("label", { length: 256 }).notNull(),
+  /** Traffic weight (percentage, 0-100). All variants in an experiment should sum to 100. */
+  weight: int("weight").default(50).notNull(),
+  /** JSON configuration for this variant (e.g. different CTA text, color, layout) */
+  config: text("config"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, (t) => [
+  index("aev_experimentId_idx").on(t.experimentId),
+]);
+export type AbExperimentVariant = typeof abExperimentVariants.$inferSelect;
+export type InsertAbExperimentVariant = typeof abExperimentVariants.$inferInsert;
+
+/**
+ * A/B Experiment Assignments — tracks which visitor got which variant.
+ */
+export const abExperimentAssignments = mysqlTable("abExperimentAssignments", {
+  id: int("id").autoincrement().primaryKey(),
+  /** Parent experiment */
+  experimentId: int("experimentId").notNull(),
+  /** Assigned variant ID */
+  variantId: int("variantId").notNull(),
+  /** Visitor fingerprint */
+  visitorId: varchar("visitorId", { length: 64 }).notNull(),
+  /** Session ID */
+  sessionId: varchar("sessionId", { length: 64 }).notNull(),
+  /** Whether this visitor completed the conversion goal */
+  converted: boolean("converted").default(false).notNull(),
+  /** Timestamp of conversion (if any) */
+  convertedAt: timestamp("convertedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, (t) => [
+  index("aea_experimentId_idx").on(t.experimentId),
+  index("aea_variantId_idx").on(t.variantId),
+  index("aea_visitorId_idx").on(t.visitorId),
+]);
+export type AbExperimentAssignment = typeof abExperimentAssignments.$inferSelect;
+export type InsertAbExperimentAssignment = typeof abExperimentAssignments.$inferInsert;

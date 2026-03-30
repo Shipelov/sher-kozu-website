@@ -1,0 +1,40 @@
+{
+  "query": "SELECT v.id, v.variantKey, v.label, v.weight FROM abExperimentVariants v LIMIT 5;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3J2fXRHx8d1YjF6.root --database mLhmg5VmBsEBpZiYqdnhMQ --execute SELECT v.id, v.variantKey, v.label, v.weight FROM abExperimentVariants v LIMIT 5;",
+  "rows": [
+    {
+      "id": "1",
+      "variantKey": "control",
+      "label": "Контроль",
+      "weight": "50"
+    },
+    {
+      "id": "2",
+      "variantKey": "variant_a",
+      "label": "Зелёная кнопка",
+      "weight": "50"
+    },
+    {
+      "id": "3",
+      "variantKey": "control",
+      "label": "Контроль",
+      "weight": "50"
+    },
+    {
+      "id": "4",
+      "variantKey": "variant_a",
+      "label": "Вариант A",
+      "weight": "50"
+    },
+    {
+      "id": "5",
+      "variantKey": "control",
+      "label": "Контроль",
+      "weight": "50"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tvariantKey\tlabel\tweight\n1\tcontrol\tКонтроль\t50\n2\tvariant_a\tЗелёная кнопка\t50\n3\tcontrol\tКонтроль\t50\n4\tvariant_a\tВариант A\t50\n5\tcontrol\tКонтроль\t50\n",
+  "stderr": "",
+  "execution_time_ms": 371
+}

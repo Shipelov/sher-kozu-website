@@ -1,0 +1,22 @@
+{
+  "query": "SHOW TABLES LIKE 'ab%';",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3J2fXRHx8d1YjF6.root --database mLhmg5VmBsEBpZiYqdnhMQ --execute SHOW TABLES LIKE 'ab%';",
+  "rows": [
+    {
+      "Tables_in_mLhmg5VmBsEBpZiYqdnhMQ (ab%)": "abExperimentAssignments"
+    },
+    {
+      "Tables_in_mLhmg5VmBsEBpZiYqdnhMQ (ab%)": "abExperimentVariants"
+    },
+    {
+      "Tables_in_mLhmg5VmBsEBpZiYqdnhMQ (ab%)": "abExperiments"
+    },
+    {
+      "Tables_in_mLhmg5VmBsEBpZiYqdnhMQ (ab%)": "abTestSessions"
+    }
+  ],
+  "messages": [],
+  "stdout": "Tables_in_mLhmg5VmBsEBpZiYqdnhMQ (ab%)\nabExperimentAssignments\nabExperimentVariants\nabExperiments\nabTestSessions\n",
+  "stderr": "",
+  "execution_time_ms": 440
+}

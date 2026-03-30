@@ -13,7 +13,10 @@ import {
   getConversionFunnel,
   getEventsSummary,
   getHourlyTraffic,
+  getGeoBreakdown,
+  getVisitorLocations,
 } from "../db";
+import { extractClientIp, lookupGeoIp } from "../geoip";
 
 /* ── Zod schemas ── */
 
@@ -63,8 +66,25 @@ const dateRangeInput = z.object({
 export const analyticsRouter = router({
   /* ─── Public tracking endpoints (called from client) ─── */
 
-  trackVisit: publicProcedure.input(trackVisitInput).mutation(async ({ input }) => {
-    await recordSiteVisit(input);
+  trackVisit: publicProcedure.input(trackVisitInput).mutation(async ({ input, ctx }) => {
+    // Enrich with GeoIP data from the request IP
+    let geoData: { country?: string | null; city?: string | null; region?: string | null; latitude?: number | null; longitude?: number | null } = {};
+    try {
+      const ip = extractClientIp(ctx.req);
+      if (ip) {
+        const geo = await lookupGeoIp(ip);
+        geoData = {
+          country: geo.country || input.country,
+          city: geo.city,
+          region: geo.region,
+          latitude: geo.latitude,
+          longitude: geo.longitude,
+        };
+      }
+    } catch {
+      // GeoIP enrichment is best-effort
+    }
+    await recordSiteVisit({ ...input, ...geoData });
     return { success: true };
   }),
 
@@ -136,5 +156,21 @@ export const analyticsRouter = router({
     const from = new Date(input.from);
     const to = new Date(input.to);
     return getHourlyTraffic(from, to);
+  }),
+
+  geoBreakdown: adminProcedure.input(dateRangeInput.extend({
+    limit: z.number().int().min(1).max(100).default(30),
+  })).query(async ({ input }) => {
+    const from = new Date(input.from);
+    const to = new Date(input.to);
+    return getGeoBreakdown(from, to, input.limit);
+  }),
+
+  visitorLocations: adminProcedure.input(dateRangeInput.extend({
+    limit: z.number().int().min(1).max(500).default(200),
+  })).query(async ({ input }) => {
+    const from = new Date(input.from);
+    const to = new Date(input.to);
+    return getVisitorLocations(from, to, input.limit);
   }),
 });

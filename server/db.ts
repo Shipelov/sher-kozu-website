@@ -54,6 +54,15 @@ import {
   siteEvents,
   InsertSiteVisit,
   InsertSiteEvent,
+  analyticsAlertRules,
+  analyticsAlertHistory,
+  InsertAnalyticsAlertRule,
+  InsertAnalyticsAlertHistory,
+  abExperiments,
+  abExperimentVariants,
+  abExperimentAssignments,
+  InsertAbExperiment,
+  InsertAbExperimentVariant,
 } from "../drizzle/schema";
 import { ENV } from "./_core/env";
 
@@ -4741,4 +4750,303 @@ export async function getHourlyTraffic(fromDate: Date, toDate: Date) {
     dayOfWeek: Number(r.dow),
     count: Number(r.cnt),
   }));
+}
+
+/**
+ * Get geographic breakdown of visitors (city/region/country aggregation).
+ */
+export async function getGeoBreakdown(fromDate: Date, toDate: Date, limit = 30) {
+  const db = await getDb();
+  const rows: any[] = await db.execute(
+    sql`SELECT country, region, city,
+               COUNT(*) as views,
+               COUNT(DISTINCT visitorId) as visitors,
+               AVG(latitude) as lat, AVG(longitude) as lng
+        FROM siteVisits
+        WHERE createdAt >= ${fromDate} AND createdAt <= ${toDate}
+          AND city IS NOT NULL AND city != ''
+        GROUP BY country, region, city
+        ORDER BY views DESC
+        LIMIT ${limit}`
+  );
+
+  return rows.map((r: any) => ({
+    country: r.country || "??",
+    region: r.region || "",
+    city: r.city || "",
+    views: Number(r.views),
+    visitors: Number(r.visitors),
+    lat: r.lat ? Number(r.lat) : null,
+    lng: r.lng ? Number(r.lng) : null,
+  }));
+}
+
+/**
+ * Get individual visitor locations with lat/lng for map markers.
+ */
+export async function getVisitorLocations(fromDate: Date, toDate: Date, limit = 200) {
+  const db = await getDb();
+  const rows: any[] = await db.execute(
+    sql`SELECT latitude, longitude, city, region, country, pagePath, createdAt
+        FROM siteVisits
+        WHERE createdAt >= ${fromDate} AND createdAt <= ${toDate}
+          AND latitude IS NOT NULL AND longitude IS NOT NULL
+        ORDER BY createdAt DESC
+        LIMIT ${limit}`
+  );
+
+  return rows.map((r: any) => ({
+    lat: Number(r.latitude),
+    lng: Number(r.longitude),
+    city: r.city || "",
+    region: r.region || "",
+    country: r.country || "",
+    pagePath: r.pagePath || "",
+    createdAt: r.createdAt,
+  }));
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   Analytics Alert Rules & History
+   ═══════════════════════════════════════════════════════════════ */
+
+export async function listAlertRules() {
+  const db = await getDb();
+  return db.select().from(analyticsAlertRules).orderBy(desc(analyticsAlertRules.createdAt));
+}
+
+export async function createAlertRule(data: InsertAnalyticsAlertRule) {
+  const db = await getDb();
+  const result = await db.insert(analyticsAlertRules).values(data);
+  return { id: (result as any)[0].insertId };
+}
+
+export async function updateAlertRule(id: number, data: Partial<InsertAnalyticsAlertRule>) {
+  const db = await getDb();
+  await db.update(analyticsAlertRules).set(data).where(eq(analyticsAlertRules.id, id));
+}
+
+export async function deleteAlertRule(id: number) {
+  const db = await getDb();
+  await db.delete(analyticsAlertRules).where(eq(analyticsAlertRules.id, id));
+}
+
+export async function listAlertHistory(limit = 50) {
+  const db = await getDb();
+  return db.select().from(analyticsAlertHistory).orderBy(desc(analyticsAlertHistory.createdAt)).limit(limit);
+}
+
+export async function recordAlertTrigger(data: InsertAnalyticsAlertHistory) {
+  const db = await getDb();
+  await db.insert(analyticsAlertHistory).values(data);
+}
+
+/**
+ * Get metric value for a time window (used by anomaly detection).
+ */
+export async function getMetricForWindow(metric: string, fromDate: Date, toDate: Date): Promise<number> {
+  const db = await getDb();
+
+  switch (metric) {
+    case "page_views": {
+      const rows: any[] = await db.execute(
+        sql`SELECT COUNT(*) as val FROM siteVisits WHERE createdAt >= ${fromDate} AND createdAt <= ${toDate}`
+      );
+      return Number(rows[0]?.val ?? 0);
+    }
+    case "unique_visitors": {
+      const rows: any[] = await db.execute(
+        sql`SELECT COUNT(DISTINCT visitorId) as val FROM siteVisits WHERE createdAt >= ${fromDate} AND createdAt <= ${toDate}`
+      );
+      return Number(rows[0]?.val ?? 0);
+    }
+    case "sessions": {
+      const rows: any[] = await db.execute(
+        sql`SELECT COUNT(DISTINCT sessionId) as val FROM siteVisits WHERE createdAt >= ${fromDate} AND createdAt <= ${toDate}`
+      );
+      return Number(rows[0]?.val ?? 0);
+    }
+    case "bounce_rate": {
+      const rows: any[] = await db.execute(
+        sql`SELECT
+              COUNT(DISTINCT CASE WHEN isEntry = 1 AND isExit = 1 THEN sessionId END) as bounced,
+              COUNT(DISTINCT sessionId) as total
+            FROM siteVisits
+            WHERE createdAt >= ${fromDate} AND createdAt <= ${toDate}`
+      );
+      const bounced = Number(rows[0]?.bounced ?? 0);
+      const total = Number(rows[0]?.total ?? 1);
+      return total > 0 ? Math.round((bounced / total) * 100) : 0;
+    }
+    case "avg_time": {
+      const rows: any[] = await db.execute(
+        sql`SELECT AVG(timeOnPage) as val FROM siteVisits WHERE createdAt >= ${fromDate} AND createdAt <= ${toDate} AND timeOnPage IS NOT NULL`
+      );
+      return Math.round(Number(rows[0]?.val ?? 0));
+    }
+    default:
+      return 0;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   A/B Experiments
+   ═══════════════════════════════════════════════════════════════ */
+
+export async function listExperiments() {
+  const db = await getDb();
+  return db.select().from(abExperiments).orderBy(desc(abExperiments.createdAt));
+}
+
+export async function getExperimentById(id: number) {
+  const db = await getDb();
+  const rows = await db.select().from(abExperiments).where(eq(abExperiments.id, id)).limit(1);
+  return rows[0] || null;
+}
+
+export async function createExperiment(data: InsertAbExperiment) {
+  const db = await getDb();
+  const result = await db.insert(abExperiments).values(data);
+  return { id: (result as any)[0].insertId };
+}
+
+export async function updateExperiment(id: number, data: Partial<InsertAbExperiment>) {
+  const db = await getDb();
+  await db.update(abExperiments).set(data).where(eq(abExperiments.id, id));
+}
+
+export async function deleteExperiment(id: number) {
+  const db = await getDb();
+  await db.delete(abExperimentAssignments).where(eq(abExperimentAssignments.experimentId, id));
+  await db.delete(abExperimentVariants).where(eq(abExperimentVariants.experimentId, id));
+  await db.delete(abExperiments).where(eq(abExperiments.id, id));
+}
+
+export async function listVariants(experimentId: number) {
+  const db = await getDb();
+  return db.select().from(abExperimentVariants).where(eq(abExperimentVariants.experimentId, experimentId));
+}
+
+export async function createVariant(data: InsertAbExperimentVariant) {
+  const db = await getDb();
+  const result = await db.insert(abExperimentVariants).values(data);
+  return { id: (result as any)[0].insertId };
+}
+
+export async function deleteVariant(id: number) {
+  const db = await getDb();
+  await db.delete(abExperimentVariants).where(eq(abExperimentVariants.id, id));
+}
+
+/**
+ * Assign a visitor to an experiment variant (or return existing assignment).
+ */
+export async function getOrAssignVariant(experimentId: number, visitorId: string, sessionId: string) {
+  const db = await getDb();
+
+  // Check existing assignment for this visitor
+  const existing = await db.select()
+    .from(abExperimentAssignments)
+    .where(and(
+      eq(abExperimentAssignments.experimentId, experimentId),
+      eq(abExperimentAssignments.visitorId, visitorId),
+    ))
+    .limit(1);
+
+  if (existing.length > 0) {
+    const variant = await db.select().from(abExperimentVariants).where(eq(abExperimentVariants.id, existing[0].variantId)).limit(1);
+    return { assignment: existing[0], variant: variant[0] || null };
+  }
+
+  // Get all variants and assign based on weight
+  const variants = await db.select().from(abExperimentVariants).where(eq(abExperimentVariants.experimentId, experimentId));
+  if (variants.length === 0) return { assignment: null, variant: null };
+
+  const totalWeight = variants.reduce((sum: number, v: { weight: number }) => sum + v.weight, 0);
+  let random = Math.random() * totalWeight;
+  let chosen = variants[0];
+  for (const v of variants) {
+    random -= v.weight;
+    if (random <= 0) {
+      chosen = v;
+      break;
+    }
+  }
+
+  const result = await db.insert(abExperimentAssignments).values({
+    experimentId,
+    variantId: chosen.id,
+    visitorId,
+    sessionId,
+  });
+
+  const newAssignment = await db.select().from(abExperimentAssignments).where(eq(abExperimentAssignments.id, (result as any)[0].insertId)).limit(1);
+  return { assignment: newAssignment[0] || null, variant: chosen };
+}
+
+/**
+ * Record a conversion for an experiment assignment.
+ */
+export async function recordConversion(experimentId: number, visitorId: string) {
+  const db = await getDb();
+  await db.update(abExperimentAssignments)
+    .set({ converted: true, convertedAt: new Date() })
+    .where(and(
+      eq(abExperimentAssignments.experimentId, experimentId),
+      eq(abExperimentAssignments.visitorId, visitorId),
+    ));
+}
+
+/**
+ * Get experiment results with per-variant statistics.
+ */
+export async function getExperimentResults(experimentId: number) {
+  const db = await getDb();
+  const rawResult: any = await db.execute(
+    sql`SELECT
+          v.id as variantId, v.variantKey, v.label, v.weight,
+          COUNT(a.id) as totalAssigned,
+          SUM(CASE WHEN a.converted = 1 THEN 1 ELSE 0 END) as conversions
+        FROM abExperimentVariants v
+        LEFT JOIN abExperimentAssignments a ON a.variantId = v.id AND a.experimentId = v.experimentId
+        WHERE v.experimentId = ${experimentId}
+        GROUP BY v.id, v.variantKey, v.label, v.weight`
+  );
+
+  // db.execute may return [rows, fields] tuple or just rows
+  const rows: any[] = Array.isArray(rawResult) && rawResult.length === 2 && Array.isArray(rawResult[0])
+    ? rawResult[0]
+    : rawResult;
+
+  return rows.map((r: any) => ({
+    variantId: Number(r.variantId),
+    variantKey: r.variantKey,
+    label: r.label,
+    weight: Number(r.weight),
+    totalAssigned: Number(r.totalAssigned),
+    conversions: Number(r.conversions),
+    conversionRate: Number(r.totalAssigned) > 0
+      ? Math.round((Number(r.conversions) / Number(r.totalAssigned)) * 10000) / 100
+      : 0,
+  }));
+}
+
+/**
+ * Get running experiments for a given page path (used by client to check active experiments).
+ */
+export async function getActiveExperimentsForPage(pagePath: string) {
+  const db = await getDb();
+  const experiments = await db.select()
+    .from(abExperiments)
+    .where(eq(abExperiments.status, "running"));
+
+  // Filter by target page pattern
+  return experiments.filter((exp: { targetPage: string }) => {
+    const pattern = exp.targetPage;
+    if (pattern === "*" || pattern === "/*") return true;
+    if (pattern.endsWith("*")) {
+      return pagePath.startsWith(pattern.slice(0, -1));
+    }
+    return pagePath === pattern;
+  });
 }

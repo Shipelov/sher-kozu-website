@@ -37,6 +37,8 @@ const AboutFarm = lazy(() => import("./pages/AboutFarm"));
 const AnimalCompare = lazy(() => import("./pages/AnimalCompare"));
 const FAQ = lazy(() => import("./pages/FAQ"));
 const NotificationSettings = lazy(() => import("./pages/NotificationSettings"));
+const AdminAnalyticsAlerts = lazy(() => import("./pages/AdminAnalyticsAlerts"));
+const AdminABExperiments = lazy(() => import("./pages/AdminABExperiments"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 /* ─── Suspense fallback spinner ─── */
@@ -106,6 +108,8 @@ function Router() {
         <Route path="/admin/faq-analytics" component={AdminFaqAnalytics} />
         <Route path="/admin/content" component={AdminCmsEditor} />
         <Route path="/admin/photo-moderation" component={AdminPhotoModeration} />
+        <Route path="/admin/analytics-alerts" component={AdminAnalyticsAlerts} />
+        <Route path="/admin/ab-experiments" component={AdminABExperiments} />
         <Route path="/marketplace" component={Marketplace} />
         <Route path="/leaderboard" component={Leaderboard} />
         <Route path="/compare" component={AnimalCompare} />
