@@ -1274,8 +1274,9 @@ export const appRouter = router({
     }),
   }),
   club: router({
-    feed: protectedProcedure.query(async ({ ctx }) => {
-      return getClubFeedData(ctx.user.openId);
+    feed: publicProcedure.query(async ({ ctx }) => {
+      const ownerOpenId = ctx.user?.openId ?? ENV.ownerOpenId;
+      return getClubFeedData(ownerOpenId);
     }),
   }),
   diagnostics: router({

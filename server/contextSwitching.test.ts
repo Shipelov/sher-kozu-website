@@ -100,8 +100,8 @@ describe("Context Switching: ProductTracker derives animal from ownerDashboard",
 });
 
 describe("Context Switching: ClubFeed derives animal from ownerDashboard", () => {
-  it("calls trpc.animals.ownerDashboard.useQuery()", () => {
-    expect(CLUB_SRC).toContain("trpc.animals.ownerDashboard.useQuery()");
+  it("calls trpc.animals.ownerDashboard.useQuery conditionally", () => {
+    expect(CLUB_SRC).toContain("trpc.animals.ownerDashboard.useQuery");
   });
 
   it("extracts ownerAnimal from dashboard data", () => {

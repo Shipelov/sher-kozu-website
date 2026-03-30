@@ -3,6 +3,7 @@ import { motion } from "framer-motion";
 import { Link, useLocation } from "wouter";
 import Navbar from "@/components/Navbar";
 import { trpc } from "@/lib/trpc";
+import { useAuth } from "@/_core/hooks/useAuth";
 import ScrollRemaining from "@/components/ScrollRemaining";
 import PageBreadcrumbs from "@/components/PageBreadcrumbs";
 import {
@@ -181,8 +182,12 @@ export default function ClubFeed() {
   const [location] = useLocation();
   const requestedAnimalSlug = useMemo(() => getRequestedAnimalSlug(), [location]);
 
+  const { isAuthenticated } = useAuth();
+
   const clubQuery = trpc.club.feed.useQuery();
-  const dashboardQuery = trpc.animals.ownerDashboard.useQuery();
+  const dashboardQuery = trpc.animals.ownerDashboard.useQuery(undefined, {
+    enabled: isAuthenticated,
+  });
   const animalsQuery = trpc.animals.listPublic.useQuery();
 
   const posts = (clubQuery.data?.posts ?? []) as ClubPost[];

@@ -392,9 +392,13 @@ describe("Smoke: public procedures return expected shapes", () => {
     expect(Array.isArray(result)).toBe(true);
   });
 
-  it("club.feed rejects unauthenticated user (protectedProcedure)", async () => {
+  it("club.feed returns data for unauthenticated user (publicProcedure)", async () => {
     const caller = appRouter.createCaller(ctx);
-    await expect(caller.club.feed()).rejects.toThrow(UNAUTHED_ERR_MSG);
+    const result = await caller.club.feed();
+    expect(result).toHaveProperty("posts");
+    expect(result).toHaveProperty("events");
+    expect(result).toHaveProperty("members");
+    expect(Array.isArray(result.posts)).toBe(true);
   });
 
   it("localAuth.register rejects empty name", async () => {
