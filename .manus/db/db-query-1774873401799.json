@@ -1,0 +1,50 @@
+{
+  "query": "SELECT id, slug, name, animalStatus, isFeatured, sortOrder FROM animals ORDER BY id;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3J2fXRHx8d1YjF6.root --database mLhmg5VmBsEBpZiYqdnhMQ --execute SELECT id, slug, name, animalStatus, isFeatured, sortOrder FROM animals ORDER BY id;",
+  "rows": [
+    {
+      "id": "30001",
+      "slug": "mira",
+      "name": "Мира",
+      "animalStatus": "fully_booked",
+      "isFeatured": "1",
+      "sortOrder": "0"
+    },
+    {
+      "id": "180005",
+      "slug": "zlata",
+      "name": "Злата",
+      "animalStatus": "fully_booked",
+      "isFeatured": "0",
+      "sortOrder": "1"
+    },
+    {
+      "id": "270001",
+      "slug": "Rufa",
+      "name": "Руфа",
+      "animalStatus": "fully_booked",
+      "isFeatured": "1",
+      "sortOrder": "0"
+    },
+    {
+      "id": "300001",
+      "slug": "marta-ownerdemo",
+      "name": "Марта",
+      "animalStatus": "public_available",
+      "isFeatured": "1",
+      "sortOrder": "0"
+    },
+    {
+      "id": "300002",
+      "slug": "zlata-ownerdemo",
+      "name": "Злата",
+      "animalStatus": "public_available",
+      "isFeatured": "0",
+      "sortOrder": "1"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tslug\tname\tanimalStatus\tisFeatured\tsortOrder\n30001\tmira\tМира\tfully_booked\t1\t0\n180005\tzlata\tЗлата\tfully_booked\t0\t1\n270001\tRufa\tРуфа\tfully_booked\t1\t0\n300001\tmarta-ownerdemo\tМарта\tpublic_available\t1\t0\n300002\tzlata-ownerdemo\tЗлата\tpublic_available\t0\t1\n",
+  "stderr": "",
+  "execution_time_ms": 373
+}
