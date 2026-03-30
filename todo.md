@@ -1397,3 +1397,24 @@
 
 ## Баг: TypeError в ProductTracker при пустых данных
 - [x] Добавлена функция transformApiToSummary() — маппит сырые DB-строки в TrackerSummary с полной защитой от null/undefined
+
+## Админ-управление составом молока и сезонным ритмом
+- [ ] Создать tRPC-процедуры CRUD для compositionSnapshots (привязка к animalSlug, без ownerOpenId)
+- [ ] Создать tRPC-процедуры CRUD для monthlyMetrics (привязка к animalSlug, без ownerOpenId)
+- [ ] Добавить вкладку "Состав молока" в AdminProductTrack
+- [ ] Добавить вкладку "Сезонный ритм" в AdminProductTrack
+- [ ] Рефакторинг публичного ProductTracker — показывать данные по animalSlug, а не по ownerOpenId
+- [ ] Написать тесты для новых процедур
+
+## Composition & Monthly Metrics CRUD
+
+- [x] Добавить DB-хелперы для CRUD состава молока (productCompositionSnapshots)
+- [x] Добавить DB-хелперы для CRUD сезонного ритма (productMonthlyMetrics)
+- [x] Добавить tRPC-процедуры для admin CRUD состава молока
+- [x] Добавить tRPC-процедуры для admin CRUD сезонного ритма
+- [x] Добавить вкладку «Состав» в AdminProductTrack с полным CRUD-интерфейсом
+- [x] Добавить вкладку «Ритм» в AdminProductTrack с визуализацией и CRUD-интерфейсом
+- [x] Обновить публичный ProductTracker: состав и метрики теперь привязаны к animalSlug (не ownerOpenId)
+- [x] Сделать productTracker.getByAnimal публичным (publicProcedure) для доступа без авторизации
+- [x] Написать vitest-тесты для валидации, трансформации и расчётов composition/metrics
+- [x] Обновить существующие тесты (visualAudit, contextSwitching) под новую публичную модель

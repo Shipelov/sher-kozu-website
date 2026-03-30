@@ -33,8 +33,8 @@ describe("Visual Audit: Protected queries have auth guards on public pages", () 
     expect(queryMatch).not.toBeNull();
   });
 
-  it("ProductTracker: getByAnimal query has isAuthenticated guard", () => {
-    expect(TRACKER_SRC).toContain("enabled: isAuthenticated && Boolean(fallbackAnimalSlug)");
+  it("ProductTracker: getByAnimal query works without auth (public)", () => {
+    expect(TRACKER_SRC).toContain("enabled: Boolean(fallbackAnimalSlug)");
   });
 
   it("Leaderboard: all queries have enabled: isAuthenticated guard", () => {

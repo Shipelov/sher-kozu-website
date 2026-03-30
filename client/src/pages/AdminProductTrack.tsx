@@ -22,6 +22,7 @@ import {
   Calendar,
   CheckCircle2,
   ClipboardList,
+  Droplets,
   FlaskConical,
   History,
   Loader2,
@@ -1218,6 +1219,12 @@ export default function AdminProductTrack() {
             <TabsTrigger value="chat" className="rounded-full">
               <MessageCircle className="mr-2 h-4 w-4" /> Чаты
             </TabsTrigger>
+            <TabsTrigger value="composition" className="rounded-full">
+              <FlaskConical className="mr-2 h-4 w-4" /> Состав
+            </TabsTrigger>
+            <TabsTrigger value="seasonal" className="rounded-full">
+              <Droplets className="mr-2 h-4 w-4" /> Ритм
+            </TabsTrigger>
             <TabsTrigger value="log" className="rounded-full">
               <History className="mr-2 h-4 w-4" /> Лог
             </TabsTrigger>
@@ -1241,6 +1248,14 @@ export default function AdminProductTrack() {
 
           <TabsContent value="chat">
             <ChatConversationsOverview animalId={animalId} animalName={animal?.name ?? ""} />
+          </TabsContent>
+
+          <TabsContent value="composition">
+            <CompositionSnapshotsManager animalId={animalId} />
+          </TabsContent>
+
+          <TabsContent value="seasonal">
+            <MonthlyMetricsManager animalId={animalId} />
           </TabsContent>
 
           <TabsContent value="log">
@@ -1432,6 +1447,488 @@ function PlanChangeLogView({ animalId }: { animalId: number }) {
             </div>
           </ScrollRemaining>
         )}
+      </CardContent>
+    </Card>
+  );
+}
+
+
+/* ── Composition Snapshots Manager ── */
+
+type CompositionRecord = {
+  id: number;
+  animalSlug: string;
+  label: string;
+  value: string;
+  note: string;
+  sortOrder: number;
+};
+
+function CompositionSnapshotsManager({ animalId }: { animalId: number }) {
+  const utils = trpc.useUtils();
+  const listQuery = trpc.productTrack.listCompositionSnapshots.useQuery({ animalId });
+  const createMut = trpc.productTrack.createCompositionSnapshot.useMutation({
+    onSuccess: () => {
+      utils.productTrack.listCompositionSnapshots.invalidate({ animalId });
+      setEditing(null);
+      toast.success("Показатель добавлен");
+    },
+    onError: (err) => toast.error(err.message),
+  });
+  const updateMut = trpc.productTrack.updateCompositionSnapshot.useMutation({
+    onSuccess: () => {
+      utils.productTrack.listCompositionSnapshots.invalidate({ animalId });
+      setEditing(null);
+      toast.success("Показатель обновлён");
+    },
+    onError: (err) => toast.error(err.message),
+  });
+  const deleteMut = trpc.productTrack.deleteCompositionSnapshot.useMutation({
+    onSuccess: () => {
+      utils.productTrack.listCompositionSnapshots.invalidate({ animalId });
+      toast.success("Показатель удалён");
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
+  const [editing, setEditing] = useState<Partial<CompositionRecord> | null>(null);
+  const [formLabel, setFormLabel] = useState("");
+  const [formValue, setFormValue] = useState("");
+  const [formNote, setFormNote] = useState("");
+  const [formSort, setFormSort] = useState("0");
+
+  const openNew = () => {
+    setEditing({});
+    setFormLabel("");
+    setFormValue("");
+    setFormNote("");
+    setFormSort("0");
+  };
+
+  const openEdit = (rec: CompositionRecord) => {
+    setEditing(rec);
+    setFormLabel(rec.label);
+    setFormValue(rec.value);
+    setFormNote(rec.note);
+    setFormSort(String(rec.sortOrder));
+  };
+
+  const handleSave = () => {
+    if (!formLabel.trim() || !formValue.trim()) {
+      toast.error("Заполните название и значение");
+      return;
+    }
+    if (editing?.id) {
+      updateMut.mutate({
+        id: editing.id,
+        label: formLabel.trim(),
+        value: formValue.trim(),
+        note: formNote.trim(),
+        sortOrder: parseInt(formSort, 10) || 0,
+      });
+    } else {
+      createMut.mutate({
+        animalId,
+        label: formLabel.trim(),
+        value: formValue.trim(),
+        note: formNote.trim(),
+        sortOrder: parseInt(formSort, 10) || 0,
+      });
+    }
+  };
+
+  const items = (listQuery.data ?? []) as CompositionRecord[];
+  const isSaving = createMut.isPending || updateMut.isPending;
+
+  return (
+    <Card className="rounded-[2rem] border-border/70 shadow-sm">
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle className="flex items-center gap-2">
+              <FlaskConical className="h-5 w-5 text-primary" />
+              Состав молока
+            </CardTitle>
+            <CardDescription>Показатели состава молока животного (жирность, белок, лактоза и др.)</CardDescription>
+          </div>
+          <Button onClick={openNew} size="sm" className="rounded-full">
+            <Plus className="mr-1 h-4 w-4" /> Добавить
+          </Button>
+        </div>
+      </CardHeader>
+      <CardContent>
+        {listQuery.isLoading ? (
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Loader2 className="h-4 w-4 animate-spin" /> Загружаем…
+          </div>
+        ) : items.length === 0 && !editing ? (
+          <div className="rounded-2xl border border-dashed border-border bg-secondary/30 p-6 text-center">
+            <FlaskConical className="mx-auto mb-2 h-8 w-8 text-muted-foreground/50" />
+            <p className="text-sm text-muted-foreground">Пока нет данных о составе молока.</p>
+            <p className="text-xs text-muted-foreground mt-1">Нажмите «Добавить» чтобы внести показатели.</p>
+          </div>
+        ) : (
+          <ScrollRemaining totalItems={items.length} itemHeight={72} className="space-y-3 max-h-[520px] overflow-y-auto pr-1">
+            {items.map((item) => (
+              <div
+                key={item.id}
+                className="flex items-center justify-between rounded-2xl border border-border/60 bg-white/80 p-4 transition-shadow hover:shadow-sm"
+              >
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium text-foreground">{item.label}</span>
+                    <Badge variant="secondary" className="rounded-full text-xs">{item.value}</Badge>
+                  </div>
+                  {item.note && <p className="text-xs text-muted-foreground mt-0.5 truncate">{item.note}</p>}
+                </div>
+                <div className="flex items-center gap-1 ml-2">
+                  <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full" onClick={() => openEdit(item)}>
+                    <Pencil className="h-3.5 w-3.5" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 rounded-full text-destructive hover:text-destructive"
+                    onClick={() => deleteMut.mutate({ id: item.id })}
+                    disabled={deleteMut.isPending}
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </ScrollRemaining>
+        )}
+
+        {/* Edit / Create Dialog */}
+        <Dialog open={editing !== null} onOpenChange={(open) => !open && setEditing(null)}>
+          <DialogContent className="sm:max-w-md rounded-[2rem]">
+            <DialogHeader>
+              <DialogTitle>{editing?.id ? "Редактировать показатель" : "Новый показатель состава"}</DialogTitle>
+              <DialogDescription>
+                Укажите название показателя (напр. «Жирность»), значение (напр. «4.2%») и примечание.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 pt-2">
+              <div className="space-y-2">
+                <Label>Название</Label>
+                <Input
+                  value={formLabel}
+                  onChange={(e) => setFormLabel(e.target.value)}
+                  placeholder="Жирность, Белок, Лактоза…"
+                  className="rounded-xl"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Значение</Label>
+                  <Input
+                    value={formValue}
+                    onChange={(e) => setFormValue(e.target.value)}
+                    placeholder="4.2%"
+                    className="rounded-xl"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Порядок</Label>
+                  <Input
+                    type="number"
+                    min={0}
+                    max={9999}
+                    value={formSort}
+                    onChange={(e) => setFormSort(e.target.value)}
+                    className="rounded-xl"
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label>Примечание</Label>
+                <Input
+                  value={formNote}
+                  onChange={(e) => setFormNote(e.target.value)}
+                  placeholder="Единица измерения или пояснение"
+                  className="rounded-xl"
+                />
+              </div>
+              <div className="flex justify-end gap-2 pt-2">
+                <Button variant="outline" onClick={() => setEditing(null)} className="rounded-full">
+                  Отмена
+                </Button>
+                <Button onClick={handleSave} disabled={isSaving} className="rounded-full">
+                  {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle2 className="mr-2 h-4 w-4" />}
+                  {editing?.id ? "Сохранить" : "Добавить"}
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+      </CardContent>
+    </Card>
+  );
+}
+
+/* ── Monthly Metrics Manager ── */
+
+type MonthlyMetricRecord = {
+  id: number;
+  animalSlug: string;
+  monthLabel: string;
+  milkVolumeLiters: number;
+  proteinPercentTenth: number;
+  fatPercentTenth: number;
+  sortOrder: number;
+};
+
+const MONTH_LABELS = [
+  "Январь", "Февраль", "Март", "Апрель", "Май", "Июнь",
+  "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь",
+];
+
+function MonthlyMetricsManager({ animalId }: { animalId: number }) {
+  const utils = trpc.useUtils();
+  const listQuery = trpc.productTrack.listMonthlyMetrics.useQuery({ animalId });
+  const upsertMut = trpc.productTrack.upsertMonthlyMetric.useMutation({
+    onSuccess: () => {
+      utils.productTrack.listMonthlyMetrics.invalidate({ animalId });
+      setEditing(null);
+      toast.success("Данные сохранены");
+    },
+    onError: (err) => toast.error(err.message),
+  });
+  const deleteMut = trpc.productTrack.deleteMonthlyMetric.useMutation({
+    onSuccess: () => {
+      utils.productTrack.listMonthlyMetrics.invalidate({ animalId });
+      toast.success("Запись удалена");
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
+  const [editing, setEditing] = useState<Partial<MonthlyMetricRecord> | null>(null);
+  const [formMonth, setFormMonth] = useState("");
+  const [formLiters, setFormLiters] = useState("");
+  const [formProtein, setFormProtein] = useState("");
+  const [formFat, setFormFat] = useState("");
+  const [formSort, setFormSort] = useState("0");
+
+  const openNew = () => {
+    setEditing({});
+    setFormMonth(MONTH_LABELS[0]);
+    setFormLiters("");
+    setFormProtein("");
+    setFormFat("");
+    setFormSort("0");
+  };
+
+  const openEdit = (rec: MonthlyMetricRecord) => {
+    setEditing(rec);
+    setFormMonth(rec.monthLabel);
+    setFormLiters(String(rec.milkVolumeLiters));
+    setFormProtein(String(rec.proteinPercentTenth / 10));
+    setFormFat(String(rec.fatPercentTenth / 10));
+    setFormSort(String(rec.sortOrder));
+  };
+
+  const handleSave = () => {
+    if (!formMonth.trim()) {
+      toast.error("Выберите месяц");
+      return;
+    }
+    const liters = parseInt(formLiters, 10);
+    if (!Number.isFinite(liters) || liters < 0) {
+      toast.error("Укажите корректный объём молока");
+      return;
+    }
+    const protein = Math.round(parseFloat(formProtein) * 10) || 0;
+    const fat = Math.round(parseFloat(formFat) * 10) || 0;
+
+    upsertMut.mutate({
+      id: editing?.id,
+      animalId,
+      monthLabel: formMonth.trim(),
+      milkVolumeLiters: liters,
+      proteinPercentTenth: protein,
+      fatPercentTenth: fat,
+      sortOrder: parseInt(formSort, 10) || 0,
+    });
+  };
+
+  const items = (listQuery.data ?? []) as MonthlyMetricRecord[];
+
+  return (
+    <Card className="rounded-[2rem] border-border/70 shadow-sm">
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle className="flex items-center gap-2">
+              <Droplets className="h-5 w-5 text-primary" />
+              Сезонный ритм
+            </CardTitle>
+            <CardDescription>Помесячные данные: объём молока, белок и жирность</CardDescription>
+          </div>
+          <Button onClick={openNew} size="sm" className="rounded-full">
+            <Plus className="mr-1 h-4 w-4" /> Добавить
+          </Button>
+        </div>
+      </CardHeader>
+      <CardContent>
+        {listQuery.isLoading ? (
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Loader2 className="h-4 w-4 animate-spin" /> Загружаем…
+          </div>
+        ) : items.length === 0 && !editing ? (
+          <div className="rounded-2xl border border-dashed border-border bg-secondary/30 p-6 text-center">
+            <Droplets className="mx-auto mb-2 h-8 w-8 text-muted-foreground/50" />
+            <p className="text-sm text-muted-foreground">Пока нет данных о сезонном ритме.</p>
+            <p className="text-xs text-muted-foreground mt-1">Нажмите «Добавить» чтобы внести помесячные показатели.</p>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {/* Summary bar chart */}
+            {items.length > 0 && (
+              <div className="rounded-2xl border border-border/40 bg-secondary/20 p-4 mb-4">
+                <p className="text-xs font-medium text-muted-foreground mb-3 uppercase tracking-wide">Объём молока по месяцам (л)</p>
+                <div className="flex items-end gap-1" style={{ height: 120 }}>
+                  {items.map((m) => {
+                    const maxLiters = Math.max(...items.map((i) => i.milkVolumeLiters), 1);
+                    const pct = (m.milkVolumeLiters / maxLiters) * 100;
+                    return (
+                      <div key={m.id} className="flex-1 flex flex-col items-center gap-1">
+                        <span className="text-[10px] text-muted-foreground">{m.milkVolumeLiters}</span>
+                        <div
+                          className="w-full rounded-t-lg bg-primary/70 transition-all"
+                          style={{ height: `${Math.max(pct, 4)}%`, minHeight: 4 }}
+                        />
+                        <span className="text-[9px] text-muted-foreground truncate w-full text-center">
+                          {m.monthLabel.slice(0, 3)}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            <ScrollRemaining totalItems={items.length} itemHeight={72} className="space-y-3 max-h-[400px] overflow-y-auto pr-1">
+              {items.map((item) => (
+                <div
+                  key={item.id}
+                  className="flex items-center justify-between rounded-2xl border border-border/60 bg-white/80 p-4 transition-shadow hover:shadow-sm"
+                >
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-medium text-foreground">{item.monthLabel}</span>
+                      <Badge variant="secondary" className="rounded-full text-xs">{item.milkVolumeLiters} л</Badge>
+                      <span className="text-xs text-muted-foreground">
+                        Белок {(item.proteinPercentTenth / 10).toFixed(1)}% · Жир {(item.fatPercentTenth / 10).toFixed(1)}%
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1 ml-2">
+                    <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full" onClick={() => openEdit(item)}>
+                      <Pencil className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 rounded-full text-destructive hover:text-destructive"
+                      onClick={() => deleteMut.mutate({ id: item.id })}
+                      disabled={deleteMut.isPending}
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </ScrollRemaining>
+          </div>
+        )}
+
+        {/* Edit / Create Dialog */}
+        <Dialog open={editing !== null} onOpenChange={(open) => !open && setEditing(null)}>
+          <DialogContent className="sm:max-w-md rounded-[2rem]">
+            <DialogHeader>
+              <DialogTitle>{editing?.id ? "Редактировать месяц" : "Новый месяц"}</DialogTitle>
+              <DialogDescription>
+                Укажите месяц, объём молока (литров) и показатели белка/жирности (%).
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 pt-2">
+              <div className="space-y-2">
+                <Label>Месяц</Label>
+                <Select value={formMonth} onValueChange={setFormMonth}>
+                  <SelectTrigger className="rounded-xl">
+                    <SelectValue placeholder="Выберите месяц" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {MONTH_LABELS.map((m) => (
+                      <SelectItem key={m} value={m}>{m}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <Label>Молоко (л)</Label>
+                  <Input
+                    type="number"
+                    min={0}
+                    max={100000}
+                    value={formLiters}
+                    onChange={(e) => setFormLiters(e.target.value)}
+                    placeholder="120"
+                    className="rounded-xl"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Белок (%)</Label>
+                  <Input
+                    type="number"
+                    min={0}
+                    max={100}
+                    step={0.1}
+                    value={formProtein}
+                    onChange={(e) => setFormProtein(e.target.value)}
+                    placeholder="3.2"
+                    className="rounded-xl"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Жирность (%)</Label>
+                  <Input
+                    type="number"
+                    min={0}
+                    max={100}
+                    step={0.1}
+                    value={formFat}
+                    onChange={(e) => setFormFat(e.target.value)}
+                    placeholder="4.5"
+                    className="rounded-xl"
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label>Порядок сортировки</Label>
+                <Input
+                  type="number"
+                  min={0}
+                  max={9999}
+                  value={formSort}
+                  onChange={(e) => setFormSort(e.target.value)}
+                  className="rounded-xl"
+                />
+              </div>
+              <div className="flex justify-end gap-2 pt-2">
+                <Button variant="outline" onClick={() => setEditing(null)} className="rounded-full">
+                  Отмена
+                </Button>
+                <Button onClick={handleSave} disabled={upsertMut.isPending} className="rounded-full">
+                  {upsertMut.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle2 className="mr-2 h-4 w-4" />}
+                  {editing?.id ? "Сохранить" : "Добавить"}
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
       </CardContent>
     </Card>
   );

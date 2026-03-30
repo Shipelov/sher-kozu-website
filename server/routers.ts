@@ -1269,8 +1269,9 @@ export const appRouter = router({
     }),
   }),
   productTracker: router({
-    getByAnimal: protectedProcedure.input(trackerSummaryInput).query(async ({ ctx, input }) => {
-      return getProductTrackerData(ctx.user.openId, input.animalSlug);
+    getByAnimal: publicProcedure.input(trackerSummaryInput).query(async ({ ctx, input }) => {
+      const ownerOpenId = ctx.user?.openId ?? ENV.ownerOpenId;
+      return getProductTrackerData(ownerOpenId, input.animalSlug);
     }),
   }),
   club: router({

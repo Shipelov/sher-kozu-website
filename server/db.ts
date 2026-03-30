@@ -1202,15 +1202,16 @@ export async function getProductTrackerData(ownerOpenId: string, animalSlug: str
       .from(productBatches)
       .where(and(eq(productBatches.ownerOpenId, ownerOpenId), eq(productBatches.animalSlug, animalSlug)))
       .orderBy(asc(productBatches.sortOrder), desc(productBatches.producedAt)),
+    // Composition & metrics are per-animal (admin-managed), not per-owner
     db
       .select()
       .from(productCompositionSnapshots)
-      .where(and(eq(productCompositionSnapshots.ownerOpenId, ownerOpenId), eq(productCompositionSnapshots.animalSlug, animalSlug)))
+      .where(eq(productCompositionSnapshots.animalSlug, animalSlug))
       .orderBy(asc(productCompositionSnapshots.sortOrder)),
     db
       .select()
       .from(productMonthlyMetrics)
-      .where(and(eq(productMonthlyMetrics.ownerOpenId, ownerOpenId), eq(productMonthlyMetrics.animalSlug, animalSlug)))
+      .where(eq(productMonthlyMetrics.animalSlug, animalSlug))
       .orderBy(asc(productMonthlyMetrics.sortOrder)),
     db
       .select()
@@ -4130,4 +4131,159 @@ export async function shouldNotifyUser(userOpenId: string, type: string): Promis
 
   const prefs = await getNotificationPreferences(userOpenId);
   return prefs[prefKey];
+}
+
+
+/* ═══════════════════════════════════════════════════════════════
+   Composition Snapshots & Monthly Metrics — Admin CRUD
+   Data is per-animal (animalSlug), ownerOpenId is set to farm owner.
+   ═══════════════════════════════════════════════════════════════ */
+
+/** List all composition snapshots for an animal (by slug) */
+export async function listCompositionSnapshots(animalSlug: string) {
+  const db = await getDb();
+  if (!db) return [];
+  return db
+    .select()
+    .from(productCompositionSnapshots)
+    .where(eq(productCompositionSnapshots.animalSlug, animalSlug))
+    .orderBy(asc(productCompositionSnapshots.sortOrder), asc(productCompositionSnapshots.id));
+}
+
+/** Create a new composition snapshot */
+export async function createCompositionSnapshot(data: {
+  animalSlug: string;
+  ownerOpenId: string;
+  label: string;
+  value: string;
+  note: string;
+  sortOrder?: number;
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.insert(productCompositionSnapshots).values({
+    animalSlug: data.animalSlug,
+    ownerOpenId: data.ownerOpenId,
+    label: data.label,
+    value: data.value,
+    note: data.note,
+    sortOrder: data.sortOrder ?? 0,
+  });
+  return { id: Number(result[0].insertId) };
+}
+
+/** Update an existing composition snapshot */
+export async function updateCompositionSnapshot(
+  id: number,
+  data: { label?: string; value?: string; note?: string; sortOrder?: number },
+) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const updates: Record<string, any> = { updatedAt: new Date() };
+  if (data.label !== undefined) updates.label = data.label;
+  if (data.value !== undefined) updates.value = data.value;
+  if (data.note !== undefined) updates.note = data.note;
+  if (data.sortOrder !== undefined) updates.sortOrder = data.sortOrder;
+  await db.update(productCompositionSnapshots).set(updates).where(eq(productCompositionSnapshots.id, id));
+  return { success: true };
+}
+
+/** Delete a composition snapshot by ID */
+export async function deleteCompositionSnapshot(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.delete(productCompositionSnapshots).where(eq(productCompositionSnapshots.id, id));
+  return { success: true };
+}
+
+/** List all monthly metrics for an animal (by slug) */
+export async function listMonthlyMetrics(animalSlug: string) {
+  const db = await getDb();
+  if (!db) return [];
+  return db
+    .select()
+    .from(productMonthlyMetrics)
+    .where(eq(productMonthlyMetrics.animalSlug, animalSlug))
+    .orderBy(asc(productMonthlyMetrics.sortOrder), asc(productMonthlyMetrics.id));
+}
+
+/** Create or update a monthly metric entry */
+export async function upsertMonthlyMetric(data: {
+  id?: number;
+  animalSlug: string;
+  ownerOpenId: string;
+  monthLabel: string;
+  milkVolumeLiters: number;
+  proteinPercentTenth: number;
+  fatPercentTenth: number;
+  sortOrder?: number;
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  if (data.id) {
+    // Update existing
+    await db
+      .update(productMonthlyMetrics)
+      .set({
+        monthLabel: data.monthLabel,
+        milkVolumeLiters: data.milkVolumeLiters,
+        proteinPercentTenth: data.proteinPercentTenth,
+        fatPercentTenth: data.fatPercentTenth,
+        sortOrder: data.sortOrder ?? 0,
+        updatedAt: new Date(),
+      })
+      .where(eq(productMonthlyMetrics.id, data.id));
+    return { id: data.id };
+  }
+
+  // Create new
+  const result = await db.insert(productMonthlyMetrics).values({
+    animalSlug: data.animalSlug,
+    ownerOpenId: data.ownerOpenId,
+    monthLabel: data.monthLabel,
+    milkVolumeLiters: data.milkVolumeLiters,
+    proteinPercentTenth: data.proteinPercentTenth,
+    fatPercentTenth: data.fatPercentTenth,
+    sortOrder: data.sortOrder ?? 0,
+  });
+  return { id: Number(result[0].insertId) };
+}
+
+/** Delete a monthly metric by ID */
+export async function deleteMonthlyMetric(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.delete(productMonthlyMetrics).where(eq(productMonthlyMetrics.id, id));
+  return { success: true };
+}
+
+/** Get composition snapshots for public tracker (by animalSlug only, no ownerOpenId filter) */
+export async function getPublicCompositionSnapshots(animalSlug: string) {
+  const db = await getDb();
+  if (!db) return [];
+  return db
+    .select()
+    .from(productCompositionSnapshots)
+    .where(eq(productCompositionSnapshots.animalSlug, animalSlug))
+    .orderBy(asc(productCompositionSnapshots.sortOrder));
+}
+
+/** Get monthly metrics for public tracker (by animalSlug only, no ownerOpenId filter) */
+export async function getPublicMonthlyMetrics(animalSlug: string) {
+  const db = await getDb();
+  if (!db) return [];
+  return db
+    .select()
+    .from(productMonthlyMetrics)
+    .where(eq(productMonthlyMetrics.animalSlug, animalSlug))
+    .orderBy(asc(productMonthlyMetrics.sortOrder));
+}
+
+/** Resolve animal slug from animal ID */
+export async function getAnimalSlugById(animalId: number): Promise<string | null> {
+  const db = await getDb();
+  if (!db) return null;
+  const rows = await db.select({ slug: animals.slug }).from(animals).where(eq(animals.id, animalId)).limit(1);
+  return rows[0]?.slug ?? null;
 }

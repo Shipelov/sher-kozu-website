@@ -35,10 +35,19 @@ import {
   purgeOldPlanChangeLogs,
   clearChatMessagesByAnimal,
   clearPlanChangeLogByAnimal,
+  listCompositionSnapshots,
+  createCompositionSnapshot,
+  updateCompositionSnapshot,
+  deleteCompositionSnapshot,
+  listMonthlyMetrics,
+  upsertMonthlyMetric,
+  deleteMonthlyMetric,
+  getAnimalSlugById,
 } from "../db";
 import type { ProductOption } from "../../drizzle/schema";
 import { storagePut } from "../storage";
 import { notifyOwner } from "../_core/notification";
+import { ENV } from "../_core/env";
 
 /* ── Zod schemas ── */
 
@@ -567,4 +576,120 @@ export const productTrackRouter = router({
     const logDeleted = await purgeOldPlanChangeLogs(30);
     return { chatDeleted, logDeleted };
   }),
+
+  /* ═══════════════════════════════════════════════════════════
+     Composition Snapshots — Admin CRUD
+     ═══════════════════════════════════════════════════════════ */
+
+  listCompositionSnapshots: protectedProcedure
+    .input(z.object({ animalId: z.number().int().positive() }))
+    .query(async ({ ctx, input }) => {
+      if (ctx.user.role !== "admin") {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Только администратор." });
+      }
+      const slug = await getAnimalSlugById(input.animalId);
+      if (!slug) throw new TRPCError({ code: "NOT_FOUND", message: "Животное не найдено." });
+      return listCompositionSnapshots(slug);
+    }),
+
+  createCompositionSnapshot: protectedProcedure
+    .input(z.object({
+      animalId: z.number().int().positive(),
+      label: z.string().min(1).max(120),
+      value: z.string().min(1).max(120),
+      note: z.string().max(255).default(""),
+      sortOrder: z.number().int().min(0).max(9999).default(0),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      if (ctx.user.role !== "admin") {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Только администратор." });
+      }
+      const slug = await getAnimalSlugById(input.animalId);
+      if (!slug) throw new TRPCError({ code: "NOT_FOUND", message: "Животное не найдено." });
+      return createCompositionSnapshot({
+        animalSlug: slug,
+        ownerOpenId: ENV.ownerOpenId,
+        label: input.label,
+        value: input.value,
+        note: input.note,
+        sortOrder: input.sortOrder,
+      });
+    }),
+
+  updateCompositionSnapshot: protectedProcedure
+    .input(z.object({
+      id: z.number().int().positive(),
+      label: z.string().min(1).max(120).optional(),
+      value: z.string().min(1).max(120).optional(),
+      note: z.string().max(255).optional(),
+      sortOrder: z.number().int().min(0).max(9999).optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      if (ctx.user.role !== "admin") {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Только администратор." });
+      }
+      const { id, ...data } = input;
+      return updateCompositionSnapshot(id, data);
+    }),
+
+  deleteCompositionSnapshot: protectedProcedure
+    .input(z.object({ id: z.number().int().positive() }))
+    .mutation(async ({ ctx, input }) => {
+      if (ctx.user.role !== "admin") {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Только администратор." });
+      }
+      return deleteCompositionSnapshot(input.id);
+    }),
+
+  /* ═══════════════════════════════════════════════════════════
+     Monthly Metrics — Admin CRUD
+     ═══════════════════════════════════════════════════════════ */
+
+  listMonthlyMetrics: protectedProcedure
+    .input(z.object({ animalId: z.number().int().positive() }))
+    .query(async ({ ctx, input }) => {
+      if (ctx.user.role !== "admin") {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Только администратор." });
+      }
+      const slug = await getAnimalSlugById(input.animalId);
+      if (!slug) throw new TRPCError({ code: "NOT_FOUND", message: "Животное не найдено." });
+      return listMonthlyMetrics(slug);
+    }),
+
+  upsertMonthlyMetric: protectedProcedure
+    .input(z.object({
+      id: z.number().int().positive().optional(),
+      animalId: z.number().int().positive(),
+      monthLabel: z.string().min(1).max(32),
+      milkVolumeLiters: z.number().int().min(0).max(100_000),
+      proteinPercentTenth: z.number().int().min(0).max(1000),
+      fatPercentTenth: z.number().int().min(0).max(1000),
+      sortOrder: z.number().int().min(0).max(9999).default(0),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      if (ctx.user.role !== "admin") {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Только администратор." });
+      }
+      const slug = await getAnimalSlugById(input.animalId);
+      if (!slug) throw new TRPCError({ code: "NOT_FOUND", message: "Животное не найдено." });
+      return upsertMonthlyMetric({
+        id: input.id,
+        animalSlug: slug,
+        ownerOpenId: ENV.ownerOpenId,
+        monthLabel: input.monthLabel,
+        milkVolumeLiters: input.milkVolumeLiters,
+        proteinPercentTenth: input.proteinPercentTenth,
+        fatPercentTenth: input.fatPercentTenth,
+        sortOrder: input.sortOrder,
+      });
+    }),
+
+  deleteMonthlyMetric: protectedProcedure
+    .input(z.object({ id: z.number().int().positive() }))
+    .mutation(async ({ ctx, input }) => {
+      if (ctx.user.role !== "admin") {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Только администратор." });
+      }
+      return deleteMonthlyMetric(input.id);
+    }),
 });

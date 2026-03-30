@@ -225,7 +225,7 @@ export default function ProductTracker() {
 
   const trackerQuery = trpc.productTracker.getByAnimal.useQuery(
     { animalSlug: fallbackAnimalSlug },
-    { enabled: isAuthenticated && Boolean(fallbackAnimalSlug) }
+    { enabled: Boolean(fallbackAnimalSlug) }
   );
 
   const summary = useMemo(() => transformApiToSummary(trackerQuery.data), [trackerQuery.data]);
