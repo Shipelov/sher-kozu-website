@@ -1,0 +1,165 @@
+import { trpc } from "@/lib/trpc";
+import { useAuth } from "@/_core/hooks/useAuth";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+import { Separator } from "@/components/ui/separator";
+import { Bell, Camera, Newspaper, CalendarHeart, Loader2, CheckCircle2 } from "lucide-react";
+import { toast } from "sonner";
+import DashboardLayout from "@/components/DashboardLayout";
+
+const NOTIFICATION_TYPES = [
+  {
+    key: "photoApproved" as const,
+    label: "Одобрение фото",
+    description: "Уведомление, когда ваше фото прошло модерацию и опубликовано в галерее",
+    icon: Camera,
+    iconColor: "text-emerald-500",
+  },
+  {
+    key: "photoRejected" as const,
+    label: "Отклонение фото",
+    description: "Уведомление, когда ваше фото не прошло модерацию с указанием причины",
+    icon: Camera,
+    iconColor: "text-rose-500",
+  },
+  {
+    key: "clubPost" as const,
+    label: "Новые посты в клубе",
+    description: "Уведомление о новых публикациях в клубе — новости фермы, истории, рецепты",
+    icon: Newspaper,
+    iconColor: "text-sky-500",
+  },
+  {
+    key: "clubEvent" as const,
+    label: "Новые события клуба",
+    description: "Уведомление о предстоящих событиях — визиты на ферму, мастер-классы, ужины",
+    icon: CalendarHeart,
+    iconColor: "text-amber-500",
+  },
+];
+
+export default function NotificationSettings() {
+  const { user, loading: authLoading } = useAuth();
+  const utils = trpc.useUtils();
+
+  const { data: prefs, isLoading } = trpc.notifications.getPreferences.useQuery(undefined, {
+    enabled: !!user,
+  });
+
+  const updateMutation = trpc.notifications.updatePreferences.useMutation({
+    onMutate: async (newPrefs) => {
+      // Optimistic update
+      await utils.notifications.getPreferences.cancel();
+      const previous = utils.notifications.getPreferences.getData();
+      utils.notifications.getPreferences.setData(undefined, (old) => ({
+        ...(old ?? { photoApproved: true, photoRejected: true, clubPost: true, clubEvent: true }),
+        ...newPrefs,
+      }));
+      return { previous };
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.previous) {
+        utils.notifications.getPreferences.setData(undefined, context.previous);
+      }
+      toast.error("Не удалось сохранить настройки");
+    },
+    onSuccess: () => {
+      toast.success("Настройки сохранены", {
+        icon: <CheckCircle2 className="h-4 w-4 text-emerald-500" />,
+      });
+    },
+    onSettled: () => {
+      utils.notifications.getPreferences.invalidate();
+    },
+  });
+
+  function handleToggle(key: "photoApproved" | "photoRejected" | "clubPost" | "clubEvent", value: boolean) {
+    updateMutation.mutate({ [key]: value });
+  }
+
+  if (authLoading || isLoading) {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center min-h-[60vh]">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  return (
+    <DashboardLayout>
+      <div className="container max-w-2xl py-8">
+        {/* Header */}
+        <div className="mb-8">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="flex items-center justify-center h-10 w-10 rounded-xl bg-primary/10">
+              <Bell className="h-5 w-5 text-primary" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold tracking-tight text-foreground">
+                Настройки уведомлений
+              </h1>
+              <p className="text-sm text-muted-foreground">
+                Выберите, какие уведомления вы хотите получать
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Settings Card */}
+        <Card className="border-border/50">
+          <CardHeader className="pb-4">
+            <CardTitle className="text-lg">Типы уведомлений</CardTitle>
+            <CardDescription>
+              Отключённые уведомления не будут приходить в колокольчик. Вы можете изменить настройки в любой момент.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-1">
+            {NOTIFICATION_TYPES.map((item, index) => {
+              const Icon = item.icon;
+              const isEnabled = prefs?.[item.key] ?? true;
+
+              return (
+                <div key={item.key}>
+                  {index > 0 && <Separator className="my-4" />}
+                  <div className="flex items-start justify-between gap-4 py-2">
+                    <div className="flex items-start gap-3 flex-1 min-w-0">
+                      <div className="flex items-center justify-center h-9 w-9 rounded-lg bg-muted/50 shrink-0 mt-0.5">
+                        <Icon className={`h-4.5 w-4.5 ${item.iconColor}`} />
+                      </div>
+                      <div className="min-w-0">
+                        <Label
+                          htmlFor={`toggle-${item.key}`}
+                          className="text-sm font-medium text-foreground cursor-pointer"
+                        >
+                          {item.label}
+                        </Label>
+                        <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
+                          {item.description}
+                        </p>
+                      </div>
+                    </div>
+                    <Switch
+                      id={`toggle-${item.key}`}
+                      checked={isEnabled}
+                      onCheckedChange={(checked) => handleToggle(item.key, checked)}
+                      disabled={updateMutation.isPending}
+                      className="shrink-0"
+                    />
+                  </div>
+                </div>
+              );
+            })}
+          </CardContent>
+        </Card>
+
+        {/* Info note */}
+        <p className="text-xs text-muted-foreground mt-4 text-center">
+          Настройки применяются мгновенно. Уже полученные уведомления не удаляются.
+        </p>
+      </div>
+    </DashboardLayout>
+  );
+}

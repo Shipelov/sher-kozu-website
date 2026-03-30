@@ -1203,3 +1203,24 @@ export const userNotifications = mysqlTable("userNotifications", {
   index("notif_isRead_idx").on(table.isRead),
   index("notif_createdAt_idx").on(table.createdAt),
 ]);
+
+
+/**
+ * User notification preferences — controls which notification types a user wants to receive.
+ * All types are enabled by default (true). Users can disable specific types.
+ */
+export const notificationPreferences = mysqlTable("notificationPreferences", {
+  id: int("id").autoincrement().primaryKey(),
+  userOpenId: varchar("userOpenId", { length: 64 }).notNull().unique(),
+  /** Receive notifications when photo is approved */
+  photoApproved: boolean("photoApproved").default(true).notNull(),
+  /** Receive notifications when photo is rejected */
+  photoRejected: boolean("photoRejected").default(true).notNull(),
+  /** Receive notifications about new club posts */
+  clubPost: boolean("clubPost").default(true).notNull(),
+  /** Receive notifications about new club events */
+  clubEvent: boolean("clubEvent").default(true).notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type InsertNotificationPreference = typeof notificationPreferences.$inferInsert;

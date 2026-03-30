@@ -72,6 +72,9 @@ import {
   countUnreadNotifications,
   markNotificationRead,
   markAllNotificationsRead,
+  getNotificationPreferences,
+  upsertNotificationPreferences,
+  shouldNotifyUser,
 } from "./db";
 import { storagePut } from "./storage";
 import { ENV } from "./_core/env";
@@ -1844,6 +1847,20 @@ export const appRouter = router({
       const ok = await markAllNotificationsRead(ctx.user.openId);
       return { success: ok };
     }),
+    getPreferences: protectedProcedure.query(async ({ ctx }) => {
+      return getNotificationPreferences(ctx.user.openId);
+    }),
+    updatePreferences: protectedProcedure
+      .input(z.object({
+        photoApproved: z.boolean().optional(),
+        photoRejected: z.boolean().optional(),
+        clubPost: z.boolean().optional(),
+        clubEvent: z.boolean().optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const ok = await upsertNotificationPreferences(ctx.user.openId, input);
+        return { success: ok };
+      }),
   }),
 });
 

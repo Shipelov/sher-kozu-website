@@ -22,7 +22,7 @@ import {
 } from "@/components/ui/sidebar";
 import { getLoginUrl } from "@/const";
 import { useIsMobile } from "@/hooks/useMobile";
-import { Camera, Crown, LayoutDashboard, LogOut, Milk, PanelLeft, ShieldCheck, ShieldEllipsis, Users } from "lucide-react";
+import { Bell, Camera, Crown, LayoutDashboard, LogOut, Milk, PanelLeft, ShieldCheck, ShieldEllipsis, Users } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { DashboardLayoutSkeleton } from './DashboardLayoutSkeleton';
@@ -33,6 +33,7 @@ import NotificationBell from "@/components/NotificationBell";
 const baseMenuItems = [
   { icon: LayoutDashboard, label: "Мой кабинет", path: "/dashboard" },
   { icon: Users, label: "Клуб", path: "/club" },
+  { icon: Bell, label: "Уведомления", path: "/settings/notifications" },
 ];
 
 const adminMenuItems = [

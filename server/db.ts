@@ -49,6 +49,7 @@ import {
   passwordResetTokens,
   authRateLimits,
   userNotifications,
+  notificationPreferences,
 } from "../drizzle/schema";
 import { ENV } from "./_core/env";
 
@@ -4014,6 +4015,10 @@ export async function createUserNotification(input: {
   if (!db) return null;
 
   try {
+    // Respect user notification preferences
+    const shouldSend = await shouldNotifyUser(input.userOpenId, input.type);
+    if (!shouldSend) return null;
+
     const result = await db.insert(userNotifications).values({
       userOpenId: input.userOpenId,
       type: input.type,
@@ -4129,9 +4134,22 @@ export async function notifyAllActiveUsers(input: {
         ),
       );
 
-    const recipients = input.excludeOpenId
+    let recipients = input.excludeOpenId
       ? activeUsers.filter((u: { openId: string }) => u.openId !== input.excludeOpenId)
       : activeUsers;
+
+    if (recipients.length === 0) return 0;
+
+    // Filter by user notification preferences
+    const prefChecks = await Promise.all(
+      recipients.map(async (u: { openId: string }) => ({
+        openId: u.openId,
+        wantsIt: await shouldNotifyUser(u.openId, input.type),
+      })),
+    );
+    recipients = prefChecks
+      .filter((p) => p.wantsIt)
+      .map((p) => ({ openId: p.openId }));
 
     if (recipients.length === 0) return 0;
 
@@ -4149,4 +4167,95 @@ export async function notifyAllActiveUsers(input: {
     console.error("[Database] Failed to notify all active users:", error);
     return 0;
   }
+}
+
+
+// ─── Notification Preferences ───────────────────────────────────────────────
+
+/** Default preferences — all enabled */
+const DEFAULT_PREFS = {
+  photoApproved: true,
+  photoRejected: true,
+  clubPost: true,
+  clubEvent: true,
+};
+
+/** Map notification type string to the column name in preferences table */
+const TYPE_TO_PREF_KEY: Record<string, keyof typeof DEFAULT_PREFS> = {
+  photo_approved: "photoApproved",
+  photo_rejected: "photoRejected",
+  club_post: "clubPost",
+  club_event: "clubEvent",
+};
+
+export async function getNotificationPreferences(userOpenId: string) {
+  const db = await getDb();
+  if (!db) return { ...DEFAULT_PREFS };
+
+  try {
+    const rows = await db
+      .select()
+      .from(notificationPreferences)
+      .where(eq(notificationPreferences.userOpenId, userOpenId))
+      .limit(1);
+
+    if (rows.length === 0) return { ...DEFAULT_PREFS };
+
+    const row = rows[0];
+    return {
+      photoApproved: row.photoApproved,
+      photoRejected: row.photoRejected,
+      clubPost: row.clubPost,
+      clubEvent: row.clubEvent,
+    };
+  } catch (error) {
+    console.error("[Database] Failed to get notification preferences:", error);
+    return { ...DEFAULT_PREFS };
+  }
+}
+
+export async function upsertNotificationPreferences(
+  userOpenId: string,
+  prefs: Partial<typeof DEFAULT_PREFS>,
+) {
+  const db = await getDb();
+  if (!db) return false;
+
+  try {
+    // Check if row exists
+    const existing = await db
+      .select({ id: notificationPreferences.id })
+      .from(notificationPreferences)
+      .where(eq(notificationPreferences.userOpenId, userOpenId))
+      .limit(1);
+
+    if (existing.length > 0) {
+      await db
+        .update(notificationPreferences)
+        .set(prefs)
+        .where(eq(notificationPreferences.userOpenId, userOpenId));
+    } else {
+      await db.insert(notificationPreferences).values({
+        userOpenId,
+        ...DEFAULT_PREFS,
+        ...prefs,
+      });
+    }
+    return true;
+  } catch (error) {
+    console.error("[Database] Failed to upsert notification preferences:", error);
+    return false;
+  }
+}
+
+/**
+ * Check if a user wants to receive a specific notification type.
+ * Returns true if the type is unknown (not in preferences) — fail-open.
+ */
+export async function shouldNotifyUser(userOpenId: string, type: string): Promise<boolean> {
+  const prefKey = TYPE_TO_PREF_KEY[type];
+  if (!prefKey) return true; // Unknown type → always send
+
+  const prefs = await getNotificationPreferences(userOpenId);
+  return prefs[prefKey];
 }
