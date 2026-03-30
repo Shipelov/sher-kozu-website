@@ -1,0 +1,9 @@
+{
+  "query": "DELETE FROM clubPosts WHERE text LIKE '%Март%' OR text LIKE '%Злат%' OR role LIKE '%Март%' OR role LIKE '%Злат%';",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3J2fXRHx8d1YjF6.root --database mLhmg5VmBsEBpZiYqdnhMQ --execute DELETE FROM clubPosts WHERE text LIKE '%Март%' OR text LIKE '%Злат%' OR role LIKE '%Март%' OR role LIKE '%Злат%';",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 393
+}

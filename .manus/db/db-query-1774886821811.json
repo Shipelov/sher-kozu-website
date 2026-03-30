@@ -1,0 +1,9 @@
+{
+  "query": "SELECT id, title, SUBSTRING(text, 1, 60) as text_preview, role FROM clubPosts WHERE text LIKE '%Март%' OR text LIKE '%Злат%' OR role LIKE '%Март%' OR title LIKE '%Март%';",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3J2fXRHx8d1YjF6.root --database mLhmg5VmBsEBpZiYqdnhMQ --execute SELECT id, title, SUBSTRING(text, 1, 60) as text_preview, role FROM clubPosts WHERE text LIKE '%Март%' OR text LIKE '%Злат%' OR role LIKE '%Март%' OR title LIKE '%Март%';",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 374
+}

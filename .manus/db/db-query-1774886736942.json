@@ -1,0 +1,13 @@
+{
+  "query": "SELECT COUNT(*) as cnt FROM clubEvents WHERE ownerOpenId != (SELECT openId FROM users WHERE role = 'admin' LIMIT 1);",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3J2fXRHx8d1YjF6.root --database mLhmg5VmBsEBpZiYqdnhMQ --execute SELECT COUNT(*) as cnt FROM clubEvents WHERE ownerOpenId != (SELECT openId FROM users WHERE role = 'admin' LIMIT 1);",
+  "rows": [
+    {
+      "cnt": "564"
+    }
+  ],
+  "messages": [],
+  "stdout": "cnt\n564\n",
+  "stderr": "",
+  "execution_time_ms": 370
+}

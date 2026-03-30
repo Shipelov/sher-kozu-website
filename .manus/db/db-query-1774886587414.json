@@ -1,0 +1,9 @@
+{
+  "query": "DELETE FROM productBatches WHERE productName LIKE '%Март%' OR productName LIKE '%Злат%' OR batchCode LIKE 'MRT%' OR batchCode LIKE 'ZLT%';",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3J2fXRHx8d1YjF6.root --database mLhmg5VmBsEBpZiYqdnhMQ --execute DELETE FROM productBatches WHERE productName LIKE '%Март%' OR productName LIKE '%Злат%' OR batchCode LIKE 'MRT%' OR batchCode LIKE 'ZLT%';",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 370
+}

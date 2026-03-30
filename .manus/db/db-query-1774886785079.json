@@ -1,0 +1,46 @@
+{
+  "query": "SELECT 'animals' as tbl, COUNT(*) as cnt FROM animals\nUNION ALL SELECT 'productBatches', COUNT(*) FROM productBatches\nUNION ALL SELECT 'productDeliveries', COUNT(*) FROM productDeliveries\nUNION ALL SELECT 'productCompositionSnapshots', COUNT(*) FROM productCompositionSnapshots\nUNION ALL SELECT 'productMonthlyMetrics', COUNT(*) FROM productMonthlyMetrics\nUNION ALL SELECT 'clubPosts', COUNT(*) FROM clubPosts\nUNION ALL SELECT 'clubEvents', COUNT(*) FROM clubEvents\nUNION ALL SELECT 'clubMembers', COUNT(*) FROM clubMembers\nUNION ALL SELECT 'clubAdminPresets', COUNT(*) FROM clubAdminPresets;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3J2fXRHx8d1YjF6.root --database mLhmg5VmBsEBpZiYqdnhMQ --execute SELECT 'animals' as tbl, COUNT(*) as cnt FROM animals\nUNION ALL SELECT 'productBatches', COUNT(*) FROM productBatches\nUNION ALL SELECT 'productDeliveries', COUNT(*) FROM productDeliveries\nUNION ALL SELECT 'productCompositionSnapshots', COUNT(*) FROM productCompositionSnapshots\nUNION ALL SELECT 'productMonthlyMetrics', COUNT(*) FROM productMonthlyMetrics\nUNION ALL SELECT 'clubPosts', COUNT(*) FROM clubPosts\nUNION ALL SELECT 'clubEvents', COUNT(*) FROM clubEvents\nUNION ALL SELECT 'clubMembers', COUNT(*) FROM clubMembers\nUNION ALL SELECT 'clubAdminPresets', COUNT(*) FROM clubAdminPresets;",
+  "rows": [
+    {
+      "tbl": "animals",
+      "cnt": "3"
+    },
+    {
+      "tbl": "productDeliveries",
+      "cnt": "2"
+    },
+    {
+      "tbl": "productBatches",
+      "cnt": "0"
+    },
+    {
+      "tbl": "productCompositionSnapshots",
+      "cnt": "0"
+    },
+    {
+      "tbl": "productMonthlyMetrics",
+      "cnt": "0"
+    },
+    {
+      "tbl": "clubPosts",
+      "cnt": "24"
+    },
+    {
+      "tbl": "clubEvents",
+      "cnt": "27"
+    },
+    {
+      "tbl": "clubMembers",
+      "cnt": "2"
+    },
+    {
+      "tbl": "clubAdminPresets",
+      "cnt": "3"
+    }
+  ],
+  "messages": [],
+  "stdout": "tbl\tcnt\nanimals\t3\nproductDeliveries\t2\nproductBatches\t0\nproductCompositionSnapshots\t0\nproductMonthlyMetrics\t0\nclubPosts\t24\nclubEvents\t27\nclubMembers\t2\nclubAdminPresets\t3\n",
+  "stderr": "",
+  "execution_time_ms": 385
+}

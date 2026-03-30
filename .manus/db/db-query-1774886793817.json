@@ -1,0 +1,20 @@
+{
+  "query": "SELECT id, animalSlug, title FROM productDeliveries;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3J2fXRHx8d1YjF6.root --database mLhmg5VmBsEBpZiYqdnhMQ --execute SELECT id, animalSlug, title FROM productDeliveries;",
+  "rows": [
+    {
+      "id": "1",
+      "animalSlug": "marta",
+      "title": "Коробка семьи на выходные"
+    },
+    {
+      "id": "2",
+      "animalSlug": "marta",
+      "title": "Клубный дегустационный набор"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tanimalSlug\ttitle\n1\tmarta\tКоробка семьи на выходные\n2\tmarta\tКлубный дегустационный набор\n",
+  "stderr": "",
+  "execution_time_ms": 350
+}

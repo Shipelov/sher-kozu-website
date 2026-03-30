@@ -1386,3 +1386,7 @@
 - [x] Причина: предыдущий деплой запустил старый seed-код, который пересоздал демо-животных (id 330001, 330002)
 - [x] Удалены из БД повторно. Текущий код уже не создаёт демо-животных
 - [x] Нужна повторная публикация с исправленным кодом
+
+## Обновление seed-данных productBatches
+- [x] Заменить упоминания "Марты" и "Златы" в seed-коде productBatches, productDeliveries, clubPosts на динамические имена (nameA/nameB)
+- [x] Очищено в БД: 851 productBatches, 564 productDeliveries, 1131 productCompositionSnapshots, 1696 productMonthlyMetrics, 565 clubPosts, 564 clubEvents + buyer seed-данные

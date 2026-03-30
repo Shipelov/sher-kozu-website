@@ -74,6 +74,8 @@ async function ensureOwnerExperienceSeed(ownerOpenId: string) {
   }
   const slugA = ownerAnimals[0]!.slug;
   const slugB = ownerAnimals[1]?.slug ?? ownerAnimals[0]!.slug;
+  const nameA = ownerAnimals[0]!.name;
+  const nameB = ownerAnimals[1]?.name ?? ownerAnimals[0]!.name;
 
   const existingBatch = await db.select({ id: productBatches.id }).from(productBatches).where(eq(productBatches.ownerOpenId, ownerOpenId)).limit(1);
   if (!existingBatch.length) {
@@ -81,13 +83,13 @@ async function ensureOwnerExperienceSeed(ownerOpenId: string) {
       {
         animalSlug: slugA,
         ownerOpenId,
-        productName: "Именной набор Марты",
+        productName: `Именной набор — ${nameA}`,
         productType: "Молоко и свежий сыр",
         stage: "К созреванию и упаковке",
         routeLabel: "Надой → анализ → сыроварня → упаковка",
         detail: "Утренний надой уже прошёл лабораторный контроль и ушёл в сыроварню для свежего семейного набора.",
         badge: "Прозрачный маршрут",
-        batchCode: "MRT-2403-A",
+        batchCode: `${slugA.slice(0,3).toUpperCase()}-2403-A`,
         producedAt: new Date("2026-03-12T07:30:00Z"),
         deliveryWindow: "Доставка 15–16 марта",
         sortOrder: 0,
@@ -95,13 +97,13 @@ async function ensureOwnerExperienceSeed(ownerOpenId: string) {
       {
         animalSlug: slugA,
         ownerOpenId,
-        productName: "Сырная партия Марты",
+        productName: `Сырная партия — ${nameA}`,
         productType: "Полутвёрдый сыр",
         stage: "Созревание",
         routeLabel: "Надой → созревание → маркировка",
         detail: "Партия выдерживается в камере созревания и будет готова к клубному набору следующей недели.",
         badge: "Семейная сыроварня",
-        batchCode: "MRT-2403-B",
+        batchCode: `${slugA.slice(0,3).toUpperCase()}-2403-B`,
         producedAt: new Date("2026-03-10T09:10:00Z"),
         deliveryWindow: "Отгрузка 20 марта",
         sortOrder: 1,
@@ -109,13 +111,13 @@ async function ensureOwnerExperienceSeed(ownerOpenId: string) {
       {
         animalSlug: slugB,
         ownerOpenId,
-        productName: "Набор Златы для завтрака",
+        productName: `Набор ${nameB} для завтрака`,
         productType: "Йогурт и мягкий сыр",
         stage: "Упаковка",
         routeLabel: "Надой → ферментация → упаковка",
         detail: "Нежный йогурт и мягкий сыр уже фасуются для утренней доставки подписчикам фермы.",
         badge: "Лёгкий формат",
-        batchCode: "ZLT-2403-A",
+        batchCode: `${slugB.slice(0,3).toUpperCase()}-2403-A`,
         producedAt: new Date("2026-03-13T06:50:00Z"),
         deliveryWindow: "Доставка 16 марта",
         sortOrder: 0,
@@ -227,7 +229,7 @@ async function ensureOwnerExperienceSeed(ownerOpenId: string) {
       {
         animalSlug: slugA,
         ownerOpenId,
-        title: "Клубный набор Марты",
+        title: `Клубный набор — ${nameA}`,
         status: "В пути",
         etaLabel: "15 марта, 18:00–20:00",
         destination: "Алматы, Медеуский район",
@@ -238,7 +240,7 @@ async function ensureOwnerExperienceSeed(ownerOpenId: string) {
       {
         animalSlug: slugB,
         ownerOpenId,
-        title: "Завтрак от Златы",
+        title: `Завтрак от ${nameB}`,
         status: "Готовится",
         etaLabel: "16 марта, до 11:00",
         destination: "Алматы, Бостандыкский район",
@@ -260,7 +262,7 @@ async function ensureOwnerExperienceSeed(ownerOpenId: string) {
         role: "семейная ферма",
         timeLabel: "Сегодня, 08:40",
         title: "Утро на молочной кухне",
-        text: "У Марты и Златы сегодня особенно мягкое молоко — запускаем малую партию свежего сыра для клубного ужина выходного дня.",
+        text: `У ${nameA} и ${nameB} сегодня особенно мягкое молоко — запускаем малую партию свежего сыра для клубного ужина выходного дня.`,
         imageUrl: CLUB_IMAGE,
         likes: 18,
         comments: 6,
@@ -273,7 +275,7 @@ async function ensureOwnerExperienceSeed(ownerOpenId: string) {
         category: "Клуб владельцев",
         author: "Алия",
         avatar: "А",
-        role: "владелица Марты",
+        role: `владелица ${nameA}`,
         timeLabel: "Вчера, 19:15",
         title: "Семейный визит на ферму",
         text: "Дети впервые увидели, как проходит вечерний уход. После этого молоко и сыр ощущаются совсем иначе — как часть живой истории.",
@@ -311,8 +313,6 @@ async function ensureOwnerExperienceSeed(ownerOpenId: string) {
     ]);
   }
 
-  const nameA = ownerAnimals[0]?.name ?? "Животное";
-  const nameB = ownerAnimals[1]?.name ?? nameA;
   const existingMembers = await db.select({ id: clubMembers.id }).from(clubMembers).where(eq(clubMembers.ownerOpenId, ownerOpenId)).limit(1);
   if (!existingMembers.length) {
     await db.insert(clubMembers).values([

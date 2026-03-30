@@ -1,0 +1,9 @@
+{
+  "query": "DELETE FROM clubPosts WHERE ownerOpenId != 'jP5iBYMcdYguBWJPw5Sruu';\nDELETE FROM clubMembers WHERE ownerOpenId != 'jP5iBYMcdYguBWJPw5Sruu';\nDELETE FROM clubAdminPresets WHERE ownerOpenId != 'jP5iBYMcdYguBWJPw5Sruu';",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3J2fXRHx8d1YjF6.root --database mLhmg5VmBsEBpZiYqdnhMQ --execute DELETE FROM clubPosts WHERE ownerOpenId != 'jP5iBYMcdYguBWJPw5Sruu';\nDELETE FROM clubMembers WHERE ownerOpenId != 'jP5iBYMcdYguBWJPw5Sruu';\nDELETE FROM clubAdminPresets WHERE ownerOpenId != 'jP5iBYMcdYguBWJPw5Sruu';",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 469
+}

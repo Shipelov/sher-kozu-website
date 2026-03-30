@@ -1,0 +1,13 @@
+{
+  "query": "SELECT COUNT(*) as cnt FROM productDeliveries WHERE title LIKE '%Март%' OR title LIKE '%Злат%';",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3J2fXRHx8d1YjF6.root --database mLhmg5VmBsEBpZiYqdnhMQ --execute SELECT COUNT(*) as cnt FROM productDeliveries WHERE title LIKE '%Март%' OR title LIKE '%Злат%';",
+  "rows": [
+    {
+      "cnt": "564"
+    }
+  ],
+  "messages": [],
+  "stdout": "cnt\n564\n",
+  "stderr": "",
+  "execution_time_ms": 355
+}
