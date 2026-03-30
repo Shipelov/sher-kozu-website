@@ -1390,3 +1390,7 @@
 ## Обновление seed-данных productBatches
 - [x] Заменить упоминания "Марты" и "Златы" в seed-коде productBatches, productDeliveries, clubPosts на динамические имена (nameA/nameB)
 - [x] Очищено в БД: 851 productBatches, 564 productDeliveries, 1131 productCompositionSnapshots, 1696 productMonthlyMetrics, 565 clubPosts, 564 clubEvents + buyer seed-данные
+
+## Баг: Ошибка при переходе из кабинета животного в трекер (опубликованная версия)
+- [x] Диагностировано: ошибка esbuild с дубликатом nameA/nameB при промежуточном сохранении, сервер на production не мог скомпилировать db.ts
+- [x] Исправлено: дубликаты удалены, код компилируется, build проходит, нужна повторная публикация
