@@ -27,6 +27,7 @@ describe("Notification Preferences", () => {
         clubPost: true,
         clubEvent: true,
         compositionUpdate: true,
+        metricsUpdate: true,
       });
     });
   });

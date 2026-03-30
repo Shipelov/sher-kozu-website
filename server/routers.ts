@@ -1859,6 +1859,7 @@ export const appRouter = router({
         clubPost: z.boolean().optional(),
         clubEvent: z.boolean().optional(),
         compositionUpdate: z.boolean().optional(),
+        metricsUpdate: z.boolean().optional(),
       }))
       .mutation(async ({ ctx, input }) => {
         const ok = await upsertNotificationPreferences(ctx.user.openId, input);

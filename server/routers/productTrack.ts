@@ -44,6 +44,7 @@ import {
   deleteMonthlyMetric,
   getAnimalSlugById,
   notifyOwnersAboutCompositionUpdate,
+  notifyOwnersAboutMetricsUpdate,
 } from "../db";
 import type { ProductOption } from "../../drizzle/schema";
 import { storagePut } from "../storage";
@@ -715,7 +716,7 @@ export const productTrackRouter = router({
       }
       const slug = await getAnimalSlugById(input.animalId);
       if (!slug) throw new TRPCError({ code: "NOT_FOUND", message: "Животное не найдено." });
-      return upsertMonthlyMetric({
+      const result = await upsertMonthlyMetric({
         id: input.id,
         animalSlug: slug,
         ownerOpenId: ENV.ownerOpenId,
@@ -725,14 +726,36 @@ export const productTrackRouter = router({
         fatPercentTenth: input.fatPercentTenth,
         sortOrder: input.sortOrder,
       });
+      // Send notification to animal owners
+      const animalName = await getAnimalNameById(input.animalId) ?? slug;
+      notifyOwnersAboutMetricsUpdate({
+        animalId: input.animalId,
+        animalName,
+        animalSlug: slug,
+        action: input.id ? "updated" : "created",
+        detail: `${input.monthLabel}: ${input.milkVolumeLiters} л`,
+      }).catch((err) => console.error("[Notification] metrics update error:", err));
+      return result;
     }),
 
   deleteMonthlyMetric: protectedProcedure
-    .input(z.object({ id: z.number().int().positive() }))
+    .input(z.object({ id: z.number().int().positive(), animalId: z.number().int().positive() }))
     .mutation(async ({ ctx, input }) => {
       if (ctx.user.role !== "admin") {
         throw new TRPCError({ code: "FORBIDDEN", message: "Только администратор." });
       }
-      return deleteMonthlyMetric(input.id);
+      const deleted = await deleteMonthlyMetric(input.id);
+      // Send notification to animal owners
+      const slug = await getAnimalSlugById(input.animalId);
+      if (slug) {
+        const animalName = await getAnimalNameById(input.animalId) ?? slug;
+        notifyOwnersAboutMetricsUpdate({
+          animalId: input.animalId,
+          animalName,
+          animalSlug: slug,
+          action: "deleted",
+        }).catch((err) => console.error("[Notification] metrics delete error:", err));
+      }
+      return deleted;
     }),
 });

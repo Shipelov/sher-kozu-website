@@ -1222,6 +1222,8 @@ export const notificationPreferences = mysqlTable("notificationPreferences", {
   clubEvent: boolean("clubEvent").default(true).notNull(),
   /** Receive notifications when milk composition is updated for your animal */
   compositionUpdate: boolean("compositionUpdate").default(true).notNull(),
+  /** Receive notifications when monthly metrics (seasonal rhythm) are updated for your animal */
+  metricsUpdate: boolean("metricsUpdate").default(true).notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
 

@@ -4052,6 +4052,7 @@ const DEFAULT_PREFS = {
   clubPost: true,
   clubEvent: true,
   compositionUpdate: true,
+  metricsUpdate: true,
 };
 
 /** Map notification type string to the column name in preferences table */
@@ -4061,6 +4062,7 @@ const TYPE_TO_PREF_KEY: Record<string, keyof typeof DEFAULT_PREFS> = {
   club_post: "clubPost",
   club_event: "clubEvent",
   composition_update: "compositionUpdate",
+  metrics_update: "metricsUpdate",
 };
 
 export async function getNotificationPreferences(userOpenId: string) {
@@ -4083,6 +4085,7 @@ export async function getNotificationPreferences(userOpenId: string) {
       clubPost: row.clubPost,
       clubEvent: row.clubEvent,
       compositionUpdate: row.compositionUpdate,
+      metricsUpdate: row.metricsUpdate,
     };
   } catch (error) {
     console.error("[Database] Failed to get notification preferences:", error);
@@ -4376,4 +4379,45 @@ export async function getAnimalIdBySlug(slug: string): Promise<number | null> {
   if (!db) return null;
   const rows = await db.select({ id: animals.id }).from(animals).where(eq(animals.slug, slug)).limit(1);
   return rows[0]?.id ?? null;
+}
+
+
+/**
+ * Notify all active owners of an animal when monthly metrics (seasonal rhythm) are updated.
+ * Creates an in-app notification for each owner who has metricsUpdate enabled.
+ */
+export async function notifyOwnersAboutMetricsUpdate(input: {
+  animalId: number;
+  animalName: string;
+  animalSlug: string;
+  action: "created" | "updated" | "deleted";
+  detail?: string;
+}): Promise<number> {
+  const ownerOpenIds = await getActiveOwnerOpenIdsByAnimalId(input.animalId);
+  if (ownerOpenIds.length === 0) return 0;
+
+  const actionLabels: Record<string, string> = {
+    created: "добавлены новые данные",
+    updated: "обновлены данные",
+    deleted: "удалены данные",
+  };
+
+  const title = `Сезонный ритм ${input.animalName}: ${actionLabels[input.action] ?? "изменение"}`;
+  const body = input.detail
+    ? `${actionLabels[input.action] ?? "Изменение"} сезонного ритма для ${input.animalName}: ${input.detail}`
+    : `${actionLabels[input.action] ?? "Изменение"} сезонного ритма для ${input.animalName}.`;
+  const link = `/tracker?animal=${input.animalSlug}`;
+
+  let sent = 0;
+  for (const openId of ownerOpenIds) {
+    const result = await createUserNotification({
+      userOpenId: openId,
+      type: "metrics_update",
+      title,
+      body,
+      link,
+    });
+    if (result) sent++;
+  }
+  return sent;
 }

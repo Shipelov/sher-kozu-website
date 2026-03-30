@@ -1,0 +1,1 @@
+ALTER TABLE `notificationPreferences` ADD `metricsUpdate` boolean DEFAULT true NOT NULL;

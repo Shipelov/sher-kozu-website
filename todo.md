@@ -1436,3 +1436,17 @@
 - [x] Написать/обновить тесты
 - [x] Исправить ClubFeed: приоритет URL-параметра ?animal= над primary animal из dashboard
 - [x] Перевести ProductTracker и ClubFeed на useSearch из wouter для реактивного чтения query-параметров
+
+## Animal Switcher in ProductTracker
+
+- [x] Добавить переключатель животных внутри ProductTracker (dropdown с аватарками, породой и видом)
+- [x] Обновить URL при переключении животного (?animal=slug) через setLocation из wouter
+- [x] Написать тесты для переключателя
+
+## Notifications on Monthly Metrics Update
+
+- [x] Добавить новый тип уведомления metricsUpdate в схему БД и настройки предпочтений
+- [x] Реализовать серверную логику: при создании/обновлении/удалении помесячных метрик уведомлять владельцев
+- [x] Добавить UI-тоггл «Обновление сезонного ритма» в настройках уведомлений
+- [x] Написать vitest-тесты для уведомлений при обновлении метрик
+- [x] Обновить существующие тесты (notificationPreferences) для нового типа metricsUpdate
