@@ -148,7 +148,7 @@ export default function Navbar() {
         <div className="container flex h-16 items-center justify-between">
           {/* Logo */}
           <Link href="/" className="group flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary">
               <Leaf className="h-4 w-4 text-white" />
             </div>
             <span className="text-lg font-bold tracking-tight text-foreground">
@@ -242,7 +242,7 @@ export default function Navbar() {
                   onClick={() => setUserMenuOpen((v) => !v)}
                   className="flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1.5 text-sm font-medium text-foreground transition-colors hover:bg-muted"
                 >
-                  <div className="flex h-7 w-7 items-center justify-center rounded-full bg-primary text-xs font-bold text-white">
+                  <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-bold text-white">
                     {userInitials}
                   </div>
                   <span className="max-w-[120px] truncate">{user.name}</span>
@@ -355,7 +355,7 @@ export default function Navbar() {
               {/* User info (mobile) */}
               {isAuthenticated && user && (
                 <div className="flex items-center gap-3 rounded-2xl bg-primary/5 px-4 py-3 mb-1">
-                  <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary text-sm font-bold text-white">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-bold text-white">
                     {userInitials}
                   </div>
                   <div>

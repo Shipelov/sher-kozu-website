@@ -462,7 +462,7 @@ export default function AboutFarm() {
                   className="rounded-xl border border-border bg-card p-5 shadow-sm"
                 >
                   <div className="flex items-center gap-3 mb-2">
-                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10">
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10">
                       <Milk className="h-4 w-4 text-primary" />
                     </div>
                     <div>
@@ -659,7 +659,7 @@ export default function AboutFarm() {
       <footer className="border-t border-border bg-card py-10">
         <div className="container flex flex-col items-center gap-4 text-center">
           <div className="flex items-center gap-2">
-            <div className="flex h-7 w-7 items-center justify-center rounded-full bg-primary">
+            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary">
               <Leaf className="h-3.5 w-3.5 text-white" />
             </div>
             <span className="text-base font-bold tracking-tight">

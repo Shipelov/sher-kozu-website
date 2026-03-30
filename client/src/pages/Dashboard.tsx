@@ -486,7 +486,7 @@ export default function Dashboard() {
                       <div key={step.label} className="flex items-center">
                         <div className="flex flex-col items-center">
                           <div
-                            className={`flex h-9 w-9 items-center justify-center rounded-full text-sm font-bold ${
+                            className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-bold ${
                               step.done
                                 ? "bg-emerald-500 text-white"
                                 : step.active

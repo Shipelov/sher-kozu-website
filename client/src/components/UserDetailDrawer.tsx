@@ -57,6 +57,11 @@ function formatMoney(minor: number | null | undefined): string {
   });
 }
 
+function formatSKC(amount: number | null | undefined): string {
+  if (amount == null) return "—";
+  return `${amount.toLocaleString()} SKC`;
+}
+
 function StatusBadge({ status }: { status: string | null | undefined }) {
   if (!status) return <Badge variant="outline">—</Badge>;
   const map: Record<string, { variant: "default" | "secondary" | "destructive" | "outline"; label: string }> = {
@@ -350,7 +355,7 @@ export default function UserDetailDrawer({ userOpenId, onClose }: UserDetailDraw
                         <Card key={w.id} className="rounded-xl">
                           <CardContent className="p-4">
                             <div className="text-sm text-muted-foreground">Баланс</div>
-                            <div className="text-2xl font-bold">{formatMoney(w.balanceMinor)}</div>
+                            <div className="text-2xl font-bold">{formatSKC(w.balanceMinor)}</div>
                             <Badge variant={w.status === "active" ? "default" : "secondary"} className="mt-1">
                               {w.status}
                             </Badge>
@@ -383,8 +388,8 @@ export default function UserDetailDrawer({ userOpenId, onClose }: UserDetailDraw
                                   {tx.direction === "credit" ? "+" : "−"}
                                 </Badge>
                               </TableCell>
-                              <TableCell>{formatMoney(tx.amountMinor)}</TableCell>
-                              <TableCell>{formatMoney(tx.balanceAfterMinor)}</TableCell>
+                              <TableCell>{formatSKC(tx.amountMinor)}</TableCell>
+                              <TableCell>{formatSKC(tx.balanceAfterMinor)}</TableCell>
                               <TableCell className="max-w-[200px] truncate">{tx.memo || "—"}</TableCell>
                               <TableCell>{formatDate(tx.createdAt)}</TableCell>
                             </TableRow>

@@ -779,7 +779,7 @@ export default function AdminUsers() {
                               }`}
                             >
                               {u.walletStatus === "active" ? (
-                                <><Wallet className="h-3 w-3 mr-0.5" />{((u.walletBalance ?? 0) / 100).toLocaleString()} SKC</>
+                                <><Wallet className="h-3 w-3 mr-0.5" />{(u.walletBalance ?? 0).toLocaleString()} SKC</>
                               ) : u.walletStatus === "frozen" ? (
                                 <><Lock className="h-3 w-3 mr-0.5" />Заблок.</>
                               ) : (
