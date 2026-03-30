@@ -1450,3 +1450,9 @@
 - [x] Добавить UI-тоггл «Обновление сезонного ритма» в настройках уведомлений
 - [x] Написать vitest-тесты для уведомлений при обновлении метрик
 - [x] Обновить существующие тесты (notificationPreferences) для нового типа metricsUpdate
+
+## Bug Fix: Tracker shows old placeholder photo for Mira
+
+- [x] Изучить откуда трекер берёт фото животного и сравнить с кабинетом
+- [x] Исправить источник фото в трекере: обновлено coverImageUrl для Миры в БД
+- [x] Добавить авто-синхронизацию coverImageUrl в таблице animals при setCover, deleteCover и createPhoto

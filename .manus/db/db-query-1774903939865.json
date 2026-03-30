@@ -1,0 +1,16 @@
+{
+  "query": "SELECT id, animalSlug, url, isCover FROM animalPhotos WHERE animalSlug = 'mira' ORDER BY id;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3J2fXRHx8d1YjF6.root --database mLhmg5VmBsEBpZiYqdnhMQ --execute SELECT id, animalSlug, url, isCover FROM animalPhotos WHERE animalSlug = 'mira' ORDER BY id;",
+  "rows": [
+    {
+      "id": "90004",
+      "animalSlug": "mira",
+      "url": "https://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/animal-photos/mira/jP5iBYMcdYguBWJPw5Sruu/1774388989732-alpine-1-cropped.jpg",
+      "isCover": "1"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tanimalSlug\turl\tisCover\n90004\tmira\thttps://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/animal-photos/mira/jP5iBYMcdYguBWJPw5Sruu/1774388989732-alpine-1-cropped.jpg\t1\n",
+  "stderr": "",
+  "execution_time_ms": 363
+}

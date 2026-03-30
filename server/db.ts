@@ -584,6 +584,21 @@ export async function createAnimalPhoto(input: InsertAnimalPhoto) {
     throw new Error("Failed to resolve inserted photo id after upload");
   }
 
+  // If this photo is a cover, sync coverImageUrl on the animals table
+  if (created[0].isCover && created[0].url) {
+    const animalRow = await db
+      .select({ id: animals.id })
+      .from(animals)
+      .where(eq(animals.slug, input.animalSlug))
+      .limit(1);
+    if (animalRow[0]) {
+      await db
+        .update(animals)
+        .set({ coverImageUrl: created[0].url, updatedAt: new Date() })
+        .where(eq(animals.id, animalRow[0].id));
+    }
+  }
+
   return created[0];
 }
 
@@ -628,6 +643,31 @@ export async function deleteAnimalPhoto(photoId: number, callerOpenId?: string) 
 
     if (fallback[0]) {
       await db.update(animalPhotos).set({ isCover: 1 }).where(eq(animalPhotos.id, fallback[0].id));
+      // Sync coverImageUrl on the animals table
+      const animalRow = await db
+        .select({ id: animals.id })
+        .from(animals)
+        .where(eq(animals.slug, existing[0].animalSlug))
+        .limit(1);
+      if (animalRow[0] && fallback[0].url) {
+        await db
+          .update(animals)
+          .set({ coverImageUrl: fallback[0].url, updatedAt: new Date() })
+          .where(eq(animals.id, animalRow[0].id));
+      }
+    } else {
+      // No fallback photo — clear coverImageUrl
+      const animalRow = await db
+        .select({ id: animals.id })
+        .from(animals)
+        .where(eq(animals.slug, existing[0].animalSlug))
+        .limit(1);
+      if (animalRow[0]) {
+        await db
+          .update(animals)
+          .set({ coverImageUrl: null, updatedAt: new Date() })
+          .where(eq(animals.id, animalRow[0].id));
+      }
     }
   }
 
