@@ -717,7 +717,7 @@ export default function Partners() {
                       <span className="text-sm font-medium text-stone-800">Перетащите файлы сюда или нажмите, чтобы выбрать</span>
                       <span className="mt-1 text-xs text-stone-500">Поддерживаются документы, изображения и архивы.</span>
                     </label>
-                    <Input id="partner-attachments" type="file" accept={PARTNER_ATTACHMENT_ACCEPT} multiple onChange={handlePartnerAttachmentSelect} className="sr-only" disabled={createPartnerLead.isPending} />
+                    <Input id="partner-attachments" type="file" accept={PARTNER_ATTACHMENT_ACCEPT} multiple onChange={handlePartnerAttachmentSelect} className="hidden" disabled={createPartnerLead.isPending} />
                     <div className="space-y-3">
                       {partnerAttachmentWarning ? (
                         <div className="flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-800">
