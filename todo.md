@@ -1347,3 +1347,7 @@
 - [x] Аудит: Профиль животного — адаптивность карточки
 - [x] Аудит: B2B — адаптивность партнёрской страницы
 - [x] Исправление найденных проблем адаптивности (B2B file input overflow fixed)
+
+## Google Login Bug
+- [x] Баг: Чёрный экран при входе через Google в Preview/iframe Manus
+- [x] Фикс: Открывать OAuth в новом окне (window.open) вместо window.location.href для совместимости с iframe

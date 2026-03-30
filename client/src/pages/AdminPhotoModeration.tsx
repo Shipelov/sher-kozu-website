@@ -1,5 +1,5 @@
 import { useAuth } from "@/_core/hooks/useAuth";
-import { getLoginUrl } from "@/const";
+import { getLoginUrl, navigateToLogin } from "@/const";
 import DashboardLayout from "@/components/DashboardLayout";
 import PageBreadcrumbs from "@/components/PageBreadcrumbs";
 import { trpc } from "@/lib/trpc";
@@ -157,7 +157,7 @@ export default function AdminPhotoModeration() {
   }
 
   if (!isAuthenticated || !user) {
-    window.location.href = getLoginUrl("/admin/photo-moderation");
+    navigateToLogin("/admin/photo-moderation");
     return null;
   }
 

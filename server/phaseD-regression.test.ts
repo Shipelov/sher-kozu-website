@@ -530,8 +530,8 @@ describe("Main.tsx: unauthorized redirect flow", () => {
     "utf-8"
   );
 
-  it("uses getLoginUrl() for unauthorized redirect", () => {
-    expect(mainTsx).toContain("getLoginUrl()");
+  it("uses navigateToLogin() for unauthorized redirect (iframe-safe)", () => {
+    expect(mainTsx).toContain("navigateToLogin()");
   });
 
   it("prevents duplicate redirects with hasScheduledUnauthorizedRedirect flag", () => {

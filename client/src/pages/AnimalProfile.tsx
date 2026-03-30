@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
 import { Link, useLocation, useRoute } from "wouter";
 import { useAuth } from "@/_core/hooks/useAuth";
-import { getLoginUrl } from "@/const";
+import { getLoginUrl, navigateToLogin } from "@/const";
 import Navbar from "@/components/Navbar";
 import AnimalShareCard from "@/components/AnimalShareCard";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -487,7 +487,7 @@ export default function AnimalProfile() {
   async function handlePurchaseShare() {
     if (!data?.id) { toast.error("Профиль ещё загружается"); return; }
     const hasSession = typeof document !== "undefined" && document.cookie.includes("manus_session=");
-    if (!isAuthenticated && !hasSession) { window.location.href = getLoginUrl(`/animals/${animalSlug}?share=${selectedSharePercent}`); return; }
+    if (!isAuthenticated && !hasSession) { navigateToLogin(`/animals/${animalSlug}?share=${selectedSharePercent}`); return; }
     const plan = data?.plans?.[0] ?? null;
     const dur = plan?.durations?.[0] ?? null;
     await purchaseShare.mutateAsync({

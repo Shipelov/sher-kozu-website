@@ -25,7 +25,7 @@ import {
   InputOTPSlot,
 } from "@/components/ui/input-otp";
 import { trpc } from "@/lib/trpc";
-import { getLoginUrl } from "@/const";
+import { getLoginUrl, navigateToLogin } from "@/const";
 import { applyPhoneMask } from "@shared/phone";
 import PuzzleCaptcha from "./PuzzleCaptcha";
 import {
@@ -474,7 +474,7 @@ export default function AuthModal({
         size="lg"
         className="w-full gap-3 bg-white hover:bg-gray-50 border-border"
         onClick={() => {
-          window.location.href = getLoginUrl();
+          navigateToLogin();
         }}
         data-testid="google-oauth-btn"
       >
@@ -651,7 +651,7 @@ export default function AuthModal({
         size="lg"
         className="w-full gap-3 bg-white hover:bg-gray-50 border-border"
         onClick={() => {
-          window.location.href = getLoginUrl();
+          navigateToLogin();
         }}
         data-testid="google-oauth-btn-register"
       >

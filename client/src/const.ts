@@ -19,3 +19,31 @@ export const getLoginUrl = (returnPath?: string) => {
 
   return url.toString();
 };
+
+/**
+ * Detect if the page is running inside an iframe (e.g. Manus Preview panel).
+ * Cross-origin iframes will throw on `window.top` access, so we catch that too.
+ */
+export function isInsideIframe(): boolean {
+  try {
+    return window.self !== window.top;
+  } catch {
+    // Cross-origin iframe — definitely inside an iframe
+    return true;
+  }
+}
+
+/**
+ * Navigate to the OAuth login page.
+ * When running inside an iframe (Manus Preview), opens in a new tab/window
+ * to avoid the black screen caused by cross-origin navigation restrictions.
+ * On a normal page, uses standard redirect.
+ */
+export function navigateToLogin(returnPath?: string): void {
+  const url = getLoginUrl(returnPath);
+  if (isInsideIframe()) {
+    window.open(url, "_blank");
+  } else {
+    window.location.href = url;
+  }
+}

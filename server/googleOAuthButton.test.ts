@@ -19,8 +19,9 @@ const constSrc = readFileSync(
 
 describe("Google OAuth Button — AuthModal", () => {
   // ── Import checks ──
-  it("imports getLoginUrl from const", () => {
-    expect(authModalSrc).toContain('import { getLoginUrl } from "@/const"');
+  it("imports navigateToLogin from const", () => {
+    expect(authModalSrc).toContain('navigateToLogin');
+    expect(authModalSrc).toContain('from "@/const"');
   });
 
   // ── Login view ──
@@ -35,11 +36,11 @@ describe("Google OAuth Button — AuthModal", () => {
       expect(block).toContain("Войти через Google");
     });
 
-    it("Google button uses getLoginUrl() for redirect", () => {
+    it("Google button uses navigateToLogin() for redirect (iframe-safe)", () => {
       const btnIdx = authModalSrc.indexOf('data-testid="google-oauth-btn"');
       // Look backwards to find the onClick handler
       const blockBefore = authModalSrc.substring(Math.max(0, btnIdx - 300), btnIdx);
-      expect(blockBefore).toContain("getLoginUrl()");
+      expect(blockBefore).toContain("navigateToLogin()");
     });
 
     it("has 'или' divider before Google button in login view", () => {
@@ -78,10 +79,10 @@ describe("Google OAuth Button — AuthModal", () => {
       expect(block).toContain("Зарегистрироваться через Google");
     });
 
-    it("Google button in register also uses getLoginUrl()", () => {
+    it("Google button in register also uses navigateToLogin()", () => {
       const btnIdx = authModalSrc.indexOf('data-testid="google-oauth-btn-register"');
       const blockBefore = authModalSrc.substring(Math.max(0, btnIdx - 300), btnIdx);
-      expect(blockBefore).toContain("getLoginUrl()");
+      expect(blockBefore).toContain("navigateToLogin()");
     });
 
     it("has 'или' divider before Google button in register view", () => {
