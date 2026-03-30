@@ -88,6 +88,97 @@ type TrackerSummary = {
   };
 };
 
+// Transform raw API response (DB rows) into the TrackerSummary shape the UI expects
+function transformApiToSummary(raw: any): TrackerSummary | undefined {
+  if (!raw) return undefined;
+
+  // If the data already has the TrackerSummary shape (legacy), return as-is
+  if (raw.headline && raw.stats && raw.composition) {
+    return raw as TrackerSummary;
+  }
+
+  const batches = raw.productBatches ?? [];
+  const snapshots = raw.compositionSnapshots ?? [];
+  const metrics = raw.monthlyMetrics ?? [];
+  const rawDeliveries = raw.deliveries ?? [];
+  const animal = raw.currentAnimal;
+
+  const animalName = animal?.name ?? "вашего животного";
+  const totalLiters = metrics.reduce((s: number, m: any) => s + (m.milkVolumeLiters ?? 0), 0);
+
+  const headline = {
+    analysisLabel: batches.length > 0 ? `Партия ${batches[0]?.batchCode ?? "—"}` : "Анализ партии загружается",
+    organicLabel: "Органик",
+    title: `Путь продукта: от ${animalName} до вашей именной коробки.`,
+    description: "Происхождение молока, состав партии, статус доставки и связь с вашим животным — всё в одном месте.",
+  };
+
+  const stats: TrackerSummary["stats"] = [
+    { label: "Партий", value: String(batches.length), icon: "flask" },
+    { label: "Доставок", value: String(rawDeliveries.length), icon: "truck" },
+    { label: "Литров", value: `${totalLiters} л`, icon: "milk" },
+    { label: "Анализов", value: String(snapshots.length), icon: "sparkles" },
+  ];
+
+  const composition: CompositionItem[] = snapshots.map((s: any) => {
+    const numVal = parseFloat(s.value) || 0;
+    return {
+      label: s.label ?? "—",
+      value: numVal,
+      max: Math.max(numVal * 1.5, 10),
+      unit: s.note ?? "",
+    };
+  });
+
+  const monthlyData: MonthlyItem[] = metrics.map((m: any) => ({
+    month: m.monthLabel ?? "—",
+    liters: m.milkVolumeLiters ?? 0,
+  }));
+
+  const deliveries: DeliveryItem[] = rawDeliveries.map((d: any, i: number) => ({
+    id: d.title ?? `Доставка #${i + 1}`,
+    date: d.etaLabel ?? "—",
+    status: d.status ?? "в обработке",
+    progress: d.isActive ? 60 : 100,
+    story: d.courierNote ?? d.destination ?? "",
+    items: batches
+      .filter((_: any, bi: number) => bi % rawDeliveries.length === i)
+      .map((b: any) => b.productName ?? "Продукт"),
+  }));
+
+  const originSteps: OriginStep[] = [
+    { title: "Надой", text: `Молоко получено от ${animalName} на семейной ферме Шерь Козу.` },
+    { title: "Анализ", text: "Каждая партия проходит проверку состава и качества." },
+    { title: "Производство", text: "Из молока создаются именные продукты: сыры, йогурты, кефир." },
+    { title: "Доставка", text: "Готовый набор доставляется вам с полной историей происхождения." },
+  ];
+
+  const routeNotes: string[] = batches.map((b: any) => `${b.productName}: ${b.detail ?? b.routeLabel ?? ""}`);
+
+  return {
+    headline,
+    stats,
+    composition,
+    monthlyData,
+    deliveries,
+    originSteps,
+    routeNotes,
+    currentAnimal: animal
+      ? {
+          slug: animal.slug,
+          name: animal.name,
+          title: animal.title ?? `${animal.name} — источник вашего персонального маршрута`,
+          description: animal.description ?? `Трекер продукции ${animal.name} показывает происхождение молока.`,
+          coverImageUrl: animal.coverImageUrl,
+        }
+      : { name: animalName, title: "Каждый продукт начинается с конкретного животного.", description: "Выберите животное, чтобы увидеть полный трекер." },
+    productStory: {
+      title: "Именной продукт завершает цикл от фермы до стола.",
+      description: "Не безликий сыр, а именной продукт — результат вашей связи с животным и заботы фермы.",
+    },
+  };
+}
+
 function MetricBar({ value, max }: { value: number; max: number }) {
   const [width, setWidth] = useState(0);
 
@@ -137,7 +228,7 @@ export default function ProductTracker() {
     { enabled: isAuthenticated && Boolean(fallbackAnimalSlug) }
   );
 
-  const summary = trackerQuery.data as TrackerSummary | undefined;
+  const summary = useMemo(() => transformApiToSummary(trackerQuery.data), [trackerQuery.data]);
   const currentAnimalSlug = summary?.currentAnimal?.slug ?? requestedAnimalSlug ?? ownerAnimalSlug ?? fallbackAnimalSlug;
   const featuredAnimalName = summary?.currentAnimal?.name ?? ownerDashboardQuery.data?.animal?.name ?? "вашего животного";
   const featuredAnimalProfileHref = currentAnimalSlug ? `/animals/${currentAnimalSlug}` : "/animals";
