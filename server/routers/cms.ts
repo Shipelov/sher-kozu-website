@@ -683,6 +683,7 @@ function getDefaultBlocks(page: string): DefaultBlock[] {
   if (page === "catalog") return catalogDefaults;
   if (page === "about") return aboutDefaults;
   if (page === "partners") return partnersDefaults;
+  if (page === "dashboard") return dashboardDefaults;
   return [];
 }
 
@@ -697,6 +698,56 @@ type DefaultBlock = {
   sortOrder: number;
   visible: boolean;
 };
+
+const dashboardDefaults: DefaultBlock[] = [
+  // Section 1 — Guest Hero
+  { page: "dashboard", blockKey: "guest_hero_badge", label: "Гость — Бейдж", contentType: "text", content: "Персональное фермерство", section: "Гостевой Hero", sortOrder: 1, visible: true },
+  { page: "dashboard", blockKey: "guest_hero_title", label: "Гость — Заголовок", contentType: "text", content: "Ваш личный кабинет владельца", section: "Гостевой Hero", sortOrder: 2, visible: true },
+  { page: "dashboard", blockKey: "guest_hero_subtitle", label: "Гость — Описание", contentType: "richtext", content: "Здесь начинается ваш путь: выберите животное, оформите участие и получайте именные продукты с полной прозрачностью — от надоя до двери.", section: "Гостевой Hero", sortOrder: 3, visible: true },
+
+  // Section 2 — Guest Steps
+  { page: "dashboard", blockKey: "guest_steps_badge", label: "Шаги — Бейдж", contentType: "text", content: "Ваш маршрут", section: "Шаги гостя", sortOrder: 10, visible: true },
+  { page: "dashboard", blockKey: "guest_steps_title", label: "Шаги — Заголовок", contentType: "text", content: "Три шага к персональному фермерству", section: "Шаги гостя", sortOrder: 11, visible: true },
+  { page: "dashboard", blockKey: "guest_steps", label: "Шаги — Список", contentType: "json", content: JSON.stringify([
+    { index: "01", title: "Выберите животное", text: "Откройте галерею и познакомьтесь с козами и овцами элитных пород. У каждого — имя, характер и история." },
+    { index: "02", title: "Оформите участие", text: "Выберите долю и станьте совладельцем. Личный кабинет покажет ваш статус и дальнейшие действия." },
+    { index: "03", title: "Получайте продукты", text: "Именная коробка с молоком и сырами от вашего животного — с трекером каждого этапа." },
+  ]), section: "Шаги гостя", sortOrder: 12, visible: true },
+
+  // Section 3 — Ownership Status
+  { page: "dashboard", blockKey: "ownership_badge", label: "Участие — Бейдж", contentType: "text", content: "Ваше участие", section: "Статус участия", sortOrder: 20, visible: true },
+  { page: "dashboard", blockKey: "ownership_title", label: "Участие — Заголовок", contentType: "text", content: "Статус вашего персонального фермерства", section: "Статус участия", sortOrder: 21, visible: true },
+  { page: "dashboard", blockKey: "ownership_empty_share", label: "Участие — Пустая доля", contentType: "text", content: "После выбора доли кабинет покажет ваш статус участия и дальнейшие действия.", section: "Статус участия", sortOrder: 22, visible: true },
+  { page: "dashboard", blockKey: "ownership_empty_animal", label: "Участие — Пустое животное", contentType: "text", content: "Сначала откройте галерею и выберите животное, чтобы здесь появилась персональная карточка владельца.", section: "Статус участия", sortOrder: 23, visible: true },
+
+  // Section 4 — Quick Links
+  { page: "dashboard", blockKey: "quicklinks_badge", label: "Переходы — Бейдж", contentType: "text", content: "Быстрые переходы", section: "Быстрые переходы", sortOrder: 30, visible: true },
+  { page: "dashboard", blockKey: "quicklinks_title", label: "Переходы — Заголовок", contentType: "text", content: "Важные действия всегда на расстоянии одного клика", section: "Быстрые переходы", sortOrder: 31, visible: true },
+  { page: "dashboard", blockKey: "quicklinks_guest_title", label: "Переходы — Гостевой заголовок", contentType: "text", content: "Быстрые переходы активируются после авторизации", section: "Быстрые переходы", sortOrder: 32, visible: true },
+  { page: "dashboard", blockKey: "quicklinks_guest_text", label: "Переходы — Гостевой текст", contentType: "richtext", content: "После входа здесь появятся прямые ссылки в дневник, трекер продуктов и клубную ленту вашего животного.", section: "Быстрые переходы", sortOrder: 33, visible: true },
+
+  // Section 5 — Product Route
+  { page: "dashboard", blockKey: "product_badge", label: "Продукт — Бейдж", contentType: "text", content: "Маршрут продукта", section: "Маршрут продукта", sortOrder: 40, visible: true },
+  { page: "dashboard", blockKey: "product_title", label: "Продукт — Заголовок", contentType: "text", content: "Продукт связан с вашим животным и участием", section: "Маршрут продукта", sortOrder: 41, visible: true },
+  { page: "dashboard", blockKey: "product_empty", label: "Продукт — Пустое состояние", contentType: "richtext", content: "Когда участие будет оформлено, этот блок покажет реальную партию, прозрачный маршрут и связь с вашим животным.", section: "Маршрут продукта", sortOrder: 42, visible: true },
+  { page: "dashboard", blockKey: "product_empty_name", label: "Продукт — Пустое название", contentType: "text", content: "Именная коробка появится после выбора животного", section: "Маршрут продукта", sortOrder: 43, visible: true },
+
+  // Section 6 — Curator Teaser
+  { page: "dashboard", blockKey: "curator_badge", label: "Куратор — Бейдж", contentType: "text", content: "Скоро в клубе", section: "Куратор", sortOrder: 50, visible: true },
+  { page: "dashboard", blockKey: "curator_title", label: "Куратор — Заголовок", contentType: "text", content: "Персональный куратор — скоро в вашем кабинете.", section: "Куратор", sortOrder: 51, visible: true },
+  { page: "dashboard", blockKey: "curator_text", label: "Куратор — Описание", contentType: "richtext", content: "Мы работаем над персональным куратором, который будет подсказывать следующие шаги на основе вашего участия, истории животного и клубных событий. Пока — быстрые переходы к профилю, трекеру и клубу.", section: "Куратор", sortOrder: 52, visible: true },
+  { page: "dashboard", blockKey: "curator_placeholder", label: "Куратор — Плейсхолдер", contentType: "text", content: "Персональный куратор появится здесь в ближайшем обновлении.", section: "Куратор", sortOrder: 53, visible: true },
+
+  // Section 7 — Rhythm / Footer
+  { page: "dashboard", blockKey: "rhythm_badge", label: "Ритм — Бейдж", contentType: "text", content: "Ритм участия", section: "Ритм участия", sortOrder: 60, visible: true },
+  { page: "dashboard", blockKey: "rhythm_title", label: "Ритм — Заголовок", contentType: "text", content: "Ваш кабинет связывает животное, продукт и жизнь фермы.", section: "Ритм участия", sortOrder: 61, visible: true },
+  { page: "dashboard", blockKey: "rhythm_text", label: "Ритм — Описание", contentType: "richtext", content: "Личный кабинет начинается с вашего животного и ведёт дальше: профиль, трекер продуктов, клуб и обратно — всё связано в единый путь персонального фермерства.", section: "Ритм участия", sortOrder: 62, visible: true },
+
+  // Section 8 — Guest Sticky CTA
+  { page: "dashboard", blockKey: "guest_cta_badge", label: "CTA — Бейдж", contentType: "text", content: "Продолжить маршрут", section: "Гостевой CTA", sortOrder: 70, visible: true },
+  { page: "dashboard", blockKey: "guest_cta_text", label: "CTA — Текст", contentType: "text", content: "Войдите, чтобы сохранить выбранный маршрут владельца и открыть кабинет участия.", section: "Гостевой CTA", sortOrder: 71, visible: true },
+  { page: "dashboard", blockKey: "guest_cta_button", label: "CTA — Кнопка", contentType: "text", content: "Зарегистрироваться", section: "Гостевой CTA", sortOrder: 72, visible: true },
+];
 
 const homeDefaults: DefaultBlock[] = [
   // Section 1 — Hero

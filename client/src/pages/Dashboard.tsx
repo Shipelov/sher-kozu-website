@@ -43,6 +43,7 @@ import ScrollRemaining from "@/components/ScrollRemaining";
 import { BadgeGrid } from "@/components/BadgeCard";
 import PageBreadcrumbs from "@/components/PageBreadcrumbs";
 import { Award } from "lucide-react";
+import { useCmsContent } from "@/hooks/useCmsContent";
 
 /** Badges section for the owner dashboard */
 function DashboardBadgesSection() {
@@ -299,6 +300,7 @@ export default function Dashboard() {
   );
   const [txTab, setTxTab] = useState<"all" | "purchases">("all");
   const [showTxHistory, setShowTxHistory] = useState(false);
+  const cms = useCmsContent("dashboard");
   const dashboard = ownerDashboardQuery.data;
   const ownership = dashboard?.ownership ?? null;
   const currentAnimal = dashboard?.animal ?? null;
@@ -317,7 +319,7 @@ export default function Dashboard() {
   const trackerHref = currentAnimal ? `/tracker?animal=${currentAnimal.slug}` : "/tracker";
   const clubHref = currentAnimal ? `/club?animal=${currentAnimal.slug}` : "/club";
   const isGuestJourney = !ownership && !currentAnimal;
-  const guestPreviewSections = [
+  const defaultGuestPreviewSections = [
     {
       title: "Профиль участия",
       description: "После входа здесь появятся ваша доля, статус участия и персональная карточка выбранного животного.",
@@ -331,12 +333,13 @@ export default function Dashboard() {
       description: "После авторизации откроются события, семейные визиты и точки возвращения в фермерский ритм.",
     },
   ];
+  const guestPreviewSections = cms.getJson("guest_preview_sections", defaultGuestPreviewSections);
 
-  const guestRegistrationBenefits = [
+  const guestRegistrationBenefits = cms.getJson("guest_registration_benefits", [
     "Сохраните выбранное животное и вернётесь к нему без повторного поиска.",
     "Откроете личный кабинет с долей участия, трекером продукта и следующими шагами.",
     "Получите доступ к клубным визитам, дневнику ухода и персональным обновлениям.",
-  ];
+  ]);
 
   const summaryCards = currentAnimal
     ? [
@@ -398,26 +401,26 @@ export default function Dashboard() {
                   <div className="flex flex-wrap items-center gap-2">
                     <div className="inline-flex items-center gap-2 rounded-full bg-white/12 px-4 py-2 text-xs uppercase tracking-[0.18em] text-amber-300 backdrop-blur">
                       <Sparkles className="h-4 w-4" />
-                      Кабинет владельца
+                      {cms.getText("hero_badge", "Кабинет владельца")}
                     </div>
                     <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-2 text-xs text-white/80 backdrop-blur">
                       <MapPin className="h-4 w-4" />
                       {currentAnimal
-                        ? `${featuredAnimalName}, продукт и клуб в одном ритме`
-                        : "Маршрут начнётся после выбора животного"}
+                        ? cms.getText("hero_location_owner", `${featuredAnimalName}, продукт и клуб в одном ритме`)
+                        : cms.getText("hero_location_guest", "Маршрут начнётся после выбора животного")}
                     </div>
                   </div>
 
                   <div className="max-w-2xl">
                     <h1 className="font-display text-4xl text-white md:text-6xl">
                       {currentAnimal
-                        ? `Ваш личный кабинет — всё о ${featuredAnimalName}, продуктах и жизни фермы в одном месте.`
-                        : "Ваш личный кабинет — сердце персонального фермерства. Здесь начинается ваш путь."}
+                        ? cms.getText("hero_title_owner", `Ваш личный кабинет — всё о ${featuredAnimalName}, продуктах и жизни фермы в одном месте.`)
+                        : cms.getText("hero_title_guest", "Ваш личный кабинет — сердце персонального фермерства. Здесь начинается ваш путь.")}
                     </h1>
                     <p className="mt-4 max-w-xl text-sm leading-7 text-white/76 md:text-base">
                       {currentAnimal
                         ? ownershipTone.description
-                        : "Сначала выберите животное в галерее. После этого кабинет свяжет дневник, трекер продукта и клуб воедино."}
+                        : cms.getText("hero_subtitle_guest", "Сначала выберите животное в галерее. После этого кабинет свяжет дневник, трекер продукта и клуб воедино.")}
                     </p>
                   </div>
                 </div>
@@ -442,7 +445,7 @@ export default function Dashboard() {
                 <div className="mt-4 overflow-hidden rounded-[1.75rem] border border-border/70 bg-card shadow-sm">
                   <img src={CDN.dairyBox} alt="Именная продуктовая коробка" className="h-44 w-full object-cover" />
                   <div className="p-4">
-                    <p className="text-xs uppercase tracking-[0.18em] text-primary">Ваша именная коробка</p>
+                    <p className="text-xs uppercase tracking-[0.18em] text-primary">{cms.getText("hero_box_label", "Ваша именная коробка")}</p>
                     <h2 className="mt-2 text-xl font-semibold text-foreground">
                       {currentAnimal
                         ? `Именная коробка продолжает историю ${featuredAnimalName} и вашего участия ${ownership?.sharePercent ?? currentAnimal.mySharePercent ?? 0}%.`
@@ -901,11 +904,11 @@ export default function Dashboard() {
             >
               <div className="flex flex-col items-start gap-4 sm:flex-row sm:justify-between">
                 <div>
-                  <p className="text-xs uppercase tracking-[0.18em] text-primary">Следующие шаги</p>
+                  <p className="text-xs uppercase tracking-[0.18em] text-primary">{cms.getText("steps_label", "Следующие шаги")}</p>
                   <h3 className="mt-2 text-2xl font-semibold text-foreground">
                     {currentAnimal
-                      ? `${featuredAnimalName} уже в кабинете. Вот ваши следующие шаги.`
-                      : "Кабинет ждёт первый шаг: выберите животное и начните свой путь в клубе."}
+                      ? cms.getText("steps_title_owner", `${featuredAnimalName} уже в кабинете. Вот ваши следующие шаги.`)
+                      : cms.getText("steps_title_guest", "Кабинет ждёт первый шаг: выберите животное и начните свой путь в клубе.")}
                   </h3>
                 </div>
                 <div className="inline-flex max-w-full items-center gap-2 self-start rounded-full bg-secondary px-3 py-1 text-xs font-medium text-primary">
@@ -915,7 +918,7 @@ export default function Dashboard() {
               </div>
 
               <p className="mt-4 max-w-2xl text-sm leading-7 text-muted-foreground">
-                Здесь собраны ваши текущие задачи: проверить дневник, отследить продукт или заглянуть в клуб.
+                {cms.getText("steps_subtitle", "Здесь собраны ваши текущие задачи: проверить дневник, отследить продукт или заглянуть в клуб.")}
               </p>
 
               {isGuestJourney ? (
@@ -1033,9 +1036,9 @@ export default function Dashboard() {
             >
               <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                  <p className="text-xs uppercase tracking-[0.18em] text-primary">Профиль участия</p>
+                  <p className="text-xs uppercase tracking-[0.18em] text-primary">{cms.getText("participation_label", "Профиль участия")}</p>
                   <h3 className="mt-2 text-xl font-semibold text-foreground">
-                    {currentAnimal ? `Ваше участие в ${featuredAnimalName}` : "Пока участие не выбрано"}
+                    {currentAnimal ? cms.getText("participation_title_owner", `Ваше участие в ${featuredAnimalName}`) : cms.getText("participation_title_guest", "Пока участие не выбрано")}
                   </h3>
                 </div>
                 <Heart className="h-5 w-5 text-primary" />
@@ -1102,8 +1105,8 @@ export default function Dashboard() {
             >
               <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                  <p className="text-xs uppercase tracking-[0.18em] text-primary">Быстрые переходы</p>
-                  <h3 className="mt-2 text-xl font-semibold text-foreground">Важные действия всегда на расстоянии одного клика</h3>
+                  <p className="text-xs uppercase tracking-[0.18em] text-primary">{cms.getText("quicklinks_label", "Быстрые переходы")}</p>
+                  <h3 className="mt-2 text-xl font-semibold text-foreground">{cms.getText("quicklinks_title", "Важные действия всегда на расстоянии одного клика")}</h3>
                 </div>
                 <BookOpen className="h-5 w-5 text-primary" />
               </div>
@@ -1183,8 +1186,8 @@ export default function Dashboard() {
             >
               <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                  <p className="text-xs uppercase tracking-[0.18em] text-primary">Маршрут продукта</p>
-                  <h3 className="mt-2 text-xl font-semibold text-foreground">Продукт связан с вашим животным и участием</h3>
+                  <p className="text-xs uppercase tracking-[0.18em] text-primary">{cms.getText("product_route_label", "Маршрут продукта")}</p>
+                  <h3 className="mt-2 text-xl font-semibold text-foreground">{cms.getText("product_route_title", "Продукт связан с вашим животным и участием")}</h3>
                 </div>
                 <Package className="h-5 w-5 text-primary" />
               </div>
@@ -1237,9 +1240,9 @@ export default function Dashboard() {
                     <Bot className="h-3.5 w-3.5" />
                     Скоро в клубе
                   </div>
-                  <h3 className="mt-4 font-display text-3xl">Персональный куратор — скоро в вашем кабинете.</h3>
+                  <h3 className="mt-4 font-display text-3xl">{cms.getText("curator_title", "Персональный куратор — скоро в вашем кабинете.")}</h3>
                   <p className="mt-3 max-w-2xl text-sm leading-7 text-white/75">
-                    Мы работаем над персональным куратором, который будет подсказывать следующие шаги на основе вашего участия, истории животного и клубных событий. Пока — быстрые переходы к профилю, трекеру и клубу.
+                    {cms.getText("curator_description", "Мы работаем над персональным куратором, который будет подсказывать следующие шаги на основе вашего участия, истории животного и клубных событий. Пока — быстрые переходы к профилю, трекеру и клубу.")}
                   </p>
                   <div className="mt-5 flex flex-wrap gap-2 text-xs text-white/65">
                     <span className="rounded-full border border-white/15 px-3 py-1">профиль животного</span>
@@ -1283,10 +1286,10 @@ export default function Dashboard() {
               <div className="grid gap-0 md:grid-cols-[0.92fr_1.08fr]">
                 <img src={CDN.family} alt="Семья на ферме" className="h-full min-h-[260px] w-full object-cover" />
                 <div className="p-6">
-                  <p className="text-xs uppercase tracking-[0.18em] text-primary">Ритм участия</p>
-                  <h3 className="mt-2 text-2xl font-semibold text-foreground">Ваш кабинет связывает животное, продукт и жизнь фермы.</h3>
+                  <p className="text-xs uppercase tracking-[0.18em] text-primary">{cms.getText("rhythm_label", "Ритм участия")}</p>
+                  <h3 className="mt-2 text-2xl font-semibold text-foreground">{cms.getText("rhythm_title", "Ваш кабинет связывает животное, продукт и жизнь фермы.")}</h3>
                   <p className="mt-3 text-sm leading-7 text-muted-foreground">
-                    Личный кабинет начинается с вашего животного и ведёт дальше: профиль, трекер продуктов, клуб и обратно — всё связано в единый путь персонального фермерства.
+                    {cms.getText("rhythm_description", "Личный кабинет начинается с вашего животного и ведёт дальше: профиль, трекер продуктов, клуб и обратно — всё связано в единый путь персонального фермерства.")}
                   </p>
                   <div className="mt-5 grid gap-3 sm:grid-cols-4">
                     {[

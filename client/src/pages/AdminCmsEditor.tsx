@@ -79,6 +79,7 @@ const PAGE_LABELS: Record<string, string> = {
   catalog: "Каталог",
   about: "О ферме",
   partners: "Партнёры",
+  dashboard: "Мой кабинет",
 };
 
 const PAGE_PREVIEW_URLS: Record<string, string> = {
@@ -86,6 +87,7 @@ const PAGE_PREVIEW_URLS: Record<string, string> = {
   catalog: "/animals",
   about: "/about",
   partners: "/partners",
+  dashboard: "/dashboard",
 };
 
 const ACTION_LABELS: Record<string, { label: string; color: string }> = {
