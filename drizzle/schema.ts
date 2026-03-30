@@ -1220,6 +1220,8 @@ export const notificationPreferences = mysqlTable("notificationPreferences", {
   clubPost: boolean("clubPost").default(true).notNull(),
   /** Receive notifications about new club events */
   clubEvent: boolean("clubEvent").default(true).notNull(),
+  /** Receive notifications when milk composition is updated for your animal */
+  compositionUpdate: boolean("compositionUpdate").default(true).notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
 

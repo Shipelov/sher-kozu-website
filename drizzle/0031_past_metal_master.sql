@@ -1,0 +1,1 @@
+ALTER TABLE `notificationPreferences` ADD `compositionUpdate` boolean DEFAULT true NOT NULL;

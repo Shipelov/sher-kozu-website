@@ -4051,6 +4051,7 @@ const DEFAULT_PREFS = {
   photoRejected: true,
   clubPost: true,
   clubEvent: true,
+  compositionUpdate: true,
 };
 
 /** Map notification type string to the column name in preferences table */
@@ -4059,6 +4060,7 @@ const TYPE_TO_PREF_KEY: Record<string, keyof typeof DEFAULT_PREFS> = {
   photo_rejected: "photoRejected",
   club_post: "clubPost",
   club_event: "clubEvent",
+  composition_update: "compositionUpdate",
 };
 
 export async function getNotificationPreferences(userOpenId: string) {
@@ -4080,6 +4082,7 @@ export async function getNotificationPreferences(userOpenId: string) {
       photoRejected: row.photoRejected,
       clubPost: row.clubPost,
       clubEvent: row.clubEvent,
+      compositionUpdate: row.compositionUpdate,
     };
   } catch (error) {
     console.error("[Database] Failed to get notification preferences:", error);
@@ -4286,4 +4289,91 @@ export async function getAnimalSlugById(animalId: number): Promise<string | null
   if (!db) return null;
   const rows = await db.select({ slug: animals.slug }).from(animals).where(eq(animals.id, animalId)).limit(1);
   return rows[0]?.slug ?? null;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════
+   Owner Notifications — Composition Update
+   Notify all active owners of an animal when its milk composition changes.
+   ═══════════════════════════════════════════════════════════════ */
+
+/** Get all active owner openIds for a given animal ID */
+export async function getActiveOwnerOpenIdsByAnimalId(animalId: number): Promise<string[]> {
+  const db = await getDb();
+  if (!db) return [];
+  try {
+    const rows = await db
+      .select({ ownerOpenId: animalOwnerships.ownerOpenId })
+      .from(animalOwnerships)
+      .where(
+        and(
+          eq(animalOwnerships.animalId, animalId),
+          or(
+            eq(animalOwnerships.status, "active"),
+            eq(animalOwnerships.status, "pending_payment"),
+          ),
+        ),
+      );
+    // Deduplicate (one user can have multiple ownerships for the same animal)
+    const unique: string[] = [];
+    for (const r of rows) {
+      if (!unique.includes(r.ownerOpenId)) {
+        unique.push(r.ownerOpenId);
+      }
+    }
+    return unique;
+  } catch (error) {
+    console.error("[Database] Failed to get active owners for animal:", error);
+    return [];
+  }
+}
+
+/**
+ * Notify all active owners of an animal about a composition update.
+ * Creates an in-app notification for each owner who has compositionUpdate enabled.
+ * Returns the number of notifications sent.
+ */
+export async function notifyOwnersAboutCompositionUpdate(input: {
+  animalId: number;
+  animalName: string;
+  animalSlug: string;
+  action: "created" | "updated" | "deleted";
+  detail?: string;
+}): Promise<number> {
+  const ownerOpenIds = await getActiveOwnerOpenIdsByAnimalId(input.animalId);
+  if (ownerOpenIds.length === 0) return 0;
+
+  const actionLabels: Record<string, string> = {
+    created: "добавлен новый показатель",
+    updated: "обновлён показатель",
+    deleted: "удалён показатель",
+  };
+
+  const title = `Состав молока ${input.animalName}: ${actionLabels[input.action] ?? "изменение"}`;
+  const body = input.detail
+    ? `${actionLabels[input.action] ?? "Изменение"} состава молока для ${input.animalName}: ${input.detail}`
+    : `${actionLabels[input.action] ?? "Изменение"} состава молока для ${input.animalName}.`;
+  const link = `/tracker?animal=${input.animalSlug}`;
+
+  let sent = 0;
+  for (const openId of ownerOpenIds) {
+    const result = await createUserNotification({
+      userOpenId: openId,
+      type: "composition_update",
+      title,
+      body,
+      link,
+    });
+    if (result) sent++;
+  }
+  return sent;
+}
+
+
+/** Resolve animal ID from slug (reverse of getAnimalSlugById) */
+export async function getAnimalIdBySlug(slug: string): Promise<number | null> {
+  const db = await getDb();
+  if (!db) return null;
+  const rows = await db.select({ id: animals.id }).from(animals).where(eq(animals.slug, slug)).limit(1);
+  return rows[0]?.id ?? null;
 }

@@ -43,6 +43,7 @@ import {
   upsertMonthlyMetric,
   deleteMonthlyMetric,
   getAnimalSlugById,
+  notifyOwnersAboutCompositionUpdate,
 } from "../db";
 import type { ProductOption } from "../../drizzle/schema";
 import { storagePut } from "../storage";
@@ -606,7 +607,7 @@ export const productTrackRouter = router({
       }
       const slug = await getAnimalSlugById(input.animalId);
       if (!slug) throw new TRPCError({ code: "NOT_FOUND", message: "Животное не найдено." });
-      return createCompositionSnapshot({
+      const result = await createCompositionSnapshot({
         animalSlug: slug,
         ownerOpenId: ENV.ownerOpenId,
         label: input.label,
@@ -614,11 +615,22 @@ export const productTrackRouter = router({
         note: input.note,
         sortOrder: input.sortOrder,
       });
+      // Notify owners (non-blocking)
+      const animalName = await getAnimalNameById(input.animalId);
+      notifyOwnersAboutCompositionUpdate({
+        animalId: input.animalId,
+        animalName,
+        animalSlug: slug,
+        action: "created",
+        detail: `${input.label}: ${input.value}`,
+      }).catch((err) => console.error("[Notification] composition create:", err));
+      return result;
     }),
 
   updateCompositionSnapshot: protectedProcedure
     .input(z.object({
       id: z.number().int().positive(),
+      animalId: z.number().int().positive(),
       label: z.string().min(1).max(120).optional(),
       value: z.string().min(1).max(120).optional(),
       note: z.string().max(255).optional(),
@@ -628,17 +640,48 @@ export const productTrackRouter = router({
       if (ctx.user.role !== "admin") {
         throw new TRPCError({ code: "FORBIDDEN", message: "Только администратор." });
       }
-      const { id, ...data } = input;
-      return updateCompositionSnapshot(id, data);
+      const { id, animalId, ...data } = input;
+      const result = await updateCompositionSnapshot(id, data);
+      // Notify owners (non-blocking)
+      const slug = await getAnimalSlugById(animalId);
+      if (slug) {
+        const animalName = await getAnimalNameById(animalId);
+        const detail = input.label ? `${input.label}${input.value ? ": " + input.value : ""}` : undefined;
+        notifyOwnersAboutCompositionUpdate({
+          animalId,
+          animalName,
+          animalSlug: slug,
+          action: "updated",
+          detail,
+        }).catch((err) => console.error("[Notification] composition update:", err));
+      }
+      return result;
     }),
 
   deleteCompositionSnapshot: protectedProcedure
-    .input(z.object({ id: z.number().int().positive() }))
+    .input(z.object({
+      id: z.number().int().positive(),
+      animalId: z.number().int().positive(),
+      label: z.string().optional(),
+    }))
     .mutation(async ({ ctx, input }) => {
       if (ctx.user.role !== "admin") {
         throw new TRPCError({ code: "FORBIDDEN", message: "Только администратор." });
       }
-      return deleteCompositionSnapshot(input.id);
+      const result = await deleteCompositionSnapshot(input.id);
+      // Notify owners (non-blocking)
+      const slug = await getAnimalSlugById(input.animalId);
+      if (slug) {
+        const animalName = await getAnimalNameById(input.animalId);
+        notifyOwnersAboutCompositionUpdate({
+          animalId: input.animalId,
+          animalName,
+          animalSlug: slug,
+          action: "deleted",
+          detail: input.label,
+        }).catch((err) => console.error("[Notification] composition delete:", err));
+      }
+      return result;
     }),
 
   /* ═══════════════════════════════════════════════════════════

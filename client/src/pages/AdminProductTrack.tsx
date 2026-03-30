@@ -1521,6 +1521,7 @@ function CompositionSnapshotsManager({ animalId }: { animalId: number }) {
     if (editing?.id) {
       updateMut.mutate({
         id: editing.id,
+        animalId,
         label: formLabel.trim(),
         value: formValue.trim(),
         note: formNote.trim(),
@@ -1589,7 +1590,7 @@ function CompositionSnapshotsManager({ animalId }: { animalId: number }) {
                     variant="ghost"
                     size="icon"
                     className="h-8 w-8 rounded-full text-destructive hover:text-destructive"
-                    onClick={() => deleteMut.mutate({ id: item.id })}
+                    onClick={() => deleteMut.mutate({ id: item.id, animalId, label: item.label })}
                     disabled={deleteMut.isPending}
                   >
                     <Trash2 className="h-3.5 w-3.5" />

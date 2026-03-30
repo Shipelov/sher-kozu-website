@@ -1418,3 +1418,12 @@
 - [x] Сделать productTracker.getByAnimal публичным (publicProcedure) для доступа без авторизации
 - [x] Написать vitest-тесты для валидации, трансформации и расчётов composition/metrics
 - [x] Обновить существующие тесты (visualAudit, contextSwitching) под новую публичную модель
+
+## Owner Notifications on Composition Update
+
+- [x] Изучить архитектуру уведомлений (notifyOwner, notification system) и связь ownership → animal
+- [x] Реализовать серверную логику: при создании/обновлении/удалении состава молока уведомлять всех владельцев животного
+- [x] Добавить новый тип уведомления compositionUpdate в настройки предпочтений пользователей
+- [x] Добавить UI-тоггл «Обновление состава молока» в настройках уведомлений
+- [x] Написать vitest-тесты для логики уведомлений при обновлении состава молока
+- [x] Обновить существующие тесты (notificationPreferences) для нового типа compositionUpdate

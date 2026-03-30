@@ -26,6 +26,7 @@ describe("Notification Preferences", () => {
         photoRejected: true,
         clubPost: true,
         clubEvent: true,
+        compositionUpdate: true,
       });
     });
   });

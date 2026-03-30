@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import { Bell, Camera, Newspaper, CalendarHeart, Loader2, CheckCircle2 } from "lucide-react";
+import { Bell, Camera, Newspaper, CalendarHeart, Loader2, CheckCircle2, Milk } from "lucide-react";
 import { toast } from "sonner";
 import DashboardLayout from "@/components/DashboardLayout";
 
@@ -37,6 +37,13 @@ const NOTIFICATION_TYPES = [
     icon: CalendarHeart,
     iconColor: "text-amber-500",
   },
+  {
+    key: "compositionUpdate" as const,
+    label: "Обновление состава молока",
+    description: "Уведомление, когда обновляется состав молока вашего животного — жирность, белок, лактоза",
+    icon: Milk,
+    iconColor: "text-teal-500",
+  },
 ];
 
 export default function NotificationSettings() {
@@ -53,7 +60,7 @@ export default function NotificationSettings() {
       await utils.notifications.getPreferences.cancel();
       const previous = utils.notifications.getPreferences.getData();
       utils.notifications.getPreferences.setData(undefined, (old) => ({
-        ...(old ?? { photoApproved: true, photoRejected: true, clubPost: true, clubEvent: true }),
+        ...(old ?? { photoApproved: true, photoRejected: true, clubPost: true, clubEvent: true, compositionUpdate: true }),
         ...newPrefs,
       }));
       return { previous };
@@ -74,7 +81,7 @@ export default function NotificationSettings() {
     },
   });
 
-  function handleToggle(key: "photoApproved" | "photoRejected" | "clubPost" | "clubEvent", value: boolean) {
+  function handleToggle(key: "photoApproved" | "photoRejected" | "clubPost" | "clubEvent" | "compositionUpdate", value: boolean) {
     updateMutation.mutate({ [key]: value });
   }
 

@@ -1858,6 +1858,7 @@ export const appRouter = router({
         photoRejected: z.boolean().optional(),
         clubPost: z.boolean().optional(),
         clubEvent: z.boolean().optional(),
+        compositionUpdate: z.boolean().optional(),
       }))
       .mutation(async ({ ctx, input }) => {
         const ok = await upsertNotificationPreferences(ctx.user.openId, input);
