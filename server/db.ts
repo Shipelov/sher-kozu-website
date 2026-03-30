@@ -4560,16 +4560,27 @@ export async function getAnalyticsOverview(fromDate: Date, toDate: Date) {
 }
 
 /**
+ * Helper to unwrap db.execute results.
+ * mysql2 returns [rows, fields] tuple, drizzle may return rows directly.
+ */
+function unwrapRows(result: any): any[] {
+  if (Array.isArray(result) && result.length === 2 && Array.isArray(result[0])) {
+    return result[0];
+  }
+  return Array.isArray(result) ? result : [];
+}
+
+/**
  * Get page views grouped by day for a chart.
  */
 export async function getPageViewsByDay(fromDate: Date, toDate: Date) {
   const db = await getDb();
-  const rows: any[] = await db.execute(
+  const rows: any[] = unwrapRows(await db.execute(
     sql`SELECT DATE(createdAt) as d, COUNT(*) as views, COUNT(DISTINCT visitorId) as visitors
         FROM siteVisits
         WHERE createdAt >= ${fromDate} AND createdAt <= ${toDate}
         GROUP BY d ORDER BY d`
-  );
+  ));
 
   return rows.map((r: any) => ({
     date: String(r.d),
@@ -4609,12 +4620,12 @@ export async function getTopPages(fromDate: Date, toDate: Date, limit = 20) {
  */
 export async function getReferrerBreakdown(fromDate: Date, toDate: Date, limit = 15) {
   const db = await getDb();
-  const rows: any[] = await db.execute(
+  const rows: any[] = unwrapRows(await db.execute(
     sql`SELECT COALESCE(referrer, 'Прямой заход') as ref, COUNT(*) as visits, COUNT(DISTINCT visitorId) as visitors
         FROM siteVisits
         WHERE createdAt >= ${fromDate} AND createdAt <= ${toDate}
         GROUP BY ref ORDER BY visits DESC LIMIT ${limit}`
-  );
+  ));
 
   return rows.map((r: any) => ({
     referrer: String(r.ref),
@@ -4629,23 +4640,23 @@ export async function getReferrerBreakdown(fromDate: Date, toDate: Date, limit =
 export async function getDeviceBreakdown(fromDate: Date, toDate: Date) {
   const db = await getDb();
 
-  const deviceRows: any[] = await db.execute(
+  const deviceRows: any[] = unwrapRows(await db.execute(
     sql`SELECT COALESCE(deviceType, 'unknown') as dt, COUNT(DISTINCT visitorId) as cnt
         FROM siteVisits WHERE createdAt >= ${fromDate} AND createdAt <= ${toDate}
         GROUP BY dt ORDER BY cnt DESC`
-  );
+  ));
 
-  const browserRows: any[] = await db.execute(
+  const browserRows: any[] = unwrapRows(await db.execute(
     sql`SELECT COALESCE(browser, 'unknown') as br, COUNT(DISTINCT visitorId) as cnt
         FROM siteVisits WHERE createdAt >= ${fromDate} AND createdAt <= ${toDate}
         GROUP BY br ORDER BY cnt DESC LIMIT 10`
-  );
+  ));
 
-  const osRows: any[] = await db.execute(
+  const osRows: any[] = unwrapRows(await db.execute(
     sql`SELECT COALESCE(os, 'unknown') as osName, COUNT(DISTINCT visitorId) as cnt
         FROM siteVisits WHERE createdAt >= ${fromDate} AND createdAt <= ${toDate}
         GROUP BY osName ORDER BY cnt DESC LIMIT 10`
-  );
+  ));
 
   return {
     devices: deviceRows.map((r: any) => ({ type: String(r.dt), count: Number(r.cnt) })),
@@ -4659,13 +4670,13 @@ export async function getDeviceBreakdown(fromDate: Date, toDate: Date) {
  */
 export async function getUtmBreakdown(fromDate: Date, toDate: Date) {
   const db = await getDb();
-  const rows: any[] = await db.execute(
+  const rows: any[] = unwrapRows(await db.execute(
     sql`SELECT COALESCE(utmSource, 'organic') as src, COALESCE(utmMedium, 'none') as med,
                COALESCE(utmCampaign, 'none') as camp, COUNT(*) as visits, COUNT(DISTINCT visitorId) as visitors
         FROM siteVisits
         WHERE createdAt >= ${fromDate} AND createdAt <= ${toDate} AND utmSource IS NOT NULL
         GROUP BY src, med, camp ORDER BY visits DESC LIMIT 20`
-  );
+  ));
 
   return rows.map((r: any) => ({
     source: String(r.src),
@@ -4738,12 +4749,12 @@ export async function getEventsSummary(fromDate: Date, toDate: Date) {
  */
 export async function getHourlyTraffic(fromDate: Date, toDate: Date) {
   const db = await getDb();
-  const rows: any[] = await db.execute(
+  const rows: any[] = unwrapRows(await db.execute(
     sql`SELECT HOUR(createdAt) as h, DAYOFWEEK(createdAt) as dow, COUNT(*) as cnt
         FROM siteVisits
         WHERE createdAt >= ${fromDate} AND createdAt <= ${toDate}
         GROUP BY h, dow ORDER BY dow, h`
-  );
+  ));
 
   return rows.map((r: any) => ({
     hour: Number(r.h),
@@ -4757,7 +4768,7 @@ export async function getHourlyTraffic(fromDate: Date, toDate: Date) {
  */
 export async function getGeoBreakdown(fromDate: Date, toDate: Date, limit = 30) {
   const db = await getDb();
-  const rows: any[] = await db.execute(
+  const rows: any[] = unwrapRows(await db.execute(
     sql`SELECT country, region, city,
                COUNT(*) as views,
                COUNT(DISTINCT visitorId) as visitors,
@@ -4768,7 +4779,7 @@ export async function getGeoBreakdown(fromDate: Date, toDate: Date, limit = 30) 
         GROUP BY country, region, city
         ORDER BY views DESC
         LIMIT ${limit}`
-  );
+  ));
 
   return rows.map((r: any) => ({
     country: r.country || "??",
@@ -4786,14 +4797,14 @@ export async function getGeoBreakdown(fromDate: Date, toDate: Date, limit = 30) 
  */
 export async function getVisitorLocations(fromDate: Date, toDate: Date, limit = 200) {
   const db = await getDb();
-  const rows: any[] = await db.execute(
+  const rows: any[] = unwrapRows(await db.execute(
     sql`SELECT latitude, longitude, city, region, country, pagePath, createdAt
         FROM siteVisits
         WHERE createdAt >= ${fromDate} AND createdAt <= ${toDate}
           AND latitude IS NOT NULL AND longitude IS NOT NULL
         ORDER BY createdAt DESC
         LIMIT ${limit}`
-  );
+  ));
 
   return rows.map((r: any) => ({
     lat: Number(r.latitude),
@@ -4849,39 +4860,39 @@ export async function getMetricForWindow(metric: string, fromDate: Date, toDate:
 
   switch (metric) {
     case "page_views": {
-      const rows: any[] = await db.execute(
+      const rows: any[] = unwrapRows(await db.execute(
         sql`SELECT COUNT(*) as val FROM siteVisits WHERE createdAt >= ${fromDate} AND createdAt <= ${toDate}`
-      );
+      ));
       return Number(rows[0]?.val ?? 0);
     }
     case "unique_visitors": {
-      const rows: any[] = await db.execute(
+      const rows: any[] = unwrapRows(await db.execute(
         sql`SELECT COUNT(DISTINCT visitorId) as val FROM siteVisits WHERE createdAt >= ${fromDate} AND createdAt <= ${toDate}`
-      );
+      ));
       return Number(rows[0]?.val ?? 0);
     }
     case "sessions": {
-      const rows: any[] = await db.execute(
+      const rows: any[] = unwrapRows(await db.execute(
         sql`SELECT COUNT(DISTINCT sessionId) as val FROM siteVisits WHERE createdAt >= ${fromDate} AND createdAt <= ${toDate}`
-      );
+      ));
       return Number(rows[0]?.val ?? 0);
     }
     case "bounce_rate": {
-      const rows: any[] = await db.execute(
+      const rows: any[] = unwrapRows(await db.execute(
         sql`SELECT
               COUNT(DISTINCT CASE WHEN isEntry = 1 AND isExit = 1 THEN sessionId END) as bounced,
               COUNT(DISTINCT sessionId) as total
             FROM siteVisits
             WHERE createdAt >= ${fromDate} AND createdAt <= ${toDate}`
-      );
+      ));
       const bounced = Number(rows[0]?.bounced ?? 0);
       const total = Number(rows[0]?.total ?? 1);
       return total > 0 ? Math.round((bounced / total) * 100) : 0;
     }
     case "avg_time": {
-      const rows: any[] = await db.execute(
+      const rows: any[] = unwrapRows(await db.execute(
         sql`SELECT AVG(timeOnPage) as val FROM siteVisits WHERE createdAt >= ${fromDate} AND createdAt <= ${toDate} AND timeOnPage IS NOT NULL`
-      );
+      ));
       return Math.round(Number(rows[0]?.val ?? 0));
     }
     default:
@@ -5002,7 +5013,7 @@ export async function recordConversion(experimentId: number, visitorId: string) 
  */
 export async function getExperimentResults(experimentId: number) {
   const db = await getDb();
-  const rawResult: any = await db.execute(
+  const rows: any[] = unwrapRows(await db.execute(
     sql`SELECT
           v.id as variantId, v.variantKey, v.label, v.weight,
           COUNT(a.id) as totalAssigned,
@@ -5011,12 +5022,7 @@ export async function getExperimentResults(experimentId: number) {
         LEFT JOIN abExperimentAssignments a ON a.variantId = v.id AND a.experimentId = v.experimentId
         WHERE v.experimentId = ${experimentId}
         GROUP BY v.id, v.variantKey, v.label, v.weight`
-  );
-
-  // db.execute may return [rows, fields] tuple or just rows
-  const rows: any[] = Array.isArray(rawResult) && rawResult.length === 2 && Array.isArray(rawResult[0])
-    ? rawResult[0]
-    : rawResult;
+  ));
 
   return rows.map((r: any) => ({
     variantId: Number(r.variantId),
