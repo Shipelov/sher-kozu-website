@@ -285,7 +285,7 @@ export default function Marketplace() {
 
       {/* Purchase Confirmation Dialog */}
       <Dialog open={!!purchaseItem} onOpenChange={() => setPurchaseItem(null)}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <span className="text-2xl">{purchaseItem?.emoji || "🎁"}</span>
@@ -352,13 +352,13 @@ export default function Marketplace() {
 
       {/* Success Dialog */}
       <Dialog open={showSuccess} onOpenChange={setShowSuccess}>
-        <DialogContent className="sm:max-w-sm text-center">
+        <DialogContent className="sm:max-w-sm text-center max-h-[90vh] overflow-y-auto">
           <DialogHeader className="sr-only">
             <DialogTitle>Подарок отправлен</DialogTitle>
           </DialogHeader>
-          <div className="py-6">
-            <div className="w-16 h-16 rounded-full bg-emerald-100 flex items-center justify-center mx-auto mb-4">
-              <CheckCircle2 className="h-8 w-8 text-emerald-600" />
+          <div className="py-4">
+            <div className="w-14 h-14 rounded-full bg-emerald-100 flex items-center justify-center mx-auto mb-3">
+              <CheckCircle2 className="h-7 w-7 text-emerald-600" />
             </div>
             <h3 className="text-lg font-bold mb-2">Подарок отправлен!</h3>
             <p className="text-sm text-muted-foreground mb-1">
@@ -368,11 +368,11 @@ export default function Marketplace() {
               Метрики вашего животного обновлены. Фермер получит задание.
             </p>
           </div>
-          <DialogFooter className="flex-col gap-2">
+          <DialogFooter className="flex-col gap-2 sm:flex-col">
             <Button onClick={() => setShowSuccess(false)} className="w-full">
               Продолжить покупки
             </Button>
-            <Link href="/dashboard">
+            <Link href="/dashboard" className="w-full">
               <Button variant="outline" className="w-full" onClick={() => setShowSuccess(false)}>
                 <ArrowRight className="h-4 w-4 mr-2" /> В кабинет
               </Button>

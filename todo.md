@@ -1351,3 +1351,6 @@
 ## Google Login Bug
 - [x] Баг: Чёрный экран при входе через Google в Preview/iframe Manus
 - [x] Фикс: Открывать OAuth в новом окне (window.open) вместо window.location.href для совместимости с iframe
+
+## Marketplace Dialog Bug
+- [x] Баг: Кнопка «Продолжить покупки» выходит за рамки финального всплывающего окна в маркете (max-h-[90vh] + overflow-y-auto)
