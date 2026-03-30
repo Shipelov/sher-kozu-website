@@ -10,6 +10,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Link, useLocation } from "wouter";
 import Navbar from "@/components/Navbar";
 import { trpc } from "@/lib/trpc";
+import { useAuth } from "@/_core/hooks/useAuth";
 import ScrollRemaining from "@/components/ScrollRemaining";
 import PageBreadcrumbs from "@/components/PageBreadcrumbs";
 import {
@@ -123,14 +124,17 @@ function getRequestedAnimalSlug() {
 
 export default function ProductTracker() {
   const [location] = useLocation();
-  const ownerDashboardQuery = trpc.animals.ownerDashboard.useQuery();
+  const { isAuthenticated } = useAuth();
+  const ownerDashboardQuery = trpc.animals.ownerDashboard.useQuery(undefined, {
+    enabled: isAuthenticated,
+  });
   const requestedAnimalSlug = getRequestedAnimalSlug();
   const ownerAnimalSlug = ownerDashboardQuery.data?.animal?.slug ?? ownerDashboardQuery.data?.ownership?.animalSlug ?? null;
   const fallbackAnimalSlug = requestedAnimalSlug ?? ownerAnimalSlug ?? "marta";
 
   const trackerQuery = trpc.productTracker.getByAnimal.useQuery(
     { animalSlug: fallbackAnimalSlug },
-    { enabled: Boolean(fallbackAnimalSlug) }
+    { enabled: isAuthenticated && Boolean(fallbackAnimalSlug) }
   );
 
   const summary = trackerQuery.data as TrackerSummary | undefined;

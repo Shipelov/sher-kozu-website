@@ -68,7 +68,7 @@ describe("Context Switching: Dashboard invalidation cascade", () => {
 
 describe("Context Switching: ProductTracker derives animal from ownerDashboard", () => {
   it("calls trpc.animals.ownerDashboard.useQuery()", () => {
-    expect(TRACKER_SRC).toContain("trpc.animals.ownerDashboard.useQuery()");
+    expect(TRACKER_SRC).toContain("trpc.animals.ownerDashboard.useQuery(undefined");
   });
 
   it("extracts ownerAnimalSlug from dashboard data", () => {

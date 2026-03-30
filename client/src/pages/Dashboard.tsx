@@ -11,6 +11,7 @@ import { Link } from "wouter";
 import Navbar from "@/components/Navbar";
 import { trpc } from "@/lib/trpc";
 import AuthModal from "@/components/AuthModal";
+import { useAuth } from "@/_core/hooks/useAuth";
 import {
   ArrowRight,
   BookOpen,
@@ -257,7 +258,10 @@ function DashboardError({ onRetry }: { onRetry: () => void }) {
 }
 
 export default function Dashboard() {
-  const ownerDashboardQuery = trpc.animals.ownerDashboard.useQuery();
+  const { isAuthenticated } = useAuth();
+  const ownerDashboardQuery = trpc.animals.ownerDashboard.useQuery(undefined, {
+    enabled: isAuthenticated,
+  });
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const utils = trpc.useUtils();
   const setPrimaryMutation = trpc.animals.setPrimaryAnimal.useMutation({

@@ -69,12 +69,12 @@ export default function Leaderboard() {
   const [activeTab, setActiveTab] = useState<TabId>("herd");
   const [speciesFilter, setSpeciesFilter] = useState<SpeciesFilter>("all");
   const [sortMetric, setSortMetric] = useState<SortMetric>("overall");
-  const { user } = useAuth();
+  const { user, isAuthenticated } = useAuth();
 
-  const herdQuery = trpc.gamification.leaderboard.herd.useQuery({ limit: 20 });
-  const ownersQuery = trpc.gamification.leaderboard.owners.useQuery({ limit: 20 });
-  const myRatingQuery = trpc.gamification.leaderboard.myRating.useQuery();
-  const historyQuery = trpc.gamification.leaderboard.ratingHistory.useQuery({ days: 30 });
+  const herdQuery = trpc.gamification.leaderboard.herd.useQuery({ limit: 20 }, { enabled: isAuthenticated });
+  const ownersQuery = trpc.gamification.leaderboard.owners.useQuery({ limit: 20 }, { enabled: isAuthenticated });
+  const myRatingQuery = trpc.gamification.leaderboard.myRating.useQuery(undefined, { enabled: isAuthenticated });
+  const historyQuery = trpc.gamification.leaderboard.ratingHistory.useQuery({ days: 30 }, { enabled: isAuthenticated });
 
   const tabs: { id: TabId; label: string; icon: typeof Trophy }[] = [
     { id: "herd", label: "Рейтинг стада", icon: Heart },
@@ -110,6 +110,21 @@ export default function Leaderboard() {
               Сравнить
             </Link>
           </div>
+
+          {/* Guest prompt */}
+          {!isAuthenticated && (
+            <motion.div
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="rounded-[2rem] border border-dashed border-primary/20 bg-primary/5 p-6 text-center"
+            >
+              <Trophy className="mx-auto h-10 w-10 text-primary/60" />
+              <h3 className="mt-3 text-lg font-semibold text-foreground">Войдите, чтобы увидеть рейтинг</h3>
+              <p className="mt-2 text-sm text-muted-foreground">
+                Рейтинг фермы доступен участникам клуба. Войдите в аккаунт, чтобы увидеть позиции животных и владельцев.
+              </p>
+            </motion.div>
+          )}
 
           {/* My Rating Card */}
           {myRating && (

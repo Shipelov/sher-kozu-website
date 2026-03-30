@@ -3,6 +3,7 @@ import { motion } from "framer-motion";
 import { Link, useSearch } from "wouter";
 import Navbar from "@/components/Navbar";
 import { trpc } from "@/lib/trpc";
+import { useAuth } from "@/_core/hooks/useAuth";
 import { ComparisonRadarChart } from "@/components/RadarChart";
 import PageBreadcrumbs from "@/components/PageBreadcrumbs";
 import {
@@ -64,7 +65,7 @@ function AnimalSelector({
         className="w-full flex items-center gap-3 p-3 rounded-xl border border-border/70 bg-card hover:bg-accent/30 transition-colors text-left"
       >
         {selected?.coverImageUrl && selected.coverImageUrl !== "NULL" ? (
-          <img src={selected.coverImageUrl} alt="" className="w-10 h-10 rounded-full object-cover" />
+          <img src={selected.coverImageUrl} alt={selected.name} className="w-10 h-10 rounded-full object-cover" />
         ) : (
           <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary">
             <Heart className="h-5 w-5" />
@@ -99,7 +100,7 @@ function AnimalSelector({
               className="w-full flex items-center gap-3 p-3 hover:bg-accent/30 transition-colors text-left"
             >
               {animal.coverImageUrl && animal.coverImageUrl !== "NULL" ? (
-                <img src={animal.coverImageUrl} alt="" className="w-8 h-8 rounded-full object-cover" />
+                <img src={animal.coverImageUrl} alt={animal.name} className="w-8 h-8 rounded-full object-cover" />
               ) : (
                 <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary text-xs">
                   {animal.species === "goat" ? "🐐" : "🐑"}
@@ -187,7 +188,8 @@ export default function AnimalCompare() {
   }, [searchString]);
 
   // Get herd leaderboard which includes wellness metrics
-  const { data: herdData, isLoading: herdLoading } = trpc.gamification.leaderboard.herd.useQuery({ limit: 50 });
+  const { isAuthenticated } = useAuth();
+  const { data: herdData, isLoading: herdLoading } = trpc.gamification.leaderboard.herd.useQuery({ limit: 50 }, { enabled: isAuthenticated });
 
   const animals = useMemo(() => {
     if (!herdData) return [];
@@ -359,7 +361,7 @@ export default function AnimalCompare() {
                       }`}
                     >
                       {animal.coverImageUrl && animal.coverImageUrl !== "NULL" ? (
-                        <img src={animal.coverImageUrl} alt="" className="w-12 h-12 rounded-full object-cover" />
+                        <img src={animal.coverImageUrl} alt={animal.name} className="w-12 h-12 rounded-full object-cover" />
                       ) : (
                         <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
                           {animal.species === "goat" ? "🐐" : "🐑"}
