@@ -35,6 +35,10 @@ queryClient.getQueryCache().subscribe(event => {
 queryClient.getMutationCache().subscribe(event => {
   if (event.type === "updated" && event.action.type === "error") {
     const error = event.mutation.state.error;
+    // Skip analytics mutations — they are best-effort and should not pollute the console
+    const mutationKey = (event.mutation.options.mutationKey as string[] | undefined);
+    const isAnalytics = mutationKey?.some(k => typeof k === 'string' && k.startsWith('analytics.'));
+    if (isAnalytics) return;
     redirectToLoginIfUnauthorized(error);
     console.error("[API Mutation Error]", error);
   }

@@ -104,9 +104,15 @@ function getUtmParams() {
 export function useAnalytics() {
   const [location] = useLocation();
   const { user } = useAuth();
-  const trackVisit = trpc.analytics.trackVisit.useMutation();
-  const trackEventMut = trpc.analytics.trackEvent.useMutation();
-  const updateTime = trpc.analytics.updateTime.useMutation();
+  const trackVisit = trpc.analytics.trackVisit.useMutation({
+    onError: () => { /* Analytics is best-effort, suppress errors silently */ },
+  });
+  const trackEventMut = trpc.analytics.trackEvent.useMutation({
+    onError: () => { /* Analytics is best-effort, suppress errors silently */ },
+  });
+  const updateTime = trpc.analytics.updateTime.useMutation({
+    onError: () => { /* Analytics is best-effort, suppress errors silently */ },
+  });
 
   const pageEntryTime = useRef<number>(Date.now());
   const lastPagePath = useRef<string>("");

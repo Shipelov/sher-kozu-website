@@ -67,34 +67,46 @@ export const analyticsRouter = router({
   /* ─── Public tracking endpoints (called from client) ─── */
 
   trackVisit: publicProcedure.input(trackVisitInput).mutation(async ({ input, ctx }) => {
-    // Enrich with GeoIP data from the request IP
-    let geoData: { country?: string | null; city?: string | null; region?: string | null; latitude?: number | null; longitude?: number | null } = {};
     try {
-      const ip = extractClientIp(ctx.req);
-      if (ip) {
-        const geo = await lookupGeoIp(ip);
-        geoData = {
-          country: geo.country || input.country,
-          city: geo.city,
-          region: geo.region,
-          latitude: geo.latitude,
-          longitude: geo.longitude,
-        };
+      // Enrich with GeoIP data from the request IP
+      let geoData: { country?: string | null; city?: string | null; region?: string | null; latitude?: number | null; longitude?: number | null } = {};
+      try {
+        const ip = extractClientIp(ctx.req);
+        if (ip) {
+          const geo = await lookupGeoIp(ip);
+          geoData = {
+            country: geo.country || input.country,
+            city: geo.city,
+            region: geo.region,
+            latitude: geo.latitude,
+            longitude: geo.longitude,
+          };
+        }
+      } catch {
+        // GeoIP enrichment is best-effort
       }
-    } catch {
-      // GeoIP enrichment is best-effort
+      await recordSiteVisit({ ...input, ...geoData });
+    } catch (err) {
+      console.error("[Analytics] trackVisit failed (silenced):", err instanceof Error ? err.message : err);
     }
-    await recordSiteVisit({ ...input, ...geoData });
     return { success: true };
   }),
 
   trackEvent: publicProcedure.input(trackEventInput).mutation(async ({ input }) => {
-    await recordSiteEvent(input);
+    try {
+      await recordSiteEvent(input);
+    } catch (err) {
+      console.error("[Analytics] trackEvent failed (silenced):", err instanceof Error ? err.message : err);
+    }
     return { success: true };
   }),
 
   updateTime: publicProcedure.input(updateTimeInput).mutation(async ({ input }) => {
-    await updateVisitTimeOnPage(input.sessionId, input.pagePath, input.timeOnPage);
+    try {
+      await updateVisitTimeOnPage(input.sessionId, input.pagePath, input.timeOnPage);
+    } catch (err) {
+      console.error("[Analytics] updateTime failed (silenced):", err instanceof Error ? err.message : err);
+    }
     return { success: true };
   }),
 
