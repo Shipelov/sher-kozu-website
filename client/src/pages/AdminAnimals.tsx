@@ -1938,6 +1938,16 @@ export default function AdminAnimalsPage() {
                   <div className="max-w-2xl space-y-3">
                     <h1 className="text-2xl font-semibold tracking-tight text-foreground">Животные</h1>
                     <p className="text-sm text-muted-foreground">Каталог, доли и показатели</p>
+                    <Button
+                      onClick={() => {
+                        resetEditor();
+                        setIsEditorSheetOpen(true);
+                      }}
+                      className="mt-2 gap-2"
+                    >
+                      <Plus className="h-4 w-4" />
+                      Новое животное
+                    </Button>
                   </div>
 
                   <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
