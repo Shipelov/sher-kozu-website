@@ -112,12 +112,16 @@ describe("Context Switching: ClubFeed derives animal from ownerDashboard", () =>
     expect(CLUB_SRC).toContain("requestedAnimalSlug ?? ownerAnimal?.slug");
   });
 
-  it("uses ownerAnimal name as active animal name", () => {
-    expect(CLUB_SRC).toContain("ownerAnimal?.name ?? (fallbackAnimal ? fallbackAnimal.animalName");
+  it("derives activeOwnership from allOwnerships by activeAnimalSlug", () => {
+    expect(CLUB_SRC).toContain("allOwnerships.find((o) => o.animalSlug === activeAnimalSlug)");
   });
 
-  it("uses ownership share percent from dashboard data", () => {
-    expect(CLUB_SRC).toContain("ownership?.sharePercent ?? ownerAnimal?.mySharePercent");
+  it("derives active animal name from activeOwnership first, then ownerAnimal", () => {
+    expect(CLUB_SRC).toContain("activeOwnership?.animalName ?? ownerAnimal?.name");
+  });
+
+  it("derives share percent from activeOwnership first", () => {
+    expect(CLUB_SRC).toContain("activeOwnership?.sharePercent");
   });
 
   it("generates cross-navigation links using active animal slug", () => {

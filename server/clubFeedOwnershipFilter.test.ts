@@ -43,12 +43,24 @@ describe("ClubFeed animal switcher ownership filter", () => {
     expect(clubFeedSource).toContain("owned.sharePercent");
   });
 
-  it("should use allOwnerships for fallback animal resolution", () => {
-    expect(clubFeedSource).toContain("allOwnerships.find((o) => o.animalSlug === requestedAnimalSlug)");
+  it("should resolve activeOwnership from allOwnerships by activeAnimalSlug", () => {
+    expect(clubFeedSource).toContain("allOwnerships.find((o) => o.animalSlug === activeAnimalSlug)");
   });
 
-  it("should use allOwnerships for active animal cover URL resolution", () => {
-    expect(clubFeedSource).toContain("allOwnerships.find((o) => o.animalSlug === activeAnimalSlug)?.coverImageUrl");
+  it("should derive activeAnimalName from activeOwnership first (not ownerAnimal)", () => {
+    expect(clubFeedSource).toContain("activeOwnership?.animalName ?? ownerAnimal?.name");
+  });
+
+  it("should derive activeAnimalCoverUrl from activeOwnership first", () => {
+    expect(clubFeedSource).toContain("activeOwnership?.coverImageUrl ?? ownerAnimal?.coverImageUrl");
+  });
+
+  it("should derive activeAnimalSharePercent from activeOwnership first", () => {
+    expect(clubFeedSource).toContain("activeOwnership?.sharePercent");
+  });
+
+  it("should use activeOwnership for guest journey check", () => {
+    expect(clubFeedSource).toContain("!activeOwnership && !ownership");
   });
 });
 

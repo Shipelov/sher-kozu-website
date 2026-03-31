@@ -196,18 +196,23 @@ export default function ClubFeed() {
   const ownerAnimal = dashboardQuery.data?.animal ?? null;
   const ownership = dashboardQuery.data?.ownership ?? null;
   const allOwnerships = dashboardQuery.data?.allOwnerships ?? [];
-  const fallbackAnimal = allOwnerships.find((o) => o.animalSlug === requestedAnimalSlug) ?? allOwnerships[0] ?? null;
 
-  const activeAnimalSlug = requestedAnimalSlug ?? ownerAnimal?.slug ?? (fallbackAnimal ? fallbackAnimal.animalSlug : "");
-  const activeAnimalName = ownerAnimal?.name ?? (fallbackAnimal ? fallbackAnimal.animalName : "вашего животного");
-  const activeAnimalCoverUrl = allOwnerships.find((o) => o.animalSlug === activeAnimalSlug)?.coverImageUrl ?? ownerAnimal?.coverImageUrl ?? null;
-  const activeAnimalSharePercent = ownership?.sharePercent ?? ownerAnimal?.mySharePercent ?? 0;
+  // Resolve active animal slug: URL param > primary animal > first ownership
+  const activeAnimalSlug = requestedAnimalSlug ?? ownerAnimal?.slug ?? (allOwnerships[0]?.animalSlug ?? "");
+
+  // Find the matching ownership entry for the active slug
+  const activeOwnership = allOwnerships.find((o) => o.animalSlug === activeAnimalSlug) ?? null;
+
+  // Derive all display values from the matched ownership entry first, then fallback to ownerAnimal
+  const activeAnimalName = activeOwnership?.animalName ?? ownerAnimal?.name ?? "вашего животного";
+  const activeAnimalCoverUrl = activeOwnership?.coverImageUrl ?? ownerAnimal?.coverImageUrl ?? null;
+  const activeAnimalSharePercent = activeOwnership?.sharePercent ?? ownership?.sharePercent ?? ownerAnimal?.mySharePercent ?? 0;
 
   const profileHref = `/animals/${activeAnimalSlug}`;
   const trackerHref = `/tracker?animal=${activeAnimalSlug}`;
   const dashboardHref = activeAnimalSlug ? `/dashboard?animal=${activeAnimalSlug}` : "/dashboard";
   const clubHref = activeAnimalSlug ? `/club?animal=${activeAnimalSlug}` : "/club";
-  const isGuestJourney = !ownership;
+  const isGuestJourney = !activeOwnership && !ownership;
 
   const visiblePosts = useMemo(() => {
     if (activeFilter === "all") return posts;
@@ -242,7 +247,7 @@ export default function ClubFeed() {
     ? `Ваше участие ${activeAnimalSharePercent}% делает клубные события личными — каждое связано с ${activeAnimalName} и вашей семьёй.`
     : "Семейные визиты, мастер-классы и праздники — события, которые остаются в памяти.");
 
-  const heroDescription = ownership
+  const heroDescription = (activeOwnership || ownership)
     ? `Дневник фермы, события и истории участников — всё вокруг ${activeAnimalName} и вашего участия ${activeAnimalSharePercent}%.`
     : "Дневник фермы, семейные визиты, мастер-классы и живые истории участников — место, где ферма становится частью вашей жизни."
 
