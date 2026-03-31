@@ -5074,3 +5074,24 @@ export async function getActiveExperimentsForPage(pagePath: string) {
     return pagePath === pattern;
   });
 }
+
+
+/**
+ * Returns the list of animal slugs that a user actively owns (status = active or pending_payment).
+ * Used to gate access to tracker and other owner-only data.
+ */
+export async function getUserOwnedAnimalSlugs(userOpenId: string): Promise<string[]> {
+  const db = await getDb();
+  if (!db) return [];
+  const rows = await db
+    .select({ slug: animals.slug })
+    .from(animalOwnerships)
+    .innerJoin(animals, eq(animalOwnerships.animalId, animals.id))
+    .where(
+      and(
+        eq(animalOwnerships.ownerOpenId, userOpenId),
+        or(eq(animalOwnerships.status, "active"), eq(animalOwnerships.status, "pending_payment")),
+      ),
+    );
+  return Array.from(new Set(rows.map((r: { slug: string }) => r.slug)));
+}

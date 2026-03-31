@@ -14,7 +14,7 @@ import AnalyticsTracker from "@/components/AnalyticsTracker";
 const Home = lazy(() => import("./pages/Home"));
 const Dashboard = lazy(() => import("./pages/Dashboard"));
 const AnimalProfile = lazy(() => import("./pages/AnimalProfile"));
-const ProductTracker = lazy(() => import("./pages/ProductTracker"));
+const TrackerGate = lazy(() => import("./pages/TrackerGate"));
 const ClubFeed = lazy(() => import("./pages/ClubFeed"));
 const AdminClub = lazy(() => import("./pages/AdminClub"));
 const AnimalsCatalog = lazy(() => import("./pages/AnimalsCatalog"));
@@ -93,7 +93,7 @@ function Router() {
         <Route path="/animal/:slug" component={AnimalProfile} />
         <Route path="/animals" component={AnimalsCatalog} />
         <Route path="/animals/:slug" component={AnimalProfile} />
-        <Route path="/tracker" component={ProductTracker} />
+        <Route path="/tracker" component={TrackerGate} />
         <Route path="/club" component={ClubFeed} />
         <Route path="/admin" component={AdminHub} />
         <Route path="/admin/users" component={AdminUsers} />

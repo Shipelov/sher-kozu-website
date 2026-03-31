@@ -94,7 +94,7 @@ export default function Navbar() {
       { href: "/dashboard", label: "Мой кабинет", icon: LayoutDashboard, authOnly: true, primary: true },
       { href: "/about", label: "О ферме", icon: Leaf, authOnly: false, primary: true },
       { href: "/animals", label: "Каталог", icon: PawPrint, authOnly: false, primary: true },
-      { href: "/tracker", label: "Трекер", icon: Milk, authOnly: true, primary: true },
+      { href: "/tracker", label: "Трекер", icon: Milk, authOnly: false, primary: true },
       { href: "/club", label: "Клуб", icon: Users, authOnly: false, primary: true },
       { href: "/faq", label: "FAQ", icon: HelpCircle, authOnly: false, primary: false },
       { href: "/partners", label: "B2B", icon: Briefcase, authOnly: false, primary: false },

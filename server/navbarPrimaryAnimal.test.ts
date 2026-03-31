@@ -132,12 +132,13 @@ describe("Navbar: fixed button order", () => {
     }
   });
 
-  it("marks Мой кабинет and Трекер as authOnly", () => {
-    // Check that authOnly: true appears on the same line as the label (skip comment lines)
+  it("marks Мой кабинет as authOnly and Трекер as public (demo for guests)", () => {
+    // Dashboard requires auth
     const dashboardLine = NAVBAR_SRC.split("\n").find((l: string) => l.includes('"\u041c\u043e\u0439 \u043a\u0430\u0431\u0438\u043d\u0435\u0442"') && l.includes("authOnly"));
     expect(dashboardLine).toContain("authOnly: true");
+    // Tracker is now public — demo version shown for guests and users without animals
     const trackerLine = NAVBAR_SRC.split("\n").find((l: string) => l.includes('"\u0422\u0440\u0435\u043a\u0435\u0440"') && l.includes("authOnly"));
-    expect(trackerLine).toContain("authOnly: true");
+    expect(trackerLine).toContain("authOnly: false");
   });
 
   it("marks B2B as publicly visible (authOnly: false)", () => {

@@ -28,6 +28,7 @@ import {
   getIntegrationAuditById,
   getPartnerLeadById,
   getProductTrackerData,
+  getUserOwnedAnimalSlugs,
   listActivePlans,
   purchaseAnimalShare,
   listAdminAnimals,
@@ -1272,9 +1273,17 @@ export const appRouter = router({
     }),
   }),
   productTracker: router({
-    getByAnimal: publicProcedure.input(trackerSummaryInput).query(async ({ ctx, input }) => {
-      const ownerOpenId = ctx.user?.openId ?? ENV.ownerOpenId;
-      return getProductTrackerData(ownerOpenId, input.animalSlug);
+    getByAnimal: protectedProcedure.input(trackerSummaryInput).query(async ({ ctx, input }) => {
+      // Only allow owners to see their own tracker data
+      const ownedSlugs = await getUserOwnedAnimalSlugs(ctx.user.openId);
+      if (!ownedSlugs.includes(input.animalSlug)) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "У вас нет доступа к трекеру этого животного." });
+      }
+      return getProductTrackerData(ctx.user.openId, input.animalSlug);
+    }),
+    /** Returns the list of animal slugs the current user owns (for frontend routing) */
+    myAnimals: protectedProcedure.query(async ({ ctx }) => {
+      return getUserOwnedAnimalSlugs(ctx.user.openId);
     }),
   }),
   club: router({

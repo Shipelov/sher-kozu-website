@@ -160,9 +160,10 @@ describe("Context Switching: Server-side data flow", () => {
     expect(DB_SRC).toContain("slug: currentAnimal.slug");
   });
 
-  it("productTracker.getByAnimal accepts animalSlug parameter (public)", () => {
-    // Now a public procedure: uses ctx.user?.openId ?? ENV.ownerOpenId
-    expect(ROUTERS_SRC).toContain("getProductTrackerData(ownerOpenId, input.animalSlug)");
+  it("productTracker.getByAnimal accepts animalSlug parameter (protected with ownership check)", () => {
+    // Now a protected procedure: checks ownership before returning data
+    expect(ROUTERS_SRC).toContain("getProductTrackerData(ctx.user.openId, input.animalSlug)");
+    expect(ROUTERS_SRC).toContain("getUserOwnedAnimalSlugs(ctx.user.openId)");
   });
 
   it("getProductTrackerData filters by animalSlug", () => {
