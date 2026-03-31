@@ -1,0 +1,20 @@
+{
+  "query": "SELECT COLUMN_NAME, DATA_TYPE, IS_NULLABLE FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'siteVisits' AND COLUMN_NAME IN ('latitude', 'longitude') ORDER BY ORDINAL_POSITION;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3J2fXRHx8d1YjF6.root --database mLhmg5VmBsEBpZiYqdnhMQ --execute SELECT COLUMN_NAME, DATA_TYPE, IS_NULLABLE FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'siteVisits' AND COLUMN_NAME IN ('latitude', 'longitude') ORDER BY ORDINAL_POSITION;",
+  "rows": [
+    {
+      "COLUMN_NAME": "latitude",
+      "DATA_TYPE": "double",
+      "IS_NULLABLE": "YES"
+    },
+    {
+      "COLUMN_NAME": "longitude",
+      "DATA_TYPE": "double",
+      "IS_NULLABLE": "YES"
+    }
+  ],
+  "messages": [],
+  "stdout": "COLUMN_NAME\tDATA_TYPE\tIS_NULLABLE\nlatitude\tdouble\tYES\nlongitude\tdouble\tYES\n",
+  "stderr": "",
+  "execution_time_ms": 383
+}

@@ -1,0 +1,120 @@
+{
+  "query": "SELECT COLUMN_NAME, IS_NULLABLE, DATA_TYPE FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'siteVisits' ORDER BY ORDINAL_POSITION;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3J2fXRHx8d1YjF6.root --database mLhmg5VmBsEBpZiYqdnhMQ --execute SELECT COLUMN_NAME, IS_NULLABLE, DATA_TYPE FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'siteVisits' ORDER BY ORDINAL_POSITION;",
+  "rows": [
+    {
+      "COLUMN_NAME": "id",
+      "IS_NULLABLE": "NO",
+      "DATA_TYPE": "int"
+    },
+    {
+      "COLUMN_NAME": "visitorId",
+      "IS_NULLABLE": "NO",
+      "DATA_TYPE": "varchar"
+    },
+    {
+      "COLUMN_NAME": "sessionId",
+      "IS_NULLABLE": "NO",
+      "DATA_TYPE": "varchar"
+    },
+    {
+      "COLUMN_NAME": "userOpenId",
+      "IS_NULLABLE": "YES",
+      "DATA_TYPE": "varchar"
+    },
+    {
+      "COLUMN_NAME": "pagePath",
+      "IS_NULLABLE": "NO",
+      "DATA_TYPE": "varchar"
+    },
+    {
+      "COLUMN_NAME": "referrer",
+      "IS_NULLABLE": "YES",
+      "DATA_TYPE": "varchar"
+    },
+    {
+      "COLUMN_NAME": "utmSource",
+      "IS_NULLABLE": "YES",
+      "DATA_TYPE": "varchar"
+    },
+    {
+      "COLUMN_NAME": "utmMedium",
+      "IS_NULLABLE": "YES",
+      "DATA_TYPE": "varchar"
+    },
+    {
+      "COLUMN_NAME": "utmCampaign",
+      "IS_NULLABLE": "YES",
+      "DATA_TYPE": "varchar"
+    },
+    {
+      "COLUMN_NAME": "deviceType",
+      "IS_NULLABLE": "YES",
+      "DATA_TYPE": "varchar"
+    },
+    {
+      "COLUMN_NAME": "browser",
+      "IS_NULLABLE": "YES",
+      "DATA_TYPE": "varchar"
+    },
+    {
+      "COLUMN_NAME": "os",
+      "IS_NULLABLE": "YES",
+      "DATA_TYPE": "varchar"
+    },
+    {
+      "COLUMN_NAME": "screenWidth",
+      "IS_NULLABLE": "YES",
+      "DATA_TYPE": "int"
+    },
+    {
+      "COLUMN_NAME": "country",
+      "IS_NULLABLE": "YES",
+      "DATA_TYPE": "varchar"
+    },
+    {
+      "COLUMN_NAME": "timeOnPage",
+      "IS_NULLABLE": "YES",
+      "DATA_TYPE": "int"
+    },
+    {
+      "COLUMN_NAME": "isEntry",
+      "IS_NULLABLE": "NO",
+      "DATA_TYPE": "tinyint"
+    },
+    {
+      "COLUMN_NAME": "isExit",
+      "IS_NULLABLE": "NO",
+      "DATA_TYPE": "tinyint"
+    },
+    {
+      "COLUMN_NAME": "createdAt",
+      "IS_NULLABLE": "NO",
+      "DATA_TYPE": "timestamp"
+    },
+    {
+      "COLUMN_NAME": "city",
+      "IS_NULLABLE": "YES",
+      "DATA_TYPE": "varchar"
+    },
+    {
+      "COLUMN_NAME": "region",
+      "IS_NULLABLE": "YES",
+      "DATA_TYPE": "varchar"
+    },
+    {
+      "COLUMN_NAME": "latitude",
+      "IS_NULLABLE": "YES",
+      "DATA_TYPE": "double"
+    },
+    {
+      "COLUMN_NAME": "longitude",
+      "IS_NULLABLE": "YES",
+      "DATA_TYPE": "double"
+    }
+  ],
+  "messages": [],
+  "stdout": "COLUMN_NAME\tIS_NULLABLE\tDATA_TYPE\nid\tNO\tint\nvisitorId\tNO\tvarchar\nsessionId\tNO\tvarchar\nuserOpenId\tYES\tvarchar\npagePath\tNO\tvarchar\nreferrer\tYES\tvarchar\nutmSource\tYES\tvarchar\nutmMedium\tYES\tvarchar\nutmCampaign\tYES\tvarchar\ndeviceType\tYES\tvarchar\nbrowser\tYES\tvarchar\nos\tYES\tvarchar\nscreenWidth\tYES\tint\ncountry\tYES\tvarchar\ntimeOnPage\tYES\tint\nisEntry\tNO\ttinyint\nisExit\tNO\ttinyint\ncreatedAt\tNO\ttimestamp\ncity\tYES\tvarchar\nregion\tYES\tvarchar\nlatitude\tYES\tdouble\nlongitude\tYES\tdouble\n",
+  "stderr": "",
+  "execution_time_ms": 356
+}

@@ -1,0 +1,16 @@
+{
+  "query": "SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'siteVisits' AND COLUMN_NAME IN ('latitude', 'longitude');",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3J2fXRHx8d1YjF6.root --database mLhmg5VmBsEBpZiYqdnhMQ --execute SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'siteVisits' AND COLUMN_NAME IN ('latitude', 'longitude');",
+  "rows": [
+    {
+      "COLUMN_NAME": "latitude"
+    },
+    {
+      "COLUMN_NAME": "longitude"
+    }
+  ],
+  "messages": [],
+  "stdout": "COLUMN_NAME\nlatitude\nlongitude\n",
+  "stderr": "",
+  "execution_time_ms": 365
+}
