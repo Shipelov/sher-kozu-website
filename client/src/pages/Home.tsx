@@ -454,23 +454,23 @@ export default function Home() {
 
           <div className="mt-14 grid gap-6 lg:grid-cols-2">
             {/* Goats card */}
-            <Link href="/animals#goats" className="group block">
+            <Link href="/animals#goats" className="group block h-full">
               <motion.div
                 initial={{ opacity: 0, y: 16 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
-                className="overflow-hidden rounded-[2rem] border border-amber-200/80 bg-gradient-to-br from-amber-50 via-white to-[#fff5dd] shadow-sm transition-transform duration-300 group-hover:-translate-y-1"
+                className="h-full overflow-hidden rounded-[2rem] border border-amber-200/80 bg-gradient-to-br from-amber-50 via-white to-[#fff5dd] shadow-sm transition-transform duration-300 group-hover:-translate-y-1"
               >
-                <div className="grid md:grid-cols-[200px_1fr]">
+                <div className="grid h-full md:grid-cols-[200px_1fr]">
                   <img src={cms.getImage("gallery_goats_image", CDN.goat)} alt="Козы Шерь Козу" className="h-48 w-full object-cover md:h-full" />
-                  <div className="p-6">
-                    <div className="inline-flex items-center rounded-full border border-amber-200 bg-white/80 px-3 py-1 text-xs font-medium text-amber-900">
+                  <div className="flex flex-col p-6">
+                    <div className="inline-flex items-center self-start rounded-full border border-amber-200 bg-white/80 px-3 py-1 text-xs font-medium text-amber-900">
                       Козы
                     </div>
                     <h3 className="mt-3 text-2xl font-semibold text-foreground">
                       Англо-нубийские и альпийские козы
                     </h3>
-                    <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                    <p className="mt-2 flex-1 text-sm leading-6 text-muted-foreground">
                       Молоко жирностью до 5% с исключительным сливочным вкусом. «Королевские» породы французского сыроделия — основа для артизанальных сыров.
                     </p>
                     <div className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-amber-900 transition-colors group-hover:text-amber-700">
@@ -483,24 +483,24 @@ export default function Home() {
             </Link>
 
             {/* Sheep card */}
-            <Link href="/animals#sheep" className="group block">
+            <Link href="/animals#sheep" className="group block h-full">
               <motion.div
                 initial={{ opacity: 0, y: 16 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ delay: 0.08 }}
-                className="overflow-hidden rounded-[2rem] border border-emerald-200/80 bg-gradient-to-br from-emerald-50 via-white to-[#eefbf4] shadow-sm transition-transform duration-300 group-hover:-translate-y-1"
+                className="h-full overflow-hidden rounded-[2rem] border border-emerald-200/80 bg-gradient-to-br from-emerald-50 via-white to-[#eefbf4] shadow-sm transition-transform duration-300 group-hover:-translate-y-1"
               >
-                <div className="grid md:grid-cols-[200px_1fr]">
+                <div className="grid h-full md:grid-cols-[200px_1fr]">
                   <img src={cms.getImage("gallery_sheep_image", CDN.family)} alt="Овцы Шерь Козу" className="h-48 w-full object-cover md:h-full" />
-                  <div className="p-6">
-                    <div className="inline-flex items-center rounded-full border border-emerald-200 bg-white/80 px-3 py-1 text-xs font-medium text-emerald-900">
+                  <div className="flex flex-col p-6">
+                    <div className="inline-flex items-center self-start rounded-full border border-emerald-200 bg-white/80 px-3 py-1 text-xs font-medium text-emerald-900">
                       Овцы
                     </div>
                     <h3 className="mt-3 text-2xl font-semibold text-foreground">
                       Овцы Остфриз и Лакон
                     </h3>
-                    <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                    <p className="mt-2 flex-1 text-sm leading-6 text-muted-foreground">
                       Самые высокоудойные породы в мире. Молоко с высоким содержанием жира и белка — идеально для сыроварения. Генетика уровня Рокфора.
                     </p>
                     <div className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-emerald-900 transition-colors group-hover:text-emerald-700">
