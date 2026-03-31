@@ -229,11 +229,11 @@ describe("faqChat.chat", () => {
     await expect(caller.chat({ messages: [] })).rejects.toThrow();
   });
 
-  it("rejects message content exceeding 2000 characters", async () => {
+  it("rejects message content exceeding 10000 characters", async () => {
     const ctx = createPublicContext();
     const caller = faqChatRouter.createCaller(ctx);
 
-    const longContent = "a".repeat(2001);
+    const longContent = "a".repeat(10001);
     await expect(
       caller.chat({ messages: [{ role: "user", content: longContent }] })
     ).rejects.toThrow();

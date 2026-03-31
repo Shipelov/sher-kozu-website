@@ -409,7 +409,7 @@ export const faqChatRouter = router({
           .array(
             z.object({
               role: z.enum(["user", "assistant"]),
-              content: z.string().min(1).max(2000),
+              content: z.string().min(1).max(10000),
             })
           )
           .min(1)
