@@ -123,6 +123,29 @@ export async function awardBadge(
 }
 
 /**
+ * Revoke a badge from an owner if they no longer meet the criteria.
+ * Returns true if revoked, false if they didn't have it.
+ */
+export async function revokeBadge(
+  ownerOpenId: string,
+  badgeType: string
+): Promise<boolean> {
+  const has = await hasBadge(ownerOpenId, badgeType);
+  if (!has) return false;
+
+  const db = await getDb();
+  await db
+    .delete(achievementBadges)
+    .where(
+      and(
+        eq(achievementBadges.ownerOpenId, ownerOpenId),
+        eq(achievementBadges.badgeType, badgeType)
+      )
+    );
+  return true;
+}
+
+/**
  * Check and award badges based on current owner state.
  * Called after key events (purchase, ownership change, rating update).
  */
@@ -141,12 +164,16 @@ export async function checkAndAwardBadges(
 ): Promise<string[]> {
   const newBadges: string[] = [];
 
+  const revokedBadges: string[] = [];
+
   // Ownership badges
   if (context.animalCount && context.animalCount >= 1) {
     if (await awardBadge(ownerOpenId, "first_animal")) newBadges.push("first_animal");
   }
-  if (context.animalCount && context.animalCount >= 5) {
+  if (context.animalCount !== undefined && context.animalCount >= 5) {
     if (await awardBadge(ownerOpenId, "herd_of_five")) newBadges.push("herd_of_five");
+  } else if (context.animalCount !== undefined && context.animalCount < 5) {
+    if (await revokeBadge(ownerOpenId, "herd_of_five")) revokedBadges.push("herd_of_five");
   }
 
   // Marketplace badges
@@ -190,4 +217,46 @@ export async function checkAndAwardBadges(
   }
 
   return newBadges;
+}
+
+/**
+ * Revoke badges that no longer meet criteria and return list of revoked badge types.
+ * Called alongside checkAndAwardBadges to ensure badge accuracy.
+ */
+export async function revokeInvalidBadges(
+  ownerOpenId: string,
+  context: {
+    animalCount?: number;
+    totalSpent?: number;
+    totalScore?: number;
+    animalHealthScores?: number[];
+    animalHappinessScores?: number[];
+  }
+): Promise<string[]> {
+  const revoked: string[] = [];
+
+  // Revoke herd_of_five if animal count dropped below 5
+  if (context.animalCount !== undefined && context.animalCount < 5) {
+    if (await revokeBadge(ownerOpenId, "herd_of_five")) revoked.push("herd_of_five");
+  }
+
+  // Revoke caring_owner if any animal health dropped below 70
+  if (
+    context.animalHealthScores &&
+    context.animalHealthScores.length > 0 &&
+    !context.animalHealthScores.every((s) => s > 70)
+  ) {
+    if (await revokeBadge(ownerOpenId, "caring_owner")) revoked.push("caring_owner");
+  }
+
+  // Revoke happy_herd if any animal happiness dropped below 70
+  if (
+    context.animalHappinessScores &&
+    context.animalHappinessScores.length > 0 &&
+    !context.animalHappinessScores.every((s) => s > 70)
+  ) {
+    if (await revokeBadge(ownerOpenId, "happy_herd")) revoked.push("happy_herd");
+  }
+
+  return revoked;
 }

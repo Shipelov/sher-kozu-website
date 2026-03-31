@@ -50,8 +50,15 @@ function DashboardBadgesSection() {
   const { data: badges, isLoading } = trpc.badges.myBadges.useQuery();
   const checkBadges = trpc.badges.checkMyBadges.useMutation({
     onSuccess: (result) => {
-      if (result.newBadges.length > 0) {
+      const hasNew = result.newBadges.length > 0;
+      const hasRevoked = result.revokedBadges && result.revokedBadges.length > 0;
+      if (hasNew) {
         toast.success(`Новые достижения: ${result.newBadges.length}!`);
+      }
+      if (hasRevoked) {
+        toast.info(`Обновлено: ${result.revokedBadges.length} достижений отозвано`);
+      }
+      if (hasNew || hasRevoked) {
         utils.badges.myBadges.invalidate();
       } else {
         toast.info("Новых достижений пока нет");

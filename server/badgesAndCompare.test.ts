@@ -230,7 +230,7 @@ describe("Achievement Badges — tRPC Routes", () => {
   });
 
   it("imports badge functions from ./badges", () => {
-    expect(ROUTERS_SRC).toContain('import { getOwnerBadges, checkAndAwardBadges, BADGE_DEFINITIONS } from "./badges"');
+    expect(ROUTERS_SRC).toContain('import { getOwnerBadges, checkAndAwardBadges, revokeInvalidBadges, BADGE_DEFINITIONS } from "./badges"');
   });
 
   describe("myBadges", () => {
@@ -288,8 +288,8 @@ describe("Achievement Badges — tRPC Routes", () => {
       expect(ROUTERS_SRC).toContain("checkAndAwardBadges(ownerOpenId");
     });
 
-    it("returns newBadges and total count", () => {
-      expect(ROUTERS_SRC).toContain("return { newBadges, total:");
+    it("returns newBadges, revokedBadges and total count", () => {
+      expect(ROUTERS_SRC).toContain("return { newBadges, revokedBadges, total:");
     });
   });
 });

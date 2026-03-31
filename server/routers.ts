@@ -89,7 +89,7 @@ import { cmsRouter } from "./routers/cms";
 import { analyticsRouter } from "./routers/analytics";
 import { analyticsAlertsRouter } from "./routers/analyticsAlerts";
 import { abExperimentsRouter } from "./routers/abExperiments";
-import { getOwnerBadges, checkAndAwardBadges, BADGE_DEFINITIONS } from "./badges";
+import { getOwnerBadges, checkAndAwardBadges, revokeInvalidBadges, BADGE_DEFINITIONS } from "./badges";
 import {
   checkRateLimit,
   createOtp,
@@ -1510,12 +1510,17 @@ export const appRouter = router({
       const spentRows = await db.select({ total: sql<number>`COALESCE(SUM(ABS(amountMinor)), 0)` }).from(walletTransactions).where(eq(walletTransactions.ownerOpenId, ownerOpenId));
       const totalSpent = Number(spentRows[0]?.total ?? 0);
 
+      // First revoke badges that no longer meet criteria
+      const revokedBadges = await revokeInvalidBadges(ownerOpenId, {
+        animalCount,
+      });
+
       const newBadges = await checkAndAwardBadges(ownerOpenId, {
         animalCount,
         hasPurchases,
         totalSpent,
       });
-      return { newBadges, total: (await getOwnerBadges(ownerOpenId)).length };
+      return { newBadges, revokedBadges, total: (await getOwnerBadges(ownerOpenId)).length };
     }),
   }),
   adminOwnerships: router({
