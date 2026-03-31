@@ -1,0 +1,30 @@
+{
+  "query": "SELECT DISTINCT breed, animalSpecies, name FROM animals ORDER BY animalSpecies, breed;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3J2fXRHx8d1YjF6.root --database mLhmg5VmBsEBpZiYqdnhMQ --execute SELECT DISTINCT breed, animalSpecies, name FROM animals ORDER BY animalSpecies, breed;",
+  "rows": [
+    {
+      "breed": "Англо-нубийская",
+      "animalSpecies": "goat",
+      "name": "Лола"
+    },
+    {
+      "breed": "Зааненская",
+      "animalSpecies": "goat",
+      "name": "Мира"
+    },
+    {
+      "breed": "Казахская тонкорунная",
+      "animalSpecies": "sheep",
+      "name": "Злата"
+    },
+    {
+      "breed": "Лакон",
+      "animalSpecies": "sheep",
+      "name": "Руфа"
+    }
+  ],
+  "messages": [],
+  "stdout": "breed\tanimalSpecies\tname\nАнгло-нубийская\tgoat\tЛола\nЗааненская\tgoat\tМира\nКазахская тонкорунная\tsheep\tЗлата\nЛакон\tsheep\tРуфа\n",
+  "stderr": "",
+  "execution_time_ms": 354
+}

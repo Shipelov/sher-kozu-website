@@ -1,0 +1,34 @@
+{
+  "query": "SELECT name, slug, animalSpecies, breed FROM animals ORDER BY name;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3J2fXRHx8d1YjF6.root --database mLhmg5VmBsEBpZiYqdnhMQ --execute SELECT name, slug, animalSpecies, breed FROM animals ORDER BY name;",
+  "rows": [
+    {
+      "name": "Злата",
+      "slug": "zlata",
+      "animalSpecies": "sheep",
+      "breed": "Казахская тонкорунная"
+    },
+    {
+      "name": "Лола",
+      "slug": "Lola",
+      "animalSpecies": "goat",
+      "breed": "Англо-нубийская"
+    },
+    {
+      "name": "Мира",
+      "slug": "mira",
+      "animalSpecies": "goat",
+      "breed": "Зааненская"
+    },
+    {
+      "name": "Руфа",
+      "slug": "Rufa",
+      "animalSpecies": "sheep",
+      "breed": "Лакон"
+    }
+  ],
+  "messages": [],
+  "stdout": "name\tslug\tanimalSpecies\tbreed\nЗлата\tzlata\tsheep\tКазахская тонкорунная\nЛола\tLola\tgoat\tАнгло-нубийская\nМира\tmira\tgoat\tЗааненская\nРуфа\tRufa\tsheep\tЛакон\n",
+  "stderr": "",
+  "execution_time_ms": 372
+}
