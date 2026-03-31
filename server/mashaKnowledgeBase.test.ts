@@ -234,9 +234,9 @@ describe("Masha Knowledge Base — Response Rules", () => {
     expect(systemPrompt).toContain("на «вы»");
   });
 
-  it("should not contain old breeds that are no longer on the farm", () => {
-    // The old prompt had Альпийская and Остфриз which are not in the DB
-    expect(systemPrompt).not.toContain("Альпийская коза");
-    expect(systemPrompt).not.toContain("Остфриз");
+  it("should contain Alpine and East Friesian breeds added to knowledge base", () => {
+    // Alpine and East Friesian breeds were added to the knowledge base for comprehensive coverage
+    expect(systemPrompt).toContain("Альпийская коза");
+    expect(systemPrompt).toContain("Ост-фризская");
   });
 });
