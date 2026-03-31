@@ -413,7 +413,7 @@ export const faqChatRouter = router({
             })
           )
           .min(1)
-          .max(50),
+          .max(30),
         sessionId: z.string().min(1).max(64).optional(),
         source: z.enum(["faq", "floating"]).optional(),
         userName: z.string().max(100).optional(),

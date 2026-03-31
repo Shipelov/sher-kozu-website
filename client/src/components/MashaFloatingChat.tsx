@@ -31,6 +31,17 @@ type ChatMessage = {
   content: string;
 };
 
+const MAX_MESSAGES = 30;
+const MAX_CHARS = 10000;
+const CHAR_WARNING_THRESHOLD = 8000;
+
+/** Trim oldest messages keeping the first (greeting) and the last N-1 */
+function trimMessages(msgs: ChatMessage[], max: number): ChatMessage[] {
+  if (msgs.length <= max) return msgs;
+  // Keep the first message (greeting) + the most recent (max - 1) messages
+  return [msgs[0], ...msgs.slice(-(max - 1))];
+}
+
 /* ─── Context-aware suggested prompts by page ─── */
 const PAGE_PROMPTS: Record<string, string[]> = {
   "/": [
@@ -272,14 +283,15 @@ export default function MashaFloatingChat() {
         });
       }
 
-      const newMessages: ChatMessage[] = [
+      const updated: ChatMessage[] = [
         ...messages,
         { role: "user", content },
       ];
-      setMessages(newMessages);
+      const trimmed = trimMessages(updated, MAX_MESSAGES);
+      setMessages(trimmed);
       setInput("");
       chatMutation.mutate({
-        messages: newMessages,
+        messages: trimmed,
         sessionId,
         source: "floating",
         userName: userName || undefined,
@@ -487,15 +499,32 @@ export default function MashaFloatingChat() {
               }}
               className="flex items-end gap-2 border-t border-border/60 bg-background/50 p-2.5 pb-safe"
             >
-              <Textarea
-                ref={textareaRef}
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={handleKeyDown}
-                placeholder="Спросите Машу..."
-                className="flex-1 max-h-20 resize-none min-h-8 rounded-xl text-[13px]"
-                rows={1}
-              />
+              <div className="flex-1 relative">
+                <Textarea
+                  ref={textareaRef}
+                  value={input}
+                  onChange={(e) => {
+                    if (e.target.value.length <= MAX_CHARS) setInput(e.target.value);
+                  }}
+                  onKeyDown={handleKeyDown}
+                  placeholder="Спросите Машу..."
+                  maxLength={MAX_CHARS}
+                  className="w-full max-h-20 resize-none min-h-8 rounded-xl text-[13px] pr-2"
+                  rows={1}
+                />
+                {input.length >= CHAR_WARNING_THRESHOLD && (
+                  <span
+                    className={cn(
+                      "absolute bottom-0.5 right-2 text-[10px] tabular-nums",
+                      input.length >= MAX_CHARS * 0.95
+                        ? "text-destructive font-medium"
+                        : "text-muted-foreground"
+                    )}
+                  >
+                    {input.length}/{MAX_CHARS}
+                  </span>
+                )}
+              </div>
               <Button
                 type="submit"
                 size="icon"

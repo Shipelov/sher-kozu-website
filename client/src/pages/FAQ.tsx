@@ -188,6 +188,15 @@ function AccordionItem({ item, isOpen, onToggle }: { item: FAQItem; isOpen: bool
   );
 }
 
+const FAQ_MAX_MESSAGES = 30;
+const FAQ_MAX_CHARS = 10000;
+const FAQ_CHAR_WARNING_THRESHOLD = 8000;
+
+function trimFaqMessages(msgs: ChatMessage[], max: number): ChatMessage[] {
+  if (msgs.length <= max) return msgs;
+  return [msgs[0], ...msgs.slice(-(max - 1))];
+}
+
 /* ─── Masha Chat Component ─── */
 function MashaChat() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -228,10 +237,11 @@ function MashaChat() {
       const content = (text || input).trim();
       if (!content || chatMutation.isPending) return;
 
-      const newMessages: ChatMessage[] = [...messages, { role: "user", content }];
-      setMessages(newMessages);
+      const updated: ChatMessage[] = [...messages, { role: "user", content }];
+      const trimmed = trimFaqMessages(updated, FAQ_MAX_MESSAGES);
+      setMessages(trimmed);
       setInput("");
-      chatMutation.mutate({ messages: newMessages });
+      chatMutation.mutate({ messages: trimmed });
       textareaRef.current?.focus();
     },
     [input, messages, chatMutation]
@@ -357,15 +367,32 @@ function MashaChat() {
         }}
         className="flex items-end gap-2 border-t border-border/60 bg-background/50 p-3"
       >
-        <Textarea
-          ref={textareaRef}
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={handleKeyDown}
-          placeholder="Спросите Машу о ферме..."
-          className="flex-1 max-h-24 resize-none min-h-9 rounded-xl text-sm"
-          rows={1}
-        />
+        <div className="flex-1 relative">
+          <Textarea
+            ref={textareaRef}
+            value={input}
+            onChange={(e) => {
+              if (e.target.value.length <= FAQ_MAX_CHARS) setInput(e.target.value);
+            }}
+            onKeyDown={handleKeyDown}
+            placeholder="Спросите Машу о ферме..."
+            maxLength={FAQ_MAX_CHARS}
+            className="w-full max-h-24 resize-none min-h-9 rounded-xl text-sm pr-2"
+            rows={1}
+          />
+          {input.length >= FAQ_CHAR_WARNING_THRESHOLD && (
+            <span
+              className={cn(
+                "absolute bottom-1 right-2 text-[10px] tabular-nums",
+                input.length >= FAQ_MAX_CHARS * 0.95
+                  ? "text-destructive font-medium"
+                  : "text-muted-foreground"
+              )}
+            >
+              {input.length}/{FAQ_MAX_CHARS}
+            </span>
+          )}
+        </div>
         <Button
           type="submit"
           size="icon"
