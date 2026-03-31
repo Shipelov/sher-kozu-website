@@ -499,36 +499,7 @@ export default function AnimalProfile() {
     });
   }
 
-  /* redirect if slug not found */
-  if (!animalQuery.isLoading && !data && animalSlug) {
-    return (
-      <>
-        <Navbar />
-        <div className="flex min-h-[60vh] flex-col items-center justify-center gap-4 px-4 text-center">
-          <ShieldCheck className="h-12 w-12 text-muted-foreground" />
-          <h2 className="text-2xl font-semibold text-foreground">Животное не найдено</h2>
-          <p className="max-w-md text-muted-foreground">Профиль «{animalSlug}» не найден — возможно, животное уже нашло свою семью или страница была перемещена.</p>
-          <Link href="/animals" className="inline-flex items-center gap-2 rounded-full bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground transition hover:bg-primary/95">
-            Перейти в каталог <ArrowRight className="h-4 w-4" />
-          </Link>
-        </div>
-      </>
-    );
-  }
-
-  if (!animalSlug) {
-    return (
-      <>
-        <Navbar />
-        <div className="flex min-h-[60vh] flex-col items-center justify-center gap-4 px-4 text-center">
-          <h2 className="text-2xl font-semibold text-foreground">Выберите животное</h2>
-          <Link href="/animals" className="inline-flex items-center gap-2 rounded-full bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground">
-            Перейти в каталог <ArrowRight className="h-4 w-4" />
-          </Link>
-        </div>
-      </>
-    );
-  }
+  /* Early returns moved below all hooks — see after useEffect block */
 
   /* ── key facts for hero ── */
   const keyFacts = [
@@ -552,7 +523,9 @@ export default function AnimalProfile() {
     ...(data?.story ? [{ label: "История", value: data.story }] : []),
   ];
 
-    const coverUrl = (data?.coverImageUrl && data.coverImageUrl !== "NULL") ? data.coverImageUrl : (selectedImage?.src ?? CDN.hero);
+    const coverUrl = (data?.coverImageUrl && data.coverImageUrl !== "NULL")
+      ? data.coverImageUrl
+      : (photosQuery.isLoading ? undefined : (selectedImage?.src ?? data?.coverImageUrl ?? undefined));
 
   /* ── Profile completeness (animated) ── */
   const profileChecks = useMemo(() => [
@@ -601,6 +574,60 @@ export default function AnimalProfile() {
       return () => clearTimeout(timer);
     }
   }, [profilePercent]);
+
+  /* ── Early returns (after all hooks to satisfy Rules of Hooks) ── */
+  if (animalQuery.isLoading) {
+    return (
+      <>
+        <Navbar />
+        <section className="relative overflow-hidden border-b border-border/60 bg-gradient-to-br from-background via-secondary/30 to-background pb-10 pt-24 md:pb-14 md:pt-28">
+          <div className="container">
+            <div className="grid items-start gap-8 lg:grid-cols-[1fr_1.1fr]">
+              <div className="min-w-0 space-y-4">
+                <div className="h-4 w-32 animate-pulse rounded bg-muted" />
+                <div className="h-12 w-64 animate-pulse rounded bg-muted" />
+                <div className="h-5 w-80 animate-pulse rounded bg-muted" />
+                <div className="mt-5 grid grid-cols-2 gap-2.5 sm:grid-cols-4">
+                  {[1,2,3,4].map(i => <div key={i} className="h-16 animate-pulse rounded-xl bg-muted" />)}
+                </div>
+              </div>
+              <div className="h-[360px] animate-pulse rounded-3xl bg-muted md:h-[440px]" />
+            </div>
+          </div>
+        </section>
+      </>
+    );
+  }
+
+  if (!animalQuery.isLoading && !data && animalSlug) {
+    return (
+      <>
+        <Navbar />
+        <div className="flex min-h-[60vh] flex-col items-center justify-center gap-4 px-4 text-center">
+          <ShieldCheck className="h-12 w-12 text-muted-foreground" />
+          <h2 className="text-2xl font-semibold text-foreground">Животное не найдено</h2>
+          <p className="max-w-md text-muted-foreground">Профиль «{animalSlug}» не найден — возможно, животное уже нашло свою семью или страница была перемещена.</p>
+          <Link href="/animals" className="inline-flex items-center gap-2 rounded-full bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground transition hover:bg-primary/95">
+            Перейти в каталог <ArrowRight className="h-4 w-4" />
+          </Link>
+        </div>
+      </>
+    );
+  }
+
+  if (!animalSlug) {
+    return (
+      <>
+        <Navbar />
+        <div className="flex min-h-[60vh] flex-col items-center justify-center gap-4 px-4 text-center">
+          <h2 className="text-2xl font-semibold text-foreground">Выберите животное</h2>
+          <Link href="/animals" className="inline-flex items-center gap-2 rounded-full bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground">
+            Перейти в каталог <ArrowRight className="h-4 w-4" />
+          </Link>
+        </div>
+      </>
+    );
+  }
 
   /* ────────────────────────── RENDER ──────────────────────── */
   return (
@@ -687,7 +714,11 @@ export default function AnimalProfile() {
               {/* Right: main photo */}
               <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.1 }} className="relative">
                 <div className="overflow-hidden rounded-3xl border border-border/60 shadow-lg">
-                  <img src={coverUrl} alt={displayName} className="h-[360px] w-full object-contain bg-muted/30 md:h-[440px]" />
+                  {coverUrl ? (
+                    <img src={coverUrl} alt={displayName} className="h-[360px] w-full object-contain bg-muted/30 md:h-[440px]" />
+                  ) : (
+                    <div className="h-[360px] w-full animate-pulse bg-muted/30 md:h-[440px]" />
+                  )}
                   <div className="absolute inset-0 rounded-3xl bg-gradient-to-t from-black/40 via-transparent to-transparent" />
                   <div className="absolute bottom-4 left-4 flex items-center gap-2 rounded-full bg-white/20 px-3 py-1.5 text-xs text-white backdrop-blur">
                     <span className="inline-flex h-2 w-2 rounded-full bg-emerald-400" />
@@ -1093,7 +1124,7 @@ export default function AnimalProfile() {
             {/* Main viewer */}
             {(photosQuery.data?.length ?? 0) > 0 && (<div className="overflow-hidden rounded-2xl border border-border/70 bg-muted/20">
               <div className="relative">
-                <img src={selectedImage?.src ?? CDN.hero} alt={selectedImage?.title ?? displayName} className="h-[280px] w-full object-contain bg-muted/30 md:h-[380px]" />
+                <img src={selectedImage?.src} alt={selectedImage?.title ?? displayName} className="h-[280px] w-full object-contain bg-muted/30 md:h-[380px]" />
                 <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent p-4 text-white">
                   <h4 className="text-lg font-semibold">{selectedImage?.title}</h4>
                   <p className="mt-0.5 text-xs text-white/75">{selectedImage?.meta}</p>
