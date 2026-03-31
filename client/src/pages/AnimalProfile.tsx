@@ -8,6 +8,8 @@ import { Link, useLocation, useRoute } from "wouter";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { getLoginUrl, navigateToLogin } from "@/const";
 import Navbar from "@/components/Navbar";
+import LazyImage from "@/components/LazyImage";
+import { useCoverCache, clearCachedCover } from "@/hooks/useCoverCache";
 import AnimalShareCard from "@/components/AnimalShareCard";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
@@ -311,6 +313,7 @@ export default function AnimalProfile() {
       await utils.animalPhotos.list.invalidate({ animalSlug: animalSlug! });
       await utils.animals.getBySlug.invalidate({ slug: animalSlug! });
       await utils.animals.listPublic.invalidate();
+      clearCachedCover(animalSlug);
       toast.success("Обложка обновлена");
     },
     onError: (error) => {
@@ -523,9 +526,11 @@ export default function AnimalProfile() {
     ...(data?.story ? [{ label: "История", value: data.story }] : []),
   ];
 
-    const coverUrl = (data?.coverImageUrl && data.coverImageUrl !== "NULL")
+    const serverCoverUrl = (data?.coverImageUrl && data.coverImageUrl !== "NULL")
       ? data.coverImageUrl
       : (photosQuery.isLoading ? undefined : (selectedImage?.src ?? data?.coverImageUrl ?? undefined));
+    const cachedCover = useCoverCache(animalSlug, serverCoverUrl ?? null);
+    const coverUrl = serverCoverUrl ?? cachedCover ?? undefined;
 
   /* ── Profile completeness (animated) ── */
   const profileChecks = useMemo(() => [
@@ -715,7 +720,12 @@ export default function AnimalProfile() {
               <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.1 }} className="relative">
                 <div className="overflow-hidden rounded-3xl border border-border/60 shadow-lg">
                   {coverUrl ? (
-                    <img src={coverUrl} alt={displayName} className="h-[360px] w-full object-contain bg-muted/30 md:h-[440px]" />
+                    <LazyImage
+                      src={coverUrl}
+                      alt={displayName}
+                      className="h-[360px] w-full object-contain bg-muted/30 md:h-[440px]"
+                      wrapperClassName="h-[360px] w-full md:h-[440px]"
+                    />
                   ) : (
                     <div className="h-[360px] w-full animate-pulse bg-muted/30 md:h-[440px]" />
                   )}

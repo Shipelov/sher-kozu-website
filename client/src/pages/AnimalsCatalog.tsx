@@ -1,5 +1,7 @@
-import { useMemo, useState } from "react";
+import React, { useMemo, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
+import LazyImage from "@/components/LazyImage";
+import { setCachedCover } from "@/hooks/useCoverCache";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -203,6 +205,12 @@ function AnimalsCatalogSkeleton() {
   );
 }
 
+/** Wrapper that caches the cover URL in localStorage on mount */
+function CachedLazyImage({ slug, src, ...rest }: { slug: string; src: string } & React.ComponentProps<typeof LazyImage>) {
+  setCachedCover(slug, src);
+  return <LazyImage src={src} {...rest} />;
+}
+
 function AnimalCard({ animal, config, selectedSharePercent }: { animal: CatalogAnimal; config: (typeof speciesConfig)[SupportedSpecies]; selectedSharePercent: number | null }) {
   const availability = getRelationshipStatus(animal.availableSlots, animal.totalOwnershipSlots, animal.occupiedUntil);
   const shareSummary = getShareBlockSummary(animal);
@@ -216,10 +224,13 @@ function AnimalCard({ animal, config, selectedSharePercent }: { animal: CatalogA
       >
         <div className="relative h-56 overflow-hidden bg-stone-100">
           {animal.coverImageUrl && animal.coverImageUrl !== "NULL" ? (
-            <img
-              src={animal.coverImageUrl}
+            <CachedLazyImage
+              slug={animal.slug}
+              src={animal.coverImageUrl!}
               alt={animal.name}
               className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
+              wrapperClassName="h-full w-full"
+              placeholderColor="rgb(231 229 224)"
             />
           ) : (
             <div className="flex h-full items-center justify-center text-stone-400">Фото скоро появится</div>
