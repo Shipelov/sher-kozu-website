@@ -63,6 +63,7 @@ import {
   abExperimentAssignments,
   InsertAbExperiment,
   InsertAbExperimentVariant,
+  animalWellnessMetrics,
 } from "../drizzle/schema";
 import { ENV } from "./_core/env";
 
@@ -2303,6 +2304,23 @@ export async function createAnimalWithMedia(input: UpsertAnimalPayload) {
   }
 
   await recalculateAnimalStatus(animalId);
+
+  // Auto-create wellness metrics for the new animal so it appears in comparison/leaderboard
+  try {
+    await db.insert(animalWellnessMetrics).values({
+      animalId,
+      happiness: 50,
+      health: 50,
+      attachment: 50,
+      mood: 50,
+      obedience: 50,
+      overallRating: 50,
+      herdRank: 0,
+    });
+  } catch (_e) {
+    // Ignore duplicate key error if metrics already exist
+  }
+
   return getAnimalBySlug(String(animalInput.slug));
 }
 

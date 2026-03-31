@@ -1,0 +1,38 @@
+{
+  "query": "SELECT a.id, a.name, a.slug, awm.animalId as metricsAnimalId, awm.herdRank FROM animals a LEFT JOIN animalWellnessMetrics awm ON a.id = awm.animalId ORDER BY a.id;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3J2fXRHx8d1YjF6.root --database mLhmg5VmBsEBpZiYqdnhMQ --execute SELECT a.id, a.name, a.slug, awm.animalId as metricsAnimalId, awm.herdRank FROM animals a LEFT JOIN animalWellnessMetrics awm ON a.id = awm.animalId ORDER BY a.id;",
+  "rows": [
+    {
+      "id": "30001",
+      "name": "Мира",
+      "slug": "mira",
+      "metricsAnimalId": "30001",
+      "herdRank": "0"
+    },
+    {
+      "id": "180005",
+      "name": "Злата",
+      "slug": "zlata",
+      "metricsAnimalId": "180005",
+      "herdRank": "0"
+    },
+    {
+      "id": "270001",
+      "name": "Руфа",
+      "slug": "Rufa",
+      "metricsAnimalId": "270001",
+      "herdRank": "0"
+    },
+    {
+      "id": "360001",
+      "name": "Лола",
+      "slug": "Lola",
+      "metricsAnimalId": "NULL",
+      "herdRank": "NULL"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tname\tslug\tmetricsAnimalId\therdRank\n30001\tМира\tmira\t30001\t0\n180005\tЗлата\tzlata\t180005\t0\n270001\tРуфа\tRufa\t270001\t0\n360001\tЛола\tLola\tNULL\tNULL\n",
+  "stderr": "",
+  "execution_time_ms": 359
+}
