@@ -523,7 +523,7 @@ export default function Home() {
         <div className="container">
           <div className="overflow-hidden rounded-[2rem] border border-border/70 bg-card shadow-sm">
             <div className="grid gap-0 lg:grid-cols-[0.92fr_1.08fr]">
-              <div className="relative min-h-[420px] overflow-hidden">
+              <div className="relative min-h-[220px] lg:min-h-[420px] overflow-hidden">
                 <LazyImage src={cms.getImage("whyus_image", CDN.club)} alt="Семья на клубном визите" className="h-full w-full object-cover" wrapperClassName="h-full w-full" />
               </div>
               <div className="p-6 md:p-8">
@@ -640,7 +640,7 @@ export default function Home() {
                   <ChevronRight className="h-4 w-4" />
                 </Link>
               </div>
-              <div className="relative min-h-[420px] overflow-hidden">
+              <div className="relative min-h-[220px] lg:min-h-[420px] overflow-hidden">
                 <LazyImage src={cms.getImage("products_image", CDN.milk)} alt="Именные молочные продукты Шерь Козу" className="h-full w-full object-cover" wrapperClassName="h-full w-full" />
               </div>
             </div>

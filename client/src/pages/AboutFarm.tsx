@@ -169,83 +169,92 @@ export default function AboutFarm() {
               { label: "О ферме" },
             ]}
           />
-          <div className="grid gap-10 lg:grid-cols-2 lg:gap-16 items-center">
-            {/* Text */}
-            <motion.div
-              initial="hidden"
-              whileInView="visible"
-              viewport={{ once: true }}
-              variants={staggerContainer}
-              className="max-w-xl"
-            >
-              <motion.div variants={fadeUp} custom={0} className="mb-4">
-                <span className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-4 py-1.5 text-xs font-semibold uppercase tracking-wider text-primary">
-                  <Leaf className="h-3.5 w-3.5" />
-                  {cms.getText("hero_badge", "О ферме")}
-                </span>
+
+          {/* Unified hero card — Dashboard pattern */}
+          <motion.div
+            initial={{ opacity: 0, y: 24 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6 }}
+            className="overflow-hidden rounded-[2.25rem] border border-white/70 bg-card shadow-lg"
+          >
+            <div className="grid gap-0 md:grid-cols-[1fr_1.1fr]">
+              {/* Text side */}
+              <motion.div
+                initial="hidden"
+                whileInView="visible"
+                viewport={{ once: true }}
+                variants={staggerContainer}
+                className="flex flex-col justify-center p-8 sm:p-10 lg:p-14"
+              >
+                <motion.div variants={fadeUp} custom={0} className="mb-4">
+                  <span className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-4 py-1.5 text-xs font-semibold uppercase tracking-wider text-primary">
+                    <Leaf className="h-3.5 w-3.5" />
+                    {cms.getText("hero_badge", "О ферме")}
+                  </span>
+                </motion.div>
+
+                <motion.h1
+                  variants={fadeUp}
+                  custom={1}
+                  className="text-3xl font-bold leading-tight tracking-tight sm:text-4xl lg:text-5xl"
+                >
+                  {cms.getText("hero_heading", "Семейная ферма, где каждое животное — член семьи")}
+                </motion.h1>
+
+                <motion.p
+                  variants={fadeUp}
+                  custom={2}
+                  className="mt-5 text-base leading-relaxed text-muted-foreground sm:text-lg"
+                >
+                  {cms.getText("hero_subtitle", "Мы — семья, которая превратила любовь к животным и натуральным продуктам в дело жизни. Наша ферма — это не производство. Это место, где козы и овцы элитных пород живут в заботе, а каждый продукт несёт имя конкретного животного.")}
+                </motion.p>
+
+                <motion.div variants={fadeUp} custom={3} className="mt-8 flex flex-wrap gap-4">
+                  <Link href="/animals">
+                    <motion.span
+                      whileHover={{ scale: 1.04 }}
+                      whileTap={{ scale: 0.97 }}
+                      className="inline-flex items-center gap-2 rounded-full bg-primary px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-primary/20 transition-colors hover:bg-primary/90"
+                    >
+                      Познакомиться с животными
+                      <ArrowRight className="h-4 w-4" />
+                    </motion.span>
+                  </Link>
+                  <Link href="/club">
+                    <motion.span
+                      whileHover={{ scale: 1.04 }}
+                      whileTap={{ scale: 0.97 }}
+                      className="inline-flex items-center gap-2 rounded-full border border-border bg-white/80 px-6 py-3 text-sm font-semibold text-foreground shadow-sm transition-colors hover:bg-muted"
+                    >
+                      Вступить в клуб
+                    </motion.span>
+                  </Link>
+                </motion.div>
+
+                {/* Location badge — inside the card */}
+                <motion.div variants={fadeUp} custom={4} className="mt-8">
+                  <div className="inline-flex items-center gap-3 rounded-xl border border-border/60 bg-background/80 px-4 py-2.5 shadow-sm backdrop-blur-sm">
+                    <MapPin className="h-4 w-4 text-primary" />
+                    <div>
+                      <p className="text-sm font-semibold text-foreground">{cms.getText("hero_location", "Подмосковье, Истра, д.Назарово")}</p>
+                      <p className="text-xs text-muted-foreground">{cms.getText("hero_since", "Семейная ферма с 2019 года")}</p>
+                    </div>
+                  </div>
+                </motion.div>
               </motion.div>
 
-              <motion.h1
-                variants={fadeUp}
-                custom={1}
-                className="text-3xl font-bold leading-tight tracking-tight sm:text-4xl lg:text-5xl"
-              >
-                {cms.getText("hero_heading", "Семейная ферма, где каждое животное — член семьи")}
-              </motion.h1>
-
-              <motion.p
-                variants={fadeUp}
-                custom={2}
-                className="mt-5 text-base leading-relaxed text-muted-foreground sm:text-lg"
-              >
-                {cms.getText("hero_subtitle", "Мы — семья, которая превратила любовь к животным и натуральным продуктам в дело жизни. Наша ферма — это не производство. Это место, где козы и овцы элитных пород живут в заботе, а каждый продукт несёт имя конкретного животного.")}
-              </motion.p>
-
-              <motion.div variants={fadeUp} custom={3} className="mt-8 flex flex-wrap gap-4">
-                <Link href="/animals">
-                  <motion.span
-                    whileHover={{ scale: 1.04 }}
-                    whileTap={{ scale: 0.97 }}
-                    className="inline-flex items-center gap-2 rounded-full bg-primary px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-primary/20 transition-colors hover:bg-primary/90"
-                  >
-                    Познакомиться с животными
-                    <ArrowRight className="h-4 w-4" />
-                  </motion.span>
-                </Link>
-                <Link href="/club">
-                  <motion.span
-                    whileHover={{ scale: 1.04 }}
-                    whileTap={{ scale: 0.97 }}
-                    className="inline-flex items-center gap-2 rounded-full border border-border bg-white/80 px-6 py-3 text-sm font-semibold text-foreground shadow-sm transition-colors hover:bg-muted"
-                  >
-                    Вступить в клуб
-                  </motion.span>
-                </Link>
-              </motion.div>
-            </motion.div>
-
-            {/* Image */}
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              whileInView={{ opacity: 1, scale: 1 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.6, delay: 0.2 }}
-              className="relative"
-            >
-              <div className="overflow-hidden rounded-3xl border border-border/60 shadow-xl">
+              {/* Image side — fills full height */}
+              <div className="relative min-h-[240px] md:min-h-[480px]">
                 <img
                   src={cms.getImage("hero_image", CDN.hero)}
                   alt="Семья на ферме Шерь Козу с козами элитных пород"
-                  className="w-full h-auto object-cover aspect-[16/10]"
+                  className="absolute inset-0 h-full w-full object-cover"
                   loading="eager"
                 />
               </div>
-              <div className="absolute -bottom-4 -left-4 rounded-2xl border border-border bg-white/95 px-5 py-3 shadow-lg backdrop-blur-sm">
-                <p className="text-sm font-semibold text-foreground">{cms.getText("hero_location", "Подмосковье")}</p>
-                <p className="text-xs text-muted-foreground">{cms.getText("hero_since", "Семейная ферма с 2019 года")}</p>
-              </div>
-            </motion.div>
-          </div>
+            </div>
+          </motion.div>
         </div>
       </section>
 
@@ -329,7 +338,7 @@ export default function AboutFarm() {
             className="overflow-hidden rounded-[2rem] border border-border/70 bg-card shadow-sm"
           >
             <div className="grid gap-0 lg:grid-cols-[0.92fr_1.08fr]">
-              <div className="relative min-h-[380px] overflow-hidden">
+              <div className="relative min-h-[220px] lg:min-h-[380px] overflow-hidden">
                 <img
                   src={cms.getImage("philosophy_image", CDN.philosophy)}
                   alt="Философия фермы Шерь Козу"
@@ -418,7 +427,7 @@ export default function AboutFarm() {
             className="overflow-hidden rounded-[2rem] border border-border/70 bg-card shadow-sm"
           >
             <div className="grid gap-0 lg:grid-cols-[0.92fr_1.08fr]">
-              <div className="relative min-h-[380px] overflow-hidden">
+              <div className="relative min-h-[220px] lg:min-h-[380px] overflow-hidden">
                 <img
                   src={cms.getImage("breeds_image", CDN.breeds)}
                   alt="Элитные породы коз и овец на ферме"
