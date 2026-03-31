@@ -1,0 +1,31 @@
+{
+  "query": "SELECT ao.ownerOpenId, a.name, a.slug, ao.ownershipStatus, COUNT(*) as slotCount FROM animalOwnerships ao JOIN animals a ON ao.animalId = a.id WHERE ao.ownershipStatus IN ('active', 'pending_payment') GROUP BY ao.ownerOpenId, a.name, a.slug, ao.ownershipStatus ORDER BY ao.ownerOpenId, a.name",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3J2fXRHx8d1YjF6.root --database mLhmg5VmBsEBpZiYqdnhMQ --execute SELECT ao.ownerOpenId, a.name, a.slug, ao.ownershipStatus, COUNT(*) as slotCount FROM animalOwnerships ao JOIN animals a ON ao.animalId = a.id WHERE ao.ownershipStatus IN ('active', 'pending_payment') GROUP BY ao.ownerOpenId, a.name, a.slug, ao.ownershipStatus ORDER BY ao.ownerOpenId, a.name",
+  "rows": [
+    {
+      "ownerOpenId": "jP5iBYMcdYguBWJPw5Sruu",
+      "name": "Злата",
+      "slug": "zlata",
+      "ownershipStatus": "active",
+      "slotCount": "10"
+    },
+    {
+      "ownerOpenId": "jP5iBYMcdYguBWJPw5Sruu",
+      "name": "Мира",
+      "slug": "mira",
+      "ownershipStatus": "active",
+      "slotCount": "10"
+    },
+    {
+      "ownerOpenId": "jP5iBYMcdYguBWJPw5Sruu",
+      "name": "Руфа",
+      "slug": "Rufa",
+      "ownershipStatus": "active",
+      "slotCount": "10"
+    }
+  ],
+  "messages": [],
+  "stdout": "ownerOpenId\tname\tslug\townershipStatus\tslotCount\njP5iBYMcdYguBWJPw5Sruu\tЗлата\tzlata\tactive\t10\njP5iBYMcdYguBWJPw5Sruu\tМира\tmira\tactive\t10\njP5iBYMcdYguBWJPw5Sruu\tРуфа\tRufa\tactive\t10\n",
+  "stderr": "",
+  "execution_time_ms": 357
+}

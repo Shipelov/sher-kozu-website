@@ -216,7 +216,10 @@ export default function ProductTracker() {
   const ownerDashboardQuery = trpc.animals.ownerDashboard.useQuery(undefined, {
     enabled: isAuthenticated,
   });
-  const allAnimalsQuery = trpc.animals.listPublic.useQuery();
+  // Only show animals the user actually owns (has active/pending_payment shares)
+  const ownedAnimals = useMemo(() => {
+    return ownerDashboardQuery.data?.allOwnerships ?? [];
+  }, [ownerDashboardQuery.data?.allOwnerships]);
   const [switcherOpen, setSwitcherOpen] = useState(false);
   const requestedAnimalSlug = useMemo(() => {
     return new URLSearchParams(searchString).get("animal") || null;
@@ -271,8 +274,8 @@ export default function ProductTracker() {
             ]}
           />
 
-          {/* Animal Switcher */}
-          {(allAnimalsQuery.data?.length ?? 0) > 1 && (
+          {/* Animal Switcher — only owned animals */}
+          {ownedAnimals.length > 1 && (
             <div className="relative mb-6" data-testid="animalSwitcher">
               <button
                 onClick={() => setSwitcherOpen((v) => !v)}
@@ -306,13 +309,13 @@ export default function ProductTracker() {
                       <p className="px-3 py-1.5 text-xs font-medium uppercase tracking-[0.16em] text-muted-foreground">
                         Переключить животное
                       </p>
-                      {allAnimalsQuery.data?.map((animal) => {
-                        const isActive = animal.slug === currentAnimalSlug;
+                      {ownedAnimals.map((animal) => {
+                        const isActive = animal.animalSlug === currentAnimalSlug;
                         return (
                           <button
-                            key={animal.slug}
+                            key={animal.animalSlug}
                             onClick={() => {
-                              setLocation(`/tracker?animal=${animal.slug}`);
+                              setLocation(`/tracker?animal=${animal.animalSlug}`);
                               setSwitcherOpen(false);
                             }}
                             className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm transition ${
@@ -324,7 +327,7 @@ export default function ProductTracker() {
                             {animal.coverImageUrl ? (
                               <img
                                 src={animal.coverImageUrl}
-                                alt={animal.name}
+                                alt={animal.animalName}
                                 className="h-9 w-9 rounded-full object-cover ring-2 ring-border/40"
                               />
                             ) : (
@@ -333,7 +336,7 @@ export default function ProductTracker() {
                               </div>
                             )}
                             <div className="min-w-0 flex-1">
-                              <div className="truncate font-medium">{animal.name}</div>
+                              <div className="truncate font-medium">{animal.animalName}</div>
                               <div className="text-xs text-muted-foreground">
                                 {animal.species === "goat" ? "Коза" : animal.species === "sheep" ? "Овца" : animal.species}
                                 {animal.breed ? ` · ${animal.breed}` : ""}

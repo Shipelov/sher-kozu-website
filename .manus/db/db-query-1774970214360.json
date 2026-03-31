@@ -1,0 +1,361 @@
+{
+  "query": "SELECT ao.id, ao.ownerOpenId, ao.animalId, ao.ownershipStatus, ao.slotIndex, a.name, a.slug FROM animalOwnerships ao JOIN animals a ON ao.animalId = a.id ORDER BY ao.ownerOpenId, ao.animalId, ao.slotIndex",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3J2fXRHx8d1YjF6.root --database mLhmg5VmBsEBpZiYqdnhMQ --execute SELECT ao.id, ao.ownerOpenId, ao.animalId, ao.ownershipStatus, ao.slotIndex, a.name, a.slug FROM animalOwnerships ao JOIN animals a ON ao.animalId = a.id ORDER BY ao.ownerOpenId, ao.animalId, ao.slotIndex",
+  "rows": [
+    {
+      "id": "1",
+      "ownerOpenId": "jP5iBYMcdYguBWJPw5Sruu",
+      "animalId": "30001",
+      "ownershipStatus": "cancelled",
+      "slotIndex": "1",
+      "name": "Мира",
+      "slug": "mira"
+    },
+    {
+      "id": "360007",
+      "ownerOpenId": "jP5iBYMcdYguBWJPw5Sruu",
+      "animalId": "30001",
+      "ownershipStatus": "active",
+      "slotIndex": "1",
+      "name": "Мира",
+      "slug": "mira"
+    },
+    {
+      "id": "2",
+      "ownerOpenId": "jP5iBYMcdYguBWJPw5Sruu",
+      "animalId": "30001",
+      "ownershipStatus": "cancelled",
+      "slotIndex": "2",
+      "name": "Мира",
+      "slug": "mira"
+    },
+    {
+      "id": "360008",
+      "ownerOpenId": "jP5iBYMcdYguBWJPw5Sruu",
+      "animalId": "30001",
+      "ownershipStatus": "active",
+      "slotIndex": "2",
+      "name": "Мира",
+      "slug": "mira"
+    },
+    {
+      "id": "3",
+      "ownerOpenId": "jP5iBYMcdYguBWJPw5Sruu",
+      "animalId": "30001",
+      "ownershipStatus": "cancelled",
+      "slotIndex": "3",
+      "name": "Мира",
+      "slug": "mira"
+    },
+    {
+      "id": "360009",
+      "ownerOpenId": "jP5iBYMcdYguBWJPw5Sruu",
+      "animalId": "30001",
+      "ownershipStatus": "active",
+      "slotIndex": "3",
+      "name": "Мира",
+      "slug": "mira"
+    },
+    {
+      "id": "4",
+      "ownerOpenId": "jP5iBYMcdYguBWJPw5Sruu",
+      "animalId": "30001",
+      "ownershipStatus": "cancelled",
+      "slotIndex": "4",
+      "name": "Мира",
+      "slug": "mira"
+    },
+    {
+      "id": "360010",
+      "ownerOpenId": "jP5iBYMcdYguBWJPw5Sruu",
+      "animalId": "30001",
+      "ownershipStatus": "active",
+      "slotIndex": "4",
+      "name": "Мира",
+      "slug": "mira"
+    },
+    {
+      "id": "360011",
+      "ownerOpenId": "jP5iBYMcdYguBWJPw5Sruu",
+      "animalId": "30001",
+      "ownershipStatus": "active",
+      "slotIndex": "5",
+      "name": "Мира",
+      "slug": "mira"
+    },
+    {
+      "id": "5",
+      "ownerOpenId": "jP5iBYMcdYguBWJPw5Sruu",
+      "animalId": "30001",
+      "ownershipStatus": "cancelled",
+      "slotIndex": "5",
+      "name": "Мира",
+      "slug": "mira"
+    },
+    {
+      "id": "360012",
+      "ownerOpenId": "jP5iBYMcdYguBWJPw5Sruu",
+      "animalId": "30001",
+      "ownershipStatus": "active",
+      "slotIndex": "6",
+      "name": "Мира",
+      "slug": "mira"
+    },
+    {
+      "id": "6",
+      "ownerOpenId": "jP5iBYMcdYguBWJPw5Sruu",
+      "animalId": "30001",
+      "ownershipStatus": "cancelled",
+      "slotIndex": "6",
+      "name": "Мира",
+      "slug": "mira"
+    },
+    {
+      "id": "360013",
+      "ownerOpenId": "jP5iBYMcdYguBWJPw5Sruu",
+      "animalId": "30001",
+      "ownershipStatus": "active",
+      "slotIndex": "7",
+      "name": "Мира",
+      "slug": "mira"
+    },
+    {
+      "id": "7",
+      "ownerOpenId": "jP5iBYMcdYguBWJPw5Sruu",
+      "animalId": "30001",
+      "ownershipStatus": "cancelled",
+      "slotIndex": "7",
+      "name": "Мира",
+      "slug": "mira"
+    },
+    {
+      "id": "8",
+      "ownerOpenId": "jP5iBYMcdYguBWJPw5Sruu",
+      "animalId": "30001",
+      "ownershipStatus": "active",
+      "slotIndex": "8",
+      "name": "Мира",
+      "slug": "mira"
+    },
+    {
+      "id": "30010",
+      "ownerOpenId": "jP5iBYMcdYguBWJPw5Sruu",
+      "animalId": "30001",
+      "ownershipStatus": "active",
+      "slotIndex": "9",
+      "name": "Мира",
+      "slug": "mira"
+    },
+    {
+      "id": "30011",
+      "ownerOpenId": "jP5iBYMcdYguBWJPw5Sruu",
+      "animalId": "30001",
+      "ownershipStatus": "active",
+      "slotIndex": "10",
+      "name": "Мира",
+      "slug": "mira"
+    },
+    {
+      "id": "120018",
+      "ownerOpenId": "jP5iBYMcdYguBWJPw5Sruu",
+      "animalId": "180005",
+      "ownershipStatus": "cancelled",
+      "slotIndex": "1",
+      "name": "Злата",
+      "slug": "zlata"
+    },
+    {
+      "id": "690001",
+      "ownerOpenId": "jP5iBYMcdYguBWJPw5Sruu",
+      "animalId": "180005",
+      "ownershipStatus": "active",
+      "slotIndex": "1",
+      "name": "Злата",
+      "slug": "zlata"
+    },
+    {
+      "id": "690002",
+      "ownerOpenId": "jP5iBYMcdYguBWJPw5Sruu",
+      "animalId": "180005",
+      "ownershipStatus": "active",
+      "slotIndex": "2",
+      "name": "Злата",
+      "slug": "zlata"
+    },
+    {
+      "id": "120019",
+      "ownerOpenId": "jP5iBYMcdYguBWJPw5Sruu",
+      "animalId": "180005",
+      "ownershipStatus": "cancelled",
+      "slotIndex": "2",
+      "name": "Злата",
+      "slug": "zlata"
+    },
+    {
+      "id": "120020",
+      "ownerOpenId": "jP5iBYMcdYguBWJPw5Sruu",
+      "animalId": "180005",
+      "ownershipStatus": "active",
+      "slotIndex": "3",
+      "name": "Злата",
+      "slug": "zlata"
+    },
+    {
+      "id": "120021",
+      "ownerOpenId": "jP5iBYMcdYguBWJPw5Sruu",
+      "animalId": "180005",
+      "ownershipStatus": "active",
+      "slotIndex": "4",
+      "name": "Злата",
+      "slug": "zlata"
+    },
+    {
+      "id": "150001",
+      "ownerOpenId": "jP5iBYMcdYguBWJPw5Sruu",
+      "animalId": "180005",
+      "ownershipStatus": "active",
+      "slotIndex": "5",
+      "name": "Злата",
+      "slug": "zlata"
+    },
+    {
+      "id": "150002",
+      "ownerOpenId": "jP5iBYMcdYguBWJPw5Sruu",
+      "animalId": "180005",
+      "ownershipStatus": "active",
+      "slotIndex": "6",
+      "name": "Злата",
+      "slug": "zlata"
+    },
+    {
+      "id": "150003",
+      "ownerOpenId": "jP5iBYMcdYguBWJPw5Sruu",
+      "animalId": "180005",
+      "ownershipStatus": "active",
+      "slotIndex": "7",
+      "name": "Злата",
+      "slug": "zlata"
+    },
+    {
+      "id": "150004",
+      "ownerOpenId": "jP5iBYMcdYguBWJPw5Sruu",
+      "animalId": "180005",
+      "ownershipStatus": "active",
+      "slotIndex": "8",
+      "name": "Злата",
+      "slug": "zlata"
+    },
+    {
+      "id": "150005",
+      "ownerOpenId": "jP5iBYMcdYguBWJPw5Sruu",
+      "animalId": "180005",
+      "ownershipStatus": "active",
+      "slotIndex": "9",
+      "name": "Злата",
+      "slug": "zlata"
+    },
+    {
+      "id": "150006",
+      "ownerOpenId": "jP5iBYMcdYguBWJPw5Sruu",
+      "animalId": "180005",
+      "ownershipStatus": "active",
+      "slotIndex": "10",
+      "name": "Злата",
+      "slug": "zlata"
+    },
+    {
+      "id": "180001",
+      "ownerOpenId": "jP5iBYMcdYguBWJPw5Sruu",
+      "animalId": "270001",
+      "ownershipStatus": "active",
+      "slotIndex": "1",
+      "name": "Руфа",
+      "slug": "Rufa"
+    },
+    {
+      "id": "180002",
+      "ownerOpenId": "jP5iBYMcdYguBWJPw5Sruu",
+      "animalId": "270001",
+      "ownershipStatus": "active",
+      "slotIndex": "2",
+      "name": "Руфа",
+      "slug": "Rufa"
+    },
+    {
+      "id": "180003",
+      "ownerOpenId": "jP5iBYMcdYguBWJPw5Sruu",
+      "animalId": "270001",
+      "ownershipStatus": "active",
+      "slotIndex": "3",
+      "name": "Руфа",
+      "slug": "Rufa"
+    },
+    {
+      "id": "630041",
+      "ownerOpenId": "jP5iBYMcdYguBWJPw5Sruu",
+      "animalId": "270001",
+      "ownershipStatus": "active",
+      "slotIndex": "4",
+      "name": "Руфа",
+      "slug": "Rufa"
+    },
+    {
+      "id": "630042",
+      "ownerOpenId": "jP5iBYMcdYguBWJPw5Sruu",
+      "animalId": "270001",
+      "ownershipStatus": "active",
+      "slotIndex": "5",
+      "name": "Руфа",
+      "slug": "Rufa"
+    },
+    {
+      "id": "630043",
+      "ownerOpenId": "jP5iBYMcdYguBWJPw5Sruu",
+      "animalId": "270001",
+      "ownershipStatus": "active",
+      "slotIndex": "6",
+      "name": "Руфа",
+      "slug": "Rufa"
+    },
+    {
+      "id": "630044",
+      "ownerOpenId": "jP5iBYMcdYguBWJPw5Sruu",
+      "animalId": "270001",
+      "ownershipStatus": "active",
+      "slotIndex": "7",
+      "name": "Руфа",
+      "slug": "Rufa"
+    },
+    {
+      "id": "630045",
+      "ownerOpenId": "jP5iBYMcdYguBWJPw5Sruu",
+      "animalId": "270001",
+      "ownershipStatus": "active",
+      "slotIndex": "8",
+      "name": "Руфа",
+      "slug": "Rufa"
+    },
+    {
+      "id": "630046",
+      "ownerOpenId": "jP5iBYMcdYguBWJPw5Sruu",
+      "animalId": "270001",
+      "ownershipStatus": "active",
+      "slotIndex": "9",
+      "name": "Руфа",
+      "slug": "Rufa"
+    },
+    {
+      "id": "630047",
+      "ownerOpenId": "jP5iBYMcdYguBWJPw5Sruu",
+      "animalId": "270001",
+      "ownershipStatus": "active",
+      "slotIndex": "10",
+      "name": "Руфа",
+      "slug": "Rufa"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\townerOpenId\tanimalId\townershipStatus\tslotIndex\tname\tslug\n1\tjP5iBYMcdYguBWJPw5Sruu\t30001\tcancelled\t1\tМира\tmira\n360007\tjP5iBYMcdYguBWJPw5Sruu\t30001\tactive\t1\tМира\tmira\n2\tjP5iBYMcdYguBWJPw5Sruu\t30001\tcancelled\t2\tМира\tmira\n360008\tjP5iBYMcdYguBWJPw5Sruu\t30001\tactive\t2\tМира\tmira\n3\tjP5iBYMcdYguBWJPw5Sruu\t30001\tcancelled\t3\tМира\tmira\n360009\tjP5iBYMcdYguBWJPw5Sruu\t30001\tactive\t3\tМира\tmira\n4\tjP5iBYMcdYguBWJPw5Sruu\t30001\tcancelled\t4\tМира\tmira\n360010\tjP5iBYMcdYguBWJPw5Sruu\t30001\tactive\t4\tМира\tmira\n360011\tjP5iBYMcdYguBWJPw5Sruu\t30001\tactive\t5\tМира\tmira\n5\tjP5iBYMcdYguBWJPw5Sruu\t30001\tcancelled\t5\tМира\tmira\n360012\tjP5iBYMcdYguBWJPw5Sruu\t30001\tactive\t6\tМира\tmira\n6\tjP5iBYMcdYguBWJPw5Sruu\t30001\tcancelled\t6\tМира\tmira\n360013\tjP5iBYMcdYguBWJPw5Sruu\t30001\tactive\t7\tМира\tmira\n7\tjP5iBYMcdYguBWJPw5Sruu\t30001\tcancelled\t7\tМира\tmira\n8\tjP5iBYMcdYguBWJPw5Sruu\t30001\tactive\t8\tМира\tmira\n30010\tjP5iBYMcdYguBWJPw5Sruu\t30001\tactive\t9\tМира\tmira\n30011\tjP5iBYMcdYguBWJPw5Sruu\t30001\tactive\t10\tМира\tmira\n120018\tjP5iBYMcdYguBWJPw5Sruu\t180005\tcancelled\t1\tЗлата\tzlata\n690001\tjP5iBYMcdYguBWJPw5Sruu\t180005\tactive\t1\tЗлата\tzlata\n690002\tjP5iBYMcdYguBWJPw5Sruu\t180005\tactive\t2\tЗлата\tzlata\n120019\tjP5iBYMcdYguBWJPw5Sruu\t180005\tcancelled\t2\tЗлата\tzlata\n120020\tjP5iBYMcdYguBWJPw5Sruu\t180005\tactive\t3\tЗлата\tzlata\n120021\tjP5iBYMcdYguBWJPw5Sruu\t180005\tactive\t4\tЗлата\tzlata\n150001\tjP5iBYMcdYguBWJPw5Sruu\t180005\tactive\t5\tЗлата\tzlata\n150002\tjP5iBYMcdYguBWJPw5Sruu\t180005\tactive\t6\tЗлата\tzlata\n150003\tjP5iBYMcdYguBWJPw5Sruu\t180005\tactive\t7\tЗлата\tzlata\n150004\tjP5iBYMcdYguBWJPw5Sruu\t180005\tactive\t8\tЗлата\tzlata\n150005\tjP5iBYMcdYguBWJPw5Sruu\t180005\tactive\t9\tЗлата\tzlata\n150006\tjP5iBYMcdYguBWJPw5Sruu\t180005\tactive\t10\tЗлата\tzlata\n180001\tjP5iBYMcdYguBWJPw5Sruu\t270001\tactive\t1\tРуфа\tRufa\n180002\tjP5iBYMcdYguBWJPw5Sruu\t270001\tactive\t2\tРуфа\tRufa\n180003\tjP5iBYMcdYguBWJPw5Sruu\t270001\tactive\t3\tРуфа\tRufa\n630041\tjP5iBYMcdYguBWJPw5Sruu\t270001\tactive\t4\tРуфа\tRufa\n630042\tjP5iBYMcdYguBWJPw5Sruu\t270001\tactive\t5\tРуфа\tRufa\n630043\tjP5iBYMcdYguBWJPw5Sruu\t270001\tactive\t6\tРуфа\tRufa\n630044\tjP5iBYMcdYguBWJPw5Sruu\t270001\tactive\t7\tРуфа\tRufa\n630045\tjP5iBYMcdYguBWJPw5Sruu\t270001\tactive\t8\tРуфа\tRufa\n630046\tjP5iBYMcdYguBWJPw5Sruu\t270001\tactive\t9\tРуфа\tRufa\n630047\tjP5iBYMcdYguBWJPw5Sruu\t270001\tactive\t10\tРуфа\tRufa\n",
+  "stderr": "",
+  "execution_time_ms": 357
+}
