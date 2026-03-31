@@ -189,19 +189,18 @@ export default function ClubFeed() {
   const dashboardQuery = trpc.animals.ownerDashboard.useQuery(undefined, {
     enabled: isAuthenticated,
   });
-  const animalsQuery = trpc.animals.listPublic.useQuery();
-
   const posts = (clubQuery.data?.posts ?? []) as ClubPost[];
   const events = (clubQuery.data?.events ?? []) as ClubEvent[];
   const members = (clubQuery.data?.members ?? []) as ClubMember[];
 
   const ownerAnimal = dashboardQuery.data?.animal ?? null;
   const ownership = dashboardQuery.data?.ownership ?? null;
-  const fallbackAnimal = animalsQuery.data?.find((animal) => animal.slug === requestedAnimalSlug) ?? animalsQuery.data?.[0] ?? null;
+  const allOwnerships = dashboardQuery.data?.allOwnerships ?? [];
+  const fallbackAnimal = allOwnerships.find((o) => o.animalSlug === requestedAnimalSlug) ?? allOwnerships[0] ?? null;
 
-  const activeAnimalSlug = requestedAnimalSlug ?? ownerAnimal?.slug ?? fallbackAnimal?.slug ?? "";
-  const activeAnimalName = ownerAnimal?.name ?? fallbackAnimal?.name ?? "вашего животного";
-  const activeAnimalCoverUrl = animalsQuery.data?.find((a) => a.slug === activeAnimalSlug)?.coverImageUrl ?? ownerAnimal?.coverImageUrl ?? null;
+  const activeAnimalSlug = requestedAnimalSlug ?? ownerAnimal?.slug ?? (fallbackAnimal ? fallbackAnimal.animalSlug : "");
+  const activeAnimalName = ownerAnimal?.name ?? (fallbackAnimal ? fallbackAnimal.animalName : "вашего животного");
+  const activeAnimalCoverUrl = allOwnerships.find((o) => o.animalSlug === activeAnimalSlug)?.coverImageUrl ?? ownerAnimal?.coverImageUrl ?? null;
   const activeAnimalSharePercent = ownership?.sharePercent ?? ownerAnimal?.mySharePercent ?? 0;
 
   const profileHref = `/animals/${activeAnimalSlug}`;
@@ -261,8 +260,8 @@ export default function ClubFeed() {
             ]}
           />
 
-          {/* Animal Switcher */}
-          {(animalsQuery.data?.length ?? 0) > 1 && (
+          {/* Animal Switcher — only owned animals */}
+          {allOwnerships.length > 1 && (
             <div className="relative mb-6" data-testid="clubAnimalSwitcher">
               <button
                 onClick={() => setSwitcherOpen((v) => !v)}
@@ -296,13 +295,13 @@ export default function ClubFeed() {
                       <p className="px-3 py-1.5 text-xs font-medium uppercase tracking-[0.16em] text-muted-foreground">
                         Переключить животное
                       </p>
-                      {animalsQuery.data?.map((animal) => {
-                        const isActive = animal.slug === activeAnimalSlug;
+                      {allOwnerships.map((owned) => {
+                        const isActive = owned.animalSlug === activeAnimalSlug;
                         return (
                           <button
-                            key={animal.slug}
+                            key={owned.animalSlug}
                             onClick={() => {
-                              setLocation(`/club?animal=${animal.slug}`);
+                              setLocation(`/club?animal=${owned.animalSlug}`);
                               setSwitcherOpen(false);
                             }}
                             className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm transition ${
@@ -311,10 +310,10 @@ export default function ClubFeed() {
                                 : "text-foreground hover:bg-secondary/60"
                             }`}
                           >
-                            {animal.coverImageUrl ? (
+                            {owned.coverImageUrl ? (
                               <img
-                                src={animal.coverImageUrl}
-                                alt={animal.name}
+                                src={owned.coverImageUrl}
+                                alt={owned.animalName}
                                 className="h-9 w-9 rounded-full object-cover ring-2 ring-border/40"
                               />
                             ) : (
@@ -323,10 +322,11 @@ export default function ClubFeed() {
                               </div>
                             )}
                             <div className="min-w-0 flex-1">
-                              <div className="truncate font-medium">{animal.name}</div>
+                              <div className="truncate font-medium">{owned.animalName}</div>
                               <div className="text-xs text-muted-foreground">
-                                {animal.species === "goat" ? "Коза" : animal.species === "sheep" ? "Овца" : animal.species}
-                                {animal.breed ? ` · ${animal.breed}` : ""}
+                                {owned.species === "goat" ? "Коза" : owned.species === "sheep" ? "Овца" : owned.species}
+                                {owned.breed ? ` · ${owned.breed}` : ""}
+                                {" · "}{owned.sharePercent}%
                               </div>
                             </div>
                             {isActive && (
