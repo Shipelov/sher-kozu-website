@@ -521,42 +521,44 @@ export default function Home() {
           ═══════════════════════════════════════════════════════ */}
       <section className="border-y border-border/60 bg-secondary/45 py-20 md:py-28">
         <div className="container">
-          <div className="grid gap-10 lg:grid-cols-[0.95fr_1.05fr] lg:items-center">
-            <div className="overflow-hidden rounded-[2rem] border border-white/70 bg-card shadow-sm">
-              <LazyImage src={cms.getImage("whyus_image", CDN.club)} alt="Семья на клубном визите" className="h-full min-h-[380px] w-full object-cover" wrapperClassName="h-full min-h-[380px] w-full" />
-            </div>
-            <div>
-              <p className="text-sm font-semibold uppercase tracking-[0.22em] text-primary">{cms.getText("whyus_label", "Почему Шерь Козу")}</p>
-              <h2 className="mt-4 font-display text-4xl text-foreground md:text-5xl">
-                {cms.getText("whyus_heading", "Не просто продукты — личная история с фермой")}
-              </h2>
+          <div className="overflow-hidden rounded-[2rem] border border-border/70 bg-card shadow-sm">
+            <div className="grid gap-0 lg:grid-cols-[0.92fr_1.08fr]">
+              <div className="relative min-h-[420px] overflow-hidden">
+                <LazyImage src={cms.getImage("whyus_image", CDN.club)} alt="Семья на клубном визите" className="h-full w-full object-cover" wrapperClassName="h-full w-full" />
+              </div>
+              <div className="p-6 md:p-8">
+                <p className="text-sm font-semibold uppercase tracking-[0.22em] text-primary">{cms.getText("whyus_label", "Почему Шерь Козу")}</p>
+                <h2 className="mt-4 font-display text-3xl text-foreground md:text-4xl">
+                  {cms.getText("whyus_heading", "Не просто продукты — личная история с фермой")}
+                </h2>
 
-              <div className="mt-8 grid gap-4 sm:grid-cols-2">
-                {cmsValues.map((item: { title: string; text: string; stat: string; statLabel: string }, index: number) => {
-                  const Icon = values[index]?.icon ?? Heart;
-                  return (
-                    <motion.div
-                      key={item.title}
-                      initial={{ opacity: 0, y: 16 }}
-                      whileInView={{ opacity: 1, y: 0 }}
-                      viewport={{ once: true }}
-                      transition={{ delay: index * 0.06 }}
-                      className="rounded-[2rem] border border-white/70 bg-white/80 p-5 shadow-sm"
-                    >
-                      <div className="flex items-center justify-between">
-                        <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                          <Icon className="h-5 w-5" />
+                <div className="mt-6 grid gap-3 sm:grid-cols-2">
+                  {cmsValues.map((item: { title: string; text: string; stat: string; statLabel: string }, index: number) => {
+                    const Icon = values[index]?.icon ?? Heart;
+                    return (
+                      <motion.div
+                        key={item.title}
+                        initial={{ opacity: 0, y: 16 }}
+                        whileInView={{ opacity: 1, y: 0 }}
+                        viewport={{ once: true }}
+                        transition={{ delay: index * 0.06 }}
+                        className="rounded-xl border border-border bg-secondary/40 p-4"
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                            <Icon className="h-5 w-5" />
+                          </div>
+                          <div className="text-right">
+                            <div className="text-xl font-semibold text-primary">{item.stat}</div>
+                            <div className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">{item.statLabel}</div>
+                          </div>
                         </div>
-                        <div className="text-right">
-                          <div className="text-2xl font-semibold text-primary">{item.stat}</div>
-                          <div className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">{item.statLabel}</div>
-                        </div>
-                      </div>
-                      <h3 className="mt-4 text-lg font-semibold text-foreground">{item.title}</h3>
-                      <p className="mt-2 text-sm leading-7 text-muted-foreground">{item.text}</p>
-                    </motion.div>
-                  );
-                })}
+                        <h3 className="mt-3 text-base font-semibold text-foreground">{item.title}</h3>
+                        <p className="mt-1 text-sm leading-6 text-muted-foreground">{item.text}</p>
+                      </motion.div>
+                    );
+                  })}
+                </div>
               </div>
             </div>
           </div>
@@ -599,53 +601,50 @@ export default function Home() {
           ═══════════════════════════════════════════════════════ */}
       <section className="py-20 md:py-28">
         <div className="container">
-          <div className="grid gap-10 lg:grid-cols-[1fr_0.9fr] lg:items-center">
-            <div>
-              <p className="text-sm font-semibold uppercase tracking-[0.22em] text-primary">{cms.getText("products_label", "Что вы получаете")}</p>
-              <h2 className="mt-4 font-display text-4xl text-foreground md:text-5xl">
-                {cms.getText("products_heading", "Что внутри именной коробки")}
-              </h2>
-              <p className="mt-5 max-w-xl text-base leading-7 text-muted-foreground">
-                {cms.getText("products_subtitle", "Каждый продукт — результат вашей связи с конкретным животным. С трекером происхождения от надоя до двери.")}
-              </p>
-
-              <div className="mt-8 space-y-4">
-                {cmsProducts.map((product: { label: string; desc: string }) => (
-                  <div key={product.label} className="flex items-start gap-4 rounded-2xl border border-border/70 bg-card p-4">
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                      <Milk className="h-5 w-5" />
-                    </div>
-                    <div>
-                      <h4 className="text-base font-semibold text-foreground">{product.label}</h4>
-                      <p className="mt-1 text-sm text-muted-foreground">{product.desc}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <motion.div
-              initial={{ opacity: 0, y: 16 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              className="overflow-hidden rounded-[2rem] border border-border/70 bg-card shadow-sm"
-            >
-              <LazyImage src={cms.getImage("products_image", CDN.milk)} alt="Именные молочные продукты Шерь Козу" className="h-80 w-full object-cover" wrapperClassName="h-80 w-full" />
-              <div className="p-6">
-                <p className="text-xs uppercase tracking-[0.18em] text-primary">{cms.getText("products_card_label", "Продуктовая линия")}</p>
-                <p className="mt-2 text-lg font-semibold text-foreground">
-                  {cms.getText("products_card_text", "Каждый продукт — с историей происхождения и именем животного на упаковке.")}
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.55 }}
+            className="overflow-hidden rounded-[2rem] border border-border/70 bg-card shadow-sm"
+          >
+            <div className="grid gap-0 lg:grid-cols-[1.08fr_0.92fr]">
+              <div className="p-6 md:p-8">
+                <p className="text-sm font-semibold uppercase tracking-[0.22em] text-primary">{cms.getText("products_label", "Что вы получаете")}</p>
+                <h2 className="mt-4 font-display text-3xl text-foreground md:text-4xl">
+                  {cms.getText("products_heading", "Что внутри именной коробки")}
+                </h2>
+                <p className="mt-4 text-base leading-7 text-muted-foreground">
+                  {cms.getText("products_subtitle", "Каждый продукт — результат вашей связи с конкретным животным. С трекером происхождения от надоя до двери.")}
                 </p>
+
+                <div className="mt-6 space-y-3">
+                  {cmsProducts.map((product: { label: string; desc: string }) => (
+                    <div key={product.label} className="flex items-start gap-4 rounded-xl border border-border bg-secondary/40 p-4">
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                        <Milk className="h-5 w-5" />
+                      </div>
+                      <div>
+                        <h4 className="text-base font-semibold text-foreground">{product.label}</h4>
+                        <p className="mt-1 text-sm text-muted-foreground">{product.desc}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
                 <Link
                   href="/tracker"
-                  className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-primary transition-colors hover:text-primary/80"
+                  className="mt-6 inline-flex items-center gap-2 text-sm font-semibold text-primary transition-colors hover:text-primary/80"
                 >
                   Открыть трекер продуктов
                   <ChevronRight className="h-4 w-4" />
                 </Link>
               </div>
-            </motion.div>
-          </div>
+              <div className="relative min-h-[420px] overflow-hidden">
+                <LazyImage src={cms.getImage("products_image", CDN.milk)} alt="Именные молочные продукты Шерь Козу" className="h-full w-full object-cover" wrapperClassName="h-full w-full" />
+              </div>
+            </div>
+          </motion.div>
         </div>
       </section>
 

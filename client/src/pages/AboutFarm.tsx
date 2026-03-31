@@ -321,77 +321,56 @@ export default function AboutFarm() {
           ═══════════════════════════════════════════════════════ */}
       <section className="border-b border-border/60 bg-[radial-gradient(circle_at_bottom_right,rgba(244,240,232,0.5),transparent_60%)] py-20 md:py-28">
         <div className="container">
-          <div className="grid gap-12 lg:grid-cols-2 lg:gap-16 items-center">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              whileInView={{ opacity: 1, scale: 1 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.6 }}
-              className="order-2 lg:order-1"
-            >
-              <div className="overflow-hidden rounded-3xl border border-border/60 shadow-xl">
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.55 }}
+            className="overflow-hidden rounded-[2rem] border border-border/70 bg-card shadow-sm"
+          >
+            <div className="grid gap-0 lg:grid-cols-[0.92fr_1.08fr]">
+              <div className="relative min-h-[380px] overflow-hidden">
                 <img
                   src={cms.getImage("philosophy_image", CDN.philosophy)}
                   alt="Философия фермы Шерь Козу"
-                  className="w-full h-auto object-cover aspect-[4/3]"
+                  className="h-full w-full object-cover"
                   loading="lazy"
                 />
               </div>
-            </motion.div>
+              <div className="p-6 md:p-8">
+                <span className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-4 py-1.5 text-xs font-semibold uppercase tracking-wider text-primary">
+                  <Sparkles className="h-3.5 w-3.5" />
+                  {cms.getText("philosophy_badge", "Наша философия")}
+                </span>
+                <h2 className="mt-4 text-2xl font-bold tracking-tight sm:text-3xl lg:text-4xl">
+                  {cms.getText("philosophy_heading", "Три принципа, на которых стоит ферма")}
+                </h2>
+                <p className="mt-4 text-muted-foreground sm:text-lg">
+                  {cms.getText("philosophy_subtitle", "Мы верим, что качество начинается с отношения — к животным, к продукту и к людям, которые нам доверяют.")}
+                </p>
 
-            <motion.div
-              initial="hidden"
-              whileInView="visible"
-              viewport={{ once: true }}
-              variants={staggerContainer}
-              className="order-1 lg:order-2"
-            >
-              <motion.span
-                variants={fadeUp}
-                custom={0}
-                className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-4 py-1.5 text-xs font-semibold uppercase tracking-wider text-primary"
-              >
-                <Sparkles className="h-3.5 w-3.5" />
-                {cms.getText("philosophy_badge", "Наша философия")}
-              </motion.span>
-              <motion.h2
-                variants={fadeUp}
-                custom={1}
-                className="mt-4 text-2xl font-bold tracking-tight sm:text-3xl lg:text-4xl"
-              >
-                {cms.getText("philosophy_heading", "Три принципа, на которых стоит ферма")}
-              </motion.h2>
-              <motion.p
-                variants={fadeUp}
-                custom={2}
-                className="mt-4 text-muted-foreground sm:text-lg"
-              >
-                {cms.getText("philosophy_subtitle", "Мы верим, что качество начинается с отношения — к животным, к продукту и к людям, которые нам доверяют.")}
-              </motion.p>
-
-              <div className="mt-8 space-y-5">
-                {principles.map((p: { icon: string; title: string; text: string }, i: number) => {
-                  const Icon = iconMap[p.icon] || Eye;
-                  return (
-                    <motion.div
-                      key={p.title}
-                      variants={fadeUp}
-                      custom={i + 3}
-                      className="flex gap-4 rounded-xl border border-border bg-card p-4 shadow-sm"
-                    >
-                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10">
-                        <Icon className="h-5 w-5 text-primary" />
+                <div className="mt-6 space-y-4">
+                  {principles.map((p: { icon: string; title: string; text: string }, i: number) => {
+                    const Icon = iconMap[p.icon] || Eye;
+                    return (
+                      <div
+                        key={p.title}
+                        className="flex gap-4 rounded-xl border border-border bg-secondary/40 p-4"
+                      >
+                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10">
+                          <Icon className="h-5 w-5 text-primary" />
+                        </div>
+                        <div>
+                          <h3 className="text-sm font-bold">{p.title}</h3>
+                          <p className="mt-1 text-sm text-muted-foreground leading-relaxed">{p.text}</p>
+                        </div>
                       </div>
-                      <div>
-                        <h3 className="text-sm font-bold">{p.title}</h3>
-                        <p className="mt-1 text-sm text-muted-foreground leading-relaxed">{p.text}</p>
-                      </div>
-                    </motion.div>
-                  );
-                })}
+                    );
+                  })}
+                </div>
               </div>
-            </motion.div>
-          </div>
+            </div>
+          </motion.div>
         </div>
       </section>
 
@@ -431,54 +410,47 @@ export default function AboutFarm() {
             </motion.p>
           </motion.div>
 
-          <div className="grid gap-8 lg:grid-cols-2 items-start">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              whileInView={{ opacity: 1, scale: 1 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.6 }}
-              className="overflow-hidden rounded-3xl border border-border/60 shadow-xl"
-            >
-              <img
-                src={cms.getImage("breeds_image", CDN.breeds)}
-                alt="Элитные породы коз и овец на ферме"
-                className="w-full h-auto object-cover aspect-[4/3]"
-                loading="lazy"
-              />
-            </motion.div>
-
-            <motion.div
-              initial="hidden"
-              whileInView="visible"
-              viewport={{ once: true }}
-              variants={staggerContainer}
-              className="space-y-4"
-            >
-              {breeds.map((b: { name: string; origin: string; trait: string; character: string }, i: number) => (
-                <motion.div
-                  key={b.name}
-                  variants={fadeUp}
-                  custom={i}
-                  className="rounded-xl border border-border bg-card p-5 shadow-sm"
-                >
-                  <div className="flex items-center gap-3 mb-2">
-                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10">
-                      <Milk className="h-4 w-4 text-primary" />
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.55 }}
+            className="overflow-hidden rounded-[2rem] border border-border/70 bg-card shadow-sm"
+          >
+            <div className="grid gap-0 lg:grid-cols-[0.92fr_1.08fr]">
+              <div className="relative min-h-[380px] overflow-hidden">
+                <img
+                  src={cms.getImage("breeds_image", CDN.breeds)}
+                  alt="Элитные породы коз и овец на ферме"
+                  className="h-full w-full object-cover"
+                  loading="lazy"
+                />
+              </div>
+              <div className="p-6 md:p-8 space-y-4">
+                {breeds.map((b: { name: string; origin: string; trait: string; character: string }, i: number) => (
+                  <div
+                    key={b.name}
+                    className="rounded-xl border border-border bg-secondary/40 p-4"
+                  >
+                    <div className="flex items-center gap-3 mb-2">
+                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10">
+                        <Milk className="h-4 w-4 text-primary" />
+                      </div>
+                      <div>
+                        <h3 className="text-sm font-bold">{b.name}</h3>
+                        <p className="text-xs text-muted-foreground flex items-center gap-1">
+                          <MapPin className="h-3 w-3" />
+                          {b.origin}
+                        </p>
+                      </div>
                     </div>
-                    <div>
-                      <h3 className="text-sm font-bold">{b.name}</h3>
-                      <p className="text-xs text-muted-foreground flex items-center gap-1">
-                        <MapPin className="h-3 w-3" />
-                        {b.origin}
-                      </p>
-                    </div>
+                    <p className="text-sm text-muted-foreground leading-relaxed">{b.trait}</p>
+                    <p className="mt-2 text-xs text-muted-foreground/80 italic">{b.character}</p>
                   </div>
-                  <p className="text-sm text-muted-foreground leading-relaxed">{b.trait}</p>
-                  <p className="mt-2 text-xs text-muted-foreground/80 italic">{b.character}</p>
-                </motion.div>
-              ))}
-            </motion.div>
-          </div>
+                ))}
+              </div>
+            </div>
+          </motion.div>
         </div>
       </section>
 
