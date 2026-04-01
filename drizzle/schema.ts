@@ -74,7 +74,7 @@ export const animals = mysqlTable("animals", {
   coverImageUrl: text("coverImageUrl"),
   galleryIntro: text("galleryIntro"),
   status: animalStatusEnum.default("public_available").notNull(),
-  totalOwnershipSlots: int("totalOwnershipSlots").default(3).notNull(),
+  totalOwnershipSlots: int("totalOwnershipSlots").default(2).notNull(),
   baseMonthlyPriceMinor: int("baseMonthlyPriceMinor").default(0).notNull(),
   healthScore: int("healthScore").default(50).notNull(),
   happinessScore: int("happinessScore").default(50).notNull(),

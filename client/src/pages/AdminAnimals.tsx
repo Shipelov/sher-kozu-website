@@ -188,7 +188,7 @@ const DEMO_ANIMAL_PRESETS: Record<"goat" | "sheep", AnimalProfilePreset> = {
       coverImageUrl: "https://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/goat_portrait_80fc5726.jpg",
       galleryIntro: "История Миры через фотогалерею: портрет, прогулка по ферме и контекст семейного персонального фермерства.",
       status: "public_available",
-      totalOwnershipSlots: 10,
+      totalOwnershipSlots: 2,
       baseMonthlyPriceMinor: 135000,
       healthScore: 94,
       happinessScore: 92,
@@ -243,7 +243,7 @@ const DEMO_ANIMAL_PRESETS: Record<"goat" | "sheep", AnimalProfilePreset> = {
       coverImageUrl: "https://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/family_farm_446b395e.jpg",
       galleryIntro: "Галерея Ланы показывает спокойный семейный сценарий участия: ферма, уход и визуальный контекст выбора животного.",
       status: "public_available",
-      totalOwnershipSlots: 10,
+      totalOwnershipSlots: 2,
       baseMonthlyPriceMinor: 118000,
       healthScore: 90,
       happinessScore: 93,
@@ -346,7 +346,7 @@ export function buildShareSlots(animal: AdminAnimalRecord) {
     const slotIndex = index + 1;
     const filled = index < animal.activeOwnerships;
     const ownerName = filled ? (slotOwnerMap.get(slotIndex) ?? null) : null;
-    const percent = slotIndex * animal.shareUnitPercent;
+    const percent = slotIndex * 50;
     return {
       index: slotIndex,
       filled,
@@ -375,7 +375,7 @@ export function createAdminShareSummary(animals: AdminAnimalRecord[]) {
     }
     const fullPriceMinor = animal.fullPriceMinor || 0;
     const shareUnitPriceMinor = animal.shareUnitPriceMinor
-      || Math.round(fullPriceMinor / Math.max(1, animal.totalOwnershipSlots || 10));
+      || Math.round(fullPriceMinor / Math.max(1, animal.totalOwnershipSlots || 2));
     return sum + shareUnitPriceMinor * animal.activeOwnerships;
   }, 0);
   const totalSlots = animals.reduce((sum, animal) => sum + animal.totalOwnershipSlots, 0);
@@ -416,7 +416,7 @@ export function getShareStatusTone(animal: AdminAnimalRecord) {
     };
   }
 
-  if (animal.availablePercent <= animal.shareUnitPercent * 2) {
+  if (animal.availablePercent <= 50 && animal.availablePercent > 0) {
     return {
       label: "Осталось мало долей",
       className: "border-amber-200 bg-amber-50 text-amber-800",
@@ -440,7 +440,7 @@ export function createEmptyAnimalForm(): AnimalFormValues {
     coverImageUrl: "",
     galleryIntro: "",
     status: "hidden",
-    totalOwnershipSlots: 10,
+    totalOwnershipSlots: 2,
     baseMonthlyPriceMinor: 120000,
     healthScore: 75,
     happinessScore: 75,
@@ -585,7 +585,7 @@ export function getStatusBadge(status: AdminAnimalStatus) {
     return { label: "Доступно", className: "border-emerald-200 bg-emerald-50 text-emerald-800" };
   }
   if (status === "public_limited") {
-    return { label: "Слотов мало", className: "border-amber-200 bg-amber-50 text-amber-800" };
+    return { label: "Осталось 50%", className: "border-amber-200 bg-amber-50 text-amber-800" };
   }
   if (status === "fully_booked") {
     return { label: "Заполнено", className: "border-stone-300 bg-stone-100 text-stone-700" };
@@ -663,11 +663,11 @@ export function ShareSlotsGrid({ animal, compact = false }: { animal: AdminAnima
             <div
               key={slot.index}
               className={`${dotSize} rounded-full cursor-default ${slot.filled ? "bg-emerald-500" : "bg-stone-200 border border-stone-300"}`}
-              title={slot.filled ? `Слот ${slot.index} · ${slot.ownerName ?? "Занято"}` : `Слот ${slot.index} · Свободно`}
+              title={slot.filled ? `Доля ${slot.index * 50}% · ${slot.ownerName ?? "Занято"}` : `Доля ${slot.index * 50}% · Свободно`}
             />
           ))}
         </div>
-        <p className="text-xs text-muted-foreground">{animal.ownedPercent}% занято · {animal.activeOwnerships}/{animal.totalOwnershipSlots} слотов</p>
+        <p className="text-xs text-muted-foreground">{animal.ownedPercent}% занято · {animal.activeOwnerships}/{animal.totalOwnershipSlots} долей</p>
       </div>
     );
   }
@@ -678,7 +678,7 @@ export function ShareSlotsGrid({ animal, compact = false }: { animal: AdminAnima
         <p className="text-sm text-muted-foreground">
           <span className="font-medium text-foreground">{animal.ownedPercent}%</span> занято · <span className="font-medium text-foreground">{animal.availablePercent}%</span> доступно
         </p>
-        <p className="text-xs text-muted-foreground">{animal.activeOwnerships}/{animal.totalOwnershipSlots} слотов</p>
+        <p className="text-xs text-muted-foreground">{animal.activeOwnerships}/{animal.totalOwnershipSlots} долей</p>
       </div>
       <div className="h-2.5 overflow-hidden rounded-full bg-stone-200">
         <div className="h-full rounded-full bg-emerald-500 transition-all" style={{ width: `${animal.ownedPercent}%` }} />
@@ -688,7 +688,7 @@ export function ShareSlotsGrid({ animal, compact = false }: { animal: AdminAnima
           <div
             key={slot.index}
             className={`${dotSize} rounded-full cursor-default ${slot.filled ? "bg-emerald-500" : "bg-stone-200 border border-stone-300"}`}
-            title={slot.filled ? `Слот ${slot.index}: ${slot.index * animal.shareUnitPercent}% · ${slot.ownerName ?? "Занято"}` : `Слот ${slot.index}: ${slot.index * animal.shareUnitPercent}% · Свободно`}
+            title={slot.filled ? `Доля ${slot.index * 50}% · ${slot.ownerName ?? "Занято"}` : `Доля ${slot.index * 50}% · Свободно`}
           />
         ))}
       </div>
@@ -706,7 +706,7 @@ function ShareDistributionPanel({ animals }: { animals: AdminAnimalRecord[] }) {
           <div className="flex items-center justify-between">
             <div className="flex-1">
               <CardTitle>Распределение долей</CardTitle>
-              <CardDescription>Занятость и свободные 10%-доли</CardDescription>
+              <CardDescription>Занятость и свободные доли (50%/100%)</CardDescription>
             </div>
             <CollapsibleTrigger asChild>
               <Button variant="ghost" size="sm" className="rounded-full">
@@ -721,14 +721,14 @@ function ShareDistributionPanel({ animals }: { animals: AdminAnimalRecord[] }) {
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
           <Card className="rounded-[1.5rem] border-emerald-100 bg-emerald-50/80 shadow-none">
             <CardContent className="p-4">
-              <p className="text-xs uppercase tracking-[0.18em] text-emerald-800/80">Занято слотов</p>
+              <p className="text-xs uppercase tracking-[0.18em] text-emerald-800/80">Занято долей</p>
               <p className="mt-2 text-2xl font-semibold text-emerald-900">{summary.occupiedSlots}</p>
               <p className="text-sm text-emerald-800/80">из {summary.totalSlots} доступных долей</p>
             </CardContent>
           </Card>
           <Card className="rounded-[1.5rem] border-stone-200 bg-stone-50/90 shadow-none">
             <CardContent className="p-4">
-              <p className="text-xs uppercase tracking-[0.18em] text-stone-700/80">Свободно слотов</p>
+              <p className="text-xs uppercase tracking-[0.18em] text-stone-700/80">Свободно долей</p>
               <p className="mt-2 text-2xl font-semibold text-stone-900">{summary.freeSlots}</p>
               <p className="text-sm text-stone-700/80">к продаже</p>
             </CardContent>
@@ -769,7 +769,7 @@ function ShareDistributionPanel({ animals }: { animals: AdminAnimalRecord[] }) {
                     </div>
                   </div>
                   <div className="rounded-2xl border border-border/70 bg-white px-3 py-2 text-right">
-                    <p className="text-xs uppercase tracking-[0.14em] text-muted-foreground">Доля {animal.shareUnitPercent}%</p>
+                    <p className="text-xs uppercase tracking-[0.14em] text-muted-foreground">Доля 50%</p>
                     <p className="text-sm font-semibold text-foreground">{formatPrice(animal.shareUnitPriceMinor)}</p>
                   </div>
                 </div>
@@ -784,7 +784,7 @@ function ShareDistributionPanel({ animals }: { animals: AdminAnimalRecord[] }) {
 
         {summary.loadedAnimals === 0 ? (
           <div className="rounded-2xl border border-dashed border-border bg-background/80 px-5 py-4 text-sm text-muted-foreground">
-            Пока ни у одного животного нет занятых долей. Как только появятся покупки или бронь, здесь отобразится распределение по слотам 10%.
+            Пока ни у одного животного нет занятых долей. Как только появятся покупки или бронь, здесь отобразится распределение по долям (50%/100%).
           </div>
         ) : null}
       </CardContent>
@@ -863,7 +863,7 @@ function OwnershipManagementDialog({
             Владельцы — {animal?.name ?? ""}
           </DialogTitle>
           <DialogDescription>
-            {activeCount} активных из {animal?.totalOwnershipSlots ?? 10} слотов.
+            {activeCount} активных из {animal?.totalOwnershipSlots ?? 2} долей.
           </DialogDescription>
         </DialogHeader>
 
@@ -893,7 +893,7 @@ function OwnershipManagementDialog({
                           <StatusIcon className="mr-1 h-3 w-3" />
                           {statusInfo.label}
                         </Badge>
-                        <span className="text-xs text-muted-foreground">Слот #{ownership.slotIndex}</span>
+                        <span className="text-xs text-muted-foreground">Доля {ownership.slotIndex * 50}%</span>
                       </div>
                       <p className="text-sm font-medium text-foreground">
                         {ownership.familyName ?? "Без семьи"}
@@ -1052,7 +1052,7 @@ function AdminAnimalsTable({
                 <TableCell>
                   <div className="space-y-1.5">
                     <p className="font-medium text-foreground">{formatPrice(animal.fullPriceMinor)}</p>
-                    <p className="text-xs text-muted-foreground">1 слот: {formatPrice(animal.shareUnitPriceMinor)}</p>
+                     <p className="text-xs text-muted-foreground">50% доля: {formatPrice(animal.shareUnitPriceMinor)}</p>
 
                   </div>
                 </TableCell>
@@ -1320,7 +1320,7 @@ function AnimalGalleryManager({
           <div className="rounded-2xl border border-border/70 bg-stone-50/70 p-4">
             <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">Текущая цена</p>
             <p className="mt-2 text-2xl font-semibold text-foreground">{formatRublesFromMinor(values.baseMonthlyPriceMinor)}</p>
-            <p className="mt-2 text-sm text-muted-foreground">Один слот 10% будет рассчитан автоматически после сохранения карточки.</p>
+            <p className="mt-2 text-sm text-muted-foreground">Доля 50% будет рассчитана автоматически после сохранения карточки.</p>
           </div>
         </div>
       ) : photosQuery.isLoading ? (
@@ -1460,7 +1460,7 @@ function AnimalEditorCard({
   isSubmitting: boolean;
 }) {
   const gallerySlug = values.slug.trim();
-  const sharePriceMinor = Math.round(values.baseMonthlyPriceMinor / 10);
+  const sharePriceMinor = Math.round(values.baseMonthlyPriceMinor / 2);
   const hasSlug = gallerySlug.length > 0;
   const isCreateMode = mode === "create";
 
@@ -1553,7 +1553,7 @@ function AnimalEditorCard({
                 </div>
               </div>
             </div>
-            <p className="mt-3 text-xs text-muted-foreground">Цена доли 10% рассчитывается автоматически.</p>
+            <p className="mt-3 text-xs text-muted-foreground">Цена доли 50% рассчитывается автоматически.</p>
           </div>
 
           <div className="rounded-[1.75rem] border border-primary/15 bg-primary/5 p-4 shadow-sm">
@@ -1565,7 +1565,7 @@ function AnimalEditorCard({
 
               </div>
               <div className="rounded-2xl border border-white/60 bg-white px-4 py-3">
-                <p className="text-xs uppercase tracking-[0.14em] text-muted-foreground">1 доля · 10%</p>
+                <p className="text-xs uppercase tracking-[0.14em] text-muted-foreground">1 доля · 50%</p>
                 <p className="mt-2 text-xl font-semibold text-foreground">{formatRublesFromMinor(sharePriceMinor)}</p>
 
               </div>
@@ -1612,7 +1612,7 @@ function AnimalEditorCard({
               <SelectTrigger><SelectValue placeholder="Статус" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="public_available">Доступно</SelectItem>
-                <SelectItem value="public_limited">Слотов мало</SelectItem>
+                <SelectItem value="public_limited">Осталось 50%</SelectItem>
                 <SelectItem value="fully_booked">Заполнено</SelectItem>
                 <SelectItem value="hidden">Скрыто</SelectItem>
                 <SelectItem value="archived">Архив</SelectItem>
@@ -2016,7 +2016,7 @@ export default function AdminAnimalsPage() {
                       <SelectContent>
                         <SelectItem value="all">Все статусы</SelectItem>
                         <SelectItem value="public_available">Доступно</SelectItem>
-                        <SelectItem value="public_limited">Слотов мало</SelectItem>
+                        <SelectItem value="public_limited">Осталось 50%</SelectItem>
                         <SelectItem value="fully_booked">Заполнено</SelectItem>
                         <SelectItem value="hidden">Скрыто</SelectItem>
                         <SelectItem value="archived">Архив</SelectItem>

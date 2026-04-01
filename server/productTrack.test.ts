@@ -301,35 +301,35 @@ describe("Milk conversion logic", () => {
 });
 
 describe("Milk budget validation", () => {
-  it("validates budget for 10% share of 500L animal", () => {
-    const result = validateMilkBudget(500, 10, 40);
-    expect(result.budget).toBe(50);
+  it("validates budget for 50% share of 500L animal", () => {
+    const result = validateMilkBudget(500, 50, 200);
+    expect(result.budget).toBe(250);
     expect(result.valid).toBe(true);
-    expect(result.remaining).toBe(10);
+    expect(result.remaining).toBe(50);
   });
 
   it("rejects when usage exceeds budget", () => {
-    const result = validateMilkBudget(500, 10, 60);
-    expect(result.budget).toBe(50);
+    const result = validateMilkBudget(500, 50, 260);
+    expect(result.budget).toBe(250);
     expect(result.valid).toBe(false);
   });
 
   it("allows exact budget usage", () => {
-    const result = validateMilkBudget(500, 10, 50);
+    const result = validateMilkBudget(500, 50, 250);
     expect(result.valid).toBe(true);
     expect(result.remaining).toBe(0);
   });
 
-  it("calculates budget correctly for 30% share of 800L", () => {
-    const result = validateMilkBudget(800, 30, 200);
-    expect(result.budget).toBe(240);
+  it("calculates budget correctly for 100% share of 800L", () => {
+    const result = validateMilkBudget(800, 100, 700);
+    expect(result.budget).toBe(800);
     expect(result.valid).toBe(true);
-    expect(result.remaining).toBe(40);
+    expect(result.remaining).toBe(100);
   });
 
   it("floors budget to whole litres", () => {
-    const result = validateMilkBudget(333, 10, 33);
-    expect(result.budget).toBe(33); // Math.floor(333 * 10 / 100) = 33
+    const result = validateMilkBudget(333, 50, 166);
+    expect(result.budget).toBe(166); // Math.floor(333 * 50 / 100) = 166
     expect(result.valid).toBe(true);
   });
 });
@@ -519,10 +519,10 @@ describe("Full flow: selections → budget → schedule", () => {
     expect(milkResult.errors).toHaveLength(0);
     expect(milkResult.totalMilkUsed).toBe(48); // 24 + 24
 
-    // Step 3: Validate against budget (animal: 500L/year, owner: 10% = 50L)
-    const budgetResult = validateMilkBudget(500, 10, milkResult.totalMilkUsed);
+    // Step 3: Validate against budget (animal: 500L/year, owner: 50% = 250L)
+    const budgetResult = validateMilkBudget(500, 50, milkResult.totalMilkUsed);
     expect(budgetResult.valid).toBe(true);
-    expect(budgetResult.remaining).toBe(2);
+    expect(budgetResult.remaining).toBe(202);
 
     // Step 4: Generate delivery schedule
     const schedule = generateMonthlySchedule(milkResult.enrichedSelections, 2026);
@@ -542,9 +542,10 @@ describe("Full flow: selections → budget → schedule", () => {
     const milkResult = calculateMilkUsage(sampleOptions, selections);
     expect(milkResult.totalMilkUsed).toBe(180); // 100 + 80
 
-    // 10% of 500L = 50L budget → should fail
-    const budgetResult = validateMilkBudget(500, 10, milkResult.totalMilkUsed);
-    expect(budgetResult.valid).toBe(false);
+    // 50% of 500L = 250L budget → should fail (180 < 250, actually passes now with 50%)
+    const budgetResult = validateMilkBudget(500, 50, milkResult.totalMilkUsed);
+    // With 50% share of 500L = 250L budget, 180L usage is within budget
+    expect(budgetResult.valid).toBe(true);
   });
 
   it("handles large share (50%) with generous budget", () => {
@@ -655,7 +656,7 @@ describe("Admin plan editing", () => {
       ],
       sampleOptions,
       500, // annualMilkLiters
-      10,  // sharePercent → budget = 50L
+      50,  // sharePercent → budget = 250L
       "Увеличил молоко, уменьшил сыр по просьбе владельца",
     );
 
@@ -669,17 +670,17 @@ describe("Admin plan editing", () => {
     const result = simulateAdminPlanEdit(
       basePlan,
       [
-        { productOptionId: 1, annualUnits: 40 },
-        { productOptionId: 2, annualUnits: 5 }, // 40 + 40 = 80 > 50 budget
+        { productOptionId: 1, annualUnits: 200 },  // 200L milk
+        { productOptionId: 2, annualUnits: 10 },   // 10kg cheese * 8 = 80L → total 280 > 250 budget
       ],
       sampleOptions,
       500,
-      10,
+      50,
       null,
     );
 
     expect(result.success).toBe(false);
-    expect(result.error).toContain("доступно только 50 л");
+    expect(result.error).toContain("доступно только 250 л");
   });
 
   it("admin can replace products entirely", () => {
@@ -690,7 +691,7 @@ describe("Admin plan editing", () => {
       ],
       sampleOptions,
       500,
-      10,
+      50,
       "Заменил на йогурт",
     );
 
@@ -709,7 +710,7 @@ describe("Admin plan editing", () => {
       ],
       sampleOptions,
       500,
-      10,
+      50,
       null,
     );
 
@@ -727,7 +728,7 @@ describe("Admin plan editing", () => {
       ],
       sampleOptions,
       500,
-      10,
+      50,
       null,
     );
 
@@ -743,7 +744,7 @@ describe("Admin plan editing", () => {
       ],
       sampleOptions,
       500,
-      10,
+      50,
       null,
     );
 
@@ -757,7 +758,7 @@ describe("Admin plan editing", () => {
       [{ productOptionId: 1, annualUnits: 10 }],
       sampleOptions,
       500,
-      10,
+      50,
       null,
     );
 
@@ -777,7 +778,7 @@ describe("Admin plan editing", () => {
       [{ productOptionId: 1, annualUnits: 20 }],
       sampleOptions,
       500,
-      10,
+      50,
       "Вторая корректировка",
     );
 

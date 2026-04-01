@@ -83,11 +83,11 @@ describe("ProductTracker ownership journey", () => {
       getOwnershipNarrative({
         ownership: {
           animalSlug: "marta",
-          sharePercent: 30,
+          sharePercent: 50,
           statusLabel: "Активное участие",
         },
       })
-    ).toContain("30% участия");
+    ).toContain("50% участия");
 
     expect(getOwnershipNarrative({ ownership: null })).toContain("Сертификат качества");
   });

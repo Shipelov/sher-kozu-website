@@ -1,0 +1,1 @@
+ALTER TABLE `animals` MODIFY COLUMN `totalOwnershipSlots` int NOT NULL DEFAULT 2;

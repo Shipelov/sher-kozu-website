@@ -148,7 +148,7 @@ function getRelationshipStatus(slots: number, total: number, occupiedUntil?: str
 }
 
 function getShareBlockSummary(animal: CatalogAnimal) {
-  const shareUnitPercent = animal.shareUnitPercent ?? 10;
+  const shareUnitPercent = animal.shareUnitPercent ?? 50;
   const availablePercent = animal.availablePercent ?? 0;
   const ownedPercent = animal.ownedPercent ?? 0;
   const availableSharePercents = animal.availableSharePercents ?? [];

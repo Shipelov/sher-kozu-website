@@ -512,7 +512,7 @@ export async function listAnimalPhotos(animalSlug: string, callerOpenId?: string
 /**
  * Get photo upload limit for a user on a specific animal.
  * - Admin: 1 photo (cover)
- * - User: number of active ownership slots (max 10)
+ * - User: number of active ownership slots (max 2)
  * Returns { limit, used, remaining }
  */
 export async function getPhotoUploadLimit(animalSlug: string, callerOpenId: string) {
@@ -561,8 +561,8 @@ export async function getPhotoUploadLimit(animalSlug: string, callerOpenId: stri
     );
 
   const slotsCount = ownerSlots.length;
-  // Limit = number of slots, capped at 10
-  const limit = Math.min(10, slotsCount);
+  // Limit = number of slots, capped at 2
+  const limit = Math.min(2, slotsCount);
 
   return { limit, used, remaining: Math.max(0, limit - used), isAdmin: false };
 }
@@ -1029,7 +1029,7 @@ export async function getOwnerDashboardData(ownerOpenId: string) {
   const allOwnerships = await Promise.all(sortedGroups.map(async (group) => {
     const first = group[0];
     const slotsCount = group.length;
-    const totalSlots = normalizeOwnershipSlots(first.totalOwnershipSlots ?? 10);
+    const totalSlots = normalizeOwnershipSlots(first.totalOwnershipSlots ?? 2);
     const sharePercent = slotsCount * Math.round(getPercentPerSlot(totalSlots));
     const hasPending = group.some((item: any) => item.status === "pending_payment");
     const hasActive = group.some((item: any) => item.status === "active");
@@ -1088,7 +1088,7 @@ export async function getOwnerDashboardData(ownerOpenId: string) {
     };
   }));
   const currentAnimal = primaryOwnership ? await getAnimalBySlug(primaryOwnership.animalSlug, ownerOpenId) : null;
-  const mySharePercent = currentAnimal?.mySharePercent ?? (primaryOwnershipGroup ? primaryOwnershipGroup.length * Math.round(getPercentPerSlot(normalizeOwnershipSlots(primaryOwnership.totalOwnershipSlots ?? 10))) : 0);
+  const mySharePercent = currentAnimal?.mySharePercent ?? (primaryOwnershipGroup ? primaryOwnershipGroup.length * Math.round(getPercentPerSlot(normalizeOwnershipSlots(primaryOwnership.totalOwnershipSlots ?? 2))) : 0);
   const trackerData = primaryOwnership ? await getProductTrackerData(ownerOpenId, primaryOwnership.animalSlug) : { productBatches: [], compositionSnapshots: [], monthlyMetrics: [], deliveries: [] };
   const clubData = await getClubFeedData(ownerOpenId);
 
@@ -1804,7 +1804,7 @@ function isOccupiedOwnershipStatus(status: string) {
 }
 
 function normalizeOwnershipSlots(totalOwnershipSlots: number | null | undefined) {
-  return Math.max(1, totalOwnershipSlots ?? 10);
+  return Math.max(1, totalOwnershipSlots ?? 2);
 }
 
 function getPercentPerSlot(totalOwnershipSlots: number | null | undefined) {
@@ -1819,22 +1819,22 @@ function getSharePriceMinor(basePriceMinor: number, sharePercent: number) {
   return Math.round((Math.max(0, basePriceMinor) * sharePercent) / 100);
 }
 
+/** Normalize share percent to valid values: 0, 50, or 100 */
 function normalizeSharePercentValue(value: number) {
-  return Math.max(0, Math.min(100, Math.round(value / 10) * 10));
+  if (value <= 0) return 0;
+  if (value <= 75) return 50;
+  return 100;
 }
 
 function getStandardizedOwnershipSlots() {
-  return 10;
+  return 2;
 }
 
-function getAvailableSharePercents(availablePercent: number, shareUnitPercent: number) {
+/** Returns available share options: only 50 and/or 100 */
+function getAvailableSharePercents(availablePercent: number, _shareUnitPercent: number) {
   const values: number[] = [];
-  const safeAvailablePercent = normalizeSharePercentValue(availablePercent);
-
-  for (let sharePercent = shareUnitPercent; sharePercent <= safeAvailablePercent; sharePercent += shareUnitPercent) {
-    values.push(sharePercent);
-  }
-
+  if (availablePercent >= 50) values.push(50);
+  if (availablePercent >= 100) values.push(100);
   return values;
 }
 
@@ -1842,9 +1842,9 @@ function buildAnimalShareMetrics(animal: { totalOwnershipSlots: number; baseMont
   const totalSlots = getStandardizedOwnershipSlots();
   const normalizedActiveOwnerships = Math.max(0, Math.min(totalSlots, Math.round(activeOwnerships)));
   const availableSlots = Math.max(0, totalSlots - normalizedActiveOwnerships);
-  const ownedPercent = normalizeSharePercentValue(getOwnedPercentFromCount(normalizedActiveOwnerships, totalSlots));
-  const availablePercent = normalizeSharePercentValue(100 - ownedPercent);
-  const shareUnitPercent = 10;
+  const ownedPercent = normalizedActiveOwnerships * 50;
+  const availablePercent = 100 - ownedPercent;
+  const shareUnitPercent = 50;
   const shareUnitPriceMinor = getSharePriceMinor(animal.baseMonthlyPriceMinor, shareUnitPercent);
   const availableSharePercents = getAvailableSharePercents(availablePercent, shareUnitPercent);
   const primarySharePercent = availableSharePercents[0] ?? shareUnitPercent;
@@ -1899,7 +1899,7 @@ export async function getAnimalOccupiedUntil(animalId: number) {
 export async function getAvailableSlotIndex(animalId: number) {
   const db = await getDb();
   const animalRows = await db.select({ totalOwnershipSlots: animals.totalOwnershipSlots }).from(animals).where(eq(animals.id, animalId)).limit(1);
-  const totalSlots = normalizeOwnershipSlots(animalRows[0]?.totalOwnershipSlots ?? 10);
+  const totalSlots = normalizeOwnershipSlots(animalRows[0]?.totalOwnershipSlots ?? 2);
   const slotRows = await db
     .select({ slotIndex: animalOwnerships.slotIndex, status: animalOwnerships.status })
     .from(animalOwnerships)
@@ -2164,7 +2164,7 @@ export async function purchaseAnimalShare(args: {
   const shareUnitPercent = Math.round(getPercentPerSlot(totalSlots));
   const sharePercent = args.sharePercent;
 
-  if (!Number.isInteger(sharePercent) || sharePercent < shareUnitPercent || sharePercent > 100 || sharePercent % shareUnitPercent !== 0) {
+  if (sharePercent !== 50 && sharePercent !== 100) {
     throw new Error("INVALID_SHARE_PERCENT");
   }
 
@@ -3094,7 +3094,7 @@ export async function resolveOwnerSharePercent(ownerOpenId: string, animalId: nu
     .from(animals)
     .where(eq(animals.id, animalId))
     .limit(1);
-  const totalSlots = Math.max(1, animalRows[0]?.totalOwnershipSlots ?? 10);
+  const totalSlots = Math.max(1, animalRows[0]?.totalOwnershipSlots ?? 2);
   const percentPerSlot = 100 / totalSlots;
   return Math.min(100, Math.round(ownerSlots.length * percentPerSlot));
 }

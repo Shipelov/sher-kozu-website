@@ -214,7 +214,7 @@ export default function UserDetailDrawer({ userOpenId, onClose }: UserDetailDraw
                           <TableRow className="bg-muted/30">
                             <TableHead>Животное</TableHead>
                             <TableHead>Вид</TableHead>
-                            <TableHead>Слот</TableHead>
+                            <TableHead>Доля</TableHead>
                             <TableHead>Статус</TableHead>
                             <TableHead>Цена</TableHead>
                             <TableHead>Дата начала</TableHead>

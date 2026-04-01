@@ -83,10 +83,9 @@ describe("Multi-ownership: client-side (Dashboard.tsx)", () => {
     expect(DASHBOARD_SRC).toContain("Основное");
   });
 
-  it("animal card shows share percent, status, slots count and price", () => {
+  it("animal card shows share percent, status and price", () => {
     expect(DASHBOARD_SRC).toContain("item.sharePercent");
     expect(DASHBOARD_SRC).toContain("item.statusLabel");
-    expect(DASHBOARD_SRC).toContain("item.slotsCount");
     expect(DASHBOARD_SRC).toContain("item.priceMinorTotal");
   });
 

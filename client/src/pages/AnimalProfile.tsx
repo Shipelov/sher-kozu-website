@@ -252,16 +252,16 @@ export default function AnimalProfile() {
     { enabled: Boolean(animalSlug) && isAuthenticated },
   );
 
-  const initialSharePercent = useMemo(() => {
-    if (typeof window === "undefined") return 10;
+  const initialSharePercent = useMemo((): 50 | 100 => {
+    if (typeof window === "undefined") return 50;
     const value = Number(new URLSearchParams(window.location.search).get("share"));
-    return Number.isFinite(value) && value > 0 ? value : 10;
+    return value === 100 ? 100 : 50;
   }, []);
-  const [selectedSharePercent, setSelectedSharePercent] = useState(initialSharePercent);
+  const [selectedSharePercent, setSelectedSharePercent] = useState<50 | 100>(initialSharePercent);
 
   const availableSharePercents = data?.availableSharePercents ?? [];
   const fullPriceMinor = data?.fullPriceMinor ?? data?.baseMonthlyPriceMinor ?? 0;
-  const shareUnitPercent = data?.shareUnitPercent ?? 10;
+  const shareUnitPercent = data?.shareUnitPercent ?? 50;
   const ownedPercent = data?.ownedPercent ?? 0;
   const availablePercent = data?.availablePercent ?? 100;
   const currencyCode = data?.currencyCode ?? "RUB";
@@ -404,8 +404,8 @@ export default function AnimalProfile() {
   }, [galleryImages]);
 
   useEffect(() => {
-    if (!availableSharePercents.length) { setSelectedSharePercent(shareUnitPercent); return; }
-    if (!availableSharePercents.includes(selectedSharePercent)) setSelectedSharePercent(availableSharePercents[0]);
+    if (!availableSharePercents.length) { setSelectedSharePercent(shareUnitPercent as 50 | 100); return; }
+    if (!availableSharePercents.includes(selectedSharePercent)) setSelectedSharePercent((availableSharePercents[0] ?? 50) as 50 | 100);
   }, [availableSharePercents, selectedSharePercent, shareUnitPercent]);
 
   useEffect(() => {
@@ -781,7 +781,7 @@ export default function AnimalProfile() {
                 ctaPending={purchaseShare.isPending}
                 ctaLoginRequired={!isAuthenticated}
                 selectedSharePercent={selectedSharePercent}
-                onShareSelect={setSelectedSharePercent}
+                onShareSelect={(percent: number) => setSelectedSharePercent(percent === 100 ? 100 : 50)}
                 selectable
                 defaultPlanLabel={data?.plans?.[0]?.name ?? "Базовый план"}
                 defaultPlanMeta={data?.plans?.[0]?.durations?.[0] ? `${data.plans[0].durations[0].months} мес. · ${data.plans[0].durations[0].label}` : "Срок будет подтверждён фермером"}

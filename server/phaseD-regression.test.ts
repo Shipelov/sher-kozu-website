@@ -125,7 +125,7 @@ describe("Auth Guard: protectedProcedure rejects unauthenticated", () => {
     await expect(
       caller.animals.purchaseShare({
         animalSlug: "test-animal",
-        sharePercent: 10,
+        sharePercent: 50,
         planId: null,
       })
     ).rejects.toThrow(UNAUTHED_ERR_MSG);

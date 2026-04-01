@@ -269,7 +269,7 @@ const animalUpsertInput = z.object({
   coverImageUrl: z.string().url().optional().nullable(),
   galleryIntro: z.string().max(1000).optional().nullable(),
   status: z.enum(["public_available", "public_limited", "fully_booked", "hidden", "archived"]),
-  totalOwnershipSlots: z.number().int().min(10).max(10),
+  totalOwnershipSlots: z.number().int().min(2).max(2),
   baseMonthlyPriceMinor: z.number().int().min(0).max(1_000_000_000),
   healthScore: z.number().int().min(0).max(100),
   happinessScore: z.number().int().min(0).max(100),
@@ -292,7 +292,7 @@ const animalVisibilityInput = z.object({
 
 const purchaseAnimalShareInput = z.object({
   animalId: z.number().int().positive(),
-  sharePercent: z.number().int().min(10).max(100),
+  sharePercent: z.union([z.literal(50), z.literal(100)]),
   planId: z.number().int().positive().optional(),
   planDurationId: z.number().int().positive().optional(),
   startsAt: z.number().int().optional(),
@@ -948,7 +948,7 @@ export const appRouter = router({
           throw new TRPCError({ code: "NOT_FOUND", message: "Животное не найдено." });
         }
         if (code === "INVALID_SHARE_PERCENT") {
-          throw new TRPCError({ code: "BAD_REQUEST", message: "Доля должна быть выбрана шагом 10%." });
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Доля должна быть 50% или 100%." });
         }
         if (code === "INSUFFICIENT_SHARE_AVAILABLE") {
           throw new TRPCError({ code: "BAD_REQUEST", message: "Свободной доли выбранного размера больше нет." });
@@ -1113,7 +1113,7 @@ export const appRouter = router({
         }
         throw new TRPCError({
           code: "FORBIDDEN",
-          message: `Вы использовали все ${uploadLimit.limit} слотов для фото. Количество фото равно количеству ваших долей. Удалите старое фото, чтобы загрузить новое.`,
+          message: `Вы использовали все ${uploadLimit.limit} мест для фото. Удалите старое фото, чтобы загрузить новое.`,
         });
       }
       const extension = input.fileName.includes(".") ? input.fileName.split(".").pop() : "jpg";

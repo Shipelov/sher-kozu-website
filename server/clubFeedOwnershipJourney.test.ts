@@ -67,7 +67,7 @@ describe("ClubFeed ownership journey", () => {
   });
 
   it("switches club signals from generic community copy to personal ownership copy", () => {
-    expect(buildClubSignals({ animalName: "Злата", sharePercent: 30 })[0]).toContain("30%");
+    expect(buildClubSignals({ animalName: "Злата", sharePercent: 50 })[0]).toContain("50%");
     expect(buildClubSignals({ animalName: "Марта", sharePercent: 0 })[0]).toContain("Клуб возвращает пользователя");
   });
 });

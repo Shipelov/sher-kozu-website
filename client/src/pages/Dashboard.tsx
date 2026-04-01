@@ -641,7 +641,7 @@ export default function Dashboard() {
                         </div>
                         <div className="mt-3 flex items-center justify-between text-sm">
                           <span className="text-xs text-muted-foreground">
-                            {item.slotsCount} {item.slotsCount === 1 ? "слот" : item.slotsCount < 5 ? "слота" : "слотов"} · {formatCurrency(item.priceMinorTotal)}
+                            {item.sharePercent}% владение · {formatCurrency(item.priceMinorTotal)}
                           </span>
                           <ChevronRight className="h-4 w-4 text-primary transition-transform group-hover:translate-x-0.5" />
                         </div>
@@ -1063,7 +1063,7 @@ export default function Dashboard() {
                     <div className="text-xs uppercase tracking-[0.16em] text-primary">Предварительный просмотр</div>
                   <h4 className="mt-2 text-lg font-semibold text-foreground">Профиль участия откроется после входа</h4>
                   <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                    Здесь появятся статус участия, доля, закреплённые слоты и карточка текущего животного. До входа мы показываем структуру кабинета, но не раскрываем персональные данные.
+                    Здесь появятся статус участия, доля владения (50% или 100%) и карточка текущего животного. До входа мы показываем структуру кабинета, но не раскрываем персональные данные.
                   </p>
                 </div>
               ) : null}

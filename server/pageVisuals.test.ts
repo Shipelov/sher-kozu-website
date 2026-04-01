@@ -351,11 +351,9 @@ describe("page visual integration source smoke", () => {
     expect(animalShareCardSource).toContain("Статус, доля и цена");
     expect(animalShareCardSource).toContain("occupiedUntilLabel");
     expect(animalShareCardSource).toContain("Стартовая доля");
-    expect(shareSelectionPreviewCardSource).toContain("Выбор доли участия");
-    expect(shareSelectionPreviewCardSource).toContain("Передвигайте ползунок шагом");
-    expect(shareSelectionPreviewCardSource).toContain("Стартовая доля");
+    expect(shareSelectionPreviewCardSource).toContain("Простой выбор доли");
+    expect(shareSelectionPreviewCardSource).toContain("Совладение 50%");
     expect(shareSelectionPreviewCardSource).toContain("Формат по умолчанию");
-    expect(shareSelectionPreviewCardSource).toContain("Выбор доли участия");
     expect(shareSelectionPreviewCardSource).toContain("Свободных долей сейчас нет");
   });
 
@@ -379,8 +377,8 @@ describe("page visual integration source smoke", () => {
     expect(animalProfileSource).toContain("Войдите, чтобы загружать фото в галерею");
 
     // Shared components
-    expect(shareSelectionPreviewCardSource).toContain("Выбор доли участия");
-    expect(shareSelectionPreviewCardSource).toContain("Передвигайте ползунок шагом");
+    expect(shareSelectionPreviewCardSource).toContain("Простой выбор доли");
+    expect(shareSelectionPreviewCardSource).toContain("Совладение 50%");
     expect(shareSelectionPreviewCardSource).toContain("Свободных долей сейчас нет");
   });
 });

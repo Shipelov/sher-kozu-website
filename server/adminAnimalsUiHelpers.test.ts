@@ -34,25 +34,24 @@ const animals = [
     story: "Любит прогулки у яблоневого сада и легко идёт на контакт с детьми.",
     galleryIntro: "Фотографии из повседневной жизни Марты.",
     status: "public_limited",
-    totalOwnershipSlots: 10,
-    activeOwnerships: 4,
-    availableSlots: 6,
-    ownedPercent: 40,
-    availablePercent: 60,
+    totalOwnershipSlots: 2,
+    activeOwnerships: 1,
+    availableSlots: 1,
+    ownedPercent: 50,
+    availablePercent: 50,
     totalPriceMinor: 850000,
-    occupiedValueMinor: 340000,
-    sharePriceMinor: 85000,
-    ownersCount: 2,
-    activeShareReservations: 4,
+    occupiedValueMinor: 425000,
+    sharePriceMinor: 425000,
+    ownersCount: 1,
+    activeShareReservations: 1,
     shareDistribution: [
-      { familyName: "Семья Алимовых", percent: 20, slots: [1, 2], planLabel: "6 месяцев" },
-      { familyName: "Семья Орловых", percent: 20, slots: [3, 4], planLabel: "12 месяцев" },
+      { familyName: "Семья Алимовых", percent: 50, slots: [1], planLabel: "6 месяцев" },
     ],
     baseMonthlyPriceMinor: 125000,
-    shareUnitPercent: 10,
-    shareUnitPriceMinor: 12500,
+    shareUnitPercent: 50,
+    shareUnitPriceMinor: 62500,
     fullPriceMinor: 125000,
-    availableSharePercents: [10, 20, 30, 40, 50, 60],
+    availableSharePercents: [50],
     healthScore: 92,
     happinessScore: 89,
     milkPotentialScore: 95,
@@ -67,27 +66,27 @@ const animals = [
     slug: "luna",
     name: "Луна",
     species: "sheep",
-    breed: "Романовская",
+    breed: "Лакон",
     shortDescription: "Молодая овца для тихого семейного формата участия.",
     story: null,
     galleryIntro: null,
     status: "hidden",
-    totalOwnershipSlots: 10,
+    totalOwnershipSlots: 2,
     activeOwnerships: 0,
-    availableSlots: 10,
+    availableSlots: 2,
     ownedPercent: 0,
     availablePercent: 100,
     totalPriceMinor: 990000,
     occupiedValueMinor: 0,
-    sharePriceMinor: 99000,
+    sharePriceMinor: 495000,
     ownersCount: 0,
     activeShareReservations: 0,
     shareDistribution: [],
     baseMonthlyPriceMinor: 99000,
-    shareUnitPercent: 10,
-    shareUnitPriceMinor: 9900,
+    shareUnitPercent: 50,
+    shareUnitPriceMinor: 49500,
     fullPriceMinor: 99000,
-    availableSharePercents: [10, 20, 30, 40, 50, 60, 70, 80, 90, 100],
+    availableSharePercents: [50, 100],
     healthScore: 88,
     happinessScore: 90,
     milkPotentialScore: 74,
@@ -102,29 +101,28 @@ const animals = [
     slug: "zvezda",
     name: "Звезда",
     species: "goat",
-    breed: "Зааненская",
+    breed: "Альпийская",
     shortDescription: "Высокий молочный потенциал и стабильный режим ухода.",
     story: null,
     galleryIntro: null,
     status: "fully_booked",
-    totalOwnershipSlots: 10,
-    activeOwnerships: 10,
+    totalOwnershipSlots: 2,
+    activeOwnerships: 2,
     availableSlots: 0,
     ownedPercent: 100,
     availablePercent: 0,
     totalPriceMinor: 1350000,
     occupiedValueMinor: 1350000,
-    sharePriceMinor: 135000,
-    ownersCount: 3,
-    activeShareReservations: 10,
+    sharePriceMinor: 675000,
+    ownersCount: 2,
+    activeShareReservations: 2,
     shareDistribution: [
-      { familyName: "Семья Карповых", percent: 50, slots: [1, 2, 3, 4, 5], planLabel: "12 месяцев" },
-      { familyName: "Семья Мироновых", percent: 30, slots: [6, 7, 8], planLabel: "3 месяца" },
-      { familyName: "Семья Беловых", percent: 20, slots: [9, 10], planLabel: "1 месяц" },
+      { familyName: "Семья Карповых", percent: 50, slots: [1], planLabel: "12 месяцев" },
+      { familyName: "Семья Мироновых", percent: 50, slots: [2], planLabel: "3 месяца" },
     ],
     baseMonthlyPriceMinor: 135000,
-    shareUnitPercent: 10,
-    shareUnitPriceMinor: 13500,
+    shareUnitPercent: 50,
+    shareUnitPriceMinor: 67500,
     fullPriceMinor: 135000,
     availableSharePercents: [],
     healthScore: 96,
@@ -172,23 +170,22 @@ describe("Admin animals UI helpers", () => {
 
     expect(form.species).toBe("goat");
     expect(form.status).toBe("hidden");
-    expect(form.totalOwnershipSlots).toBe(10);
+    expect(form.totalOwnershipSlots).toBe(2);
     expect(form.name).toBe("");
   });
 
-  it("keeps the standard 10-slot sharing model with 10% increments", () => {
+  it("uses the 2-slot sharing model with 50% per slot", () => {
     const slots = buildShareSlots(animals[0] as any);
 
-    expect(slots).toHaveLength(10);
-    expect(slots[0]?.percentLabel).toBe("10%");
-    expect(slots[4]?.percentLabel).toBe("50%");
-    expect(slots[9]?.percentLabel).toBe("100%");
+    expect(slots).toHaveLength(2);
+    expect(slots[0]?.percentLabel).toBe("50%");
+    expect(slots[1]?.percentLabel).toBe("100%");
   });
 
   it("formats animal prices in Russian rubles for admin surfaces", () => {
-    expect(formatShareRevenue(135000)).toBe("1 350 ₽");
-    expect(formatShareRevenue(118000)).toBe("1 180 ₽");
-    expect(formatRublesFromMinor(150000)).toBe("1 500 ₽");
+    expect(formatShareRevenue(135000)).toBe("1\u00a0350\u00a0\u20bd");
+    expect(formatShareRevenue(118000)).toBe("1\u00a0180\u00a0\u20bd");
+    expect(formatRublesFromMinor(150000)).toBe("1\u00a0500\u00a0\u20bd");
   });
 
   it("converts ruble input into internal minor units for create form", () => {
@@ -198,12 +195,12 @@ describe("Admin animals UI helpers", () => {
     expect(parseRublesToMinor("0")).toBe(0);
   });
 
-  it("keeps price preview consistent between full animal cost and one 10 percent share", () => {
+  it("keeps price preview consistent between full animal cost and one 50% share", () => {
     const fullPriceMinor = parseRublesToMinor("1500");
-    const sharePriceMinor = Math.round(fullPriceMinor / 10);
+    const sharePriceMinor = Math.round(fullPriceMinor / 2);
 
-    expect(formatRublesFromMinor(fullPriceMinor)).toBe("1 500 ₽");
-    expect(formatRublesFromMinor(sharePriceMinor)).toBe("150 ₽");
+    expect(formatRublesFromMinor(fullPriceMinor)).toBe("1\u00a0500\u00a0\u20bd");
+    expect(formatRublesFromMinor(sharePriceMinor)).toBe("750\u00a0\u20bd");
   });
 
   it("preserves slug so create flow can continue into gallery management after first save", () => {
@@ -383,7 +380,7 @@ describe("Admin animals UI helpers", () => {
   it("filters animals by search query across name, slug, and breed", () => {
     expect(filterAdminAnimals([...animals], "мар", "all", "all")).toHaveLength(1);
     expect(filterAdminAnimals([...animals], "luna", "all", "all")[0]?.slug).toBe("luna");
-    expect(filterAdminAnimals([...animals], "заан", "all", "all")[0]?.slug).toBe("zvezda");
+    expect(filterAdminAnimals([...animals], "альп", "all", "all")[0]?.slug).toBe("zvezda");
   });
 
   it("filters animals by status and species together", () => {
@@ -436,44 +433,44 @@ describe("Admin animals UI helpers", () => {
     expect(getStatusBadge("archived").label).toBe("Архив");
   });
 
-  it("builds 10%-share slots for admin visualization", () => {
+  it("builds 2-slot share visualization for admin panel", () => {
     const slots = buildShareSlots(animals[0]);
 
-    expect(slots).toHaveLength(10);
-    expect(slots.filter((slot) => slot.state === "occupied")).toHaveLength(4);
-    expect(slots.filter((slot) => slot.state === "available")).toHaveLength(6);
-    expect(slots[0]).toMatchObject({ index: 1, percentLabel: "10%", state: "occupied" });
-    expect(slots[9]).toMatchObject({ index: 10, percentLabel: "100%", state: "available" });
+    expect(slots).toHaveLength(2);
+    expect(slots.filter((slot) => slot.state === "occupied")).toHaveLength(1);
+    expect(slots.filter((slot) => slot.state === "available")).toHaveLength(1);
+    expect(slots[0]).toMatchObject({ index: 1, percentLabel: "50%", state: "occupied" });
+    expect(slots[1]).toMatchObject({ index: 2, percentLabel: "100%", state: "available" });
   });
 
   it("creates aggregate share summary for admin dashboard", () => {
     const summary = createAdminShareSummary([...animals]);
 
     expect(summary.totalAnimals).toBe(3);
-    expect(summary.totalOwnedPercent).toBe(140);
-    expect(summary.totalAvailablePercent).toBe(160);
-    expect(summary.totalOwnersCount).toBe(5);
-    expect(summary.totalOccupiedValueMinor).toBe(1_690_000);
+    expect(summary.totalOwnedPercent).toBe(150);
+    expect(summary.totalAvailablePercent).toBe(150);
+    expect(summary.totalOwnersCount).toBe(3);
+    expect(summary.totalOccupiedValueMinor).toBe(1_775_000);
   });
 
   it("formats share percent labels and occupied revenue for admin cards", () => {
-    expect(formatSharePercentLabel(30)).toBe("30%");
-    expect(formatShareRevenue(340000)).toContain("3");
-    expect(formatShareRevenue(340000)).toContain("₽");
+    expect(formatSharePercentLabel(50)).toBe("50%");
+    expect(formatShareRevenue(425000)).toContain("4");
+    expect(formatShareRevenue(425000)).toContain("₽");
   });
 
   it("handles zero-ownership edge case without NaN or crashes", () => {
     const zeroAnimal = {
       ...animals[0],
-      totalOwnershipSlots: 10,
+      totalOwnershipSlots: 2,
       activeOwnerships: 0,
-      availableSlots: 10,
+      availableSlots: 2,
       ownedPercent: 0,
       availablePercent: 100,
-      shareUnitPercent: 10,
-      shareUnitPriceMinor: 12000,
+      shareUnitPercent: 50,
+      shareUnitPriceMinor: 60000,
       fullPriceMinor: 120000,
-      availableSharePercents: [10, 20, 30, 40, 50, 60, 70, 80, 90, 100],
+      availableSharePercents: [50, 100],
       baseMonthlyPriceMinor: 120000,
       occupiedValueMinor: 0,
     } as unknown as typeof animals[number];
@@ -481,8 +478,8 @@ describe("Admin animals UI helpers", () => {
     const slots = buildShareSlots(zeroAnimal);
     const summary = createAdminShareSummary([zeroAnimal]);
 
-    expect(slots).toHaveLength(10);
-    expect(slots[0]?.percentLabel).toBe("10%");
+    expect(slots).toHaveLength(2);
+    expect(slots[0]?.percentLabel).toBe("50%");
     expect(slots.every(s => s.state === "available")).toBe(true);
     expect(summary.totalAnimals).toBe(1);
     expect(summary.totalOwnedPercent).toBe(0);
@@ -495,7 +492,7 @@ describe("Admin animals UI helpers", () => {
 
   it("returns tone markers for share occupancy progress", () => {
     expect(getShareOccupancyTone(0)).toBe("available");
-    expect(getShareOccupancyTone(40)).toBe("partial");
+    expect(getShareOccupancyTone(50)).toBe("partial");
     expect(getShareOccupancyTone(100)).toBe("full");
   });
 });
