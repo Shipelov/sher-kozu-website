@@ -5,7 +5,7 @@ Core: not an admin panel, but a premium emotional operating system for personal 
 Must feel like a living bridge between animal, products, club and future AI curation.
 */
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
 import { Link } from "wouter";
 import Navbar from "@/components/Navbar";
@@ -48,6 +48,7 @@ import { useCmsContent } from "@/hooks/useCmsContent";
 /** Badges section for the owner dashboard */
 function DashboardBadgesSection() {
   const { data: badges, isLoading } = trpc.badges.myBadges.useQuery();
+  const autoChecked = useRef(false);
   const checkBadges = trpc.badges.checkMyBadges.useMutation({
     onSuccess: (result) => {
       const hasNew = result.newBadges.length > 0;
@@ -60,12 +61,18 @@ function DashboardBadgesSection() {
       }
       if (hasNew || hasRevoked) {
         utils.badges.myBadges.invalidate();
-      } else {
-        toast.info("Новых достижений пока нет");
       }
     },
   });
   const utils = trpc.useUtils();
+
+  // Auto-check badges on mount (once per Dashboard visit)
+  useEffect(() => {
+    if (!autoChecked.current) {
+      autoChecked.current = true;
+      checkBadges.mutate();
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <motion.section
