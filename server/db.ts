@@ -2276,6 +2276,9 @@ export async function createAnimalWithMedia(input: UpsertAnimalPayload) {
   const db = await getDb();
   const { media = [], ...animalInput } = input;
 
+  // Enforce standardized 2-slot model regardless of input to prevent slot mismatch bugs
+  animalInput.totalOwnershipSlots = getStandardizedOwnershipSlots();
+
   const insertResult = await db.insert(animals).values(animalInput as InsertAnimal);
 
   let animalId = Number((insertResult as { insertId?: number | string }).insertId);
@@ -2331,6 +2334,11 @@ export async function updateAnimalWithMedia(
 ) {
   const db = await getDb();
   const { media, ...animalPatch } = input;
+
+  // Enforce standardized 2-slot model on update to prevent slot mismatch bugs
+  if ('totalOwnershipSlots' in animalPatch) {
+    animalPatch.totalOwnershipSlots = getStandardizedOwnershipSlots();
+  }
 
   // Admin can update any animal (single-owner farm)
   await db
