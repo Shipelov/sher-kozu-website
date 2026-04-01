@@ -260,6 +260,13 @@
       "when": 1775071403772,
       "tag": "0037_lean_colonel_america",
       "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "5",
+      "when": 1775084349160,
+      "tag": "0038_cheerful_night_thrasher",
+      "breakpoints": true
     }
   ]
 }

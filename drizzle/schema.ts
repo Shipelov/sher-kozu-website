@@ -448,9 +448,21 @@ export type InsertIntegrationAudit = typeof integrationAudits.$inferInsert;
    owner product plans, delivery schedule, chat
    ─────────────────────────────────────────────── */
 
-export const productTypeEnum = mysqlEnum("productType", ["milk", "smetana", "yogurt", "kefir", "cheese"]);
-export const ownerProductPlanStatusEnum = mysqlEnum("ownerProductPlanStatus", ["draft", "pending_approval", "confirmed", "modified_by_admin"]);
-export const planChangeActionEnum = mysqlEnum("planChangeAction", ["created", "submitted", "approved", "modified", "reset"]);
+export const productTypeEnum = mysqlEnum("productType", [
+  "milk", "smetana", "yogurt", "kefir",
+  "brynza", "kachotta", "halumi", "ricotta", "camembert",
+  "aged_cheese", "blue_cheese", "smoked_cheese",
+  "butter", "condensed_milk", "fermented_drink", "custom", "cheese"
+]);
+export const ownerProductPlanStatusEnum = mysqlEnum("ownerProductPlanStatus", [
+  "draft", "pending_admin_setup", "pending_owner_config", "pending_approval", "confirmed", "modified_by_admin"
+]);
+export const planChangeActionEnum = mysqlEnum("planChangeAction", [
+  "created", "submitted", "approved", "modified", "reset",
+  "tier_changed", "admin_verified", "owner_configured"
+]);
+export const ownerTierSlugEnum = mysqlEnum("ownerTierSlug", ["basic", "standard", "professional"]);
+export const minTierEnum = mysqlEnum("minTier", ["basic", "standard", "professional"]);
 export const deliveryStatusEnum = mysqlEnum("deliveryStatus", ["planned", "ready", "delivered"]);
 export const chatMessageSenderEnum = mysqlEnum("chatMessageSender", ["owner", "admin"]);
 
@@ -495,22 +507,83 @@ export const productOptions = mysqlTable("productOptions", {
 });
 
 /**
+ * Owner's tier status — auto-determined from their active ownerships.
+ * One row per owner. Updated on every ownership change.
+ */
+export const ownerTierStatus = mysqlTable("ownerTierStatus", {
+  id: int("id").autoincrement().primaryKey(),
+  ownerOpenId: varchar("ownerOpenId", { length: 64 }).notNull().unique(),
+  tierSlug: ownerTierSlugEnum.notNull(),
+  /** Total distinct animals with active ownership */
+  totalAnimals: int("totalAnimals").default(0).notNull(),
+  /** Total active ownership rows */
+  totalActiveOwnerships: int("totalActiveOwnerships").default(0).notNull(),
+  /** When tier was last computed */
+  determinedAt: timestamp("determinedAt").defaultNow().notNull(),
+  /** Previous tier (for change tracking) */
+  previousTierSlug: varchar("previousTierSlug", { length: 32 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (t) => ([
+  index("idx_ownerTier_openId").on(t.ownerOpenId),
+]));
+
+/**
+ * Tier product catalog — master list of products available per tier.
+ * Admin-managed globally. Products are unlocked by minTier.
+ * E.g. milk has minTier=basic, brynza has minTier=standard, aged_cheese has minTier=professional.
+ */
+export const tierProductCatalog = mysqlTable("tierProductCatalog", {
+  id: int("id").autoincrement().primaryKey(),
+  /** Which tier unlocks this product (basic/standard/professional) */
+  minTier: minTierEnum.notNull(),
+  /** Product type from expanded enum */
+  productType: productTypeEnum.notNull(),
+  /** Human-readable label, e.g. "Козья сметана", "Брынза из козьего молока" */
+  label: varchar("label", { length: 160 }).notNull(),
+  /** Animal species this product applies to */
+  species: mysqlEnum("tpc_species", ["goat", "sheep", "both"]).default("both").notNull(),
+  /** Liters of milk needed to produce 1 unit */
+  conversionRatio: double("conversionRatio").notNull(),
+  /** Unit of measurement: л or кг */
+  unit: varchar("unit", { length: 16 }).default("л").notNull(),
+  /** Description for the owner */
+  description: text("description"),
+  /** Is this product currently enabled? */
+  isEnabled: int("isEnabled").default(1).notNull(),
+  sortOrder: int("sortOrder").default(0).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (t) => ([
+  index("idx_tpc_minTier").on(t.minTier),
+  index("idx_tpc_species").on(t.species),
+]));
+
+/**
  * Owner's chosen product plan for a specific animal ownership.
- * Created when owner first selects products. After confirmation,
- * changes only through admin (status → modified_by_admin).
+ * Tier-driven: products available are determined by owner's tier.
+ * Flow: purchase → pending_admin_setup → admin verifies → pending_owner_config → owner configures → pending_approval → confirmed
  */
 export const ownerProductPlans = mysqlTable("ownerProductPlans", {
   id: int("id").autoincrement().primaryKey(),
   ownerOpenId: varchar("ownerOpenId", { length: 64 }).notNull(),
   animalId: int("animalId").notNull(),
   ownershipId: int("ownershipId").notNull(),
-  status: ownerProductPlanStatusEnum.default("draft").notNull(),
-  /** JSON array of selections: [{productOptionId, annualUnits}] */
+  /** Owner's tier at time of plan creation */
+  tierSlug: varchar("tierSlug", { length: 32 }),
+  status: ownerProductPlanStatusEnum.default("pending_admin_setup").notNull(),
+  /** JSON array of selections: [{catalogItemId, annualUnits, label, unit}] */
   selectionsJson: text("selectionsJson").notNull(),
   /** Total milk liters consumed by this plan */
   totalMilkUsed: int("totalMilkUsed").default(0).notNull(),
   /** Admin notes when modifying */
   adminNotes: text("adminNotes"),
+  /** When admin verified the product set */
+  adminVerifiedAt: timestamp("adminVerifiedAt"),
+  /** When owner last changed their plan */
+  lastChangedAt: timestamp("lastChangedAt"),
+  /** When the next plan change is allowed (computed from tier frequency) */
+  nextChangeAllowedAt: timestamp("nextChangeAllowedAt"),
   confirmedAt: timestamp("confirmedAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
@@ -603,6 +676,12 @@ export const planChangeLog = mysqlTable("planChangeLog", {
 
 export type PlanChangeLogEntry = typeof planChangeLog.$inferSelect;
 export type InsertPlanChangeLogEntry = typeof planChangeLog.$inferInsert;
+
+export type OwnerTierStatus = typeof ownerTierStatus.$inferSelect;
+export type InsertOwnerTierStatus = typeof ownerTierStatus.$inferInsert;
+
+export type TierProductCatalogItem = typeof tierProductCatalog.$inferSelect;
+export type InsertTierProductCatalogItem = typeof tierProductCatalog.$inferInsert;
 
 /* ───────────────────────────────────────────────
    Local Auth — OTP codes and password reset tokens

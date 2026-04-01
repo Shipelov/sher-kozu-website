@@ -1,5 +1,6 @@
 import { and, asc, desc, eq, gte, isNotNull, isNull, like, lt, lte, ne, or, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
+import { inArray } from "drizzle-orm";
 import { createPool, type Pool } from "mysql2/promise";
 import {
   animalMedia,
@@ -64,6 +65,8 @@ import {
   InsertAbExperiment,
   InsertAbExperimentVariant,
   animalWellnessMetrics,
+  ownerTierStatus,
+  tierProductCatalog,
 } from "../drizzle/schema";
 import { ENV } from "./_core/env";
 
@@ -2742,7 +2745,7 @@ export async function listProductOptions(animalId: number) {
 export async function upsertProductOption(input: {
   id?: number;
   animalId: number;
-  productType: "milk" | "smetana" | "yogurt" | "kefir" | "cheese";
+  productType: string;
   label: string;
   conversionRatio: number;
   unit: string;
@@ -3159,7 +3162,7 @@ export async function logPlanChange(input: {
   animalId: number;
   ownerOpenId: string;
   actorId: string;
-  action: "created" | "submitted" | "approved" | "modified" | "reset";
+  action: "created" | "submitted" | "approved" | "modified" | "reset" | "tier_changed" | "admin_verified" | "owner_configured";
   previousStatus: string | null;
   newStatus: string;
   selectionsSnapshot?: string | null;
@@ -5102,4 +5105,422 @@ export async function getUserOwnedAnimalSlugs(userOpenId: string): Promise<strin
       ),
     );
   return Array.from(new Set(rows.map((r: { slug: string }) => r.slug)));
+}
+
+
+// ─── Tier-Based Product Plan System ─────────────────────────────────────────
+
+/**
+ * Tier hierarchy: basic < standard < professional
+ * 50% ownership → basic or standard (depends on total animals)
+ * 100% ownership → standard or professional (depends on total animals)
+ *
+ * Rules:
+ *  - 1 animal at 50% → basic
+ *  - 1 animal at 100% → standard
+ *  - 2+ animals at 50% → standard
+ *  - 2+ animals at 100% → professional
+ *  - Mixed: highest tier wins
+ */
+
+const TIER_HIERARCHY = ["basic", "standard", "professional"] as const;
+type TierSlug = (typeof TIER_HIERARCHY)[number];
+
+/** Plan change frequency limits per tier (in days) */
+const TIER_CHANGE_FREQUENCY: Record<TierSlug, number> = {
+  basic: 90,       // quarterly
+  standard: 30,    // monthly
+  professional: 7, // weekly
+};
+
+/** Determine tier slug based on ownership data */
+export function computeTierSlug(ownerships: Array<{ animalId: number; status: string; slotIndex: number }>): TierSlug {
+  // Only consider active ownerships
+  const active = ownerships.filter(o => o.status === "active");
+  if (active.length === 0) return "basic";
+
+  // Group by animal to determine share percentages
+  const animalSlots = new Map<number, number>();
+  for (const o of active) {
+    animalSlots.set(o.animalId, (animalSlots.get(o.animalId) ?? 0) + 1);
+  }
+
+  const totalAnimals = animalSlots.size;
+  const has100 = Array.from(animalSlots.values()).some(slots => slots >= 2);
+  const has50 = Array.from(animalSlots.values()).some(slots => slots === 1);
+
+  // Determine highest tier
+  if (has100 && totalAnimals >= 2) return "professional";
+  if (has100) return "standard";
+  if (has50 && totalAnimals >= 2) return "standard";
+  return "basic";
+}
+
+/** Get or compute owner's current tier status */
+export async function getOwnerTierStatus(ownerOpenId: string) {
+  const db = await getDb();
+  if (!db) return null;
+  const rows = await db.select().from(ownerTierStatus)
+    .where(eq(ownerTierStatus.ownerOpenId, ownerOpenId))
+    .limit(1);
+  return rows[0] ?? null;
+}
+
+/** Recompute and upsert owner's tier status based on current ownerships */
+export async function recomputeOwnerTier(ownerOpenId: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  // Fetch all active ownerships for this owner
+  const ownerships = await db.select({
+    animalId: animalOwnerships.animalId,
+    status: animalOwnerships.status,
+    slotIndex: animalOwnerships.slotIndex,
+  }).from(animalOwnerships)
+    .where(and(
+      eq(animalOwnerships.ownerOpenId, ownerOpenId),
+      eq(animalOwnerships.status, "active"),
+    ));
+
+  const newTierSlug = computeTierSlug(ownerships);
+  const totalAnimals = new Set(ownerships.map((o: any) => o.animalId)).size;
+  const totalActiveOwnerships = ownerships.length;
+
+  // Check existing tier
+  const existing = await getOwnerTierStatus(ownerOpenId);
+
+  if (existing) {
+    const previousTierSlug = existing.tierSlug;
+    await db.update(ownerTierStatus).set({
+      tierSlug: newTierSlug,
+      totalAnimals,
+      totalActiveOwnerships,
+      determinedAt: new Date(),
+      previousTierSlug: previousTierSlug !== newTierSlug ? previousTierSlug : existing.previousTierSlug,
+    }).where(eq(ownerTierStatus.ownerOpenId, ownerOpenId));
+
+    const updated = await db.select().from(ownerTierStatus)
+      .where(eq(ownerTierStatus.ownerOpenId, ownerOpenId)).limit(1);
+    return { tierStatus: updated[0]!, changed: previousTierSlug !== newTierSlug, previousTier: previousTierSlug };
+  }
+
+  // Create new tier status
+  await db.insert(ownerTierStatus).values({
+    ownerOpenId,
+    tierSlug: newTierSlug,
+    totalAnimals,
+    totalActiveOwnerships,
+    determinedAt: new Date(),
+    previousTierSlug: null,
+  });
+
+  const created = await db.select().from(ownerTierStatus)
+    .where(eq(ownerTierStatus.ownerOpenId, ownerOpenId)).limit(1);
+  return { tierStatus: created[0]!, changed: true, previousTier: null };
+}
+
+/** Get tier product catalog items available for a given tier and species */
+export async function getTierCatalogForOwner(tierSlug: TierSlug, species?: "goat" | "sheep" | "both") {
+  const db = await getDb();
+  if (!db) return [];
+
+  // Tier hierarchy: basic gets basic, standard gets basic+standard, professional gets all
+  const tierIndex = TIER_HIERARCHY.indexOf(tierSlug);
+  const allowedTiers = TIER_HIERARCHY.slice(0, tierIndex + 1);
+
+  const conditions = [
+    eq(tierProductCatalog.isEnabled, 1),
+    inArray(tierProductCatalog.minTier, allowedTiers),
+  ];
+
+  if (species && species !== "both") {
+    conditions.push(
+      or(
+        eq(tierProductCatalog.species, species),
+        eq(tierProductCatalog.species, "both"),
+      )!,
+    );
+  }
+
+  return db.select().from(tierProductCatalog)
+    .where(and(...conditions))
+    .orderBy(asc(tierProductCatalog.sortOrder));
+}
+
+/** Get all tier product catalog items (admin view) */
+export async function listAllTierCatalogItems() {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(tierProductCatalog).orderBy(asc(tierProductCatalog.sortOrder));
+}
+
+/** Admin: upsert a tier catalog item */
+export async function upsertTierCatalogItem(input: {
+  id?: number;
+  minTier: TierSlug;
+  productType: string;
+  label: string;
+  species?: "goat" | "sheep" | "both";
+  conversionRatio: number;
+  unit?: string;
+  description?: string | null;
+  isEnabled?: boolean;
+  sortOrder?: number;
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  if (input.id) {
+    await db.update(tierProductCatalog).set({
+      minTier: input.minTier,
+      productType: input.productType,
+      label: input.label,
+      species: input.species ?? "both",
+      conversionRatio: input.conversionRatio,
+      unit: input.unit ?? "л",
+      description: input.description ?? null,
+      isEnabled: input.isEnabled === false ? 0 : 1,
+      sortOrder: input.sortOrder ?? 0,
+    }).where(eq(tierProductCatalog.id, input.id));
+    const updated = await db.select().from(tierProductCatalog).where(eq(tierProductCatalog.id, input.id)).limit(1);
+    return updated[0] ?? null;
+  }
+
+  const [result] = await db.insert(tierProductCatalog).values({
+    minTier: input.minTier,
+    productType: input.productType,
+    label: input.label,
+    species: input.species ?? "both",
+    conversionRatio: input.conversionRatio,
+    unit: input.unit ?? "л",
+    description: input.description ?? null,
+    isEnabled: input.isEnabled === false ? 0 : 1,
+    sortOrder: input.sortOrder ?? 0,
+  });
+  const created = await db.select().from(tierProductCatalog).where(eq(tierProductCatalog.id, result.insertId)).limit(1);
+  return created[0] ?? null;
+}
+
+/** Admin: delete a tier catalog item */
+export async function deleteTierCatalogItem(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.delete(tierProductCatalog).where(eq(tierProductCatalog.id, id));
+  return { success: true };
+}
+
+/**
+ * Create a new product plan in pending_admin_setup status.
+ * Called automatically when ownership is activated.
+ */
+export async function createTierBasedProductPlan(input: {
+  ownerOpenId: string;
+  animalId: number;
+  ownershipId: number;
+  tierSlug: TierSlug;
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  // Check if plan already exists for this ownership
+  const existing = await db.select().from(ownerProductPlans)
+    .where(and(
+      eq(ownerProductPlans.ownerOpenId, input.ownerOpenId),
+      eq(ownerProductPlans.animalId, input.animalId),
+      eq(ownerProductPlans.ownershipId, input.ownershipId),
+    ))
+    .limit(1);
+
+  if (existing.length > 0) {
+    return existing[0];
+  }
+
+  const [result] = await db.insert(ownerProductPlans).values({
+    ownerOpenId: input.ownerOpenId,
+    animalId: input.animalId,
+    ownershipId: input.ownershipId,
+    tierSlug: input.tierSlug,
+    status: "pending_admin_setup",
+    selectionsJson: "[]",
+    totalMilkUsed: 0,
+  });
+
+  const created = await db.select().from(ownerProductPlans).where(eq(ownerProductPlans.id, result.insertId)).limit(1);
+  return created[0] ?? null;
+}
+
+/**
+ * Admin verifies the product set and moves plan to pending_owner_config.
+ * Admin can optionally pre-select some products.
+ */
+export async function adminVerifyProductSet(planId: number, input: {
+  selectionsJson?: string;
+  adminNotes?: string | null;
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  await db.update(ownerProductPlans).set({
+    status: "pending_owner_config",
+    selectionsJson: input.selectionsJson ?? "[]",
+    adminNotes: input.adminNotes ?? null,
+    adminVerifiedAt: new Date(),
+  }).where(eq(ownerProductPlans.id, planId));
+
+  const updated = await db.select().from(ownerProductPlans).where(eq(ownerProductPlans.id, planId)).limit(1);
+  return updated[0] ?? null;
+}
+
+/**
+ * Owner configures their plan selections and submits for approval.
+ */
+export async function ownerConfigurePlan(planId: number, input: {
+  selectionsJson: string;
+  totalMilkUsed: number;
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  await db.update(ownerProductPlans).set({
+    status: "pending_approval",
+    selectionsJson: input.selectionsJson,
+    totalMilkUsed: input.totalMilkUsed,
+    lastChangedAt: new Date(),
+  }).where(eq(ownerProductPlans.id, planId));
+
+  const updated = await db.select().from(ownerProductPlans).where(eq(ownerProductPlans.id, planId)).limit(1);
+  return updated[0] ?? null;
+}
+
+/**
+ * Admin confirms the final plan. Sets nextChangeAllowedAt based on tier frequency.
+ */
+export async function adminConfirmPlan(planId: number, tierSlug: TierSlug) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  const frequencyDays = TIER_CHANGE_FREQUENCY[tierSlug] ?? 90;
+  const nextChangeAllowedAt = new Date(Date.now() + frequencyDays * 24 * 60 * 60 * 1000);
+
+  await db.update(ownerProductPlans).set({
+    status: "confirmed",
+    confirmedAt: new Date(),
+    nextChangeAllowedAt,
+  }).where(eq(ownerProductPlans.id, planId));
+
+  const updated = await db.select().from(ownerProductPlans).where(eq(ownerProductPlans.id, planId)).limit(1);
+  return updated[0] ?? null;
+}
+
+/**
+ * Check if owner can change their plan based on tier frequency limits.
+ */
+export async function canOwnerChangePlan(planId: number): Promise<{ allowed: boolean; nextChangeAt: Date | null; reason?: string }> {
+  const db = await getDb();
+  if (!db) return { allowed: false, nextChangeAt: null, reason: "Database not available" };
+
+  const plan = await db.select().from(ownerProductPlans).where(eq(ownerProductPlans.id, planId)).limit(1);
+  if (!plan[0]) return { allowed: false, nextChangeAt: null, reason: "Plan not found" };
+
+  const p = plan[0];
+  if (p.status !== "confirmed") {
+    // If plan is not yet confirmed, changes are allowed as part of initial setup
+    return { allowed: true, nextChangeAt: null };
+  }
+
+  if (!p.nextChangeAllowedAt) {
+    return { allowed: true, nextChangeAt: null };
+  }
+
+  const now = new Date();
+  if (now >= p.nextChangeAllowedAt) {
+    return { allowed: true, nextChangeAt: p.nextChangeAllowedAt };
+  }
+
+  return {
+    allowed: false,
+    nextChangeAt: p.nextChangeAllowedAt,
+    reason: `Следующее изменение плана доступно с ${p.nextChangeAllowedAt.toLocaleDateString("ru-RU")}`,
+  };
+}
+
+/**
+ * Owner requests a plan change (after initial confirmation).
+ * Resets plan to pending_owner_config if allowed by tier frequency.
+ */
+export async function ownerRequestPlanChange(planId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  await db.update(ownerProductPlans).set({
+    status: "pending_owner_config",
+    lastChangedAt: new Date(),
+  }).where(eq(ownerProductPlans.id, planId));
+
+  const updated = await db.select().from(ownerProductPlans).where(eq(ownerProductPlans.id, planId)).limit(1);
+  return updated[0] ?? null;
+}
+
+/**
+ * List all product plans that are pending admin setup or approval (admin view).
+ */
+export async function listPendingProductPlans() {
+  const db = await getDb();
+  if (!db) return [];
+
+  return db.select({
+    plan: ownerProductPlans,
+    animalName: animals.name,
+    animalSlug: animals.slug,
+    animalSpecies: animals.species,
+    ownerName: users.name,
+  })
+    .from(ownerProductPlans)
+    .leftJoin(animals, eq(ownerProductPlans.animalId, animals.id))
+    .leftJoin(users, eq(ownerProductPlans.ownerOpenId, users.openId))
+    .where(
+      or(
+        eq(ownerProductPlans.status, "pending_admin_setup"),
+        eq(ownerProductPlans.status, "pending_approval"),
+      ),
+    )
+    .orderBy(asc(ownerProductPlans.createdAt));
+}
+
+/**
+ * List all product plans for admin overview.
+ */
+export async function listAllProductPlans() {
+  const db = await getDb();
+  if (!db) return [];
+
+  return db.select({
+    plan: ownerProductPlans,
+    animalName: animals.name,
+    animalSlug: animals.slug,
+    animalSpecies: animals.species,
+    ownerName: users.name,
+  })
+    .from(ownerProductPlans)
+    .leftJoin(animals, eq(ownerProductPlans.animalId, animals.id))
+    .leftJoin(users, eq(ownerProductPlans.ownerOpenId, users.openId))
+    .orderBy(desc(ownerProductPlans.createdAt));
+}
+
+/** Get the tier change frequency in days for a given tier */
+export function getTierChangeFrequencyDays(tierSlug: string): number {
+  return TIER_CHANGE_FREQUENCY[tierSlug as TierSlug] ?? 90;
+}
+
+/** Get the tier hierarchy for comparison */
+export function getTierHierarchy() {
+  return TIER_HIERARCHY;
+}
+
+/** Check if tier A is >= tier B in hierarchy */
+export function isTierAtLeast(tierA: string, tierB: string): boolean {
+  const indexA = TIER_HIERARCHY.indexOf(tierA as TierSlug);
+  const indexB = TIER_HIERARCHY.indexOf(tierB as TierSlug);
+  if (indexA === -1 || indexB === -1) return false;
+  return indexA >= indexB;
 }

@@ -9,8 +9,6 @@ import {
   deleteProductOption,
   getOwnerProductPlan,
   getOwnerProductPlanById,
-  createOwnerProductPlan,
-  adminUpdateOwnerProductPlan,
   generateDeliverySchedule,
   listDeliverySchedule,
   updateDeliveryStatus,
@@ -20,14 +18,9 @@ import {
   countUnreadChatMessages,
   listAdminChatConversations,
   getAnimalProductTrackData,
-  listOwnerProductPlansByAnimal,
-  resolveOwnershipId,
   resolveOwnerSharePercent,
   getAnimalNameById,
-  resetOwnerProductPlan,
   deleteDeliverySchedule,
-  submitPlanForApproval,
-  approveOwnerProductPlan,
   logPlanChange,
   listPlanChangeLog,
   listAllPlanChangeLogs,
@@ -45,6 +38,22 @@ import {
   getAnimalSlugById,
   notifyOwnersAboutCompositionUpdate,
   notifyOwnersAboutMetricsUpdate,
+  // Tier-based product plan system
+  getOwnerTierStatus,
+  recomputeOwnerTier,
+  getTierCatalogForOwner,
+  listAllTierCatalogItems,
+  upsertTierCatalogItem,
+  deleteTierCatalogItem,
+  createTierBasedProductPlan,
+  adminVerifyProductSet,
+  ownerConfigurePlan as ownerConfigurePlanDb,
+  adminConfirmPlan,
+  canOwnerChangePlan,
+  ownerRequestPlanChange,
+  listPendingProductPlans,
+  listAllProductPlans,
+  getTierChangeFrequencyDays,
 } from "../db";
 import type { ProductOption } from "../../drizzle/schema";
 import { storagePut } from "../storage";
@@ -53,7 +62,14 @@ import { ENV } from "../_core/env";
 
 /* ── Zod schemas ── */
 
-const productTypeSchema = z.enum(["milk", "smetana", "yogurt", "kefir", "cheese"]);
+const productTypeSchema = z.enum([
+  "milk", "smetana", "yogurt", "kefir", "cheese",
+  "brynza", "kachotta", "halumi", "ricotta", "camembert",
+  "aged_cheese", "blue_cheese", "smoked_cheese",
+  "butter", "condensed_milk", "fermented_drink", "custom",
+]);
+
+const tierSlugSchema = z.enum(["basic", "standard", "professional"]);
 
 const productionProfileInput = z.object({
   animalId: z.number().int().positive(),
@@ -78,22 +94,10 @@ const deleteProductOptionInput = z.object({
   animalId: z.number().int().positive(),
 });
 
-const ownerProductPlanInput = z.object({
-  animalId: z.number().int().positive(),
-  ownershipId: z.number().int().positive().optional(), // auto-resolved on server if not provided or omitted
-  selections: z.array(z.object({
-    productOptionId: z.number().int().positive(),
-    annualUnits: z.number().min(0).max(100_000),
-  })).min(1),
-});
-
-const adminUpdatePlanInput = z.object({
-  planId: z.number().int().positive(),
-  selections: z.array(z.object({
-    productOptionId: z.number().int().positive(),
-    annualUnits: z.number().min(0).max(100_000),
-  })).min(1),
-  adminNotes: z.string().max(2000).optional().nullable(),
+/* Tier-based selection input */
+const tierSelectionInput = z.object({
+  catalogItemId: z.number().int().positive(),
+  annualUnits: z.number().min(0).max(100_000),
 });
 
 const deliveryStatusInput = z.object({
@@ -170,6 +174,43 @@ async function calculateMilkUsage(animalId: number, selections: Array<{ productO
   return { totalMilkUsed, enrichedSelections };
 }
 
+/* ── Helper: calculate milk usage from tier catalog selections ── */
+
+async function calculateTierMilkUsage(
+  tierCatalog: Array<{ id: number; conversionRatio: number; label: string; unit: string }>,
+  selections: Array<{ catalogItemId: number; annualUnits: number }>,
+) {
+  const catalogMap = new Map(tierCatalog.map(c => [c.id, c]));
+
+  let totalMilkUsed = 0;
+  const enrichedSelections: Array<{
+    catalogItemId: number;
+    label: string;
+    annualUnits: number;
+    unit: string;
+    milkUsed: number;
+  }> = [];
+
+  for (const sel of selections) {
+    const item = catalogMap.get(sel.catalogItemId);
+    if (!item) {
+      throw new TRPCError({ code: "BAD_REQUEST", message: `Продукт каталога #${sel.catalogItemId} не найден.` });
+    }
+    const milkUsed = sel.annualUnits * item.conversionRatio;
+    totalMilkUsed += milkUsed;
+
+    enrichedSelections.push({
+      catalogItemId: sel.catalogItemId,
+      label: item.label,
+      annualUnits: sel.annualUnits,
+      unit: item.unit,
+      milkUsed,
+    });
+  }
+
+  return { totalMilkUsed, enrichedSelections };
+}
+
 /* ── Router ── */
 
 export const productTrackRouter = router({
@@ -216,238 +257,391 @@ export const productTrackRouter = router({
     return getAnimalProductTrackData(input.animalId);
   }),
 
-  // ── Owner: Product Plan ──
+  // ── Owner: Product Plan (current) ──
   getMyPlan: protectedProcedure.input(animalIdInput).query(async ({ ctx, input }) => {
     return getOwnerProductPlan(ctx.user.openId, input.animalId);
   }),
 
-  confirmPlan: protectedProcedure.input(ownerProductPlanInput).mutation(async ({ ctx, input }) => {
-    // Check if owner already has a non-draft plan
-    const existing = await getOwnerProductPlan(ctx.user.openId, input.animalId);
-    if (existing && existing.status !== "draft") {
-      throw new TRPCError({ code: "BAD_REQUEST", message: "Продуктовый план уже отправлен на подтверждение. Для изменений обратитесь к администратору фермы." });
-    }
+  // ═══════════════════════════════════════════════════════════
+  //  TIER SYSTEM — New tier-based product plan workflow
+  // ═══════════════════════════════════════════════════════════
 
-    // Auto-resolve ownershipId from the database
-    let resolvedOwnershipId = input.ownershipId ?? 0;
-    if (!resolvedOwnershipId) {
-      const ownership = await resolveOwnershipId(ctx.user.openId, input.animalId);
-      if (!ownership) {
-        throw new TRPCError({ code: "BAD_REQUEST", message: "Не найдено активное владение этим животным." });
+  /** Get current owner's tier status */
+  getMyTier: protectedProcedure.query(async ({ ctx }) => {
+    const tier = await getOwnerTierStatus(ctx.user.openId);
+    if (!tier) {
+      const result = await recomputeOwnerTier(ctx.user.openId);
+      return {
+        ...result.tierStatus,
+        changeFrequencyDays: getTierChangeFrequencyDays(result.tierStatus.tierSlug),
+      };
+    }
+    return {
+      ...tier,
+      changeFrequencyDays: getTierChangeFrequencyDays(tier.tierSlug),
+    };
+  }),
+
+  /** Admin: get any owner's tier status */
+  getOwnerTier: protectedProcedure
+    .input(z.object({ ownerOpenId: z.string().min(1).max(64) }))
+    .query(async ({ ctx, input }) => {
+      if (ctx.user.role !== "admin") {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Только администратор." });
       }
-      resolvedOwnershipId = ownership;
-    }
-
-    // Validate milk budget
-    const profile = await getProductionProfile(input.animalId);
-    if (!profile) {
-      throw new TRPCError({ code: "BAD_REQUEST", message: "Производственный профиль животного ещё не настроен." });
-    }
-
-    const { totalMilkUsed, enrichedSelections } = await calculateMilkUsage(input.animalId, input.selections);
-
-    // Owner's share of milk = (sharePercent / 100) * annualMilkLiters
-    const sharePercent = await resolveOwnerSharePercent(ctx.user.openId, input.animalId);
-    const ownerMilkBudget = Math.floor((profile.annualMilkLiters * sharePercent) / 100);
-
-    if (totalMilkUsed > ownerMilkBudget) {
-      throw new TRPCError({ code: "BAD_REQUEST", message: `Выбранные продукты требуют ${totalMilkUsed} л молока, но доступно только ${ownerMilkBudget} л (ваша доля ${sharePercent}%).` });
-    }
-
-    let plan;
-    if (existing && existing.status === "draft") {
-      // Update existing draft plan to pending_approval
-      plan = await submitPlanForApproval(existing.id, JSON.stringify(enrichedSelections), totalMilkUsed);
-    } else {
-      // Create new plan with pending_approval status
-      plan = await createOwnerProductPlan({
-        ownerOpenId: ctx.user.openId,
-        animalId: input.animalId,
-        ownershipId: resolvedOwnershipId,
-        selectionsJson: JSON.stringify(enrichedSelections),
-        totalMilkUsed,
-      });
-    }
-
-    if (!plan) {
-      throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Не удалось сохранить продуктовый план." });
-    }
-
-    // Log the submission
-    await logPlanChange({
-      planId: plan.id,
-      animalId: input.animalId,
-      ownerOpenId: ctx.user.openId,
-      actorId: ctx.user.openId,
-      action: existing?.status === "draft" ? "submitted" : "created",
-      previousStatus: existing?.status ?? null,
-      newStatus: "pending_approval",
-      selectionsSnapshot: JSON.stringify(enrichedSelections),
-      note: "Владелец отправил план на подтверждение",
-    });
-
-    // Notify admin about new plan submission
-    const animalName = await getAnimalNameById(input.animalId);
-    notifyOwner({
-      title: `Новый план от ${ctx.user.name || "владельца"} (${animalName})`,
-      content: `Владелец отправил продуктовый план на подтверждение. Молоко: ${totalMilkUsed} л. Подтвердите в админ-панели.`,
-    }).catch(() => {});
-
-    // DO NOT generate delivery schedule yet — wait for admin approval
-
-    return plan;
-  }),
-
-  // ── Admin: Update owner's plan ──
-  adminUpdatePlan: protectedProcedure.input(adminUpdatePlanInput).mutation(async ({ ctx, input }) => {
-    if (ctx.user.role !== "admin") {
-      throw new TRPCError({ code: "FORBIDDEN", message: "Только администратор может изменять планы." });
-    }
-
-    // Get the existing plan to find animalId and ownerOpenId
-    const existingPlan = await getOwnerProductPlanById(input.planId);
-    if (!existingPlan) {
-      throw new TRPCError({ code: "NOT_FOUND", message: "План не найден." });
-    }
-
-    const { totalMilkUsed, enrichedSelections } = await calculateMilkUsage(
-      existingPlan.animalId,
-      input.selections,
-    );
-
-    // Validate milk budget against owner's share
-    const profile = await getProductionProfile(existingPlan.animalId);
-    if (profile) {
-      const sharePercent = await resolveOwnerSharePercent(existingPlan.ownerOpenId, existingPlan.animalId);
-      const ownerMilkBudget = Math.floor((profile.annualMilkLiters * sharePercent) / 100);
-      if (totalMilkUsed > ownerMilkBudget) {
-        throw new TRPCError({
-          code: "BAD_REQUEST",
-          message: `Выбранные продукты требуют ${totalMilkUsed} л молока, но доступно только ${ownerMilkBudget} л (доля владельца ${sharePercent}%).`,
-        });
+      const tier = await getOwnerTierStatus(input.ownerOpenId);
+      if (!tier) {
+        const result = await recomputeOwnerTier(input.ownerOpenId);
+        return {
+          ...result.tierStatus,
+          changeFrequencyDays: getTierChangeFrequencyDays(result.tierStatus.tierSlug),
+        };
       }
-    }
+      return {
+        ...tier,
+        changeFrequencyDays: getTierChangeFrequencyDays(tier.tierSlug),
+      };
+    }),
 
-    // Update the plan
-    const updatedPlan = await adminUpdateOwnerProductPlan(input.planId, {
-      selectionsJson: JSON.stringify(enrichedSelections),
-      totalMilkUsed,
-      adminNotes: input.adminNotes,
-    });
+  /** Recompute owner's tier (called after ownership changes) */
+  recomputeTier: protectedProcedure
+    .input(z.object({ ownerOpenId: z.string().min(1).max(64) }))
+    .mutation(async ({ ctx, input }) => {
+      if (ctx.user.role !== "admin") {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Только администратор." });
+      }
+      return recomputeOwnerTier(input.ownerOpenId);
+    }),
 
-    // Log the modification
-    await logPlanChange({
-      planId: input.planId,
-      animalId: existingPlan.animalId,
-      ownerOpenId: existingPlan.ownerOpenId,
-      actorId: "admin",
-      action: "modified",
-      previousStatus: existingPlan.status,
-      newStatus: "modified_by_admin",
-      selectionsSnapshot: JSON.stringify(enrichedSelections),
-      note: input.adminNotes || "Администратор изменил план",
-    });
+  /** Get tier product catalog for the current owner */
+  getMyTierCatalog: protectedProcedure
+    .input(z.object({ species: z.enum(["goat", "sheep", "both"]).optional() }))
+    .query(async ({ ctx, input }) => {
+      const tier = await getOwnerTierStatus(ctx.user.openId);
+      const tierSlug = (tier?.tierSlug ?? "basic") as "basic" | "standard" | "professional";
+      return getTierCatalogForOwner(tierSlug, input.species);
+    }),
 
-    // Regenerate delivery schedule with new selections
-    const currentYear = new Date().getFullYear();
-    await generateDeliverySchedule({
-      ownerOpenId: existingPlan.ownerOpenId,
-      animalId: existingPlan.animalId,
-      ownershipId: existingPlan.ownershipId,
-      productPlanId: existingPlan.id,
-      selections: enrichedSelections,
-      year: currentYear,
-    });
+  /** Get tier product catalog for a specific tier */
+  getTierCatalog: protectedProcedure
+    .input(z.object({
+      tierSlug: tierSlugSchema,
+      species: z.enum(["goat", "sheep", "both"]).optional(),
+    }))
+    .query(async ({ input }) => {
+      return getTierCatalogForOwner(input.tierSlug, input.species);
+    }),
 
-    return updatedPlan;
-  }),
-
-  // ── Admin: Reset owner's plan to draft ──
-  adminResetPlan: protectedProcedure.input(z.object({ planId: z.number().int().positive() })).mutation(async ({ ctx, input }) => {
-    if (ctx.user.role !== "admin") {
-      throw new TRPCError({ code: "FORBIDDEN", message: "Только администратор может сбрасывать планы." });
-    }
-
-    const existingPlan = await getOwnerProductPlanById(input.planId);
-    if (!existingPlan) {
-      throw new TRPCError({ code: "NOT_FOUND", message: "План не найден." });
-    }
-
-    // Reset plan to draft with empty selections
-    const updatedPlan = await resetOwnerProductPlan(input.planId);
-
-    // Delete existing delivery schedule since plan is reset
-    await deleteDeliverySchedule(existingPlan.ownerOpenId, existingPlan.animalId);
-
-    // Log the reset
-    await logPlanChange({
-      planId: input.planId,
-      animalId: existingPlan.animalId,
-      ownerOpenId: existingPlan.ownerOpenId,
-      actorId: "admin",
-      action: "reset",
-      previousStatus: existingPlan.status,
-      newStatus: "draft",
-      selectionsSnapshot: existingPlan.selectionsJson,
-      note: "Администратор сбросил план для повторного выбора",
-    });
-
-    return updatedPlan;
-  }),
-
-  // ── Admin: Get single plan by ID ──
-  getPlanById: protectedProcedure.input(z.object({ planId: z.number().int().positive() })).query(async ({ ctx, input }) => {
+  /** Admin: list all tier catalog items */
+  listAllTierCatalog: protectedProcedure.query(async ({ ctx }) => {
     if (ctx.user.role !== "admin") {
       throw new TRPCError({ code: "FORBIDDEN", message: "Только администратор." });
     }
-    return getOwnerProductPlanById(input.planId);
+    return listAllTierCatalogItems();
   }),
 
-  // ── Admin: Approve owner's pending plan ──
-  adminApprovePlan: protectedProcedure.input(z.object({ planId: z.number().int().positive() })).mutation(async ({ ctx, input }) => {
+  /** Admin: upsert tier catalog item */
+  upsertTierCatalogItem: protectedProcedure
+    .input(z.object({
+      id: z.number().int().positive().optional(),
+      minTier: tierSlugSchema,
+      productType: productTypeSchema,
+      label: z.string().min(1).max(160),
+      species: z.enum(["goat", "sheep", "both"]).default("both"),
+      conversionRatio: z.number().min(0.1).max(100),
+      unit: z.string().min(1).max(16).default("л"),
+      description: z.string().max(500).optional().nullable(),
+      isEnabled: z.boolean().default(true),
+      sortOrder: z.number().int().min(0).max(9999).default(0),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      if (ctx.user.role !== "admin") {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Только администратор." });
+      }
+      return upsertTierCatalogItem(input);
+    }),
+
+  /** Admin: delete tier catalog item */
+  deleteTierCatalogItem: protectedProcedure
+    .input(z.object({ id: z.number().int().positive() }))
+    .mutation(async ({ ctx, input }) => {
+      if (ctx.user.role !== "admin") {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Только администратор." });
+      }
+      return deleteTierCatalogItem(input.id);
+    }),
+
+  // ═══════════════════════════════════════════════════════════
+  //  TIER-BASED PRODUCT PLAN WORKFLOW
+  // ═══════════════════════════════════════════════════════════
+
+  /** Initialize tier plan after ownership activation (admin) */
+  initializeTierPlan: protectedProcedure
+    .input(z.object({
+      ownerOpenId: z.string().min(1).max(64),
+      animalId: z.number().int().positive(),
+      ownershipId: z.number().int().positive(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      if (ctx.user.role !== "admin") {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Только администратор." });
+      }
+      const tierResult = await recomputeOwnerTier(input.ownerOpenId);
+      const plan = await createTierBasedProductPlan({
+        ownerOpenId: input.ownerOpenId,
+        animalId: input.animalId,
+        ownershipId: input.ownershipId,
+        tierSlug: tierResult.tierStatus.tierSlug as "basic" | "standard" | "professional",
+      });
+      if (plan) {
+        await logPlanChange({
+          planId: plan.id,
+          animalId: input.animalId,
+          ownerOpenId: input.ownerOpenId,
+          actorId: "admin",
+          action: "created",
+          previousStatus: null,
+          newStatus: "pending_admin_setup",
+          selectionsSnapshot: null,
+          note: `Тариф: ${tierResult.tierStatus.tierSlug}. Автоматическое создание при активации владения.`,
+        });
+      }
+      return { plan, tier: tierResult.tierStatus };
+    }),
+
+  /** Admin verifies product set → pending_owner_config */
+  adminVerifyPlan: protectedProcedure
+    .input(z.object({
+      planId: z.number().int().positive(),
+      selections: z.array(tierSelectionInput).optional(),
+      adminNotes: z.string().max(2000).optional().nullable(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      if (ctx.user.role !== "admin") {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Только администратор." });
+      }
+      const existingPlan = await getOwnerProductPlanById(input.planId);
+      if (!existingPlan) throw new TRPCError({ code: "NOT_FOUND", message: "План не найден." });
+      if (existingPlan.status !== "pending_admin_setup") {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "План не ожидает настройки администратором." });
+      }
+      let selectionsJson = "[]";
+      if (input.selections && input.selections.length > 0) {
+        const tierSlug = (existingPlan.tierSlug ?? "basic") as "basic" | "standard" | "professional";
+        const catalog = await getTierCatalogForOwner(tierSlug);
+        const { enrichedSelections } = await calculateTierMilkUsage(catalog, input.selections);
+        selectionsJson = JSON.stringify(enrichedSelections);
+      }
+      const updatedPlan = await adminVerifyProductSet(input.planId, {
+        selectionsJson,
+        adminNotes: input.adminNotes,
+      });
+      await logPlanChange({
+        planId: input.planId,
+        animalId: existingPlan.animalId,
+        ownerOpenId: existingPlan.ownerOpenId,
+        actorId: "admin",
+        action: "admin_verified",
+        previousStatus: "pending_admin_setup",
+        newStatus: "pending_owner_config",
+        selectionsSnapshot: selectionsJson,
+        note: input.adminNotes || "Администратор подтвердил набор продуктов",
+      });
+      const animalName = await getAnimalNameById(existingPlan.animalId);
+      notifyOwner({
+        title: `Продуктовый план готов к настройке (${animalName})`,
+        content: `Администратор подготовил набор продуктов для ${animalName}. Настройте свой план в кабинете.`,
+      }).catch(() => {});
+      return updatedPlan;
+    }),
+
+  /** Owner configures plan → pending_approval */
+  ownerConfigurePlan: protectedProcedure
+    .input(z.object({
+      planId: z.number().int().positive(),
+      selections: z.array(tierSelectionInput).min(1),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const existingPlan = await getOwnerProductPlanById(input.planId);
+      if (!existingPlan) throw new TRPCError({ code: "NOT_FOUND", message: "План не найден." });
+      if (existingPlan.ownerOpenId !== ctx.user.openId) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Это не ваш план." });
+      }
+      if (existingPlan.status !== "pending_owner_config") {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "План не ожидает вашей настройки." });
+      }
+      const tierSlug = (existingPlan.tierSlug ?? "basic") as "basic" | "standard" | "professional";
+      const catalog = await getTierCatalogForOwner(tierSlug);
+      const { totalMilkUsed, enrichedSelections } = await calculateTierMilkUsage(catalog, input.selections);
+      // Validate milk budget
+      const profile = await getProductionProfile(existingPlan.animalId);
+      if (profile) {
+        const sharePercent = await resolveOwnerSharePercent(ctx.user.openId, existingPlan.animalId);
+        const ownerMilkBudget = Math.floor((profile.annualMilkLiters * sharePercent) / 100);
+        if (totalMilkUsed > ownerMilkBudget) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: `Выбранные продукты требуют ${totalMilkUsed} л молока, но доступно только ${ownerMilkBudget} л (ваша доля ${sharePercent}%).`,
+          });
+        }
+      }
+      const updatedPlan = await ownerConfigurePlanDb(input.planId, {
+        selectionsJson: JSON.stringify(enrichedSelections),
+        totalMilkUsed,
+      });
+      await logPlanChange({
+        planId: input.planId,
+        animalId: existingPlan.animalId,
+        ownerOpenId: ctx.user.openId,
+        actorId: ctx.user.openId,
+        action: "owner_configured",
+        previousStatus: "pending_owner_config",
+        newStatus: "pending_approval",
+        selectionsSnapshot: JSON.stringify(enrichedSelections),
+        note: "Владелец настроил продуктовый план",
+      });
+      const animalName = await getAnimalNameById(existingPlan.animalId);
+      notifyOwner({
+        title: `План настроен: ${ctx.user.name || "владелец"} (${animalName})`,
+        content: `Владелец настроил план. Молоко: ${totalMilkUsed} л. Подтвердите в админ-панели.`,
+      }).catch(() => {});
+      return updatedPlan;
+    }),
+
+  /** Admin confirms final plan → confirmed */
+  adminApprovePlan: protectedProcedure
+    .input(z.object({ planId: z.number().int().positive() }))
+    .mutation(async ({ ctx, input }) => {
+      if (ctx.user.role !== "admin") {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Только администратор может подтверждать планы." });
+      }
+      const existingPlan = await getOwnerProductPlanById(input.planId);
+      if (!existingPlan) throw new TRPCError({ code: "NOT_FOUND", message: "План не найден." });
+      if (existingPlan.status !== "pending_approval") {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "План не ожидает подтверждения." });
+      }
+      const tierSlug = (existingPlan.tierSlug ?? "basic") as "basic" | "standard" | "professional";
+      const approvedPlan = await adminConfirmPlan(input.planId, tierSlug);
+      await logPlanChange({
+        planId: input.planId,
+        animalId: existingPlan.animalId,
+        ownerOpenId: existingPlan.ownerOpenId,
+        actorId: "admin",
+        action: "approved",
+        previousStatus: "pending_approval",
+        newStatus: "confirmed",
+        selectionsSnapshot: existingPlan.selectionsJson,
+        note: `Подтверждён. Следующее изменение через ${getTierChangeFrequencyDays(tierSlug)} дн.`,
+      });
+      const enrichedSelections = JSON.parse(existingPlan.selectionsJson);
+      const currentYear = new Date().getFullYear();
+      await generateDeliverySchedule({
+        ownerOpenId: existingPlan.ownerOpenId,
+        animalId: existingPlan.animalId,
+        ownershipId: existingPlan.ownershipId,
+        productPlanId: existingPlan.id,
+        selections: enrichedSelections,
+        year: currentYear,
+      });
+      return approvedPlan;
+    }),
+
+  /** Owner requests plan change (checks tier frequency) */
+  requestPlanChange: protectedProcedure
+    .input(z.object({ planId: z.number().int().positive() }))
+    .mutation(async ({ ctx, input }) => {
+      const existingPlan = await getOwnerProductPlanById(input.planId);
+      if (!existingPlan) throw new TRPCError({ code: "NOT_FOUND", message: "План не найден." });
+      if (existingPlan.ownerOpenId !== ctx.user.openId) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Это не ваш план." });
+      }
+      if (existingPlan.status !== "confirmed") {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Можно изменить только подтверждённый план." });
+      }
+      const check = await canOwnerChangePlan(input.planId);
+      if (!check.allowed) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: check.reason || "Изменение плана пока недоступно." });
+      }
+      const updatedPlan = await ownerRequestPlanChange(input.planId);
+      await logPlanChange({
+        planId: input.planId,
+        animalId: existingPlan.animalId,
+        ownerOpenId: ctx.user.openId,
+        actorId: ctx.user.openId,
+        action: "reset",
+        previousStatus: "confirmed",
+        newStatus: "pending_owner_config",
+        selectionsSnapshot: existingPlan.selectionsJson,
+        note: "Владелец запросил изменение плана",
+      });
+      return updatedPlan;
+    }),
+
+  /** Check if owner can change plan */
+  canChangePlan: protectedProcedure
+    .input(z.object({ planId: z.number().int().positive() }))
+    .query(async ({ ctx, input }) => {
+      const plan = await getOwnerProductPlanById(input.planId);
+      if (!plan) return { allowed: false, nextChangeAt: null, reason: "План не найден" };
+      if (plan.ownerOpenId !== ctx.user.openId && ctx.user.role !== "admin") {
+        return { allowed: false, nextChangeAt: null, reason: "Нет доступа" };
+      }
+      return canOwnerChangePlan(input.planId);
+    }),
+
+  /** Admin: list pending plans */
+  listPendingPlans: protectedProcedure.query(async ({ ctx }) => {
     if (ctx.user.role !== "admin") {
-      throw new TRPCError({ code: "FORBIDDEN", message: "Только администратор может подтверждать планы." });
+      throw new TRPCError({ code: "FORBIDDEN", message: "Только администратор." });
     }
-
-    const existingPlan = await getOwnerProductPlanById(input.planId);
-    if (!existingPlan) {
-      throw new TRPCError({ code: "NOT_FOUND", message: "План не найден." });
-    }
-
-    if (existingPlan.status !== "pending_approval") {
-      throw new TRPCError({ code: "BAD_REQUEST", message: "План не ожидает подтверждения." });
-    }
-
-    // Approve the plan
-    const approvedPlan = await approveOwnerProductPlan(input.planId);
-
-    // Log the approval
-    await logPlanChange({
-      planId: input.planId,
-      animalId: existingPlan.animalId,
-      ownerOpenId: existingPlan.ownerOpenId,
-      actorId: "admin",
-      action: "approved",
-      previousStatus: "pending_approval",
-      newStatus: "confirmed",
-      selectionsSnapshot: existingPlan.selectionsJson,
-      note: "Администратор подтвердил план",
-    });
-
-    // Generate delivery schedule now that plan is approved
-    const enrichedSelections = JSON.parse(existingPlan.selectionsJson);
-    const currentYear = new Date().getFullYear();
-    await generateDeliverySchedule({
-      ownerOpenId: existingPlan.ownerOpenId,
-      animalId: existingPlan.animalId,
-      ownershipId: existingPlan.ownershipId,
-      productPlanId: existingPlan.id,
-      selections: enrichedSelections,
-      year: currentYear,
-    });
-
-    return approvedPlan;
+    return listPendingProductPlans();
   }),
+
+  /** Admin: list all product plans */
+  listAllPlans: protectedProcedure.query(async ({ ctx }) => {
+    if (ctx.user.role !== "admin") {
+      throw new TRPCError({ code: "FORBIDDEN", message: "Только администратор." });
+    }
+    return listAllProductPlans();
+  }),
+
+  /** Admin: reset plan back to pending_owner_config */
+  adminResetPlan: protectedProcedure
+    .input(z.object({ planId: z.number().int().positive() }))
+    .mutation(async ({ ctx, input }) => {
+      if (ctx.user.role !== "admin") {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Только администратор может сбрасывать планы." });
+      }
+      const existingPlan = await getOwnerProductPlanById(input.planId);
+      if (!existingPlan) throw new TRPCError({ code: "NOT_FOUND", message: "План не найден." });
+      const updatedPlan = await adminVerifyProductSet(input.planId, {
+        selectionsJson: "[]",
+        adminNotes: "Сброшен администратором для повторного выбора",
+      });
+      await deleteDeliverySchedule(existingPlan.ownerOpenId, existingPlan.animalId);
+      await logPlanChange({
+        planId: input.planId,
+        animalId: existingPlan.animalId,
+        ownerOpenId: existingPlan.ownerOpenId,
+        actorId: "admin",
+        action: "reset",
+        previousStatus: existingPlan.status,
+        newStatus: "pending_owner_config",
+        selectionsSnapshot: existingPlan.selectionsJson,
+        note: "Администратор сбросил план для повторного выбора",
+      });
+      return updatedPlan;
+    }),
+
+  // ── Admin: Get single plan by ID ──
+  getPlanById: protectedProcedure
+    .input(z.object({ planId: z.number().int().positive() }))
+    .query(async ({ ctx, input }) => {
+      if (ctx.user.role !== "admin") {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Только администратор." });
+      }
+      return getOwnerProductPlanById(input.planId);
+    }),
 
   // ── Plan Change Log ──
   getPlanChangeLog: protectedProcedure.input(animalIdInput).query(async ({ ctx, input }) => {

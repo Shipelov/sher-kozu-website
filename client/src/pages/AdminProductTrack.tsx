@@ -22,16 +22,22 @@ import {
   Calendar,
   CheckCircle2,
   ClipboardList,
+  Clock,
+  Crown,
   Droplets,
   FlaskConical,
   History,
+  Layers,
   Loader2,
   MessageCircle,
   Milk,
   Package,
   Pencil,
   Plus,
+  RefreshCw,
   ShieldAlert,
+  ShieldCheck,
+  Sparkles,
   Trash2,
   Truck,
 } from "lucide-react";
@@ -42,7 +48,7 @@ import { Link, useLocation, useParams } from "wouter";
 
 /* ── Types ── */
 
-type ProductType = "milk" | "smetana" | "yogurt" | "kefir" | "cheese";
+type ProductType = "milk" | "smetana" | "yogurt" | "kefir" | "cheese" | "brynza" | "kachotta" | "halumi" | "ricotta" | "camembert" | "aged_cheese" | "blue_cheese" | "smoked_cheese" | "butter" | "condensed_milk" | "fermented_drink" | "custom";
 
 type ProductOptionRecord = {
   id: number;
@@ -85,20 +91,44 @@ type DeliveryEntry = {
   adminNote: string | null;
 };
 
-const PRODUCT_TYPE_LABELS: Record<ProductType, string> = {
+const PRODUCT_TYPE_LABELS: Record<string, string> = {
   milk: "Молоко",
   smetana: "Сметана",
   yogurt: "Йогурт",
   kefir: "Кефир",
   cheese: "Сыр",
+  brynza: "Брынза",
+  kachotta: "Качотта",
+  halumi: "Халуми",
+  ricotta: "Рикотта",
+  camembert: "Камамбер",
+  aged_cheese: "Выдержанный сыр",
+  blue_cheese: "Голубой сыр",
+  smoked_cheese: "Копчёный сыр",
+  butter: "Масло",
+  condensed_milk: "Сгущёнка",
+  fermented_drink: "Ферментированный напиток",
+  custom: "Другое",
 };
 
-const PRODUCT_TYPE_ICONS: Record<ProductType, typeof Milk> = {
+const PRODUCT_TYPE_ICONS: Record<string, typeof Milk> = {
   milk: Milk,
   smetana: FlaskConical,
   yogurt: FlaskConical,
   kefir: FlaskConical,
   cheese: Package,
+  brynza: Package,
+  kachotta: Package,
+  halumi: Package,
+  ricotta: Package,
+  camembert: Package,
+  aged_cheese: Package,
+  blue_cheese: Package,
+  smoked_cheese: Package,
+  butter: Package,
+  condensed_milk: FlaskConical,
+  fermented_drink: FlaskConical,
+  custom: Package,
 };
 
 const MONTH_NAMES = ["Янв", "Фев", "Мар", "Апр", "Май", "Июн", "Июл", "Авг", "Сен", "Окт", "Ноя", "Дек"];
@@ -530,12 +560,58 @@ function ProductOptionsManager({ animalId }: { animalId: number }) {
 /* ── Owner Plans Overview (Admin) ── */
 
 type SelectionEntry = {
-  productOptionId: number;
-  productType: string;
+  productOptionId?: number;
+  catalogItemId?: number;
+  productType?: string;
   label: string;
   annualUnits: number;
   unit: string;
   milkUsed: number;
+};
+
+type TierCatalogItem = {
+  id: number;
+  productType: string;
+  label: string;
+  conversionRatio: number;
+  unit: string;
+  maxAnnualUnits: number;
+  minTier: string;
+  species: string;
+  isEnabled: number;
+  sortOrder: number;
+};
+
+const TIER_LABELS: Record<string, string> = {
+  basic: "Базовый",
+  standard: "Стандартный",
+  professional: "Профессиональный",
+};
+
+const TIER_COLORS: Record<string, string> = {
+  basic: "border-stone-200 bg-stone-50 text-stone-700",
+  standard: "border-blue-200 bg-blue-50 text-blue-700",
+  professional: "border-amber-200 bg-amber-50 text-amber-700",
+};
+
+const TIER_ICONS: Record<string, typeof Crown> = {
+  basic: ShieldCheck,
+  standard: Sparkles,
+  professional: Crown,
+};
+
+const PLAN_STATUS_LABELS: Record<string, string> = {
+  pending_admin_setup: "Ожидает настройки",
+  pending_owner_config: "Ожидает владельца",
+  pending_approval: "Ожидает подтверждения",
+  confirmed: "Подтверждён",
+};
+
+const PLAN_STATUS_COLORS: Record<string, string> = {
+  pending_admin_setup: "border-orange-200 bg-orange-50 text-orange-700",
+  pending_owner_config: "border-blue-200 bg-blue-50 text-blue-700",
+  pending_approval: "border-violet-200 bg-violet-50 text-violet-700",
+  confirmed: "border-emerald-200 bg-emerald-50 text-emerald-700",
 };
 
 function OwnerPlansOverview({ animalId }: { animalId: number }) {
@@ -548,13 +624,13 @@ function OwnerPlansOverview({ animalId }: { animalId: number }) {
   const [editSelections, setEditSelections] = useState<Map<number, number>>(new Map());
   const [adminNotes, setAdminNotes] = useState("");
 
-  const adminUpdatePlan = trpc.productTrack.adminUpdatePlan.useMutation({
+  const adminUpdatePlan = trpc.productTrack.adminVerifyPlan.useMutation({
     onSuccess: () => {
       toast.success("План обновлён");
       setEditingPlan(null);
       trackData.refetch();
     },
-    onError: (err) => toast.error(err.message),
+    onError: (err: any) => toast.error(err.message),
   });
 
   const adminResetPlan = trpc.productTrack.adminResetPlan.useMutation({
@@ -602,7 +678,7 @@ function OwnerPlansOverview({ animalId }: { animalId: number }) {
     if (!editingPlan) return;
     const selections = Array.from(editSelections.entries())
       .filter(([, units]) => units > 0)
-      .map(([optId, units]) => ({ productOptionId: optId, annualUnits: units }));
+      .map(([optId, units]) => ({ catalogItemId: optId, annualUnits: units }));
     if (selections.length === 0) {
       toast.error("Выберите хотя бы один продукт.");
       return;
@@ -659,16 +735,17 @@ function OwnerPlansOverview({ animalId }: { animalId: number }) {
                         )}
                       </div>
                       <div className="flex items-center gap-2">
-                        <Badge className={`rounded-full border ${
-                          plan.status === "confirmed" ? "border-emerald-200 bg-emerald-50 text-emerald-700" :
-                          plan.status === "modified_by_admin" ? "border-amber-200 bg-amber-50 text-amber-700" :
-                          plan.status === "pending_approval" ? "border-blue-200 bg-blue-50 text-blue-700" :
-                          "border-stone-200 bg-stone-50 text-stone-500"
-                        }`}>
-                          {plan.status === "confirmed" ? "Подтверждён" :
-                           plan.status === "modified_by_admin" ? "Изменён админом" :
-                           plan.status === "pending_approval" ? "Ожидает подтверждения" :
-                           "Черновик"}
+                        {(plan as any).tierSlug && (() => {
+                          const TierIcon = TIER_ICONS[(plan as any).tierSlug] ?? ShieldCheck;
+                          return (
+                            <Badge className={`rounded-full border ${TIER_COLORS[(plan as any).tierSlug] ?? TIER_COLORS.basic}`}>
+                              <TierIcon className="mr-1 h-3 w-3" />
+                              {TIER_LABELS[(plan as any).tierSlug] ?? (plan as any).tierSlug}
+                            </Badge>
+                          );
+                        })()}
+                        <Badge className={`rounded-full border ${PLAN_STATUS_COLORS[plan.status] ?? "border-stone-200 bg-stone-50 text-stone-500"}`}>
+                          {PLAN_STATUS_LABELS[plan.status] ?? plan.status}
                         </Badge>
                       </div>
                     </div>
@@ -1069,6 +1146,345 @@ function ChatConversationsOverview({ animalId, animalName }: { animalId: number;
   );
 }
 
+/* ── Tier Catalog Manager (Admin) ── */
+
+const ALL_PRODUCT_TYPES = [
+  "milk", "smetana", "yogurt", "kefir", "cheese",
+  "brynza", "kachotta", "halumi", "ricotta", "camembert",
+  "aged_cheese", "blue_cheese", "smoked_cheese",
+  "butter", "condensed_milk", "fermented_drink", "custom",
+];
+
+const ALL_TIERS = ["basic", "standard", "professional"];
+const ALL_SPECIES = ["goat", "sheep", "both"];
+const SPECIES_LABELS: Record<string, string> = { goat: "Козы", sheep: "Овцы", both: "Все" };
+
+function TierCatalogManager() {
+  const utils = trpc.useUtils();
+  const catalogQuery = trpc.productTrack.listAllTierCatalog.useQuery();
+  const upsertItem = trpc.productTrack.upsertTierCatalogItem.useMutation({
+    onSuccess: () => {
+      utils.productTrack.listAllTierCatalog.invalidate();
+      setEditing(null);
+      toast.success("Продукт сохранён в каталог");
+    },
+    onError: (err) => toast.error(err.message),
+  });
+  const deleteItem = trpc.productTrack.deleteTierCatalogItem.useMutation({
+    onSuccess: () => {
+      utils.productTrack.listAllTierCatalog.invalidate();
+      toast.success("Продукт удалён из каталога");
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
+  const [editing, setEditing] = useState<Partial<TierCatalogItem> | null>(null);
+  const [filterTier, setFilterTier] = useState<string>("all");
+
+  const catalog = (catalogQuery.data ?? []) as TierCatalogItem[];
+
+  const filteredCatalog = useMemo(() => {
+    if (filterTier === "all") return catalog;
+    return catalog.filter(c => c.minTier === filterTier);
+  }, [catalog, filterTier]);
+
+  const openNew = () => {
+    setEditing({
+      productType: "milk",
+      label: "",
+      conversionRatio: 1,
+      unit: "л",
+      maxAnnualUnits: 100,
+      minTier: "basic",
+      species: "both",
+      isEnabled: 1,
+      sortOrder: catalog.length,
+    });
+  };
+
+  const openEdit = (item: TierCatalogItem) => {
+    setEditing({ ...item });
+  };
+
+  const handleSave = () => {
+    if (!editing) return;
+    if (!editing.label?.trim()) {
+      toast.error("Укажите название продукта");
+      return;
+    }
+    upsertItem.mutate({
+      id: editing.id,
+      productType: editing.productType as any,
+      label: editing.label!.trim(),
+      conversionRatio: editing.conversionRatio ?? 1,
+      unit: editing.unit ?? "л",
+      minTier: editing.minTier as any ?? "basic",
+      species: editing.species as any ?? "both",
+      isEnabled: Boolean(editing.isEnabled),
+      sortOrder: editing.sortOrder ?? 0,
+    });
+  };
+
+  return (
+    <Card className="rounded-[2rem] border-border/70 shadow-sm">
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle className="flex items-center gap-2">
+              <Layers className="h-5 w-5 text-primary" />
+              Тарифный каталог продуктов
+            </CardTitle>
+            <CardDescription>
+              Глобальный каталог продуктов по тарифам. Владельцы видят только продукты своего тарифа и ниже.
+            </CardDescription>
+          </div>
+          <Button onClick={openNew} size="sm" className="rounded-full">
+            <Plus className="mr-1 h-4 w-4" /> Добавить
+          </Button>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {/* Tier filter */}
+        <div className="flex gap-2 flex-wrap">
+          <Button
+            variant={filterTier === "all" ? "default" : "outline"}
+            size="sm"
+            className="rounded-full text-xs"
+            onClick={() => setFilterTier("all")}
+          >
+            Все ({catalog.length})
+          </Button>
+          {ALL_TIERS.map(t => {
+            const count = catalog.filter(c => c.minTier === t).length;
+            const TierIcon = TIER_ICONS[t] ?? ShieldCheck;
+            return (
+              <Button
+                key={t}
+                variant={filterTier === t ? "default" : "outline"}
+                size="sm"
+                className="rounded-full text-xs"
+                onClick={() => setFilterTier(t)}
+              >
+                <TierIcon className="mr-1 h-3 w-3" />
+                {TIER_LABELS[t]} ({count})
+              </Button>
+            );
+          })}
+        </div>
+
+        {catalogQuery.isLoading ? (
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Loader2 className="h-4 w-4 animate-spin" /> Загружаем каталог…
+          </div>
+        ) : filteredCatalog.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-border bg-secondary/20 px-5 py-8 text-center text-sm text-muted-foreground">
+            Каталог пуст. Добавьте продукты для каждого тарифного уровня.
+          </div>
+        ) : (
+          <ScrollRemaining totalItems={filteredCatalog.length} itemHeight={72} className="space-y-3 max-h-[520px] overflow-y-auto pr-1">
+            {filteredCatalog.map((item) => {
+              const Icon = PRODUCT_TYPE_ICONS[item.productType] ?? Package;
+              const TierIcon = TIER_ICONS[item.minTier] ?? ShieldCheck;
+              return (
+                <div
+                  key={item.id}
+                  className={`flex items-center justify-between rounded-2xl border p-4 transition-shadow hover:shadow-sm ${
+                    item.isEnabled ? "border-border/60 bg-white/80" : "border-border/40 bg-stone-50 opacity-60"
+                  }`}
+                >
+                  <div className="flex items-center gap-3 flex-1 min-w-0">
+                    <div className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                      <Icon className="h-5 w-5" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-medium text-foreground">{item.label}</span>
+                        <Badge className={`rounded-full border text-[10px] ${TIER_COLORS[item.minTier] ?? TIER_COLORS.basic}`}>
+                          <TierIcon className="mr-0.5 h-2.5 w-2.5" />
+                          {TIER_LABELS[item.minTier] ?? item.minTier}+
+                        </Badge>
+                        <Badge variant="secondary" className="rounded-full text-[10px]">
+                          {SPECIES_LABELS[item.species] ?? item.species}
+                        </Badge>
+                        {!item.isEnabled && (
+                          <Badge className="rounded-full border-stone-200 bg-stone-100 text-stone-500 text-[10px]">
+                            Отключен
+                          </Badge>
+                        )}
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        {item.conversionRatio} л молока → 1 {item.unit} · макс. {item.maxAnnualUnits} {item.unit}/год
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1 ml-2">
+                    <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full" onClick={() => openEdit(item)}>
+                      <Pencil className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 rounded-full text-destructive hover:text-destructive"
+                      onClick={() => {
+                        if (confirm(`Удалить «${item.label}» из каталога?`)) {
+                          deleteItem.mutate({ id: item.id });
+                        }
+                      }}
+                      disabled={deleteItem.isPending}
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                </div>
+              );
+            })}
+          </ScrollRemaining>
+        )}
+
+        {/* Edit / Create Dialog */}
+        <Dialog open={editing !== null} onOpenChange={(open) => !open && setEditing(null)}>
+          <DialogContent className="sm:max-w-lg rounded-[2rem]">
+            <DialogHeader>
+              <DialogTitle>{editing?.id ? "Редактировать продукт" : "Новый продукт в каталоге"}</DialogTitle>
+              <DialogDescription>
+                Продукт будет доступен владельцам с указанным тарифом и выше.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-4 mt-2">
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label>Название</Label>
+                  <Input
+                    value={editing?.label ?? ""}
+                    onChange={(e) => setEditing(prev => prev ? { ...prev, label: e.target.value } : prev)}
+                    placeholder="Молоко цельное"
+                    className="rounded-xl"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Тип продукта</Label>
+                  <Select
+                    value={editing?.productType ?? "milk"}
+                    onValueChange={(v) => setEditing(prev => prev ? { ...prev, productType: v } : prev)}
+                  >
+                    <SelectTrigger className="rounded-xl">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {ALL_PRODUCT_TYPES.map(pt => (
+                        <SelectItem key={pt} value={pt}>{PRODUCT_TYPE_LABELS[pt] ?? pt}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-3">
+                <div className="space-y-2">
+                  <Label>Конверсия (л молока → 1 ед.)</Label>
+                  <Input
+                    type="number"
+                    min={1}
+                    max={1000}
+                    value={editing?.conversionRatio ?? 1}
+                    onChange={(e) => setEditing(prev => prev ? { ...prev, conversionRatio: Number(e.target.value) } : prev)}
+                    className="rounded-xl"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Единица</Label>
+                  <Input
+                    value={editing?.unit ?? "л"}
+                    onChange={(e) => setEditing(prev => prev ? { ...prev, unit: e.target.value } : prev)}
+                    placeholder="л, кг, шт"
+                    className="rounded-xl"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Макс. ед./год</Label>
+                  <Input
+                    type="number"
+                    min={1}
+                    max={100000}
+                    value={editing?.maxAnnualUnits ?? 100}
+                    onChange={(e) => setEditing(prev => prev ? { ...prev, maxAnnualUnits: Number(e.target.value) } : prev)}
+                    className="rounded-xl"
+                  />
+                </div>
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-3">
+                <div className="space-y-2">
+                  <Label>Минимальный тариф</Label>
+                  <Select
+                    value={editing?.minTier ?? "basic"}
+                    onValueChange={(v) => setEditing(prev => prev ? { ...prev, minTier: v } : prev)}
+                  >
+                    <SelectTrigger className="rounded-xl">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {ALL_TIERS.map(t => (
+                        <SelectItem key={t} value={t}>{TIER_LABELS[t]}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Вид животного</Label>
+                  <Select
+                    value={editing?.species ?? "both"}
+                    onValueChange={(v) => setEditing(prev => prev ? { ...prev, species: v } : prev)}
+                  >
+                    <SelectTrigger className="rounded-xl">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {ALL_SPECIES.map(s => (
+                        <SelectItem key={s} value={s}>{SPECIES_LABELS[s]}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Порядок</Label>
+                  <Input
+                    type="number"
+                    min={0}
+                    max={9999}
+                    value={editing?.sortOrder ?? 0}
+                    onChange={(e) => setEditing(prev => prev ? { ...prev, sortOrder: Number(e.target.value) } : prev)}
+                    className="rounded-xl"
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <Switch
+                  checked={Boolean(editing?.isEnabled)}
+                  onCheckedChange={(v) => setEditing(prev => prev ? { ...prev, isEnabled: v ? 1 : 0 } : prev)}
+                />
+                <Label>Активен</Label>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-2">
+                <Button variant="outline" className="rounded-full" onClick={() => setEditing(null)}>
+                  Отмена
+                </Button>
+                <Button className="rounded-full" onClick={handleSave} disabled={upsertItem.isPending}>
+                  {upsertItem.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle2 className="mr-2 h-4 w-4" />}
+                  {editing?.id ? "Сохранить" : "Добавить"}
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+      </CardContent>
+    </Card>
+  );
+}
+
 /* ── Main Page ── */
 
 export default function AdminProductTrack() {
@@ -1203,12 +1619,15 @@ export default function AdminProductTrack() {
         </div>
 
         <Tabs defaultValue="profile" className="space-y-6">
-          <TabsList className="rounded-full bg-secondary/50 p-1">
+          <TabsList className="rounded-full bg-secondary/50 p-1 flex-wrap">
             <TabsTrigger value="profile" className="rounded-full">
               <Milk className="mr-2 h-4 w-4" /> Профиль
             </TabsTrigger>
             <TabsTrigger value="products" className="rounded-full">
               <Package className="mr-2 h-4 w-4" /> Продукты
+            </TabsTrigger>
+            <TabsTrigger value="tier-catalog" className="rounded-full">
+              <Layers className="mr-2 h-4 w-4" /> Тарифный каталог
             </TabsTrigger>
             <TabsTrigger value="plans" className="rounded-full">
               <BarChart3 className="mr-2 h-4 w-4" /> Планы
@@ -1236,6 +1655,10 @@ export default function AdminProductTrack() {
 
           <TabsContent value="products">
             <ProductOptionsManager animalId={animalId} />
+          </TabsContent>
+
+          <TabsContent value="tier-catalog">
+            <TierCatalogManager />
           </TabsContent>
 
           <TabsContent value="plans">
