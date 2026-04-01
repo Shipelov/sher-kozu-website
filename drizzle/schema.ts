@@ -1454,3 +1454,215 @@ export const abExperimentAssignments = mysqlTable("abExperimentAssignments", {
 ]);
 export type AbExperimentAssignment = typeof abExperimentAssignments.$inferSelect;
 export type InsertAbExperimentAssignment = typeof abExperimentAssignments.$inferInsert;
+
+
+// ─── Pricing Section ─────────────────────────────────────────────────────────
+
+export const tierSlugEnum = mysqlEnum("tierSlug", ["guest", "basic", "standard", "professional"]);
+
+/**
+ * Pricing tiers — admin-managed tariff plans displayed on the pricing pages.
+ * Separate from the existing `plans` table which tracks active subscriptions.
+ */
+export const pricingTiers = mysqlTable("pricingTiers", {
+  id: int("id").autoincrement().primaryKey(),
+  slug: varchar("slug", { length: 32 }).notNull().unique(),
+  name: varchar("name", { length: 128 }).notNull(),
+  subtitle: varchar("subtitle", { length: 255 }),
+  /** Share percentage: 0 for guest, 50 for basic, 100 for standard/professional */
+  sharePercent: int("sharePercent").notNull().default(0),
+  /** Minimum number of animals required (1 for basic/standard, 3 for professional) */
+  minAnimals: int("minAnimals").notNull().default(1),
+  /** Monthly fee in kopecks (minor currency unit) */
+  monthlyFeeMinor: int("monthlyFeeMinor").notNull().default(0),
+  /** Annual subscription discount percent (e.g. 15) */
+  annualDiscountPercent: int("annualDiscountPercent").notNull().default(0),
+  /** Renewal discount percent (e.g. 20) */
+  renewalDiscountPercent: int("renewalDiscountPercent").notNull().default(0),
+  /** Package discount percent for 3+ animals (professional) */
+  packageDiscountPercent: int("packageDiscountPercent").notNull().default(0),
+  /** Product plan change frequency: quarterly, monthly, weekly */
+  planChangeFrequency: mysqlEnum("planChangeFrequency", ["quarterly", "monthly", "weekly"]),
+  /** Number of delivery addresses allowed */
+  deliveryAddresses: int("deliveryAddresses").notNull().default(1),
+  /** Whether personalized label is free (true) or paid add-on (false) */
+  personalizedLabelFree: boolean("personalizedLabelFree").notNull().default(false),
+  /** Whether aged cheese (6-24 months) is available */
+  agedCheeseAccess: boolean("agedCheeseAccess").notNull().default(false),
+  /** Maximum gift subscription months (0 = not available) */
+  maxGiftSubscriptionMonths: int("maxGiftSubscriptionMonths").notNull().default(0),
+  /** Farm visit quota per year (0 = not included) */
+  farmVisitsPerYear: int("farmVisitsPerYear").notNull().default(0),
+  /** Club events per year (0 = not included) */
+  clubEventsPerYear: int("clubEventsPerYear").notNull().default(0),
+  /** Shop discount percent */
+  shopDiscountPercent: int("shopDiscountPercent").notNull().default(0),
+  /** Referral bonus multiplier (e.g. 1, 2, 3, 5) */
+  referralMultiplier: int("referralMultiplier").notNull().default(1),
+  /** Whether personal manager is included */
+  hasPersonalManager: boolean("hasPersonalManager").notNull().default(false),
+  /** Whether digital diary is included */
+  hasDigitalDiary: boolean("hasDigitalDiary").notNull().default(false),
+  /** Badge system level: none, basic, extended, full */
+  badgeSystemLevel: mysqlEnum("badgeSystemLevel", ["none", "basic", "extended", "full"]).default("none"),
+  /** Display order on pricing pages */
+  displayOrder: int("displayOrder").notNull().default(0),
+  /** Whether this tier is currently active and visible */
+  isActive: boolean("isActive").notNull().default(true),
+  /** Hero description for the tier detail page (rich text / markdown) */
+  heroDescription: text("heroDescription"),
+  /** Target audience description */
+  targetAudience: text("targetAudience"),
+  /** JSON array of feature highlights for the tier card */
+  featureHighlights: json("featureHighlights"),
+  /** JSON array of limitations/restrictions */
+  limitations: json("limitations"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (t) => [
+  index("pt_slug_idx").on(t.slug),
+  index("pt_active_idx").on(t.isActive),
+]);
+export type PricingTier = typeof pricingTiers.$inferSelect;
+export type InsertPricingTier = typeof pricingTiers.$inferInsert;
+
+/**
+ * Market prices — reference prices for premium dairy products in Moscow.
+ * Used by the calculator to compare Sher Kozu value vs market purchases.
+ * Admin-managed via CMS.
+ */
+export const marketPrices = mysqlTable("marketPrices", {
+  id: int("id").autoincrement().primaryKey(),
+  /** Product name in Russian */
+  productName: varchar("productName", { length: 255 }).notNull(),
+  /** Product slug for programmatic access */
+  productSlug: varchar("productSlug", { length: 64 }).notNull().unique(),
+  /** Animal species this product applies to */
+  species: mysqlEnum("mp_species", ["goat", "sheep"]).notNull(),
+  /** Product category */
+  category: mysqlEnum("mp_category", ["milk", "fermented", "soft_cheese", "semi_hard_cheese", "hard_cheese", "aged_cheese", "butter", "other"]).notNull(),
+  /** Unit of measurement */
+  unit: mysqlEnum("mp_unit", ["liter", "kg"]).notNull(),
+  /** Minimum market price in kopecks per unit */
+  minPriceMinor: int("minPriceMinor").notNull(),
+  /** Maximum market price in kopecks per unit */
+  maxPriceMinor: int("maxPriceMinor").notNull(),
+  /** Average price used by calculator in kopecks per unit */
+  avgPriceMinor: int("avgPriceMinor").notNull(),
+  /** Price source description */
+  source: varchar("source", { length: 255 }),
+  /** Date when price was last verified */
+  lastVerifiedAt: timestamp("lastVerifiedAt"),
+  /** Tier availability: all, standard_plus, professional_only */
+  tierAvailability: mysqlEnum("mp_tierAvailability", ["all", "standard_plus", "professional_only"]).notNull().default("all"),
+  /** Display order in calculator product list */
+  displayOrder: int("displayOrder").notNull().default(0),
+  /** Whether this product is active in the calculator */
+  isActive: boolean("isActive").notNull().default(true),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (t) => [
+  index("mp_species_idx").on(t.species),
+  index("mp_category_idx").on(t.category),
+  index("mp_slug_idx").on(t.productSlug),
+]);
+export type MarketPrice = typeof marketPrices.$inferSelect;
+export type InsertMarketPrice = typeof marketPrices.$inferInsert;
+
+/**
+ * Product conversion rates — how many liters of milk are needed to produce 1 unit of product.
+ * Used by the calculator and product plan system.
+ */
+export const productConversions = mysqlTable("productConversions", {
+  id: int("id").autoincrement().primaryKey(),
+  /** Reference to market price product */
+  marketPriceId: int("marketPriceId").notNull(),
+  /** Liters of milk needed to produce 1 unit of this product */
+  milkLitersPerUnit: double("milkLitersPerUnit").notNull(),
+  /** Unit of the output product */
+  outputUnit: mysqlEnum("pc_outputUnit", ["liter", "kg"]).notNull(),
+  /** Notes about the conversion (e.g. "varies by fat content") */
+  notes: text("notes"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (t) => [
+  index("pc_mpId_idx").on(t.marketPriceId),
+]);
+export type ProductConversion = typeof productConversions.$inferSelect;
+export type InsertProductConversion = typeof productConversions.$inferInsert;
+
+/**
+ * Calculator sessions — analytics tracking for calculator usage.
+ */
+export const calculatorSessions = mysqlTable("calculatorSessions", {
+  id: int("id").autoincrement().primaryKey(),
+  /** User ID if logged in, null for anonymous */
+  userId: int("userId"),
+  /** Visitor fingerprint for anonymous tracking */
+  visitorId: varchar("visitorId", { length: 64 }),
+  /** Selected species */
+  species: mysqlEnum("cs_species", ["goat", "sheep"]),
+  /** Selected breed slug */
+  breedSlug: varchar("breedSlug", { length: 64 }),
+  /** Selected share percent */
+  sharePercent: int("sharePercent"),
+  /** Number of animals */
+  animalCount: int("animalCount"),
+  /** Determined tier slug */
+  tierSlug: varchar("cs_tierSlug", { length: 32 }),
+  /** Calculated annual cost in kopecks */
+  annualCostMinor: int("annualCostMinor"),
+  /** Calculated market value of products in kopecks */
+  marketValueMinor: int("marketValueMinor"),
+  /** Calculated savings percent */
+  savingsPercent: int("savingsPercent"),
+  /** JSON snapshot of product distribution */
+  productDistribution: json("productDistribution"),
+  /** Whether user clicked CTA after calculation */
+  clickedCta: boolean("clickedCta").default(false),
+  /** Which CTA was clicked */
+  ctaType: varchar("ctaType", { length: 32 }),
+  /** Referrer page */
+  referrerPage: varchar("referrerPage", { length: 255 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, (t) => [
+  index("cs_userId_idx").on(t.userId),
+  index("cs_tierSlug_idx").on(t.tierSlug),
+  index("cs_createdAt_idx").on(t.createdAt),
+]);
+export type CalculatorSession = typeof calculatorSessions.$inferSelect;
+export type InsertCalculatorSession = typeof calculatorSessions.$inferInsert;
+
+/**
+ * Pricing page views — analytics for the pricing section pages.
+ */
+export const pricingPageViews = mysqlTable("pricingPageViews", {
+  id: int("id").autoincrement().primaryKey(),
+  /** Page path (e.g. /pricing, /pricing/calculator) */
+  pagePath: varchar("pagePath", { length: 128 }).notNull(),
+  /** User ID if logged in */
+  userId: int("userId"),
+  /** Visitor fingerprint */
+  visitorId: varchar("visitorId", { length: 64 }),
+  /** Session ID */
+  sessionId: varchar("sessionId", { length: 64 }),
+  /** Time spent on page in seconds */
+  timeOnPageSeconds: int("timeOnPageSeconds"),
+  /** Scroll depth percentage (0-100) */
+  scrollDepthPercent: int("scrollDepthPercent"),
+  /** Referrer URL */
+  referrer: varchar("referrer", { length: 512 }),
+  /** UTM source */
+  utmSource: varchar("utmSource", { length: 128 }),
+  /** UTM medium */
+  utmMedium: varchar("utmMedium", { length: 128 }),
+  /** UTM campaign */
+  utmCampaign: varchar("utmCampaign", { length: 128 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, (t) => [
+  index("ppv_pagePath_idx").on(t.pagePath),
+  index("ppv_createdAt_idx").on(t.createdAt),
+  index("ppv_userId_idx").on(t.userId),
+]);
+export type PricingPageView = typeof pricingPageViews.$inferSelect;
+export type InsertPricingPageView = typeof pricingPageViews.$inferInsert;

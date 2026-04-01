@@ -39,6 +39,11 @@ const FAQ = lazy(() => import("./pages/FAQ"));
 const NotificationSettings = lazy(() => import("./pages/NotificationSettings"));
 const AdminAnalyticsAlerts = lazy(() => import("./pages/AdminAnalyticsAlerts"));
 const AdminABExperiments = lazy(() => import("./pages/AdminABExperiments"));
+const Pricing = lazy(() => import("./pages/Pricing"));
+const PricingCalculator = lazy(() => import("./pages/PricingCalculator"));
+const PricingCompare = lazy(() => import("./pages/PricingCompare"));
+const PricingTierDetail = lazy(() => import("./pages/PricingTierDetail"));
+const AdminPricing = lazy(() => import("./pages/AdminPricing"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 /* ─── Suspense fallback spinner ─── */
@@ -115,6 +120,11 @@ function Router() {
         <Route path="/compare" component={AnimalCompare} />
         <Route path="/about" component={AboutFarm} />
         <Route path="/partners" component={Partners} />
+        <Route path="/pricing" component={Pricing} />
+        <Route path="/pricing/calculator" component={PricingCalculator} />
+        <Route path="/pricing/compare" component={PricingCompare} />
+        <Route path="/pricing/:slug" component={PricingTierDetail} />
+        <Route path="/admin/pricing" component={AdminPricing} />
         <Route path="/faq" component={FAQ} />
         <Route path="/register">{() => <Redirect to="/?register=1" />}</Route>
         <Route path="/login">{() => <Redirect to="/?login=1" />}</Route>

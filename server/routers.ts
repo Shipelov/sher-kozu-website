@@ -88,6 +88,7 @@ import { faqChatRouter } from "./routers/faqChat";
 import { cmsRouter } from "./routers/cms";
 import { analyticsRouter } from "./routers/analytics";
 import { analyticsAlertsRouter } from "./routers/analyticsAlerts";
+import { pricingRouter } from "./routers/pricing";
 import { abExperimentsRouter } from "./routers/abExperiments";
 import { getOwnerBadges, checkAndAwardBadges, revokeInvalidBadges, BADGE_DEFINITIONS } from "./badges";
 import {
@@ -1462,6 +1463,7 @@ export const appRouter = router({
     }),
   }),
   productTrack: productTrackRouter,
+  pricing: pricingRouter,
   gamification: gamificationRouter,
   analytics: analyticsRouter,
   analyticsAlerts: analyticsAlertsRouter,

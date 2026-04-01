@@ -23,6 +23,7 @@ import {
   RefreshCw,
   ShieldCheck,
   ShoppingBag,
+  Tag,
   TrendingUp,
   Users,
 } from "lucide-react";
@@ -97,6 +98,7 @@ export default function AdminHub() {
     { title: "Контент (CMS)", path: "/admin/content", icon: FileText },
     { title: "Уведомления аналитики", path: "/admin/analytics-alerts", icon: Bell },
     { title: "A/B тестирование", path: "/admin/ab-experiments", icon: FlaskConical },
+    { title: "Управление ценами", path: "/admin/pricing", icon: Tag },
   ];
 
   // ── Loading ──

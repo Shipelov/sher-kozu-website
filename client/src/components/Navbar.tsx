@@ -28,6 +28,7 @@ import {
   ChevronDown,
   Briefcase,
   MoreHorizontal,
+  Tag,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import AuthModal from "./AuthModal";
@@ -115,6 +116,7 @@ export default function Navbar() {
       { href: "/animals", label: "Каталог", icon: PawPrint, authOnly: false, primary: true },
       { href: "/tracker", label: "Трекер", icon: Milk, authOnly: false, primary: true },
       { href: "/club", label: "Клуб", icon: Users, authOnly: false, primary: true },
+      { href: "/pricing", label: "Цены", icon: Tag, authOnly: false, primary: true },
       { href: "/faq", label: "FAQ", icon: HelpCircle, authOnly: false, primary: false },
       { href: "/partners", label: "B2B", icon: Briefcase, authOnly: false, primary: false },
     ],

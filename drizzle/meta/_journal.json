@@ -253,6 +253,13 @@
       "when": 1775067720933,
       "tag": "0036_pink_bushwacker",
       "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "5",
+      "when": 1775071403772,
+      "tag": "0037_lean_colonel_america",
+      "breakpoints": true
     }
   ]
 }
