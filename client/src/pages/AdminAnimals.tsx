@@ -664,7 +664,7 @@ export function ShareSlotsGrid({ animal, compact = false }: { animal: AdminAnima
             <div
               key={slot.index}
               className={`${dotSize} rounded-full cursor-default ${slot.filled ? "bg-emerald-500" : "bg-stone-200 border border-stone-300"}`}
-              title={slot.filled ? `Доля ${slot.index * 50}% · ${slot.ownerName ?? "Занято"}` : `Доля ${slot.index * 50}% · Свободно`}
+              title={slot.filled ? `${slot.percentLabel} · ${slot.ownerName ?? "Занято"}` : `${slot.percentLabel} · Свободно`}
             />
           ))}
         </div>
@@ -689,7 +689,7 @@ export function ShareSlotsGrid({ animal, compact = false }: { animal: AdminAnima
           <div
             key={slot.index}
             className={`${dotSize} rounded-full cursor-default ${slot.filled ? "bg-emerald-500" : "bg-stone-200 border border-stone-300"}`}
-            title={slot.filled ? `Доля ${slot.index * 50}% · ${slot.ownerName ?? "Занято"}` : `Доля ${slot.index * 50}% · Свободно`}
+            title={slot.filled ? `${slot.percentLabel} · ${slot.ownerName ?? "Занято"}` : `${slot.percentLabel} · Свободно`}
           />
         ))}
       </div>
