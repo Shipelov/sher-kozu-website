@@ -346,7 +346,8 @@ export function buildShareSlots(animal: AdminAnimalRecord) {
     const slotIndex = index + 1;
     const filled = index < animal.activeOwnerships;
     const ownerName = filled ? (slotOwnerMap.get(slotIndex) ?? null) : null;
-    const percent = slotIndex * 50;
+    const percentPerSlot = Math.round(100 / animal.totalOwnershipSlots);
+    const percent = percentPerSlot;
     return {
       index: slotIndex,
       filled,
@@ -893,7 +894,7 @@ function OwnershipManagementDialog({
                           <StatusIcon className="mr-1 h-3 w-3" />
                           {statusInfo.label}
                         </Badge>
-                        <span className="text-xs text-muted-foreground">Доля {ownership.slotIndex * 50}%</span>
+                        <span className="text-xs text-muted-foreground">Доля {Math.round(100 / (animal?.totalOwnershipSlots ?? 2))}% (слот {ownership.slotIndex})</span>
                       </div>
                       <p className="text-sm font-medium text-foreground">
                         {ownership.familyName ?? "Без семьи"}

@@ -332,7 +332,8 @@ export default function Dashboard() {
   const featuredAnimalProfileHref = currentAnimal ? `/animals/${currentAnimal.slug}` : "/animals";
   const trackerHref = currentAnimal ? `/tracker?animal=${currentAnimal.slug}` : "/tracker";
   const clubHref = currentAnimal ? `/club?animal=${currentAnimal.slug}` : "/club";
-  const isGuestJourney = !ownership && !currentAnimal;
+  const isGuestJourney = !isAuthenticated && !ownership && !currentAnimal;
+  const isAuthenticatedNoAnimals = isAuthenticated && !ownership && !currentAnimal;
   const defaultGuestPreviewSections = [
     {
       title: "Профиль участия",
@@ -1372,6 +1373,21 @@ export default function Dashboard() {
               >
                 Зарегистрироваться
               </button>
+            </div>
+          </div>
+        ) : isAuthenticatedNoAnimals ? (
+          <div data-testid="dashboardAuthNoAnimalSticky" className="pointer-events-none fixed inset-x-0 bottom-4 z-40 px-4 sm:px-6">
+            <div className="pointer-events-auto mx-auto flex max-w-3xl items-center justify-between gap-3 rounded-full border border-primary/15 bg-white/92 px-4 py-3 shadow-[0_16px_40px_rgba(15,23,42,0.14)] backdrop-blur">
+              <div className="min-w-0">
+                <p className="text-xs uppercase tracking-[0.18em] text-primary">Начать маршрут владельца</p>
+                <p className="truncate text-sm text-muted-foreground">Выберите животное в каталоге, чтобы начать персональное фермерство.</p>
+              </div>
+              <Link
+                href="/animals"
+                className="inline-flex shrink-0 items-center justify-center rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition hover:opacity-90"
+              >
+                Выбрать животное
+              </Link>
             </div>
           </div>
         ) : null}

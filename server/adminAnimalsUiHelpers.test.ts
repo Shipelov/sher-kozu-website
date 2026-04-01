@@ -179,7 +179,7 @@ describe("Admin animals UI helpers", () => {
 
     expect(slots).toHaveLength(2);
     expect(slots[0]?.percentLabel).toBe("50%");
-    expect(slots[1]?.percentLabel).toBe("100%");
+    expect(slots[1]?.percentLabel).toBe("50%");
   });
 
   it("formats animal prices in Russian rubles for admin surfaces", () => {
@@ -440,7 +440,7 @@ describe("Admin animals UI helpers", () => {
     expect(slots.filter((slot) => slot.state === "occupied")).toHaveLength(1);
     expect(slots.filter((slot) => slot.state === "available")).toHaveLength(1);
     expect(slots[0]).toMatchObject({ index: 1, percentLabel: "50%", state: "occupied" });
-    expect(slots[1]).toMatchObject({ index: 2, percentLabel: "100%", state: "available" });
+    expect(slots[1]).toMatchObject({ index: 2, percentLabel: "50%", state: "available" });
   });
 
   it("creates aggregate share summary for admin dashboard", () => {
