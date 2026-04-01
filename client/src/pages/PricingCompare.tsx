@@ -3,6 +3,7 @@
   Full comparison table across all 4 tiers with categories.
 */
 
+import React from "react";
 import { motion } from "framer-motion";
 import { Link } from "wouter";
 import Navbar from "@/components/Navbar";
@@ -157,9 +158,9 @@ export default function PricingCompare() {
               </thead>
               <tbody>
                 {SECTIONS.map((section, si) => (
-                  <>
+                  <React.Fragment key={`section-${si}`}>
                     {/* Section header */}
-                    <tr key={`section-${si}`} className="bg-muted/20">
+                    <tr className="bg-muted/20">
                       <td colSpan={5} className="px-4 py-2.5 text-xs font-bold uppercase tracking-widest text-muted-foreground">
                         {section.title}
                       </td>
@@ -181,7 +182,7 @@ export default function PricingCompare() {
                         <td className="px-4 py-3 text-center"><CellValue val={row.professional} /></td>
                       </motion.tr>
                     ))}
-                  </>
+                  </React.Fragment>
                 ))}
               </tbody>
             </table>
