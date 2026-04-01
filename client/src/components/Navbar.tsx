@@ -58,6 +58,25 @@ export default function Navbar() {
     setMobileOpen(false);
   }, []);
 
+  // Auto-open auth modal from URL params (?register=1 or ?login=1)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("register") === "1" && !isAuthenticated) {
+      setAuthModalView("register");
+      setAuthModalOpen(true);
+      // Clean up URL
+      const url = new URL(window.location.href);
+      url.searchParams.delete("register");
+      window.history.replaceState({}, "", url.pathname + url.search);
+    } else if (params.get("login") === "1" && !isAuthenticated) {
+      setAuthModalView("login");
+      setAuthModalOpen(true);
+      const url = new URL(window.location.href);
+      url.searchParams.delete("login");
+      window.history.replaceState({}, "", url.pathname + url.search);
+    }
+  }, [isAuthenticated]);
+
   const logoutMutation = trpc.auth.logout.useMutation({
     onSuccess: () => {
       window.location.href = "/";

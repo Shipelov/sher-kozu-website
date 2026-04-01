@@ -1,6 +1,6 @@
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { Route, Switch, useLocation } from "wouter";
+import { Route, Switch, useLocation, Redirect } from "wouter";
 import { useEffect, useState, useCallback, lazy, Suspense } from "react";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
@@ -116,6 +116,8 @@ function Router() {
         <Route path="/about" component={AboutFarm} />
         <Route path="/partners" component={Partners} />
         <Route path="/faq" component={FAQ} />
+        <Route path="/register">{() => <Redirect to="/?register=1" />}</Route>
+        <Route path="/login">{() => <Redirect to="/?login=1" />}</Route>
         <Route path="/404" component={NotFound} />
         <Route component={NotFound} />
         </Switch>
