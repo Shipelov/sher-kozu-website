@@ -681,32 +681,39 @@ export default function OwnerProductPlanSection({
                       </p>
                     </div>
 
-                    {/* Products summary */}
+                    {/* Compact plan summary */}
                     <div className="rounded-2xl border border-border bg-card p-5">
                       <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-3">
-                        Ваши продукты
+                        Сводка плана
                       </p>
-                      {activeProducts.length > 0 ? (
-                        <div className="space-y-2 text-sm">
-                          {activeProducts.map((p) => (
-                            <div key={p.catalogItemId} className="flex justify-between">
-                              <span className="text-muted-foreground flex items-center gap-1.5">
-                                <span className={`inline-block h-2 w-2 rounded-full ${PRODUCT_COLORS[p.productType] ?? PRODUCT_COLORS.custom}`} />
-                                {p.label}
-                              </span>
-                              <span className="font-semibold text-foreground">
-                                {p.annualUnits} {p.unit}/год
-                              </span>
-                            </div>
-                          ))}
-                          <div className="flex justify-between border-t border-border pt-2">
-                            <span className="font-bold text-foreground">Всего продуктов</span>
-                            <span className="font-bold text-primary">{activeProducts.length}</span>
-                          </div>
+                      <div className="space-y-3 text-sm">
+                        <div className="flex justify-between items-center">
+                          <span className="text-muted-foreground">Выбрано продуктов</span>
+                          <span className="font-bold text-lg text-primary">{activeProducts.length} <span className="text-xs font-normal text-muted-foreground">из {catalog.length}</span></span>
                         </div>
-                      ) : (
-                        <p className="text-sm text-muted-foreground">Распределите молоко между продуктами</p>
-                      )}
+                        <div className="flex justify-between items-center">
+                          <span className="text-muted-foreground">Использовано молока</span>
+                          <span className="font-bold text-lg text-foreground">{totalMilkUsed.toFixed(0)} л</span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-muted-foreground">Свободно</span>
+                          <span className={`font-bold text-lg ${(annualMilkBudget - totalMilkUsed) < 0 ? 'text-destructive' : 'text-emerald-600'}`}>
+                            {(annualMilkBudget - totalMilkUsed).toFixed(0)} л
+                          </span>
+                        </div>
+                        <div className="w-full bg-muted rounded-full h-2 overflow-hidden">
+                          <div
+                            className={`h-full rounded-full transition-all ${totalMilkUsed > annualMilkBudget ? 'bg-destructive' : 'bg-primary'}`}
+                            style={{ width: `${Math.min((totalMilkUsed / annualMilkBudget) * 100, 100)}%` }}
+                          />
+                        </div>
+                        {totalAllocPercent > 0 && totalAllocPercent < 100 && (
+                          <p className="text-xs text-amber-600">Распределено {totalAllocPercent}% — добавьте ещё продуктов</p>
+                        )}
+                        {totalAllocPercent >= 100 && activeProducts.length > 0 && (
+                          <p className="text-xs text-emerald-600">План полностью настроен ✓</p>
+                        )}
+                      </div>
                     </div>
 
                     {/* Tier privileges */}
