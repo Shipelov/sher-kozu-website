@@ -1715,3 +1715,12 @@
 - [x] BUG: Mira still shows "Сброшен администратором для повторного выбора" after plan confirmation
 - [x] Investigate: check current plan status and adminNote in DB
 - [x] Fix: client-side filter hides stale reset notes for confirmed plans (both owner and admin views)
+
+## Phase K Bugfix 3 — Products not showing in owner plan after re-verification
+
+- [x] BUG: After admin resets plan, deletes products, re-populates and verifies — owner's product plan section doesn't show products for Mira
+- [x] Investigate: check plan status in DB, verified products, and client-side effective status logic
+- [x] Fix: auto-repair mechanism in listProductPlans transitions stuck plans from pending_admin_setup to pending_owner_config
+- [x] Fix: isVerified → isAdminVerified field name in AdminProductTrack.tsx effective status check
+- [x] Fix: auto-repair in getOwnerProductPlan for stuck plans
+- [x] Verified: owner (Mira) now sees full calculator with sliders and can submit plan

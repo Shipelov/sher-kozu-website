@@ -730,7 +730,7 @@ function OwnerPlansOverview({ animalId }: { animalId: number }) {
   const ownerPlans = (trackData.data?.ownerPlans ?? []) as OwnerPlanRecord[];
   const productOptions = (trackData.data?.options ?? []) as ProductOptionRecord[];
   // Check if any verified products exist — used to show effective status
-  const hasVerifiedProducts = productOptions.some((o: any) => o.isVerified);
+  const hasVerifiedProducts = productOptions.some((o: any) => o.isAdminVerified === 1);
   const profile = trackData.data?.profile;
 
   const [editingPlan, setEditingPlan] = useState<OwnerPlanRecord | null>(null);

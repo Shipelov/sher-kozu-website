@@ -2800,7 +2800,28 @@ export async function getOwnerProductPlan(ownerOpenId: string, animalId: number)
     .where(and(eq(ownerProductPlans.ownerOpenId, ownerOpenId), eq(ownerProductPlans.animalId, animalId)))
     .orderBy(desc(ownerProductPlans.createdAt))
     .limit(1);
-  return rows[0] ?? null;
+  const plan = rows[0] ?? null;
+
+  // Auto-repair: if plan is stuck in pending_admin_setup but products are verified,
+  // transition to pending_owner_config
+  if (plan && plan.status === "pending_admin_setup") {
+    try {
+      const verifiedOptions = await getVerifiedProductOptions(animalId);
+      if (verifiedOptions.length > 0) {
+        await transitionPlansToOwnerConfig(animalId);
+        // Return updated plan
+        const updatedRows = await db.select().from(ownerProductPlans)
+          .where(and(eq(ownerProductPlans.ownerOpenId, ownerOpenId), eq(ownerProductPlans.animalId, animalId)))
+          .orderBy(desc(ownerProductPlans.createdAt))
+          .limit(1);
+        return updatedRows[0] ?? null;
+      }
+    } catch (e) {
+      console.error("[getOwnerProductPlan] auto-transition error:", e);
+    }
+  }
+
+  return plan;
 }
 
 export async function createOwnerProductPlan(input: {
@@ -3086,6 +3107,22 @@ export async function getAnimalProductTrackData(animalId: number) {
     listOwnerProductPlansByAnimal(animalId),
     getActiveOwnerOpenIdsByAnimalId(animalId),
   ]);
+
+  // Auto-repair: if there are verified products and plans stuck in pending_admin_setup,
+  // transition them to pending_owner_config
+  const hasVerified = options.some((o: any) => o.isAdminVerified === 1);
+  const hasStuckPlans = ownerPlans.some((p: any) => p.status === "pending_admin_setup");
+  console.log(`[auto-repair] animalId=${animalId} hasVerified=${hasVerified} hasStuckPlans=${hasStuckPlans} optionCount=${options.length} planStatuses=${ownerPlans.map((p: any) => p.status).join(',')}`);
+  if (hasVerified && hasStuckPlans) {
+    try {
+      await transitionPlansToOwnerConfig(animalId);
+      // Re-fetch plans with updated status
+      const updatedPlans = await listOwnerProductPlansByAnimal(animalId);
+      return { profile, options, ownerPlans: updatedPlans, activeOwnerOpenIds };
+    } catch (e) {
+      console.error("[getAnimalProductTrackData] auto-transition error:", e);
+    }
+  }
 
   return { profile, options, ownerPlans, activeOwnerOpenIds };
 }
@@ -5703,4 +5740,41 @@ export async function resetPlanToAdminSetup(planId: number, adminNotes?: string)
 
   const updated = await db.select().from(ownerProductPlans).where(eq(ownerProductPlans.id, planId)).limit(1);
   return updated[0] ?? null;
+}
+
+/**
+ * Transition all plans for an animal from pending_admin_setup to pending_owner_config.
+ * Called when admin verifies products, signaling that the product setup is complete
+ * and owners can now configure their plans.
+ * Also clears stale adminNotes from the reset.
+ * Returns the number of plans transitioned.
+ */
+export async function transitionPlansToOwnerConfig(animalId: number): Promise<number> {
+  const db = await getDb();
+  if (!db) return 0;
+
+  // ownerProductPlans has animalId directly — no need for JOIN
+  const plansToTransition = await db
+    .select({ id: ownerProductPlans.id })
+    .from(ownerProductPlans)
+    .where(
+      and(
+        eq(ownerProductPlans.animalId, animalId),
+        eq(ownerProductPlans.status, "pending_admin_setup"),
+      ),
+    );
+
+  if (plansToTransition.length === 0) return 0;
+
+  const planIds = plansToTransition.map((p: { id: number }) => p.id);
+
+  await db
+    .update(ownerProductPlans)
+    .set({
+      status: "pending_owner_config",
+      adminNotes: null, // Clear stale reset notes
+    })
+    .where(inArray(ownerProductPlans.id, planIds));
+
+  return planIds.length;
 }

@@ -62,6 +62,7 @@ import {
   createUserNotification,
   getActiveOwnerOpenIdsByAnimalId,
   getAnimalIdBySlug,
+  transitionPlansToOwnerConfig,
 } from "../db";
 import type { ProductOption } from "../../drizzle/schema";
 import { storagePut } from "../storage";
@@ -1017,6 +1018,20 @@ export const productTrackRouter = router({
         tierSlug,
         input.animalSpecies,
       );
+
+      // Auto-transition plans from pending_admin_setup → pending_owner_config
+      // Products populated from catalog come pre-verified, so plans should move forward
+      if (newItems.length > 0) {
+        try {
+          const transitioned = await transitionPlansToOwnerConfig(input.animalId);
+          if (transitioned > 0) {
+            console.log(`[populateProductsFromCatalog] Transitioned ${transitioned} plan(s) to pending_owner_config for animal ${input.animalId}`);
+          }
+        } catch (e) {
+          console.error("[populateProductsFromCatalog] transition error:", e);
+        }
+      }
+
       return { created: newItems.length, items: newItems, tierSlug };
     }),
 
@@ -1036,6 +1051,17 @@ export const productTrackRouter = router({
         throw new TRPCError({ code: "FORBIDDEN", message: "Только администратор." });
       }
       const result = await adminBatchVerifyProducts(input.optionIds, input.updates);
+
+      // ── Auto-transition plans from pending_admin_setup → pending_owner_config ──
+      // When admin verifies products, plans waiting for admin setup should move forward
+      try {
+        const transitioned = await transitionPlansToOwnerConfig(input.animalId);
+        if (transitioned > 0) {
+          console.log(`[batchVerifyProducts] Transitioned ${transitioned} plan(s) to pending_owner_config for animal ${input.animalId}`);
+        }
+      } catch (e) {
+        console.error("[batchVerifyProducts] transition error:", e);
+      }
 
       // ── Per-product verification notification to all owners ──
       try {
