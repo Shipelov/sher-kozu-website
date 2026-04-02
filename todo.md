@@ -1790,3 +1790,4 @@
 - [x] Verified in browser: bell visible in navbar, badge with count, dropdown with notifications, mark as read works
 - [x] Reorder navbar: move Цены between О ферме and Каталог
 - [x] Fix text overflow in 6-step block on Pricing page
+- [x] Fix 'Ежемесячный взнос' text still overflowing in step 5 of 6-step block on Pricing page
