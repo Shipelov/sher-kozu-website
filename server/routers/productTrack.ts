@@ -61,6 +61,7 @@ import {
   resetPlanToAdminSetup,
   createUserNotification,
   getActiveOwnerOpenIdsByAnimalId,
+  getAnimalIdBySlug,
 } from "../db";
 import type { ProductOption } from "../../drizzle/schema";
 import { storagePut } from "../storage";
@@ -1012,12 +1013,47 @@ export const productTrackRouter = router({
         maxAnnualUnits: z.number().int().min(0).max(100_000).optional(),
         isEnabled: z.boolean().optional(),
       })).optional(),
+      animalId: z.number().int().positive(),
     }))
     .mutation(async ({ ctx, input }) => {
       if (ctx.user.role !== "admin") {
         throw new TRPCError({ code: "FORBIDDEN", message: "Только администратор." });
       }
-      return adminBatchVerifyProducts(input.optionIds, input.updates);
+      const result = await adminBatchVerifyProducts(input.optionIds, input.updates);
+
+      // ── Per-product verification notification to all owners ──
+      try {
+        const [animalName, animalSlug, ownerOpenIds] = await Promise.all([
+          getAnimalNameById(input.animalId),
+          getAnimalSlugById(input.animalId),
+          getActiveOwnerOpenIdsByAnimalId(input.animalId),
+        ]);
+        const count = input.optionIds.length;
+        const word = count === 1 ? "продукт верифицирован" : count >= 2 && count <= 4 ? "продукта верифицированы" : "продуктов верифицированы";
+        const title = `${animalName}: ${count} ${word}`;
+        const body = `Администратор верифицировал ${count} ${word} для ${animalName}. Проверьте доступные продукты в вашем продуктовом плане.`;
+        const link = animalSlug ? `/tracker?animal=${animalSlug}` : "/tracker";
+
+        for (const openId of ownerOpenIds) {
+          await createUserNotification({
+            userOpenId: openId,
+            type: "productPlanUpdate",
+            title,
+            body,
+            link,
+          });
+        }
+
+        // Also notify admin (owner) about the verification
+        await notifyOwner({
+          title: `Верификация продуктов: ${animalName}`,
+          content: `Верифицировано ${count} продуктов для ${animalName}. Уведомления отправлены ${ownerOpenIds.length} владельцам.`,
+        });
+      } catch (e) {
+        console.error("[batchVerifyProducts] notification error:", e);
+      }
+
+      return result;
     }),
 
   /** Get verified product options for an animal (for owner plan configuration) */
@@ -1032,5 +1068,21 @@ export const productTrackRouter = router({
     .input(animalIdInput)
     .query(async ({ input }) => {
       return { allVerified: await areAllProductsVerified(input.animalId) };
+    }),
+
+  /** Get owner's plan lifecycle status by animal slug (for ProductTracker progress bar) */
+  getMyPlanBySlug: protectedProcedure
+    .input(z.object({ animalSlug: z.string().min(1) }))
+    .query(async ({ ctx, input }) => {
+      const animalId = await getAnimalIdBySlug(input.animalSlug);
+      if (!animalId) return { plan: null, hasVerifiedProducts: false };
+      const [plan, verifiedOptions] = await Promise.all([
+        getOwnerProductPlan(ctx.user.openId, animalId),
+        getVerifiedProductOptions(animalId),
+      ]);
+      return {
+        plan,
+        hasVerifiedProducts: verifiedOptions.length > 0,
+      };
     }),
 });

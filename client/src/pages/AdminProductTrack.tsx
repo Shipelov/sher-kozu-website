@@ -388,7 +388,7 @@ function ProductOptionsManager({ animalId, animalSpecies, ownerPlans, activeOwne
             )}
             {selectedIds.size > 0 && (
               <Button
-                onClick={() => batchVerify.mutate({ optionIds: Array.from(selectedIds) })}
+                onClick={() => batchVerify.mutate({ optionIds: Array.from(selectedIds), animalId })}
                 className="rounded-full border-emerald-200 text-emerald-700 hover:bg-emerald-50"
                 size="sm"
                 variant="outline"
@@ -402,7 +402,7 @@ function ProductOptionsManager({ animalId, animalSpecies, ownerPlans, activeOwne
               <Button
                 onClick={() => {
                   const unverifiedIds = options.filter(o => !o.isAdminVerified).map(o => o.id);
-                  batchVerify.mutate({ optionIds: unverifiedIds });
+                  batchVerify.mutate({ optionIds: unverifiedIds, animalId });
                 }}
                 className="rounded-full border-emerald-200 text-emerald-700 hover:bg-emerald-50"
                 size="sm"

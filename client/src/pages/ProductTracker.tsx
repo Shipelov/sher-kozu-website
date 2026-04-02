@@ -12,6 +12,7 @@ import Navbar from "@/components/Navbar";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import ScrollRemaining from "@/components/ScrollRemaining";
+import PlanLifecycleProgress from "@/components/PlanLifecycleProgress";
 import PageBreadcrumbs from "@/components/PageBreadcrumbs";
 import {
   BarChart3,
@@ -501,6 +502,13 @@ export default function ProductTracker() {
               </div>
             </motion.div>
           ) : null}
+
+          {/* Lifecycle Progress Bar — only for authenticated owners */}
+          {isAuthenticated && currentAnimalSlug && !isGuestJourney && (
+            <div className="mb-5">
+              <PlanLifecycleProgress animalSlug={currentAnimalSlug} />
+            </div>
+          )}
 
           <div className="grid grid-cols-12 gap-5">
             <motion.section

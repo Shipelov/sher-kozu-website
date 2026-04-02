@@ -1688,3 +1688,13 @@
 - [x] ownerConfigurePlan серверная валидация: отклоняет если нет верифицированных продуктов
 - [x] Admin Plans tab показывает effective status (pending_admin_setup когда нет верифицированных продуктов)
 - [x] Добавлены тесты lifecycle gate (18 тестов)
+
+## Phase K — Lifecycle Progress Bar & Per-Product Notifications
+
+- [x] Добавить прогресс-бар lifecycle в трекер продуктов владельца (этапы: настройка админом → выбор владельцем → подтверждение → активен)
+- [x] Добавить автоматическое уведомление владельцу при каждой верификации продукта (не только при полной верификации всех)
+- [x] Написать тесты для прогресс-бара и per-product уведомлений
+- [x] Новый tRPC endpoint getMyPlanBySlug для slug-based lookup плана
+- [x] PlanLifecycleProgress компонент с анимированным прогресс-баром и индикаторами этапов
+- [x] Effective status логика: pending_owner_config + нет верифицированных продуктов → pending_admin_setup
+- [x] Per-product notification включает количество продуктов, имя животного и ссылку на трекер
