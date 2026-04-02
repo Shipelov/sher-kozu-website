@@ -1773,3 +1773,18 @@
 - [x] Reuse NotoSans Cyrillic font approach from admin PDF export — fixed font registration
 - [x] Write vitest tests for notification triggers and new features
 - [x] Verified: all three features work in browser, PDF 110KB with correct Cyrillic
+
+## Phase O — Owner Notification Bell in Navbar
+
+- [x] Investigate admin bell implementation for reference
+- [x] Expand NotificationBell component with icons for all notification types (delivery, plan, composition, metrics, photo, club)
+- [x] Dropdown panel with notification list, timeAgo, link navigation, unread dot
+- [x] Support categories: delivery_status, productPlanUpdate, composition_update, metrics_update, photo_approved/rejected, club_post/event
+- [x] Mark as read on click, mark all as read button with toast
+- [x] Integrate bell into main Navbar (desktop: next to avatar, mobile: in mobile menu)
+- [x] Wire up with tRPC: unreadCount (30s polling), list (on open), markRead, markAllRead
+- [x] Server procedures already existed — reused notifications.list/unreadCount/markRead/markAllRead
+- [x] Notification generation triggers: delivery status change, plan confirmation already wired
+- [x] deliveryStatus preference toggle added to NotificationSettings.tsx
+- [x] Write vitest tests — 12 tests covering unreadCount, list, markRead, markAllRead, types, isolation, preferences
+- [x] Verified in browser: bell visible in navbar, badge with count, dropdown with notifications, mark as read works

@@ -32,6 +32,7 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import AuthModal from "./AuthModal";
+import NotificationBell from "./NotificationBell";
 
 export default function Navbar() {
   const [location] = useLocation();
@@ -252,6 +253,13 @@ export default function Navbar() {
           {/* Right side: auth state */}
           <div className="flex items-center gap-2 md:gap-3">
 
+            {/* Notification bell for authenticated users */}
+            {isAuthenticated && user && (
+              <div className="hidden sm:block">
+                <NotificationBell />
+              </div>
+            )}
+
             {/* Auth section */}
             {authLoading ? (
               <div className="hidden h-9 w-24 animate-pulse rounded-full bg-muted sm:block" />
@@ -379,13 +387,13 @@ export default function Navbar() {
                   <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-bold text-white">
                     {userInitials}
                   </div>
-                  <div>
+                  <div className="flex-1">
                     <p className="text-sm font-medium text-foreground">{user.name}</p>
-
                     <p className="text-xs text-muted-foreground">
                       {isAdmin ? "Администратор" : "Владелец"}
                     </p>
                   </div>
+                  <NotificationBell />
                 </div>
               )}
 

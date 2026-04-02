@@ -5,7 +5,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { Bell, BellDot, Check, CheckCheck, Camera, Info, ExternalLink, Newspaper, CalendarHeart } from "lucide-react";
+import { Bell, BellDot, Check, CheckCheck, Camera, Info, ExternalLink, Newspaper, CalendarHeart, Truck, ClipboardCheck, FlaskConical, Activity, Milk } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
@@ -37,6 +37,14 @@ function notificationIcon(type: string) {
       return <Newspaper className="h-4 w-4 text-sky-500 shrink-0" />;
     case "club_event":
       return <CalendarHeart className="h-4 w-4 text-amber-500 shrink-0" />;
+    case "delivery_status":
+      return <Truck className="h-4 w-4 text-indigo-500 shrink-0" />;
+    case "productPlanUpdate":
+      return <ClipboardCheck className="h-4 w-4 text-teal-500 shrink-0" />;
+    case "composition_update":
+      return <FlaskConical className="h-4 w-4 text-violet-500 shrink-0" />;
+    case "metrics_update":
+      return <Activity className="h-4 w-4 text-orange-500 shrink-0" />;
     default:
       return <Info className="h-4 w-4 text-primary shrink-0" />;
   }
