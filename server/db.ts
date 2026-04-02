@@ -3055,13 +3055,14 @@ export async function listOwnerProductPlansByAnimal(animalId: number) {
 
 /** Get full product track data for an animal (admin view) */
 export async function getAnimalProductTrackData(animalId: number) {
-  const [profile, options, ownerPlans] = await Promise.all([
+  const [profile, options, ownerPlans, activeOwnerOpenIds] = await Promise.all([
     getProductionProfile(animalId),
     listProductOptions(animalId),
     listOwnerProductPlansByAnimal(animalId),
+    getActiveOwnerOpenIdsByAnimalId(animalId),
   ]);
 
-  return { profile, options, ownerPlans };
+  return { profile, options, ownerPlans, activeOwnerOpenIds };
 }
 
 /**

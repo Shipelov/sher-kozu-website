@@ -250,7 +250,7 @@ function ProductionProfileEditor({ animalId, animalName }: { animalId: number; a
 
 /* ── Product Options Manager ── */
 
-function ProductOptionsManager({ animalId, animalSpecies, ownerPlans }: { animalId: number; animalSpecies: "goat" | "sheep"; ownerPlans: OwnerPlanRecord[] }) {
+function ProductOptionsManager({ animalId, animalSpecies, ownerPlans, activeOwnerOpenIds }: { animalId: number; animalSpecies: "goat" | "sheep"; ownerPlans: OwnerPlanRecord[]; activeOwnerOpenIds: string[] }) {
   const utils = trpc.useUtils();
   const optionsQuery = trpc.productTrack.listOptions.useQuery({ animalId });
   const profileQuery = trpc.productTrack.getProfile.useQuery({ animalId });
@@ -293,8 +293,8 @@ function ProductOptionsManager({ animalId, animalSpecies, ownerPlans }: { animal
   const [editingOption, setEditingOption] = useState<Partial<ProductOptionRecord> | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
 
-  // Find first owner for this animal to get tier
-  const firstOwner = ownerPlans[0];
+  // Find first owner for this animal to get tier (from plans or active ownerships)
+  const firstOwnerOpenId = ownerPlans[0]?.ownerOpenId ?? activeOwnerOpenIds[0] ?? null;
 
   const options = (optionsQuery.data ?? []) as (ProductOptionRecord & { isAdminVerified?: number; adminVerifiedAt?: string | null; catalogItemId?: number | null })[];
   const annualMilk = profileQuery.data?.annualMilkLiters ?? 0;
@@ -374,9 +374,9 @@ function ProductOptionsManager({ animalId, animalSpecies, ownerPlans }: { animal
             </CardDescription>
           </div>
           <div className="flex gap-2 flex-wrap">
-            {firstOwner && (
+            {firstOwnerOpenId && (
               <Button
-                onClick={() => populateFromCatalog.mutate({ animalId, ownerOpenId: firstOwner.ownerOpenId, animalSpecies })}
+                onClick={() => populateFromCatalog.mutate({ animalId, ownerOpenId: firstOwnerOpenId, animalSpecies })}
                 className="rounded-full"
                 size="sm"
                 variant="outline"
@@ -1610,6 +1610,7 @@ export default function AdminProductTrack() {
 
   const trackData = trpc.productTrack.getAnimalTrackData.useQuery({ animalId }, { enabled: animalId > 0 });
   const ownerPlans = (trackData.data?.ownerPlans ?? []) as OwnerPlanRecord[];
+  const activeOwnerOpenIds = (trackData.data?.activeOwnerOpenIds ?? []) as string[];
 
   if (loading) {
     return (
@@ -1779,7 +1780,7 @@ export default function AdminProductTrack() {
           </TabsContent>
 
           <TabsContent value="products">
-            <ProductOptionsManager animalId={animalId} animalSpecies={(animal?.species as "goat" | "sheep") ?? "goat"} ownerPlans={ownerPlans} />
+            <ProductOptionsManager animalId={animalId} animalSpecies={(animal?.species as "goat" | "sheep") ?? "goat"} ownerPlans={ownerPlans} activeOwnerOpenIds={activeOwnerOpenIds} />
           </TabsContent>
 
           <TabsContent value="plans">
