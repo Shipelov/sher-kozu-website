@@ -476,13 +476,16 @@ export const productTrackRouter = router({
       }
       const tierSlug = (existingPlan.tierSlug ?? "basic") as "basic" | "standard" | "professional";
       const catalog = await getTierCatalogForOwner(tierSlug);
-      const { totalMilkUsed, enrichedSelections } = await calculateTierMilkUsage(catalog, input.selections);
-      // Validate milk budget
+      const { totalMilkUsed: rawMilkUsed, enrichedSelections } = await calculateTierMilkUsage(catalog, input.selections);
+      // Round down to avoid floating-point / rounding drift from client annualUnits
+      const totalMilkUsed = Math.floor(rawMilkUsed);
+      // Validate milk budget (allow 1L tolerance for rounding)
       const profile = await getProductionProfile(existingPlan.animalId);
       if (profile) {
         const sharePercent = await resolveOwnerSharePercent(ctx.user.openId, existingPlan.animalId);
         const ownerMilkBudget = Math.floor((profile.annualMilkLiters * sharePercent) / 100);
-        if (totalMilkUsed > ownerMilkBudget) {
+        const ROUNDING_TOLERANCE = 1; // 1L tolerance for rounding drift
+        if (totalMilkUsed > ownerMilkBudget + ROUNDING_TOLERANCE) {
           throw new TRPCError({
             code: "BAD_REQUEST",
             message: `Выбранные продукты требуют ${totalMilkUsed} л молока, но доступно только ${ownerMilkBudget} л (ваша доля ${sharePercent}%).`,

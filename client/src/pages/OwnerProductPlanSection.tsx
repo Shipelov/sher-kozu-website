@@ -573,7 +573,7 @@ export default function OwnerProductPlanSection({
       .filter(p => p.annualUnits > 0)
       .map(p => ({
         catalogItemId: p.catalogItemId,
-        annualUnits: Math.round(p.annualUnits),
+        annualUnits: Math.floor(p.annualUnits),
       }));
     if (!existingPlan?.id) {
       toast.error("План не найден");
