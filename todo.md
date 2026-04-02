@@ -1754,3 +1754,11 @@
 - [x] Owner delivery timeline: progress bar for the year
 - [x] Write vitest tests for export and timeline features
 - [x] Verify both features in browser
+
+## Phase M Bugfix — Delivery tab not visible in admin panel
+
+- [x] BUG: User reports Delivery tab not visible in admin panel — resolved, user found it
+- [x] BUG: PDF export has unreadable Cyrillic text (encoding/font issue) and content overflows boundaries
+- [x] Fix: add NotoSans Cyrillic font loaded from CDN into jsPDF
+- [x] Fix: Russian labels, status translations, overflow:linebreak, auto column widths
+- [x] Verified: PDF renders perfectly with Cyrillic text, proper table layout, no overflow

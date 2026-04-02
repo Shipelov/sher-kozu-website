@@ -1270,32 +1270,71 @@ function DeliveryScheduleOverview({ animalId, ownerPlans }: { animalId: number; 
 
       const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
 
+      // Load Cyrillic font (NotoSans) from CDN
+      const FONT_URL = "https://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/NotoSans-Regular_62fad82d.ttf";
+      const fontResp = await fetch(FONT_URL);
+      const fontBuf = await fontResp.arrayBuffer();
+      const fontBase64 = btoa(
+        new Uint8Array(fontBuf).reduce((data, byte) => data + String.fromCharCode(byte), "")
+      );
+      doc.addFileToVFS("NotoSans-Regular.ttf", fontBase64);
+      doc.addFont("NotoSans-Regular.ttf", "NotoSans", "normal");
+      doc.setFont("NotoSans");
+
       // Title
       doc.setFontSize(16);
-      doc.text(`Delivery Schedule: ${data.animalName} - ${data.year}`, 14, 18);
+      doc.text(`График доставки: ${data.animalName} — ${data.year}`, 14, 18);
 
       // Summary
       doc.setFontSize(10);
-      doc.text(`Total: ${data.stats?.total ?? 0} | Delivered: ${data.stats?.delivered ?? 0} | Ready: ${data.stats?.ready ?? 0} | Planned: ${data.stats?.planned ?? 0}`, 14, 26);
+      doc.text(
+        `Всего: ${data.stats?.total ?? 0}  |  Доставлено: ${data.stats?.delivered ?? 0}  |  Готово: ${data.stats?.ready ?? 0}  |  Запланировано: ${data.stats?.planned ?? 0}`,
+        14,
+        26
+      );
+
+      // Status translation helper
+      const statusRu = (s: string) => {
+        const map: Record<string, string> = {
+          planned: "Запланировано",
+          ready: "Готово",
+          delivered: "Доставлено",
+          cancelled: "Отменено",
+        };
+        return map[s] ?? s;
+      };
 
       // Table
       autoTable(doc, {
         startY: 32,
-        head: [["Month", "Owner", "Products", "Status", "Delivered", "Note"]],
-        body: data.rows.map((r: any) => [r.month, r.ownerName, r.products, r.status, r.deliveredAt, r.adminNote]),
-        styles: { fontSize: 8, cellPadding: 2 },
-        headStyles: { fillColor: [26, 58, 42] },
-        columnStyles: {
-          0: { cellWidth: 25 },
-          1: { cellWidth: 35 },
-          2: { cellWidth: 80 },
-          3: { cellWidth: 25 },
-          4: { cellWidth: 25 },
-          5: { cellWidth: 60 },
+        head: [["Месяц", "Владелец", "Продукты", "Статус", "Дата доставки", "Заметка"]],
+        body: data.rows.map((r: any) => [
+          r.month,
+          r.ownerName,
+          r.products,
+          statusRu(r.status),
+          r.deliveredAt || "—",
+          r.adminNote || "",
+        ]),
+        styles: {
+          fontSize: 8,
+          cellPadding: 2,
+          font: "NotoSans",
+          overflow: "linebreak",
         },
+        headStyles: { fillColor: [26, 58, 42], font: "NotoSans", fontStyle: "normal" },
+        columnStyles: {
+          0: { cellWidth: 28 },
+          1: { cellWidth: 40 },
+          2: { cellWidth: 75 },
+          3: { cellWidth: 30 },
+          4: { cellWidth: 30 },
+          5: { cellWidth: "auto" },
+        },
+        margin: { left: 14, right: 14 },
       });
 
-      doc.save(`delivery_${data.animalName}_${data.year}.pdf`);
+      doc.save(`доставка_${data.animalName}_${data.year}.pdf`);
       toast.success("PDF файл скачан");
     } catch (err: any) {
       toast.error(err.message ?? "Ошибка экспорта");
