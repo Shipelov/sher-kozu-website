@@ -290,7 +290,7 @@ export default function Pricing() {
 
         {/* ─── STEPS TIMELINE ─── */}
         <section className="py-16 container">
-          <div className="flex flex-wrap justify-center gap-4 md:gap-2">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-6 md:gap-4 max-w-4xl mx-auto">
             {STEPS.map((step, i) => (
               <motion.div
                 key={i}
@@ -299,24 +299,21 @@ export default function Pricing() {
                 viewport={{ once: true }}
                 variants={fadeUp}
                 custom={i}
-                className="flex flex-col items-center text-center w-[140px]"
+                className="flex flex-col items-center text-center"
               >
-                <div className={`flex h-10 w-10 items-center justify-center rounded-full text-sm font-bold ${
+                <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-bold ${
                   i === 2 ? "bg-primary text-primary-foreground" : "border-2 border-border text-foreground"
                 }`}>
                   {step.num}
                 </div>
-                {i < STEPS.length - 1 && (
-                  <div className="hidden md:block absolute" />
-                )}
-                <p className="mt-2 text-sm font-semibold text-foreground">{step.label}</p>
-                <p className="text-xs text-muted-foreground">{step.sub}</p>
+                <p className="mt-2 text-sm font-semibold text-foreground leading-tight">{step.label}</p>
+                <p className="text-xs text-muted-foreground leading-tight mt-0.5">{step.sub}</p>
               </motion.div>
             ))}
           </div>
           {/* Connecting line (desktop) */}
-          <div className="hidden md:block relative -mt-[4.5rem] mx-auto" style={{ maxWidth: "780px" }}>
-            <div className="absolute top-5 left-[70px] right-[70px] h-[2px] bg-border" />
+          <div className="hidden md:block relative -mt-[4.5rem] mx-auto max-w-4xl">
+            <div className="absolute top-5 left-[2rem] right-[2rem] h-[2px] bg-border" />
           </div>
         </section>
 
