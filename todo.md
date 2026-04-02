@@ -1698,3 +1698,14 @@
 - [x] PlanLifecycleProgress компонент с анимированным прогресс-баром и индикаторами этапов
 - [x] Effective status логика: pending_owner_config + нет верифицированных продуктов → pending_admin_setup
 - [x] Per-product notification включает количество продуктов, имя животного и ссылку на трекер
+
+## Phase K Bugfix — Notification and Farm Note Issues
+
+- [x] BUG: Admin does not receive notification when owner configures plan (ownerConfigurePlan)
+- [x] BUG: Owner does not receive notification when admin approves plan (adminApprovePlan)
+- [x] BUG: Stale farm note "Сброшен администратором для повторного выбора" shows after admin approval
+- [x] Fix ownerConfigurePlan notification to admin (notifyOwner) — was already present, verified
+- [x] Fix adminApprovePlan notification to owner (createUserNotification) — added
+- [x] Fix farm note clearing on plan approval — adminConfirmPlan now sets adminNote: null
+- [x] Added requestPlanChange notification to admin (notifyOwner)
+- [x] 21 new tests for notification coverage across all lifecycle mutations

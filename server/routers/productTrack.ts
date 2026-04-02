@@ -562,6 +562,16 @@ export const productTrackRouter = router({
         selections: enrichedSelections,
         year: currentYear,
       });
+      // Notify the owner that their plan was approved
+      const animalName = await getAnimalNameById(existingPlan.animalId);
+      const animalSlug = await getAnimalSlugById(existingPlan.animalId);
+      createUserNotification({
+        userOpenId: existingPlan.ownerOpenId,
+        type: "productPlanUpdate",
+        title: `План подтверждён: ${animalName}`,
+        body: `Ваш продуктовый план для ${animalName} подтверждён администратором. График доставок сформирован.`,
+        link: `/animals/${animalSlug}`,
+      }).catch(() => {});
       return approvedPlan;
     }),
 
@@ -593,6 +603,12 @@ export const productTrackRouter = router({
         selectionsSnapshot: existingPlan.selectionsJson,
         note: "Владелец запросил изменение плана",
       });
+      // Notify admin that owner requested plan change
+      const animalName = await getAnimalNameById(existingPlan.animalId);
+      notifyOwner({
+        title: `Запрос на изменение плана: ${ctx.user.name || "владелец"} (${animalName})`,
+        content: `Владелец запросил изменение продуктового плана для ${animalName}. План переведён в статус ожидания настройки.`,
+      }).catch(() => {});
       return updatedPlan;
     }),
 

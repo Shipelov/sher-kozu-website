@@ -5443,6 +5443,7 @@ export async function adminConfirmPlan(planId: number, tierSlug: TierSlug) {
     status: "confirmed",
     confirmedAt: new Date(),
     nextChangeAllowedAt,
+    adminNote: null, // Clear any stale admin notes on confirmation
   }).where(eq(ownerProductPlans.id, planId));
 
   const updated = await db.select().from(ownerProductPlans).where(eq(ownerProductPlans.id, planId)).limit(1);
