@@ -1664,3 +1664,15 @@
 - [x] Округлить annualUnits и месячные объёмы доставки до целых чисел везде (клиент + сервер)
 - [x] Остаток нераспределённого молока (из-за округления) списывать как «технологические потери» вместо предупреждения
 - [x] Квартальная группировка доставки для продуктов с малым месячным объёмом (annualUnits/12 < 1 → annualUnits/4 раз в квартал)
+
+## Phase J — Product Plan Lifecycle & Notifications
+
+- [x] Добавить уведомления на все мутации жизненного цикла плана (ownerConfigurePlan, adminApprovePlan, requestPlanChange, adminResetPlan)
+- [x] Исправить batchVerifyProducts: заменить динамические импорты на чистый helper getAnimalIdFromOptionIds
+- [x] Добавить уведомления владельцам при верификации всех продуктов и переводе планов в pending_owner_config
+- [x] Обновить OwnerProductPlanSection: placeholder когда план ещё не создан админом
+- [x] Добавить бейдж количества ожидающих планов на вкладке «Планы» в админ-панели
+- [x] Добавить блок PendingApprovalAlert с быстрыми ссылками на животных с ожидающими планами
+- [x] Написать vitest-покрытие для lifecycle state machine (ownerConfigurePlan, adminApprovePlan, requestPlanChange, adminResetPlan, listPendingPlans, batchVerifyProducts)
+- [x] Обновить notificationPreferences.test.ts для нового поля productPlanUpdate
+- [x] Все 1855 тестов проходят
