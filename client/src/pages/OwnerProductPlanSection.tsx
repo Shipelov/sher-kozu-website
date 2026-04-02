@@ -840,8 +840,9 @@ export default function OwnerProductPlanSection({
                       </div>
                     )}
 
-                    {/* Admin notes */}
-                    {isConfirmed && existingPlan?.adminNotes && (
+                    {/* Admin notes — only show meaningful notes, not stale reset messages */}
+                    {isConfirmed && existingPlan?.adminNotes && 
+                     !existingPlan.adminNotes.toLowerCase().includes("сброшен") && (
                       <div className="rounded-xl border border-stone-200 bg-stone-50 p-3 text-sm text-stone-700 mt-4">
                         <p className="font-medium">Заметка фермы:</p>
                         <p className="mt-1 text-xs">{existingPlan.adminNotes}</p>

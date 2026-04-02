@@ -878,7 +878,7 @@ function OwnerPlansOverview({ animalId }: { animalId: number }) {
                     <div className="mt-3 flex items-center justify-between">
                       <p className="text-xs text-muted-foreground">
                         Итого: {plan.totalMilkUsed} л молока/год
-                        {plan.adminNotes ? ` · Заметка: ${plan.adminNotes}` : ""}
+                        {plan.adminNotes && (plan.status !== "confirmed" || !plan.adminNotes.toLowerCase().includes("сброшен")) ? ` · Заметка: ${plan.adminNotes}` : ""}
                       </p>
                       <div className="flex gap-2">
                         {plan.status === "pending_approval" && (

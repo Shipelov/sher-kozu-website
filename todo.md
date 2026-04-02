@@ -1709,3 +1709,9 @@
 - [x] Fix farm note clearing on plan approval — adminConfirmPlan now sets adminNote: null
 - [x] Added requestPlanChange notification to admin (notifyOwner)
 - [x] 21 new tests for notification coverage across all lifecycle mutations
+
+## Phase K Bugfix 2 — Stale adminNote for Mira
+
+- [x] BUG: Mira still shows "Сброшен администратором для повторного выбора" after plan confirmation
+- [x] Investigate: check current plan status and adminNote in DB
+- [x] Fix: client-side filter hides stale reset notes for confirmed plans (both owner and admin views)
