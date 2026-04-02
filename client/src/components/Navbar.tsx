@@ -108,16 +108,16 @@ export default function Navbar() {
 
   const isAdmin = user?.role === "admin";
 
-  /* Фиксированный порядок: Главная, Мой кабинет, О ферме, Каталог, Трекер, Клуб, FAQ, B2B */
+  /* Фиксированный порядок: Главная, Мой кабинет, О ферме, Цены, Каталог, Трекер, Клуб, FAQ, B2B */
   const allNavItems = useMemo(
     () => [
       { href: "/", label: "Главная", icon: Home, authOnly: false, primary: true },
       { href: "/dashboard", label: "Мой кабинет", icon: LayoutDashboard, authOnly: true, primary: true },
       { href: "/about", label: "О ферме", icon: Leaf, authOnly: false, primary: true },
+      { href: "/pricing", label: "Цены", icon: Tag, authOnly: false, primary: true },
       { href: "/animals", label: "Каталог", icon: PawPrint, authOnly: false, primary: true },
       { href: "/tracker", label: "Трекер", icon: Milk, authOnly: false, primary: true },
       { href: "/club", label: "Клуб", icon: Users, authOnly: false, primary: true },
-      { href: "/pricing", label: "Цены", icon: Tag, authOnly: false, primary: true },
       { href: "/faq", label: "FAQ", icon: HelpCircle, authOnly: false, primary: false },
       { href: "/partners", label: "B2B", icon: Briefcase, authOnly: false, primary: false },
     ],

@@ -1788,3 +1788,4 @@
 - [x] deliveryStatus preference toggle added to NotificationSettings.tsx
 - [x] Write vitest tests — 12 tests covering unreadCount, list, markRead, markAllRead, types, isolation, preferences
 - [x] Verified in browser: bell visible in navbar, badge with count, dropdown with notifications, mark as read works
+- [x] Reorder navbar: move Цены between О ферме and Каталог
