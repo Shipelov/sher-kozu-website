@@ -397,6 +397,8 @@ export default function OwnerProductPlanSection({
   const profileQuery = trpc.productTrack.getProfile.useQuery({ animalId });
   const planQuery = trpc.productTrack.getMyPlan.useQuery({ animalId }, { staleTime: 0 });
   const tierQuery = trpc.productTrack.getMyTier.useQuery(undefined, { staleTime: 60_000 });
+  // Check if admin has configured and verified products for this animal
+  const verifiedOptionsQuery = trpc.productTrack.getVerifiedOptions.useQuery({ animalId }, { staleTime: 30_000 });
   const currentYear = useMemo(() => new Date().getFullYear(), []);
 
   // Get tier catalog based on owner's tier
@@ -591,12 +593,17 @@ export default function OwnerProductPlanSection({
     requestChange.mutate({ planId: existingPlan.id });
   };
 
-  const isPendingAdminSetup = existingPlan?.status === "pending_admin_setup";
-  const isPendingOwnerConfig = existingPlan?.status === "pending_owner_config";
-  const isPendingApproval = existingPlan?.status === "pending_approval";
-  const isConfirmed = existingPlan?.status === "confirmed";
+  // Check if admin has verified products for this animal
+  const hasVerifiedProducts = (verifiedOptionsQuery.data ?? []).length > 0;
+  // Treat pending_owner_config with no verified products as effectively pending_admin_setup
+  const rawStatus = existingPlan?.status;
+  const effectiveStatus = (rawStatus === "pending_owner_config" && !hasVerifiedProducts) ? "pending_admin_setup" : rawStatus;
+  const isPendingAdminSetup = effectiveStatus === "pending_admin_setup";
+  const isPendingOwnerConfig = effectiveStatus === "pending_owner_config";
+  const isPendingApproval = effectiveStatus === "pending_approval";
+  const isConfirmed = effectiveStatus === "confirmed";
   const isLocked = isConfirmed || isPendingApproval;
-  const isLoading = profileQuery.isLoading || planQuery.isLoading || tierQuery.isLoading;
+  const isLoading = profileQuery.isLoading || planQuery.isLoading || tierQuery.isLoading || verifiedOptionsQuery.isLoading;
 
   // Don't show if no production profile configured
   if (!isLoading && !profile) return null;
@@ -659,6 +666,17 @@ export default function OwnerProductPlanSection({
                   <p className="font-medium">План отправлен на подтверждение</p>
                   <p className="mt-1 text-xs text-blue-700">
                     Ферма рассмотрит ваш выбор и подтвердит план. После подтверждения будет сформирован график доставки.
+                  </p>
+                </div>
+              )}
+
+              {/* No plan exists yet */}
+              {!existingPlan && profile && (
+                <div className="rounded-xl border border-stone-200 bg-stone-50 p-4 text-sm text-stone-700">
+                  <p className="font-medium">Продуктовый план ещё не создан</p>
+                  <p className="mt-1 text-xs text-stone-600">
+                    Администратор фермы создаст ваш продуктовый план после настройки доступных продуктов.
+                    Вы получите уведомление, когда план будет готов к настройке.
                   </p>
                 </div>
               )}

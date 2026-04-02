@@ -5682,3 +5682,24 @@ export async function areAllProductsVerified(animalId: number): Promise<boolean>
 
   return unverified.length === 0;
 }
+
+/**
+ * Reset a plan back to pending_admin_setup status.
+ * Used when admin resets the plan so that products need to be re-configured.
+ */
+export async function resetPlanToAdminSetup(planId: number, adminNotes?: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  await db.update(ownerProductPlans).set({
+    status: "pending_admin_setup",
+    selectionsJson: "[]",
+    totalMilkUsed: 0,
+    adminNotes: adminNotes ?? "Сброшен администратором для повторного выбора",
+    adminVerifiedAt: null,
+    confirmedAt: null,
+  }).where(eq(ownerProductPlans.id, planId));
+
+  const updated = await db.select().from(ownerProductPlans).where(eq(ownerProductPlans.id, planId)).limit(1);
+  return updated[0] ?? null;
+}

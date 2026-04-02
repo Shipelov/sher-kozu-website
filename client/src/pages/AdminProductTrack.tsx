@@ -729,6 +729,8 @@ function OwnerPlansOverview({ animalId }: { animalId: number }) {
   const trackData = trpc.productTrack.getAnimalTrackData.useQuery({ animalId });
   const ownerPlans = (trackData.data?.ownerPlans ?? []) as OwnerPlanRecord[];
   const productOptions = (trackData.data?.options ?? []) as ProductOptionRecord[];
+  // Check if any verified products exist — used to show effective status
+  const hasVerifiedProducts = productOptions.some((o: any) => o.isVerified);
   const profile = trackData.data?.profile;
 
   const [editingPlan, setEditingPlan] = useState<OwnerPlanRecord | null>(null);
@@ -855,9 +857,14 @@ function OwnerPlansOverview({ animalId }: { animalId: number }) {
                             </Badge>
                           );
                         })()}
-                        <Badge className={`rounded-full border ${PLAN_STATUS_COLORS[plan.status] ?? "border-stone-200 bg-stone-50 text-stone-500"}`}>
-                          {PLAN_STATUS_LABELS[plan.status] ?? plan.status}
-                        </Badge>
+                        {(() => {
+                          const effectiveStatus = (plan.status === "pending_owner_config" && !hasVerifiedProducts) ? "pending_admin_setup" : plan.status;
+                          return (
+                            <Badge className={`rounded-full border ${PLAN_STATUS_COLORS[effectiveStatus] ?? "border-stone-200 bg-stone-50 text-stone-500"}`}>
+                              {PLAN_STATUS_LABELS[effectiveStatus] ?? effectiveStatus}
+                            </Badge>
+                          );
+                        })()}
                       </div>
                     </div>
                     <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">

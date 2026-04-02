@@ -58,6 +58,9 @@ import {
   adminBatchVerifyProducts,
   getVerifiedProductOptions,
   areAllProductsVerified,
+  resetPlanToAdminSetup,
+  createUserNotification,
+  getActiveOwnerOpenIdsByAnimalId,
 } from "../db";
 import type { ProductOption } from "../../drizzle/schema";
 import { storagePut } from "../storage";
@@ -474,6 +477,14 @@ export const productTrackRouter = router({
       if (existingPlan.status !== "pending_owner_config") {
         throw new TRPCError({ code: "BAD_REQUEST", message: "План не ожидает вашей настройки." });
       }
+      // Validate that verified products exist for this animal
+      const verifiedOptions = await getVerifiedProductOptions(existingPlan.animalId);
+      if (verifiedOptions.length === 0) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Продукты ещё не настроены администратором. Ожидайте настройки.",
+        });
+      }
       const tierSlug = (existingPlan.tierSlug ?? "basic") as "basic" | "standard" | "professional";
       const catalog = await getTierCatalogForOwner(tierSlug);
       const { totalMilkUsed: rawMilkUsed, enrichedSelections } = await calculateTierMilkUsage(catalog, input.selections);
@@ -612,7 +623,7 @@ export const productTrackRouter = router({
     return listAllProductPlans();
   }),
 
-  /** Admin: reset plan back to pending_owner_config */
+  /** Admin: reset plan back to pending_admin_setup (products need re-configuration) */
   adminResetPlan: protectedProcedure
     .input(z.object({ planId: z.number().int().positive() }))
     .mutation(async ({ ctx, input }) => {
@@ -621,10 +632,7 @@ export const productTrackRouter = router({
       }
       const existingPlan = await getOwnerProductPlanById(input.planId);
       if (!existingPlan) throw new TRPCError({ code: "NOT_FOUND", message: "План не найден." });
-      const updatedPlan = await adminVerifyProductSet(input.planId, {
-        selectionsJson: "[]",
-        adminNotes: "Сброшен администратором для повторного выбора",
-      });
+      const updatedPlan = await resetPlanToAdminSetup(input.planId, "Сброшен администратором для повторного выбора");
       await deleteDeliverySchedule(existingPlan.ownerOpenId, existingPlan.animalId);
       await logPlanChange({
         planId: input.planId,
@@ -633,10 +641,20 @@ export const productTrackRouter = router({
         actorId: "admin",
         action: "reset",
         previousStatus: existingPlan.status,
-        newStatus: "pending_owner_config",
+        newStatus: "pending_admin_setup",
         selectionsSnapshot: existingPlan.selectionsJson,
         note: "Администратор сбросил план для повторного выбора",
       });
+      // Notify the owner that their plan was reset
+      const animalName = await getAnimalNameById(existingPlan.animalId);
+      const animalSlug = await getAnimalSlugById(existingPlan.animalId);
+      createUserNotification({
+        userOpenId: existingPlan.ownerOpenId,
+        type: "productPlanUpdate",
+        title: `План сброшен: ${animalName}`,
+        body: `Администратор сбросил ваш продуктовый план для ${animalName}. Ожидайте повторной настройки продуктов.`,
+        link: `/animals/${animalSlug}`,
+      }).catch(() => {});
       return updatedPlan;
     }),
 

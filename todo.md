@@ -1676,3 +1676,15 @@
 - [x] Написать vitest-покрытие для lifecycle state machine (ownerConfigurePlan, adminApprovePlan, requestPlanChange, adminResetPlan, listPendingPlans, batchVerifyProducts)
 - [x] Обновить notificationPreferences.test.ts для нового поля productPlanUpdate
 - [x] Все 1855 тестов проходят
+
+## Phase J Bugfix — Lifecycle Gate Not Working
+
+- [x] Кабинет владельца показывает продукты и позволяет формировать план, даже когда админ очистил продукты и планы
+- [x] Проверить серверные запросы: getByAnimal, getOwnerProductPlan, listProductOptions — что они возвращают после очистки
+- [x] Проверить клиентскую логику: OwnerProductPlanSection и ProductTracker — как они обрабатывают пустые данные
+- [x] Исправить lifecycle gate: владелец не должен видеть продукты и формировать план, пока админ не настроит продукты и не создаст план
+- [x] adminResetPlan теперь устанавливает статус pending_admin_setup вместо pending_owner_config
+- [x] OwnerProductPlanSection проверяет наличие верифицированных product_options перед показом калькулятора
+- [x] ownerConfigurePlan серверная валидация: отклоняет если нет верифицированных продуктов
+- [x] Admin Plans tab показывает effective status (pending_admin_setup когда нет верифицированных продуктов)
+- [x] Добавлены тесты lifecycle gate (18 тестов)
