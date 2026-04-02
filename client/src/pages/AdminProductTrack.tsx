@@ -40,6 +40,12 @@ import {
   Sparkles,
   Trash2,
   Truck,
+  ChevronDown,
+  ChevronUp,
+  FileText,
+  Users,
+  Filter,
+  Save,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import OwnerAdminChat from "@/components/OwnerAdminChat";
@@ -89,6 +95,15 @@ type DeliveryEntry = {
   itemsJson: string;
   status: "planned" | "ready" | "delivered";
   adminNote: string | null;
+};
+
+type DeliveryEntryWithOwner = DeliveryEntry & {
+  ownerName: string;
+  ownershipId: number;
+  productPlanId: number;
+  deliveredAt: string | null;
+  createdAt: string;
+  updatedAt: string;
 };
 
 const PRODUCT_TYPE_LABELS: Record<string, string> = {
@@ -144,6 +159,14 @@ const DELIVERY_STATUS_COLORS: Record<string, string> = {
   ready: "border-amber-200 bg-amber-50 text-amber-700",
   delivered: "border-emerald-200 bg-emerald-50 text-emerald-700",
 };
+
+const DELIVERY_STATUS_BG: Record<string, string> = {
+  planned: "bg-stone-100",
+  ready: "bg-amber-50",
+  delivered: "bg-emerald-50",
+};
+
+const MONTH_NAMES_FULL = ["Январь", "Февраль", "Март", "Апрель", "Май", "Июнь", "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь"];
 
 /* ── Helper: format milk usage bar ── */
 
@@ -1040,95 +1063,520 @@ function OwnerPlansOverview({ animalId }: { animalId: number }) {
   );
 }
 
-/* ── Delivery Schedule Overview (Admin) ── */
+/* ── Delivery Schedule Overview (Admin) — Full expansion ── */
 
 function DeliveryScheduleOverview({ animalId, ownerPlans }: { animalId: number; ownerPlans: OwnerPlanRecord[] }) {
   const utils = trpc.useUtils();
   const currentYear = new Date().getFullYear();
+  const currentMonth = new Date().getMonth() + 1;
+  const [selectedYear, setSelectedYear] = useState(currentYear);
+  const [selectedOwner, setSelectedOwner] = useState<string>("all");
+  const [editingNoteId, setEditingNoteId] = useState<number | null>(null);
+  const [noteText, setNoteText] = useState("");
+  const [expandedMonth, setExpandedMonth] = useState<number | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
 
-  // Get schedule for first owner plan (if any)
-  const firstPlan = ownerPlans[0];
-  const scheduleQuery = trpc.productTrack.getSchedule.useQuery(
-    { ownerOpenId: firstPlan?.ownerOpenId ?? "", animalId, year: currentYear },
-    { enabled: Boolean(firstPlan) },
+  // Use the new getScheduleByAnimal endpoint for ALL owners
+  const scheduleQuery = trpc.productTrack.getScheduleByAnimal.useQuery(
+    { animalId, year: selectedYear },
+    { enabled: ownerPlans.length > 0 },
   );
 
   const updateStatus = trpc.productTrack.updateDeliveryStatus.useMutation({
     onSuccess: () => {
-      scheduleQuery.refetch();
+      utils.productTrack.getScheduleByAnimal.invalidate({ animalId });
       toast.success("Статус доставки обновлён");
     },
     onError: (err) => toast.error(err.message),
   });
 
-  const schedule = (scheduleQuery.data ?? []) as DeliveryEntry[];
+  const bulkUpdate = trpc.productTrack.bulkUpdateDeliveryStatus.useMutation({
+    onSuccess: (data) => {
+      utils.productTrack.getScheduleByAnimal.invalidate({ animalId });
+      setSelectedIds(new Set());
+      toast.success(`Обновлено ${data.updated} записей`);
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
+  const updateNote = trpc.productTrack.updateDeliveryNote.useMutation({
+    onSuccess: () => {
+      utils.productTrack.getScheduleByAnimal.invalidate({ animalId });
+      setEditingNoteId(null);
+      toast.success("Заметка сохранена");
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
+  const allEntries = (scheduleQuery.data ?? []) as DeliveryEntryWithOwner[];
+
+  // Filter by owner
+  const filteredEntries = selectedOwner === "all"
+    ? allEntries
+    : allEntries.filter((e) => e.ownerOpenId === selectedOwner);
+
+  // Unique owners for filter
+  const uniqueOwners = useMemo(() => {
+    const map = new Map<string, string>();
+    allEntries.forEach((e) => map.set(e.ownerOpenId, e.ownerName));
+    return Array.from(map.entries());
+  }, [allEntries]);
+
+  // Group by month
+  const byMonth = useMemo(() => {
+    const grouped = new Map<number, DeliveryEntryWithOwner[]>();
+    for (let m = 1; m <= 12; m++) grouped.set(m, []);
+    filteredEntries.forEach((e) => {
+      const arr = grouped.get(e.month) ?? [];
+      arr.push(e);
+      grouped.set(e.month, arr);
+    });
+    return grouped;
+  }, [filteredEntries]);
+
+  // Summary stats
+  const stats = useMemo(() => {
+    const total = filteredEntries.length;
+    const delivered = filteredEntries.filter((e) => e.status === "delivered").length;
+    const ready = filteredEntries.filter((e) => e.status === "ready").length;
+    const planned = filteredEntries.filter((e) => e.status === "planned").length;
+    return { total, delivered, ready, planned };
+  }, [filteredEntries]);
+
+  // Year options
+  const yearOptions = useMemo(() => {
+    const years = new Set<number>();
+    years.add(currentYear);
+    years.add(currentYear + 1);
+    ownerPlans.forEach((p) => {
+      if (p.confirmedAt) {
+        const y = new Date(p.confirmedAt).getFullYear();
+        years.add(y);
+      }
+    });
+    return Array.from(years).sort();
+  }, [ownerPlans, currentYear]);
+
+  // Toggle selection
+  const toggleSelect = (id: number) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const selectAllInMonth = (month: number) => {
+    const entries = byMonth.get(month) ?? [];
+    const ids = entries.map((e) => e.id);
+    const allSelected = ids.every((id) => selectedIds.has(id));
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (allSelected) {
+        ids.forEach((id) => next.delete(id));
+      } else {
+        ids.forEach((id) => next.add(id));
+      }
+      return next;
+    });
+  };
+
+  const handleBulkAction = (status: "planned" | "ready" | "delivered") => {
+    if (selectedIds.size === 0) {
+      toast.error("Выберите хотя бы одну доставку");
+      return;
+    }
+    bulkUpdate.mutate({ deliveryIds: Array.from(selectedIds), status });
+  };
+
+  const startEditNote = (entry: DeliveryEntryWithOwner) => {
+    setEditingNoteId(entry.id);
+    setNoteText(entry.adminNote ?? "");
+  };
+
+  const saveNote = () => {
+    if (editingNoteId === null) return;
+    updateNote.mutate({ deliveryId: editingNoteId, adminNote: noteText || null });
+  };
+
+  const progressPct = stats.total > 0 ? Math.round((stats.delivered / stats.total) * 100) : 0;
 
   return (
-    <Card className="rounded-[2rem] border-border/70 shadow-sm">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Calendar className="h-5 w-5 text-primary" />
-          График доставки — {currentYear}
-        </CardTitle>
+    <div className="space-y-4">
+      {/* Summary Card */}
+      <Card className="rounded-[2rem] border-border/70 shadow-sm">
+        <CardHeader className="pb-3">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <CardTitle className="flex items-center gap-2">
+              <Truck className="h-5 w-5 text-primary" />
+              График доставки
+            </CardTitle>
+            <div className="flex items-center gap-2">
+              {/* Year selector */}
+              <Select value={String(selectedYear)} onValueChange={(v) => setSelectedYear(Number(v))}>
+                <SelectTrigger className="h-8 w-[100px] rounded-full text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {yearOptions.map((y) => (
+                    <SelectItem key={y} value={String(y)}>{y}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
 
-      </CardHeader>
-      <CardContent>
-        {!firstPlan ? (
-          <div className="rounded-2xl border border-dashed border-border bg-secondary/20 px-5 py-8 text-center text-sm text-muted-foreground">
-            Нет подтверждённых планов — график доставки появится после выбора продуктов владельцем.
-          </div>
-        ) : scheduleQuery.isLoading ? (
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Loader2 className="h-4 w-4 animate-spin" /> Загружаем график…
-          </div>
-        ) : schedule.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-border bg-secondary/20 px-5 py-8 text-center text-sm text-muted-foreground">
-            График доставки пуст. Он будет сгенерирован автоматически при подтверждении продуктового плана.
-          </div>
-        ) : (
-          <ScrollRemaining totalItems={schedule.length} itemHeight={160} className="max-h-[520px] overflow-y-auto pr-1">
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {schedule.map((entry) => {
-              let items: Array<{ label: string; quantity: number; unit: string; frequency?: string }> = [];
-              try { items = JSON.parse(entry.itemsJson); } catch {}
-
-              return (
-                <div key={entry.id} className="rounded-2xl border border-border/70 bg-white p-4 shadow-sm">
-                  <div className="flex items-center justify-between mb-2">
-                    <p className="font-semibold text-foreground">{MONTH_NAMES[entry.month - 1]}</p>
-                    <Badge className={`rounded-full border text-[10px] ${DELIVERY_STATUS_COLORS[entry.status]}`}>
-                      {DELIVERY_STATUS_LABELS[entry.status]}
-                    </Badge>
-                  </div>
-                  <div className="space-y-1 mb-3">
-                    {items.map((item, idx) => (
-                      <p key={idx} className="text-xs text-muted-foreground">
-                        {item.label}: <span className="font-medium text-foreground">{item.quantity} {item.unit}</span>
-                        {item.frequency === "quarterly" && <span className="text-[10px] text-amber-600 ml-1">(кварт.)</span>}
-                      </p>
+              {/* Owner filter */}
+              {uniqueOwners.length > 1 && (
+                <Select value={selectedOwner} onValueChange={setSelectedOwner}>
+                  <SelectTrigger className="h-8 w-[160px] rounded-full text-xs">
+                    <Filter className="mr-1 h-3 w-3" />
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Все владельцы</SelectItem>
+                    {uniqueOwners.map(([openId, name]) => (
+                      <SelectItem key={openId} value={openId}>{name}</SelectItem>
                     ))}
-                  </div>
-                  <Select
-                    value={entry.status}
-                    onValueChange={(v) => updateStatus.mutate({ deliveryId: entry.id, status: v as any })}
-                  >
-                    <SelectTrigger className="h-8 rounded-full text-xs">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="planned">Запланировано</SelectItem>
-                      <SelectItem value="ready">Готово</SelectItem>
-                      <SelectItem value="delivered">Доставлено</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              );
-            })}
+                  </SelectContent>
+                </Select>
+              )}
+
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 rounded-full text-xs gap-1"
+                onClick={() => scheduleQuery.refetch()}
+                disabled={scheduleQuery.isRefetching}
+              >
+                <RefreshCw className={`h-3 w-3 ${scheduleQuery.isRefetching ? "animate-spin" : ""}`} />
+                Обновить
+              </Button>
+            </div>
           </div>
-          </ScrollRemaining>
-        )}
-      </CardContent>
-    </Card>
+        </CardHeader>
+        <CardContent>
+          {ownerPlans.length === 0 ? (
+            <div className="rounded-2xl border border-dashed border-border bg-secondary/20 px-5 py-8 text-center text-sm text-muted-foreground">
+              Нет подтверждённых планов — график доставки появится после подтверждения продуктового плана.
+            </div>
+          ) : scheduleQuery.isLoading ? (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground py-8 justify-center">
+              <Loader2 className="h-4 w-4 animate-spin" /> Загружаем график…
+            </div>
+          ) : allEntries.length === 0 ? (
+            <div className="rounded-2xl border border-dashed border-border bg-secondary/20 px-5 py-8 text-center text-sm text-muted-foreground">
+              График доставки пуст. Он будет сгенерирован автоматически при подтверждении продуктового плана.
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {/* Stats row */}
+              <div className="grid gap-3 grid-cols-2 sm:grid-cols-4">
+                <div className="rounded-xl border border-border/60 bg-card p-3 text-center">
+                  <p className="text-2xl font-bold text-foreground">{stats.total}</p>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">Всего доставок</p>
+                </div>
+                <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-center">
+                  <p className="text-2xl font-bold text-emerald-700">{stats.delivered}</p>
+                  <p className="text-[11px] text-emerald-600 mt-0.5">Доставлено</p>
+                </div>
+                <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-center">
+                  <p className="text-2xl font-bold text-amber-700">{stats.ready}</p>
+                  <p className="text-[11px] text-amber-600 mt-0.5">Готово</p>
+                </div>
+                <div className="rounded-xl border border-stone-200 bg-stone-50 p-3 text-center">
+                  <p className="text-2xl font-bold text-stone-700">{stats.planned}</p>
+                  <p className="text-[11px] text-stone-600 mt-0.5">Запланировано</p>
+                </div>
+              </div>
+
+              {/* Progress bar */}
+              <div className="space-y-1.5">
+                <div className="flex justify-between text-xs text-muted-foreground">
+                  <span>Прогресс доставок за {selectedYear}</span>
+                  <span className="font-medium text-foreground">{progressPct}%</span>
+                </div>
+                <div className="h-3 overflow-hidden rounded-full bg-muted">
+                  <div
+                    className="h-full rounded-full bg-emerald-500 transition-all duration-500"
+                    style={{ width: `${progressPct}%` }}
+                  />
+                </div>
+              </div>
+
+              {/* Batch actions */}
+              {selectedIds.size > 0 && (
+                <div className="flex flex-wrap items-center gap-2 rounded-xl border border-primary/20 bg-primary/5 p-3">
+                  <span className="text-xs font-medium text-primary">Выбрано: {selectedIds.size}</span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-7 rounded-full text-xs gap-1 border-amber-300 text-amber-700 hover:bg-amber-50"
+                    onClick={() => handleBulkAction("ready")}
+                    disabled={bulkUpdate.isPending}
+                  >
+                    <Package className="h-3 w-3" /> Готово
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-7 rounded-full text-xs gap-1 border-emerald-300 text-emerald-700 hover:bg-emerald-50"
+                    onClick={() => handleBulkAction("delivered")}
+                    disabled={bulkUpdate.isPending}
+                  >
+                    <CheckCircle2 className="h-3 w-3" /> Доставлено
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-7 rounded-full text-xs gap-1 border-stone-300 text-stone-700 hover:bg-stone-50"
+                    onClick={() => handleBulkAction("planned")}
+                    disabled={bulkUpdate.isPending}
+                  >
+                    <Clock className="h-3 w-3" /> Запланировано
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 rounded-full text-xs text-muted-foreground"
+                    onClick={() => setSelectedIds(new Set())}
+                  >
+                    Сбросить
+                  </Button>
+                </div>
+              )}
+
+              {/* Monthly grid */}
+              <ScrollRemaining totalItems={12} itemHeight={200} className="max-h-[640px] overflow-y-auto pr-1">
+                <div className="space-y-3">
+                  {Array.from({ length: 12 }, (_, i) => i + 1).map((month) => {
+                    const entries = byMonth.get(month) ?? [];
+                    const isExpanded = expandedMonth === month;
+                    const isPast = selectedYear < currentYear || (selectedYear === currentYear && month < currentMonth);
+                    const isCurrent = selectedYear === currentYear && month === currentMonth;
+                    const deliveredCount = entries.filter((e) => e.status === "delivered").length;
+                    const allDelivered = entries.length > 0 && deliveredCount === entries.length;
+                    const allSelected = entries.length > 0 && entries.every((e) => selectedIds.has(e.id));
+
+                    return (
+                      <div
+                        key={month}
+                        className={`rounded-2xl border transition-all ${
+                          isCurrent
+                            ? "border-primary/40 bg-primary/[0.03] shadow-md"
+                            : allDelivered
+                              ? "border-emerald-200 bg-emerald-50/30"
+                              : "border-border/70 bg-white"
+                        }`}
+                      >
+                        {/* Month header */}
+                        <button
+                          className="flex w-full items-center justify-between p-4 text-left"
+                          onClick={() => setExpandedMonth(isExpanded ? null : month)}
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className={`flex h-10 w-10 items-center justify-center rounded-xl text-sm font-bold ${
+                              isCurrent
+                                ? "bg-primary text-white"
+                                : allDelivered
+                                  ? "bg-emerald-500 text-white"
+                                  : isPast
+                                    ? "bg-muted text-muted-foreground"
+                                    : "bg-secondary text-foreground"
+                            }`}>
+                              {MONTH_NAMES[month - 1]}
+                            </div>
+                            <div>
+                              <p className="font-semibold text-foreground">{MONTH_NAMES_FULL[month - 1]}</p>
+                              <p className="text-xs text-muted-foreground">
+                                {entries.length === 0
+                                  ? "Нет доставок"
+                                  : `${entries.length} ${entries.length === 1 ? "доставка" : entries.length < 5 ? "доставки" : "доставок"}`}
+                                {deliveredCount > 0 && entries.length > 0 && (
+                                  <span className="ml-1 text-emerald-600">• {deliveredCount} доставлено</span>
+                                )}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            {entries.length > 0 && (
+                              <div className="flex gap-1">
+                                {entries.map((e) => (
+                                  <div
+                                    key={e.id}
+                                    className={`h-2 w-2 rounded-full ${
+                                      e.status === "delivered" ? "bg-emerald-500" :
+                                      e.status === "ready" ? "bg-amber-500" : "bg-stone-300"
+                                    }`}
+                                  />
+                                ))}
+                              </div>
+                            )}
+                            {isExpanded ? (
+                              <ChevronUp className="h-4 w-4 text-muted-foreground" />
+                            ) : (
+                              <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                            )}
+                          </div>
+                        </button>
+
+                        {/* Expanded content */}
+                        {isExpanded && entries.length > 0 && (
+                          <div className="border-t border-border/50 px-4 pb-4 pt-3">
+                            {/* Select all in month */}
+                            <div className="flex items-center justify-between mb-3">
+                              <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  checked={allSelected}
+                                  onChange={() => selectAllInMonth(month)}
+                                  className="rounded border-border"
+                                />
+                                Выбрать все в {MONTH_NAMES_FULL[month - 1].toLowerCase()}
+                              </label>
+                            </div>
+
+                            <div className="space-y-3">
+                              {entries.map((entry) => {
+                                let items: Array<{ label: string; quantity: number; unit: string; frequency?: string }> = [];
+                                try { items = JSON.parse(entry.itemsJson); } catch {}
+                                const isSelected = selectedIds.has(entry.id);
+                                const isEditingNote = editingNoteId === entry.id;
+
+                                return (
+                                  <div
+                                    key={entry.id}
+                                    className={`rounded-xl border p-3 transition-all ${
+                                      isSelected
+                                        ? "border-primary/40 bg-primary/[0.04]"
+                                        : `border-border/50 ${DELIVERY_STATUS_BG[entry.status]}`
+                                    }`}
+                                  >
+                                    <div className="flex items-start gap-3">
+                                      {/* Checkbox */}
+                                      <input
+                                        type="checkbox"
+                                        checked={isSelected}
+                                        onChange={() => toggleSelect(entry.id)}
+                                        className="mt-1 rounded border-border"
+                                      />
+
+                                      <div className="flex-1 min-w-0">
+                                        {/* Owner + status row */}
+                                        <div className="flex flex-wrap items-center gap-2 mb-2">
+                                          {uniqueOwners.length > 1 && (
+                                            <span className="text-xs font-medium text-foreground">
+                                              <Users className="inline h-3 w-3 mr-1 text-muted-foreground" />
+                                              {entry.ownerName}
+                                            </span>
+                                          )}
+                                          <Badge className={`rounded-full border text-[10px] ${DELIVERY_STATUS_COLORS[entry.status]}`}>
+                                            {DELIVERY_STATUS_LABELS[entry.status]}
+                                          </Badge>
+                                          {entry.deliveredAt && (
+                                            <span className="text-[10px] text-muted-foreground">
+                                              {new Date(entry.deliveredAt).toLocaleDateString("ru-RU", { day: "numeric", month: "short" })}
+                                            </span>
+                                          )}
+                                        </div>
+
+                                        {/* Items */}
+                                        <div className="flex flex-wrap gap-1.5 mb-2">
+                                          {items.map((item, idx) => (
+                                            <span key={idx} className="inline-flex items-center rounded-full bg-secondary/60 px-2.5 py-0.5 text-[11px]">
+                                              {item.label}: <span className="font-medium ml-0.5">{item.quantity} {item.unit}</span>
+                                              {item.frequency === "quarterly" && <span className="text-amber-600 ml-1">(кв.)</span>}
+                                            </span>
+                                          ))}
+                                        </div>
+
+                                        {/* Admin note */}
+                                        {isEditingNote ? (
+                                          <div className="flex items-start gap-2 mt-2">
+                                            <Textarea
+                                              value={noteText}
+                                              onChange={(e) => setNoteText(e.target.value)}
+                                              placeholder="Заметка админа…"
+                                              className="min-h-[60px] text-xs rounded-xl resize-none"
+                                              maxLength={1000}
+                                            />
+                                            <div className="flex flex-col gap-1">
+                                              <Button
+                                                variant="outline"
+                                                size="sm"
+                                                className="h-7 rounded-full text-xs gap-1"
+                                                onClick={saveNote}
+                                                disabled={updateNote.isPending}
+                                              >
+                                                {updateNote.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
+                                              </Button>
+                                              <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                className="h-7 rounded-full text-xs"
+                                                onClick={() => setEditingNoteId(null)}
+                                              >
+                                                ✕
+                                              </Button>
+                                            </div>
+                                          </div>
+                                        ) : entry.adminNote ? (
+                                          <button
+                                            className="mt-1 flex items-start gap-1.5 text-left text-xs text-muted-foreground italic hover:text-foreground transition-colors"
+                                            onClick={() => startEditNote(entry)}
+                                          >
+                                            <FileText className="h-3 w-3 mt-0.5 shrink-0" />
+                                            «{entry.adminNote}»
+                                          </button>
+                                        ) : (
+                                          <button
+                                            className="mt-1 text-[11px] text-muted-foreground/60 hover:text-primary transition-colors"
+                                            onClick={() => startEditNote(entry)}
+                                          >
+                                            + Добавить заметку
+                                          </button>
+                                        )}
+                                      </div>
+
+                                      {/* Status selector */}
+                                      <Select
+                                        value={entry.status}
+                                        onValueChange={(v) => updateStatus.mutate({ deliveryId: entry.id, status: v as any })}
+                                      >
+                                        <SelectTrigger className="h-8 w-[130px] rounded-full text-xs shrink-0">
+                                          <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                          <SelectItem value="planned">Запланировано</SelectItem>
+                                          <SelectItem value="ready">Готово</SelectItem>
+                                          <SelectItem value="delivered">Доставлено</SelectItem>
+                                        </SelectContent>
+                                      </Select>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Expanded but empty */}
+                        {isExpanded && entries.length === 0 && (
+                          <div className="border-t border-border/50 px-4 pb-4 pt-3">
+                            <p className="text-xs text-muted-foreground text-center py-2">
+                              В этом месяце нет запланированных доставок.
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </ScrollRemaining>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
   );
 }
 

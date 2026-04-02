@@ -63,6 +63,9 @@ import {
   getActiveOwnerOpenIdsByAnimalId,
   getAnimalIdBySlug,
   transitionPlansToOwnerConfig,
+  listDeliveryScheduleByAnimal,
+  bulkUpdateDeliveryStatus,
+  updateDeliveryNote,
 } from "../db";
 import type { ProductOption } from "../../drizzle/schema";
 import { storagePut } from "../storage";
@@ -708,9 +711,48 @@ export const productTrackRouter = router({
     return listDeliverySchedule(input.ownerOpenId, input.animalId, input.year);
   }),
 
+  /** Admin: get ALL delivery entries for an animal (all owners) */
+  getScheduleByAnimal: protectedProcedure
+    .input(z.object({
+      animalId: z.number().int().positive(),
+      year: z.number().int().min(2024).max(2100).optional(),
+    }))
+    .query(async ({ ctx, input }) => {
+      if (ctx.user.role !== "admin") {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Только администратор." });
+      }
+      return listDeliveryScheduleByAnimal(input.animalId, input.year);
+    }),
+
   updateDeliveryStatus: protectedProcedure.input(deliveryStatusInput).mutation(async ({ input }) => {
     return updateDeliveryStatus(input.deliveryId, input.status, input.adminNote);
   }),
+
+  /** Admin: bulk update delivery status */
+  bulkUpdateDeliveryStatus: protectedProcedure
+    .input(z.object({
+      deliveryIds: z.array(z.number().int().positive()).min(1).max(100),
+      status: z.enum(["planned", "ready", "delivered"]),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      if (ctx.user.role !== "admin") {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Только администратор." });
+      }
+      return bulkUpdateDeliveryStatus(input.deliveryIds, input.status);
+    }),
+
+  /** Admin: update delivery note */
+  updateDeliveryNote: protectedProcedure
+    .input(z.object({
+      deliveryId: z.number().int().positive(),
+      adminNote: z.string().max(1000).nullable(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      if (ctx.user.role !== "admin") {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Только администратор." });
+      }
+      return updateDeliveryNote(input.deliveryId, input.adminNote);
+    }),
 
   // ── Chat ──
   listMessages: protectedProcedure.input(chatListInput).query(async ({ input }) => {

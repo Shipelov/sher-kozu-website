@@ -3219,6 +3219,75 @@ export async function deleteDeliverySchedule(ownerOpenId: string, animalId: numb
   );
 }
 
+/** List ALL delivery schedule entries for an animal (all owners), with owner info */
+export async function listDeliveryScheduleByAnimal(animalId: number, year?: number) {
+  const db = await getDb();
+  if (!db) return [];
+
+  const conditions = [eq(deliverySchedule.animalId, animalId)];
+  if (year) {
+    conditions.push(eq(deliverySchedule.year, year));
+  }
+
+  const rows = await db
+    .select({
+      id: deliverySchedule.id,
+      ownerOpenId: deliverySchedule.ownerOpenId,
+      animalId: deliverySchedule.animalId,
+      ownershipId: deliverySchedule.ownershipId,
+      productPlanId: deliverySchedule.productPlanId,
+      month: deliverySchedule.month,
+      year: deliverySchedule.year,
+      itemsJson: deliverySchedule.itemsJson,
+      status: deliverySchedule.status,
+      deliveredAt: deliverySchedule.deliveredAt,
+      adminNote: deliverySchedule.adminNote,
+      createdAt: deliverySchedule.createdAt,
+      updatedAt: deliverySchedule.updatedAt,
+      ownerName: users.name,
+    })
+    .from(deliverySchedule)
+    .leftJoin(users, eq(deliverySchedule.ownerOpenId, users.openId))
+    .where(and(...conditions))
+    .orderBy(asc(deliverySchedule.ownerOpenId), asc(deliverySchedule.year), asc(deliverySchedule.month));
+
+  return rows.map((r: typeof rows[number]) => ({
+    ...r,
+    ownerName: r.ownerName ?? "Владелец",
+  }));
+}
+
+/** Bulk update delivery status for multiple entries */
+export async function bulkUpdateDeliveryStatus(
+  deliveryIds: number[],
+  status: "planned" | "ready" | "delivered",
+) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  if (deliveryIds.length === 0) return { updated: 0 };
+
+  await db.update(deliverySchedule).set({
+    status,
+    deliveredAt: status === "delivered" ? new Date() : null,
+  }).where(inArray(deliverySchedule.id, deliveryIds));
+
+  return { updated: deliveryIds.length };
+}
+
+/** Update only the admin note on a delivery entry */
+export async function updateDeliveryNote(deliveryId: number, adminNote: string | null) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  await db.update(deliverySchedule).set({
+    adminNote: adminNote ?? null,
+  }).where(eq(deliverySchedule.id, deliveryId));
+
+  const updated = await db.select().from(deliverySchedule).where(eq(deliverySchedule.id, deliveryId)).limit(1);
+  return updated[0] ?? null;
+}
+
 /** Log a plan change event for audit trail */
 export async function logPlanChange(input: {
   planId: number;

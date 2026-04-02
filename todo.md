@@ -1724,3 +1724,19 @@
 - [x] Fix: isVerified → isAdminVerified field name in AdminProductTrack.tsx effective status check
 - [x] Fix: auto-repair in getOwnerProductPlan for stuck plans
 - [x] Verified: owner (Mira) now sees full calculator with sliders and can submit plan
+
+## Phase L — Delivery Tab Expansion in Admin Product Track
+
+- [x] Add server procedure: listDeliveryScheduleByAnimal (all owners for an animal)
+- [x] Add server procedure: adminBulkUpdateDeliveryStatus (batch status update)
+- [x] Add server procedure: adminAddDeliveryNote (add/edit note per entry)
+- [x] Redesign DeliveryScheduleOverview: show ALL owners' schedules (not just first)
+- [x] Add owner selector/filter for multi-owner animals
+- [x] Add year selector for viewing past/future delivery schedules
+- [x] Add summary statistics card (total deliveries, delivered count, pending count)
+- [x] Add monthly timeline view with status indicators
+- [x] Add admin note editing inline for each delivery entry
+- [x] Add batch status update (mark all planned as ready, etc.)
+- [x] Add delivery progress bar (delivered/total for the year)
+- [x] Write vitest tests for new delivery procedures
+- [x] Verify in browser
