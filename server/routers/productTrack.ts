@@ -162,7 +162,7 @@ async function calculateMilkUsage(animalId: number, selections: Array<{ productO
       throw new TRPCError({ code: "BAD_REQUEST", message: `Превышен лимит для «${option.label}»: макс. ${option.maxAnnualUnits} ${option.unit}/год.` });
     }
 
-    const milkUsed = sel.annualUnits * option.conversionRatio;
+    const milkUsed = Math.floor(sel.annualUnits * option.conversionRatio);
     totalMilkUsed += milkUsed;
 
     enrichedSelections.push({
@@ -200,7 +200,7 @@ async function calculateTierMilkUsage(
     if (!item) {
       throw new TRPCError({ code: "BAD_REQUEST", message: `Продукт каталога #${sel.catalogItemId} не найден.` });
     }
-    const milkUsed = sel.annualUnits * item.conversionRatio;
+    const milkUsed = Math.floor(sel.annualUnits * item.conversionRatio);
     totalMilkUsed += milkUsed;
 
     enrichedSelections.push({
@@ -239,8 +239,8 @@ export const productTrackRouter = router({
       const existingOptions = await listProductOptions(input.animalId);
       const milkUsedByOthers = existingOptions
         .filter((o: any) => o.id !== input.id)
-        .reduce((sum: number, o: any) => sum + o.maxAnnualUnits * o.conversionRatio, 0);
-      const thisOptionMilk = (input.maxAnnualUnits ?? 0) * input.conversionRatio;
+        .reduce((sum: number, o: any) => sum + Math.floor(o.maxAnnualUnits * o.conversionRatio), 0);
+      const thisOptionMilk = Math.floor((input.maxAnnualUnits ?? 0) * input.conversionRatio);
       const totalMilk = milkUsedByOthers + thisOptionMilk;
       if (totalMilk > profile.annualMilkLiters) {
         throw new TRPCError({

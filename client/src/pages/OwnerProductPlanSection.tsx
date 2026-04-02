@@ -314,7 +314,7 @@ function ProductDonutChart({
 /* ── Milk Budget Bar ── */
 
 function MilkBudgetBar({ used, total }: { used: number; total: number }) {
-  const pct = total > 0 ? Math.min(100, Math.round((used / total) * 100)) : 0;
+  const pct = total > 0 ? Math.min(100, Math.floor((used / total) * 100)) : 0;
   const remaining = Math.max(0, total - used);
   const color = pct > 90 ? "bg-rose-500" : pct > 70 ? "bg-amber-500" : "bg-emerald-500";
 
@@ -329,8 +329,8 @@ function MilkBudgetBar({ used, total }: { used: number; total: number }) {
         />
       </div>
       <div className="flex justify-between text-xs text-muted-foreground">
-        <span>{used.toFixed(1)} л использовано</span>
-        <span>{remaining.toFixed(1)} л свободно</span>
+        <span>{Math.floor(used)} л использовано</span>
+        <span>{Math.floor(remaining)} л свободно</span>
       </div>
     </div>
   );
@@ -466,7 +466,7 @@ export default function OwnerProductPlanSection({
         unit: item.unit,
         percent: pct,
         milkUsed: milkAllocated,
-        annualUnits: Math.round(annualUnits * 10) / 10,
+        annualUnits: Math.floor(annualUnits * 10) / 10,
         conversionRatio: item.conversionRatio,
       };
     });
@@ -491,7 +491,7 @@ export default function OwnerProductPlanSection({
             const newAlloc: Record<number, number> = {};
             for (const sel of parsed) {
               if (sel.milkUsed > 0) {
-                newAlloc[sel.catalogItemId] = Math.round((sel.milkUsed / annualMilkBudget) * 100);
+                newAlloc[sel.catalogItemId] = Math.floor((sel.milkUsed / annualMilkBudget) * 100);
               }
             }
             setAllocPercent(newAlloc);
@@ -504,7 +504,7 @@ export default function OwnerProductPlanSection({
             const item = catalog.find(c => c.id === sel.catalogItemId);
             if (item && sel.annualUnits > 0) {
               const milkUsed = sel.annualUnits * item.conversionRatio;
-              newAlloc[sel.catalogItemId] = annualMilkBudget > 0 ? Math.round((milkUsed / annualMilkBudget) * 100) : 0;
+              newAlloc[sel.catalogItemId] = annualMilkBudget > 0 ? Math.floor((milkUsed / annualMilkBudget) * 100) : 0;
               hasAny = true;
             }
           }
@@ -553,7 +553,7 @@ export default function OwnerProductPlanSection({
           if (i === others.length - 1) {
             result[Number(k)] = Math.max(0, remaining - distributed);
           } else {
-            const scaled = Math.round((v / othersTotal) * remaining);
+            const scaled = Math.floor((v / othersTotal) * remaining);
             result[Number(k)] = Math.max(0, scaled);
             distributed += result[Number(k)];
           }
@@ -767,7 +767,7 @@ export default function OwnerProductPlanSection({
                                     </div>
                                   </td>
                                   <td className="py-2 text-right text-muted-foreground">
-                                    {p.milkUsed.toFixed(1)} л
+                                    {Math.floor(p.milkUsed)} л
                                   </td>
                                   <td className="py-2 text-right font-semibold text-primary">
                                     {p.annualUnits} {p.unit}
@@ -779,8 +779,8 @@ export default function OwnerProductPlanSection({
                               <tr>
                                 <td className="py-2 font-bold text-foreground">Итого молока</td>
                                 <td className="py-2 text-right font-bold text-primary">
-                                  {totalMilkUsed.toFixed(1)} л
-                                </td>
+                  {Math.floor(totalMilkUsed)} л
+                </td>
                                 <td></td>
                               </tr>
                             </tfoot>
@@ -827,7 +827,7 @@ export default function OwnerProductPlanSection({
                       <p className="text-4xl font-bold mt-1">{annualMilkBudget} л</p>
                       <p className="text-sm font-semibold mt-1">в год</p>
                       <p className="text-xs opacity-70 mt-1">
-                        {Math.round(annualMilkBudget / 12)} л/мес
+                        {Math.floor(annualMilkBudget / 12)} л/мес
                       </p>
                     </div>
 
@@ -843,12 +843,12 @@ export default function OwnerProductPlanSection({
                         </div>
                         <div className="flex justify-between items-center">
                           <span className="text-muted-foreground">Использовано молока</span>
-                          <span className="font-bold text-lg text-foreground">{totalMilkUsed.toFixed(0)} л</span>
+                          <span className="font-bold text-lg text-foreground">{Math.floor(totalMilkUsed)} л</span>
                         </div>
                         <div className="flex justify-between items-center">
                           <span className="text-muted-foreground">Свободно</span>
                           <span className={`font-bold text-lg ${(annualMilkBudget - totalMilkUsed) < 0 ? 'text-destructive' : 'text-emerald-600'}`}>
-                            {(annualMilkBudget - totalMilkUsed).toFixed(0)} л
+                            {Math.floor(annualMilkBudget - totalMilkUsed)} л
                           </span>
                         </div>
                         <div className="w-full bg-muted rounded-full h-2 overflow-hidden">

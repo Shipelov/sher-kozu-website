@@ -433,8 +433,8 @@ function ProductOptionsManager({ animalId, animalSpecies, ownerPlans, activeOwne
             Продукты ещё не настроены. Нажмите «Добавить продукт», чтобы начать.
           </div>
         ) : (
-          <div className="overflow-hidden rounded-[1.75rem] border border-border/70 bg-white shadow-sm">
-            <Table>
+          <div className="overflow-x-auto rounded-[1.75rem] border border-border/70 bg-white shadow-sm">
+            <Table className="min-w-[800px]">
               <TableHeader>
                 <TableRow className="hover:bg-transparent">
                   <TableHead className="w-10">
@@ -451,14 +451,14 @@ function ProductOptionsManager({ animalId, animalSpecies, ownerPlans, activeOwne
                       }}
                     />
                   </TableHead>
-                  <TableHead>Продукт</TableHead>
-                  <TableHead>Тип</TableHead>
-                  <TableHead>Конверсия</TableHead>
-                  <TableHead>Лимит/год</TableHead>
-                  <TableHead>Молока/год</TableHead>
-                  <TableHead>Статус</TableHead>
-                  <TableHead>Верификация</TableHead>
-                  <TableHead className="text-right">Действия</TableHead>
+                  <TableHead className="whitespace-nowrap">Продукт</TableHead>
+                  <TableHead className="whitespace-nowrap">Тип</TableHead>
+                  <TableHead className="whitespace-nowrap">Конверсия</TableHead>
+                  <TableHead className="whitespace-nowrap">Лимит/год</TableHead>
+                  <TableHead className="whitespace-nowrap">Молока/год</TableHead>
+                  <TableHead className="whitespace-nowrap">Статус</TableHead>
+                  <TableHead className="whitespace-nowrap">Верификация</TableHead>
+                  <TableHead className="text-right whitespace-nowrap">Действия</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -498,13 +498,13 @@ function ProductOptionsManager({ animalId, animalSpecies, ownerPlans, activeOwne
                           {PRODUCT_TYPE_LABELS[opt.productType]}
                         </Badge>
                       </TableCell>
-                      <TableCell className="text-sm text-muted-foreground">
+                      <TableCell className="text-sm text-muted-foreground whitespace-nowrap">
                         {opt.conversionRatio} л → 1 {opt.unit}
                       </TableCell>
-                      <TableCell className="text-sm">
+                      <TableCell className="text-sm whitespace-nowrap">
                         {opt.maxAnnualUnits} {opt.unit}
                       </TableCell>
-                      <TableCell className="text-sm text-muted-foreground">
+                      <TableCell className="text-sm text-muted-foreground whitespace-nowrap">
                         {milkForOption} л
                       </TableCell>
                       <TableCell>
@@ -523,7 +523,7 @@ function ProductOptionsManager({ animalId, animalSpecies, ownerPlans, activeOwne
                           </Badge>
                         )}
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="whitespace-nowrap">
                         <div className="flex justify-end gap-2">
                           <Button variant="outline" size="sm" className="rounded-full" onClick={() => openEditOption(opt)}>
                             <Pencil className="mr-1 h-3.5 w-3.5" /> Изменить

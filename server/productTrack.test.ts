@@ -121,7 +121,7 @@ function generateMonthlySchedule(
     const items = selections.map((sel) => ({
       productType: sel.productType,
       label: sel.label,
-      quantity: Math.round((sel.annualUnits / 12) * 100) / 100,
+      quantity: Math.floor((sel.annualUnits / 12) * 100) / 100,
       unit: sel.unit,
     }));
     entries.push({ month, year, items });

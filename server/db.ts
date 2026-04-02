@@ -2873,7 +2873,7 @@ export async function generateDeliverySchedule(input: {
     const items = input.selections.map((sel) => ({
       productType: sel.productType,
       label: sel.label,
-      quantity: Math.round((sel.annualUnits / 12) * 100) / 100,
+      quantity: Math.floor((sel.annualUnits / 12) * 100) / 100,
       unit: sel.unit,
     }));
 
@@ -5569,7 +5569,7 @@ export async function populateAnimalProductsFromCatalog(
       animalId,
       productType: item.productType,
       label: item.label,
-      conversionRatio: Math.round(item.conversionRatio),
+      conversionRatio: Math.floor(item.conversionRatio),
       unit: item.unit,
       maxAnnualUnits: 0, // Admin will set this during verification
       isEnabled: 1,
