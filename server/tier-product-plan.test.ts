@@ -46,30 +46,32 @@ describe("computeTierSlug", () => {
     expect(computeTierSlug(ownerships)).toBe("standard");
   });
 
-  it("returns 'professional' for 100% ownership + additional animals", () => {
+  it("returns 'standard' for 100% ownership + 50% on another (2 distinct animals)", () => {
+    // 2 distinct animals = standard, even with 100%+50%
     const ownerships = [
       { animalId: 1, status: "active", slotIndex: 0 },
       { animalId: 1, status: "active", slotIndex: 1 },
       { animalId: 2, status: "active", slotIndex: 0 },
     ];
-    expect(computeTierSlug(ownerships)).toBe("professional");
+    expect(computeTierSlug(ownerships)).toBe("standard");
   });
 
-  it("returns 'standard' for 3 different animals with 50% shares (no 100% ownership)", () => {
-    // Professional requires at least one 100% ownership + additional animals
+  it("returns 'professional' for 3 different animals with 50% shares", () => {
+    // Professional = 3+ distinct animals
     const ownerships = [
       { animalId: 1, status: "active", slotIndex: 0 },
       { animalId: 2, status: "active", slotIndex: 0 },
       { animalId: 3, status: "active", slotIndex: 0 },
     ];
-    expect(computeTierSlug(ownerships)).toBe("standard");
+    expect(computeTierSlug(ownerships)).toBe("professional");
   });
 
-  it("returns 'professional' for 100% on one animal + 50% on another", () => {
+  it("returns 'professional' for 3 animals with mixed shares", () => {
     const ownerships = [
       { animalId: 1, status: "active", slotIndex: 0 },
       { animalId: 1, status: "active", slotIndex: 1 },
       { animalId: 2, status: "active", slotIndex: 0 },
+      { animalId: 3, status: "active", slotIndex: 0 },
     ];
     expect(computeTierSlug(ownerships)).toBe("professional");
   });

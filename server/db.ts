@@ -5133,26 +5133,37 @@ const TIER_CHANGE_FREQUENCY: Record<TierSlug, number> = {
   professional: 7, // weekly
 };
 
-/** Determine tier slug based on ownership data */
+/**
+ * Determine tier slug based on ownership data.
+ *
+ * Tier rules (from pricingTiers):
+ *   basic        — 1 animal with 50% share (1 slot)
+ *   standard     — 1 animal with 100% share (2 slots), OR multiple animals totalling < 3 distinct animals
+ *   professional — 3+ distinct animals with active ownership
+ *
+ * Each animal has totalOwnershipSlots=2. 1 slot = 50%, 2 slots = 100%.
+ */
 export function computeTierSlug(ownerships: Array<{ animalId: number; status: string; slotIndex: number }>): TierSlug {
   // Only consider active ownerships
   const active = ownerships.filter(o => o.status === "active");
   if (active.length === 0) return "basic";
 
-  // Group by animal to determine share percentages
+  // Group by animal to count slots per animal
   const animalSlots = new Map<number, number>();
   for (const o of active) {
     animalSlots.set(o.animalId, (animalSlots.get(o.animalId) ?? 0) + 1);
   }
 
-  const totalAnimals = animalSlots.size;
-  const has100 = Array.from(animalSlots.values()).some(slots => slots >= 2);
-  const has50 = Array.from(animalSlots.values()).some(slots => slots === 1);
+  const totalDistinctAnimals = animalSlots.size;
 
-  // Determine highest tier
-  if (has100 && totalAnimals >= 2) return "professional";
-  if (has100) return "standard";
-  if (has50 && totalAnimals >= 2) return "standard";
+  // Professional: 3+ distinct animals
+  if (totalDistinctAnimals >= 3) return "professional";
+
+  // Standard: at least one animal with 100% (2 slots), OR 2 distinct animals (even with 50% each)
+  const has100 = Array.from(animalSlots.values()).some(slots => slots >= 2);
+  if (has100 || totalDistinctAnimals >= 2) return "standard";
+
+  // Basic: 1 animal with 50% share
   return "basic";
 }
 
