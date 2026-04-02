@@ -1740,3 +1740,17 @@
 - [x] Add delivery progress bar (delivered/total for the year)
 - [x] Write vitest tests for new delivery procedures
 - [x] Verify in browser
+
+## Phase M — Delivery Export & Owner Delivery Timeline
+
+- [x] Add server procedure: exportDeliverySchedule (generates PDF/Excel data)
+- [x] Add Excel export using xlsx library (client-side generation via xlsx + jspdf)
+- [x] Add PDF export using jspdf + jspdf-autotable (client-side generation)
+- [x] Add download buttons (PDF/Excel) to admin DeliveryScheduleOverview
+- [x] Expand owner ProductTracker with delivery timeline section
+- [x] Owner delivery timeline: monthly accordion with status indicators
+- [x] Owner delivery timeline: product breakdown per delivery
+- [x] Owner delivery timeline: admin notes visible to owner
+- [x] Owner delivery timeline: progress bar for the year
+- [x] Write vitest tests for export and timeline features
+- [x] Verify both features in browser

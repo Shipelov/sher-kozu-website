@@ -129,8 +129,8 @@ describe("ProductTracker empty/error states", () => {
     expect(src).toContain('data-testid="trackerEmptyDeliveries"');
   });
 
-  it("empty deliveries shows message about first shipment", () => {
-    expect(src).toContain("История доставок появится здесь после первой отправки");
+  it("empty deliveries shows message about confirmed plan", () => {
+    expect(src).toContain("График доставки появится здесь после подтверждения вашего продуктового плана");
   });
 });
 

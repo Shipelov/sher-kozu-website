@@ -29,6 +29,8 @@ import {
   Star,
   Truck,
   Users,
+  Clock,
+  FileText,
 } from "lucide-react";
 
 const CDN = {
@@ -615,81 +617,8 @@ export default function ProductTracker() {
               </div>
             </motion.section>
 
-            <motion.section
-              initial={{ opacity: 0, y: 14 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 }}
-              className="col-span-12 overflow-hidden rounded-[2rem] border border-border/70 bg-card shadow-sm"
-            >
-              <div className="grid gap-0 lg:grid-cols-[0.95fr_1.05fr]">
-                <div className="overflow-hidden border-b border-border/70 lg:border-b-0 lg:border-r">
-                  <img src={CDN.delivery} alt="История доставок" className="h-full min-h-[260px] w-full object-cover" />
-                </div>
-                <div className="p-5">
-                  <div className="flex flex-col items-start gap-4 sm:flex-row sm:justify-between">
-                    <div>
-                      <p className="text-sm uppercase tracking-[0.22em] text-primary">История доставок</p>
-                      <h2 className="mt-3 text-2xl font-semibold text-foreground">Каждая доставка — часть истории, а не просто заказ.</h2>
-                    </div>
-                    <Package className="h-6 w-6 text-primary" />
-                  </div>
-
-                  <ScrollRemaining totalItems={deliveries.length} itemHeight={72} className="mt-6 space-y-3 max-h-[520px] overflow-y-auto pr-1">
-                    {deliveries.length === 0 && (
-                      <div className="rounded-[1.5rem] border border-dashed border-border bg-secondary/30 p-5 text-center" data-testid="trackerEmptyDeliveries">
-                        <Truck className="mx-auto h-6 w-6 text-primary/50" />
-                        <p className="mt-2 text-sm text-muted-foreground">
-                          История доставок появится здесь после первой отправки продуктового набора.
-                        </p>
-                      </div>
-                    )}
-                    {deliveries.map((delivery, index) => (
-                      <button
-                        key={delivery.id}
-                        onClick={() => setActiveDelivery(activeDelivery === index ? -1 : index)}
-                        className="w-full rounded-[1.5rem] border border-border bg-white p-4 text-left transition-colors hover:bg-muted/35"
-                      >
-                        <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-                          <div>
-                            <div className="text-sm font-semibold text-foreground">{delivery.id}</div>
-                            <div className="mt-1 text-xs text-muted-foreground">{delivery.date}</div>
-                          </div>
-                          <div className="inline-flex items-center gap-2 rounded-full bg-secondary px-3 py-1 text-xs font-medium text-primary">
-                            {delivery.progress === 100 ? <CheckCircle2 className="h-3.5 w-3.5" /> : <Calendar className="h-3.5 w-3.5" />}
-                            {delivery.status}
-                          </div>
-                        </div>
-
-                        <div className="mt-3 h-2 overflow-hidden rounded-full bg-muted">
-                          <div className="h-full rounded-full bg-primary" style={{ width: `${delivery.progress}%` }} />
-                        </div>
-
-                        <AnimatePresence initial={false}>
-                          {activeDelivery === index && (
-                            <motion.div
-                              initial={{ opacity: 0, height: 0 }}
-                              animate={{ opacity: 1, height: "auto" }}
-                              exit={{ opacity: 0, height: 0 }}
-                              transition={{ duration: 0.25 }}
-                              className="overflow-hidden"
-                            >
-                              <p className="mt-4 text-sm leading-7 text-muted-foreground">{delivery.story}</p>
-                              <div className="mt-3 grid gap-2">
-                                {delivery.items.map((item) => (
-                                  <div key={item} className="rounded-xl bg-secondary/55 px-3 py-2 text-sm text-foreground">
-                                    {item}
-                                  </div>
-                                ))}
-                              </div>
-                            </motion.div>
-                          )}
-                        </AnimatePresence>
-                      </button>
-                    ))}
-                  </ScrollRemaining>
-                </div>
-              </div>
-            </motion.section>
+            {/* Owner Delivery Timeline */}
+            <OwnerDeliveryTimeline animalSlug={currentAnimalSlug} />
 
             <motion.section
               initial={{ opacity: 0, y: 14 }}
@@ -830,5 +759,266 @@ export default function ProductTracker() {
         </div>
       </div>
     </div>
+  );
+}
+
+
+/* ─── Owner Delivery Timeline ─── */
+
+const MONTH_NAMES = [
+  "Янв", "Фев", "Мар", "Апр", "Май", "Июн",
+  "Июл", "Авг", "Сен", "Окт", "Ноя", "Дек",
+];
+
+const MONTH_NAMES_FULL = [
+  "Январь", "Февраль", "Март", "Апрель", "Май", "Июнь",
+  "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь",
+];
+
+const DELIVERY_STATUS_LABELS: Record<string, string> = {
+  planned: "Запланировано",
+  ready: "Готово к отправке",
+  delivered: "Доставлено",
+};
+
+const DELIVERY_STATUS_COLORS: Record<string, { bg: string; text: string; dot: string }> = {
+  planned: { bg: "bg-secondary/60", text: "text-muted-foreground", dot: "bg-muted-foreground" },
+  ready: { bg: "bg-amber-50", text: "text-amber-700", dot: "bg-amber-500" },
+  delivered: { bg: "bg-emerald-50", text: "text-emerald-700", dot: "bg-emerald-500" },
+};
+
+type TimelineEntry = {
+  id: number;
+  month: number;
+  year: number;
+  status: string;
+  itemsJson: string;
+  deliveredAt: string | null;
+  adminNote: string | null;
+};
+
+function OwnerDeliveryTimeline({ animalSlug }: { animalSlug: string }) {
+  const currentYear = new Date().getFullYear();
+  const currentMonth = new Date().getMonth() + 1;
+  const [selectedYear, setSelectedYear] = useState(currentYear);
+  const [expandedMonth, setExpandedMonth] = useState<number | null>(currentMonth);
+
+  const yearOptions = useMemo(() => {
+    const years: number[] = [];
+    for (let y = currentYear - 1; y <= currentYear + 1; y++) years.push(y);
+    return years;
+  }, [currentYear]);
+
+  const timelineQuery = trpc.productTrack.getOwnerDeliveryTimeline.useQuery(
+    { animalSlug, year: selectedYear },
+    { enabled: Boolean(animalSlug) },
+  );
+
+  const entries = (timelineQuery.data?.entries ?? []) as TimelineEntry[];
+  const stats = timelineQuery.data?.stats ?? { total: 0, delivered: 0, ready: 0, planned: 0 };
+  const progressPct = stats.total > 0 ? Math.round((stats.delivered / stats.total) * 100) : 0;
+
+  const parseItems = (json: string) => {
+    try {
+      return JSON.parse(json) as Array<{ label: string; quantity: number; unit: string; frequency?: string }>;
+    } catch {
+      return [];
+    }
+  };
+
+  if (!animalSlug) return null;
+
+  return (
+    <motion.section
+      initial={{ opacity: 0, y: 14 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 0.2 }}
+      className="col-span-12 overflow-hidden rounded-[2rem] border border-border/70 bg-card shadow-sm"
+    >
+      <div className="grid gap-0 lg:grid-cols-[0.95fr_1.05fr]">
+        {/* Left: image + summary */}
+        <div className="flex flex-col border-b border-border/70 lg:border-b-0 lg:border-r">
+          <div className="overflow-hidden">
+            <img src={CDN.delivery} alt="График доставки" className="h-48 w-full object-cover lg:h-56" />
+          </div>
+          <div className="flex flex-1 flex-col justify-between p-5">
+            <div>
+              <p className="text-sm uppercase tracking-[0.22em] text-primary">График доставки</p>
+              <h2 className="mt-3 text-2xl font-semibold text-foreground">
+                Ваш персональный календарь доставок
+              </h2>
+              <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                Каждый месяц — запланированная доставка именных продуктов от вашего животного. Следите за статусом и содержимым каждой коробки.
+              </p>
+            </div>
+
+            {/* Year selector */}
+            <div className="mt-5 flex items-center gap-2">
+              {yearOptions.map((y) => (
+                <button
+                  key={y}
+                  onClick={() => setSelectedYear(y)}
+                  className={`rounded-full px-4 py-1.5 text-xs font-medium transition-colors ${
+                    selectedYear === y
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-secondary text-muted-foreground hover:bg-secondary/80"
+                  }`}
+                >
+                  {y}
+                </button>
+              ))}
+            </div>
+
+            {/* Progress summary */}
+            {stats.total > 0 && (
+              <div className="mt-5 rounded-[1.5rem] bg-secondary/50 p-4">
+                <div className="flex items-center justify-between text-xs text-muted-foreground">
+                  <span>Прогресс за {selectedYear}</span>
+                  <span className="font-semibold text-foreground">{stats.delivered}/{stats.total}</span>
+                </div>
+                <div className="mt-2 h-2.5 overflow-hidden rounded-full bg-muted">
+                  <div
+                    className="h-full rounded-full bg-primary transition-all duration-500"
+                    style={{ width: `${progressPct}%` }}
+                  />
+                </div>
+                <div className="mt-3 grid grid-cols-3 gap-2 text-center">
+                  <div className="rounded-xl bg-emerald-50 px-2 py-1.5">
+                    <div className="text-lg font-semibold text-emerald-700">{stats.delivered}</div>
+                    <div className="text-[10px] uppercase tracking-wider text-emerald-600">Доставлено</div>
+                  </div>
+                  <div className="rounded-xl bg-amber-50 px-2 py-1.5">
+                    <div className="text-lg font-semibold text-amber-700">{stats.ready}</div>
+                    <div className="text-[10px] uppercase tracking-wider text-amber-600">Готово</div>
+                  </div>
+                  <div className="rounded-xl bg-secondary px-2 py-1.5">
+                    <div className="text-lg font-semibold text-muted-foreground">{stats.planned}</div>
+                    <div className="text-[10px] uppercase tracking-wider text-muted-foreground">План</div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Right: monthly timeline */}
+        <div className="p-5">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Truck className="h-5 w-5 text-primary" />
+              <span className="text-sm font-semibold text-foreground">Помесячный график</span>
+            </div>
+            {timelineQuery.isLoading && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
+          </div>
+
+          {entries.length === 0 && !timelineQuery.isLoading ? (
+            <div className="mt-6 rounded-[1.5rem] border border-dashed border-border bg-secondary/30 p-6 text-center" data-testid="trackerEmptyDeliveries">
+              <Truck className="mx-auto h-7 w-7 text-primary/50" />
+              <p className="mt-3 text-sm text-muted-foreground">
+                График доставки появится здесь после подтверждения вашего продуктового плана.
+              </p>
+            </div>
+          ) : (
+            <ScrollRemaining totalItems={entries.length} itemHeight={72} className="mt-4 max-h-[600px] space-y-2 overflow-y-auto pr-1">
+              {entries.map((entry) => {
+                const items = parseItems(entry.itemsJson);
+                const statusColors = DELIVERY_STATUS_COLORS[entry.status] ?? DELIVERY_STATUS_COLORS.planned;
+                const isExpanded = expandedMonth === entry.month;
+                const isCurrent = entry.year === currentYear && entry.month === currentMonth;
+                const isPast = entry.year < currentYear || (entry.year === currentYear && entry.month < currentMonth);
+
+                return (
+                  <button
+                    key={entry.id}
+                    onClick={() => setExpandedMonth(isExpanded ? null : entry.month)}
+                    className={`w-full rounded-[1.5rem] border p-4 text-left transition-all ${
+                      isCurrent
+                        ? "border-primary/30 bg-primary/5 shadow-sm"
+                        : "border-border bg-card hover:bg-muted/30"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        {/* Month circle */}
+                        <div className={`flex h-10 w-10 flex-col items-center justify-center rounded-full ${
+                          entry.status === "delivered"
+                            ? "bg-emerald-100 text-emerald-700"
+                            : entry.status === "ready"
+                            ? "bg-amber-100 text-amber-700"
+                            : isCurrent
+                            ? "bg-primary/15 text-primary"
+                            : "bg-secondary text-muted-foreground"
+                        }`}>
+                          <span className="text-xs font-bold leading-none">{MONTH_NAMES[entry.month - 1]}</span>
+                        </div>
+                        <div>
+                          <div className="text-sm font-semibold text-foreground">
+                            {MONTH_NAMES_FULL[entry.month - 1]} {entry.year}
+                            {isCurrent && (
+                              <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-medium text-primary">
+                                <Clock className="h-2.5 w-2.5" />
+                                Текущий
+                              </span>
+                            )}
+                          </div>
+                          <div className="mt-0.5 text-xs text-muted-foreground">
+                            {items.length} {items.length === 1 ? "продукт" : items.length < 5 ? "продукта" : "продуктов"}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Status badge */}
+                      <div className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium ${statusColors.bg} ${statusColors.text}`}>
+                        <span className={`h-1.5 w-1.5 rounded-full ${statusColors.dot}`} />
+                        {DELIVERY_STATUS_LABELS[entry.status] ?? entry.status}
+                      </div>
+                    </div>
+
+                    {/* Expanded content */}
+                    <AnimatePresence initial={false}>
+                      {isExpanded && (
+                        <motion.div
+                          initial={{ opacity: 0, height: 0 }}
+                          animate={{ opacity: 1, height: "auto" }}
+                          exit={{ opacity: 0, height: 0 }}
+                          transition={{ duration: 0.25 }}
+                          className="overflow-hidden"
+                        >
+                          <div className="mt-4 space-y-2">
+                            {items.map((item, i) => (
+                              <div key={i} className="flex items-center justify-between rounded-xl bg-secondary/55 px-3 py-2">
+                                <span className="text-sm text-foreground">{item.label}</span>
+                                <span className="text-xs font-medium text-muted-foreground">
+                                  {item.quantity} {item.unit}
+                                  {item.frequency === "quarterly" && " (кв.)"}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+
+                          {entry.deliveredAt && (
+                            <div className="mt-3 flex items-center gap-2 text-xs text-emerald-600">
+                              <CheckCircle2 className="h-3.5 w-3.5" />
+                              Доставлено: {new Date(entry.deliveredAt).toLocaleDateString("ru-RU")}
+                            </div>
+                          )}
+
+                          {entry.adminNote && (
+                            <div className="mt-2 flex items-start gap-2 rounded-xl bg-blue-50 px-3 py-2 text-xs text-blue-700">
+                              <FileText className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                              <span>{entry.adminNote}</span>
+                            </div>
+                          )}
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </button>
+                );
+              })}
+            </ScrollRemaining>
+          )}
+        </div>
+      </div>
+    </motion.section>
   );
 }

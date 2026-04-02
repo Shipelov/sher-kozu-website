@@ -66,6 +66,8 @@ import {
   listDeliveryScheduleByAnimal,
   bulkUpdateDeliveryStatus,
   updateDeliveryNote,
+  getOwnerDeliveryTimeline,
+  getDeliveryExportData,
 } from "../db";
 import type { ProductOption } from "../../drizzle/schema";
 import { storagePut } from "../storage";
@@ -1168,5 +1170,30 @@ export const productTrackRouter = router({
         plan,
         hasVerifiedProducts: verifiedOptions.length > 0,
       };
+    }),
+
+  /** Owner: get their delivery timeline for a specific animal by slug */
+  getOwnerDeliveryTimeline: protectedProcedure
+    .input(z.object({
+      animalSlug: z.string().min(1),
+      year: z.number().int().min(2024).max(2100).optional(),
+    }))
+    .query(async ({ ctx, input }) => {
+      const animalId = await getAnimalIdBySlug(input.animalSlug);
+      if (!animalId) return { entries: [], stats: { total: 0, delivered: 0, ready: 0, planned: 0 }, year: input.year ?? new Date().getFullYear() };
+      return getOwnerDeliveryTimeline(ctx.user.openId, animalId, input.year);
+    }),
+
+  /** Admin: export delivery schedule data for Excel/PDF generation */
+  exportDeliveryData: protectedProcedure
+    .input(z.object({
+      animalId: z.number().int().positive(),
+      year: z.number().int().min(2024).max(2100).optional(),
+    }))
+    .query(async ({ ctx, input }) => {
+      if (ctx.user.role !== "admin") {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Только администратор." });
+      }
+      return getDeliveryExportData(input.animalId, input.year);
     }),
 });

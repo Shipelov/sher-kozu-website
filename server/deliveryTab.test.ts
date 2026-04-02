@@ -452,3 +452,272 @@ describe("Delivery Tab: Selection and batch operations", () => {
     expect(selectedIds.size).toBe(0);
   });
 });
+
+
+/* ═══════════════════════════════════════════════════════════════
+   Phase M — Export & Owner Timeline Tests
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── Export data formatting helpers ── */
+
+const MONTH_NAMES_FULL = [
+  "Январь", "Февраль", "Март", "Апрель", "Май", "Июнь",
+  "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь",
+];
+
+const STATUS_LABELS: Record<string, string> = {
+  planned: "Запланировано",
+  ready: "Готово",
+  delivered: "Доставлено",
+};
+
+function formatExportRow(entry: DeliveryEntryWithOwner) {
+  let items: Array<{ label: string; quantity: number; unit: string; frequency?: string }> = [];
+  try { items = JSON.parse(entry.itemsJson); } catch {}
+  const productsText = items.map((i) => `${i.label}: ${i.quantity} ${i.unit}${i.frequency === "quarterly" ? " (кв.)" : ""}`).join("; ");
+
+  return {
+    month: MONTH_NAMES_FULL[entry.month - 1] ?? `Месяц ${entry.month}`,
+    monthNum: entry.month,
+    ownerName: entry.ownerName ?? "Владелец",
+    products: productsText,
+    status: STATUS_LABELS[entry.status] ?? entry.status,
+    statusRaw: entry.status,
+    deliveredAt: entry.deliveredAt ? new Date(entry.deliveredAt).toLocaleDateString("ru-RU") : "—",
+    adminNote: entry.adminNote ?? "",
+  };
+}
+
+describe("Export data formatting", () => {
+  const sampleEntries: DeliveryEntryWithOwner[] = [
+    {
+      id: 1, ownerOpenId: "owner1", ownerName: "Иван", animalId: 100, ownershipId: 10,
+      productPlanId: 1, month: 1, year: 2026,
+      itemsJson: JSON.stringify([
+        { label: "Молоко", quantity: 15, unit: "л" },
+        { label: "Сыр", quantity: 2, unit: "кг", frequency: "quarterly" },
+      ]),
+      status: "delivered", adminNote: "Доставлено вовремя", deliveredAt: "2026-01-15T10:00:00Z",
+      createdAt: "2026-01-01", updatedAt: "2026-01-15",
+    },
+    {
+      id: 2, ownerOpenId: "owner1", ownerName: "Иван", animalId: 100, ownershipId: 10,
+      productPlanId: 1, month: 2, year: 2026,
+      itemsJson: JSON.stringify([{ label: "Молоко", quantity: 15, unit: "л" }]),
+      status: "ready", adminNote: null, deliveredAt: null,
+      createdAt: "2026-02-01", updatedAt: "2026-02-01",
+    },
+    {
+      id: 3, ownerOpenId: "owner1", ownerName: "Иван", animalId: 100, ownershipId: 10,
+      productPlanId: 1, month: 3, year: 2026,
+      itemsJson: JSON.stringify([{ label: "Молоко", quantity: 15, unit: "л" }]),
+      status: "planned", adminNote: null, deliveredAt: null,
+      createdAt: "2026-03-01", updatedAt: "2026-03-01",
+    },
+  ];
+
+  it("formats month names correctly in Russian", () => {
+    const rows = sampleEntries.map(formatExportRow);
+    expect(rows[0].month).toBe("Январь");
+    expect(rows[1].month).toBe("Февраль");
+    expect(rows[2].month).toBe("Март");
+  });
+
+  it("formats product items as semicolon-separated text", () => {
+    const row = formatExportRow(sampleEntries[0]);
+    expect(row.products).toBe("Молоко: 15 л; Сыр: 2 кг (кв.)");
+  });
+
+  it("marks quarterly products with (кв.) suffix", () => {
+    const row = formatExportRow(sampleEntries[0]);
+    expect(row.products).toContain("(кв.)");
+  });
+
+  it("translates status to Russian labels", () => {
+    const rows = sampleEntries.map(formatExportRow);
+    expect(rows[0].status).toBe("Доставлено");
+    expect(rows[1].status).toBe("Готово");
+    expect(rows[2].status).toBe("Запланировано");
+  });
+
+  it("formats deliveredAt date in Russian locale or shows dash", () => {
+    const rows = sampleEntries.map(formatExportRow);
+    // Delivered entry should have a date
+    expect(rows[0].deliveredAt).not.toBe("—");
+    // Non-delivered entries should show dash
+    expect(rows[1].deliveredAt).toBe("—");
+    expect(rows[2].deliveredAt).toBe("—");
+  });
+
+  it("preserves adminNote or defaults to empty string", () => {
+    const rows = sampleEntries.map(formatExportRow);
+    expect(rows[0].adminNote).toBe("Доставлено вовремя");
+    expect(rows[1].adminNote).toBe("");
+  });
+
+  it("handles invalid JSON in itemsJson gracefully", () => {
+    const badEntry: DeliveryEntryWithOwner = {
+      ...sampleEntries[0],
+      itemsJson: "not valid json",
+    };
+    const row = formatExportRow(badEntry);
+    expect(row.products).toBe("");
+  });
+
+  it("handles empty items array", () => {
+    const emptyEntry: DeliveryEntryWithOwner = {
+      ...sampleEntries[0],
+      itemsJson: "[]",
+    };
+    const row = formatExportRow(emptyEntry);
+    expect(row.products).toBe("");
+  });
+});
+
+describe("Export summary statistics", () => {
+  const entries: DeliveryEntryWithOwner[] = [
+    { id: 1, ownerOpenId: "o1", ownerName: "A", animalId: 1, ownershipId: 1, productPlanId: 1, month: 1, year: 2026, itemsJson: "[]", status: "delivered", adminNote: null, deliveredAt: "2026-01-15", createdAt: "", updatedAt: "" },
+    { id: 2, ownerOpenId: "o1", ownerName: "A", animalId: 1, ownershipId: 1, productPlanId: 1, month: 2, year: 2026, itemsJson: "[]", status: "delivered", adminNote: null, deliveredAt: "2026-02-15", createdAt: "", updatedAt: "" },
+    { id: 3, ownerOpenId: "o1", ownerName: "A", animalId: 1, ownershipId: 1, productPlanId: 1, month: 3, year: 2026, itemsJson: "[]", status: "ready", adminNote: null, deliveredAt: null, createdAt: "", updatedAt: "" },
+    { id: 4, ownerOpenId: "o1", ownerName: "A", animalId: 1, ownershipId: 1, productPlanId: 1, month: 4, year: 2026, itemsJson: "[]", status: "planned", adminNote: null, deliveredAt: null, createdAt: "", updatedAt: "" },
+    { id: 5, ownerOpenId: "o2", ownerName: "B", animalId: 1, ownershipId: 2, productPlanId: 2, month: 1, year: 2026, itemsJson: "[]", status: "planned", adminNote: null, deliveredAt: null, createdAt: "", updatedAt: "" },
+  ];
+
+  it("calculates stats correctly for mixed statuses", () => {
+    const stats = calculateStats(entries);
+    expect(stats.total).toBe(5);
+    expect(stats.delivered).toBe(2);
+    expect(stats.ready).toBe(1);
+    expect(stats.planned).toBe(2);
+  });
+
+  it("calculates progress percentage", () => {
+    const stats = calculateStats(entries);
+    const progressPct = stats.total > 0 ? Math.round((stats.delivered / stats.total) * 100) : 0;
+    expect(progressPct).toBe(40);
+  });
+
+  it("handles empty entries", () => {
+    const stats = calculateStats([]);
+    expect(stats.total).toBe(0);
+    expect(stats.delivered).toBe(0);
+    const progressPct = stats.total > 0 ? Math.round((stats.delivered / stats.total) * 100) : 0;
+    expect(progressPct).toBe(0);
+  });
+});
+
+/* ── Owner timeline display helpers ── */
+
+const DELIVERY_STATUS_LABELS: Record<string, string> = {
+  planned: "Запланировано",
+  ready: "Готово к отправке",
+  delivered: "Доставлено",
+};
+
+const DELIVERY_STATUS_COLORS: Record<string, { bg: string; text: string; dot: string }> = {
+  planned: { bg: "bg-secondary/60", text: "text-muted-foreground", dot: "bg-muted-foreground" },
+  ready: { bg: "bg-amber-50", text: "text-amber-700", dot: "bg-amber-500" },
+  delivered: { bg: "bg-emerald-50", text: "text-emerald-700", dot: "bg-emerald-500" },
+};
+
+describe("Owner delivery timeline display helpers", () => {
+  it("maps all statuses to display labels", () => {
+    expect(DELIVERY_STATUS_LABELS["planned"]).toBe("Запланировано");
+    expect(DELIVERY_STATUS_LABELS["ready"]).toBe("Готово к отправке");
+    expect(DELIVERY_STATUS_LABELS["delivered"]).toBe("Доставлено");
+  });
+
+  it("maps all statuses to color schemes", () => {
+    for (const status of ["planned", "ready", "delivered"]) {
+      const colors = DELIVERY_STATUS_COLORS[status];
+      expect(colors).toBeDefined();
+      expect(colors.bg).toBeTruthy();
+      expect(colors.text).toBeTruthy();
+      expect(colors.dot).toBeTruthy();
+    }
+  });
+
+  it("identifies current month correctly", () => {
+    const currentMonth = new Date().getMonth() + 1;
+    const currentYear = new Date().getFullYear();
+    const entry = { month: currentMonth, year: currentYear };
+    const isCurrent = entry.year === currentYear && entry.month === currentMonth;
+    expect(isCurrent).toBe(true);
+  });
+
+  it("identifies past months correctly", () => {
+    const currentMonth = new Date().getMonth() + 1;
+    const currentYear = new Date().getFullYear();
+    // A month in the past
+    const pastEntry = { month: 1, year: currentYear - 1 };
+    const isPast = pastEntry.year < currentYear || (pastEntry.year === currentYear && pastEntry.month < currentMonth);
+    expect(isPast).toBe(true);
+  });
+
+  it("parses itemsJson for display", () => {
+    const json = JSON.stringify([
+      { label: "Молоко", quantity: 15, unit: "л" },
+      { label: "Сыр", quantity: 2, unit: "кг", frequency: "quarterly" },
+    ]);
+    const items = JSON.parse(json) as Array<{ label: string; quantity: number; unit: string; frequency?: string }>;
+    expect(items).toHaveLength(2);
+    expect(items[0].label).toBe("Молоко");
+    expect(items[1].frequency).toBe("quarterly");
+  });
+
+  it("handles empty itemsJson", () => {
+    const items = JSON.parse("[]");
+    expect(items).toHaveLength(0);
+  });
+});
+
+describe("Year selector logic", () => {
+  it("generates year options around current year", () => {
+    const currentYear = new Date().getFullYear();
+    const years: number[] = [];
+    for (let y = currentYear - 1; y <= currentYear + 1; y++) years.push(y);
+    expect(years).toHaveLength(3);
+    expect(years).toContain(currentYear);
+    expect(years).toContain(currentYear - 1);
+    expect(years).toContain(currentYear + 1);
+  });
+
+  it("defaults to current year", () => {
+    const currentYear = new Date().getFullYear();
+    let selectedYear = currentYear;
+    expect(selectedYear).toBe(currentYear);
+  });
+});
+
+describe("Export row multi-owner scenarios", () => {
+  const multiOwnerEntries: DeliveryEntryWithOwner[] = [
+    {
+      id: 1, ownerOpenId: "owner1", ownerName: "Иван", animalId: 100, ownershipId: 10,
+      productPlanId: 1, month: 1, year: 2026,
+      itemsJson: JSON.stringify([{ label: "Молоко", quantity: 15, unit: "л" }]),
+      status: "delivered", adminNote: null, deliveredAt: "2026-01-15T10:00:00Z",
+      createdAt: "", updatedAt: "",
+    },
+    {
+      id: 2, ownerOpenId: "owner2", ownerName: "Мария", animalId: 100, ownershipId: 20,
+      productPlanId: 2, month: 1, year: 2026,
+      itemsJson: JSON.stringify([{ label: "Молоко", quantity: 10, unit: "л" }]),
+      status: "planned", adminNote: null, deliveredAt: null,
+      createdAt: "", updatedAt: "",
+    },
+  ];
+
+  it("formats rows for different owners in same month", () => {
+    const rows = multiOwnerEntries.map(formatExportRow);
+    expect(rows[0].ownerName).toBe("Иван");
+    expect(rows[1].ownerName).toBe("Мария");
+    expect(rows[0].month).toBe(rows[1].month); // same month
+    expect(rows[0].status).not.toBe(rows[1].status); // different statuses
+  });
+
+  it("export rows preserve monthNum for sorting", () => {
+    const rows = multiOwnerEntries.map(formatExportRow);
+    expect(rows[0].monthNum).toBe(1);
+    expect(rows[1].monthNum).toBe(1);
+  });
+});

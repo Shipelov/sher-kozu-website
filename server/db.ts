@@ -5847,3 +5847,81 @@ export async function transitionPlansToOwnerConfig(animalId: number): Promise<nu
 
   return planIds.length;
 }
+
+
+/**
+ * Get delivery schedule for a specific owner + animal with summary stats.
+ * Used by the owner-facing delivery timeline in ProductTracker.
+ */
+export async function getOwnerDeliveryTimeline(ownerOpenId: string, animalId: number, year?: number) {
+  const db = await getDb();
+  if (!db) return { entries: [], stats: { total: 0, delivered: 0, ready: 0, planned: 0 } };
+
+  const targetYear = year ?? new Date().getFullYear();
+  const entries = await listDeliverySchedule(ownerOpenId, animalId, targetYear);
+
+  const total = entries.length;
+  const delivered = entries.filter((e: any) => e.status === "delivered").length;
+  const ready = entries.filter((e: any) => e.status === "ready").length;
+  const planned = entries.filter((e: any) => e.status === "planned").length;
+
+  return {
+    entries,
+    stats: { total, delivered, ready, planned },
+    year: targetYear,
+  };
+}
+
+/**
+ * Export delivery schedule data for an animal (all owners) in a flat format suitable for Excel/PDF export.
+ * Returns structured rows with owner name, month label, product details, status, etc.
+ */
+export async function getDeliveryExportData(animalId: number, year?: number) {
+  const db = await getDb();
+  if (!db) return { rows: [], animalName: "Животное", year: year ?? new Date().getFullYear() };
+
+  const targetYear = year ?? new Date().getFullYear();
+  const animalName = await getAnimalNameById(animalId);
+  const entries = await listDeliveryScheduleByAnimal(animalId, targetYear);
+
+  const MONTH_NAMES_FULL = [
+    "Январь", "Февраль", "Март", "Апрель", "Май", "Июнь",
+    "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь",
+  ];
+
+  const rows = entries.map((e: any) => {
+    let items: Array<{ label: string; quantity: number; unit: string; frequency?: string }> = [];
+    try { items = JSON.parse(e.itemsJson); } catch {}
+    const productsText = items.map((i) => `${i.label}: ${i.quantity} ${i.unit}${i.frequency === "quarterly" ? " (кв.)" : ""}`).join("; ");
+
+    const STATUS_LABELS: Record<string, string> = {
+      planned: "Запланировано",
+      ready: "Готово",
+      delivered: "Доставлено",
+    };
+
+    return {
+      month: MONTH_NAMES_FULL[e.month - 1] ?? `Месяц ${e.month}`,
+      monthNum: e.month,
+      ownerName: e.ownerName ?? "Владелец",
+      products: productsText,
+      status: STATUS_LABELS[e.status] ?? e.status,
+      statusRaw: e.status,
+      deliveredAt: e.deliveredAt ? new Date(e.deliveredAt).toLocaleDateString("ru-RU") : "—",
+      adminNote: e.adminNote ?? "",
+    };
+  });
+
+  // Summary stats
+  const total = entries.length;
+  const delivered = entries.filter((e: any) => e.status === "delivered").length;
+  const ready = entries.filter((e: any) => e.status === "ready").length;
+  const planned = entries.filter((e: any) => e.status === "planned").length;
+
+  return {
+    rows,
+    animalName,
+    year: targetYear,
+    stats: { total, delivered, ready, planned },
+  };
+}

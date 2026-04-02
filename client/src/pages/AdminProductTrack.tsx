@@ -46,6 +46,8 @@ import {
   Users,
   Filter,
   Save,
+  Download,
+  FileSpreadsheet,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import OwnerAdminChat from "@/components/OwnerAdminChat";
@@ -1200,6 +1202,108 @@ function DeliveryScheduleOverview({ animalId, ownerPlans }: { animalId: number; 
     updateNote.mutate({ deliveryId: editingNoteId, adminNote: noteText || null });
   };
 
+  const exportQuery = trpc.productTrack.exportDeliveryData.useQuery(
+    { animalId, year: selectedYear },
+    { enabled: false },
+  );
+
+  const [exporting, setExporting] = useState<"pdf" | "excel" | null>(null);
+
+  const handleExportExcel = async () => {
+    setExporting("excel");
+    try {
+      const result = await exportQuery.refetch();
+      const data = result.data;
+      if (!data || data.rows.length === 0) {
+        toast.error("Нет данных для экспорта");
+        return;
+      }
+      const XLSX = await import("xlsx");
+      const wb = XLSX.utils.book_new();
+
+      // Summary sheet
+      const summaryData = [
+        ["График доставки", `${data.animalName} — ${data.year}`],
+        [],
+        ["Всего доставок", data.stats?.total ?? 0],
+        ["Доставлено", data.stats?.delivered ?? 0],
+        ["Готово", data.stats?.ready ?? 0],
+        ["Запланировано", data.stats?.planned ?? 0],
+      ];
+      const summarySheet = XLSX.utils.aoa_to_sheet(summaryData);
+      XLSX.utils.book_append_sheet(wb, summarySheet, "Сводка");
+
+      // Detail sheet
+      const headers = ["Месяц", "Владелец", "Продукты", "Статус", "Дата доставки", "Заметка"];
+      const rows = data.rows.map((r: any) => [r.month, r.ownerName, r.products, r.status, r.deliveredAt, r.adminNote]);
+      const detailSheet = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+      detailSheet["!cols"] = [{ wch: 12 }, { wch: 20 }, { wch: 40 }, { wch: 16 }, { wch: 14 }, { wch: 30 }];
+      XLSX.utils.book_append_sheet(wb, detailSheet, "Доставки");
+
+      const buf = XLSX.write(wb, { type: "array", bookType: "xlsx" });
+      const blob = new Blob([buf], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `delivery_${data.animalName}_${data.year}.xlsx`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success("Excel файл скачан");
+    } catch (err: any) {
+      toast.error(err.message ?? "Ошибка экспорта");
+    } finally {
+      setExporting(null);
+    }
+  };
+
+  const handleExportPdf = async () => {
+    setExporting("pdf");
+    try {
+      const result = await exportQuery.refetch();
+      const data = result.data;
+      if (!data || data.rows.length === 0) {
+        toast.error("Нет данных для экспорта");
+        return;
+      }
+      const { default: jsPDF } = await import("jspdf");
+      const { default: autoTable } = await import("jspdf-autotable");
+
+      const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
+
+      // Title
+      doc.setFontSize(16);
+      doc.text(`Delivery Schedule: ${data.animalName} - ${data.year}`, 14, 18);
+
+      // Summary
+      doc.setFontSize(10);
+      doc.text(`Total: ${data.stats?.total ?? 0} | Delivered: ${data.stats?.delivered ?? 0} | Ready: ${data.stats?.ready ?? 0} | Planned: ${data.stats?.planned ?? 0}`, 14, 26);
+
+      // Table
+      autoTable(doc, {
+        startY: 32,
+        head: [["Month", "Owner", "Products", "Status", "Delivered", "Note"]],
+        body: data.rows.map((r: any) => [r.month, r.ownerName, r.products, r.status, r.deliveredAt, r.adminNote]),
+        styles: { fontSize: 8, cellPadding: 2 },
+        headStyles: { fillColor: [26, 58, 42] },
+        columnStyles: {
+          0: { cellWidth: 25 },
+          1: { cellWidth: 35 },
+          2: { cellWidth: 80 },
+          3: { cellWidth: 25 },
+          4: { cellWidth: 25 },
+          5: { cellWidth: 60 },
+        },
+      });
+
+      doc.save(`delivery_${data.animalName}_${data.year}.pdf`);
+      toast.success("PDF файл скачан");
+    } catch (err: any) {
+      toast.error(err.message ?? "Ошибка экспорта");
+    } finally {
+      setExporting(null);
+    }
+  };
+
   const progressPct = stats.total > 0 ? Math.round((stats.delivered / stats.total) * 100) : 0;
 
   return (
@@ -1212,7 +1316,7 @@ function DeliveryScheduleOverview({ animalId, ownerPlans }: { animalId: number; 
               <Truck className="h-5 w-5 text-primary" />
               График доставки
             </CardTitle>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               {/* Year selector */}
               <Select value={String(selectedYear)} onValueChange={(v) => setSelectedYear(Number(v))}>
                 <SelectTrigger className="h-8 w-[100px] rounded-full text-xs">
@@ -1239,6 +1343,32 @@ function DeliveryScheduleOverview({ animalId, ownerPlans }: { animalId: number; 
                     ))}
                   </SelectContent>
                 </Select>
+              )}
+
+              {/* Export buttons */}
+              {allEntries.length > 0 && (
+                <>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8 rounded-full text-xs gap-1 border-emerald-300 text-emerald-700 hover:bg-emerald-50"
+                    onClick={handleExportExcel}
+                    disabled={exporting === "excel"}
+                  >
+                    {exporting === "excel" ? <Loader2 className="h-3 w-3 animate-spin" /> : <FileSpreadsheet className="h-3 w-3" />}
+                    Excel
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8 rounded-full text-xs gap-1 border-red-300 text-red-700 hover:bg-red-50"
+                    onClick={handleExportPdf}
+                    disabled={exporting === "pdf"}
+                  >
+                    {exporting === "pdf" ? <Loader2 className="h-3 w-3 animate-spin" /> : <Download className="h-3 w-3" />}
+                    PDF
+                  </Button>
+                </>
               )}
 
               <Button
