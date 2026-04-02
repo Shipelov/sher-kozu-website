@@ -161,6 +161,156 @@ const PLAN_STATUS_LABELS: Record<string, string> = {
 
 const fmt = (n: number) => n.toLocaleString("ru-RU");
 
+/* ── Donut Chart Colors (raw hex for SVG) ── */
+
+const DONUT_COLORS: Record<string, string> = {
+  milk: "#3a9a4f",
+  smetana: "#b87333",
+  yogurt: "#5a6abf",
+  kefir: "#9a5ab5",
+  cheese: "#c4a030",
+  brynza: "#a0522d",
+  kachotta: "#8b4513",
+  halumi: "#3aa05a",
+  ricotta: "#a0a040",
+  camembert: "#b08030",
+  aged_cheese: "#7a5a30",
+  blue_cheese: "#4a6ab0",
+  smoked_cheese: "#6a5a40",
+  butter: "#d4b040",
+  condensed_milk: "#b0a040",
+  fermented_drink: "#4a8a7a",
+  custom: "#6a8a6a",
+};
+
+const DONUT_FALLBACK = "#94a3b8";
+
+/* ── Donut Chart ── */
+
+function ProductDonutChart({
+  products,
+  activeCount,
+  totalCount,
+}: {
+  products: { catalogItemId: number; label: string; productType: string; percent: number; milkUsed: number }[];
+  activeCount: number;
+  totalCount: number;
+}) {
+  const active = products.filter((p) => p.percent > 0);
+  const size = 200;
+  const strokeWidth = 32;
+  const radius = (size - strokeWidth) / 2;
+  const circumference = 2 * Math.PI * radius;
+  const center = size / 2;
+
+  // Build segments
+  let accumulated = 0;
+  const segments = active.map((p) => {
+    const segLen = (p.percent / 100) * circumference;
+    const offset = circumference - accumulated;
+    accumulated += segLen;
+    return {
+      ...p,
+      dashArray: `${segLen} ${circumference - segLen}`,
+      dashOffset: offset,
+      color: DONUT_COLORS[p.productType] ?? DONUT_FALLBACK,
+    };
+  });
+
+  // Unused portion
+  const usedPercent = active.reduce((s, p) => s + p.percent, 0);
+  const unusedPercent = Math.max(0, 100 - usedPercent);
+
+  return (
+    <div className="flex flex-col items-center">
+      <div className="relative" style={{ width: size, height: size }}>
+        <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="-rotate-90">
+          {/* Background ring */}
+          <circle
+            cx={center}
+            cy={center}
+            r={radius}
+            fill="none"
+            stroke="currentColor"
+            className="text-muted/30"
+            strokeWidth={strokeWidth}
+          />
+          {/* Unused segment */}
+          {unusedPercent > 0 && unusedPercent < 100 && (
+            <circle
+              cx={center}
+              cy={center}
+              r={radius}
+              fill="none"
+              stroke="currentColor"
+              className="text-muted/50"
+              strokeWidth={strokeWidth}
+              strokeDasharray={`${(unusedPercent / 100) * circumference} ${circumference - (unusedPercent / 100) * circumference}`}
+              strokeDashoffset={circumference - accumulated}
+              strokeLinecap="round"
+            />
+          )}
+          {/* Product segments */}
+          {segments.map((seg, i) => (
+            <motion.circle
+              key={seg.catalogItemId}
+              cx={center}
+              cy={center}
+              r={radius}
+              fill="none"
+              stroke={seg.color}
+              strokeWidth={strokeWidth - 2}
+              strokeDasharray={seg.dashArray}
+              strokeDashoffset={seg.dashOffset}
+              strokeLinecap="butt"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.4, delay: i * 0.08 }}
+            />
+          ))}
+        </svg>
+        {/* Center label */}
+        <div className="absolute inset-0 flex flex-col items-center justify-center">
+          <motion.span
+            className="text-3xl font-bold text-foreground"
+            key={activeCount}
+            initial={{ scale: 0.8, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ type: "spring", stiffness: 300, damping: 20 }}
+          >
+            {activeCount}
+          </motion.span>
+          <span className="text-xs text-muted-foreground mt-0.5">
+            {activeCount === 1 ? "продукт" : activeCount >= 2 && activeCount <= 4 ? "продукта" : "продуктов"}
+          </span>
+        </div>
+      </div>
+      {/* Legend */}
+      {active.length > 0 && (
+        <div className="mt-3 grid grid-cols-2 gap-x-3 gap-y-1.5 text-xs w-full">
+          {active.map((p) => (
+            <div key={p.catalogItemId} className="flex items-center gap-1.5 min-w-0">
+              <span
+                className="inline-block h-2.5 w-2.5 rounded-full shrink-0"
+                style={{ backgroundColor: DONUT_COLORS[p.productType] ?? DONUT_FALLBACK }}
+              />
+              <span className="truncate text-muted-foreground">{p.label}</span>
+              <span className="ml-auto font-semibold text-foreground shrink-0">{p.percent}%</span>
+            </div>
+          ))}
+          {unusedPercent > 0 && (
+            <div className="flex items-center gap-1.5 min-w-0">
+              <span className="inline-block h-2.5 w-2.5 rounded-full shrink-0 bg-muted/50" />
+              <span className="truncate text-muted-foreground">Свободно</span>
+              <span className="ml-auto font-semibold text-foreground shrink-0">{unusedPercent}%</span>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 /* ── Milk Budget Bar ── */
 
 function MilkBudgetBar({ used, total }: { used: number; total: number }) {
@@ -714,6 +864,18 @@ export default function OwnerProductPlanSection({
                           <p className="text-xs text-emerald-600">План полностью настроен ✓</p>
                         )}
                       </div>
+                    </div>
+
+                    {/* Product Donut Chart */}
+                    <div className="rounded-2xl border border-border bg-card p-5">
+                      <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-3">
+                        Распределение продуктов
+                      </p>
+                      <ProductDonutChart
+                        products={productOutputs}
+                        activeCount={activeProducts.length}
+                        totalCount={catalog.length}
+                      />
                     </div>
 
                     {/* Tier privileges */}
