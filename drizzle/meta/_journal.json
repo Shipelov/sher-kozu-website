@@ -274,6 +274,13 @@
       "when": 1775113069656,
       "tag": "0039_keen_moonstone",
       "breakpoints": true
+    },
+    {
+      "idx": 40,
+      "version": "5",
+      "when": 1775155029983,
+      "tag": "0040_optimal_magus",
+      "breakpoints": true
     }
   ]
 }

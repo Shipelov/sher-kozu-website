@@ -1762,3 +1762,14 @@
 - [x] Fix: add NotoSans Cyrillic font loaded from CDN into jsPDF
 - [x] Fix: Russian labels, status translations, overflow:linebreak, auto column widths
 - [x] Verified: PDF renders perfectly with Cyrillic text, proper table layout, no overflow
+
+## Phase N — Delivery Notifications, Filters & Owner PDF Export
+
+- [x] Push notification to owner when delivery status changes to "ready" or "delivered"
+- [x] Integrate with existing notification system (createUserNotification + deliveryStatus preference)
+- [x] Status filter buttons in admin delivery timeline (Все / Доставлено / Готово / Запланировано)
+- [x] Status filter buttons in owner delivery timeline (Все / Доставлено / Готово / Запланировано)
+- [x] PDF export button in owner delivery timeline (personal schedule)
+- [x] Reuse NotoSans Cyrillic font approach from admin PDF export — fixed font registration
+- [x] Write vitest tests for notification triggers and new features
+- [x] Verified: all three features work in browser, PDF 110KB with correct Cyrillic

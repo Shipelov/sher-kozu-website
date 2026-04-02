@@ -1309,6 +1309,8 @@ export const notificationPreferences = mysqlTable("notificationPreferences", {
   compositionUpdate: boolean("compositionUpdate").default(true).notNull(),
   /** Receive notifications when monthly metrics (seasonal rhythm) are updated for your animal */
   metricsUpdate: boolean("metricsUpdate").default(true).notNull(),
+  /** Receive notifications when delivery status changes (ready / delivered) */
+  deliveryStatus: boolean("deliveryStatus").default(true).notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
 

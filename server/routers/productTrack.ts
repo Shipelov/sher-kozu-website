@@ -727,7 +727,28 @@ export const productTrackRouter = router({
     }),
 
   updateDeliveryStatus: protectedProcedure.input(deliveryStatusInput).mutation(async ({ input }) => {
-    return updateDeliveryStatus(input.deliveryId, input.status, input.adminNote);
+    const result = await updateDeliveryStatus(input.deliveryId, input.status, input.adminNote);
+
+    // Send notification to owner when status changes to "ready" or "delivered"
+    if (result && (input.status === "ready" || input.status === "delivered")) {
+      const MONTH_NAMES_RU = [
+        "Январь", "Февраль", "Март", "Апрель", "Май", "Июнь",
+        "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь",
+      ];
+      const monthLabel = MONTH_NAMES_RU[(result.month ?? 1) - 1] ?? `Месяц ${result.month}`;
+      const animalName = await getAnimalNameById(result.animalId);
+      const animalSlug = await getAnimalSlugById(result.animalId);
+      const statusLabel = input.status === "ready" ? "готова к отправке" : "доставлена";
+      createUserNotification({
+        userOpenId: result.ownerOpenId,
+        type: "delivery_status",
+        title: `📦 Доставка за ${monthLabel} — ${statusLabel}`,
+        body: `Доставка продукции от ${animalName || "вашего животного"} за ${monthLabel} ${result.year} ${statusLabel}.`,
+        link: `/tracker?animal=${animalSlug || ""}`,
+      }).catch((err) => console.warn("[Delivery Notification] Failed:", err));
+    }
+
+    return result;
   }),
 
   /** Admin: bulk update delivery status */
@@ -740,7 +761,60 @@ export const productTrackRouter = router({
       if (ctx.user.role !== "admin") {
         throw new TRPCError({ code: "FORBIDDEN", message: "Только администратор." });
       }
-      return bulkUpdateDeliveryStatus(input.deliveryIds, input.status);
+      const result = await bulkUpdateDeliveryStatus(input.deliveryIds, input.status);
+
+      // Send notifications to affected owners when status changes to "ready" or "delivered"
+      if (input.status === "ready" || input.status === "delivered") {
+        const statusLabel = input.status === "ready" ? "готова к отправке" : "доставлена";
+        // Fetch affected delivery entries to get ownerOpenIds
+        const { getDb } = await import("../db");
+        const db = await getDb();
+        if (db) {
+          try {
+            const { deliverySchedule } = await import("../../drizzle/schema");
+            const { inArray } = await import("drizzle-orm");
+            const affected = await db.select({
+              ownerOpenId: deliverySchedule.ownerOpenId,
+              animalId: deliverySchedule.animalId,
+              month: deliverySchedule.month,
+              year: deliverySchedule.year,
+            }).from(deliverySchedule).where(inArray(deliverySchedule.id, input.deliveryIds));
+
+            // Group by owner to avoid duplicate notifications
+            const ownerMap = new Map<string, { animalId: number; months: number[]; year: number }>();
+            for (const entry of affected) {
+              const existing = ownerMap.get(entry.ownerOpenId);
+              if (existing) {
+                existing.months.push(entry.month);
+              } else {
+                ownerMap.set(entry.ownerOpenId, { animalId: entry.animalId, months: [entry.month], year: entry.year });
+              }
+            }
+
+            const MONTH_NAMES_RU = [
+              "Январь", "Февраль", "Март", "Апрель", "Май", "Июнь",
+              "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь",
+            ];
+
+            for (const [ownerOpenId, info] of Array.from(ownerMap.entries())) {
+              const animalName = await getAnimalNameById(info.animalId);
+              const animalSlug = await getAnimalSlugById(info.animalId);
+              const monthLabels = info.months.map((m: number) => MONTH_NAMES_RU[m - 1]).join(", ");
+              createUserNotification({
+                userOpenId: ownerOpenId,
+                type: "delivery_status",
+                title: `📦 ${info.months.length > 1 ? "Доставки" : "Доставка"} — ${statusLabel}`,
+                body: `${info.months.length > 1 ? "Доставки" : "Доставка"} от ${animalName || "вашего животного"} за ${monthLabels} ${info.year} ${statusLabel}.`,
+                link: `/tracker?animal=${animalSlug || ""}`,
+              }).catch((err) => console.warn("[Delivery Bulk Notification] Failed:", err));
+            }
+          } catch (err) {
+            console.warn("[Delivery Bulk Notification] Error fetching entries:", err);
+          }
+        }
+      }
+
+      return result;
     }),
 
   /** Admin: update delivery note */

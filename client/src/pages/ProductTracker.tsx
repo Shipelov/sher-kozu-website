@@ -30,6 +30,7 @@ import {
   Truck,
   Users,
   Clock,
+  Download,
   FileText,
 } from "lucide-react";
 
@@ -802,6 +803,8 @@ function OwnerDeliveryTimeline({ animalSlug }: { animalSlug: string }) {
   const currentMonth = new Date().getMonth() + 1;
   const [selectedYear, setSelectedYear] = useState(currentYear);
   const [expandedMonth, setExpandedMonth] = useState<number | null>(currentMonth);
+  const [statusFilter, setStatusFilter] = useState<"all" | "planned" | "ready" | "delivered">("all");
+  const [exportingPdf, setExportingPdf] = useState(false);
 
   const yearOptions = useMemo(() => {
     const years: number[] = [];
@@ -814,7 +817,8 @@ function OwnerDeliveryTimeline({ animalSlug }: { animalSlug: string }) {
     { enabled: Boolean(animalSlug) },
   );
 
-  const entries = (timelineQuery.data?.entries ?? []) as TimelineEntry[];
+  const allEntries = (timelineQuery.data?.entries ?? []) as TimelineEntry[];
+  const entries = statusFilter === "all" ? allEntries : allEntries.filter((e) => e.status === statusFilter);
   const stats = timelineQuery.data?.stats ?? { total: 0, delivered: 0, ready: 0, planned: 0 };
   const progressPct = stats.total > 0 ? Math.round((stats.delivered / stats.total) * 100) : 0;
 
@@ -823,6 +827,88 @@ function OwnerDeliveryTimeline({ animalSlug }: { animalSlug: string }) {
       return JSON.parse(json) as Array<{ label: string; quantity: number; unit: string; frequency?: string }>;
     } catch {
       return [];
+    }
+  };
+
+  const handleExportPdf = async () => {
+    setExportingPdf(true);
+    try {
+      const { default: jsPDF } = await import("jspdf");
+      const { default: autoTable } = await import("jspdf-autotable");
+
+      const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+
+      // Load Cyrillic font (NotoSans) from CDN
+      const FONT_URL = "https://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/NotoSans-Regular_62fad82d.ttf";
+      const fontResp = await fetch(FONT_URL);
+      const fontBuf = await fontResp.arrayBuffer();
+      const fontBase64 = btoa(
+        new Uint8Array(fontBuf).reduce((data, byte) => data + String.fromCharCode(byte), "")
+      );
+      doc.addFileToVFS("NotoSans-Regular.ttf", fontBase64);
+      doc.addFont("NotoSans-Regular.ttf", "NotoSans", "normal");
+      doc.setFont("NotoSans");
+
+      // Status translation helper
+      const statusRu = (s: string) => {
+        const map: Record<string, string> = {
+          planned: "Запланировано",
+          ready: "Готово",
+          delivered: "Доставлено",
+          cancelled: "Отменено",
+        };
+        return map[s] ?? s;
+      };
+
+      // Title
+      doc.setFontSize(16);
+      doc.text(`Мой график доставок — ${selectedYear}`, 14, 18);
+
+      // Summary
+      doc.setFontSize(10);
+      doc.text(
+        `Всего: ${stats.total}  |  Доставлено: ${stats.delivered}  |  Готово: ${stats.ready}  |  Запланировано: ${stats.planned}`,
+        14,
+        26
+      );
+
+      // Table
+      autoTable(doc, {
+        startY: 32,
+        head: [["Месяц", "Статус", "Продукты", "Дата доставки", "Заметка"]],
+        body: allEntries.map((e) => {
+          const items = (() => { try { return JSON.parse(e.itemsJson) as Array<{ label: string; quantity: number; unit: string }>; } catch { return []; } })();
+          const productList = items.map((it) => `${it.label}: ${it.quantity} ${it.unit}`).join(", ");
+          return [
+            MONTH_NAMES_FULL[e.month - 1],
+            statusRu(e.status),
+            productList,
+            e.deliveredAt ? new Date(e.deliveredAt).toLocaleDateString("ru-RU") : "—",
+            e.adminNote ?? "",
+          ];
+        }),
+        styles: {
+          fontSize: 8,
+          cellPadding: 2,
+          font: "NotoSans",
+          overflow: "linebreak",
+        },
+        headStyles: { fillColor: [34, 85, 51], font: "NotoSans", fontStyle: "normal" },
+        columnStyles: {
+          0: { cellWidth: 25 },
+          1: { cellWidth: 28 },
+          2: { cellWidth: 65 },
+          3: { cellWidth: 25 },
+          4: { cellWidth: "auto" },
+        },
+        margin: { left: 14, right: 14 },
+      });
+
+      doc.save(`мои_доставки_${selectedYear}.pdf`);
+    } catch (err: any) {
+      console.error("PDF export error:", err);
+    } finally {
+      setExportingPdf(false);
     }
   };
 
@@ -852,8 +938,8 @@ function OwnerDeliveryTimeline({ animalSlug }: { animalSlug: string }) {
               </p>
             </div>
 
-            {/* Year selector */}
-            <div className="mt-5 flex items-center gap-2">
+            {/* Year selector + PDF export */}
+            <div className="mt-5 flex items-center gap-2 flex-wrap">
               {yearOptions.map((y) => (
                 <button
                   key={y}
@@ -867,7 +953,44 @@ function OwnerDeliveryTimeline({ animalSlug }: { animalSlug: string }) {
                   {y}
                 </button>
               ))}
+              {allEntries.length > 0 && (
+                <button
+                  onClick={handleExportPdf}
+                  disabled={exportingPdf}
+                  className="ml-auto inline-flex items-center gap-1.5 rounded-full border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-medium text-red-700 transition-colors hover:bg-red-100 disabled:opacity-50"
+                >
+                  {exportingPdf ? <Loader2 className="h-3 w-3 animate-spin" /> : <Download className="h-3 w-3" />}
+                  PDF
+                </button>
+              )}
             </div>
+
+            {/* Status filter buttons */}
+            {allEntries.length > 0 && (
+              <div className="mt-3 flex flex-wrap gap-1.5">
+                {([
+                  { key: "all" as const, label: "Все", count: allEntries.length, color: "bg-primary/10 text-primary border-primary/20" },
+                  { key: "delivered" as const, label: "Доставлено", count: stats.delivered, color: "bg-emerald-50 text-emerald-700 border-emerald-200" },
+                  { key: "ready" as const, label: "Готово", count: stats.ready, color: "bg-amber-50 text-amber-700 border-amber-200" },
+                  { key: "planned" as const, label: "План", count: stats.planned, color: "bg-stone-50 text-stone-700 border-stone-200" },
+                ]).map((f) => (
+                  <button
+                    key={f.key}
+                    onClick={() => setStatusFilter(f.key)}
+                    className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-medium transition-all ${
+                      statusFilter === f.key
+                        ? `${f.color} ring-1 ring-offset-1 ring-primary/30`
+                        : "border-border/50 bg-card text-muted-foreground hover:bg-secondary/50"
+                    }`}
+                  >
+                    {f.label}
+                    <span className={`inline-flex items-center justify-center rounded-full px-1 py-0 text-[9px] font-bold ${
+                      statusFilter === f.key ? "bg-white/60" : "bg-muted"
+                    }`}>{f.count}</span>
+                  </button>
+                ))}
+              </div>
+            )}
 
             {/* Progress summary */}
             {stats.total > 0 && (

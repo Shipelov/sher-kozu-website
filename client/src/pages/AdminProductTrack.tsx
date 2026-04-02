@@ -1077,6 +1077,7 @@ function DeliveryScheduleOverview({ animalId, ownerPlans }: { animalId: number; 
   const [noteText, setNoteText] = useState("");
   const [expandedMonth, setExpandedMonth] = useState<number | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [statusFilter, setStatusFilter] = useState<"all" | "planned" | "ready" | "delivered">("all");
 
   // Use the new getScheduleByAnimal endpoint for ALL owners
   const scheduleQuery = trpc.productTrack.getScheduleByAnimal.useQuery(
@@ -1112,10 +1113,12 @@ function DeliveryScheduleOverview({ animalId, ownerPlans }: { animalId: number; 
 
   const allEntries = (scheduleQuery.data ?? []) as DeliveryEntryWithOwner[];
 
-  // Filter by owner
-  const filteredEntries = selectedOwner === "all"
-    ? allEntries
-    : allEntries.filter((e) => e.ownerOpenId === selectedOwner);
+  // Filter by owner and status
+  const filteredEntries = allEntries.filter((e) => {
+    if (selectedOwner !== "all" && e.ownerOpenId !== selectedOwner) return false;
+    if (statusFilter !== "all" && e.status !== statusFilter) return false;
+    return true;
+  });
 
   // Unique owners for filter
   const uniqueOwners = useMemo(() => {
@@ -1456,6 +1459,31 @@ function DeliveryScheduleOverview({ animalId, ownerPlans }: { animalId: number; 
                   <p className="text-2xl font-bold text-stone-700">{stats.planned}</p>
                   <p className="text-[11px] text-stone-600 mt-0.5">Запланировано</p>
                 </div>
+              </div>
+
+              {/* Status filter buttons */}
+              <div className="flex flex-wrap gap-1.5">
+                {([
+                  { key: "all" as const, label: "Все", count: allEntries.filter((e) => selectedOwner === "all" || e.ownerOpenId === selectedOwner).length, color: "bg-primary/10 text-primary border-primary/20" },
+                  { key: "delivered" as const, label: "Доставлено", count: allEntries.filter((e) => e.status === "delivered" && (selectedOwner === "all" || e.ownerOpenId === selectedOwner)).length, color: "bg-emerald-50 text-emerald-700 border-emerald-200" },
+                  { key: "ready" as const, label: "Готово", count: allEntries.filter((e) => e.status === "ready" && (selectedOwner === "all" || e.ownerOpenId === selectedOwner)).length, color: "bg-amber-50 text-amber-700 border-amber-200" },
+                  { key: "planned" as const, label: "Запланировано", count: allEntries.filter((e) => e.status === "planned" && (selectedOwner === "all" || e.ownerOpenId === selectedOwner)).length, color: "bg-stone-50 text-stone-700 border-stone-200" },
+                ]).map((f) => (
+                  <button
+                    key={f.key}
+                    onClick={() => setStatusFilter(f.key)}
+                    className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition-all ${
+                      statusFilter === f.key
+                        ? `${f.color} ring-2 ring-offset-1 ring-primary/30`
+                        : "border-border/50 bg-card text-muted-foreground hover:bg-secondary/50"
+                    }`}
+                  >
+                    {f.label}
+                    <span className={`inline-flex items-center justify-center rounded-full px-1.5 py-0.5 text-[10px] font-bold ${
+                      statusFilter === f.key ? "bg-white/60" : "bg-muted"
+                    }`}>{f.count}</span>
+                  </button>
+                ))}
               </div>
 
               {/* Progress bar */}

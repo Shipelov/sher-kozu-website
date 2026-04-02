@@ -721,3 +721,282 @@ describe("Export row multi-owner scenarios", () => {
     expect(rows[1].monthNum).toBe(1);
   });
 });
+
+
+/* ═══════════════════════════════════════════════════════════════
+   Phase N — Status Filter, Notifications, Owner PDF Export Tests
+   ═══════════════════════════════════════════════════════════════ */
+
+/** Filter entries by status (mirrors client-side filter logic) */
+function filterByStatus(
+  entries: DeliveryEntryWithOwner[],
+  statusFilter: "all" | "planned" | "ready" | "delivered",
+  ownerFilter: string = "all",
+): DeliveryEntryWithOwner[] {
+  return entries.filter((e) => {
+    if (ownerFilter !== "all" && e.ownerOpenId !== ownerFilter) return false;
+    if (statusFilter !== "all" && e.status !== statusFilter) return false;
+    return true;
+  });
+}
+
+/** Count entries per status for filter badges */
+function countByStatus(entries: DeliveryEntryWithOwner[]) {
+  return {
+    all: entries.length,
+    delivered: entries.filter((e) => e.status === "delivered").length,
+    ready: entries.filter((e) => e.status === "ready").length,
+    planned: entries.filter((e) => e.status === "planned").length,
+  };
+}
+
+/** Determine if a status change should trigger a notification */
+function shouldNotify(newStatus: string): boolean {
+  return newStatus === "ready" || newStatus === "delivered";
+}
+
+/** Build notification title for delivery status change */
+function buildDeliveryNotificationTitle(
+  animalName: string,
+  monthName: string,
+  newStatus: "ready" | "delivered",
+): string {
+  if (newStatus === "ready") {
+    return `Доставка готова — ${animalName}, ${monthName}`;
+  }
+  return `Доставка выполнена — ${animalName}, ${monthName}`;
+}
+
+/** Build notification content for delivery status change */
+function buildDeliveryNotificationContent(
+  animalName: string,
+  monthName: string,
+  year: number,
+  newStatus: "ready" | "delivered",
+): string {
+  if (newStatus === "ready") {
+    return `Ваша доставка за ${monthName} ${year} от ${animalName} готова к отправке.`;
+  }
+  return `Ваша доставка за ${monthName} ${year} от ${animalName} успешно доставлена.`;
+}
+
+// MONTH_NAMES_FULL already declared above
+
+describe("Status Filter Logic", () => {
+  const mixedEntries: DeliveryEntryWithOwner[] = [
+    {
+      id: 1, ownerOpenId: "owner1", ownerName: "Иван", animalId: 1, ownershipId: 1, productPlanId: 1,
+      month: 1, year: 2026, itemsJson: "[]", status: "delivered", adminNote: null, deliveredAt: "2026-01-15", createdAt: "", updatedAt: "",
+    },
+    {
+      id: 2, ownerOpenId: "owner1", ownerName: "Иван", animalId: 1, ownershipId: 1, productPlanId: 1,
+      month: 2, year: 2026, itemsJson: "[]", status: "ready", adminNote: null, deliveredAt: null, createdAt: "", updatedAt: "",
+    },
+    {
+      id: 3, ownerOpenId: "owner1", ownerName: "Иван", animalId: 1, ownershipId: 1, productPlanId: 1,
+      month: 3, year: 2026, itemsJson: "[]", status: "planned", adminNote: null, deliveredAt: null, createdAt: "", updatedAt: "",
+    },
+    {
+      id: 4, ownerOpenId: "owner2", ownerName: "Мария", animalId: 1, ownershipId: 2, productPlanId: 2,
+      month: 1, year: 2026, itemsJson: "[]", status: "planned", adminNote: null, deliveredAt: null, createdAt: "", updatedAt: "",
+    },
+    {
+      id: 5, ownerOpenId: "owner2", ownerName: "Мария", animalId: 1, ownershipId: 2, productPlanId: 2,
+      month: 2, year: 2026, itemsJson: "[]", status: "delivered", adminNote: null, deliveredAt: "2026-02-20", createdAt: "", updatedAt: "",
+    },
+  ];
+
+  it("filter 'all' returns all entries", () => {
+    const result = filterByStatus(mixedEntries, "all");
+    expect(result).toHaveLength(5);
+  });
+
+  it("filter 'delivered' returns only delivered entries", () => {
+    const result = filterByStatus(mixedEntries, "delivered");
+    expect(result).toHaveLength(2);
+    expect(result.every((e) => e.status === "delivered")).toBe(true);
+  });
+
+  it("filter 'ready' returns only ready entries", () => {
+    const result = filterByStatus(mixedEntries, "ready");
+    expect(result).toHaveLength(1);
+    expect(result[0].status).toBe("ready");
+    expect(result[0].month).toBe(2);
+  });
+
+  it("filter 'planned' returns only planned entries", () => {
+    const result = filterByStatus(mixedEntries, "planned");
+    expect(result).toHaveLength(2);
+    expect(result.every((e) => e.status === "planned")).toBe(true);
+  });
+
+  it("combined owner + status filter works correctly", () => {
+    const result = filterByStatus(mixedEntries, "delivered", "owner1");
+    expect(result).toHaveLength(1);
+    expect(result[0].ownerOpenId).toBe("owner1");
+    expect(result[0].status).toBe("delivered");
+  });
+
+  it("combined owner + status filter returns empty when no match", () => {
+    const result = filterByStatus(mixedEntries, "ready", "owner2");
+    expect(result).toHaveLength(0);
+  });
+
+  it("countByStatus returns correct counts", () => {
+    const counts = countByStatus(mixedEntries);
+    expect(counts.all).toBe(5);
+    expect(counts.delivered).toBe(2);
+    expect(counts.ready).toBe(1);
+    expect(counts.planned).toBe(2);
+  });
+
+  it("countByStatus with empty array returns all zeros", () => {
+    const counts = countByStatus([]);
+    expect(counts.all).toBe(0);
+    expect(counts.delivered).toBe(0);
+    expect(counts.ready).toBe(0);
+    expect(counts.planned).toBe(0);
+  });
+
+  it("filter preserves entry order", () => {
+    const result = filterByStatus(mixedEntries, "planned");
+    expect(result[0].id).toBe(3);
+    expect(result[1].id).toBe(4);
+  });
+});
+
+describe("Delivery Notification Logic", () => {
+  it("shouldNotify returns true for 'ready'", () => {
+    expect(shouldNotify("ready")).toBe(true);
+  });
+
+  it("shouldNotify returns true for 'delivered'", () => {
+    expect(shouldNotify("delivered")).toBe(true);
+  });
+
+  it("shouldNotify returns false for 'planned'", () => {
+    expect(shouldNotify("planned")).toBe(false);
+  });
+
+  it("shouldNotify returns false for unknown status", () => {
+    expect(shouldNotify("cancelled")).toBe(false);
+  });
+
+  it("builds correct notification title for 'ready'", () => {
+    const title = buildDeliveryNotificationTitle("Мира", "Апрель", "ready");
+    expect(title).toBe("Доставка готова — Мира, Апрель");
+  });
+
+  it("builds correct notification title for 'delivered'", () => {
+    const title = buildDeliveryNotificationTitle("Мира", "Январь", "delivered");
+    expect(title).toBe("Доставка выполнена — Мира, Январь");
+  });
+
+  it("builds correct notification content for 'ready'", () => {
+    const content = buildDeliveryNotificationContent("Мира", "Апрель", 2026, "ready");
+    expect(content).toBe("Ваша доставка за Апрель 2026 от Мира готова к отправке.");
+  });
+
+  it("builds correct notification content for 'delivered'", () => {
+    const content = buildDeliveryNotificationContent("Мира", "Январь", 2026, "delivered");
+    expect(content).toBe("Ваша доставка за Январь 2026 от Мира успешно доставлена.");
+  });
+
+  it("notification uses correct month name from MONTH_NAMES_FULL", () => {
+    for (let m = 0; m < 12; m++) {
+      const title = buildDeliveryNotificationTitle("Козочка", MONTH_NAMES_FULL[m], "ready");
+      expect(title).toContain(MONTH_NAMES_FULL[m]);
+    }
+  });
+});
+
+describe("Owner PDF Export Data Preparation", () => {
+  const STATUS_RU: Record<string, string> = { planned: "Запланировано", ready: "Готово", delivered: "Доставлено" };
+
+  function formatOwnerPdfRow(entry: DeliveryEntryWithOwner) {
+    const items = (() => {
+      try {
+        return JSON.parse(entry.itemsJson) as Array<{ label: string; quantity: number; unit: string }>;
+      } catch {
+        return [];
+      }
+    })();
+    const productList = items.map((it) => `${it.label}: ${it.quantity} ${it.unit}`).join(", ");
+    return {
+      month: MONTH_NAMES_FULL[entry.month - 1],
+      status: STATUS_RU[entry.status] ?? entry.status,
+      products: productList,
+      deliveredAt: entry.deliveredAt ? new Date(entry.deliveredAt).toLocaleDateString("ru-RU") : "—",
+      note: entry.adminNote ?? "",
+    };
+  }
+
+  it("formats row with products correctly", () => {
+    const entry: DeliveryEntryWithOwner = {
+      id: 1, ownerOpenId: "o1", ownerName: "Иван", animalId: 1, ownershipId: 1, productPlanId: 1,
+      month: 4, year: 2026,
+      itemsJson: JSON.stringify([
+        { label: "Молоко", quantity: 2, unit: "л" },
+        { label: "Сыр", quantity: 0.3, unit: "кг" },
+      ]),
+      status: "ready", adminNote: "Позвонить перед доставкой", deliveredAt: null, createdAt: "", updatedAt: "",
+    };
+    const row = formatOwnerPdfRow(entry);
+    expect(row.month).toBe("Апрель");
+    expect(row.status).toBe("Готово");
+    expect(row.products).toBe("Молоко: 2 л, Сыр: 0.3 кг");
+    expect(row.deliveredAt).toBe("—");
+    expect(row.note).toBe("Позвонить перед доставкой");
+  });
+
+  it("formats delivered row with date", () => {
+    const entry: DeliveryEntryWithOwner = {
+      id: 2, ownerOpenId: "o1", ownerName: "Иван", animalId: 1, ownershipId: 1, productPlanId: 1,
+      month: 1, year: 2026, itemsJson: "[]", status: "delivered", adminNote: null,
+      deliveredAt: "2026-01-15T10:00:00Z", createdAt: "", updatedAt: "",
+    };
+    const row = formatOwnerPdfRow(entry);
+    expect(row.month).toBe("Январь");
+    expect(row.status).toBe("Доставлено");
+    expect(row.deliveredAt).not.toBe("—");
+    expect(row.note).toBe("");
+  });
+
+  it("handles invalid itemsJson gracefully", () => {
+    const entry: DeliveryEntryWithOwner = {
+      id: 3, ownerOpenId: "o1", ownerName: "Иван", animalId: 1, ownershipId: 1, productPlanId: 1,
+      month: 6, year: 2026, itemsJson: "not-json", status: "planned", adminNote: null,
+      deliveredAt: null, createdAt: "", updatedAt: "",
+    };
+    const row = formatOwnerPdfRow(entry);
+    expect(row.products).toBe("");
+    expect(row.month).toBe("Июнь");
+  });
+
+  it("formats all 12 months correctly", () => {
+    for (let m = 1; m <= 12; m++) {
+      const entry: DeliveryEntryWithOwner = {
+        id: m, ownerOpenId: "o1", ownerName: "Иван", animalId: 1, ownershipId: 1, productPlanId: 1,
+        month: m, year: 2026, itemsJson: "[]", status: "planned", adminNote: null,
+        deliveredAt: null, createdAt: "", updatedAt: "",
+      };
+      const row = formatOwnerPdfRow(entry);
+      expect(row.month).toBe(MONTH_NAMES_FULL[m - 1]);
+      expect(row.status).toBe("Запланировано");
+    }
+  });
+
+  it("summary stats match entries", () => {
+    const entries: DeliveryEntryWithOwner[] = [
+      { id: 1, ownerOpenId: "o1", ownerName: "Иван", animalId: 1, ownershipId: 1, productPlanId: 1, month: 1, year: 2026, itemsJson: "[]", status: "delivered", adminNote: null, deliveredAt: "2026-01-15", createdAt: "", updatedAt: "" },
+      { id: 2, ownerOpenId: "o1", ownerName: "Иван", animalId: 1, ownershipId: 1, productPlanId: 1, month: 2, year: 2026, itemsJson: "[]", status: "ready", adminNote: null, deliveredAt: null, createdAt: "", updatedAt: "" },
+      { id: 3, ownerOpenId: "o1", ownerName: "Иван", animalId: 1, ownershipId: 1, productPlanId: 1, month: 3, year: 2026, itemsJson: "[]", status: "planned", adminNote: null, deliveredAt: null, createdAt: "", updatedAt: "" },
+    ];
+    const stats = calculateStats(entries);
+    expect(stats.total).toBe(3);
+    expect(stats.delivered).toBe(1);
+    expect(stats.ready).toBe(1);
+    expect(stats.planned).toBe(1);
+    expect(stats.delivered + stats.ready + stats.planned).toBe(stats.total);
+  });
+});

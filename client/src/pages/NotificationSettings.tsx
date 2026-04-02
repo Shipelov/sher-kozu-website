@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import { Bell, Camera, Newspaper, CalendarHeart, Loader2, CheckCircle2, Milk, BarChart3 } from "lucide-react";
+import { Bell, Camera, Newspaper, CalendarHeart, Loader2, CheckCircle2, Milk, BarChart3, Truck } from "lucide-react";
 import { toast } from "sonner";
 import DashboardLayout from "@/components/DashboardLayout";
 
@@ -51,6 +51,13 @@ const NOTIFICATION_TYPES = [
     icon: BarChart3,
     iconColor: "text-indigo-500",
   },
+  {
+    key: "deliveryStatus" as const,
+    label: "Статус доставки",
+    description: "Уведомление, когда доставка переходит в статус «Готово» или «Доставлено»",
+    icon: Truck,
+    iconColor: "text-orange-500",
+  },
 ];
 
 export default function NotificationSettings() {
@@ -67,7 +74,7 @@ export default function NotificationSettings() {
       await utils.notifications.getPreferences.cancel();
       const previous = utils.notifications.getPreferences.getData();
       utils.notifications.getPreferences.setData(undefined, (old) => ({
-        ...(old ?? { photoApproved: true, photoRejected: true, clubPost: true, clubEvent: true, compositionUpdate: true, metricsUpdate: true }),
+        ...(old ?? { photoApproved: true, photoRejected: true, clubPost: true, clubEvent: true, compositionUpdate: true, metricsUpdate: true, deliveryStatus: true }),
         ...newPrefs,
       }));
       return { previous };
@@ -88,7 +95,7 @@ export default function NotificationSettings() {
     },
   });
 
-  function handleToggle(key: "photoApproved" | "photoRejected" | "clubPost" | "clubEvent" | "compositionUpdate" | "metricsUpdate", value: boolean) {
+  function handleToggle(key: "photoApproved" | "photoRejected" | "clubPost" | "clubEvent" | "compositionUpdate" | "metricsUpdate" | "deliveryStatus", value: boolean) {
     updateMutation.mutate({ [key]: value });
   }
 

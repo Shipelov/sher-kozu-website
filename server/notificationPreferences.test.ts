@@ -28,6 +28,7 @@ describe("Notification Preferences", () => {
         clubEvent: true,
         compositionUpdate: true,
         metricsUpdate: true,
+        deliveryStatus: true,
       });
     });
   });

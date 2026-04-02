@@ -1,0 +1,1 @@
+ALTER TABLE `notificationPreferences` ADD `deliveryStatus` boolean DEFAULT true NOT NULL;

@@ -4267,6 +4267,7 @@ const DEFAULT_PREFS = {
   clubEvent: true,
   compositionUpdate: true,
   metricsUpdate: true,
+  deliveryStatus: true,
 };
 
 /** Map notification type string to the column name in preferences table */
@@ -4277,6 +4278,7 @@ const TYPE_TO_PREF_KEY: Record<string, keyof typeof DEFAULT_PREFS> = {
   club_event: "clubEvent",
   composition_update: "compositionUpdate",
   metrics_update: "metricsUpdate",
+  delivery_status: "deliveryStatus",
 };
 
 export async function getNotificationPreferences(userOpenId: string) {
@@ -4300,6 +4302,7 @@ export async function getNotificationPreferences(userOpenId: string) {
       clubEvent: row.clubEvent,
       compositionUpdate: row.compositionUpdate,
       metricsUpdate: row.metricsUpdate,
+      deliveryStatus: row.deliveryStatus,
     };
   } catch (error) {
     console.error("[Database] Failed to get notification preferences:", error);
