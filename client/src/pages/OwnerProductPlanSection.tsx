@@ -1,12 +1,12 @@
-/**
- * OwnerProductPlanSection — Tier-Based Product Plan
+/*
+ * OwnerProductPlanSection — Tier-Based Product Plan (Calculator Style)
  *
- * New workflow:
- * 1. Owner purchases animal → tier is computed automatically
- * 2. Admin generates product catalog for the tier and verifies it
- * 3. Owner receives notification → configures their plan from tier catalog
- * 4. Admin approves → delivery schedule generated
- * 5. Plan changes governed by tier frequency (basic=quarterly, standard=monthly, professional=weekly)
+ * Workflow:
+ * 1. Owner purchases animal → tier computed automatically
+ * 2. Admin populates products from tier catalog → verifies them
+ * 3. Owner configures plan with calculator-style sliders (like PricingCalculator)
+ * 4. "What you get" table shows annual volumes
+ * 5. Plan changes governed by tier frequency
  */
 
 import { useAuth } from "@/_core/hooks/useAuth";
@@ -69,10 +69,7 @@ type DeliveryEntry = {
   adminNote: string | null;
 };
 
-type TierInfo = {
-  tierSlug: string;
-  changeFrequencyDays: number;
-};
+/* ── Constants ── */
 
 const TIER_LABELS: Record<string, string> = {
   basic: "Базовый",
@@ -96,6 +93,26 @@ const TIER_FREQUENCY_LABELS: Record<string, string> = {
   basic: "1 раз в квартал",
   standard: "1 раз в месяц",
   professional: "1 раз в неделю",
+};
+
+const PRODUCT_COLORS: Record<string, string> = {
+  milk: "bg-[oklch(0.55_0.18_145)]",
+  smetana: "bg-[oklch(0.55_0.15_50)]",
+  yogurt: "bg-[oklch(0.55_0.12_260)]",
+  kefir: "bg-[oklch(0.55_0.10_310)]",
+  cheese: "bg-[oklch(0.55_0.14_80)]",
+  brynza: "bg-[oklch(0.50_0.12_30)]",
+  kachotta: "bg-[oklch(0.45_0.10_20)]",
+  halumi: "bg-[oklch(0.50_0.15_120)]",
+  ricotta: "bg-[oklch(0.60_0.10_90)]",
+  camembert: "bg-[oklch(0.48_0.12_60)]",
+  aged_cheese: "bg-[oklch(0.42_0.10_40)]",
+  blue_cheese: "bg-[oklch(0.45_0.14_250)]",
+  smoked_cheese: "bg-[oklch(0.40_0.08_50)]",
+  butter: "bg-[oklch(0.65_0.15_95)]",
+  condensed_milk: "bg-[oklch(0.58_0.12_80)]",
+  fermented_drink: "bg-[oklch(0.52_0.10_200)]",
+  custom: "bg-[oklch(0.50_0.08_160)]",
 };
 
 const PRODUCT_TYPE_ICONS: Record<string, typeof Milk> = {
@@ -142,16 +159,17 @@ const PLAN_STATUS_LABELS: Record<string, string> = {
   confirmed: "План подтверждён",
 };
 
+const fmt = (n: number) => n.toLocaleString("ru-RU");
+
 /* ── Milk Budget Bar ── */
 
-function MilkBudgetBar({ used, total, label }: { used: number; total: number; label?: string }) {
+function MilkBudgetBar({ used, total }: { used: number; total: number }) {
   const pct = total > 0 ? Math.min(100, Math.round((used / total) * 100)) : 0;
   const remaining = Math.max(0, total - used);
   const color = pct > 90 ? "bg-rose-500" : pct > 70 ? "bg-amber-500" : "bg-emerald-500";
 
   return (
     <div className="space-y-1.5">
-      {label && <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{label}</p>}
       <div className="h-3 overflow-hidden rounded-full bg-muted">
         <motion.div
           className={`h-full rounded-full ${color}`}
@@ -161,8 +179,8 @@ function MilkBudgetBar({ used, total, label }: { used: number; total: number; la
         />
       </div>
       <div className="flex justify-between text-xs text-muted-foreground">
-        <span>{used} л выбрано</span>
-        <span>{remaining} л свободно</span>
+        <span>{used.toFixed(1)} л использовано</span>
+        <span>{remaining.toFixed(1)} л свободно</span>
       </div>
     </div>
   );
@@ -177,79 +195,6 @@ function TierBadge({ tierSlug }: { tierSlug: string }) {
       <Icon className="mr-1 h-3 w-3" />
       {TIER_LABELS[tierSlug] ?? tierSlug}
     </Badge>
-  );
-}
-
-/* ── Product Selection Card (Tier Catalog) ── */
-
-function CatalogSelectionCard({
-  item,
-  value,
-  maxByBudget,
-  onChange,
-  disabled,
-}: {
-  item: CatalogItem;
-  value: number;
-  maxByBudget: number;
-  onChange: (units: number) => void;
-  disabled: boolean;
-}) {
-  const Icon = PRODUCT_TYPE_ICONS[item.productType] ?? Package;
-  const milkUsed = value * item.conversionRatio;
-  const effectiveMax = Math.min(item.maxAnnualUnits, maxByBudget);
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
-      className={`rounded-2xl border p-5 transition-colors ${
-        value > 0 ? "border-primary/30 bg-primary/5" : "border-border/70 bg-card"
-      } ${disabled ? "opacity-60" : ""}`}
-    >
-      <div className="flex items-center gap-3 mb-4">
-        <div className={`inline-flex h-10 w-10 items-center justify-center rounded-xl ${value > 0 ? "bg-primary/15 text-primary" : "bg-muted text-muted-foreground"}`}>
-          <Icon className="h-5 w-5" />
-        </div>
-        <div className="flex-1">
-          <h4 className="font-semibold text-foreground">{item.label}</h4>
-          <p className="text-xs text-muted-foreground">
-            {item.conversionRatio} л молока → 1 {item.unit}
-          </p>
-        </div>
-        {value > 0 && (
-          <Badge className="rounded-full border-primary/20 bg-primary/10 text-primary">
-            {value} {item.unit}
-          </Badge>
-        )}
-      </div>
-
-      {!disabled && effectiveMax > 0 && (
-        <div className="space-y-3">
-          <Slider
-            value={[value]}
-            min={0}
-            max={effectiveMax}
-            step={1}
-            onValueChange={([v]) => onChange(v)}
-            disabled={disabled}
-            className="py-1"
-          />
-          <div className="flex justify-between text-xs text-muted-foreground">
-            <span>0 {item.unit}</span>
-            <span className="font-medium text-foreground">{value} {item.unit} · {milkUsed} л молока</span>
-            <span>{effectiveMax} {item.unit}</span>
-          </div>
-        </div>
-      )}
-
-      {disabled && value > 0 && (
-        <div className="flex items-center gap-2 mt-2 text-xs text-muted-foreground">
-          <Lock className="h-3 w-3" />
-          <span>{value} {item.unit}/год · {milkUsed} л молока</span>
-        </div>
-      )}
-    </motion.div>
   );
 }
 
@@ -286,11 +231,13 @@ export default function OwnerProductPlanSection({
   animalSlug,
   animalName,
   mySharePercent,
+  species,
 }: {
   animalId: number;
   animalSlug: string;
   animalName: string;
   mySharePercent: number;
+  species: "goat" | "sheep";
 }) {
   const { user } = useAuth();
   const utils = trpc.useUtils();
@@ -304,7 +251,7 @@ export default function OwnerProductPlanSection({
   // Get tier catalog based on owner's tier
   const tierSlug = tierQuery.data?.tierSlug ?? "basic";
   const catalogQuery = trpc.productTrack.getMyTierCatalog.useQuery(
-    { species: undefined },
+    { species },
     { enabled: Boolean(tierQuery.data), staleTime: 60_000 },
   );
 
@@ -325,7 +272,7 @@ export default function OwnerProductPlanSection({
       utils.productTrack.getMyPlan.invalidate({ animalId });
       utils.productTrack.getSchedule.invalidate();
       toast.success("План отправлен на подтверждение", {
-        description: "Ферма рассмотрит ваш план и подтвердит его. После подтверждения будет сформирован график доставки.",
+        description: "Ферма рассмотрит ваш план и подтвердит его.",
       });
     },
     onError: (err: { message: string }) => toast.error(err.message),
@@ -335,78 +282,149 @@ export default function OwnerProductPlanSection({
     onSuccess: () => {
       utils.productTrack.getMyPlan.invalidate({ animalId });
       utils.productTrack.canChangePlan.invalidate();
-      toast.success("План открыт для изменения", {
-        description: "Настройте новый набор продуктов.",
-      });
+      toast.success("План открыт для изменения");
     },
     onError: (err: { message: string }) => toast.error(err.message),
   });
 
-  // Local state for selections
-  const [selections, setSelections] = useState<Map<number, number>>(new Map());
+  // Local state: allocation as percentage per catalog item
+  const [allocPercent, setAllocPercent] = useState<Record<number, number>>({});
 
   const profile = profileQuery.data;
-  const catalog = (catalogQuery.data ?? []) as CatalogItem[];
+  const catalog = useMemo(() => ((catalogQuery.data ?? []) as CatalogItem[]).filter(c => c.isEnabled), [catalogQuery.data]);
   const existingPlan = planQuery.data;
   const schedule = (scheduleQuery.data ?? []) as DeliveryEntry[];
 
   // Calculate milk budget for this owner's share
   const annualMilkBudget = profile ? Math.floor((profile.annualMilkLiters * mySharePercent) / 100) : 0;
 
-  // Calculate total milk used by current selections
-  const totalMilkUsed = useMemo(() => {
-    let total = 0;
-    selections.forEach((units, catalogItemId) => {
-      const item = catalog.find((c) => c.id === catalogItemId);
-      if (item) total += units * item.conversionRatio;
-    });
-    return total;
-  }, [selections, catalog]);
+  // Total allocation percentage
+  const totalAllocPercent = useMemo(() => {
+    return Object.values(allocPercent).reduce((s, v) => s + v, 0);
+  }, [allocPercent]);
 
-  // Initialize selections from existing plan
+  // Calculate product outputs from allocation percentages
+  const productOutputs = useMemo(() => {
+    return catalog.map((item) => {
+      const pct = allocPercent[item.id] ?? 0;
+      const milkAllocated = (annualMilkBudget * pct) / 100;
+      const annualUnits = item.conversionRatio > 0 ? milkAllocated / item.conversionRatio : 0;
+      return {
+        catalogItemId: item.id,
+        label: item.label,
+        productType: item.productType,
+        unit: item.unit,
+        percent: pct,
+        milkUsed: milkAllocated,
+        annualUnits: Math.round(annualUnits * 10) / 10,
+        conversionRatio: item.conversionRatio,
+      };
+    });
+  }, [catalog, allocPercent, annualMilkBudget]);
+
+  // Total milk used
+  const totalMilkUsed = useMemo(() => {
+    return productOutputs.reduce((s, p) => s + p.milkUsed, 0);
+  }, [productOutputs]);
+
+  // Initialize allocPercent from existing plan selections
   useEffect(() => {
+    if (catalog.length === 0) return;
+
+    // Try to restore from saved selections
     if (existingPlan?.selectionsJson) {
       try {
         const parsed = JSON.parse(existingPlan.selectionsJson) as EnrichedSelection[];
-        const map = new Map<number, number>();
-        for (const sel of parsed) {
-          if (sel.annualUnits > 0) {
-            map.set(sel.catalogItemId, sel.annualUnits);
+        if (parsed.length > 0) {
+          const totalMilkInPlan = parsed.reduce((s, sel) => s + (sel.milkUsed ?? 0), 0);
+          if (totalMilkInPlan > 0 && annualMilkBudget > 0) {
+            const newAlloc: Record<number, number> = {};
+            for (const sel of parsed) {
+              if (sel.milkUsed > 0) {
+                newAlloc[sel.catalogItemId] = Math.round((sel.milkUsed / annualMilkBudget) * 100);
+              }
+            }
+            setAllocPercent(newAlloc);
+            return;
+          }
+          // Fallback: distribute from annualUnits * conversionRatio
+          const newAlloc: Record<number, number> = {};
+          let hasAny = false;
+          for (const sel of parsed) {
+            const item = catalog.find(c => c.id === sel.catalogItemId);
+            if (item && sel.annualUnits > 0) {
+              const milkUsed = sel.annualUnits * item.conversionRatio;
+              newAlloc[sel.catalogItemId] = annualMilkBudget > 0 ? Math.round((milkUsed / annualMilkBudget) * 100) : 0;
+              hasAny = true;
+            }
+          }
+          if (hasAny) {
+            setAllocPercent(newAlloc);
+            return;
           }
         }
-        setSelections(map);
       } catch {
-        setSelections(new Map());
+        // fall through to default distribution
       }
-    } else {
-      setSelections(new Map());
     }
-  }, [existingPlan?.selectionsJson, existingPlan?.status]);
 
-  const handleSelectionChange = useCallback(
-    (catalogItemId: number, units: number) => {
-      setSelections((prev) => {
-        const next = new Map(prev);
-        if (units <= 0) {
-          next.delete(catalogItemId);
-        } else {
-          next.set(catalogItemId, units);
+    // Default: distribute evenly among first 5 products when plan is pending owner config
+    if (existingPlan?.status === "pending_owner_config") {
+      const items = catalog.slice(0, Math.min(5, catalog.length));
+      const each = Math.floor(100 / items.length);
+      const newAlloc: Record<number, number> = {};
+      items.forEach((item, i) => {
+        newAlloc[item.id] = i === items.length - 1 ? 100 - each * (items.length - 1) : each;
+      });
+      setAllocPercent(newAlloc);
+    }
+  }, [existingPlan?.selectionsJson, existingPlan?.status, catalog, annualMilkBudget]);
+
+  // Allocation slider handler (proportional redistribution like PricingCalculator)
+  const handleAllocChange = useCallback(
+    (itemId: number, newVal: number) => {
+      setAllocPercent((prev) => {
+        const others = Object.entries(prev).filter(([k]) => Number(k) !== itemId);
+        const othersTotal = others.reduce((s, [, v]) => s + v, 0);
+        const remaining = 100 - newVal;
+
+        if (othersTotal === 0) {
+          const each = others.length > 0 ? Math.floor(remaining / others.length) : 0;
+          const result: Record<number, number> = { [itemId]: newVal };
+          others.forEach(([k], i) => {
+            result[Number(k)] = i === others.length - 1 ? remaining - each * (others.length - 1) : each;
+          });
+          return result;
         }
-        return next;
+
+        const result: Record<number, number> = { [itemId]: newVal };
+        let distributed = 0;
+        others.forEach(([k, v], i) => {
+          if (i === others.length - 1) {
+            result[Number(k)] = Math.max(0, remaining - distributed);
+          } else {
+            const scaled = Math.round((v / othersTotal) * remaining);
+            result[Number(k)] = Math.max(0, scaled);
+            distributed += result[Number(k)];
+          }
+        });
+        return result;
       });
     },
     [],
   );
 
   const handleSubmit = () => {
-    if (selections.size === 0) {
+    if (Object.values(allocPercent).every(v => v === 0)) {
       toast.error("Выберите хотя бы один продукт");
       return;
     }
-    const selArray: Array<{ catalogItemId: number; annualUnits: number }> = [];
-    selections.forEach((annualUnits, catalogItemId) => {
-      selArray.push({ catalogItemId, annualUnits });
-    });
+    const selArray = productOutputs
+      .filter(p => p.annualUnits > 0)
+      .map(p => ({
+        catalogItemId: p.catalogItemId,
+        annualUnits: Math.round(p.annualUnits),
+      }));
     if (!existingPlan?.id) {
       toast.error("План не найден");
       return;
@@ -429,14 +447,17 @@ export default function OwnerProductPlanSection({
   // Don't show if no production profile configured
   if (!isLoading && !profile) return null;
 
+  // Active products (those with allocation > 0)
+  const activeProducts = productOutputs.filter(p => p.annualUnits > 0);
+
   return (
     <section id="product-plan" className="border-b border-border/60 py-10 md:py-14">
       <div className="container">
-        <div className="mx-auto max-w-4xl space-y-6">
+        <div className="mx-auto max-w-5xl space-y-6">
           {/* Header with Tier Badge */}
           <div className="flex flex-wrap items-center gap-3">
             <Package className="h-5 w-5 text-primary" />
-            <h2 className="text-2xl font-semibold text-foreground">Мои продукты</h2>
+            <h2 className="text-2xl font-semibold text-foreground">Продуктовый план</h2>
             {tierQuery.data && <TierBadge tierSlug={tierSlug} />}
             {isPendingAdminSetup && (
               <Badge className="rounded-full border-orange-200 bg-orange-50 text-orange-700">
@@ -455,7 +476,7 @@ export default function OwnerProductPlanSection({
             )}
             {isConfirmed && (
               <Badge className="rounded-full border-emerald-200 bg-emerald-50 text-emerald-700">
-                <Lock className="mr-1 h-3 w-3" /> План подтверждён
+                <CheckCircle2 className="mr-1 h-3 w-3" /> План подтверждён
               </Badge>
             )}
           </div>
@@ -468,34 +489,10 @@ export default function OwnerProductPlanSection({
             </Card>
           ) : (
             <>
-              {/* Tier Info Card */}
-              {tierQuery.data && (
-                <Card className="rounded-2xl border-border/70 shadow-sm">
-                  <CardContent className="p-5">
-                    <div className="flex items-start gap-4">
-                      <div className={`inline-flex h-12 w-12 items-center justify-center rounded-2xl ${TIER_COLORS[tierSlug]?.replace("border-", "bg-").replace("text-", "text-") ?? "bg-stone-100"}`}>
-                        {(() => { const Icon = TIER_ICONS[tierSlug] ?? ShieldCheck; return <Icon className="h-6 w-6" />; })()}
-                      </div>
-                      <div className="flex-1">
-                        <h3 className="font-semibold text-foreground">
-                          Тариф: {TIER_LABELS[tierSlug] ?? tierSlug}
-                        </h3>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          Частота изменения плана: {TIER_FREQUENCY_LABELS[tierSlug] ?? "—"}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          Продукты формируются автоматически на основе вашего тарифа
-                        </p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
-
-              {/* Status-specific messages */}
+              {/* Status messages */}
               {isPendingAdminSetup && (
                 <div className="rounded-xl border border-orange-200 bg-orange-50 p-4 text-sm text-orange-800">
-                  <p className="font-medium">⏳ Ожидает настройки администратором</p>
+                  <p className="font-medium">Ожидает настройки администратором</p>
                   <p className="mt-1 text-xs text-orange-700">
                     Ваш тариф определён. Администратор фермы формирует набор доступных продуктов.
                     Вы получите уведомление, когда сможете настроить свой план.
@@ -505,122 +502,263 @@ export default function OwnerProductPlanSection({
 
               {isPendingApproval && (
                 <div className="rounded-xl border border-blue-200 bg-blue-50 p-4 text-sm text-blue-800">
-                  <p className="font-medium">⏳ План отправлен на подтверждение</p>
+                  <p className="font-medium">План отправлен на подтверждение</p>
                   <p className="mt-1 text-xs text-blue-700">
                     Ферма рассмотрит ваш выбор и подтвердит план. После подтверждения будет сформирован график доставки.
                   </p>
                 </div>
               )}
 
-              {/* Milk Budget */}
-              {(isPendingOwnerConfig || isLocked) && profile && (
-                <Card className="rounded-2xl border-border/70 shadow-sm">
-                  <CardContent className="p-5">
-                    <div className="flex items-center gap-3 mb-4">
-                      <Milk className="h-5 w-5 text-primary" />
+              {/* ─── Calculator Layout: Config Left + Results Right ─── */}
+              {(isPendingOwnerConfig || isLocked || isPendingApproval) && profile && (
+                <div className="grid gap-8 lg:grid-cols-[1fr_340px]">
+                  {/* ─── LEFT: Configuration Panel ─── */}
+                  <div className="rounded-2xl border border-border bg-card p-6 md:p-8">
+                    {/* Tier info */}
+                    <div className="flex items-center gap-3 mb-6">
+                      <div className={`inline-flex h-10 w-10 items-center justify-center rounded-xl ${
+                        tierSlug === "professional" ? "bg-amber-100 text-amber-700" :
+                        tierSlug === "standard" ? "bg-blue-100 text-blue-700" :
+                        "bg-stone-100 text-stone-700"
+                      }`}>
+                        {(() => { const Icon = TIER_ICONS[tierSlug] ?? ShieldCheck; return <Icon className="h-5 w-5" />; })()}
+                      </div>
                       <div>
-                        <h3 className="font-semibold text-foreground">Молочный бюджет</h3>
+                        <h3 className="font-semibold text-foreground">
+                          Тариф: {TIER_LABELS[tierSlug] ?? tierSlug}
+                        </h3>
                         <p className="text-xs text-muted-foreground">
-                          Ваша доля {mySharePercent}% от {animalName} = {annualMilkBudget} литров молока в год
+                          Частота изменения: {TIER_FREQUENCY_LABELS[tierSlug] ?? "—"}
                         </p>
                       </div>
                     </div>
-                    <MilkBudgetBar used={totalMilkUsed} total={annualMilkBudget} />
-                  </CardContent>
-                </Card>
-              )}
 
-              {/* Product Selection / View */}
-              {(isPendingOwnerConfig || isLocked || isPendingApproval) && (
-                <div className="space-y-4">
-                  <h3 className="text-lg font-semibold text-foreground">
-                    {isPendingOwnerConfig ? "Выберите продукты из каталога" : "Ваш продуктовый план"}
-                  </h3>
-
-                  {isPendingOwnerConfig && (
-                    <p className="text-sm text-muted-foreground">
-                      Распределите молочный бюджет между доступными продуктами вашего тарифа.
-                    </p>
-                  )}
-
-                  {isConfirmed && existingPlan?.adminNotes && (
-                    <div className="rounded-xl border border-stone-200 bg-stone-50 p-3 text-sm text-stone-700">
-                      <p className="font-medium">Заметка фермы:</p>
-                      <p className="mt-1 text-xs">{existingPlan.adminNotes}</p>
+                    {/* Milk budget indicator */}
+                    <div className="flex items-center justify-center mb-6">
+                      <div className="rounded-full bg-primary/10 px-6 py-3 text-center">
+                        <span className="text-2xl font-bold text-primary">{annualMilkBudget} л</span>
+                        <span className="text-xs text-muted-foreground block">молочный бюджет в год</span>
+                        <span className="text-[10px] text-muted-foreground">
+                          ({mySharePercent}% от {animalName})
+                        </span>
+                      </div>
                     </div>
-                  )}
 
-                  <div className="grid gap-4 sm:grid-cols-2">
-                    {catalog.filter(c => c.isEnabled).map((item) => {
-                      const currentValue = selections.get(item.id) ?? 0;
-                      const milkUsedByOthers = totalMilkUsed - currentValue * item.conversionRatio;
-                      const remainingMilk = annualMilkBudget - milkUsedByOthers;
-                      const maxByBudget = Math.max(0, Math.floor(remainingMilk / item.conversionRatio));
+                    {/* Milk budget bar */}
+                    <div className="mb-6">
+                      <MilkBudgetBar used={totalMilkUsed} total={annualMilkBudget} />
+                    </div>
 
-                      return (
-                        <CatalogSelectionCard
-                          key={item.id}
-                          item={item}
-                          value={currentValue}
-                          maxByBudget={maxByBudget}
-                          onChange={(units) => handleSelectionChange(item.id, units)}
-                          disabled={Boolean(isLocked || isPendingApproval)}
-                        />
-                      );
-                    })}
+                    {/* Allocation label */}
+                    <label className="text-sm font-semibold text-foreground mb-1 block">
+                      Распределение баланса молока
+                    </label>
+                    <p className="text-xs text-muted-foreground mb-5">
+                      Перемещайте слайдеры, чтобы распределить молоко между продуктами вашего тарифа
+                    </p>
+
+                    {/* Allocation sliders */}
+                    <div className="space-y-4 mb-6">
+                      {catalog.map((item) => {
+                        const val = allocPercent[item.id] ?? 0;
+                        const colorClass = PRODUCT_COLORS[item.productType] ?? PRODUCT_COLORS.custom;
+                        const Icon = PRODUCT_TYPE_ICONS[item.productType] ?? Package;
+
+                        return (
+                          <div key={item.id} className="flex items-center gap-3">
+                            <div className={`h-3 w-3 rounded-full shrink-0 ${colorClass}`} />
+                            <div className="flex items-center gap-1.5 w-36 shrink-0">
+                              <Icon className="h-3.5 w-3.5 text-muted-foreground" />
+                              <span className="text-sm text-foreground truncate">{item.label}</span>
+                            </div>
+                            <Slider
+                              value={[val]}
+                              min={0}
+                              max={80}
+                              step={5}
+                              onValueChange={([v]) => handleAllocChange(item.id, v)}
+                              disabled={isLocked || isPendingApproval}
+                              className="flex-1"
+                            />
+                            <span className="text-sm font-semibold text-foreground w-10 text-right">{val}%</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    {Math.abs(totalAllocPercent - 100) > 1 && (
+                      <p className="mb-4 text-xs text-destructive">
+                        Сумма: {totalAllocPercent}% (должна быть 100%)
+                      </p>
+                    )}
+
+                    {/* "What you get" table */}
+                    {activeProducts.length > 0 && (
+                      <div>
+                        <label className="text-sm font-semibold text-foreground mb-3 block">
+                          Что вы получите за год
+                        </label>
+                        <div className="overflow-x-auto">
+                          <table className="w-full text-sm">
+                            <thead>
+                              <tr className="border-b border-border text-left">
+                                <th className="py-2 font-semibold text-muted-foreground">Продукт</th>
+                                <th className="py-2 font-semibold text-muted-foreground text-right">Молоко</th>
+                                <th className="py-2 font-semibold text-muted-foreground text-right">Объём/год</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {activeProducts.map((p) => (
+                                <tr key={p.catalogItemId} className="border-b border-border/50">
+                                  <td className="py-2 text-foreground">
+                                    <div className="flex items-center gap-2">
+                                      <div className={`h-2.5 w-2.5 rounded-full ${PRODUCT_COLORS[p.productType] ?? PRODUCT_COLORS.custom}`} />
+                                      {p.label}
+                                    </div>
+                                  </td>
+                                  <td className="py-2 text-right text-muted-foreground">
+                                    {p.milkUsed.toFixed(1)} л
+                                  </td>
+                                  <td className="py-2 text-right font-semibold text-primary">
+                                    {p.annualUnits} {p.unit}
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                            <tfoot>
+                              <tr>
+                                <td className="py-2 font-bold text-foreground">Итого молока</td>
+                                <td className="py-2 text-right font-bold text-primary">
+                                  {totalMilkUsed.toFixed(1)} л
+                                </td>
+                                <td></td>
+                              </tr>
+                            </tfoot>
+                          </table>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Submit button */}
+                    {isPendingOwnerConfig && (
+                      <div className="flex items-center gap-4 pt-4">
+                        <Button
+                          onClick={handleSubmit}
+                          disabled={configurePlan.isPending || activeProducts.length === 0 || Math.abs(totalAllocPercent - 100) > 1}
+                          className="rounded-full"
+                        >
+                          {configurePlan.isPending ? (
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          ) : (
+                            <CheckCircle2 className="mr-2 h-4 w-4" />
+                          )}
+                          Отправить на подтверждение
+                        </Button>
+                        <p className="text-xs text-muted-foreground">
+                          После отправки ферма рассмотрит ваш план.
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Admin notes */}
+                    {isConfirmed && existingPlan?.adminNotes && (
+                      <div className="rounded-xl border border-stone-200 bg-stone-50 p-3 text-sm text-stone-700 mt-4">
+                        <p className="font-medium">Заметка фермы:</p>
+                        <p className="mt-1 text-xs">{existingPlan.adminNotes}</p>
+                      </div>
+                    )}
                   </div>
 
-                  {isPendingOwnerConfig && (
-                    <div className="flex items-center gap-4 pt-2">
-                      <Button
-                        onClick={handleSubmit}
-                        disabled={configurePlan.isPending || selections.size === 0}
-                        className="rounded-full"
-                      >
-                        {configurePlan.isPending ? (
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        ) : (
-                          <CheckCircle2 className="mr-2 h-4 w-4" />
-                        )}
-                        Отправить на подтверждение
-                      </Button>
-                      <p className="text-xs text-muted-foreground">
-                        После отправки ферма рассмотрит ваш план и подтвердит его.
+                  {/* ─── RIGHT: Results Panel (sticky) ─── */}
+                  <div className="space-y-4 lg:sticky lg:top-24 lg:self-start">
+                    {/* Milk budget hero */}
+                    <div className="rounded-2xl bg-primary p-5 text-center text-primary-foreground">
+                      <p className="text-sm font-medium opacity-80">Молочный бюджет</p>
+                      <p className="text-4xl font-bold mt-1">{annualMilkBudget} л</p>
+                      <p className="text-sm font-semibold mt-1">в год</p>
+                      <p className="text-xs opacity-70 mt-1">
+                        {Math.round(annualMilkBudget / 12)} л/мес
                       </p>
                     </div>
-                  )}
-                </div>
-              )}
 
-              {/* Plan Change Section (for confirmed plans) */}
-              {isConfirmed && canChangeQuery.data && (
-                <Card className="rounded-2xl border-border/70 shadow-sm">
-                  <CardContent className="p-5 space-y-3">
-                    <h3 className="font-semibold text-foreground flex items-center gap-2">
-                      <RefreshCw className="h-4 w-4 text-primary" />
-                      Изменение плана
-                    </h3>
-                    <PlanChangeCountdown
-                      nextChangeAt={canChangeQuery.data.nextChangeAt}
-                      tierSlug={tierSlug}
-                    />
-                    {canChangeQuery.data.allowed && (
-                      <Button
-                        onClick={handleRequestChange}
-                        disabled={requestChange.isPending}
-                        variant="outline"
-                        className="rounded-full"
-                      >
-                        {requestChange.isPending ? (
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        ) : (
-                          <RefreshCw className="mr-2 h-4 w-4" />
+                    {/* Products summary */}
+                    <div className="rounded-2xl border border-border bg-card p-5">
+                      <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-3">
+                        Ваши продукты
+                      </p>
+                      {activeProducts.length > 0 ? (
+                        <div className="space-y-2 text-sm">
+                          {activeProducts.map((p) => (
+                            <div key={p.catalogItemId} className="flex justify-between">
+                              <span className="text-muted-foreground flex items-center gap-1.5">
+                                <span className={`inline-block h-2 w-2 rounded-full ${PRODUCT_COLORS[p.productType] ?? PRODUCT_COLORS.custom}`} />
+                                {p.label}
+                              </span>
+                              <span className="font-semibold text-foreground">
+                                {p.annualUnits} {p.unit}/год
+                              </span>
+                            </div>
+                          ))}
+                          <div className="flex justify-between border-t border-border pt-2">
+                            <span className="font-bold text-foreground">Всего продуктов</span>
+                            <span className="font-bold text-primary">{activeProducts.length}</span>
+                          </div>
+                        </div>
+                      ) : (
+                        <p className="text-sm text-muted-foreground">Распределите молоко между продуктами</p>
+                      )}
+                    </div>
+
+                    {/* Tier privileges */}
+                    <div className="rounded-2xl border border-border bg-card p-5">
+                      <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-3">
+                        Привилегии тарифа
+                      </p>
+                      <div className="space-y-2 text-sm">
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Тариф</span>
+                          <span className="font-semibold text-foreground">{TIER_LABELS[tierSlug]}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Изменение плана</span>
+                          <span className="font-semibold text-foreground">{TIER_FREQUENCY_LABELS[tierSlug]}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Доступно продуктов</span>
+                          <span className="font-semibold text-foreground">{catalog.length}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Plan change section */}
+                    {isConfirmed && canChangeQuery.data && (
+                      <div className="rounded-2xl border border-border bg-card p-5">
+                        <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-3">
+                          Изменение плана
+                        </p>
+                        <PlanChangeCountdown
+                          nextChangeAt={canChangeQuery.data.nextChangeAt}
+                          tierSlug={tierSlug}
+                        />
+                        {canChangeQuery.data.allowed && (
+                          <Button
+                            onClick={handleRequestChange}
+                            disabled={requestChange.isPending}
+                            variant="outline"
+                            className="rounded-full w-full mt-3"
+                          >
+                            {requestChange.isPending ? (
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            ) : (
+                              <RefreshCw className="mr-2 h-4 w-4" />
+                            )}
+                            Изменить план
+                          </Button>
                         )}
-                        Изменить план
-                      </Button>
+                      </div>
                     )}
-                  </CardContent>
-                </Card>
+                  </div>
+                </div>
               )}
 
               {/* Delivery Schedule */}
@@ -632,7 +770,7 @@ export default function OwnerProductPlanSection({
                       График доставки — {currentYear}
                     </CardTitle>
                     <CardDescription>
-                      Равномерное распределение продукции по месяцам. Статус обновляется фермой.
+                      Равномерное распределение продукции по месяцам
                     </CardDescription>
                   </CardHeader>
                   <CardContent>

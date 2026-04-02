@@ -250,7 +250,7 @@ function ProductionProfileEditor({ animalId, animalName }: { animalId: number; a
 
 /* ── Product Options Manager ── */
 
-function ProductOptionsManager({ animalId }: { animalId: number }) {
+function ProductOptionsManager({ animalId, animalSpecies, ownerPlans }: { animalId: number; animalSpecies: "goat" | "sheep"; ownerPlans: OwnerPlanRecord[] }) {
   const utils = trpc.useUtils();
   const optionsQuery = trpc.productTrack.listOptions.useQuery({ animalId });
   const profileQuery = trpc.productTrack.getProfile.useQuery({ animalId });
@@ -272,9 +272,31 @@ function ProductOptionsManager({ animalId }: { animalId: number }) {
     onError: (err) => toast.error(err.message),
   });
 
-  const [editingOption, setEditingOption] = useState<Partial<ProductOptionRecord> | null>(null);
+  const populateFromCatalog = trpc.productTrack.populateProductsFromCatalog.useMutation({
+    onSuccess: (data) => {
+      utils.productTrack.listOptions.invalidate({ animalId });
+      utils.productTrack.getAnimalTrackData.invalidate({ animalId });
+      toast.success(`Подтянуто ${data.created} продуктов из каталога (тариф: ${TIER_LABELS[data.tierSlug] ?? data.tierSlug})`);
+    },
+    onError: (err) => toast.error(err.message),
+  });
+  const batchVerify = trpc.productTrack.batchVerifyProducts.useMutation({
+    onSuccess: (data) => {
+      utils.productTrack.listOptions.invalidate({ animalId });
+      utils.productTrack.getAnimalTrackData.invalidate({ animalId });
+      setSelectedIds(new Set());
+      toast.success(`Верифицировано: ${data.verified} продуктов`);
+    },
+    onError: (err) => toast.error(err.message),
+  });
 
-  const options = (optionsQuery.data ?? []) as ProductOptionRecord[];
+  const [editingOption, setEditingOption] = useState<Partial<ProductOptionRecord> | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+
+  // Find first owner for this animal to get tier
+  const firstOwner = ownerPlans[0];
+
+  const options = (optionsQuery.data ?? []) as (ProductOptionRecord & { isAdminVerified?: number; adminVerifiedAt?: string | null; catalogItemId?: number | null })[];
   const annualMilk = profileQuery.data?.annualMilkLiters ?? 0;
 
   const totalMilkUsedByOptions = useMemo(
@@ -341,17 +363,60 @@ function ProductOptionsManager({ animalId }: { animalId: number }) {
   return (
     <Card className="rounded-[2rem] border-border/70 shadow-sm">
       <CardHeader>
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between flex-wrap gap-3">
           <div>
             <CardTitle className="flex items-center gap-2">
               <Package className="h-5 w-5 text-primary" />
-              Доступные продукты
+              Продукты животного
             </CardTitle>
-
+            <CardDescription>
+              Продукты подтягиваются из тарифного каталога по виду животного ({animalSpecies === "goat" ? "козье" : "овечье"}) и тарифу владельца. После подтягивания верифицируйте продукты.
+            </CardDescription>
           </div>
-          <Button onClick={openNewOption} className="rounded-full" size="sm">
-            <Plus className="mr-2 h-4 w-4" /> Добавить продукт
-          </Button>
+          <div className="flex gap-2 flex-wrap">
+            {firstOwner && (
+              <Button
+                onClick={() => populateFromCatalog.mutate({ animalId, ownerOpenId: firstOwner.ownerOpenId, animalSpecies })}
+                className="rounded-full"
+                size="sm"
+                variant="outline"
+                disabled={populateFromCatalog.isPending}
+              >
+                {populateFromCatalog.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
+                Подтянуть из каталога
+              </Button>
+            )}
+            {selectedIds.size > 0 && (
+              <Button
+                onClick={() => batchVerify.mutate({ optionIds: Array.from(selectedIds) })}
+                className="rounded-full border-emerald-200 text-emerald-700 hover:bg-emerald-50"
+                size="sm"
+                variant="outline"
+                disabled={batchVerify.isPending}
+              >
+                {batchVerify.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle2 className="mr-2 h-4 w-4" />}
+                Верифицировать ({selectedIds.size})
+              </Button>
+            )}
+            {options.filter(o => !o.isAdminVerified).length > 0 && (
+              <Button
+                onClick={() => {
+                  const unverifiedIds = options.filter(o => !o.isAdminVerified).map(o => o.id);
+                  batchVerify.mutate({ optionIds: unverifiedIds });
+                }}
+                className="rounded-full border-emerald-200 text-emerald-700 hover:bg-emerald-50"
+                size="sm"
+                variant="outline"
+                disabled={batchVerify.isPending}
+              >
+                <CheckCircle2 className="mr-2 h-4 w-4" />
+                Верифицировать все
+              </Button>
+            )}
+            <Button onClick={openNewOption} className="rounded-full" size="sm">
+              <Plus className="mr-2 h-4 w-4" /> Добавить вручную
+            </Button>
+          </div>
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -372,12 +437,27 @@ function ProductOptionsManager({ animalId }: { animalId: number }) {
             <Table>
               <TableHeader>
                 <TableRow className="hover:bg-transparent">
+                  <TableHead className="w-10">
+                    <input
+                      type="checkbox"
+                      className="rounded"
+                      checked={options.length > 0 && selectedIds.size === options.length}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setSelectedIds(new Set(options.map(o => o.id)));
+                        } else {
+                          setSelectedIds(new Set());
+                        }
+                      }}
+                    />
+                  </TableHead>
                   <TableHead>Продукт</TableHead>
                   <TableHead>Тип</TableHead>
                   <TableHead>Конверсия</TableHead>
                   <TableHead>Лимит/год</TableHead>
                   <TableHead>Молока/год</TableHead>
                   <TableHead>Статус</TableHead>
+                  <TableHead>Верификация</TableHead>
                   <TableHead className="text-right">Действия</TableHead>
                 </TableRow>
               </TableHeader>
@@ -385,12 +465,32 @@ function ProductOptionsManager({ animalId }: { animalId: number }) {
                 {options.map((opt) => {
                   const Icon = PRODUCT_TYPE_ICONS[opt.productType] ?? Package;
                   const milkForOption = opt.maxAnnualUnits * opt.conversionRatio;
+                  const isVerified = Boolean(opt.isAdminVerified);
+                  const isSelected = selectedIds.has(opt.id);
                   return (
-                    <TableRow key={opt.id}>
+                    <TableRow key={opt.id} className={isSelected ? "bg-blue-50/50" : ""}>
+                      <TableCell>
+                        <input
+                          type="checkbox"
+                          className="rounded"
+                          checked={isSelected}
+                          onChange={(e) => {
+                            const next = new Set(selectedIds);
+                            if (e.target.checked) next.add(opt.id);
+                            else next.delete(opt.id);
+                            setSelectedIds(next);
+                          }}
+                        />
+                      </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">
                           <Icon className="h-4 w-4 text-primary" />
                           <span className="font-medium">{opt.label}</span>
+                          {opt.catalogItemId && (
+                            <Badge variant="outline" className="rounded-full text-xs border-blue-200 bg-blue-50 text-blue-600">
+                              каталог
+                            </Badge>
+                          )}
                         </div>
                       </TableCell>
                       <TableCell>
@@ -411,6 +511,17 @@ function ProductOptionsManager({ animalId }: { animalId: number }) {
                         <Badge className={`rounded-full border ${opt.isEnabled ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-stone-200 bg-stone-50 text-stone-500"}`}>
                           {opt.isEnabled ? "Активен" : "Отключён"}
                         </Badge>
+                      </TableCell>
+                      <TableCell>
+                        {isVerified ? (
+                          <Badge className="rounded-full border border-emerald-200 bg-emerald-50 text-emerald-700">
+                            <CheckCircle2 className="mr-1 h-3 w-3" /> Верифицирован
+                          </Badge>
+                        ) : (
+                          <Badge className="rounded-full border border-orange-200 bg-orange-50 text-orange-700">
+                            <Clock className="mr-1 h-3 w-3" /> Ожидает
+                          </Badge>
+                        )}
                       </TableCell>
                       <TableCell>
                         <div className="flex justify-end gap-2">
@@ -1551,6 +1662,17 @@ export default function AdminProductTrack() {
             </p>
           </div>
 
+          <Tabs defaultValue="animals" className="space-y-6">
+            <TabsList className="rounded-full bg-secondary/50 p-1">
+              <TabsTrigger value="animals" className="rounded-full">
+                <Milk className="mr-2 h-4 w-4" /> Животные
+              </TabsTrigger>
+              <TabsTrigger value="tier-catalog" className="rounded-full">
+                <Layers className="mr-2 h-4 w-4" /> Тарифный каталог
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="animals">
           {animalsQuery.isLoading ? (
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Loader2 className="h-4 w-4 animate-spin" /> Загружаем каталог…
@@ -1584,6 +1706,12 @@ export default function AdminProductTrack() {
               ))}
             </ScrollRemaining>
           )}
+            </TabsContent>
+
+            <TabsContent value="tier-catalog">
+              <TierCatalogManager />
+            </TabsContent>
+          </Tabs>
         </div>
       </DashboardLayout>
     );
@@ -1626,9 +1754,6 @@ export default function AdminProductTrack() {
             <TabsTrigger value="products" className="rounded-full">
               <Package className="mr-2 h-4 w-4" /> Продукты
             </TabsTrigger>
-            <TabsTrigger value="tier-catalog" className="rounded-full">
-              <Layers className="mr-2 h-4 w-4" /> Тарифный каталог
-            </TabsTrigger>
             <TabsTrigger value="plans" className="rounded-full">
               <BarChart3 className="mr-2 h-4 w-4" /> Планы
             </TabsTrigger>
@@ -1654,11 +1779,7 @@ export default function AdminProductTrack() {
           </TabsContent>
 
           <TabsContent value="products">
-            <ProductOptionsManager animalId={animalId} />
-          </TabsContent>
-
-          <TabsContent value="tier-catalog">
-            <TierCatalogManager />
+            <ProductOptionsManager animalId={animalId} animalSpecies={(animal?.species as "goat" | "sheep") ?? "goat"} ownerPlans={ownerPlans} />
           </TabsContent>
 
           <TabsContent value="plans">

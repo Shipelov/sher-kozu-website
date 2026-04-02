@@ -54,6 +54,10 @@ import {
   listPendingProductPlans,
   listAllProductPlans,
   getTierChangeFrequencyDays,
+  populateAnimalProductsFromCatalog,
+  adminBatchVerifyProducts,
+  getVerifiedProductOptions,
+  areAllProductsVerified,
 } from "../db";
 import type { ProductOption } from "../../drizzle/schema";
 import { storagePut } from "../storage";
@@ -951,5 +955,61 @@ export const productTrackRouter = router({
         }).catch((err) => console.error("[Notification] metrics delete error:", err));
       }
       return deleted;
+    }),
+
+  // ═══════════════════════════════════════════════════════════
+  //  PRODUCT POPULATION FROM CATALOG & BATCH VERIFICATION
+  // ═══════════════════════════════════════════════════════════
+
+  /** Admin: populate animal's product options from tier catalog based on owner's tier and animal species */
+  populateProductsFromCatalog: protectedProcedure
+    .input(z.object({
+      animalId: z.number().int().positive(),
+      ownerOpenId: z.string().min(1).max(64),
+      animalSpecies: z.enum(["goat", "sheep"]),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      if (ctx.user.role !== "admin") {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Только администратор." });
+      }
+      const tier = await getOwnerTierStatus(input.ownerOpenId);
+      const tierSlug = (tier?.tierSlug ?? "basic") as "basic" | "standard" | "professional";
+      const newItems = await populateAnimalProductsFromCatalog(
+        input.animalId,
+        tierSlug,
+        input.animalSpecies,
+      );
+      return { created: newItems.length, items: newItems, tierSlug };
+    }),
+
+  /** Admin: batch verify product options (with optional per-item updates) */
+  batchVerifyProducts: protectedProcedure
+    .input(z.object({
+      optionIds: z.array(z.number().int().positive()).min(1),
+      updates: z.array(z.object({
+        optionId: z.number().int().positive(),
+        maxAnnualUnits: z.number().int().min(0).max(100_000).optional(),
+        isEnabled: z.boolean().optional(),
+      })).optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      if (ctx.user.role !== "admin") {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Только администратор." });
+      }
+      return adminBatchVerifyProducts(input.optionIds, input.updates);
+    }),
+
+  /** Get verified product options for an animal (for owner plan configuration) */
+  getVerifiedOptions: protectedProcedure
+    .input(animalIdInput)
+    .query(async ({ input }) => {
+      return getVerifiedProductOptions(input.animalId);
+    }),
+
+  /** Check if all products for an animal are verified */
+  checkAllVerified: protectedProcedure
+    .input(animalIdInput)
+    .query(async ({ input }) => {
+      return { allVerified: await areAllProductsVerified(input.animalId) };
     }),
 });

@@ -1009,7 +1009,7 @@ export default function AnimalProfile() {
               {/* ── Product Plan (owners only) ── */}
               {hasOwnerAccess && data?.id ? (
                 <ProfileSection id="product-plan-section" icon={Milk} title="Продуктовый план" defaultOpen={false}>
-                  <OwnerProductPlanSection animalId={data.id} animalSlug={animalSlug!} animalName={displayName} mySharePercent={mySharePercent} />
+                  <OwnerProductPlanSection animalId={data.id} animalSlug={animalSlug!} animalName={displayName} mySharePercent={mySharePercent} species={(data?.species as "goat" | "sheep") ?? "goat"} />
                 </ProfileSection>
               ) : null}
 

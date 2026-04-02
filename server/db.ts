@@ -5535,3 +5535,124 @@ export function isTierAtLeast(tierA: string, tierB: string): boolean {
   if (indexA === -1 || indexB === -1) return false;
   return indexA >= indexB;
 }
+
+/**
+ * Populate animal's productOptions from tier catalog based on owner's tier and animal species.
+ * Skips items that already exist (matched by catalogItemId).
+ * Returns the list of newly created product options.
+ */
+export async function populateAnimalProductsFromCatalog(
+  animalId: number,
+  ownerTierSlug: TierSlug,
+  animalSpecies: "goat" | "sheep",
+) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  // Get catalog items matching tier + species
+  const catalogItems = await getTierCatalogForOwner(ownerTierSlug, animalSpecies);
+  if (!catalogItems.length) return [];
+
+  // Get existing product options for this animal to avoid duplicates
+  const existing = await db.select({ catalogItemId: productOptions.catalogItemId })
+    .from(productOptions)
+    .where(eq(productOptions.animalId, animalId));
+  const existingCatalogIds = new Set(existing.map((e: { catalogItemId: number | null }) => e.catalogItemId).filter(Boolean));
+
+  const newItems: Array<typeof productOptions.$inferSelect> = [];
+
+  for (const item of catalogItems) {
+    if (existingCatalogIds.has(item.id)) continue;
+
+    const [result] = await db.insert(productOptions).values({
+      animalId,
+      productType: item.productType,
+      label: item.label,
+      conversionRatio: Math.round(item.conversionRatio),
+      unit: item.unit,
+      maxAnnualUnits: 0, // Admin will set this during verification
+      isEnabled: 1,
+      isAdminVerified: 0,
+      catalogItemId: item.id,
+      sortOrder: item.sortOrder,
+    });
+
+    const created = await db.select().from(productOptions)
+      .where(eq(productOptions.id, result.insertId)).limit(1);
+    if (created[0]) newItems.push(created[0]);
+  }
+
+  return newItems;
+}
+
+/**
+ * Admin batch verification of product options.
+ * Marks selected options as verified and optionally updates maxAnnualUnits.
+ */
+export async function adminBatchVerifyProducts(
+  optionIds: number[],
+  updates?: Array<{ optionId: number; maxAnnualUnits?: number; isEnabled?: boolean }>,
+) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  const now = new Date();
+
+  // Apply individual updates if provided
+  if (updates?.length) {
+    for (const upd of updates) {
+      const setObj: Record<string, any> = {
+        isAdminVerified: 1,
+        adminVerifiedAt: now,
+      };
+      if (upd.maxAnnualUnits !== undefined) setObj.maxAnnualUnits = upd.maxAnnualUnits;
+      if (upd.isEnabled !== undefined) setObj.isEnabled = upd.isEnabled ? 1 : 0;
+      await db.update(productOptions).set(setObj).where(eq(productOptions.id, upd.optionId));
+    }
+  }
+
+  // Batch verify all selected IDs
+  if (optionIds.length > 0) {
+    await db.update(productOptions).set({
+      isAdminVerified: 1,
+      adminVerifiedAt: now,
+    }).where(inArray(productOptions.id, optionIds));
+  }
+
+  return { verified: optionIds.length };
+}
+
+/**
+ * Get all verified product options for an animal (for owner plan configuration).
+ */
+export async function getVerifiedProductOptions(animalId: number) {
+  const db = await getDb();
+  if (!db) return [];
+
+  return db.select().from(productOptions)
+    .where(and(
+      eq(productOptions.animalId, animalId),
+      eq(productOptions.isAdminVerified, 1),
+      eq(productOptions.isEnabled, 1),
+    ))
+    .orderBy(asc(productOptions.sortOrder));
+}
+
+/**
+ * Check if all product options for an animal are verified.
+ */
+export async function areAllProductsVerified(animalId: number): Promise<boolean> {
+  const db = await getDb();
+  if (!db) return false;
+
+  const unverified = await db.select({ id: productOptions.id })
+    .from(productOptions)
+    .where(and(
+      eq(productOptions.animalId, animalId),
+      eq(productOptions.isAdminVerified, 0),
+      eq(productOptions.isEnabled, 1),
+    ))
+    .limit(1);
+
+  return unverified.length === 0;
+}

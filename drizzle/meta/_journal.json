@@ -267,6 +267,13 @@
       "when": 1775084349160,
       "tag": "0038_cheerful_night_thrasher",
       "breakpoints": true
+    },
+    {
+      "idx": 39,
+      "version": "5",
+      "when": 1775113069656,
+      "tag": "0039_keen_moonstone",
+      "breakpoints": true
     }
   ]
 }

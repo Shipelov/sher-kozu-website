@@ -501,6 +501,12 @@ export const productOptions = mysqlTable("productOptions", {
   maxAnnualUnits: int("maxAnnualUnits").notNull(),
   /** Is this option currently enabled for selection? */
   isEnabled: int("isEnabled").default(1).notNull(),
+  /** Admin verification status: 0=pending, 1=verified */
+  isAdminVerified: int("isAdminVerified").default(0).notNull(),
+  /** When admin verified this product option */
+  adminVerifiedAt: timestamp("adminVerifiedAt"),
+  /** Reference to the tier catalog item this was generated from (null if manually created) */
+  catalogItemId: int("catalogItemId"),
   sortOrder: int("sortOrder").default(0).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
