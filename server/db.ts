@@ -2867,15 +2867,40 @@ export async function generateDeliverySchedule(input: {
     ),
   );
 
-  // Equal monthly distribution
+  // Split products into monthly (annualUnits >= 12) and quarterly (annualUnits < 12 but > 0)
+  const quarterMonths = [3, 6, 9, 12]; // March, June, September, December
   const entries: InsertDeliveryScheduleEntry[] = [];
   for (let month = 1; month <= 12; month++) {
-    const items = input.selections.map((sel) => ({
-      productType: sel.productType,
-      label: sel.label,
-      quantity: Math.floor((sel.annualUnits / 12) * 100) / 100,
-      unit: sel.unit,
-    }));
+    const isQuarterMonth = quarterMonths.includes(month);
+    const items = input.selections
+      .map((sel) => {
+        const monthlyQty = Math.floor(sel.annualUnits / 12);
+        if (monthlyQty >= 1) {
+          // Monthly delivery
+          return {
+            productType: sel.productType,
+            label: sel.label,
+            quantity: monthlyQty,
+            unit: sel.unit,
+            frequency: "monthly" as const,
+          };
+        } else if (sel.annualUnits > 0 && isQuarterMonth) {
+          // Quarterly delivery — only in quarter months
+          const quarterlyQty = Math.floor(sel.annualUnits / 4);
+          if (quarterlyQty >= 1) {
+            return {
+              productType: sel.productType,
+              label: sel.label,
+              quantity: quarterlyQty,
+              unit: sel.unit,
+              frequency: "quarterly" as const,
+            };
+          }
+          return null;
+        }
+        return null;
+      })
+      .filter((item): item is NonNullable<typeof item> => item !== null);
 
     entries.push({
       ownerOpenId: input.ownerOpenId,

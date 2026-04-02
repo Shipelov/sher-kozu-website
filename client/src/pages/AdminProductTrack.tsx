@@ -1082,7 +1082,7 @@ function DeliveryScheduleOverview({ animalId, ownerPlans }: { animalId: number; 
           <ScrollRemaining totalItems={schedule.length} itemHeight={160} className="max-h-[520px] overflow-y-auto pr-1">
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {schedule.map((entry) => {
-              let items: Array<{ label: string; quantity: number; unit: string }> = [];
+              let items: Array<{ label: string; quantity: number; unit: string; frequency?: string }> = [];
               try { items = JSON.parse(entry.itemsJson); } catch {}
 
               return (
@@ -1097,6 +1097,7 @@ function DeliveryScheduleOverview({ animalId, ownerPlans }: { animalId: number; 
                     {items.map((item, idx) => (
                       <p key={idx} className="text-xs text-muted-foreground">
                         {item.label}: <span className="font-medium text-foreground">{item.quantity} {item.unit}</span>
+                        {item.frequency === "quarterly" && <span className="text-[10px] text-amber-600 ml-1">(кварт.)</span>}
                       </p>
                     ))}
                   </div>

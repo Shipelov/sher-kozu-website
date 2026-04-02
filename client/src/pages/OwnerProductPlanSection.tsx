@@ -313,10 +313,11 @@ function ProductDonutChart({
 
 /* ── Milk Budget Bar ── */
 
-function MilkBudgetBar({ used, total }: { used: number; total: number }) {
+function MilkBudgetBar({ used, total, allocPercent }: { used: number; total: number; allocPercent?: number }) {
   const pct = total > 0 ? Math.min(100, Math.floor((used / total) * 100)) : 0;
-  const remaining = Math.max(0, total - used);
+  const remaining = Math.floor(Math.max(0, total - used));
   const color = pct > 90 ? "bg-rose-500" : pct > 70 ? "bg-amber-500" : "bg-emerald-500";
+  const isTechLoss = remaining > 0 && (allocPercent ?? 0) >= 95;
 
   return (
     <div className="space-y-1.5">
@@ -330,7 +331,7 @@ function MilkBudgetBar({ used, total }: { used: number; total: number }) {
       </div>
       <div className="flex justify-between text-xs text-muted-foreground">
         <span>{Math.floor(used)} л использовано</span>
-        <span>{Math.floor(remaining)} л свободно</span>
+        <span>{isTechLoss ? `${remaining} л тех. потери` : `${remaining} л свободно`}</span>
       </div>
     </div>
   );
@@ -458,15 +459,18 @@ export default function OwnerProductPlanSection({
     return catalog.map((item) => {
       const pct = allocPercent[item.id] ?? 0;
       const milkAllocated = (annualMilkBudget * pct) / 100;
-      const annualUnits = item.conversionRatio > 0 ? milkAllocated / item.conversionRatio : 0;
+      // Integer annual units (rounded down)
+      const annualUnits = item.conversionRatio > 0 ? Math.floor(milkAllocated / item.conversionRatio) : 0;
+      // Recalculate actual milk used from integer units
+      const milkUsed = annualUnits * item.conversionRatio;
       return {
         catalogItemId: item.id,
         label: item.label,
         productType: item.productType,
         unit: item.unit,
         percent: pct,
-        milkUsed: milkAllocated,
-        annualUnits: Math.floor(annualUnits * 10) / 10,
+        milkUsed,
+        annualUnits,
         conversionRatio: item.conversionRatio,
       };
     });
@@ -696,7 +700,7 @@ export default function OwnerProductPlanSection({
 
                     {/* Milk budget bar */}
                     <div className="mb-6">
-                      <MilkBudgetBar used={totalMilkUsed} total={annualMilkBudget} />
+                      <MilkBudgetBar used={totalMilkUsed} total={annualMilkBudget} allocPercent={totalAllocPercent} />
                     </div>
 
                     {/* Allocation label */}
@@ -736,9 +740,9 @@ export default function OwnerProductPlanSection({
                       })}
                     </div>
 
-                    {Math.abs(totalAllocPercent - 100) > 1 && (
+                    {(totalAllocPercent < 95 || totalAllocPercent > 100) && totalAllocPercent > 0 && (
                       <p className="mb-4 text-xs text-destructive">
-                        Сумма: {totalAllocPercent}% (должна быть 100%)
+                        Сумма: {totalAllocPercent}% (должна быть 95–100%)
                       </p>
                     )}
 
@@ -755,6 +759,7 @@ export default function OwnerProductPlanSection({
                                 <th className="py-2 font-semibold text-muted-foreground">Продукт</th>
                                 <th className="py-2 font-semibold text-muted-foreground text-right">Молоко</th>
                                 <th className="py-2 font-semibold text-muted-foreground text-right">Объём/год</th>
+                                <th className="py-2 font-semibold text-muted-foreground text-right">Доставка</th>
                               </tr>
                             </thead>
                             <tbody>
@@ -770,7 +775,13 @@ export default function OwnerProductPlanSection({
                                     {Math.floor(p.milkUsed)} л
                                   </td>
                                   <td className="py-2 text-right font-semibold text-primary">
-                                    {p.annualUnits} {p.unit}
+                                    {Math.floor(p.annualUnits)} {p.unit}
+                                  </td>
+                                  <td className="py-2 text-right text-xs text-muted-foreground">
+                                    {Math.floor(p.annualUnits / 12) >= 1
+                                      ? <>{Math.floor(p.annualUnits / 12)} {p.unit}/мес</>
+                                      : <span className="text-amber-600">{Math.floor(p.annualUnits / 4)} {p.unit}/кварт.</span>
+                                    }
                                   </td>
                                 </tr>
                               ))}
@@ -781,6 +792,7 @@ export default function OwnerProductPlanSection({
                                 <td className="py-2 text-right font-bold text-primary">
                   {Math.floor(totalMilkUsed)} л
                 </td>
+                                <td></td>
                                 <td></td>
                               </tr>
                             </tfoot>
@@ -794,7 +806,7 @@ export default function OwnerProductPlanSection({
                       <div className="flex items-center gap-4 pt-4">
                         <Button
                           onClick={handleSubmit}
-                          disabled={configurePlan.isPending || activeProducts.length === 0 || Math.abs(totalAllocPercent - 100) > 1}
+                          disabled={configurePlan.isPending || activeProducts.length === 0 || totalAllocPercent < 95 || totalAllocPercent > 100}
                           className="rounded-full"
                         >
                           {configurePlan.isPending ? (
@@ -845,22 +857,45 @@ export default function OwnerProductPlanSection({
                           <span className="text-muted-foreground">Использовано молока</span>
                           <span className="font-bold text-lg text-foreground">{Math.floor(totalMilkUsed)} л</span>
                         </div>
-                        <div className="flex justify-between items-center">
-                          <span className="text-muted-foreground">Свободно</span>
-                          <span className={`font-bold text-lg ${(annualMilkBudget - totalMilkUsed) < 0 ? 'text-destructive' : 'text-emerald-600'}`}>
-                            {Math.floor(annualMilkBudget - totalMilkUsed)} л
-                          </span>
-                        </div>
+                        {(() => {
+                          const remainder = Math.floor(annualMilkBudget - totalMilkUsed);
+                          if (remainder > 0 && totalAllocPercent >= 95) {
+                            // Small remainder from rounding → tech losses
+                            return (
+                              <div className="flex justify-between items-center">
+                                <span className="text-muted-foreground">Тех. потери</span>
+                                <span className="font-medium text-muted-foreground">{remainder} л</span>
+                              </div>
+                            );
+                          }
+                          if (remainder > 0) {
+                            return (
+                              <div className="flex justify-between items-center">
+                                <span className="text-muted-foreground">Свободно</span>
+                                <span className="font-bold text-lg text-emerald-600">{remainder} л</span>
+                              </div>
+                            );
+                          }
+                          if (remainder < 0) {
+                            return (
+                              <div className="flex justify-between items-center">
+                                <span className="text-muted-foreground">Превышение</span>
+                                <span className="font-bold text-lg text-destructive">{Math.abs(remainder)} л</span>
+                              </div>
+                            );
+                          }
+                          return null;
+                        })()}
                         <div className="w-full bg-muted rounded-full h-2 overflow-hidden">
                           <div
                             className={`h-full rounded-full transition-all ${totalMilkUsed > annualMilkBudget ? 'bg-destructive' : 'bg-primary'}`}
                             style={{ width: `${Math.min((totalMilkUsed / annualMilkBudget) * 100, 100)}%` }}
                           />
                         </div>
-                        {totalAllocPercent > 0 && totalAllocPercent < 100 && (
+                        {totalAllocPercent > 0 && totalAllocPercent < 95 && (
                           <p className="text-xs text-amber-600">Распределено {totalAllocPercent}% — добавьте ещё продуктов</p>
                         )}
-                        {totalAllocPercent >= 100 && activeProducts.length > 0 && (
+                        {totalAllocPercent >= 95 && activeProducts.length > 0 && (
                           <p className="text-xs text-emerald-600">План полностью настроен ✓</p>
                         )}
                       </div>
@@ -945,7 +980,7 @@ export default function OwnerProductPlanSection({
                   <CardContent>
                     <ScrollRemaining totalItems={schedule.length} itemHeight={140} className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 max-h-[520px] overflow-y-auto pr-1">
                       {schedule.map((entry) => {
-                        let items: Array<{ label: string; quantity: number; unit: string }> = [];
+                        let items: Array<{ label: string; quantity: number; unit: string; frequency?: string }> = [];
                         try { items = JSON.parse(entry.itemsJson); } catch {}
 
                         return (
@@ -964,11 +999,15 @@ export default function OwnerProductPlanSection({
                               </Badge>
                             </div>
                             <div className="space-y-1">
-                              {items.map((item, idx) => (
+                              {items.filter(item => item.quantity > 0).map((item, idx) => (
                                 <p key={idx} className="text-xs text-muted-foreground">
                                   {item.label}: <span className="font-medium text-foreground">{item.quantity} {item.unit}</span>
+                                  {item.frequency === "quarterly" && <span className="text-[10px] text-amber-600 ml-1">(раз в квартал)</span>}
                                 </p>
                               ))}
+                              {items.filter(item => item.quantity > 0).length === 0 && (
+                                <p className="text-xs text-muted-foreground italic">Нет доставок в этом месяце</p>
+                              )}
                             </div>
                           </motion.div>
                         );

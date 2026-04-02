@@ -101,7 +101,7 @@ const deleteProductOptionInput = z.object({
 /* Tier-based selection input */
 const tierSelectionInput = z.object({
   catalogItemId: z.number().int().positive(),
-  annualUnits: z.number().min(0).max(100_000),
+  annualUnits: z.number().int().min(0).max(100_000),
 });
 
 const deliveryStatusInput = z.object({

@@ -108,22 +108,47 @@ function validateMilkBudget(
 }
 
 /**
- * Generate equal monthly delivery schedule.
+ * Generate delivery schedule with monthly and quarterly grouping.
+ * Products with annualUnits/12 >= 1 are delivered monthly.
+ * Products with annualUnits/12 < 1 but annualUnits > 0 are delivered quarterly (months 3, 6, 9, 12).
  * This mirrors the server-side generateDeliverySchedule logic.
  */
 function generateMonthlySchedule(
   selections: EnrichedSelection[],
   year: number,
 ): Array<{ month: number; year: number; items: DeliveryItem[] }> {
+  const quarterMonths = [3, 6, 9, 12];
   const entries: Array<{ month: number; year: number; items: DeliveryItem[] }> = [];
 
   for (let month = 1; month <= 12; month++) {
-    const items = selections.map((sel) => ({
-      productType: sel.productType,
-      label: sel.label,
-      quantity: Math.floor((sel.annualUnits / 12) * 100) / 100,
-      unit: sel.unit,
-    }));
+    const isQuarterMonth = quarterMonths.includes(month);
+    const items = selections
+      .map((sel) => {
+        const monthlyQty = Math.floor(sel.annualUnits / 12);
+        if (monthlyQty >= 1) {
+          return {
+            productType: sel.productType,
+            label: sel.label,
+            quantity: monthlyQty,
+            unit: sel.unit,
+            frequency: "monthly" as const,
+          };
+        } else if (sel.annualUnits > 0 && isQuarterMonth) {
+          const quarterlyQty = Math.floor(sel.annualUnits / 4);
+          if (quarterlyQty >= 1) {
+            return {
+              productType: sel.productType,
+              label: sel.label,
+              quantity: quarterlyQty,
+              unit: sel.unit,
+              frequency: "quarterly" as const,
+            };
+          }
+          return null;
+        }
+        return null;
+      })
+      .filter((item): item is NonNullable<typeof item> => item !== null);
     entries.push({ month, year, items });
   }
 
@@ -368,14 +393,51 @@ describe("Delivery schedule generation", () => {
     expect(schedule[0]?.items[1]?.quantity).toBe(1);
   });
 
-  it("includes all products in each month", () => {
+  it("includes all monthly products in each month and quarterly products only in quarter months", () => {
     const schedule = generateMonthlySchedule(selections, 2026);
 
+    // Both products have annualUnits/12 >= 1 (120/12=10, 12/12=1), so both are monthly
     for (const entry of schedule) {
       expect(entry.items).toHaveLength(2);
       expect(entry.items[0]?.label).toBe("Свежее козье молоко");
       expect(entry.items[1]?.label).toBe("Мягкий козий сыр");
     }
+  });
+
+  it("delivers quarterly products only in months 3, 6, 9, 12", () => {
+    const mixedSelections: EnrichedSelection[] = [
+      {
+        productOptionId: 1,
+        productType: "milk",
+        label: "Молоко",
+        annualUnits: 120,
+        unit: "л",
+        milkUsed: 120,
+      },
+      {
+        productOptionId: 2,
+        productType: "cheese",
+        label: "Брынза",
+        annualUnits: 8,
+        unit: "кг",
+        milkUsed: 64,
+      },
+    ];
+
+    const schedule = generateMonthlySchedule(mixedSelections, 2026);
+
+    // Non-quarter months (e.g., January = month 1): only milk
+    expect(schedule[0]?.items).toHaveLength(1);
+    expect(schedule[0]?.items[0]?.label).toBe("Молоко");
+    expect(schedule[0]?.items[0]?.quantity).toBe(10);
+
+    // Quarter month (March = month 3): milk + cheese
+    expect(schedule[2]?.items).toHaveLength(2);
+    expect(schedule[2]?.items[0]?.label).toBe("Молоко");
+    expect(schedule[2]?.items[0]?.quantity).toBe(10);
+    expect(schedule[2]?.items[1]?.label).toBe("Брынза");
+    expect(schedule[2]?.items[1]?.quantity).toBe(2); // 8 / 4 = 2
+    expect(schedule[2]?.items[1]?.frequency).toBe("quarterly");
   });
 
   it("sets correct year for all entries", () => {
@@ -404,8 +466,8 @@ describe("Delivery schedule generation", () => {
     ];
 
     const schedule = generateMonthlySchedule(oddSelections, 2026);
-    // 100 / 12 = 8.333... → rounded to 8.33
-    expect(schedule[0]?.items[0]?.quantity).toBe(8.33);
+    // 100 / 12 = 8.333... → floored to 8
+    expect(schedule[0]?.items[0]?.quantity).toBe(8);
   });
 
   it("handles single product selection", () => {
@@ -528,9 +590,10 @@ describe("Full flow: selections → budget → schedule", () => {
     const schedule = generateMonthlySchedule(milkResult.enrichedSelections, 2026);
     expect(schedule).toHaveLength(12);
 
-    // Each month: 2L milk + 0.25kg cheese
+    // Month 1 (non-quarter): only milk (2L/month), cheese is quarterly (3/12<1 but 3/4=0 so excluded)
     expect(schedule[0]?.items[0]?.quantity).toBe(2);    // 24 / 12
-    expect(schedule[0]?.items[1]?.quantity).toBe(0.25);  // 3 / 12
+    // Cheese: 3/12 = 0.25 < 1 → quarterly, but 3/4 = 0.75 → floor = 0, so excluded entirely
+    expect(schedule[0]?.items).toHaveLength(1);
   });
 
   it("rejects plan that exceeds milk budget", () => {
