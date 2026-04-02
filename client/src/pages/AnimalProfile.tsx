@@ -743,7 +743,7 @@ export default function AnimalProfile() {
         {/* ═══ SHARE PURCHASE ═══ */}
         <section id="share-purchase" className="border-b border-border/60 bg-card/50 py-8 md:py-12">
           <div className="container">
-            <div className="mx-auto max-w-3xl">
+            <div className="mx-auto max-w-5xl">
               <div className="mb-5 text-center">
                 <p className="text-xs uppercase tracking-widest text-primary">Персональное участие</p>
                 <h2 className="mt-2 text-2xl font-semibold text-foreground md:text-3xl">Станьте частью истории {displayName}</h2>
@@ -800,7 +800,7 @@ export default function AnimalProfile() {
         {/* ═══ COLLAPSIBLE SECTIONS — organized, friendly ═══ */}
         <section className="py-8 md:py-12">
           <div className="container">
-            <div className="mx-auto max-w-3xl space-y-3">
+            <div className="mx-auto max-w-5xl space-y-3">
 
               {/* ── Profile Completeness Indicator ── */}
               {isAuthenticated ? (

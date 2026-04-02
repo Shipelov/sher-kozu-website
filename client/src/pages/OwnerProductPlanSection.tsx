@@ -453,7 +453,7 @@ export default function OwnerProductPlanSection({
   return (
     <section id="product-plan" className="border-b border-border/60 py-10 md:py-14">
       <div className="container">
-        <div className="mx-auto max-w-5xl space-y-6">
+        <div className="mx-auto max-w-7xl space-y-6">
           {/* Header with Tier Badge */}
           <div className="flex flex-wrap items-center gap-3">
             <Package className="h-5 w-5 text-primary" />
@@ -511,7 +511,7 @@ export default function OwnerProductPlanSection({
 
               {/* ─── Calculator Layout: Config Left + Results Right ─── */}
               {(isPendingOwnerConfig || isLocked || isPendingApproval) && profile && (
-                <div className="grid gap-8 lg:grid-cols-[1fr_340px]">
+                <div className="grid gap-8 lg:grid-cols-[1fr_400px]">
                   {/* ─── LEFT: Configuration Panel ─── */}
                   <div className="rounded-2xl border border-border bg-card p-6 md:p-8">
                     {/* Tier info */}
@@ -567,7 +567,7 @@ export default function OwnerProductPlanSection({
                         return (
                           <div key={item.id} className="flex items-center gap-3">
                             <div className={`h-3 w-3 rounded-full shrink-0 ${colorClass}`} />
-                            <div className="flex items-center gap-1.5 w-36 shrink-0">
+                            <div className="flex items-center gap-1.5 w-52 shrink-0">
                               <Icon className="h-3.5 w-3.5 text-muted-foreground" />
                               <span className="text-sm text-foreground truncate">{item.label}</span>
                             </div>
