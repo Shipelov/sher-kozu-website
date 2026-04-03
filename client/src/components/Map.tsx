@@ -154,17 +154,39 @@ export function MapView({
         onMapError?.();
         return;
       }
-      map.current = new window.google.maps.Map(mapContainer.current, {
-        zoom: initialZoom,
-        center: initialCenter,
-        mapTypeControl: true,
-        fullscreenControl: true,
-        zoomControl: true,
-        streetViewControl: true,
-        // Always use mapId for consistent cross-device rendering.
-        // Legacy styles array is unreliable on mobile WebGL.
-        mapId: "DEMO_MAP_ID",
-      });
+
+      // When custom styles are provided, we skip mapId and use a StyledMapType.
+      // mapId forces vector/WebGL rendering which ignores the styles array.
+      // StyledMapType works reliably on all devices including mobile.
+      if (styles && styles.length > 0) {
+        map.current = new window.google.maps.Map(mapContainer.current, {
+          zoom: initialZoom,
+          center: initialCenter,
+          mapTypeControl: false,
+          fullscreenControl: false,
+          zoomControl: true,
+          streetViewControl: false,
+          // No mapId — this forces raster rendering which supports styles
+        });
+
+        // Create a StyledMapType and set it as the active map type
+        const styledMapType = new google.maps.StyledMapType(styles, {
+          name: "Styled",
+        });
+        map.current.mapTypes.set("styled_map", styledMapType);
+        map.current.setMapTypeId("styled_map");
+      } else {
+        map.current = new window.google.maps.Map(mapContainer.current, {
+          zoom: initialZoom,
+          center: initialCenter,
+          mapTypeControl: true,
+          fullscreenControl: true,
+          zoomControl: true,
+          streetViewControl: true,
+          mapId: "DEMO_MAP_ID",
+        });
+      }
+
       if (onMapReady) {
         onMapReady(map.current);
       }

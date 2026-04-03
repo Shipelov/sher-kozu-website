@@ -17,6 +17,43 @@ import { cn } from "@/lib/utils";
 const FARM_LOCATION = { lat: 56.0598821, lng: 36.6134708 };
 const FARM_TITLE = "Ферма Шерь Козу";
 
+/* ─── Custom map styles — warm organic palette matching the site ─── */
+const MAP_STYLES: google.maps.MapTypeStyle[] = [
+  // Overall geometry — warm cream base
+  { elementType: "geometry", stylers: [{ color: "#f0ebe0" }] },
+  // Labels text — muted dark green
+  { elementType: "labels.text.fill", stylers: [{ color: "#4a5e4a" }] },
+  { elementType: "labels.text.stroke", stylers: [{ color: "#f5f1ea" }, { weight: 3 }] },
+  // Administrative labels
+  { featureType: "administrative", elementType: "labels.text.fill", stylers: [{ color: "#3d4f3d" }] },
+  { featureType: "administrative.locality", elementType: "labels.text.fill", stylers: [{ color: "#2d3d2d" }] },
+  // Landscape — soft sage green
+  { featureType: "landscape", elementType: "geometry.fill", stylers: [{ color: "#e8e3d8" }] },
+  { featureType: "landscape.natural", elementType: "geometry.fill", stylers: [{ color: "#dde5d0" }] },
+  { featureType: "landscape.natural.terrain", elementType: "geometry.fill", stylers: [{ color: "#d4ddc8" }] },
+  // Parks and green areas — muted green
+  { featureType: "poi.park", elementType: "geometry.fill", stylers: [{ color: "#c5d4a8" }] },
+  { featureType: "poi.park", elementType: "labels.text.fill", stylers: [{ color: "#5a7a4a" }] },
+  // Other POIs — subtle
+  { featureType: "poi", elementType: "geometry.fill", stylers: [{ color: "#ddd8cc" }] },
+  { featureType: "poi", elementType: "labels.text.fill", stylers: [{ color: "#6b7b6b" }] },
+  { featureType: "poi.business", stylers: [{ visibility: "off" }] },
+  // Roads — warm tones
+  { featureType: "road", elementType: "geometry.fill", stylers: [{ color: "#f5f0e5" }] },
+  { featureType: "road", elementType: "geometry.stroke", stylers: [{ color: "#d9d0c0" }] },
+  { featureType: "road", elementType: "labels.text.fill", stylers: [{ color: "#6b7b6b" }] },
+  { featureType: "road.highway", elementType: "geometry.fill", stylers: [{ color: "#e8dcc8" }] },
+  { featureType: "road.highway", elementType: "geometry.stroke", stylers: [{ color: "#c8b898" }] },
+  { featureType: "road.highway", elementType: "labels.text.fill", stylers: [{ color: "#5a6a5a" }] },
+  { featureType: "road.arterial", elementType: "geometry.fill", stylers: [{ color: "#ede6d8" }] },
+  { featureType: "road.local", elementType: "geometry.fill", stylers: [{ color: "#f5f0e5" }] },
+  // Transit — hidden for cleaner look
+  { featureType: "transit", stylers: [{ visibility: "off" }] },
+  // Water — muted blue-green
+  { featureType: "water", elementType: "geometry.fill", stylers: [{ color: "#b8ccc0" }] },
+  { featureType: "water", elementType: "labels.text.fill", stylers: [{ color: "#6a8a7a" }] },
+];
+
 /* ─── Route info state ─── */
 interface RouteInfo {
   distance: string;
@@ -281,6 +318,7 @@ export default function FarmMap({ className }: { className?: string }) {
           initialZoom={12}
           onMapReady={handleMapReady}
           onMapError={handleMapError}
+          styles={MAP_STYLES}
         />
       </div>
 
