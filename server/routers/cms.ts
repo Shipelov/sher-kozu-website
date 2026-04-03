@@ -700,6 +700,52 @@ type DefaultBlock = {
 };
 
 const dashboardDefaults: DefaultBlock[] = [
+  // Section 0 — Owner Hero (used by Dashboard.tsx)
+  { page: "dashboard", blockKey: "hero_badge", label: "Кабинет — Бейдж", contentType: "text", content: "Кабинет владельца", section: "Кабинет владельца", sortOrder: 0, visible: true },
+  { page: "dashboard", blockKey: "hero_title_owner", label: "Кабинет — Заголовок (владелец)", contentType: "text", content: "Ваш личный кабинет — всё о вашем животном, продуктах и жизни фермы в одном месте.", section: "Кабинет владельца", sortOrder: 0, visible: true },
+  { page: "dashboard", blockKey: "hero_title_guest", label: "Кабинет — Заголовок (гость)", contentType: "text", content: "Ваш личный кабинет — сердце персонального фермерства. Здесь начинается ваш путь.", section: "Кабинет владельца", sortOrder: 0, visible: true },
+  { page: "dashboard", blockKey: "hero_subtitle_guest", label: "Кабинет — Описание (гость)", contentType: "richtext", content: "Сначала выберите животное в галерее. После этого кабинет свяжет дневник, трекер продукта и клуб воедино.", section: "Кабинет владельца", sortOrder: 0, visible: true },
+  { page: "dashboard", blockKey: "hero_location_owner", label: "Кабинет — Локация (владелец)", contentType: "text", content: "Продукт и клуб в одном ритме", section: "Кабинет владельца", sortOrder: 0, visible: true },
+  { page: "dashboard", blockKey: "hero_location_guest", label: "Кабинет — Локация (гость)", contentType: "text", content: "Маршрут начнётся после выбора животного", section: "Кабинет владельца", sortOrder: 0, visible: true },
+  { page: "dashboard", blockKey: "hero_box_label", label: "Кабинет — Именная коробка", contentType: "text", content: "Ваша именная коробка", section: "Кабинет владельца", sortOrder: 0, visible: true },
+
+  // Section 0.5 — Steps (owner dashboard)
+  { page: "dashboard", blockKey: "steps_label", label: "Шаги — Подзаголовок", contentType: "text", content: "Следующие шаги", section: "Следующие шаги", sortOrder: 4, visible: true },
+  { page: "dashboard", blockKey: "steps_title_owner", label: "Шаги — Заголовок (владелец)", contentType: "text", content: "Ваше животное уже в кабинете. Вот ваши следующие шаги.", section: "Следующие шаги", sortOrder: 5, visible: true },
+  { page: "dashboard", blockKey: "steps_title_guest", label: "Шаги — Заголовок (гость)", contentType: "text", content: "Кабинет ждёт первый шаг: выберите животное и начните свой путь в клубе.", section: "Следующие шаги", sortOrder: 6, visible: true },
+  { page: "dashboard", blockKey: "steps_subtitle", label: "Шаги — Описание", contentType: "richtext", content: "Здесь собраны ваши текущие задачи: проверить дневник, отследить продукт или заглянуть в клуб.", section: "Следующие шаги", sortOrder: 7, visible: true },
+
+  // Section 0.6 — Participation
+  { page: "dashboard", blockKey: "participation_label", label: "Участие — Подзаголовок", contentType: "text", content: "Профиль участия", section: "Профиль участия", sortOrder: 8, visible: true },
+  { page: "dashboard", blockKey: "participation_title_owner", label: "Участие — Заголовок (владелец)", contentType: "text", content: "Ваше участие", section: "Профиль участия", sortOrder: 9, visible: true },
+  { page: "dashboard", blockKey: "participation_title_guest", label: "Участие — Заголовок (гость)", contentType: "text", content: "Пока участие не выбрано", section: "Профиль участия", sortOrder: 9, visible: true },
+
+  // Section 0.7 — Quick Links (label)
+  { page: "dashboard", blockKey: "quicklinks_label", label: "Переходы — Подзаголовок (label)", contentType: "text", content: "Быстрые переходы", section: "Быстрые переходы", sortOrder: 29, visible: true },
+
+  // Section 0.8 — Product Route (label + title)
+  { page: "dashboard", blockKey: "product_route_label", label: "Маршрут продукта — Подзаголовок", contentType: "text", content: "Маршрут продукта", section: "Маршрут продукта", sortOrder: 39, visible: true },
+  { page: "dashboard", blockKey: "product_route_title", label: "Маршрут продукта — Заголовок", contentType: "text", content: "Продукт связан с вашим животным и участием", section: "Маршрут продукта", sortOrder: 39, visible: true },
+
+  // Section 0.9 — Curator description
+  { page: "dashboard", blockKey: "curator_description", label: "Куратор — Описание (расширенное)", contentType: "richtext", content: "Мы работаем над персональным куратором, который будет подсказывать следующие шаги на основе вашего участия, истории животного и клубных событий. Пока — быстрые переходы к профилю, трекеру и клубу.", section: "Куратор", sortOrder: 49, visible: true },
+
+  // Section 0.95 — Rhythm (label + description)
+  { page: "dashboard", blockKey: "rhythm_label", label: "Ритм — Подзаголовок", contentType: "text", content: "Ритм участия", section: "Ритм участия", sortOrder: 59, visible: true },
+  { page: "dashboard", blockKey: "rhythm_description", label: "Ритм — Описание (расширенное)", contentType: "richtext", content: "Личный кабинет начинается с вашего животного и ведёт дальше: профиль, трекер продуктов, клуб и обратно — всё связано в единый путь персонального фермерства.", section: "Ритм участия", sortOrder: 59, visible: true },
+
+  // Section 0.96 — Guest Preview Sections & Registration Benefits
+  { page: "dashboard", blockKey: "guest_preview_sections", label: "Гость — Превью секции", contentType: "json", content: JSON.stringify([
+    { title: "Профиль участия", description: "После входа здесь появятся ваша доля, статус участия и персональная карточка выбранного животного." },
+    { title: "Трекер продукта", description: "Кабинет покажет связанную партию, доставку и происхождение молока именно от выбранного животного." },
+    { title: "Клуб и визиты", description: "После авторизации откроются события, семейные визиты и точки возвращения в фермерский ритм." },
+  ]), section: "Гостевой превью", sortOrder: 75, visible: true },
+  { page: "dashboard", blockKey: "guest_registration_benefits", label: "Гость — Преимущества регистрации", contentType: "json", content: JSON.stringify([
+    "Сохраните выбранное животное и вернётесь к нему без повторного поиска.",
+    "Откроете личный кабинет с долей участия, трекером продукта и следующими шагами.",
+    "Получите доступ к клубным визитам, дневнику ухода и персональным обновлениям.",
+  ]), section: "Гостевой превью", sortOrder: 76, visible: true },
+
   // Section 1 — Guest Hero
   { page: "dashboard", blockKey: "guest_hero_badge", label: "Гость — Бейдж", contentType: "text", content: "Персональное фермерство", section: "Гостевой Hero", sortOrder: 1, visible: true },
   { page: "dashboard", blockKey: "guest_hero_title", label: "Гость — Заголовок", contentType: "text", content: "Ваш личный кабинет владельца", section: "Гостевой Hero", sortOrder: 2, visible: true },
@@ -757,6 +803,11 @@ const homeDefaults: DefaultBlock[] = [
   { page: "home", blockKey: "hero_image", label: "Hero — Фото", contentType: "image", content: "", imageUrl: "https://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/sherkozu_family_farm_hero-UF9QBY2UhWL9gdEpLXiEFS.webp", section: "Hero", sortOrder: 4, visible: true },
   { page: "home", blockKey: "hero_image_caption", label: "Hero — Подпись к фото", contentType: "text", content: "Конкретная ферма — конкретное животное с именем, породой и историей.", section: "Hero", sortOrder: 5, visible: true },
 
+  // Section 1.5 — Geography
+  { page: "home", blockKey: "geo_badge", label: "География — Бейдж", contentType: "text", content: "География", section: "География", sortOrder: 6, visible: true },
+  { page: "home", blockKey: "geo_heading", label: "География — Заголовок", contentType: "text", content: "На расстоянии загородной прогулки от вашего дома по Новорижскому шоссе", section: "География", sortOrder: 7, visible: true },
+  { page: "home", blockKey: "geo_subtitle", label: "География — Описание", contentType: "richtext", content: "Ферма Назарово расположена в самом сердце Новорижского направления", section: "География", sortOrder: 8, visible: true },
+
   // Section 2 — How It Works
   { page: "home", blockKey: "howit_title", label: "Как это работает — Подзаголовок", contentType: "text", content: "Как это работает", section: "Как это работает", sortOrder: 10, visible: true },
   { page: "home", blockKey: "howit_heading", label: "Как это работает — Заголовок", contentType: "text", content: "Три шага — от выбора животного до именной коробки с продуктами", section: "Как это работает", sortOrder: 11, visible: true },
@@ -768,6 +819,9 @@ const homeDefaults: DefaultBlock[] = [
   ]), section: "Как это работает", sortOrder: 13, visible: true },
 
   // Section 3 — For Whom
+  { page: "home", blockKey: "audience_label", label: "Для кого — Подзаголовок (label)", contentType: "text", content: "Для кого это", section: "Для кого", sortOrder: 19, visible: true },
+  { page: "home", blockKey: "audience_heading", label: "Для кого — Заголовок (heading)", contentType: "text", content: "Для тех, кому важна не только еда, но и история за ней", section: "Для кого", sortOrder: 19, visible: true },
+  { page: "home", blockKey: "audience_subtitle", label: "Для кого — Описание (subtitle)", contentType: "richtext", content: "Персональное фермерство — это осознанный выбор. Не массовый продукт, а личная связь с источником для тех, кто ценит прозрачность и качество.", section: "Для кого", sortOrder: 19, visible: true },
   { page: "home", blockKey: "forwhom_title", label: "Для кого — Подзаголовок", contentType: "text", content: "Для кого это", section: "Для кого", sortOrder: 20, visible: true },
   { page: "home", blockKey: "forwhom_heading", label: "Для кого — Заголовок", contentType: "text", content: "Для тех, кому важна не только еда, но и история за ней", section: "Для кого", sortOrder: 21, visible: true },
   { page: "home", blockKey: "forwhom_subtitle", label: "Для кого — Описание", contentType: "richtext", content: "Персональное фермерство — это осознанный выбор. Не массовый продукт, а личная связь с источником для тех, кто ценит прозрачность и качество.", section: "Для кого", sortOrder: 22, visible: true },
@@ -779,6 +833,9 @@ const homeDefaults: DefaultBlock[] = [
   ]), section: "Для кого", sortOrder: 23, visible: true },
 
   // Section 4 — Gallery Preview
+  { page: "home", blockKey: "gallery_label", label: "Галерея — Подзаголовок (label)", contentType: "text", content: "Галерея животных", section: "Галерея", sortOrder: 29, visible: true },
+  { page: "home", blockKey: "gallery_goats_image", label: "Галерея — Фото коз", contentType: "image", content: "", imageUrl: "https://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/sherkozu_anglonubian_portrait-fvqToDAjgebgcmNhLN93Db.webp", section: "Галерея", sortOrder: 37, visible: true },
+  { page: "home", blockKey: "gallery_sheep_image", label: "Галерея — Фото овец", contentType: "image", content: "", imageUrl: "https://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/sherkozu_family_farm_hero-UF9QBY2UhWL9gdEpLXiEFS.webp", section: "Галерея", sortOrder: 38, visible: true },
   { page: "home", blockKey: "gallery_title", label: "Галерея — Подзаголовок", contentType: "text", content: "Галерея животных", section: "Галерея", sortOrder: 30, visible: true },
   { page: "home", blockKey: "gallery_heading", label: "Галерея — Заголовок", contentType: "text", content: "Познакомьтесь с животными фермы", section: "Галерея", sortOrder: 31, visible: true },
   { page: "home", blockKey: "gallery_subtitle", label: "Галерея — Описание", contentType: "richtext", content: "Элитные породы с европейской генетикой. У каждого — имя, характер, родословная и доступные доли.", section: "Галерея", sortOrder: 32, visible: true },
@@ -788,6 +845,7 @@ const homeDefaults: DefaultBlock[] = [
   { page: "home", blockKey: "sheep_card_text", label: "Галерея — Овцы описание", contentType: "richtext", content: "Самые высокоудойные породы в мире. Молоко с высоким содержанием жира и белка — идеально для сыроварения. Генетика уровня Рокфора.", section: "Галерея", sortOrder: 36, visible: true },
 
   // Section 5 — Why Us
+  { page: "home", blockKey: "whyus_label", label: "Почему мы — Подзаголовок (label)", contentType: "text", content: "Почему Шерь Козу", section: "Почему мы", sortOrder: 39, visible: true },
   { page: "home", blockKey: "whyus_title", label: "Почему мы — Подзаголовок", contentType: "text", content: "Почему Шерь Козу", section: "Почему мы", sortOrder: 40, visible: true },
   { page: "home", blockKey: "whyus_heading", label: "Почему мы — Заголовок", contentType: "text", content: "Не просто продукты — личная история с фермой", section: "Почему мы", sortOrder: 41, visible: true },
   { page: "home", blockKey: "whyus_image", label: "Почему мы — Фото", contentType: "image", content: "", imageUrl: "https://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/sherkozu_club_visit-mmi2c8j4W8VB63TUjVvZ4S.webp", section: "Почему мы", sortOrder: 42, visible: true },
@@ -804,6 +862,7 @@ const homeDefaults: DefaultBlock[] = [
   ]), section: "Почему мы", sortOrder: 44, visible: true },
 
   // Section 6 — Products
+  { page: "home", blockKey: "products_label", label: "Продукты — Подзаголовок (label)", contentType: "text", content: "Что вы получаете", section: "Продукты", sortOrder: 49, visible: true },
   { page: "home", blockKey: "products_title", label: "Продукты — Подзаголовок", contentType: "text", content: "Что вы получаете", section: "Продукты", sortOrder: 50, visible: true },
   { page: "home", blockKey: "products_heading", label: "Продукты — Заголовок", contentType: "text", content: "Что внутри именной коробки", section: "Продукты", sortOrder: 51, visible: true },
   { page: "home", blockKey: "products_subtitle", label: "Продукты — Описание", contentType: "richtext", content: "Каждый продукт — результат вашей связи с конкретным животным. С трекером происхождения от надоя до двери.", section: "Продукты", sortOrder: 52, visible: true },
@@ -815,6 +874,7 @@ const homeDefaults: DefaultBlock[] = [
   ]), section: "Продукты", sortOrder: 54, visible: true },
 
   // Section 7 — CTA
+  { page: "home", blockKey: "cta_label", label: "CTA — Подзаголовок (label)", contentType: "text", content: "Начните сейчас", section: "Призыв к действию", sortOrder: 59, visible: true },
   { page: "home", blockKey: "cta_title", label: "CTA — Подзаголовок", contentType: "text", content: "Начните сейчас", section: "Призыв к действию", sortOrder: 60, visible: true },
   { page: "home", blockKey: "cta_heading", label: "CTA — Заголовок", contentType: "text", content: "Станьте частью первого в России клуба персонального фермерства", section: "Призыв к действию", sortOrder: 61, visible: true },
   { page: "home", blockKey: "cta_subtitle", label: "CTA — Описание", contentType: "richtext", content: "Выберите животное, познакомьтесь с его историей и начните получать именные продукты. Количество мест в клубе ограничено — мы работаем с каждым владельцем лично.", section: "Призыв к действию", sortOrder: 62, visible: true },

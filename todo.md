@@ -1819,3 +1819,17 @@
 - [x] Вернуть стилизацию карты через Google Cloud Map Styles (JSON-стиль через API) для надёжной работы на всех устройствах
 - [x] Исправить: Google Maps не работает на мобильном после применения JSON-стилей (использован blob URL подход)
 - [x] Исправить: Google Maps всё ещё не работает на мобильном — перешли на iframe embed для максимальной надёжности
+
+## CMS Synchronization
+
+- [x] Аудит текущей CMS: проверить какие страницы и блоки уже покрыты
+- [x] Добавить в homeDefaults: geo_badge, geo_heading, geo_subtitle (секция «География»)
+- [x] Добавить в homeDefaults: gallery_goats_image, gallery_sheep_image (фото галереи)
+- [x] Добавить в homeDefaults: gallery_label, audience_label, audience_heading, audience_subtitle, whyus_label, products_label, cta_label (ключи _label)
+- [x] Добавить в dashboardDefaults: hero_badge, hero_box_label, hero_location_guest, hero_location_owner, hero_title_guest, hero_title_owner, hero_subtitle_guest
+- [x] Добавить в dashboardDefaults: steps_label, steps_title_owner, steps_title_guest, steps_subtitle
+- [x] Добавить в dashboardDefaults: participation_label, participation_title_owner, participation_title_guest
+- [x] Добавить в dashboardDefaults: product_route_label, product_route_title, curator_description, rhythm_label, rhythm_description, quicklinks_label
+- [x] Добавить в dashboardDefaults: guest_preview_sections, guest_registration_benefits
+- [x] Написать vitest-тесты для покрытия CMS defaults
+- [x] Протестировать редактирование контента через админ-панель

@@ -186,13 +186,16 @@ describe("cms.getPageBlocks", () => {
     // Simulate all home defaults present by having all blockKeys
     const allHomeKeys = [
       "hero_badge", "hero_title", "hero_subtitle", "hero_image", "hero_image_caption",
+      "geo_badge", "geo_heading", "geo_subtitle",
       "howit_title", "howit_heading", "howit_subtitle", "steps",
+      "audience_label", "audience_heading", "audience_subtitle",
       "forwhom_title", "forwhom_heading", "forwhom_subtitle", "audiences",
+      "gallery_label", "gallery_goats_image", "gallery_sheep_image",
       "gallery_title", "gallery_heading", "gallery_subtitle",
       "goats_card_title", "goats_card_text", "sheep_card_title", "sheep_card_text",
-      "whyus_title", "whyus_heading", "whyus_image", "values", "testimonials",
-      "products_title", "products_heading", "products_subtitle", "products_image", "products_list",
-      "cta_title", "cta_heading", "cta_subtitle",
+      "whyus_label", "whyus_title", "whyus_heading", "whyus_image", "values", "testimonials",
+      "products_label", "products_title", "products_heading", "products_subtitle", "products_image", "products_list",
+      "cta_label", "cta_title", "cta_heading", "cta_subtitle",
     ];
     mockRows = allHomeKeys.map((key, i) => ({
       id: i + 1, page: "home", blockKey: key, contentType: "text", content: "Content", imageUrl: null, sortOrder: i, visible: true, createdAt: new Date(), updatedAt: new Date(),
@@ -405,13 +408,16 @@ describe("cms.seedDefaults", () => {
     // Simulate all home defaults present
     const allHomeKeys = [
       "hero_badge", "hero_title", "hero_subtitle", "hero_image", "hero_image_caption",
+      "geo_badge", "geo_heading", "geo_subtitle",
       "howit_title", "howit_heading", "howit_subtitle", "steps",
+      "audience_label", "audience_heading", "audience_subtitle",
       "forwhom_title", "forwhom_heading", "forwhom_subtitle", "audiences",
+      "gallery_label", "gallery_goats_image", "gallery_sheep_image",
       "gallery_title", "gallery_heading", "gallery_subtitle",
       "goats_card_title", "goats_card_text", "sheep_card_title", "sheep_card_text",
-      "whyus_title", "whyus_heading", "whyus_image", "values", "testimonials",
-      "products_title", "products_heading", "products_subtitle", "products_image", "products_list",
-      "cta_title", "cta_heading", "cta_subtitle",
+      "whyus_label", "whyus_title", "whyus_heading", "whyus_image", "values", "testimonials",
+      "products_label", "products_title", "products_heading", "products_subtitle", "products_image", "products_list",
+      "cta_label", "cta_title", "cta_heading", "cta_subtitle",
     ];
     mockRows = allHomeKeys.map(key => ({ blockKey: key }));
     const caller = appRouter.createCaller(createAdminContext());
@@ -1666,5 +1672,159 @@ describe("CMS visual indicator helpers", () => {
     const source = fs.readFileSync("client/src/pages/AdminCmsEditor.tsx", "utf-8");
     expect(source).toContain("setActivePage(ch.page)");
     expect(source).toContain("setActivityFeedOpen(false)");
+  });
+});
+
+
+/* ═══════════════════════════════════════════════════════
+   CMS Defaults Coverage — Frontend ↔ Backend Sync
+   ═══════════════════════════════════════════════════════ */
+
+describe("CMS defaults coverage: every frontend key has a backend default", () => {
+  /**
+   * These lists are the canonical set of cms.getText / cms.getImage / cms.getJson
+   * keys used in each page component. If a frontend dev adds a new key,
+   * they MUST also add it to the corresponding defaults array in cms.ts.
+   */
+
+  const homeExpectedKeys = [
+    "hero_badge", "hero_title", "hero_subtitle", "hero_image", "hero_image_caption",
+    "geo_badge", "geo_heading", "geo_subtitle",
+    "howit_title", "howit_heading", "howit_subtitle", "steps",
+    "audience_label", "audience_heading", "audience_subtitle", "audiences",
+    "gallery_label", "gallery_goats_image", "gallery_sheep_image",
+    "gallery_heading", "gallery_subtitle",
+    "whyus_label", "whyus_heading", "whyus_image", "values", "testimonials",
+    "products_label", "products_heading", "products_subtitle", "products_image", "products_list",
+    "cta_label", "cta_heading", "cta_subtitle",
+  ];
+
+  const dashboardExpectedKeys = [
+    "hero_badge", "hero_title_owner", "hero_title_guest", "hero_subtitle_guest",
+    "hero_location_owner", "hero_location_guest", "hero_box_label",
+    "steps_label", "steps_title_owner", "steps_title_guest", "steps_subtitle",
+    "participation_label", "participation_title_owner", "participation_title_guest",
+    "quicklinks_label", "quicklinks_title",
+    "product_route_label", "product_route_title",
+    "curator_title", "curator_description",
+    "rhythm_label", "rhythm_title", "rhythm_description",
+    "guest_preview_sections", "guest_registration_benefits",
+  ];
+
+  const aboutExpectedKeys = [
+    "hero_badge", "hero_heading", "hero_subtitle", "hero_image", "hero_location", "hero_since",
+    "history_badge", "history_heading", "history_subtitle", "history_timeline",
+    "philosophy_badge", "philosophy_heading", "philosophy_subtitle", "philosophy_image", "philosophy_principles",
+    "breeds_badge", "breeds_heading", "breeds_subtitle", "breeds_image", "breeds_list",
+    "gallery_badge", "gallery_heading", "gallery_subtitle",
+    "values_badge", "values_heading", "values_subtitle", "values_stats",
+    "cta_heading", "cta_subtitle",
+  ];
+
+  const catalogExpectedKeys = [
+    "badge", "heading", "subtitle",
+    "status_relationship", "status_available", "status_shared",
+  ];
+
+  const partnersExpectedKeys = [
+    "hero_badge", "hero_heading", "hero_subtitle",
+    "sidebar_badge", "sidebar_heading", "sidebar_description",
+    "form_heading", "form_description",
+  ];
+
+  it("homeDefaults covers all Home.tsx CMS keys", async () => {
+    const fs = await import("fs");
+    const source = fs.readFileSync("server/routers/cms.ts", "utf-8");
+
+    for (const key of homeExpectedKeys) {
+      const pattern = `blockKey: "${key}"`;
+      expect(source, `Missing homeDefaults key: ${key}`).toContain(pattern);
+    }
+  });
+
+  it("dashboardDefaults covers all Dashboard.tsx CMS keys", async () => {
+    const fs = await import("fs");
+    const source = fs.readFileSync("server/routers/cms.ts", "utf-8");
+
+    for (const key of dashboardExpectedKeys) {
+      const pattern = `blockKey: "${key}"`;
+      expect(source, `Missing dashboardDefaults key: ${key}`).toContain(pattern);
+    }
+  });
+
+  it("aboutDefaults covers all AboutFarm.tsx CMS keys", async () => {
+    const fs = await import("fs");
+    const source = fs.readFileSync("server/routers/cms.ts", "utf-8");
+
+    for (const key of aboutExpectedKeys) {
+      const pattern = `blockKey: "${key}"`;
+      expect(source, `Missing aboutDefaults key: ${key}`).toContain(pattern);
+    }
+  });
+
+  it("catalogDefaults covers all AnimalsCatalog.tsx CMS keys", async () => {
+    const fs = await import("fs");
+    const source = fs.readFileSync("server/routers/cms.ts", "utf-8");
+
+    for (const key of catalogExpectedKeys) {
+      const pattern = `blockKey: "${key}"`;
+      expect(source, `Missing catalogDefaults key: ${key}`).toContain(pattern);
+    }
+  });
+
+  it("partnersDefaults covers all Partners.tsx CMS keys", async () => {
+    const fs = await import("fs");
+    const source = fs.readFileSync("server/routers/cms.ts", "utf-8");
+
+    for (const key of partnersExpectedKeys) {
+      const pattern = `blockKey: "${key}"`;
+      expect(source, `Missing partnersDefaults key: ${key}`).toContain(pattern);
+    }
+  });
+
+  it("all pages have correct page values in their defaults", async () => {
+    const fs = await import("fs");
+    const source = fs.readFileSync("server/routers/cms.ts", "utf-8");
+
+    // Ensure getDefaultBlocks maps all 5 pages
+    expect(source).toContain('page === "home"');
+    expect(source).toContain('page === "catalog"');
+    expect(source).toContain('page === "about"');
+    expect(source).toContain('page === "partners"');
+    expect(source).toContain('page === "dashboard"');
+  });
+
+  it("frontend pages actually use CMS hook for all expected keys", async () => {
+    const fs = await import("fs");
+
+    // Verify Home.tsx uses all expected home keys
+    const homeSrc = fs.readFileSync("client/src/pages/Home.tsx", "utf-8");
+    for (const key of homeExpectedKeys) {
+      expect(homeSrc, `Home.tsx should use CMS key: ${key}`).toContain(`"${key}"`);
+    }
+
+    // Verify Dashboard.tsx uses all expected dashboard keys
+    const dashSrc = fs.readFileSync("client/src/pages/Dashboard.tsx", "utf-8");
+    for (const key of dashboardExpectedKeys) {
+      expect(dashSrc, `Dashboard.tsx should use CMS key: ${key}`).toContain(`"${key}"`);
+    }
+
+    // Verify AboutFarm.tsx uses all expected about keys
+    const aboutSrc = fs.readFileSync("client/src/pages/AboutFarm.tsx", "utf-8");
+    for (const key of aboutExpectedKeys) {
+      expect(aboutSrc, `AboutFarm.tsx should use CMS key: ${key}`).toContain(`"${key}"`);
+    }
+
+    // Verify AnimalsCatalog.tsx uses all expected catalog keys
+    const catSrc = fs.readFileSync("client/src/pages/AnimalsCatalog.tsx", "utf-8");
+    for (const key of catalogExpectedKeys) {
+      expect(catSrc, `AnimalsCatalog.tsx should use CMS key: ${key}`).toContain(`"${key}"`);
+    }
+
+    // Verify Partners.tsx uses all expected partners keys
+    const partSrc = fs.readFileSync("client/src/pages/Partners.tsx", "utf-8");
+    for (const key of partnersExpectedKeys) {
+      expect(partSrc, `Partners.tsx should use CMS key: ${key}`).toContain(`"${key}"`);
+    }
   });
 });
