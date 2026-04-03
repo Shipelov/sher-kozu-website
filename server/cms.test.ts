@@ -1941,3 +1941,52 @@ describe("CMS defaults coverage: every frontend key has a backend default", () =
     }
   });
 });
+
+
+/* ─── CMS Admin Panel: PAGE_LABELS & PAGE_PREVIEW_URLS coverage ─── */
+describe("CMS Admin Panel page registry", () => {
+  const ALL_CMS_PAGES = ["home", "catalog", "about", "partners", "dashboard", "pricing", "club", "tracker", "calculator"];
+
+  it("PAGE_LABELS includes all CMS pages", async () => {
+    const fs = await import("fs");
+    const source = fs.readFileSync("client/src/pages/AdminCmsEditor.tsx", "utf-8");
+
+    for (const page of ALL_CMS_PAGES) {
+      const pattern = `${page}:`;
+      // Check that PAGE_LABELS contains each page key
+      expect(source, `PAGE_LABELS missing page: ${page}`).toContain(pattern);
+    }
+  });
+
+  it("PAGE_PREVIEW_URLS includes all CMS pages", async () => {
+    const fs = await import("fs");
+    const source = fs.readFileSync("client/src/pages/AdminCmsEditor.tsx", "utf-8");
+
+    // Extract PAGE_PREVIEW_URLS block
+    const previewUrlsMatch = source.match(/const PAGE_PREVIEW_URLS[^}]+\}/s);
+    expect(previewUrlsMatch, "PAGE_PREVIEW_URLS not found").toBeTruthy();
+
+    for (const page of ALL_CMS_PAGES) {
+      expect(previewUrlsMatch![0], `PAGE_PREVIEW_URLS missing page: ${page}`).toContain(`${page}:`);
+    }
+  });
+
+  it("getDefaultBlocks covers all CMS pages", async () => {
+    const fs = await import("fs");
+    const source = fs.readFileSync("server/routers/cms.ts", "utf-8");
+
+    for (const page of ALL_CMS_PAGES) {
+      const pattern = `page === "${page}"`;
+      expect(source, `getDefaultBlocks missing handler for page: ${page}`).toContain(pattern);
+    }
+  });
+
+  it("AdminCmsEditor has content type filter UI", async () => {
+    const fs = await import("fs");
+    const source = fs.readFileSync("client/src/pages/AdminCmsEditor.tsx", "utf-8");
+
+    expect(source).toContain("activeContentType");
+    expect(source).toContain("globalSearchMode");
+    expect(source).toContain("Globe");
+  });
+});

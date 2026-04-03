@@ -46,6 +46,7 @@ import {
   Activity,
   Pencil,
   ChevronRight,
+  Globe,
 } from "lucide-react";
 import ImageCropEditor from "@/components/ImageCropEditor";
 import {
@@ -80,6 +81,10 @@ const PAGE_LABELS: Record<string, string> = {
   about: "О ферме",
   partners: "Партнёры",
   dashboard: "Мой кабинет",
+  pricing: "Цены",
+  club: "Клуб",
+  tracker: "Трекер",
+  calculator: "Калькулятор",
 };
 
 const PAGE_PREVIEW_URLS: Record<string, string> = {
@@ -88,6 +93,10 @@ const PAGE_PREVIEW_URLS: Record<string, string> = {
   about: "/about",
   partners: "/partners",
   dashboard: "/dashboard",
+  pricing: "/pricing",
+  club: "/club",
+  tracker: "/tracker",
+  calculator: "/pricing/calculator",
 };
 
 const ACTION_LABELS: Record<string, { label: string; color: string }> = {
@@ -396,6 +405,8 @@ export default function AdminCmsEditor() {
   const [activeSection, setActiveSection] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [activityFeedOpen, setActivityFeedOpen] = useState(false);
+  const [activeContentType, setActiveContentType] = useState<string>("all");
+  const [globalSearchMode, setGlobalSearchMode] = useState(false);
 
   const utils = trpc.useUtils();
 
@@ -524,28 +535,40 @@ export default function AdminCmsEditor() {
     onError: (err: { message: string }) => toast.error(`Ошибка сортировки: ${err.message}`),
   });
 
-  /* ─── Filtered blocks for active page ─── */
+  /* ─── Filtered blocks for active page (or all pages in global mode) ─── */
   const pageBlocks = useMemo(
     () =>
       (allBlocks ?? [])
-        .filter((b: CmsBlock) => b.page === activePage)
+        .filter((b: CmsBlock) => globalSearchMode ? true : b.page === activePage)
         .sort((a: CmsBlock, b: CmsBlock) => a.sortOrder - b.sortOrder),
-    [allBlocks, activePage]
+    [allBlocks, activePage, globalSearchMode]
   );
 
-  /* ─── Search filter ─── */
+  /* ─── Search + content type filter ─── */
   const searchFilteredBlocks = useMemo(() => {
-    if (!searchQuery.trim()) return pageBlocks;
-    const q = searchQuery.toLowerCase().trim();
-    return pageBlocks.filter((b: CmsBlock) => {
-      return (
-        b.blockKey.toLowerCase().includes(q) ||
-        (b.label && b.label.toLowerCase().includes(q)) ||
-        (b.content && b.content.toLowerCase().includes(q)) ||
-        (b.section && b.section.toLowerCase().includes(q))
-      );
-    });
-  }, [pageBlocks, searchQuery]);
+    let filtered = pageBlocks;
+
+    // Content type filter
+    if (activeContentType !== "all") {
+      filtered = filtered.filter((b: CmsBlock) => b.contentType === activeContentType);
+    }
+
+    // Text search
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase().trim();
+      filtered = filtered.filter((b: CmsBlock) => {
+        return (
+          b.blockKey.toLowerCase().includes(q) ||
+          (b.label && b.label.toLowerCase().includes(q)) ||
+          (b.content && b.content.toLowerCase().includes(q)) ||
+          (b.section && b.section.toLowerCase().includes(q)) ||
+          (globalSearchMode && (PAGE_LABELS[b.page] ?? b.page).toLowerCase().includes(q))
+        );
+      });
+    }
+
+    return filtered;
+  }, [pageBlocks, searchQuery, activeContentType, globalSearchMode]);
 
   /* ─── Unique sections for current page ─── */
   const pageSections = useMemo(() => {
@@ -582,7 +605,46 @@ export default function AdminCmsEditor() {
     setActivePage(page);
     setActiveSection("all");
     setSearchQuery("");
+    setActiveContentType("all");
+    setGlobalSearchMode(false);
   }, []);
+
+  /* ─── Content type counts for filter badges ─── */
+  const contentTypeCounts = useMemo(() => {
+    const counts: Record<string, number> = { text: 0, richtext: 0, image: 0, json: 0 };
+    const base = searchQuery.trim()
+      ? pageBlocks.filter((b: CmsBlock) => {
+          const q = searchQuery.toLowerCase().trim();
+          return (
+            b.blockKey.toLowerCase().includes(q) ||
+            (b.label && b.label.toLowerCase().includes(q)) ||
+            (b.content && b.content.toLowerCase().includes(q)) ||
+            (b.section && b.section.toLowerCase().includes(q)) ||
+            (globalSearchMode && (PAGE_LABELS[b.page] ?? b.page).toLowerCase().includes(q))
+          );
+        })
+      : pageBlocks;
+    for (const b of base) {
+      if (counts[b.contentType] !== undefined) counts[b.contentType]++;
+    }
+    return counts;
+  }, [pageBlocks, searchQuery, globalSearchMode]);
+
+  /* ─── In global mode, group blocks by page ─── */
+  const globalGroupedBlocks = useMemo(() => {
+    if (!globalSearchMode) return null;
+    const groups: { page: string; blocks: CmsBlock[] }[] = [];
+    const map = new Map<string, CmsBlock[]>();
+    for (const block of searchFilteredBlocks) {
+      if (activeSection !== "all" && (block.section || "Без секции") !== activeSection) continue;
+      if (!map.has(block.page)) {
+        map.set(block.page, []);
+        groups.push({ page: block.page, blocks: map.get(block.page)! });
+      }
+      map.get(block.page)!.push(block);
+    }
+    return groups;
+  }, [globalSearchMode, searchFilteredBlocks, activeSection]);
 
   /* ─── DnD handler ─── */
   const handleDragEnd = useCallback(
@@ -882,30 +944,94 @@ export default function AdminCmsEditor() {
             ))}
           </TabsList>
 
-          {/* Search bar */}
-          <div className="mb-4">
-            <div className="relative max-w-md">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Поиск по ключу, содержимому или секции..."
-                className="pl-9 pr-9"
-              />
-              {searchQuery && (
-                <button
-                  type="button"
-                  onClick={() => setSearchQuery("")}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              )}
+          {/* Search bar with global toggle and content type filter */}
+          <div className="mb-4 space-y-3">
+            <div className="flex items-center gap-3">
+              <div className="relative flex-1 max-w-lg">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder={globalSearchMode ? "Глобальный поиск по всем страницам..." : "Поиск по ключу, содержимому или секции..."}
+                  className="pl-9 pr-9"
+                />
+                {searchQuery && (
+                  <button
+                    type="button"
+                    onClick={() => setSearchQuery("")}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                )}
+              </div>
+              <Button
+                variant={globalSearchMode ? "default" : "outline"}
+                size="sm"
+                onClick={() => {
+                  setGlobalSearchMode(!globalSearchMode);
+                  setActiveSection("all");
+                  setActiveContentType("all");
+                }}
+                className="shrink-0"
+              >
+                <Globe className="h-4 w-4 mr-1" />
+                Все страницы
+              </Button>
             </div>
-            {searchQuery && (
-              <p className="text-xs text-muted-foreground mt-1.5">
-                Найдено: <strong>{searchFilteredBlocks.length}</strong> из {pageBlocks.length} блоков
-              </p>
+
+            {/* Content type filter chips */}
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-xs font-medium text-muted-foreground">Тип:</span>
+              <Button
+                variant={activeContentType === "all" ? "default" : "outline"}
+                size="sm"
+                onClick={() => setActiveContentType("all")}
+                className="h-7 text-xs px-2.5"
+              >
+                Все ({Object.values(contentTypeCounts).reduce((a, b) => a + b, 0)})
+              </Button>
+              {Object.entries(TYPE_LABELS).map(([key, info]) => {
+                const count = contentTypeCounts[key] ?? 0;
+                if (count === 0 && activeContentType !== key) return null;
+                const Icon = info.icon;
+                return (
+                  <Button
+                    key={key}
+                    variant={activeContentType === key ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setActiveContentType(activeContentType === key ? "all" : key)}
+                    className="h-7 text-xs px-2.5"
+                  >
+                    <Icon className="h-3 w-3 mr-1" />
+                    {info.label} ({count})
+                  </Button>
+                );
+              })}
+            </div>
+
+            {/* Search result summary */}
+            {(searchQuery || activeContentType !== "all") && (
+              <div className="flex items-center gap-2">
+                <p className="text-xs text-muted-foreground">
+                  Найдено: <strong>{searchFilteredBlocks.length}</strong> из {(allBlocks ?? []).length} блоков
+                  {globalSearchMode && " (все страницы)"}
+                </p>
+                {(searchQuery || activeContentType !== "all") && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setSearchQuery("");
+                      setActiveContentType("all");
+                    }}
+                    className="h-6 text-xs px-2"
+                  >
+                    <X className="h-3 w-3 mr-1" />
+                    Сбросить
+                  </Button>
+                )}
+              </div>
             )}
           </div>
 
@@ -946,94 +1072,176 @@ export default function AdminCmsEditor() {
             </div>
           )}
 
-          {Object.keys(PAGE_LABELS).map((page) => (
-            <TabsContent key={page} value={page}>
+          {/* ─── Global search results (shown instead of tabs when global mode is active) ─── */}
+          {globalSearchMode ? (
+            <div>
               {isLoading ? (
                 <div className="flex items-center justify-center py-20">
                   <Loader2 className="h-8 w-8 animate-spin text-primary" />
                 </div>
-              ) : pageBlocks.length === 0 ? (
-                <div className="text-center py-20">
-                  <p className="text-muted-foreground mb-4">
-                    Контент-блоки для страницы «{PAGE_LABELS[page]}» ещё не инициализированы.
-                  </p>
-                  <Button onClick={() => setSeedDialogOpen(true)}>
-                    <Plus className="h-4 w-4 mr-1" />
-                    Инициализировать блоки
-                  </Button>
-                </div>
-              ) : groupedBlocks.length === 0 ? (
+              ) : !globalGroupedBlocks || globalGroupedBlocks.length === 0 ? (
                 <div className="text-center py-12">
-                  <Search className="h-8 w-8 text-muted-foreground/40 mx-auto mb-3" />
+                  <Globe className="h-8 w-8 text-muted-foreground/40 mx-auto mb-3" />
                   <p className="text-muted-foreground">
-                    {searchQuery ? "Ничего не найдено по запросу" : "Нет блоков в выбранной секции"}
+                    {searchQuery ? "Ничего не найдено по запросу" : "Введите запрос для поиска по всем страницам"}
                   </p>
-                  {searchQuery ? (
+                  {searchQuery && (
                     <Button variant="link" size="sm" onClick={() => setSearchQuery("")} className="mt-2">
                       Очистить поиск
-                    </Button>
-                  ) : (
-                    <Button variant="link" size="sm" onClick={() => setActiveSection("all")} className="mt-2">
-                      Показать все
                     </Button>
                   )}
                 </div>
               ) : (
-                <div className="space-y-6">
-                  {groupedBlocks.map(({ section, blocks }) => (
-                    <div key={section}>
-                      {/* Section header */}
-                      <div className="flex items-center gap-2 mb-3 pb-2 border-b border-border/60">
-                        <Layers className="h-4 w-4 text-primary" />
-                        <h3 className="text-sm font-semibold text-foreground">{section}</h3>
-                        <Badge variant="secondary" className="text-xs">{blocks.length}</Badge>
-                        {!searchQuery && (
-                          <span className="text-[10px] text-muted-foreground/60 ml-auto">
-                            <GripVertical className="h-3 w-3 inline mr-0.5" />
-                            Перетащите для сортировки
-                          </span>
-                        )}
+                <div className="space-y-8">
+                  {globalGroupedBlocks.map(({ page, blocks }) => (
+                    <div key={page}>
+                      {/* Page group header */}
+                      <div className="flex items-center gap-3 mb-4 pb-2 border-b-2 border-primary/20">
+                        <Badge className="bg-primary/10 text-primary border-primary/20 text-sm px-3 py-1">
+                          {PAGE_LABELS[page] ?? page}
+                        </Badge>
+                        <span className="text-xs text-muted-foreground">{blocks.length} блоков</span>
+                        <a
+                          href={PAGE_PREVIEW_URLS[page] || "/"}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="ml-auto text-xs text-primary hover:underline flex items-center gap-1"
+                        >
+                          <ExternalLink className="h-3 w-3" />
+                          Предпросмотр
+                        </a>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            setGlobalSearchMode(false);
+                            setActivePage(page);
+                          }}
+                          className="text-xs h-7"
+                        >
+                          Открыть страницу
+                        </Button>
                       </div>
 
-                      {/* Sortable block list */}
-                      <DndContext
-                        sensors={sensors}
-                        collisionDetection={closestCenter}
-                        onDragEnd={(event) => handleDragEnd(event, blocks)}
-                      >
-                        <SortableContext
-                          items={blocks.map((b) => b.id)}
-                          strategy={verticalListSortingStrategy}
-                        >
-                          <div className="space-y-3">
-                            {blocks.map((block: CmsBlock) => {
-                              const typeInfo = TYPE_LABELS[block.contentType] ?? TYPE_LABELS.text;
-                              return (
-                                <SortableBlockItem
-                                  key={block.id}
-                                  block={block}
-                                  typeInfo={typeInfo}
-                                  isExpanded={expandedBlocks.has(block.id)}
-                                  toggleExpand={toggleExpand}
-                                  openEditor={openEditor}
-                                  setHistoryBlock={setHistoryBlock}
-                                  toggleVisibility={toggleVisibility}
-                                  deleteBlock={deleteBlock}
-                                  formatJsonContent={formatJsonContent}
-                                  searchQuery={searchQuery}
-                                  lastChangeInfo={blockChangeMap[block.id] ?? null}
-                                />
-                              );
-                            })}
-                          </div>
-                        </SortableContext>
-                      </DndContext>
+                      {/* Block list (no DnD in global mode) */}
+                      <div className="space-y-3">
+                        {blocks.map((block: CmsBlock) => {
+                          const typeInfo = TYPE_LABELS[block.contentType] ?? TYPE_LABELS.text;
+                          return (
+                            <SortableBlockItem
+                              key={block.id}
+                              block={block}
+                              typeInfo={typeInfo}
+                              isExpanded={expandedBlocks.has(block.id)}
+                              toggleExpand={toggleExpand}
+                              openEditor={openEditor}
+                              setHistoryBlock={setHistoryBlock}
+                              toggleVisibility={toggleVisibility}
+                              deleteBlock={deleteBlock}
+                              formatJsonContent={formatJsonContent}
+                              searchQuery={searchQuery}
+                              lastChangeInfo={blockChangeMap[block.id] ?? null}
+                            />
+                          );
+                        })}
+                      </div>
                     </div>
                   ))}
                 </div>
               )}
-            </TabsContent>
-          ))}
+            </div>
+          ) : (
+            <>
+              {Object.keys(PAGE_LABELS).map((page) => (
+                <TabsContent key={page} value={page}>
+                  {isLoading ? (
+                    <div className="flex items-center justify-center py-20">
+                      <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                    </div>
+                  ) : pageBlocks.length === 0 ? (
+                    <div className="text-center py-20">
+                      <p className="text-muted-foreground mb-4">
+                        Контент-блоки для страницы «{PAGE_LABELS[page]}» ещё не инициализированы.
+                      </p>
+                      <Button onClick={() => setSeedDialogOpen(true)}>
+                        <Plus className="h-4 w-4 mr-1" />
+                        Инициализировать блоки
+                      </Button>
+                    </div>
+                  ) : groupedBlocks.length === 0 ? (
+                    <div className="text-center py-12">
+                      <Search className="h-8 w-8 text-muted-foreground/40 mx-auto mb-3" />
+                      <p className="text-muted-foreground">
+                        {searchQuery ? "Ничего не найдено по запросу" : "Нет блоков в выбранной секции"}
+                      </p>
+                      {searchQuery ? (
+                        <Button variant="link" size="sm" onClick={() => setSearchQuery("")} className="mt-2">
+                          Очистить поиск
+                        </Button>
+                      ) : (
+                        <Button variant="link" size="sm" onClick={() => setActiveSection("all")} className="mt-2">
+                          Показать все
+                        </Button>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="space-y-6">
+                      {groupedBlocks.map(({ section, blocks }) => (
+                        <div key={section}>
+                          {/* Section header */}
+                          <div className="flex items-center gap-2 mb-3 pb-2 border-b border-border/60">
+                            <Layers className="h-4 w-4 text-primary" />
+                            <h3 className="text-sm font-semibold text-foreground">{section}</h3>
+                            <Badge variant="secondary" className="text-xs">{blocks.length}</Badge>
+                            {!searchQuery && (
+                              <span className="text-[10px] text-muted-foreground/60 ml-auto">
+                                <GripVertical className="h-3 w-3 inline mr-0.5" />
+                                Перетащите для сортировки
+                              </span>
+                            )}
+                          </div>
+
+                          {/* Sortable block list */}
+                          <DndContext
+                            sensors={sensors}
+                            collisionDetection={closestCenter}
+                            onDragEnd={(event) => handleDragEnd(event, blocks)}
+                          >
+                            <SortableContext
+                              items={blocks.map((b) => b.id)}
+                              strategy={verticalListSortingStrategy}
+                            >
+                              <div className="space-y-3">
+                                {blocks.map((block: CmsBlock) => {
+                                  const typeInfo = TYPE_LABELS[block.contentType] ?? TYPE_LABELS.text;
+                                  return (
+                                    <SortableBlockItem
+                                      key={block.id}
+                                      block={block}
+                                      typeInfo={typeInfo}
+                                      isExpanded={expandedBlocks.has(block.id)}
+                                      toggleExpand={toggleExpand}
+                                      openEditor={openEditor}
+                                      setHistoryBlock={setHistoryBlock}
+                                      toggleVisibility={toggleVisibility}
+                                      deleteBlock={deleteBlock}
+                                      formatJsonContent={formatJsonContent}
+                                      searchQuery={searchQuery}
+                                      lastChangeInfo={blockChangeMap[block.id] ?? null}
+                                    />
+                                  );
+                                })}
+                              </div>
+                            </SortableContext>
+                          </DndContext>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </TabsContent>
+              ))}
+            </>
+          )}
         </Tabs>
       </div>
 
