@@ -463,9 +463,57 @@ export default function PricingCalculator() {
                 <button
                   type="button"
                   className="w-full rounded-xl border border-border bg-card py-3 text-sm font-semibold text-foreground hover:bg-muted transition-colors flex items-center justify-center gap-2"
-                  onClick={() => {
-                    // TODO: PDF export
-                    import("sonner").then(({ toast }) => toast.info("Скачивание PDF — скоро!"));
+                  onClick={async () => {
+                    try {
+                      const { toast } = await import("sonner");
+                      toast.info("Генерация PDF...");
+                      const pdfData = {
+                        breedName: breedObj.name,
+                        breedEmoji: breedObj.emoji,
+                        sharePercent: share,
+                        monthlyLiters: monthlyMilk,
+                        initialPrice: ownershipCost,
+                        monthlyFee: effectiveMonthly,
+                        annualPayment: annualPayment ? "annual" : "monthly",
+                        products: (result?.products ?? []).map((p) => ({
+                          name: p.productName,
+                          volume: p.outputQuantity.toFixed(1),
+                          unit: p.unit,
+                          marketPrice: 0,
+                          value: p.marketValueRub,
+                        })),
+                        marketValue,
+                        totalCost,
+                        savingsPercent,
+                        savingsAmount: savings,
+                        productDistribution: Object.entries(alloc).map(([slug, pct]) => ({
+                          label: PRODUCT_LABELS[slug]?.name ?? slug,
+                          pct,
+                        })),
+                      };
+                      const response = await fetch("/api/calculator/pdf", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify(pdfData),
+                      });
+                      if (!response.ok) throw new Error("Server error");
+                      const blob = await response.blob();
+                      const url = URL.createObjectURL(blob);
+                      const a = document.createElement("a");
+                      a.href = url;
+                      a.download = `Шерь_Козу_Расчёт_${breedObj.name}_${share}%.pdf`;
+                      document.body.appendChild(a);
+                      a.click();
+                      setTimeout(() => {
+                        document.body.removeChild(a);
+                        URL.revokeObjectURL(url);
+                      }, 100);
+                      toast.success("PDF скачан!");
+                    } catch (err) {
+                      console.error("PDF generation error:", err);
+                      const { toast } = await import("sonner");
+                      toast.error("Ошибка генерации PDF");
+                    }
                   }}
                 >
                   <Download className="h-4 w-4" />

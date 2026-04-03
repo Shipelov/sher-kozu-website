@@ -124,6 +124,23 @@ async function startServer() {
     }
   });
 
+  // Calculator PDF generation endpoint
+  app.post("/api/calculator/pdf", async (req, res) => {
+    try {
+      const { generateCalculatorPdfBuffer } = await import("../pdfGenerator");
+      const pdfBuffer = await generateCalculatorPdfBuffer(req.body);
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader(
+        "Content-Disposition",
+        `attachment; filename*=UTF-8''${encodeURIComponent(`Шерь_Козу_Расчёт_${req.body.breedName || "расчёт"}_${req.body.sharePercent || 100}%.pdf`)}`
+      );
+      res.send(pdfBuffer);
+    } catch (err: any) {
+      console.error("PDF generation error:", err);
+      res.status(500).json({ error: "Failed to generate PDF", message: err?.message });
+    }
+  });
+
   // OAuth callback under /api/oauth/callback
   registerOAuthRoutes(app);
   // tRPC API
