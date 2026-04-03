@@ -1732,6 +1732,18 @@ describe("CMS defaults coverage: every frontend key has a backend default", () =
     "form_heading", "form_description",
   ];
 
+  const pricingExpectedKeys = [
+    "hero_title", "hero_subtitle", "hero_cta_primary", "hero_cta_secondary", "hero_overview",
+    "model_heading", "model_subtitle",
+    "model_onetime_title", "model_onetime_text", "model_onetime_example", "model_onetime_bonus",
+    "model_monthly_title", "model_monthly_text", "model_monthly_example", "model_monthly_bonus",
+    "steps",
+    "rights_heading", "rights_subtitle", "rights_items",
+    "tiers_heading", "tiers_subtitle",
+    "calc_heading", "calc_subtitle", "calc_cta", "calc_example", "calc_result",
+    "faq_heading", "faq_items",
+  ];
+
   it("homeDefaults covers all Home.tsx CMS keys", async () => {
     const fs = await import("fs");
     const source = fs.readFileSync("server/routers/cms.ts", "utf-8");
@@ -1782,16 +1794,27 @@ describe("CMS defaults coverage: every frontend key has a backend default", () =
     }
   });
 
+  it("pricingDefaults covers all Pricing.tsx CMS keys", async () => {
+    const fs = await import("fs");
+    const source = fs.readFileSync("server/routers/cms.ts", "utf-8");
+
+    for (const key of pricingExpectedKeys) {
+      const pattern = `blockKey: "${key}"`;
+      expect(source, `Missing pricingDefaults key: ${key}`).toContain(pattern);
+    }
+  });
+
   it("all pages have correct page values in their defaults", async () => {
     const fs = await import("fs");
     const source = fs.readFileSync("server/routers/cms.ts", "utf-8");
 
-    // Ensure getDefaultBlocks maps all 5 pages
+    // Ensure getDefaultBlocks maps all 6 pages
     expect(source).toContain('page === "home"');
     expect(source).toContain('page === "catalog"');
     expect(source).toContain('page === "about"');
     expect(source).toContain('page === "partners"');
     expect(source).toContain('page === "dashboard"');
+    expect(source).toContain('page === "pricing"');
   });
 
   it("frontend pages actually use CMS hook for all expected keys", async () => {
@@ -1825,6 +1848,12 @@ describe("CMS defaults coverage: every frontend key has a backend default", () =
     const partSrc = fs.readFileSync("client/src/pages/Partners.tsx", "utf-8");
     for (const key of partnersExpectedKeys) {
       expect(partSrc, `Partners.tsx should use CMS key: ${key}`).toContain(`"${key}"`);
+    }
+
+    // Verify Pricing.tsx uses all expected pricing keys
+    const pricingSrc = fs.readFileSync("client/src/pages/Pricing.tsx", "utf-8");
+    for (const key of pricingExpectedKeys) {
+      expect(pricingSrc, `Pricing.tsx should use CMS key: ${key}`).toContain(`"${key}"`);
     }
   });
 });

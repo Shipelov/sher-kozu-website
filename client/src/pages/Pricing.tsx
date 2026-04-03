@@ -1,5 +1,6 @@
 /*
   Pricing.tsx — Главная страница «Цены»
+  CMS-managed: all text, FAQ, steps, rights, calculator example
   Sections:
   1. Hero: «Два простых шага к вашему животному» + quick overview card
   2. Как устроена стоимость: Two-component model explanation
@@ -16,6 +17,7 @@ import { Link } from "wouter";
 import Navbar from "@/components/Navbar";
 import PageBreadcrumbs from "@/components/PageBreadcrumbs";
 import { trpc } from "@/lib/trpc";
+import { useCmsContent } from "@/hooks/useCmsContent";
 import {
   ArrowRight,
   Check,
@@ -47,8 +49,8 @@ const fadeUp = {
   }),
 };
 
-/* ─── FAQ Data ─── */
-const FAQ_ITEMS = [
+/* ─── Default FAQ Data ─── */
+const DEFAULT_FAQ_ITEMS = [
   {
     q: "Что входит в разовый платёж?",
     a: "Право владения долей (50% или 100%) на 1 год, именной сертификат, доступ к экосистеме — личный кабинет, трекер, клуб и все привилегии тарифа.",
@@ -79,14 +81,52 @@ const FAQ_ITEMS = [
   },
 ];
 
-/* ─── Steps Data ─── */
-const STEPS = [
+/* ─── Default Steps Data ─── */
+const DEFAULT_STEPS = [
   { num: "1", label: "Выберите животное", sub: "в каталоге" },
   { num: "2", label: "Выберите долю", sub: "50% или 100%" },
   { num: "3", label: "Оплатите право", sub: "Разовый платёж" },
   { num: "4", label: "Настройте план", sub: "продуктовый" },
   { num: "5", label: "Получайте продукцию", sub: "Ежемесячный взнос" },
   { num: "6", label: "Продлите", sub: "со скидкой 20%" },
+];
+
+/* ─── Default Rights Data ─── */
+const DEFAULT_RIGHTS = [
+  {
+    title: "Выбор продуктового плана",
+    text: "Молоко, творог, кефир, сыры — вы сами распределяете баланс молока между продуктами. Меняйте план от раза в квартал до раза в неделю.",
+  },
+  {
+    title: "Управление балансом молока",
+    text: "Персональный баланс обновляется после каждого надоя. Перенесите до 30% остатка или направьте молоко в созревание сыров.",
+  },
+  {
+    title: "Себе или в подарок",
+    text: "Каждую партию можно доставить себе или отправить подарком с именной открыткой и историей вашего животного. Подписка до 12 мес.",
+  },
+];
+
+/* ─── Default Overview Data ─── */
+const DEFAULT_OVERVIEW = [
+  { label: "Доля владения", value: "50% или 100%" },
+  { label: "Разовый платёж", value: "от 47 500 ₽" },
+  { label: "Ежемесячный взнос", value: "от 7 500 ₽/мес" },
+  { label: "Продукция", value: "Именная, от вашего животного" },
+];
+
+/* ─── Default Calculator Example ─── */
+const DEFAULT_CALC_EXAMPLE = [
+  { label: "Стоимость участия", value: "258 000 ₽/год" },
+  { label: "Рыночная стоимость", value: "349 000 ₽" },
+  { label: "Привилегии", value: "222 000 ₽" },
+];
+
+/* ─── Rights icon map ─── */
+const RIGHTS_ICONS = [
+  { icon: Package, iconBg: "bg-primary/10 text-primary" },
+  { icon: Scale, iconBg: "bg-amber-100 text-amber-700" },
+  { icon: Gift, iconBg: "bg-rose-100 text-rose-600" },
 ];
 
 /* ─── Tier badge colors ─── */
@@ -130,6 +170,7 @@ const TIER_LABELS: Record<string, string> = {
 
 /* ─── Component ─── */
 export default function Pricing() {
+  const cms = useCmsContent("pricing");
   const tiersQuery = trpc.pricing.getTiers.useQuery();
   const [openFaq, setOpenFaq] = useState<number | null>(0);
 
@@ -145,6 +186,13 @@ export default function Pricing() {
   const toggleFaq = useCallback((idx: number) => {
     setOpenFaq((prev) => (prev === idx ? null : idx));
   }, []);
+
+  // CMS-managed data
+  const faqItems = cms.getJson<{ q: string; a: string }[]>("faq_items", DEFAULT_FAQ_ITEMS);
+  const stepsData = cms.getJson<{ num: string; label: string; sub: string }[]>("steps", DEFAULT_STEPS);
+  const rightsItems = cms.getJson<{ title: string; text: string }[]>("rights_items", DEFAULT_RIGHTS);
+  const overviewItems = cms.getJson<{ label: string; value: string }[]>("hero_overview", DEFAULT_OVERVIEW);
+  const calcExample = cms.getJson<{ label: string; value: string }[]>("calc_example", DEFAULT_CALC_EXAMPLE);
 
   return (
     <div className="min-h-screen bg-background">
@@ -165,12 +213,15 @@ export default function Pricing() {
           <div className="grid gap-8 lg:grid-cols-[1fr_380px] items-start">
             <motion.div initial="hidden" animate="visible" variants={fadeUp} custom={0}>
               <h1 className="text-4xl font-bold tracking-tight text-foreground md:text-5xl lg:text-[3.25rem] leading-tight">
-                Два простых шага
-                <br />
-                <span className="text-primary">к вашему животному</span>
+                {cms.getText("hero_title", "Два простых шага").split("\n").map((line, i) => (
+                  <span key={i}>
+                    {i > 0 && <br />}
+                    {i > 0 ? <span className="text-primary">{line}</span> : line}
+                  </span>
+                ))}
               </h1>
               <p className="mt-4 max-w-xl text-lg text-muted-foreground leading-relaxed">
-                Разовый платёж за право владения + ежемесячный взнос за содержание и привилегии. Никаких скрытых комиссий.
+                {cms.getText("hero_subtitle", "Разовый платёж за право владения + ежемесячный взнос за содержание и привилегии. Никаких скрытых комиссий.")}
               </p>
               <div className="mt-8 flex flex-wrap gap-3">
                 <Link href="/pricing/calculator">
@@ -180,7 +231,7 @@ export default function Pricing() {
                     className="inline-flex items-center gap-2 rounded-full bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground shadow-md transition-shadow hover:shadow-lg"
                   >
                     <Calculator className="h-4 w-4" />
-                    Рассчитать мою выгоду
+                    {cms.getText("hero_cta_primary", "Рассчитать мою выгоду")}
                     <ArrowRight className="h-4 w-4" />
                   </motion.button>
                 </Link>
@@ -190,7 +241,7 @@ export default function Pricing() {
                     whileTap={{ scale: 0.98 }}
                     className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-6 py-3 text-sm font-semibold text-foreground shadow-sm transition-colors hover:bg-muted"
                   >
-                    Сравнить тарифы
+                    {cms.getText("hero_cta_secondary", "Сравнить тарифы")}
                   </motion.button>
                 </Link>
               </div>
@@ -206,12 +257,7 @@ export default function Pricing() {
             >
               <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-4">Быстрый обзор</p>
               <div className="space-y-3">
-                {[
-                  { label: "Доля владения", value: "50% или 100%" },
-                  { label: "Разовый платёж", value: "от 47 500 ₽" },
-                  { label: "Ежемесячный взнос", value: "от 7 500 ₽/мес" },
-                  { label: "Продукция", value: "Именная, от вашего животного" },
-                ].map((item, i) => (
+                {overviewItems.map((item, i) => (
                   <div key={i} className="flex items-center justify-between border-b border-border/60 pb-2.5 last:border-0 last:pb-0">
                     <span className="text-sm text-muted-foreground">{item.label}</span>
                     <span className="text-sm font-semibold text-foreground">{item.value}</span>
@@ -226,8 +272,8 @@ export default function Pricing() {
         <section className="bg-card border-y border-border/60 py-16">
           <div className="container">
             <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeUp} custom={0} className="text-center mb-10">
-              <h2 className="text-3xl font-bold text-foreground">Как устроена стоимость</h2>
-              <p className="mt-2 text-muted-foreground">Двухкомпонентная модель — прозрачная и понятная</p>
+              <h2 className="text-3xl font-bold text-foreground">{cms.getText("model_heading", "Как устроена стоимость")}</h2>
+              <p className="mt-2 text-muted-foreground">{cms.getText("model_subtitle", "Двухкомпонентная модель — прозрачная и понятная")}</p>
             </motion.div>
 
             <div className="grid gap-6 md:grid-cols-2 max-w-4xl mx-auto">
@@ -239,18 +285,18 @@ export default function Pricing() {
                   <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-100 text-amber-700">
                     <CreditCard className="h-5 w-5" />
                   </div>
-                  <h3 className="text-lg font-bold text-foreground">Разовый платёж</h3>
+                  <h3 className="text-lg font-bold text-foreground">{cms.getText("model_onetime_title", "Разовый платёж")}</h3>
                 </div>
                 <p className="text-sm text-muted-foreground leading-relaxed mb-4">
-                  Вы выбираете животное и долю: 50% или 100%. Разовый платёж закрепляет за вами право владения, именной сертификат и доступ ко всей экосистеме.
+                  {cms.getText("model_onetime_text", "Вы выбираете животное и долю: 50% или 100%. Разовый платёж закрепляет за вами право владения, именной сертификат и доступ ко всей экосистеме.")}
                 </p>
                 <div className="rounded-xl bg-muted/50 p-3 text-sm">
                   <p className="text-muted-foreground">Коза альпийской породы:</p>
-                  <p className="font-semibold text-foreground">47 500 ₽ (50%) или 95 000 ₽ (100%)</p>
+                  <p className="font-semibold text-foreground">{cms.getText("model_onetime_example", "47 500 ₽ (50%) или 95 000 ₽ (100%)")}</p>
                 </div>
                 <p className="mt-3 text-xs text-primary flex items-center gap-1">
                   <Sparkles className="h-3 w-3" />
-                  Продление через год — со скидкой 20%
+                  {cms.getText("model_onetime_bonus", "Продление через год — со скидкой 20%")}
                 </p>
               </motion.div>
 
@@ -262,19 +308,19 @@ export default function Pricing() {
                   <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
                     <Calendar className="h-5 w-5" />
                   </div>
-                  <h3 className="text-lg font-bold text-foreground">Ежемесячный взнос</h3>
+                  <h3 className="text-lg font-bold text-foreground">{cms.getText("model_monthly_title", "Ежемесячный взнос")}</h3>
                 </div>
                 <p className="text-sm text-muted-foreground leading-relaxed mb-4">
-                  Покрывает корм, ветеринарию, переработку молока по вашему плану и доставку. Чем выше тариф — тем больше привилегий.
+                  {cms.getText("model_monthly_text", "Покрывает корм, ветеринарию, переработку молока по вашему плану и доставку. Чем выше тариф — тем больше привилегий.")}
                 </p>
                 <div className="rounded-xl bg-muted/50 p-3 text-sm">
                   <p className="font-semibold text-foreground">
-                    от 7 500 ₽/мес <span className="text-muted-foreground font-normal">(50% доли)</span> или от 14 900 ₽/мес <span className="text-muted-foreground font-normal">(100%)</span>
+                    {cms.getText("model_monthly_example", "от 7 500 ₽/мес (50% доли) или от 14 900 ₽/мес (100%)")}
                   </p>
                 </div>
                 <p className="mt-3 text-xs text-primary flex items-center gap-1">
                   <Sparkles className="h-3 w-3" />
-                  Годовая подписка — скидка 15%
+                  {cms.getText("model_monthly_bonus", "Годовая подписка — скидка 15%")}
                 </p>
               </motion.div>
             </div>
@@ -294,7 +340,7 @@ export default function Pricing() {
             {/* Connecting line behind circles */}
             <div className="hidden md:block absolute top-5 left-[4%] right-[4%] h-[2px] bg-border z-0" />
             <div className="flex flex-wrap justify-center gap-y-8 gap-x-4 md:flex-nowrap md:justify-between">
-              {STEPS.map((step, i) => (
+              {stepsData.map((step, i) => (
                 <motion.div
                   key={i}
                   initial="hidden"
@@ -321,50 +367,35 @@ export default function Pricing() {
         <section className="bg-card border-y border-border/60 py-16">
           <div className="container">
             <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeUp} custom={0} className="text-center mb-10">
-              <h2 className="text-3xl font-bold text-foreground">Три права владельца</h2>
-              <p className="mt-2 text-muted-foreground">Вы не просто покупаете продукты — вы управляете своим фермерским хозяйством</p>
+              <h2 className="text-3xl font-bold text-foreground">{cms.getText("rights_heading", "Три права владельца")}</h2>
+              <p className="mt-2 text-muted-foreground">{cms.getText("rights_subtitle", "Вы не просто покупаете продукты — вы управляете своим фермерским хозяйством")}</p>
             </motion.div>
 
             <div className="grid gap-6 md:grid-cols-3 max-w-5xl mx-auto">
-              {[
-                {
-                  icon: Package,
-                  iconBg: "bg-primary/10 text-primary",
-                  title: "Выбор продуктового плана",
-                  text: "Молоко, творог, кефир, сыры — вы сами распределяете баланс молока между продуктами. Меняйте план от раза в квартал до раза в неделю.",
-                },
-                {
-                  icon: Scale,
-                  iconBg: "bg-amber-100 text-amber-700",
-                  title: "Управление балансом молока",
-                  text: "Персональный баланс обновляется после каждого надоя. Перенесите до 30% остатка или направьте молоко в созревание сыров.",
-                },
-                {
-                  icon: Gift,
-                  iconBg: "bg-rose-100 text-rose-600",
-                  title: "Себе или в подарок",
-                  text: "Каждую партию можно доставить себе или отправить подарком с именной открыткой и историей вашего животного. Подписка до 12 мес.",
-                },
-              ].map((item, i) => (
-                <motion.div
-                  key={i}
-                  initial="hidden"
-                  whileInView="visible"
-                  viewport={{ once: true }}
-                  variants={fadeUp}
-                  custom={i}
-                  className="rounded-2xl border border-border bg-background p-6 group hover:shadow-md transition-shadow"
-                >
-                  <div className={`flex h-12 w-12 items-center justify-center rounded-xl ${item.iconBg} mb-4`}>
-                    <item.icon className="h-6 w-6" />
-                  </div>
-                  <h3 className="text-lg font-bold text-foreground mb-2">{item.title}</h3>
-                  <p className="text-sm text-muted-foreground leading-relaxed">{item.text}</p>
-                  <Link href="/pricing/compare" className="mt-4 inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline">
-                    Подробнее <ArrowRight className="h-3.5 w-3.5" />
-                  </Link>
-                </motion.div>
-              ))}
+              {rightsItems.map((item, i) => {
+                const iconInfo = RIGHTS_ICONS[i] || RIGHTS_ICONS[0];
+                const IconComp = iconInfo.icon;
+                return (
+                  <motion.div
+                    key={i}
+                    initial="hidden"
+                    whileInView="visible"
+                    viewport={{ once: true }}
+                    variants={fadeUp}
+                    custom={i}
+                    className="rounded-2xl border border-border bg-background p-6 group hover:shadow-md transition-shadow"
+                  >
+                    <div className={`flex h-12 w-12 items-center justify-center rounded-xl ${iconInfo.iconBg} mb-4`}>
+                      <IconComp className="h-6 w-6" />
+                    </div>
+                    <h3 className="text-lg font-bold text-foreground mb-2">{item.title}</h3>
+                    <p className="text-sm text-muted-foreground leading-relaxed">{item.text}</p>
+                    <Link href="/pricing/compare" className="mt-4 inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline">
+                      Подробнее <ArrowRight className="h-3.5 w-3.5" />
+                    </Link>
+                  </motion.div>
+                );
+              })}
             </div>
           </div>
         </section>
@@ -372,8 +403,8 @@ export default function Pricing() {
         {/* ─── TIER OVERVIEW ─── */}
         <section className="py-16 container">
           <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeUp} custom={0} className="text-center mb-10">
-            <h2 className="text-3xl font-bold text-foreground">Обзор тарифов</h2>
-            <p className="mt-2 text-muted-foreground">Выберите уровень участия, который подходит именно вам</p>
+            <h2 className="text-3xl font-bold text-foreground">{cms.getText("tiers_heading", "Обзор тарифов")}</h2>
+            <p className="mt-2 text-muted-foreground">{cms.getText("tiers_subtitle", "Выберите уровень участия, который подходит именно вам")}</p>
           </motion.div>
 
           <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4 max-w-6xl mx-auto">
@@ -467,9 +498,9 @@ export default function Pricing() {
               className="rounded-3xl bg-[oklch(0.22_0.04_60)] p-8 md:p-12 grid gap-8 md:grid-cols-2 items-center"
             >
               <div>
-                <h2 className="text-3xl font-bold text-white">Рассчитайте свою выгоду</h2>
+                <h2 className="text-3xl font-bold text-white">{cms.getText("calc_heading", "Рассчитайте свою выгоду")}</h2>
                 <p className="mt-3 text-white/70 leading-relaxed">
-                  Наш калькулятор покажет реальную стоимость продукции от вашего животного и сравнит её с ценами на премиальных московских рынках.
+                  {cms.getText("calc_subtitle", "Наш калькулятор покажет реальную стоимость продукции от вашего животного и сравнит её с ценами на премиальных московских рынках.")}
                 </p>
                 <Link href="/pricing/calculator">
                   <motion.button
@@ -478,7 +509,7 @@ export default function Pricing() {
                     className="mt-6 inline-flex items-center gap-2 rounded-full border border-white/30 bg-white/10 px-6 py-3 text-sm font-semibold text-white backdrop-blur transition-colors hover:bg-white/20"
                   >
                     <Calculator className="h-4 w-4" />
-                    Открыть калькулятор
+                    {cms.getText("calc_cta", "Открыть калькулятор")}
                     <ArrowRight className="h-4 w-4" />
                   </motion.button>
                 </Link>
@@ -486,20 +517,16 @@ export default function Pricing() {
 
               {/* Sample calculation */}
               <div className="rounded-2xl bg-white/10 backdrop-blur p-5 space-y-3">
-                {[
-                  { label: "Ваши расходы (год)", value: "258 000 ₽", color: "text-white" },
-                  { label: "Рыночная стоимость", value: "349 000 ₽", color: "text-white" },
-                  { label: "Привилегии", value: "222 000 ₽", color: "text-white" },
-                ].map((row, i) => (
+                {calcExample.map((row, i) => (
                   <div key={i} className="flex items-center justify-between text-sm">
                     <span className="text-white/60">{row.label}</span>
-                    <span className={`font-semibold ${row.color}`}>{row.value}</span>
+                    <span className="font-semibold text-white">{row.value}</span>
                   </div>
                 ))}
                 <div className="rounded-xl bg-primary/80 px-4 py-2.5 text-center">
                   <span className="text-sm font-bold text-white flex items-center justify-center gap-2">
                     <Check className="h-4 w-4" />
-                    Выгода: 313 000 ₽ (55%)
+                    {cms.getText("calc_result", "Выгода: 313 000 ₽ (55%)")}
                   </span>
                 </div>
               </div>
@@ -510,11 +537,11 @@ export default function Pricing() {
         {/* ─── FAQ ─── */}
         <section className="py-16 container">
           <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeUp} custom={0} className="text-center mb-10">
-            <h2 className="text-3xl font-bold text-foreground">Частые вопросы о ценах</h2>
+            <h2 className="text-3xl font-bold text-foreground">{cms.getText("faq_heading", "Частые вопросы о ценах")}</h2>
           </motion.div>
 
           <div className="max-w-3xl mx-auto space-y-3">
-            {FAQ_ITEMS.map((item, i) => (
+            {faqItems.map((item, i) => (
               <motion.div
                 key={i}
                 initial="hidden"

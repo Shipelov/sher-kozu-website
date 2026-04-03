@@ -678,12 +678,85 @@ const partnersDefaults: DefaultBlock[] = [
   { page: "partners", blockKey: "form_description", label: "Форма — Описание", contentType: "text", content: "Заполните форму, и мы свяжемся с вами для обсуждения деталей сотрудничества.", section: "Форма", sortOrder: 14, visible: true },
 ];
 
+const pricingDefaults: DefaultBlock[] = [
+  // Section 1 — Hero
+  { page: "pricing", blockKey: "hero_title", label: "Hero — Заголовок", contentType: "richtext", content: "Два простых шага\nк вашему животному", section: "Hero", sortOrder: 1, visible: true },
+  { page: "pricing", blockKey: "hero_subtitle", label: "Hero — Описание", contentType: "richtext", content: "Разовый платёж за право владения + ежемесячный взнос за содержание и привилегии. Никаких скрытых комиссий.", section: "Hero", sortOrder: 2, visible: true },
+  { page: "pricing", blockKey: "hero_cta_primary", label: "Hero — CTA основная", contentType: "text", content: "Рассчитать мою выгоду", section: "Hero", sortOrder: 3, visible: true },
+  { page: "pricing", blockKey: "hero_cta_secondary", label: "Hero — CTA вторичная", contentType: "text", content: "Сравнить тарифы", section: "Hero", sortOrder: 4, visible: true },
+  { page: "pricing", blockKey: "hero_overview", label: "Hero — Быстрый обзор", contentType: "json", content: JSON.stringify([
+    { label: "Доля владения", value: "50% или 100%" },
+    { label: "Разовый платёж", value: "от 47 500 ₽" },
+    { label: "Ежемесячный взнос", value: "от 7 500 ₽/мес" },
+    { label: "Продукция", value: "Именная, от вашего животного" },
+  ]), section: "Hero", sortOrder: 5, visible: true },
+
+  // Section 2 — How Pricing Works
+  { page: "pricing", blockKey: "model_heading", label: "Модель — Заголовок", contentType: "text", content: "Как устроена стоимость", section: "Модель ценообразования", sortOrder: 10, visible: true },
+  { page: "pricing", blockKey: "model_subtitle", label: "Модель — Подзаголовок", contentType: "text", content: "Двухкомпонентная модель — прозрачная и понятная", section: "Модель ценообразования", sortOrder: 11, visible: true },
+  { page: "pricing", blockKey: "model_onetime_title", label: "Разовый — Заголовок", contentType: "text", content: "Разовый платёж", section: "Модель ценообразования", sortOrder: 12, visible: true },
+  { page: "pricing", blockKey: "model_onetime_text", label: "Разовый — Описание", contentType: "richtext", content: "Вы выбираете животное и долю: 50% или 100%. Разовый платёж закрепляет за вами право владения, именной сертификат и доступ ко всей экосистеме.", section: "Модель ценообразования", sortOrder: 13, visible: true },
+  { page: "pricing", blockKey: "model_onetime_example", label: "Разовый — Пример", contentType: "text", content: "Коза альпийской породы: 47 500 ₽ (50%) или 95 000 ₽ (100%)", section: "Модель ценообразования", sortOrder: 14, visible: true },
+  { page: "pricing", blockKey: "model_onetime_bonus", label: "Разовый — Бонус", contentType: "text", content: "Продление через год — со скидкой 20%", section: "Модель ценообразования", sortOrder: 15, visible: true },
+  { page: "pricing", blockKey: "model_monthly_title", label: "Ежемесячный — Заголовок", contentType: "text", content: "Ежемесячный взнос", section: "Модель ценообразования", sortOrder: 16, visible: true },
+  { page: "pricing", blockKey: "model_monthly_text", label: "Ежемесячный — Описание", contentType: "richtext", content: "Покрывает корм, ветеринарию, переработку молока по вашему плану и доставку. Чем выше тариф — тем больше привилегий.", section: "Модель ценообразования", sortOrder: 17, visible: true },
+  { page: "pricing", blockKey: "model_monthly_example", label: "Ежемесячный — Пример", contentType: "text", content: "от 7 500 ₽/мес (50% доли) или от 14 900 ₽/мес (100%)", section: "Модель ценообразования", sortOrder: 18, visible: true },
+  { page: "pricing", blockKey: "model_monthly_bonus", label: "Ежемесячный — Бонус", contentType: "text", content: "Годовая подписка — скидка 15%", section: "Модель ценообразования", sortOrder: 19, visible: true },
+
+  // Section 3 — Steps
+  { page: "pricing", blockKey: "steps", label: "Шаги — Список", contentType: "json", content: JSON.stringify([
+    { num: "1", label: "Выберите животное", sub: "в каталоге" },
+    { num: "2", label: "Выберите долю", sub: "50% или 100%" },
+    { num: "3", label: "Оплатите право", sub: "Разовый платёж" },
+    { num: "4", label: "Настройте план", sub: "продуктовый" },
+    { num: "5", label: "Получайте продукцию", sub: "Ежемесячный взнос" },
+    { num: "6", label: "Продлите", sub: "со скидкой 20%" },
+  ]), section: "Шаги", sortOrder: 20, visible: true },
+
+  // Section 4 — Three Rights
+  { page: "pricing", blockKey: "rights_heading", label: "Права — Заголовок", contentType: "text", content: "Три права владельца", section: "Права владельца", sortOrder: 30, visible: true },
+  { page: "pricing", blockKey: "rights_subtitle", label: "Права — Подзаголовок", contentType: "text", content: "Вы не просто покупаете продукты — вы управляете своим фермерским хозяйством", section: "Права владельца", sortOrder: 31, visible: true },
+  { page: "pricing", blockKey: "rights_items", label: "Права — Список", contentType: "json", content: JSON.stringify([
+    { title: "Выбор продуктового плана", text: "Молоко, творог, кефир, сыры — вы сами распределяете баланс молока между продуктами. Меняйте план от раза в квартал до раза в неделю." },
+    { title: "Управление балансом молока", text: "Персональный баланс обновляется после каждого надоя. Перенесите до 30% остатка или направьте молоко в созревание сыров." },
+    { title: "Себе или в подарок", text: "Каждую партию можно доставить себе или отправить подарком с именной открыткой и историей вашего животного. Подписка до 12 мес." },
+  ]), section: "Права владельца", sortOrder: 32, visible: true },
+
+  // Section 5 — Tier Overview
+  { page: "pricing", blockKey: "tiers_heading", label: "Тарифы — Заголовок", contentType: "text", content: "Обзор тарифов", section: "Обзор тарифов", sortOrder: 40, visible: true },
+  { page: "pricing", blockKey: "tiers_subtitle", label: "Тарифы — Подзаголовок", contentType: "text", content: "Выберите уровень участия, который подходит именно вам", section: "Обзор тарифов", sortOrder: 41, visible: true },
+
+  // Section 6 — Calculator CTA
+  { page: "pricing", blockKey: "calc_heading", label: "Калькулятор — Заголовок", contentType: "text", content: "Рассчитайте свою выгоду", section: "Калькулятор CTA", sortOrder: 50, visible: true },
+  { page: "pricing", blockKey: "calc_subtitle", label: "Калькулятор — Описание", contentType: "richtext", content: "Наш калькулятор покажет реальную стоимость продукции от вашего животного и сравнит её с ценами на премиальных московских рынках.", section: "Калькулятор CTA", sortOrder: 51, visible: true },
+  { page: "pricing", blockKey: "calc_cta", label: "Калькулятор — Кнопка", contentType: "text", content: "Открыть калькулятор", section: "Калькулятор CTA", sortOrder: 52, visible: true },
+  { page: "pricing", blockKey: "calc_example", label: "Калькулятор — Пример расчёта", contentType: "json", content: JSON.stringify([
+    { label: "Стоимость участия", value: "258 000 ₽/год" },
+    { label: "Рыночная стоимость", value: "349 000 ₽" },
+    { label: "Привилегии", value: "222 000 ₽" },
+  ]), section: "Калькулятор CTA", sortOrder: 53, visible: true },
+  { page: "pricing", blockKey: "calc_result", label: "Калькулятор — Результат", contentType: "text", content: "Выгода: 313 000 ₽ (55%)", section: "Калькулятор CTA", sortOrder: 54, visible: true },
+
+  // Section 7 — FAQ
+  { page: "pricing", blockKey: "faq_heading", label: "FAQ — Заголовок", contentType: "text", content: "Частые вопросы о ценах", section: "FAQ", sortOrder: 60, visible: true },
+  { page: "pricing", blockKey: "faq_items", label: "FAQ — Вопросы и ответы", contentType: "json", content: JSON.stringify([
+    { q: "Что входит в разовый платёж?", a: "Право владения долей (50% или 100%) на 1 год, именной сертификат, доступ к экосистеме — личный кабинет, трекер, клуб и все привилегии тарифа." },
+    { q: "Что покрывает ежемесячный взнос?", a: "Содержание животного (корм, ветеринария, уход), переработку молока по вашему продуктовому плану, логистику доставки и доступ к привилегиям вашего тарифного уровня." },
+    { q: "Можно ли менять продуктовый план?", a: "Да. Частота зависит от тарифа: Базовый — раз в квартал, Стандартный — раз в месяц, Профессиональный — раз в неделю. Изменения вступают в силу со следующего производственного цикла." },
+    { q: "Что такое баланс молока?", a: "Это реальное количество молока от вашего животного, пропорциональное доле владения. Баланс обновляется после каждого надоя и отображается в реальном времени. Весь баланс за месяц должен быть направлен на переработку — перенос на следующий месяц не предусмотрен." },
+    { q: "Можно ли отправить продукцию в подарок?", a: "Да, на всех платных тарифах. Каждую партию можно отправить другому человеку с именной открыткой и историей животного. На Стандартном и Профессиональном тарифах доступна подарочная подписка." },
+    { q: "Что будет через год?", a: "Вы можете продлить владение со скидкой 20% от первоначальной стоимости. Если не продлеваете, доля возвращается в каталог. Ваш дневник и достижения сохраняются." },
+    { q: "Можно ли увеличить долю с 50% до 100%?", a: "Да, при наличии свободной доли. Вы доплачиваете разницу в разовом платеже и переходите на Стандартный тариф с расширенными привилегиями." },
+  ]), section: "FAQ", sortOrder: 61, visible: true },
+];
+
 function getDefaultBlocks(page: string): DefaultBlock[] {
   if (page === "home") return homeDefaults;
   if (page === "catalog") return catalogDefaults;
   if (page === "about") return aboutDefaults;
   if (page === "partners") return partnersDefaults;
   if (page === "dashboard") return dashboardDefaults;
+  if (page === "pricing") return pricingDefaults;
   return [];
 }
 

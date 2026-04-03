@@ -1833,3 +1833,13 @@
 - [x] Добавить в dashboardDefaults: guest_preview_sections, guest_registration_benefits
 - [x] Написать vitest-тесты для покрытия CMS defaults
 - [x] Протестировать редактирование контента через админ-панель
+
+## CMS для страницы «Цены» (Pricing)
+
+- [x] Аудит текущей страницы Pricing: выявить все контентные блоки
+- [x] Создать pricingDefaults в cms.ts со всеми ключами
+- [x] Подключить useCmsContent хук к Pricing.tsx
+- [x] Обновить getDefaultBlocks для page="pricing"
+- [x] Засеять CMS defaults в БД и проверить
+- [x] Написать vitest-тесты для покрытия Pricing CMS ключей
+- [x] Проверить отображение страницы «Цены» в админ-панели CMS
