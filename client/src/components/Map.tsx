@@ -10,68 +10,13 @@
  *   initialCenter={{ lat: 40.7128, lng: -74.0060 }}
  *   initialZoom={15}
  *   onMapReady={(map) => {
- *     mapRef.current = map; // Store to control map from parent anytime, google map itself is in charge of the re-rendering, not react state.
- * </MapView>
+ *     mapRef.current = map;
+ *   }}
+ * />
  *
  * ======
- * Available Libraries and Core Features:
- * -------------------------------
- * 📍 MARKER (from `marker` library)
- * - Attaches to map using { map, position }
- * new google.maps.marker.AdvancedMarkerElement({
- *   map,
- *   position: { lat: 37.7749, lng: -122.4194 },
- *   title: "San Francisco",
- * });
- *
- * -------------------------------
- * 🏢 PLACES (from `places` library)
- * - Does not attach directly to map; use data with your map manually.
- * const place = new google.maps.places.Place({ id: PLACE_ID });
- * await place.fetchFields({ fields: ["displayName", "location"] });
- * map.setCenter(place.location);
- * new google.maps.marker.AdvancedMarkerElement({ map, position: place.location });
- *
- * -------------------------------
- * 🧭 GEOCODER (from `geocoding` library)
- * - Standalone service; manually apply results to map.
- * const geocoder = new google.maps.Geocoder();
- * geocoder.geocode({ address: "New York" }, (results, status) => {
- *   if (status === "OK" && results[0]) {
- *     map.setCenter(results[0].geometry.location);
- *     new google.maps.marker.AdvancedMarkerElement({
- *       map,
- *       position: results[0].geometry.location,
- *     });
- *   }
- * });
- *
- * -------------------------------
- * 📐 GEOMETRY (from `geometry` library)
- * - Pure utility functions; not attached to map.
- * const dist = google.maps.geometry.spherical.computeDistanceBetween(p1, p2);
- *
- * -------------------------------
- * 🛣️ ROUTES (from `routes` library)
- * - Combines DirectionsService (standalone) + DirectionsRenderer (map-attached)
- * const directionsService = new google.maps.DirectionsService();
- * const directionsRenderer = new google.maps.DirectionsRenderer({ map });
- * directionsService.route(
- *   { origin, destination, travelMode: "DRIVING" },
- *   (res, status) => status === "OK" && directionsRenderer.setDirections(res)
- * );
- *
- * -------------------------------
- * 🌦️ MAP LAYERS (attach directly to map)
- * - new google.maps.TrafficLayer().setMap(map);
- * - new google.maps.TransitLayer().setMap(map);
- * - new google.maps.BicyclingLayer().setMap(map);
- *
- * -------------------------------
- * ✅ SUMMARY
- * - "map-attached" → AdvancedMarkerElement, DirectionsRenderer, Layers.
- * - "standalone" → Geocoder, DirectionsService, DistanceMatrixService, ElevationService.
- * - "data-only" → Place, Geometry utilities.
+ * Available Libraries: marker, places, geocoding, geometry, routes
+ * See original documentation comments for full API reference.
  */
 
 /// <reference types="@types/google.maps" />
@@ -83,6 +28,7 @@ import { cn } from "@/lib/utils";
 declare global {
   interface Window {
     google?: typeof google;
+    __gmapsLoading?: Promise<void>;
   }
 }
 
@@ -92,38 +38,90 @@ const FORGE_BASE_URL =
   "https://forge.butterfly-effect.dev";
 const MAPS_PROXY_URL = `${FORGE_BASE_URL}/v1/maps/proxy`;
 
-// Singleton promise to ensure the Google Maps script is loaded only once
-let mapsScriptPromise: Promise<void> | null = null;
-
+/**
+ * Load the Google Maps script once using a blob URL approach.
+ *
+ * The Manus proxy may return response headers (e.g. Cross-Origin-Resource-Policy)
+ * that prevent the browser from executing the script as a cross-origin resource.
+ * To work around this, we:
+ * 1. fetch() the script content (which works with CORS)
+ * 2. Create a same-origin blob: URL from the response
+ * 3. Load the blob URL as a script tag
+ *
+ * Uses window.__gmapsLoading to survive HMR module reloads.
+ */
 function loadMapScript(): Promise<void> {
-  // If already loaded, resolve immediately
+  // Already fully loaded
   if (window.google?.maps) {
     return Promise.resolve();
   }
 
-  // If loading is in progress, return the existing promise
-  if (mapsScriptPromise) {
-    return mapsScriptPromise;
+  // A load is already in progress (survives HMR)
+  if (window.__gmapsLoading) {
+    return window.__gmapsLoading;
   }
 
-  // Start loading and cache the promise
-  mapsScriptPromise = new Promise<void>((resolve, reject) => {
-    const script = document.createElement("script");
-    script.src = `${MAPS_PROXY_URL}/maps/api/js?key=${API_KEY}&v=weekly&libraries=marker,places,geocoding,geometry,routes`;
-    script.async = true;
-    script.crossOrigin = "anonymous";
-    script.onload = () => {
-      resolve();
-    };
-    script.onerror = () => {
-      // Reset so a retry is possible
-      mapsScriptPromise = null;
-      reject(new Error("Failed to load Google Maps script"));
-    };
-    document.head.appendChild(script);
+  window.__gmapsLoading = (async () => {
+    const scriptUrl = `${MAPS_PROXY_URL}/maps/api/js?key=${API_KEY}&v=weekly&libraries=marker,places,geocoding,geometry,routes`;
+
+    // If google.maps appeared while we were setting up (race condition), done
+    if (window.google?.maps) return;
+
+    // Fetch the script content
+    const response = await fetch(scriptUrl);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch Google Maps script: ${response.status}`);
+    }
+
+    const scriptText = await response.text();
+
+    // If google.maps appeared during fetch (another instance loaded it), done
+    if (window.google?.maps) return;
+
+    // Create a blob URL and load as same-origin script
+    const blob = new Blob([scriptText], { type: "text/javascript" });
+    const blobUrl = URL.createObjectURL(blob);
+
+    await new Promise<void>((resolve, reject) => {
+      const script = document.createElement("script");
+      script.src = blobUrl;
+      script.onload = () => {
+        URL.revokeObjectURL(blobUrl);
+        if (window.google?.maps) {
+          resolve();
+        } else {
+          // Script loaded but google.maps not available — wait briefly
+          const check = setInterval(() => {
+            if (window.google?.maps) {
+              clearInterval(check);
+              resolve();
+            }
+          }, 100);
+          // Timeout after 10s
+          setTimeout(() => {
+            clearInterval(check);
+            if (window.google?.maps) {
+              resolve();
+            } else {
+              reject(new Error("Google Maps API did not initialize after script load"));
+            }
+          }, 10000);
+        }
+      };
+      script.onerror = () => {
+        URL.revokeObjectURL(blobUrl);
+        reject(new Error("Failed to execute Google Maps blob script"));
+      };
+      document.head.appendChild(script);
+    });
+  })();
+
+  // If loading fails, allow retry
+  window.__gmapsLoading.catch(() => {
+    window.__gmapsLoading = undefined;
   });
 
-  return mapsScriptPromise;
+  return window.__gmapsLoading;
 }
 
 interface MapViewProps {
@@ -147,45 +145,53 @@ export function MapView({
   const map = useRef<google.maps.Map | null>(null);
 
   const init = usePersistFn(async () => {
+    // Retry up to 2 times
+    let lastError: Error | null = null;
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        await loadMapScript();
+        break;
+      } catch (err) {
+        lastError = err as Error;
+        window.__gmapsLoading = undefined;
+        if (attempt < 1) {
+          await new Promise((r) => setTimeout(r, 2000));
+        }
+      }
+    }
+
+    if (!window.google?.maps) {
+      console.error("Failed to load Google Maps after retries:", lastError);
+      onMapError?.();
+      return;
+    }
+
+    if (!mapContainer.current) {
+      console.error("Map container not found");
+      onMapError?.();
+      return;
+    }
+
     try {
-      await loadMapScript();
-      if (!mapContainer.current) {
-        console.error("Map container not found");
-        onMapError?.();
-        return;
-      }
+      const hasCustomStyles = styles && styles.length > 0;
 
-      // When custom styles are provided, we skip mapId and use a StyledMapType.
-      // mapId forces vector/WebGL rendering which ignores the styles array.
-      // StyledMapType works reliably on all devices including mobile.
-      if (styles && styles.length > 0) {
-        map.current = new window.google.maps.Map(mapContainer.current, {
-          zoom: initialZoom,
-          center: initialCenter,
-          mapTypeControl: false,
-          fullscreenControl: false,
-          zoomControl: true,
-          streetViewControl: false,
-          // No mapId — this forces raster rendering which supports styles
-        });
+      const mapOptions: google.maps.MapOptions = {
+        zoom: initialZoom,
+        center: initialCenter,
+        zoomControl: true,
+        mapTypeControl: !hasCustomStyles,
+        fullscreenControl: !hasCustomStyles,
+        streetViewControl: !hasCustomStyles,
+      };
 
-        // Create a StyledMapType and set it as the active map type
-        const styledMapType = new google.maps.StyledMapType(styles, {
-          name: "Styled",
-        });
-        map.current.mapTypes.set("styled_map", styledMapType);
-        map.current.setMapTypeId("styled_map");
+      if (hasCustomStyles) {
+        // Use the `styles` property for cross-device reliability (raster rendering)
+        mapOptions.styles = styles;
       } else {
-        map.current = new window.google.maps.Map(mapContainer.current, {
-          zoom: initialZoom,
-          center: initialCenter,
-          mapTypeControl: true,
-          fullscreenControl: true,
-          zoomControl: true,
-          streetViewControl: true,
-          mapId: "DEMO_MAP_ID",
-        });
+        mapOptions.mapId = "DEMO_MAP_ID";
       }
+
+      map.current = new window.google.maps.Map(mapContainer.current, mapOptions);
 
       if (onMapReady) {
         onMapReady(map.current);
