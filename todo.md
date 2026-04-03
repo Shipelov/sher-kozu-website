@@ -1843,3 +1843,19 @@
 - [x] Засеять CMS defaults в БД и проверить
 - [x] Написать vitest-тесты для покрытия Pricing CMS ключей
 - [x] Проверить отображение страницы «Цены» в админ-панели CMS
+
+## CMS для страниц Клуб, Трекер, Калькулятор
+
+- [x] Аудит страницы Club: выявить все контентные блоки
+- [x] Аудит страницы Tracker: выявить все контентные блоки
+- [x] Аудит страницы Calculator: выявить все контентные блоки
+- [x] Создать clubDefaults в cms.ts
+- [x] Создать trackerDefaults в cms.ts
+- [x] Создать calculatorDefaults в cms.ts
+- [x] Обновить getDefaultBlocks для page="club", "tracker", "calculator"
+- [x] Подключить useCmsContent хук к Club.tsx
+- [x] Подключить useCmsContent хук к Tracker.tsx
+- [x] Подключить useCmsContent хук к Calculator.tsx
+- [x] Засеять CMS defaults в БД и проверить
+- [x] Написать vitest-тесты для покрытия CMS ключей (Club, Tracker, Calculator)
+- [x] Проверить отображение всех трёх страниц

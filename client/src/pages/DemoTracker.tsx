@@ -12,6 +12,7 @@ import ScrollRemaining from "@/components/ScrollRemaining";
 import PageBreadcrumbs from "@/components/PageBreadcrumbs";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { getLoginUrl } from "@/const";
+import { useCmsContent } from "@/hooks/useCmsContent";
 import {
   BarChart3,
   Calendar,
@@ -164,6 +165,7 @@ function DemoHint({ text }: { text: string }) {
 
 export default function DemoTracker() {
   const { isAuthenticated } = useAuth();
+  const cms = useCmsContent("tracker");
   const [activeDelivery, setActiveDelivery] = useState(0);
   const maxLiters = useMemo(() => Math.max(1, ...DEMO_MONTHLY.map((i) => i.liters)), []);
   const currentDelivery = DEMO_DELIVERIES[activeDelivery] ?? DEMO_DELIVERIES[0];
@@ -194,10 +196,9 @@ export default function DemoTracker() {
                   <Eye className="h-5 w-5" />
                 </div>
                 <div>
-                  <h3 className="text-lg font-semibold text-foreground">Это демо-версия трекера</h3>
+                  <h3 className="text-lg font-semibold text-foreground">{cms.getText("demo_banner_title", "Это демо-версия трекера")}</h3>
                   <p className="mt-1 max-w-xl text-sm leading-6 text-muted-foreground">
-                    Вы видите пример того, как выглядит трекер продукции для владельца животного. Все данные ниже — демонстрационные.
-                    Станьте владельцем, чтобы видеть реальный путь продуктов от вашего животного.
+                    {cms.getText("demo_banner_description", "Вы видите пример того, как выглядит трекер продукции для владельца животного. Все данные ниже — демонстрационные. Станьте владельцем, чтобы видеть реальный путь продуктов от вашего животного.")}
                   </p>
                 </div>
               </div>
@@ -206,14 +207,14 @@ export default function DemoTracker() {
                   href="/animals"
                   className="inline-flex items-center gap-2 rounded-full bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90"
                 >
-                  Выбрать животное <ChevronRight className="h-4 w-4" />
+                  {cms.getText("demo_banner_cta", "Выбрать животное")} <ChevronRight className="h-4 w-4" />
                 </Link>
                 {!isAuthenticated && (
                   <a
                     href={getLoginUrl()}
                     className="inline-flex items-center gap-2 rounded-full border border-border px-5 py-2.5 text-sm font-medium text-foreground transition hover:bg-muted"
                   >
-                    Войти в аккаунт
+                    {cms.getText("demo_banner_login", "Войти в аккаунт")}
                   </a>
                 )}
               </div>
@@ -264,12 +265,12 @@ export default function DemoTracker() {
                   </div>
 
                   <div className="max-w-2xl">
-                    <p className="text-sm uppercase tracking-[0.22em] text-amber-300">Трекер продукта</p>
+                    <p className="text-sm uppercase tracking-[0.22em] text-amber-300">{cms.getText("hero_label", "Трекер продукта")}</p>
                     <h1 className="mt-3 font-display text-4xl text-white md:text-5xl">
                       Путь продукта: от {DEMO_ANIMAL.name} до вашей именной коробки.
                     </h1>
                     <p className="mt-4 max-w-xl text-sm leading-7 text-white/76 md:text-base">
-                      Происхождение молока, состав партии, статус доставки и связь с вашим животным — всё в одном месте.
+                      {cms.getText("hero_description", "Происхождение молока, состав партии, статус доставки и связь с вашим животным — всё в одном месте.")}
                     </p>
                   </div>
                 </div>
@@ -322,10 +323,10 @@ export default function DemoTracker() {
               </div>
               <div className="space-y-4 p-5">
                 <div>
-                  <p className="text-sm uppercase tracking-[0.22em] text-primary">Состав партии</p>
-                  <h2 className="mt-3 text-2xl font-semibold text-foreground">Состав молока от {DEMO_ANIMAL.name}</h2>
+                  <p className="text-sm uppercase tracking-[0.22em] text-primary">{cms.getText("composition_label", "Состав партии")}</p>
+                  <h2 className="mt-3 text-2xl font-semibold text-foreground">{cms.getText("composition_heading", `Состав молока от ${DEMO_ANIMAL.name}`)}</h2>
                   <p className="mt-2 text-sm leading-7 text-muted-foreground">
-                    Качество партии видно прямо здесь — никаких абстрактных обещаний. Данные привязаны к вашему животному и вашей доле участия.
+                    {cms.getText("composition_description", "Качество партии видно прямо здесь — никаких абстрактных обещаний. Данные привязаны к вашему животному и вашей доле участия.")}
                   </p>
                 </div>
 
@@ -342,7 +343,7 @@ export default function DemoTracker() {
                 ))}
 
                 <div className="rounded-2xl bg-secondary/55 p-4 text-sm leading-7 text-muted-foreground">
-                  Как владелец, вы увидите здесь реальные данные анализа молока именно от вашего животного — с датами и сертификатами.
+                    {cms.getText("composition_note", "Как владелец, вы увидите здесь реальные данные анализа молока именно от вашего животного — с датами и сертификатами.")}
                 </div>
               </div>
             </motion.section>
@@ -359,10 +360,10 @@ export default function DemoTracker() {
               </div>
               <div className="flex flex-col items-start gap-4 sm:flex-row sm:justify-between">
                 <div>
-                  <p className="text-sm uppercase tracking-[0.22em] text-primary">Динамика надоев</p>
-                  <h2 className="mt-3 text-2xl font-semibold text-foreground">Сезонный ритм животного</h2>
+                  <p className="text-sm uppercase tracking-[0.22em] text-primary">{cms.getText("chart_label", "Динамика надоев")}</p>
+                  <h2 className="mt-3 text-2xl font-semibold text-foreground">{cms.getText("chart_heading", "Сезонный ритм животного")}</h2>
                   <p className="mt-2 text-sm leading-7 text-muted-foreground">
-                    График показывает сезонность и связь между жизнью животного и объёмом продукта.
+                    {cms.getText("chart_description", "График показывает сезонность и связь между жизнью животного и объёмом продукта.")}
                   </p>
                 </div>
                 <div className="text-left sm:text-right">
@@ -396,8 +397,8 @@ export default function DemoTracker() {
             >
               <div className="flex flex-col items-start gap-4 sm:flex-row sm:justify-between">
                 <div>
-                  <p className="text-sm uppercase tracking-[0.22em] text-primary">Путь продукта</p>
-                  <h2 className="mt-3 text-2xl font-semibold text-foreground">От жизни животного до семейной коробки</h2>
+                  <p className="text-sm uppercase tracking-[0.22em] text-primary">{cms.getText("origin_label", "Путь продукта")}</p>
+                  <h2 className="mt-3 text-2xl font-semibold text-foreground">{cms.getText("origin_heading", "От жизни животного до семейной коробки")}</h2>
                 </div>
                 <BarChart3 className="h-6 w-6 text-primary" />
               </div>
@@ -425,13 +426,13 @@ export default function DemoTracker() {
               </div>
               <div className="grid gap-0 lg:grid-cols-[0.95fr_1.05fr]">
                 <div className="overflow-hidden border-b border-border/70 lg:border-b-0 lg:border-r">
-                  <img src={CDN.delivery} alt="История доставок" className="h-full min-h-[260px] w-full object-cover" />
+                  <img src={cms.getImage("delivery_image", CDN.delivery)} alt="История доставок" className="h-full min-h-[260px] w-full object-cover" />
                 </div>
                 <div className="p-5">
                   <div className="flex flex-col items-start gap-4 sm:flex-row sm:justify-between">
                     <div>
-                      <p className="text-sm uppercase tracking-[0.22em] text-primary">История доставок</p>
-                      <h2 className="mt-3 text-2xl font-semibold text-foreground">Каждая доставка — часть истории, а не просто заказ.</h2>
+                      <p className="text-sm uppercase tracking-[0.22em] text-primary">{cms.getText("delivery_label", "История доставок")}</p>
+                      <h2 className="mt-3 text-2xl font-semibold text-foreground">{cms.getText("delivery_heading", "Каждая доставка — часть истории, а не просто заказ.")}</h2>
                     </div>
                     <Package className="h-6 w-6 text-primary" />
                   </div>
@@ -492,14 +493,14 @@ export default function DemoTracker() {
               transition={{ delay: 0.24 }}
               className="col-span-12 overflow-hidden rounded-[2rem] border border-border/70 bg-card shadow-sm lg:col-span-6"
             >
-              <img src={CDN.cheese} alt="Именной сыр" className="h-56 w-full object-cover" />
+              <img src={cms.getImage("named_product_image", CDN.cheese)} alt="Именной сыр" className="h-56 w-full object-cover" />
               <div className="p-5">
-                <p className="text-sm uppercase tracking-[0.22em] text-primary">Именной продукт</p>
+                <p className="text-sm uppercase tracking-[0.22em] text-primary">{cms.getText("named_product_label", "Именной продукт")}</p>
                 <h2 className="mt-3 text-2xl font-semibold text-foreground">
-                  Именной продукт завершает цикл от фермы до стола.
+                  {cms.getText("named_product_heading", "Именной продукт завершает цикл от фермы до стола.")}
                 </h2>
                 <p className="mt-3 text-sm leading-7 text-muted-foreground">
-                  Не безликий сыр, а именной продукт — результат вашей связи с животным и заботы фермы.
+                  {cms.getText("named_product_description", "Не безликий сыр, а именной продукт — результат вашей связи с животным и заботы фермы.")}
                 </p>
                 <ScrollRemaining totalItems={DEMO_ROUTE_NOTES.length} itemHeight={32} className="mt-5 max-h-[300px] space-y-2 overflow-y-auto pr-1">
                   {DEMO_ROUTE_NOTES.map((note) => (
@@ -519,17 +520,17 @@ export default function DemoTracker() {
               transition={{ delay: 0.28 }}
               className="col-span-12 rounded-[2rem] border border-primary/15 bg-[linear-gradient(135deg,rgba(26,58,42,0.97),rgba(46,77,59,0.94))] p-6 text-white shadow-[0_34px_80px_-42px_rgba(26,58,42,0.72)] lg:col-span-6"
             >
-              <p className="text-sm uppercase tracking-[0.22em] text-amber-300">Как это работает</p>
-              <h2 className="mt-3 font-display text-3xl">Станьте владельцем — получите свой трекер.</h2>
+              <p className="text-sm uppercase tracking-[0.22em] text-amber-300">{cms.getText("cta_label", "Как это работает")}</p>
+              <h2 className="mt-3 font-display text-3xl">{cms.getText("cta_heading", "Станьте владельцем — получите свой трекер.")}</h2>
               <p className="mt-3 text-sm leading-7 text-white/75">
-                Когда вы выберете животное и оформите участие, этот трекер заполнится реальными данными: состав молока, динамика надоев, история доставок и именные продукты — всё от вашего конкретного животного.
+                {cms.getText("cta_description", "Когда вы выберете животное и оформите участие, этот трекер заполнится реальными данными: состав молока, динамика надоев, история доставок и именные продукты — всё от вашего конкретного животного.")}
               </p>
 
               <div className="mt-5 rounded-[1.5rem] border border-white/12 bg-white/8 p-4 text-sm text-white/78">
-                <div className="text-xs uppercase tracking-[0.16em] text-amber-300">Ваш путь</div>
-                <div className="mt-2 text-base font-semibold text-white">Каталог → Выбор животного → Оформление → Личный трекер</div>
+                <div className="text-xs uppercase tracking-[0.16em] text-amber-300">{cms.getText("cta_path_label", "Ваш путь")}</div>
+                <div className="mt-2 text-base font-semibold text-white">{cms.getText("cta_path_title", "Каталог → Выбор животного → Оформление → Личный трекер")}</div>
                 <p className="mt-2 leading-6 text-white/65">
-                  Выберите козу или овцу в каталоге, оформите участие и получите доступ к персональному трекеру с реальными данными.
+                  {cms.getText("cta_path_description", "Выберите козу или овцу в каталоге, оформите участие и получите доступ к персональному трекеру с реальными данными.")}
                 </p>
               </div>
 
@@ -582,10 +583,10 @@ export default function DemoTracker() {
                 </div>
                 <div className="grid gap-5 lg:grid-cols-[1.1fr_0.9fr] lg:items-start">
                   <div>
-                    <p className="text-sm uppercase tracking-[0.22em] text-primary">Текущий статус маршрута</p>
-                    <h2 className="mt-3 text-2xl font-semibold text-foreground">Текущая доставка — часть вашей истории с животным.</h2>
+                    <p className="text-sm uppercase tracking-[0.22em] text-primary">{cms.getText("status_label", "Текущий статус маршрута")}</p>
+                    <h2 className="mt-3 text-2xl font-semibold text-foreground">{cms.getText("status_heading", "Текущая доставка — часть вашей истории с животным.")}</h2>
                     <p className="mt-3 max-w-2xl text-sm leading-7 text-muted-foreground">
-                      Вы всегда знаете, какая именно доставка сейчас в пути, что в ней и откуда она.
+                      {cms.getText("status_description", "Вы всегда знаете, какая именно доставка сейчас в пути, что в ней и откуда она.")}
                     </p>
 
                     <div className="mt-5 rounded-[1.5rem] bg-secondary/50 p-4">

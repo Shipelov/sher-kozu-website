@@ -5,6 +5,7 @@ import { Link, useLocation, useSearch } from "wouter";
 import Navbar from "@/components/Navbar";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
+import { useCmsContent } from "@/hooks/useCmsContent";
 import ScrollRemaining from "@/components/ScrollRemaining";
 import PageBreadcrumbs from "@/components/PageBreadcrumbs";
 import {
@@ -184,6 +185,7 @@ export default function ClubFeed() {
   }, [searchString]);
 
   const { isAuthenticated } = useAuth();
+  const cms = useCmsContent("club");
 
   const clubQuery = trpc.club.feed.useQuery();
   const dashboardQuery = trpc.animals.ownerDashboard.useQuery(undefined, {
@@ -359,23 +361,23 @@ export default function ClubFeed() {
             animate={{ opacity: 1, y: 0 }}
             className="relative mb-8 overflow-hidden rounded-[2.25rem] border border-border/70 shadow-[0_28px_80px_-42px_rgba(32,26,20,0.26)]"
           >
-            <img src={CDN.club} alt="Клуб Шерь Козу" className="h-[420px] w-full object-cover" />
+                <img src={cms.getImage("hero_image", CDN.club)} alt="Клуб Шерь Козу" className="h-[420px] w-full object-cover" />
             <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(25,22,20,0.82),rgba(25,22,20,0.34),rgba(25,22,20,0.18))]" />
             <div className="absolute inset-0 flex flex-col justify-between p-6 text-white md:p-8">
               <div className="flex flex-wrap items-center gap-2">
                 <div className="inline-flex items-center gap-2 rounded-full bg-white/12 px-4 py-2 text-xs uppercase tracking-[0.18em] text-amber-300 backdrop-blur">
                   <Award className="h-4 w-4" />
-                  Закрытый клуб владельцев
+                  {cms.getText("hero_badge", "Закрытый клуб владельцев")}
                 </div>
                 <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-2 text-xs text-white/80 backdrop-blur">
                   <MapPin className="h-4 w-4" />
-                  {ownership ? `${activeAnimalName} · ${activeAnimalSharePercent}% участия` : "Семейная ферма + digital community"}
+                  {ownership ? `${activeAnimalName} · ${activeAnimalSharePercent}% участия` : cms.getText("hero_location_guest", "Семейная ферма + digital community")}
                 </div>
               </div>
 
               <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
                 <div className="max-w-2xl">
-                  <h1 className="font-display text-4xl text-white md:text-6xl">Клуб Шерь Козу — сообщество семей, которые знают своих животных по имени.</h1>
+                  <h1 className="font-display text-4xl text-white md:text-6xl">{cms.getText("hero_title", "Клуб Шерь Козу — сообщество семей, которые знают своих животных по имени.")}</h1>
                   <p className="mt-4 text-sm leading-7 text-white/75 md:text-base">{heroDescription}</p>
                 </div>
                 <div className="grid grid-cols-1 gap-3 text-center text-white sm:grid-cols-2">
@@ -412,7 +414,7 @@ export default function ClubFeed() {
                 <div className="rounded-[2rem] border border-border/70 bg-card p-6 shadow-sm" data-testid="clubLoading">
                   <div className="flex items-center gap-3 text-sm text-muted-foreground">
                     <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-                    Загружаем живую клубную ленту фермы…
+                    {cms.getText("loading_text", "Загружаем живую клубную ленту фермы…")}
                   </div>
                 </div>
               ) : null}
@@ -429,9 +431,9 @@ export default function ClubFeed() {
                       <MessageCircle className="h-6 w-6" />
                     </div>
                     <div className="min-w-0 flex-1">
-                      <h3 className="text-lg font-semibold text-foreground">Не удалось загрузить клубную ленту</h3>
+                      <h3 className="text-lg font-semibold text-foreground">{cms.getText("error_title", "Не удалось загрузить клубную ленту")}</h3>
                       <p className="mt-1 text-sm text-muted-foreground">
-                        Произошла ошибка при загрузке постов, событий и участников. Попробуйте обновить страницу.
+                        {cms.getText("error_description", "Произошла ошибка при загрузке постов, событий и участников. Попробуйте обновить страницу.")}
                       </p>
                     </div>
                     <button
@@ -454,11 +456,11 @@ export default function ClubFeed() {
                   <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 text-primary">
                     <Sparkles className="h-6 w-6" />
                   </div>
-                  <h4 className="mt-3 text-lg font-semibold text-foreground">Клубная лента пока пуста</h4>
+                  <h4 className="mt-3 text-lg font-semibold text-foreground">{cms.getText("empty_title", "Клубная лента пока пуста")}</h4>
                   <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-muted-foreground">
                     {activeFilter !== "all"
                       ? `Нет публикаций в категории \u00ab${filters.find(f => f.key === activeFilter)?.label}\u00bb. Попробуйте выбрать \u00abВсе\u00bb или другой фильтр.`
-                      : "После первого события или дневниковой записи здесь появится живая история вашей фермы."}
+                      : cms.getText("empty_description", "После первого события или дневниковой записи здесь появится живая история вашей фермы.")}
                   </p>
                   {activeFilter !== "all" && (
                     <button
@@ -485,8 +487,8 @@ export default function ClubFeed() {
               >
                 <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <div>
-                    <p className="text-sm uppercase tracking-[0.22em] text-primary">Календарь клуба</p>
-                    <h2 className="mt-3 text-2xl font-semibold text-foreground">Ближайшие события клуба</h2>
+                    <p className="text-sm uppercase tracking-[0.22em] text-primary">{cms.getText("calendar_label", "Календарь клуба")}</p>
+                    <h2 className="mt-3 text-2xl font-semibold text-foreground">{cms.getText("calendar_heading", "Ближайшие события клуба")}</h2>
                   </div>
                   <Calendar className="h-5 w-5 text-primary" />
                 </div>
@@ -503,14 +505,14 @@ export default function ClubFeed() {
                         <div className="mt-3 flex items-center justify-between gap-3">
                           <span className="text-xs font-medium text-foreground">{event.status}</span>
                           <button className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline">
-                            Записаться <ChevronRight className="h-3.5 w-3.5" />
+                            {cms.getText("calendar_cta", "Записаться")} <ChevronRight className="h-3.5 w-3.5" />
                           </button>
                         </div>
                       </div>
                     ))
                   ) : (
                     <div className="rounded-[1.5rem] border border-dashed border-border p-4 text-sm text-muted-foreground">
-                      Ближайшие события появятся здесь после публикации новой клубной программы.
+                      {cms.getText("calendar_empty", "Ближайшие события появятся здесь после публикации новой клубной программы.")}
                     </div>
                   )}
                 </ScrollRemaining>
@@ -524,7 +526,7 @@ export default function ClubFeed() {
               >
                 <img src={(activeAnimalCoverUrl && activeAnimalCoverUrl !== "NULL") ? activeAnimalCoverUrl : CDN.goat} alt={activeAnimalName} className="h-56 w-full object-cover object-top" />
                 <div className="p-5">
-                  <p className="text-sm uppercase tracking-[0.22em] text-primary">Персональный ритуал</p>
+                  <p className="text-sm uppercase tracking-[0.22em] text-primary">{cms.getText("ritual_label", "Персональный ритуал")}</p>
                   <h2 className="mt-3 text-2xl font-semibold text-foreground">{ritualTitle}</h2>
                   <p className="mt-3 text-sm leading-7 text-muted-foreground">{ritualDescription}</p>
                 </div>
@@ -538,8 +540,8 @@ export default function ClubFeed() {
               >
                 <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <div>
-                    <p className="text-sm uppercase tracking-[0.22em] text-primary">Участники</p>
-                    <h2 className="mt-3 text-2xl font-semibold text-foreground">Кто уже внутри клуба</h2>
+                    <p className="text-sm uppercase tracking-[0.22em] text-primary">{cms.getText("members_label", "Участники")}</p>
+                    <h2 className="mt-3 text-2xl font-semibold text-foreground">{cms.getText("members_heading", "Кто уже внутри клуба")}</h2>
                   </div>
                   <Users className="h-5 w-5 text-primary" />
                 </div>
@@ -562,7 +564,7 @@ export default function ClubFeed() {
                     ))
                   ) : (
                     <div className="rounded-[1.5rem] border border-dashed border-border p-4 text-sm text-muted-foreground">
-                      Состав клуба появится здесь после добавления первых участников.
+                      {cms.getText("members_empty", "Состав клуба появится здесь после добавления первых участников.")}
                     </div>
                   )}
                 </ScrollRemaining>
@@ -576,20 +578,20 @@ export default function ClubFeed() {
               >
                 <div className="flex items-center gap-2 text-amber-300">
                   <Wine className="h-5 w-5" />
-                  <span className="text-sm uppercase tracking-[0.2em]">Маршруты сообщества</span>
+                  <span className="text-sm uppercase tracking-[0.2em]">{cms.getText("routes_label", "Маршруты сообщества")}</span>
                 </div>
-                <h2 className="mt-4 font-display text-3xl">Животное, продукт и семья — всё связано.</h2>
+                <h2 className="mt-4 font-display text-3xl">{cms.getText("routes_heading", "Животное, продукт и семья — всё связано.")}</h2>
                 <p className="mt-3 text-sm leading-7 text-white/75">
                   {ownership
                     ? `Из клуба вы можете перейти к профилю ${activeAnimalName}, трекеру продуктов или личному кабинету.`
-                    : "События, сообщество и ощущение принадлежности к жизни фермы."}
+                    : cms.getText("routes_description_guest", "События, сообщество и ощущение принадлежности к жизни фермы.")}
                 </p>
                 {isGuestJourney ? (
                   <div className="mt-5 rounded-[1.5rem] border border-white/12 bg-white/8 p-4 text-sm text-white/78">
-                    <div className="text-xs uppercase tracking-[0.16em] text-amber-300">Как присоединиться</div>
-                    <div className="mt-2 text-base font-semibold text-white">Клуб → Профиль животного → Выбор доли → Вход</div>
+                    <div className="text-xs uppercase tracking-[0.16em] text-amber-300">{cms.getText("routes_howto_label", "Как присоединиться")}</div>
+                    <div className="mt-2 text-base font-semibold text-white">{cms.getText("routes_howto_title", "Клуб → Профиль животного → Выбор доли → Вход")}</div>
                     <p className="mt-2 leading-6 text-white/65">
-                      Клуб можно изучать и без аккаунта. Следующий шаг — откройте профиль животного, выберите формат участия и войдите в аккаунт, чтобы клуб стал персональным.
+                      {cms.getText("routes_howto_description", "Клуб можно изучать и без аккаунта. Следующий шаг — откройте профиль животного, выберите формат участия и войдите в аккаунт, чтобы клуб стал персональным.")}
                     </p>
                   </div>
                 ) : null}
@@ -633,10 +635,10 @@ export default function ClubFeed() {
                 className="min-w-0 overflow-hidden rounded-[2rem] border border-border/70 bg-card shadow-sm"
               >
                 <div className="grid gap-0 md:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
-                  <img src={CDN.family} alt="Семейный визит" className="h-full min-h-[220px] w-full object-cover" />
+                  <img src={cms.getImage("notif_family_image", CDN.family)} alt="Семейный визит" className="h-full min-h-[220px] w-full object-cover" />
                   <div className="p-5">
-                    <p className="text-sm uppercase tracking-[0.22em] text-primary">Уведомления клуба</p>
-                    <h2 className="mt-3 text-2xl font-semibold text-foreground">Уведомления клуба</h2>
+                    <p className="text-sm uppercase tracking-[0.22em] text-primary">{cms.getText("notif_label", "Уведомления клуба")}</p>
+                    <h2 className="mt-3 text-2xl font-semibold text-foreground">{cms.getText("notif_heading", "Уведомления клуба")}</h2>
                     <div className="mt-5 space-y-3">
                       {[
                         `Новые посты о ${activeAnimalName} и команде ухода`,
@@ -652,7 +654,7 @@ export default function ClubFeed() {
                     </div>
                     <div className="mt-4 flex items-center gap-2 text-xs text-muted-foreground">
                       <Bell className="h-4 w-4 text-primary" />
-                      Уведомления помогают не пропустить важное.
+                      {cms.getText("notif_hint", "Уведомления помогают не пропустить важное.")}
                     </div>
                     <div className="mt-4 grid gap-3 sm:grid-cols-3">
                       <Link href={profileHref} className="inline-flex items-center justify-center rounded-full bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/92">

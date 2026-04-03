@@ -750,6 +750,132 @@ const pricingDefaults: DefaultBlock[] = [
   ]), section: "FAQ", sortOrder: 61, visible: true },
 ];
 
+const clubDefaults: DefaultBlock[] = [
+  // Section 1 — Hero
+  { page: "club", blockKey: "hero_badge", label: "Hero — Бейдж", contentType: "text", content: "Закрытый клуб владельцев", section: "Hero", sortOrder: 1, visible: true },
+  { page: "club", blockKey: "hero_title", label: "Hero — Заголовок", contentType: "richtext", content: "Клуб Шерь Козу — сообщество семей, которые знают своих животных по имени.", section: "Hero", sortOrder: 2, visible: true },
+  { page: "club", blockKey: "hero_image", label: "Hero — Фото", contentType: "image", content: null, imageUrl: "https://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/sherkozu_club_visit-mmi2c8j4W8VB63TUjVvZ4S.webp", section: "Hero", sortOrder: 3, visible: true },
+  { page: "club", blockKey: "hero_description_guest", label: "Hero — Описание (гость)", contentType: "richtext", content: "Дневник фермы, семейные визиты, мастер-классы и живые истории участников — место, где ферма становится частью вашей жизни.", section: "Hero", sortOrder: 4, visible: true },
+  { page: "club", blockKey: "hero_location_guest", label: "Hero — Локация (гость)", contentType: "text", content: "Семейная ферма + digital community", section: "Hero", sortOrder: 5, visible: true },
+
+  // Section 2 — Calendar sidebar
+  { page: "club", blockKey: "calendar_label", label: "Календарь — Метка", contentType: "text", content: "Календарь клуба", section: "Календарь", sortOrder: 10, visible: true },
+  { page: "club", blockKey: "calendar_heading", label: "Календарь — Заголовок", contentType: "text", content: "Ближайшие события клуба", section: "Календарь", sortOrder: 11, visible: true },
+  { page: "club", blockKey: "calendar_empty", label: "Календарь — Пусто", contentType: "text", content: "Ближайшие события появятся здесь после публикации новой клубной программы.", section: "Календарь", sortOrder: 12, visible: true },
+  { page: "club", blockKey: "calendar_cta", label: "Календарь — Кнопка", contentType: "text", content: "Записаться", section: "Календарь", sortOrder: 13, visible: true },
+
+  // Section 3 — Ritual
+  { page: "club", blockKey: "ritual_label", label: "Ритуал — Метка", contentType: "text", content: "Персональный ритуал", section: "Ритуал", sortOrder: 20, visible: true },
+
+  // Section 4 — Members
+  { page: "club", blockKey: "members_label", label: "Участники — Метка", contentType: "text", content: "Участники", section: "Участники", sortOrder: 30, visible: true },
+  { page: "club", blockKey: "members_heading", label: "Участники — Заголовок", contentType: "text", content: "Кто уже внутри клуба", section: "Участники", sortOrder: 31, visible: true },
+  { page: "club", blockKey: "members_empty", label: "Участники — Пусто", contentType: "text", content: "Состав клуба появится здесь после добавления первых участников.", section: "Участники", sortOrder: 32, visible: true },
+
+  // Section 5 — Routes
+  { page: "club", blockKey: "routes_label", label: "Маршруты — Метка", contentType: "text", content: "Маршруты сообщества", section: "Маршруты", sortOrder: 40, visible: true },
+  { page: "club", blockKey: "routes_heading", label: "Маршруты — Заголовок", contentType: "text", content: "Животное, продукт и семья — всё связано.", section: "Маршруты", sortOrder: 41, visible: true },
+  { page: "club", blockKey: "routes_description_guest", label: "Маршруты — Описание (гость)", contentType: "richtext", content: "События, сообщество и ощущение принадлежности к жизни фермы.", section: "Маршруты", sortOrder: 42, visible: true },
+  { page: "club", blockKey: "routes_howto_label", label: "Маршруты — Как присоединиться (метка)", contentType: "text", content: "Как присоединиться", section: "Маршруты", sortOrder: 43, visible: true },
+  { page: "club", blockKey: "routes_howto_title", label: "Маршруты — Как присоединиться (заголовок)", contentType: "text", content: "Клуб → Профиль животного → Выбор доли → Вход", section: "Маршруты", sortOrder: 44, visible: true },
+  { page: "club", blockKey: "routes_howto_description", label: "Маршруты — Как присоединиться (описание)", contentType: "richtext", content: "Клуб можно изучать и без аккаунта. Следующий шаг — откройте профиль животного, выберите формат участия и войдите в аккаунт, чтобы клуб стал персональным.", section: "Маршруты", sortOrder: 45, visible: true },
+  { page: "club", blockKey: "routes_links", label: "Маршруты — Ссылки", contentType: "json", content: JSON.stringify([
+    { key: "profile", title: "К профилю {animal}", subtitle: "Дневник, история и галерея вашего животного" },
+    { key: "tracker", title: "К трекеру продуктов", subtitle: "Состав молока, доставки и путь продукта" },
+    { key: "dashboard", title: "В кабинет", subtitle: "Ваше участие, следующие шаги и быстрые действия" },
+  ]), section: "Маршруты", sortOrder: 46, visible: true },
+
+  // Section 6 — Notifications
+  { page: "club", blockKey: "notif_label", label: "Уведомления — Метка", contentType: "text", content: "Уведомления клуба", section: "Уведомления", sortOrder: 50, visible: true },
+  { page: "club", blockKey: "notif_heading", label: "Уведомления — Заголовок", contentType: "text", content: "Уведомления клуба", section: "Уведомления", sortOrder: 51, visible: true },
+  { page: "club", blockKey: "notif_hint", label: "Уведомления — Подсказка", contentType: "text", content: "Уведомления помогают не пропустить важное.", section: "Уведомления", sortOrder: 52, visible: true },
+  { page: "club", blockKey: "notif_family_image", label: "Уведомления — Фото", contentType: "image", content: null, imageUrl: "https://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/sherkozu_family_farm_hero-UF9QBY2UhWL9gdEpLXiEFS.webp", section: "Уведомления", sortOrder: 53, visible: true },
+
+  // Section 7 — Loading/Error/Empty states
+  { page: "club", blockKey: "loading_text", label: "Загрузка — Текст", contentType: "text", content: "Загружаем живую клубную ленту фермы…", section: "Состояния", sortOrder: 60, visible: true },
+  { page: "club", blockKey: "error_title", label: "Ошибка — Заголовок", contentType: "text", content: "Не удалось загрузить клубную ленту", section: "Состояния", sortOrder: 61, visible: true },
+  { page: "club", blockKey: "error_description", label: "Ошибка — Описание", contentType: "text", content: "Произошла ошибка при загрузке постов, событий и участников. Попробуйте обновить страницу.", section: "Состояния", sortOrder: 62, visible: true },
+  { page: "club", blockKey: "empty_title", label: "Пусто — Заголовок", contentType: "text", content: "Клубная лента пока пуста", section: "Состояния", sortOrder: 63, visible: true },
+  { page: "club", blockKey: "empty_description", label: "Пусто — Описание", contentType: "text", content: "После первого события или дневниковой записи здесь появится живая история вашей фермы.", section: "Состояния", sortOrder: 64, visible: true },
+];
+
+const trackerDefaults: DefaultBlock[] = [
+  // Section 1 — Demo banner
+  { page: "tracker", blockKey: "demo_banner_title", label: "Демо-баннер — Заголовок", contentType: "text", content: "Это демо-версия трекера", section: "Демо-баннер", sortOrder: 1, visible: true },
+  { page: "tracker", blockKey: "demo_banner_description", label: "Демо-баннер — Описание", contentType: "richtext", content: "Вы видите пример того, как выглядит трекер продукции для владельца животного. Все данные ниже — демонстрационные.", section: "Демо-баннер", sortOrder: 2, visible: true },
+  { page: "tracker", blockKey: "demo_banner_cta", label: "Демо-баннер — Кнопка каталог", contentType: "text", content: "Выбрать животное", section: "Демо-баннер", sortOrder: 3, visible: true },
+  { page: "tracker", blockKey: "demo_banner_login", label: "Демо-баннер — Кнопка вход", contentType: "text", content: "Войти в аккаунт", section: "Демо-баннер", sortOrder: 4, visible: true },
+
+  // Section 2 — Hero
+  { page: "tracker", blockKey: "hero_label", label: "Hero — Метка", contentType: "text", content: "Трекер продукта", section: "Hero", sortOrder: 10, visible: true },
+  { page: "tracker", blockKey: "hero_description", label: "Hero — Описание", contentType: "richtext", content: "Происхождение молока, состав партии, статус доставки и связь с вашим животным — всё в одном месте.", section: "Hero", sortOrder: 11, visible: true },
+
+  // Section 3 — Composition
+  { page: "tracker", blockKey: "composition_label", label: "Состав — Метка", contentType: "text", content: "Состав партии", section: "Состав", sortOrder: 20, visible: true },
+  { page: "tracker", blockKey: "composition_heading", label: "Состав — Заголовок", contentType: "text", content: "Состав молока от Мира", section: "Состав", sortOrder: 21, visible: true },
+  { page: "tracker", blockKey: "composition_description", label: "Состав — Описание", contentType: "richtext", content: "Качество партии видно прямо здесь — никаких абстрактных обещаний. Данные привязаны к вашему животному и вашей доле участия.", section: "Состав", sortOrder: 22, visible: true },
+  { page: "tracker", blockKey: "composition_note", label: "Состав — Примечание", contentType: "richtext", content: "Как владелец, вы увидите здесь реальные данные анализа молока именно от вашего животного — с датами и сертификатами.", section: "Состав", sortOrder: 23, visible: true },
+
+  // Section 4 — Chart (yield dynamics)
+  { page: "tracker", blockKey: "chart_label", label: "Надои — Метка", contentType: "text", content: "Динамика надоев", section: "Надои", sortOrder: 30, visible: true },
+  { page: "tracker", blockKey: "chart_heading", label: "Надои — Заголовок", contentType: "text", content: "Сезонный ритм животного", section: "Надои", sortOrder: 31, visible: true },
+  { page: "tracker", blockKey: "chart_description", label: "Надои — Описание", contentType: "richtext", content: "График показывает сезонность и связь между жизнью животного и объёмом продукта.", section: "Надои", sortOrder: 32, visible: true },
+
+  // Section 5 — Origin (product journey)
+  { page: "tracker", blockKey: "origin_label", label: "Путь — Метка", contentType: "text", content: "Путь продукта", section: "Путь продукта", sortOrder: 40, visible: true },
+  { page: "tracker", blockKey: "origin_heading", label: "Путь — Заголовок", contentType: "text", content: "От жизни животного до семейной коробки", section: "Путь продукта", sortOrder: 41, visible: true },
+
+  // Section 6 — Delivery
+  { page: "tracker", blockKey: "delivery_label", label: "Доставки — Метка", contentType: "text", content: "История доставок", section: "Доставки", sortOrder: 50, visible: true },
+  { page: "tracker", blockKey: "delivery_heading", label: "Доставки — Заголовок", contentType: "text", content: "Каждая доставка — часть истории, а не просто заказ.", section: "Доставки", sortOrder: 51, visible: true },
+  { page: "tracker", blockKey: "delivery_image", label: "Доставки — Фото", contentType: "image", content: null, imageUrl: "https://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/sherkozu_family_farm_hero-UF9QBY2UhWL9gdEpLXiEFS.webp", section: "Доставки", sortOrder: 52, visible: true },
+
+  // Section 7 — Named product
+  { page: "tracker", blockKey: "named_product_label", label: "Именной продукт — Метка", contentType: "text", content: "Именной продукт", section: "Именной продукт", sortOrder: 60, visible: true },
+  { page: "tracker", blockKey: "named_product_heading", label: "Именной продукт — Заголовок", contentType: "text", content: "Именной продукт завершает цикл от фермы до стола.", section: "Именной продукт", sortOrder: 61, visible: true },
+  { page: "tracker", blockKey: "named_product_description", label: "Именной продукт — Описание", contentType: "richtext", content: "Не безликий сыр, а именной продукт — результат вашей связи с животным и заботы фермы.", section: "Именной продукт", sortOrder: 62, visible: true },
+  { page: "tracker", blockKey: "named_product_image", label: "Именной продукт — Фото", contentType: "image", content: null, imageUrl: "https://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/sherkozu_named_dairy_box-3mP3ykmuPDWBoKghC7cnDc.webp", section: "Именной продукт", sortOrder: 63, visible: true },
+
+  // Section 8 — CTA
+  { page: "tracker", blockKey: "cta_label", label: "CTA — Метка", contentType: "text", content: "Как это работает", section: "CTA", sortOrder: 70, visible: true },
+  { page: "tracker", blockKey: "cta_heading", label: "CTA — Заголовок", contentType: "text", content: "Станьте владельцем — получите свой трекер.", section: "CTA", sortOrder: 71, visible: true },
+  { page: "tracker", blockKey: "cta_description", label: "CTA — Описание", contentType: "richtext", content: "Когда вы выберете животное и оформите участие, этот трекер заполнится реальными данными: состав молока, динамика надоев, история доставок и именные продукты — всё от вашего конкретного животного.", section: "CTA", sortOrder: 72, visible: true },
+  { page: "tracker", blockKey: "cta_path_label", label: "CTA — Путь (метка)", contentType: "text", content: "Ваш путь", section: "CTA", sortOrder: 73, visible: true },
+  { page: "tracker", blockKey: "cta_path_title", label: "CTA — Путь (заголовок)", contentType: "text", content: "Каталог → Выбор животного → Оформление → Личный трекер", section: "CTA", sortOrder: 74, visible: true },
+  { page: "tracker", blockKey: "cta_path_description", label: "CTA — Путь (описание)", contentType: "richtext", content: "Выберите козу или овцу в каталоге, оформите участие и получите доступ к персональному трекеру с реальными данными.", section: "CTA", sortOrder: 75, visible: true },
+
+  // Section 9 — Status
+  { page: "tracker", blockKey: "status_label", label: "Статус — Метка", contentType: "text", content: "Текущий статус маршрута", section: "Статус", sortOrder: 80, visible: true },
+  { page: "tracker", blockKey: "status_heading", label: "Статус — Заголовок", contentType: "text", content: "Текущая доставка — часть вашей истории с животным.", section: "Статус", sortOrder: 81, visible: true },
+  { page: "tracker", blockKey: "status_description", label: "Статус — Описание", contentType: "richtext", content: "Вы всегда знаете, какая именно доставка сейчас в пути, что в ней и откуда она.", section: "Статус", sortOrder: 82, visible: true },
+];
+
+const calculatorDefaults: DefaultBlock[] = [
+  // Section 1 — Page header
+  { page: "calculator", blockKey: "page_title", label: "Заголовок страницы", contentType: "text", content: "Калькулятор выгоды", section: "Заголовок", sortOrder: 1, visible: true },
+  { page: "calculator", blockKey: "page_subtitle", label: "Подзаголовок страницы", contentType: "text", content: "Настройте параметры и увидите реальную экономию по сравнению с покупкой на рынке", section: "Заголовок", sortOrder: 2, visible: true },
+
+  // Section 2 — Form labels
+  { page: "calculator", blockKey: "config_heading", label: "Конфигурация — Заголовок", contentType: "text", content: "Настройте параметры", section: "Форма", sortOrder: 10, visible: true },
+  { page: "calculator", blockKey: "breed_label", label: "Порода — Метка", contentType: "text", content: "Порода животного", section: "Форма", sortOrder: 11, visible: true },
+  { page: "calculator", blockKey: "share_label", label: "Доля — Метка", contentType: "text", content: "Доля владения", section: "Форма", sortOrder: 12, visible: true },
+  { page: "calculator", blockKey: "alloc_label", label: "Распределение — Метка", contentType: "text", content: "Распределение баланса молока", section: "Форма", sortOrder: 13, visible: true },
+  { page: "calculator", blockKey: "alloc_hint", label: "Распределение — Подсказка", contentType: "text", content: "Перемещайте слайдеры, чтобы распределить молоко между продуктами", section: "Форма", sortOrder: 14, visible: true },
+  { page: "calculator", blockKey: "payment_label", label: "Оплата — Метка", contentType: "text", content: "Период оплаты", section: "Форма", sortOrder: 15, visible: true },
+  { page: "calculator", blockKey: "products_label", label: "Продукты — Метка", contentType: "text", content: "Что вы получите за год", section: "Форма", sortOrder: 16, visible: true },
+
+  // Section 3 — Result labels
+  { page: "calculator", blockKey: "savings_title", label: "Выгода — Заголовок", contentType: "text", content: "Ваша выгода за год", section: "Результат", sortOrder: 20, visible: true },
+  { page: "calculator", blockKey: "costs_title", label: "Расходы — Заголовок", contentType: "text", content: "Сводка расходов (год)", section: "Результат", sortOrder: 21, visible: true },
+  { page: "calculator", blockKey: "value_title", label: "Ценность — Заголовок", contentType: "text", content: "Ценность (год)", section: "Результат", sortOrder: 22, visible: true },
+  { page: "calculator", blockKey: "comparison_title", label: "Сравнение — Заголовок", contentType: "text", content: "Сравнение", section: "Результат", sortOrder: 23, visible: true },
+
+  // Section 5 — CTA buttons
+  { page: "calculator", blockKey: "cta_catalog", label: "CTA — Каталог", contentType: "text", content: "Выбрать животное в каталоге", section: "CTA", sortOrder: 40, visible: true },
+  { page: "calculator", blockKey: "cta_pdf", label: "CTA — PDF", contentType: "text", content: "Скачать расчёт PDF", section: "CTA", sortOrder: 41, visible: true },
+  { page: "calculator", blockKey: "cta_share", label: "CTA — Поделиться", contentType: "text", content: "Поделиться расчётом", section: "CTA", sortOrder: 42, visible: true },
+];
+
 function getDefaultBlocks(page: string): DefaultBlock[] {
   if (page === "home") return homeDefaults;
   if (page === "catalog") return catalogDefaults;
@@ -757,6 +883,9 @@ function getDefaultBlocks(page: string): DefaultBlock[] {
   if (page === "partners") return partnersDefaults;
   if (page === "dashboard") return dashboardDefaults;
   if (page === "pricing") return pricingDefaults;
+  if (page === "club") return clubDefaults;
+  if (page === "tracker") return trackerDefaults;
+  if (page === "calculator") return calculatorDefaults;
   return [];
 }
 

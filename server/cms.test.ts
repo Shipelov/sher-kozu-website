@@ -1732,6 +1732,39 @@ describe("CMS defaults coverage: every frontend key has a backend default", () =
     "form_heading", "form_description",
   ];
 
+  const clubExpectedKeys = [
+    "hero_badge", "hero_title", "hero_image", "hero_location_guest",
+    "calendar_label", "calendar_heading", "calendar_empty", "calendar_cta",
+    "notif_label", "notif_heading", "notif_hint", "notif_family_image",
+    "ritual_label",
+    "routes_label", "routes_heading", "routes_description_guest",
+    "routes_howto_label", "routes_howto_title", "routes_howto_description",
+    "members_label", "members_heading", "members_empty",
+    "loading_text", "error_title", "error_description",
+    "empty_title", "empty_description",
+  ];
+
+  const trackerExpectedKeys = [
+    "demo_banner_title", "demo_banner_description", "demo_banner_cta", "demo_banner_login",
+    "hero_label", "hero_description",
+    "composition_label", "composition_heading", "composition_description", "composition_note",
+    "chart_label", "chart_heading", "chart_description",
+    "origin_label", "origin_heading",
+    "delivery_label", "delivery_heading", "delivery_image",
+    "named_product_label", "named_product_heading", "named_product_description", "named_product_image",
+    "cta_label", "cta_heading", "cta_description",
+    "cta_path_label", "cta_path_title", "cta_path_description",
+    "status_label", "status_heading", "status_description",
+  ];
+
+  const calculatorExpectedKeys = [
+    "page_title", "page_subtitle",
+    "config_heading", "breed_label", "share_label",
+    "alloc_label", "alloc_hint", "payment_label", "products_label",
+    "savings_title", "costs_title", "value_title", "comparison_title",
+    "cta_catalog", "cta_pdf", "cta_share",
+  ];
+
   const pricingExpectedKeys = [
     "hero_title", "hero_subtitle", "hero_cta_primary", "hero_cta_secondary", "hero_overview",
     "model_heading", "model_subtitle",
@@ -1808,13 +1841,16 @@ describe("CMS defaults coverage: every frontend key has a backend default", () =
     const fs = await import("fs");
     const source = fs.readFileSync("server/routers/cms.ts", "utf-8");
 
-    // Ensure getDefaultBlocks maps all 6 pages
+    // Ensure getDefaultBlocks maps all 9 pages
     expect(source).toContain('page === "home"');
     expect(source).toContain('page === "catalog"');
     expect(source).toContain('page === "about"');
     expect(source).toContain('page === "partners"');
     expect(source).toContain('page === "dashboard"');
     expect(source).toContain('page === "pricing"');
+    expect(source).toContain('page === "club"');
+    expect(source).toContain('page === "tracker"');
+    expect(source).toContain('page === "calculator"');
   });
 
   it("frontend pages actually use CMS hook for all expected keys", async () => {
@@ -1854,6 +1890,54 @@ describe("CMS defaults coverage: every frontend key has a backend default", () =
     const pricingSrc = fs.readFileSync("client/src/pages/Pricing.tsx", "utf-8");
     for (const key of pricingExpectedKeys) {
       expect(pricingSrc, `Pricing.tsx should use CMS key: ${key}`).toContain(`"${key}"`);
+    }
+
+    // Verify ClubFeed.tsx uses all expected club keys
+    const clubSrc = fs.readFileSync("client/src/pages/ClubFeed.tsx", "utf-8");
+    for (const key of clubExpectedKeys) {
+      expect(clubSrc, `ClubFeed.tsx should use CMS key: ${key}`).toContain(`"${key}"`);
+    }
+
+    // Verify DemoTracker.tsx uses all expected tracker keys
+    const trackerSrc = fs.readFileSync("client/src/pages/DemoTracker.tsx", "utf-8");
+    for (const key of trackerExpectedKeys) {
+      expect(trackerSrc, `DemoTracker.tsx should use CMS key: ${key}`).toContain(`"${key}"`);
+    }
+
+    // Verify PricingCalculator.tsx uses all expected calculator keys
+    const calcSrc = fs.readFileSync("client/src/pages/PricingCalculator.tsx", "utf-8");
+    for (const key of calculatorExpectedKeys) {
+      expect(calcSrc, `PricingCalculator.tsx should use CMS key: ${key}`).toContain(`"${key}"`);
+    }
+  });
+
+  it("clubDefaults covers all ClubFeed.tsx CMS keys", async () => {
+    const fs = await import("fs");
+    const source = fs.readFileSync("server/routers/cms.ts", "utf-8");
+
+    for (const key of clubExpectedKeys) {
+      const pattern = `blockKey: "${key}"`;
+      expect(source, `Missing clubDefaults key: ${key}`).toContain(pattern);
+    }
+  });
+
+  it("trackerDefaults covers all DemoTracker.tsx CMS keys", async () => {
+    const fs = await import("fs");
+    const source = fs.readFileSync("server/routers/cms.ts", "utf-8");
+
+    for (const key of trackerExpectedKeys) {
+      const pattern = `blockKey: "${key}"`;
+      expect(source, `Missing trackerDefaults key: ${key}`).toContain(pattern);
+    }
+  });
+
+  it("calculatorDefaults covers all PricingCalculator.tsx CMS keys", async () => {
+    const fs = await import("fs");
+    const source = fs.readFileSync("server/routers/cms.ts", "utf-8");
+
+    for (const key of calculatorExpectedKeys) {
+      const pattern = `blockKey: "${key}"`;
+      expect(source, `Missing calculatorDefaults key: ${key}`).toContain(pattern);
     }
   });
 });

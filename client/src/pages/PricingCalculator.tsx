@@ -10,6 +10,7 @@ import Navbar from "@/components/Navbar";
 import PageBreadcrumbs from "@/components/PageBreadcrumbs";
 import { trpc } from "@/lib/trpc";
 import { Slider } from "@/components/ui/slider";
+import { useCmsContent } from "@/hooks/useCmsContent";
 import {
   ArrowRight,
   Calculator,
@@ -60,6 +61,7 @@ const PRODUCT_LABELS: Record<string, { name: string; color: string }> = {
 const fmt = (n: number) => n.toLocaleString("ru-RU");
 
 export default function PricingCalculator() {
+  const cms = useCmsContent("calculator");
   const [breed, setBreed] = useState<BreedKey>("alpine");
   const [share, setShare] = useState<50 | 100>(100);
   const [alloc, setAlloc] = useState<Record<string, number>>(DEFAULT_ALLOC);
@@ -185,9 +187,9 @@ export default function PricingCalculator() {
 
         {/* Header */}
         <div className="container pb-8 pt-2">
-          <h1 className="text-3xl font-bold text-foreground md:text-4xl">Калькулятор выгоды</h1>
+          <h1 className="text-3xl font-bold text-foreground md:text-4xl">{cms.getText("page_title", "Калькулятор выгоды")}</h1>
           <p className="mt-2 text-muted-foreground">
-            Настройте параметры и увидите реальную экономию по сравнению с покупкой на рынке
+            {cms.getText("page_subtitle", "Настройте параметры и увидите реальную экономию по сравнению с покупкой на рынке")}
           </p>
         </div>
 
@@ -198,12 +200,12 @@ export default function PricingCalculator() {
             <div className="rounded-2xl border border-border bg-card p-6 md:p-8">
               <h2 className="flex items-center gap-2 text-lg font-bold text-foreground mb-6">
                 <Calculator className="h-5 w-5 text-primary" />
-                Настройте параметры
+                {cms.getText("config_heading", "Настройте параметры")}
               </h2>
 
               {/* Breed selection */}
               <div className="mb-8">
-                <label className="text-sm font-semibold text-foreground mb-3 block">Порода животного</label>
+                <label className="text-sm font-semibold text-foreground mb-3 block">{cms.getText("breed_label", "Порода животного")}</label>
                 <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                   {BREEDS.map((b) => (
                     <button
@@ -226,7 +228,7 @@ export default function PricingCalculator() {
 
               {/* Share selection */}
               <div className="mb-8">
-                <label className="text-sm font-semibold text-foreground mb-3 block">Доля владения</label>
+                <label className="text-sm font-semibold text-foreground mb-3 block">{cms.getText("share_label", "Доля владения")}</label>
                 <div className="grid grid-cols-2 gap-3">
                   {([50, 100] as const).map((s) => (
                     <button
@@ -249,9 +251,9 @@ export default function PricingCalculator() {
 
               {/* Milk allocation */}
               <div className="mb-8">
-                <label className="text-sm font-semibold text-foreground mb-1 block">Распределение баланса молока</label>
+                <label className="text-sm font-semibold text-foreground mb-1 block">{cms.getText("alloc_label", "Распределение баланса молока")}</label>
                 <p className="text-xs text-muted-foreground mb-4">
-                  Перемещайте слайдеры, чтобы распределить молоко между продуктами
+                  {cms.getText("alloc_hint", "Перемещайте слайдеры, чтобы распределить молоко между продуктами")}
                 </p>
 
                 {/* Monthly milk indicator */}
@@ -293,7 +295,7 @@ export default function PricingCalculator() {
 
               {/* Payment period */}
               <div className="mb-8">
-                <label className="text-sm font-semibold text-foreground mb-3 block">Период оплаты</label>
+                <label className="text-sm font-semibold text-foreground mb-3 block">{cms.getText("payment_label", "Период оплаты")}</label>
                 <div className="grid grid-cols-2 gap-3">
                   <button
                     type="button"
@@ -321,7 +323,7 @@ export default function PricingCalculator() {
               {/* Products table */}
               {result && result.products.length > 0 && (
                 <div>
-                  <label className="text-sm font-semibold text-foreground mb-3 block">Что вы получите за год</label>
+                  <label className="text-sm font-semibold text-foreground mb-3 block">{cms.getText("products_label", "Что вы получите за год")}</label>
                   <div className="overflow-x-auto">
                     <table className="w-full text-sm">
                       <thead>
@@ -365,7 +367,7 @@ export default function PricingCalculator() {
             <div className="space-y-4 lg:sticky lg:top-24 lg:self-start">
               {/* Savings hero */}
               <div className="rounded-2xl bg-primary p-5 text-center text-primary-foreground">
-                <p className="text-sm font-medium opacity-80">Ваша выгода за год</p>
+                <p className="text-sm font-medium opacity-80">{cms.getText("savings_title", "Ваша выгода за год")}</p>
                 <p className="text-4xl font-bold mt-1">{savingsPercent > 0 ? `${savingsPercent}%` : "—"}</p>
                 <p className="text-sm font-semibold mt-1">
                   Экономия: {savings > 0 ? `${fmt(savings)} ₽` : "—"}
@@ -374,7 +376,7 @@ export default function PricingCalculator() {
 
               {/* Cost breakdown */}
               <div className="rounded-2xl border border-border bg-card p-5">
-                <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-3">Сводка расходов (год)</p>
+                <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-3">{cms.getText("costs_title", "Сводка расходов (год)")}</p>
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Разовый платёж</span>
@@ -393,7 +395,7 @@ export default function PricingCalculator() {
 
               {/* Value breakdown */}
               <div className="rounded-2xl border border-border bg-card p-5">
-                <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-3">Ценность (год)</p>
+                <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-3">{cms.getText("value_title", "Ценность (год)")}</p>
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Продукция (рыночная цена)</span>
@@ -418,7 +420,7 @@ export default function PricingCalculator() {
 
               {/* Comparison bar chart */}
               <div className="rounded-2xl border border-border bg-card p-5">
-                <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-4">Сравнение</p>
+                <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-4">{cms.getText("comparison_title", "Сравнение")}</p>
                 <div className="flex items-end justify-center gap-6 h-32">
                   {/* Your costs bar */}
                   <div className="flex flex-col items-center">
@@ -454,7 +456,7 @@ export default function PricingCalculator() {
                     type="button"
                     className="w-full rounded-xl bg-primary py-3 text-sm font-semibold text-primary-foreground hover:bg-primary/90 transition-colors flex items-center justify-center gap-2"
                   >
-                    Выбрать животное в каталоге
+                    {cms.getText("cta_catalog", "Выбрать животное в каталоге")}
                     <ArrowRight className="h-4 w-4" />
                   </button>
                 </Link>
@@ -467,7 +469,7 @@ export default function PricingCalculator() {
                   }}
                 >
                   <Download className="h-4 w-4" />
-                  Скачать расчёт PDF
+                  {cms.getText("cta_pdf", "Скачать расчёт PDF")}
                 </button>
                 <button
                   type="button"
@@ -478,7 +480,7 @@ export default function PricingCalculator() {
                   }}
                 >
                   <Share2 className="h-4 w-4" />
-                  Поделиться расчётом
+                  {cms.getText("cta_share", "Поделиться расчётом")}
                 </button>
               </div>
             </div>
