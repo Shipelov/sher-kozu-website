@@ -31,6 +31,7 @@ import {
   Users,
   Clock,
   Download,
+  FileSpreadsheet,
   FileText,
 } from "lucide-react";
 
@@ -805,6 +806,7 @@ function OwnerDeliveryTimeline({ animalSlug }: { animalSlug: string }) {
   const [expandedMonth, setExpandedMonth] = useState<number | null>(currentMonth);
   const [statusFilter, setStatusFilter] = useState<"all" | "planned" | "ready" | "delivered">("all");
   const [exportingPdf, setExportingPdf] = useState(false);
+  const [exportingExcel, setExportingExcel] = useState(false);
 
   const yearOptions = useMemo(() => {
     const years: number[] = [];
@@ -827,6 +829,59 @@ function OwnerDeliveryTimeline({ animalSlug }: { animalSlug: string }) {
       return JSON.parse(json) as Array<{ label: string; quantity: number; unit: string; frequency?: string }>;
     } catch {
       return [];
+    }
+  };
+
+  const handleExportExcel = async () => {
+    setExportingExcel(true);
+    try {
+      const XLSX = await import("xlsx");
+      const animalName = (timelineQuery.data as any)?.animalName || animalSlug || "";
+      const wb = XLSX.utils.book_new();
+
+      // Summary sheet
+      const summaryData = [
+        ["Мои доставки", `${animalName} — ${selectedYear}`],
+        [],
+        ["Всего доставок", stats.total],
+        ["Доставлено", stats.delivered],
+        ["Готово к отправке", stats.ready],
+        ["Запланировано", stats.planned],
+      ];
+      const summarySheet = XLSX.utils.aoa_to_sheet(summaryData);
+      XLSX.utils.book_append_sheet(wb, summarySheet, "Сводка");
+
+      // Detail sheet
+      const headers = ["Месяц", "Продукты", "Статус", "Дата доставки", "Заметка"];
+      const rows = allEntries.map((e) => {
+        const items = parseItems(e.itemsJson);
+        const productsStr = items.map((i) => `${i.label}: ${i.quantity} ${i.unit}`).join("; ");
+        return [
+          MONTH_NAMES_FULL[e.month - 1] || `Месяц ${e.month}`,
+          productsStr,
+          DELIVERY_STATUS_LABELS[e.status] || e.status,
+          e.deliveredAt || "—",
+          e.adminNote || "",
+        ];
+      });
+      const detailSheet = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+      detailSheet["!cols"] = [{ wch: 14 }, { wch: 45 }, { wch: 20 }, { wch: 14 }, { wch: 30 }];
+      XLSX.utils.book_append_sheet(wb, detailSheet, "Доставки");
+
+      const buf = XLSX.write(wb, { type: "array", bookType: "xlsx" });
+      const blob = new Blob([buf], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `мои_доставки_${animalName}_${selectedYear}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (err: any) {
+      console.error("Excel export error:", err);
+    } finally {
+      setExportingExcel(false);
     }
   };
 
@@ -909,14 +964,24 @@ function OwnerDeliveryTimeline({ animalSlug }: { animalSlug: string }) {
                 </button>
               ))}
               {allEntries.length > 0 && (
-                <button
-                  onClick={handleExportPdf}
-                  disabled={exportingPdf}
-                  className="ml-auto inline-flex items-center gap-1.5 rounded-full border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-medium text-red-700 transition-colors hover:bg-red-100 disabled:opacity-50"
-                >
-                  {exportingPdf ? <Loader2 className="h-3 w-3 animate-spin" /> : <Download className="h-3 w-3" />}
-                  PDF
-                </button>
+                <div className="ml-auto flex items-center gap-1.5">
+                  <button
+                    onClick={handleExportExcel}
+                    disabled={exportingExcel}
+                    className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-medium text-emerald-700 transition-colors hover:bg-emerald-100 disabled:opacity-50"
+                  >
+                    {exportingExcel ? <Loader2 className="h-3 w-3 animate-spin" /> : <FileSpreadsheet className="h-3 w-3" />}
+                    Excel
+                  </button>
+                  <button
+                    onClick={handleExportPdf}
+                    disabled={exportingPdf}
+                    className="inline-flex items-center gap-1.5 rounded-full border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-medium text-red-700 transition-colors hover:bg-red-100 disabled:opacity-50"
+                  >
+                    {exportingPdf ? <Loader2 className="h-3 w-3 animate-spin" /> : <Download className="h-3 w-3" />}
+                    PDF
+                  </button>
+                </div>
               )}
             </div>
 

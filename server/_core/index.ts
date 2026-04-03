@@ -175,6 +175,40 @@ async function startServer() {
     }
   });
 
+  // Owner delivery Excel generation endpoint
+  app.post("/api/delivery/owner/excel", async (req, res) => {
+    try {
+      const { generateOwnerDeliveryExcel } = await import("../excelDeliveryGenerator");
+      const excelBuffer = generateOwnerDeliveryExcel(req.body);
+      res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+      res.setHeader(
+        "Content-Disposition",
+        `attachment; filename*=UTF-8''${encodeURIComponent(`мои_доставки_${req.body.year || "доставки"}.xlsx`)}`
+      );
+      res.send(excelBuffer);
+    } catch (err: any) {
+      console.error("Owner delivery Excel error:", err);
+      res.status(500).json({ error: "Failed to generate Excel", message: err?.message });
+    }
+  });
+
+  // Admin delivery Excel generation endpoint
+  app.post("/api/delivery/admin/excel", async (req, res) => {
+    try {
+      const { generateAdminDeliveryExcel } = await import("../excelDeliveryGenerator");
+      const excelBuffer = generateAdminDeliveryExcel(req.body);
+      res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+      res.setHeader(
+        "Content-Disposition",
+        `attachment; filename*=UTF-8''${encodeURIComponent(`доставка_${req.body.animalName || "доставка"}_${req.body.year || ""}.xlsx`)}`
+      );
+      res.send(excelBuffer);
+    } catch (err: any) {
+      console.error("Admin delivery Excel error:", err);
+      res.status(500).json({ error: "Failed to generate Excel", message: err?.message });
+    }
+  });
+
   // OAuth callback under /api/oauth/callback
   registerOAuthRoutes(app);
   // tRPC API
