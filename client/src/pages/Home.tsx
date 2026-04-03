@@ -390,18 +390,18 @@ export default function Home() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ duration: 0.5, delay: 0.3 }}
-                className="mt-8 grid grid-cols-2 gap-3"
+                className="mt-8 grid grid-cols-2 gap-2.5 sm:gap-3"
               >
                 {distanceCards.map((card) => (
                   <div
                     key={card.city}
-                    className="flex items-center gap-3 rounded-xl border border-border/60 bg-white/90 px-4 py-3 shadow-sm backdrop-blur-sm"
+                    className="flex items-center gap-2 sm:gap-3 rounded-xl border border-border/60 bg-white/90 px-2.5 sm:px-4 py-2.5 sm:py-3 shadow-sm backdrop-blur-sm"
                   >
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10">
-                      <MapPin className="h-4 w-4 text-primary" />
+                    <div className="flex h-8 w-8 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-full bg-primary/10">
+                      <MapPin className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-primary" />
                     </div>
                     <div className="min-w-0">
-                      <p className="text-sm font-semibold text-foreground truncate">{card.city}</p>
+                      <p className="text-xs sm:text-sm font-semibold text-foreground leading-tight">{card.city}</p>
                       <p className="text-xs text-muted-foreground">{card.km} км</p>
                     </div>
                   </div>

@@ -306,12 +306,12 @@ export default function FarmMap({ className }: { className?: string }) {
       </div>
 
       {/* Route button — below map */}
-      <div className="mt-3 flex flex-wrap items-center gap-3">
+      <div className="mt-3 flex flex-col sm:flex-row sm:flex-wrap items-stretch sm:items-center gap-2 sm:gap-3">
         <button
           onClick={buildRoute}
           disabled={isLoadingRoute}
           className={cn(
-            "inline-flex items-center gap-2.5 rounded-xl px-5 py-3 text-sm font-semibold shadow-sm transition-all",
+            "inline-flex items-center justify-center gap-2 sm:gap-2.5 rounded-xl px-4 sm:px-5 py-2.5 sm:py-3 text-sm font-semibold shadow-sm transition-all",
             "bg-primary text-white hover:bg-primary/90 active:scale-[0.97]",
             "disabled:opacity-70 disabled:cursor-not-allowed"
           )}
@@ -327,7 +327,7 @@ export default function FarmMap({ className }: { className?: string }) {
           href={`https://yandex.ru/maps/?rtext=~${FARM_LOCATION.lat},${FARM_LOCATION.lng}&rtt=auto`}
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex items-center gap-1.5 rounded-xl border border-border bg-white/80 px-4 py-3 text-sm font-semibold text-foreground shadow-sm hover:bg-white transition-colors"
+          className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-border bg-white/80 px-4 py-2.5 sm:py-3 text-sm font-semibold text-foreground shadow-sm hover:bg-white transition-colors"
         >
           <MapPin className="h-4 w-4 text-primary" />
           Яндекс Навигатор
@@ -336,8 +336,8 @@ export default function FarmMap({ className }: { className?: string }) {
 
       {/* Route info panel */}
       {routeInfo && (
-        <div className="absolute bottom-4 left-4 right-4 sm:left-auto sm:right-4 sm:max-w-sm pointer-events-auto">
-          <div className="rounded-2xl border border-border bg-white/95 backdrop-blur-md p-4 shadow-xl">
+        <div className="mt-3 sm:mt-0 sm:absolute sm:bottom-4 sm:right-4 sm:max-w-sm pointer-events-auto">
+          <div className="rounded-2xl border border-border bg-white/95 backdrop-blur-md p-3 sm:p-4 shadow-xl">
             <div className="flex items-start justify-between gap-3">
               <div className="flex items-center gap-2 text-primary">
                 <Route className="h-5 w-5 shrink-0" />
@@ -397,8 +397,8 @@ export default function FarmMap({ className }: { className?: string }) {
 
       {/* Error message */}
       {routeError && (
-        <div className="absolute bottom-4 left-4 right-4 sm:left-auto sm:right-4 sm:max-w-sm pointer-events-auto">
-          <div className="rounded-2xl border border-destructive/30 bg-white/95 backdrop-blur-md p-4 shadow-xl">
+        <div className="mt-3 sm:mt-0 sm:absolute sm:bottom-4 sm:right-4 sm:max-w-sm pointer-events-auto">
+          <div className="rounded-2xl border border-destructive/30 bg-white/95 backdrop-blur-md p-3 sm:p-4 shadow-xl">
             <div className="flex items-start gap-3">
               <AlertCircle className="h-5 w-5 text-destructive shrink-0 mt-0.5" />
               <div>
