@@ -290,30 +290,30 @@ export default function Pricing() {
 
         {/* ─── STEPS TIMELINE ─── */}
         <section className="py-16 container">
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-6 md:gap-6 max-w-5xl mx-auto">
-            {STEPS.map((step, i) => (
-              <motion.div
-                key={i}
-                initial="hidden"
-                whileInView="visible"
-                viewport={{ once: true }}
-                variants={fadeUp}
-                custom={i}
-                className="flex flex-col items-center text-center overflow-hidden"
-              >
-                <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-bold ${
-                  i === 2 ? "bg-primary text-primary-foreground" : "border-2 border-border text-foreground"
-                }`}>
-                  {step.num}
-                </div>
-                <p className="mt-2 text-xs sm:text-sm font-semibold text-foreground leading-tight w-full break-words">{step.label}</p>
-                <p className="text-[11px] sm:text-xs text-muted-foreground leading-tight mt-0.5 w-full break-words">{step.sub}</p>
-              </motion.div>
-            ))}
-          </div>
-          {/* Connecting line (desktop) */}
-          <div className="hidden md:block relative -mt-[4.5rem] mx-auto max-w-5xl">
-            <div className="absolute top-5 left-[2rem] right-[2rem] h-[2px] bg-border" />
+          <div className="relative max-w-5xl mx-auto">
+            {/* Connecting line behind circles */}
+            <div className="hidden md:block absolute top-5 left-[4%] right-[4%] h-[2px] bg-border z-0" />
+            <div className="flex flex-wrap justify-center gap-y-8 gap-x-4 md:flex-nowrap md:justify-between">
+              {STEPS.map((step, i) => (
+                <motion.div
+                  key={i}
+                  initial="hidden"
+                  whileInView="visible"
+                  viewport={{ once: true }}
+                  variants={fadeUp}
+                  custom={i}
+                  className="flex flex-col items-center text-center w-[calc(33%-1rem)] md:w-[140px] shrink-0 relative z-10"
+                >
+                  <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-bold bg-background ${
+                    i === 2 ? "bg-primary text-primary-foreground" : "border-2 border-border text-foreground"
+                  }`}>
+                    {step.num}
+                  </div>
+                  <p className="mt-2 text-[13px] font-semibold text-foreground leading-snug">{step.label}</p>
+                  <p className="text-[11px] text-muted-foreground leading-snug mt-0.5">{step.sub}</p>
+                </motion.div>
+              ))}
+            </div>
           </div>
         </section>
 

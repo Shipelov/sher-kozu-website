@@ -1791,3 +1791,23 @@
 - [x] Reorder navbar: move Цены between О ферме and Каталог
 - [x] Fix text overflow in 6-step block on Pricing page
 - [x] Fix 'Ежемесячный взнос' text still overflowing in step 5 of 6-step block on Pricing page
+- [x] Properly redesign 6-step block on Pricing page — previous fixes made it worse, need robust solution
+- [ ] Complete homepage redesign based on marketing research — conversion-optimized landing page with wow factor
+- [ ] Recalculate real distances and drive times from Nazarovo farm to all key locations
+- [ ] Update proximity map with correct distance zones
+- [ ] Update marketing research with corrected geographic data
+- [ ] Update homepage mockups with accurate distances
+- [x] Fix farm pin position on map mockup — Nazarovo is northwest of Istra, not center
+- [x] Fix farm pin on map — move ABOVE (north of) Novorizhskoe highway, currently below it
+- [x] Fix map: Novorizhskoe highway runs SOUTH of Nazarovo and Istra, rename pin to 'Ферма Шерь Козу, д. Назарово'
+- [x] Create accurate map programmatically (Python) with correct coordinates — AI generation keeps placing locations wrong
+- [ ] Take real map screenshot and stylize it for the geography section
+
+## Interactive Map
+
+- [x] Заменить статичную стилизованную карту на интерактивную Google Maps с маркером фермы
+- [x] Добавить кнопку «Построить маршрут» для расчёта маршрута от текущего местоположения пользователя до фермы
+- [x] Показывать расстояние и время в пути после построения маршрута
+- [x] Стилизовать карту и маркер в соответствии с палитрой сайта
+- [x] Добавить секцию «География» на страницу О ферме с интерактивной картой и карточками расстояний
+- [x] Секция должна соответствовать мокапу: слева текст + карточки, справа карта
