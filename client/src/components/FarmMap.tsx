@@ -5,7 +5,7 @@
  * - Shows the farm location (Nazarovo, Istrinsky district) with a custom marker
  * - "Build Route" button that gets user's geolocation and draws driving directions
  * - Displays distance and estimated travel time
- * - Styled to match the site's warm organic palette
+ * - Loading and error states for mobile reliability
  */
 
 import { MapView } from "@/components/Map";
@@ -16,47 +16,6 @@ import { cn } from "@/lib/utils";
 /* ─── Farm coordinates ─── */
 const FARM_LOCATION = { lat: 56.0598821, lng: 36.6134708 };
 const FARM_TITLE = "Ферма Шерь Козу";
-const FARM_ADDRESS = "д. Назарово, Истринский район, Московская область";
-
-/* ─── Custom map styles — warm organic palette ─── */
-const MAP_STYLES: google.maps.MapTypeStyle[] = [
-  // Overall geometry — warm cream base
-  { elementType: "geometry", stylers: [{ color: "#f0ebe0" }] },
-  // Labels text — muted dark green
-  { elementType: "labels.text.fill", stylers: [{ color: "#4a5e4a" }] },
-  { elementType: "labels.text.stroke", stylers: [{ color: "#f5f1ea" }, { weight: 3 }] },
-  // Administrative labels
-  { featureType: "administrative", elementType: "labels.text.fill", stylers: [{ color: "#3d4f3d" }] },
-  { featureType: "administrative.locality", elementType: "labels.text.fill", stylers: [{ color: "#2d3d2d" }, { weight: 1.5 }] },
-  // Landscape — soft warm beige
-  { featureType: "landscape", elementType: "geometry.fill", stylers: [{ color: "#ece7db" }] },
-  { featureType: "landscape.natural", elementType: "geometry.fill", stylers: [{ color: "#e5dfcf" }] },
-  { featureType: "landscape.natural.terrain", elementType: "geometry.fill", stylers: [{ color: "#ddd7c5" }] },
-  // Parks & green areas — soft sage green
-  { featureType: "poi.park", elementType: "geometry.fill", stylers: [{ color: "#c8d5b9" }] },
-  { featureType: "poi.park", elementType: "labels.text.fill", stylers: [{ color: "#5a7a5a" }] },
-  // Other POI — subtle, don't distract
-  { featureType: "poi", elementType: "geometry.fill", stylers: [{ color: "#ddd8ca" }] },
-  { featureType: "poi.business", stylers: [{ visibility: "off" }] },
-  { featureType: "poi.medical", stylers: [{ visibility: "off" }] },
-  { featureType: "poi.sports_complex", stylers: [{ visibility: "off" }] },
-  { featureType: "poi.attraction", stylers: [{ visibility: "simplified" }] },
-  // Roads — warm muted tones
-  { featureType: "road", elementType: "geometry.fill", stylers: [{ color: "#f5f0e5" }] },
-  { featureType: "road", elementType: "geometry.stroke", stylers: [{ color: "#d5cdb8" }, { weight: 0.8 }] },
-  { featureType: "road", elementType: "labels.text.fill", stylers: [{ color: "#6b7a6b" }] },
-  { featureType: "road.highway", elementType: "geometry.fill", stylers: [{ color: "#e8dfc8" }] },
-  { featureType: "road.highway", elementType: "geometry.stroke", stylers: [{ color: "#c5b99a" }, { weight: 1.2 }] },
-  { featureType: "road.highway", elementType: "labels.text.fill", stylers: [{ color: "#5a6a5a" }] },
-  { featureType: "road.arterial", elementType: "geometry.fill", stylers: [{ color: "#ede7d5" }] },
-  { featureType: "road.arterial", elementType: "geometry.stroke", stylers: [{ color: "#d0c8b0" }] },
-  { featureType: "road.local", elementType: "geometry.fill", stylers: [{ color: "#f2ede2" }] },
-  // Water — soft muted blue-sage
-  { featureType: "water", elementType: "geometry.fill", stylers: [{ color: "#b8ccc0" }] },
-  { featureType: "water", elementType: "labels.text.fill", stylers: [{ color: "#6a8a7a" }] },
-  // Transit — hide to reduce clutter
-  { featureType: "transit", stylers: [{ visibility: "off" }] },
-];
 
 /* ─── Route info state ─── */
 interface RouteInfo {
@@ -71,10 +30,14 @@ export default function FarmMap({ className }: { className?: string }) {
   const [routeInfo, setRouteInfo] = useState<RouteInfo | null>(null);
   const [isLoadingRoute, setIsLoadingRoute] = useState(false);
   const [routeError, setRouteError] = useState<string | null>(null);
+  const [mapLoaded, setMapLoaded] = useState(false);
+  const [mapError, setMapError] = useState(false);
 
   /* ─── Map ready callback ─── */
   const handleMapReady = useCallback((map: google.maps.Map) => {
     mapRef.current = map;
+    setMapLoaded(true);
+    setMapError(false);
 
     // Create a custom overlay for the farm marker label
     class FarmMarkerOverlay extends google.maps.OverlayView {
@@ -153,7 +116,7 @@ export default function FarmMap({ className }: { className?: string }) {
     const overlay = new FarmMarkerOverlay(FARM_LOCATION);
     overlay.setMap(map);
 
-    // Also add a simple marker for the pin icon
+    // Also add a circle marker for the pin
     new google.maps.Marker({
       map,
       position: FARM_LOCATION,
@@ -169,9 +132,18 @@ export default function FarmMap({ className }: { className?: string }) {
     });
   }, []);
 
+  /* ─── Handle map load error ─── */
+  const handleMapError = useCallback(() => {
+    setMapError(true);
+    setMapLoaded(false);
+  }, []);
+
   /* ─── Build route from user location ─── */
   const buildRoute = useCallback(async () => {
-    if (!mapRef.current) return;
+    if (!mapRef.current) {
+      setRouteError("Карта ещё не загружена. Подождите несколько секунд и попробуйте снова, или используйте Яндекс Навигатор.");
+      return;
+    }
 
     setIsLoadingRoute(true);
     setRouteError(null);
@@ -187,24 +159,24 @@ export default function FarmMap({ className }: { className?: string }) {
       // Get user's current position
       const position = await new Promise<GeolocationPosition>((resolve, reject) => {
         if (!navigator.geolocation) {
-          reject(new Error("Геолокация не поддерживается вашим браузером"));
+          reject(new Error("Геолокация не поддерживается вашим браузером. Используйте Яндекс Навигатор для построения маршрута."));
           return;
         }
         navigator.geolocation.getCurrentPosition(resolve, (err) => {
           switch (err.code) {
             case err.PERMISSION_DENIED:
-              reject(new Error("Доступ к геолокации запрещён. Разрешите доступ в настройках браузера."));
+              reject(new Error("Доступ к геолокации запрещён. Разрешите доступ в настройках браузера или используйте Яндекс Навигатор."));
               break;
             case err.POSITION_UNAVAILABLE:
-              reject(new Error("Не удалось определить ваше местоположение."));
+              reject(new Error("Не удалось определить ваше местоположение. Попробуйте Яндекс Навигатор."));
               break;
             case err.TIMEOUT:
-              reject(new Error("Время ожидания определения местоположения истекло."));
+              reject(new Error("Время ожидания определения местоположения истекло. Попробуйте ещё раз."));
               break;
             default:
               reject(new Error("Не удалось определить местоположение."));
           }
-        }, { enableHighAccuracy: false, timeout: 10000, maximumAge: 300000 });
+        }, { enableHighAccuracy: false, timeout: 15000, maximumAge: 300000 });
       });
 
       const userLocation = {
@@ -222,9 +194,6 @@ export default function FarmMap({ className }: { className?: string }) {
           strokeWeight: 5,
           strokeOpacity: 0.85,
         },
-        markerOptions: {
-          // The origin marker will use default style
-        },
       });
       directionsRendererRef.current = directionsRenderer;
 
@@ -241,7 +210,7 @@ export default function FarmMap({ className }: { className?: string }) {
             if (status === "OK" && response) {
               resolve(response);
             } else {
-              reject(new Error("Не удалось построить маршрут. Попробуйте позже."));
+              reject(new Error("Не удалось построить маршрут. Попробуйте Яндекс Навигатор."));
             }
           }
         );
@@ -283,25 +252,35 @@ export default function FarmMap({ className }: { className?: string }) {
 
   return (
     <div className={cn("relative", className)}>
-      {/* Map with warm organic tint — CSS filter + overlay for reliable tinting */}
-      <div
-        className="relative rounded-2xl overflow-hidden border border-border shadow-sm"
-        style={{ filter: 'sepia(35%) saturate(0.6) brightness(1.05) contrast(0.95)' }}
-      >
+      {/* Map container — no CSS filters to avoid WebGL issues on mobile */}
+      <div className="relative rounded-2xl overflow-hidden border border-border shadow-sm">
+        {/* Loading state */}
+        {!mapLoaded && !mapError && (
+          <div className="absolute inset-0 z-10 flex items-center justify-center bg-secondary/50 rounded-2xl">
+            <div className="flex flex-col items-center gap-3">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              <p className="text-sm text-muted-foreground font-medium">Загрузка карты…</p>
+            </div>
+          </div>
+        )}
+
+        {/* Error state */}
+        {mapError && (
+          <div className="absolute inset-0 z-10 flex items-center justify-center bg-secondary/80 rounded-2xl">
+            <div className="flex flex-col items-center gap-3 text-center px-6">
+              <AlertCircle className="h-8 w-8 text-destructive" />
+              <p className="text-sm font-semibold text-foreground">Не удалось загрузить карту</p>
+              <p className="text-xs text-muted-foreground">Используйте ссылку на Яндекс Навигатор ниже</p>
+            </div>
+          </div>
+        )}
+
         <MapView
           className="h-[400px] sm:h-[480px]"
           initialCenter={FARM_LOCATION}
           initialZoom={12}
           onMapReady={handleMapReady}
-          styles={MAP_STYLES}
-        />
-        {/* Warm tint overlay — pointer-events:none keeps map interactive */}
-        <div
-          className="absolute inset-0 pointer-events-none"
-          style={{
-            backgroundColor: 'rgba(180, 165, 130, 0.18)',
-            mixBlendMode: 'multiply',
-          }}
+          onMapError={handleMapError}
         />
       </div>
 
@@ -336,7 +315,7 @@ export default function FarmMap({ className }: { className?: string }) {
 
       {/* Route info panel */}
       {routeInfo && (
-        <div className="mt-3 sm:mt-0 sm:absolute sm:bottom-4 sm:right-4 sm:max-w-sm pointer-events-auto">
+        <div className="mt-3">
           <div className="rounded-2xl border border-border bg-white/95 backdrop-blur-md p-3 sm:p-4 shadow-xl">
             <div className="flex items-start justify-between gap-3">
               <div className="flex items-center gap-2 text-primary">
@@ -371,7 +350,7 @@ export default function FarmMap({ className }: { className?: string }) {
                 Маршрут: {routeInfo.summary}
               </p>
             )}
-            <div className="mt-3 flex items-center gap-2">
+            <div className="mt-3 flex flex-wrap items-center gap-2">
               <a
                 href={`https://www.google.com/maps/dir/?api=1&destination=${FARM_LOCATION.lat},${FARM_LOCATION.lng}`}
                 target="_blank"
@@ -397,17 +376,17 @@ export default function FarmMap({ className }: { className?: string }) {
 
       {/* Error message */}
       {routeError && (
-        <div className="mt-3 sm:mt-0 sm:absolute sm:bottom-4 sm:right-4 sm:max-w-sm pointer-events-auto">
+        <div className="mt-3">
           <div className="rounded-2xl border border-destructive/30 bg-white/95 backdrop-blur-md p-3 sm:p-4 shadow-xl">
             <div className="flex items-start gap-3">
               <AlertCircle className="h-5 w-5 text-destructive shrink-0 mt-0.5" />
-              <div>
+              <div className="flex-1">
                 <p className="text-sm font-semibold text-foreground">Ошибка маршрута</p>
                 <p className="mt-1 text-xs text-muted-foreground">{routeError}</p>
               </div>
               <button
                 onClick={() => setRouteError(null)}
-                className="rounded-lg p-1 text-muted-foreground hover:bg-muted transition-colors ml-auto"
+                className="rounded-lg p-1 text-muted-foreground hover:bg-muted transition-colors"
               >
                 <X className="h-4 w-4" />
               </button>
@@ -415,8 +394,6 @@ export default function FarmMap({ className }: { className?: string }) {
           </div>
         </div>
       )}
-
-
     </div>
   );
 }

@@ -131,6 +131,7 @@ interface MapViewProps {
   initialCenter?: google.maps.LatLngLiteral;
   initialZoom?: number;
   onMapReady?: (map: google.maps.Map) => void;
+  onMapError?: () => void;
   styles?: google.maps.MapTypeStyle[];
 }
 
@@ -139,33 +140,37 @@ export function MapView({
   initialCenter = { lat: 37.7749, lng: -122.4194 },
   initialZoom = 12,
   onMapReady,
+  onMapError,
   styles,
 }: MapViewProps) {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<google.maps.Map | null>(null);
 
   const init = usePersistFn(async () => {
-    await loadMapScript();
-    if (!mapContainer.current) {
-      console.error("Map container not found");
-      return;
-    }
-    map.current = new window.google.maps.Map(mapContainer.current, {
-      zoom: initialZoom,
-      center: initialCenter,
-      mapTypeControl: true,
-      fullscreenControl: true,
-      zoomControl: true,
-      streetViewControl: true,
-      // mapId enables AdvancedMarkerElement but disables legacy styles array.
-      // When custom styles are provided, skip mapId and force RASTER rendering
-      // so the legacy styles take effect (WebGL ignores styles array).
-      ...(styles
-        ? { styles, renderingType: (window.google.maps as any).RenderingType?.RASTER }
-        : { mapId: "DEMO_MAP_ID" }),
-    });
-    if (onMapReady) {
-      onMapReady(map.current);
+    try {
+      await loadMapScript();
+      if (!mapContainer.current) {
+        console.error("Map container not found");
+        onMapError?.();
+        return;
+      }
+      map.current = new window.google.maps.Map(mapContainer.current, {
+        zoom: initialZoom,
+        center: initialCenter,
+        mapTypeControl: true,
+        fullscreenControl: true,
+        zoomControl: true,
+        streetViewControl: true,
+        // Always use mapId for consistent cross-device rendering.
+        // Legacy styles array is unreliable on mobile WebGL.
+        mapId: "DEMO_MAP_ID",
+      });
+      if (onMapReady) {
+        onMapReady(map.current);
+      }
+    } catch (err) {
+      console.error("Failed to initialize Google Maps:", err);
+      onMapError?.();
     }
   });
 
