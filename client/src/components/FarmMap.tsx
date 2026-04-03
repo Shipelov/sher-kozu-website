@@ -18,6 +18,46 @@ const FARM_LOCATION = { lat: 56.0598821, lng: 36.6134708 };
 const FARM_TITLE = "Ферма Шерь Козу";
 const FARM_ADDRESS = "д. Назарово, Истринский район, Московская область";
 
+/* ─── Custom map styles — warm organic palette ─── */
+const MAP_STYLES: google.maps.MapTypeStyle[] = [
+  // Overall geometry — warm cream base
+  { elementType: "geometry", stylers: [{ color: "#f0ebe0" }] },
+  // Labels text — muted dark green
+  { elementType: "labels.text.fill", stylers: [{ color: "#4a5e4a" }] },
+  { elementType: "labels.text.stroke", stylers: [{ color: "#f5f1ea" }, { weight: 3 }] },
+  // Administrative labels
+  { featureType: "administrative", elementType: "labels.text.fill", stylers: [{ color: "#3d4f3d" }] },
+  { featureType: "administrative.locality", elementType: "labels.text.fill", stylers: [{ color: "#2d3d2d" }, { weight: 1.5 }] },
+  // Landscape — soft warm beige
+  { featureType: "landscape", elementType: "geometry.fill", stylers: [{ color: "#ece7db" }] },
+  { featureType: "landscape.natural", elementType: "geometry.fill", stylers: [{ color: "#e5dfcf" }] },
+  { featureType: "landscape.natural.terrain", elementType: "geometry.fill", stylers: [{ color: "#ddd7c5" }] },
+  // Parks & green areas — soft sage green
+  { featureType: "poi.park", elementType: "geometry.fill", stylers: [{ color: "#c8d5b9" }] },
+  { featureType: "poi.park", elementType: "labels.text.fill", stylers: [{ color: "#5a7a5a" }] },
+  // Other POI — subtle, don't distract
+  { featureType: "poi", elementType: "geometry.fill", stylers: [{ color: "#ddd8ca" }] },
+  { featureType: "poi.business", stylers: [{ visibility: "off" }] },
+  { featureType: "poi.medical", stylers: [{ visibility: "off" }] },
+  { featureType: "poi.sports_complex", stylers: [{ visibility: "off" }] },
+  { featureType: "poi.attraction", stylers: [{ visibility: "simplified" }] },
+  // Roads — warm muted tones
+  { featureType: "road", elementType: "geometry.fill", stylers: [{ color: "#f5f0e5" }] },
+  { featureType: "road", elementType: "geometry.stroke", stylers: [{ color: "#d5cdb8" }, { weight: 0.8 }] },
+  { featureType: "road", elementType: "labels.text.fill", stylers: [{ color: "#6b7a6b" }] },
+  { featureType: "road.highway", elementType: "geometry.fill", stylers: [{ color: "#e8dfc8" }] },
+  { featureType: "road.highway", elementType: "geometry.stroke", stylers: [{ color: "#c5b99a" }, { weight: 1.2 }] },
+  { featureType: "road.highway", elementType: "labels.text.fill", stylers: [{ color: "#5a6a5a" }] },
+  { featureType: "road.arterial", elementType: "geometry.fill", stylers: [{ color: "#ede7d5" }] },
+  { featureType: "road.arterial", elementType: "geometry.stroke", stylers: [{ color: "#d0c8b0" }] },
+  { featureType: "road.local", elementType: "geometry.fill", stylers: [{ color: "#f2ede2" }] },
+  // Water — soft muted blue-sage
+  { featureType: "water", elementType: "geometry.fill", stylers: [{ color: "#b8ccc0" }] },
+  { featureType: "water", elementType: "labels.text.fill", stylers: [{ color: "#6a8a7a" }] },
+  // Transit — hide to reduce clutter
+  { featureType: "transit", stylers: [{ visibility: "off" }] },
+];
+
 /* ─── Route info state ─── */
 interface RouteInfo {
   distance: string;
@@ -36,51 +76,96 @@ export default function FarmMap({ className }: { className?: string }) {
   const handleMapReady = useCallback((map: google.maps.Map) => {
     mapRef.current = map;
 
-    // Create custom marker content
-    const markerEl = document.createElement("div");
-    markerEl.className = "farm-marker";
-    markerEl.innerHTML = `
-      <div style="
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        filter: drop-shadow(0 4px 12px rgba(0,0,0,0.25));
-      ">
-        <div style="
-          background: #1a3a2a;
-          color: white;
-          padding: 8px 14px;
-          border-radius: 12px;
-          font-size: 13px;
-          font-weight: 600;
-          white-space: nowrap;
-          font-family: system-ui, -apple-system, sans-serif;
-          line-height: 1.3;
-          text-align: center;
-        ">
-          <div style="display: flex; align-items: center; gap: 6px;">
-            <span style="font-size: 16px;">🐐</span>
-            <span>${FARM_TITLE}</span>
-          </div>
-          <div style="font-size: 11px; font-weight: 400; opacity: 0.8; margin-top: 2px;">
-            д. Назарово, Истра
-          </div>
-        </div>
-        <div style="
-          width: 0;
-          height: 0;
-          border-left: 8px solid transparent;
-          border-right: 8px solid transparent;
-          border-top: 10px solid #1a3a2a;
-        "></div>
-      </div>
-    `;
+    // Create a custom overlay for the farm marker label
+    class FarmMarkerOverlay extends google.maps.OverlayView {
+      private div: HTMLDivElement | null = null;
+      private position: google.maps.LatLng;
 
-    new google.maps.marker.AdvancedMarkerElement({
+      constructor(position: google.maps.LatLngLiteral) {
+        super();
+        this.position = new google.maps.LatLng(position.lat, position.lng);
+      }
+
+      onAdd() {
+        this.div = document.createElement("div");
+        this.div.style.position = "absolute";
+        this.div.style.cursor = "pointer";
+        this.div.style.transform = "translate(-50%, -100%)";
+        this.div.innerHTML = `
+          <div style="
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            filter: drop-shadow(0 4px 12px rgba(0,0,0,0.25));
+          ">
+            <div style="
+              background: #1a3a2a;
+              color: white;
+              padding: 8px 14px;
+              border-radius: 12px;
+              font-size: 13px;
+              font-weight: 600;
+              white-space: nowrap;
+              font-family: system-ui, -apple-system, sans-serif;
+              line-height: 1.3;
+              text-align: center;
+            ">
+              <div style="display: flex; align-items: center; gap: 6px;">
+                <span style="font-size: 16px;">🐐</span>
+                <span>${FARM_TITLE}</span>
+              </div>
+              <div style="font-size: 11px; font-weight: 400; opacity: 0.8; margin-top: 2px;">
+                д. Назарово, Истра
+              </div>
+            </div>
+            <div style="
+              width: 0;
+              height: 0;
+              border-left: 8px solid transparent;
+              border-right: 8px solid transparent;
+              border-top: 10px solid #1a3a2a;
+            "></div>
+          </div>
+        `;
+        const panes = this.getPanes();
+        panes?.overlayMouseTarget.appendChild(this.div);
+      }
+
+      draw() {
+        if (!this.div) return;
+        const projection = this.getProjection();
+        const point = projection.fromLatLngToDivPixel(this.position);
+        if (point) {
+          this.div.style.left = point.x + "px";
+          this.div.style.top = point.y + "px";
+        }
+      }
+
+      onRemove() {
+        if (this.div?.parentNode) {
+          this.div.parentNode.removeChild(this.div);
+          this.div = null;
+        }
+      }
+    }
+
+    // Add the custom overlay marker
+    const overlay = new FarmMarkerOverlay(FARM_LOCATION);
+    overlay.setMap(map);
+
+    // Also add a simple marker for the pin icon
+    new google.maps.Marker({
       map,
       position: FARM_LOCATION,
       title: FARM_TITLE,
-      content: markerEl,
+      icon: {
+        path: google.maps.SymbolPath.CIRCLE,
+        scale: 10,
+        fillColor: "#1a3a2a",
+        fillOpacity: 1,
+        strokeColor: "#ffffff",
+        strokeWeight: 3,
+      },
     });
   }, []);
 
@@ -198,13 +283,27 @@ export default function FarmMap({ className }: { className?: string }) {
 
   return (
     <div className={cn("relative", className)}>
-      {/* Map */}
-      <MapView
-        className="h-[400px] sm:h-[480px] rounded-2xl overflow-hidden border border-border shadow-sm"
-        initialCenter={FARM_LOCATION}
-        initialZoom={12}
-        onMapReady={handleMapReady}
-      />
+      {/* Map with warm organic tint — CSS filter + overlay for reliable tinting */}
+      <div
+        className="relative rounded-2xl overflow-hidden border border-border shadow-sm"
+        style={{ filter: 'sepia(35%) saturate(0.6) brightness(1.05) contrast(0.95)' }}
+      >
+        <MapView
+          className="h-[400px] sm:h-[480px]"
+          initialCenter={FARM_LOCATION}
+          initialZoom={12}
+          onMapReady={handleMapReady}
+          styles={MAP_STYLES}
+        />
+        {/* Warm tint overlay — pointer-events:none keeps map interactive */}
+        <div
+          className="absolute inset-0 pointer-events-none"
+          style={{
+            backgroundColor: 'rgba(180, 165, 130, 0.18)',
+            mixBlendMode: 'multiply',
+          }}
+        />
+      </div>
 
       {/* Route button — below map */}
       <div className="mt-3 flex flex-wrap items-center gap-3">

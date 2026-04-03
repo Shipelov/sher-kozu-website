@@ -131,6 +131,7 @@ interface MapViewProps {
   initialCenter?: google.maps.LatLngLiteral;
   initialZoom?: number;
   onMapReady?: (map: google.maps.Map) => void;
+  styles?: google.maps.MapTypeStyle[];
 }
 
 export function MapView({
@@ -138,6 +139,7 @@ export function MapView({
   initialCenter = { lat: 37.7749, lng: -122.4194 },
   initialZoom = 12,
   onMapReady,
+  styles,
 }: MapViewProps) {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<google.maps.Map | null>(null);
@@ -155,7 +157,12 @@ export function MapView({
       fullscreenControl: true,
       zoomControl: true,
       streetViewControl: true,
-      mapId: "DEMO_MAP_ID",
+      // mapId enables AdvancedMarkerElement but disables legacy styles array.
+      // When custom styles are provided, skip mapId and force RASTER rendering
+      // so the legacy styles take effect (WebGL ignores styles array).
+      ...(styles
+        ? { styles, renderingType: (window.google.maps as any).RenderingType?.RASTER }
+        : { mapId: "DEMO_MAP_ID" }),
     });
     if (onMapReady) {
       onMapReady(map.current);
