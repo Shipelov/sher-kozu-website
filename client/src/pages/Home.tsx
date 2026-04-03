@@ -21,6 +21,7 @@ import { Link } from "wouter";
 import { useAuth } from "@/_core/hooks/useAuth";
 import Navbar from "@/components/Navbar";
 import LazyImage from "@/components/LazyImage";
+import FarmMap from "@/components/FarmMap";
 import AuthModal from "@/components/AuthModal";
 import {
   ArrowRight,
@@ -39,6 +40,7 @@ import {
   Quote,
   Eye,
   Truck,
+  Navigation,
   X,
 } from "lucide-react";
 
@@ -71,6 +73,13 @@ const steps = [
     text: "Молоко, сыры и сезонные наборы именно от вашего животного — в именной коробке с трекером от надоя до двери. Наслаждайтесь сами и радуйте своих близких.",
     icon: Package,
   },
+];
+
+const distanceCards = [
+  { city: "Истра", km: 35 },
+  { city: "Павловская Слобода", km: 59 },
+  { city: "Красногорск", km: 80 },
+  { city: "МКАД", km: 84 },
 ];
 
 const audiences = [
@@ -337,7 +346,85 @@ export default function Home() {
       </section>
 
       {/* ═══════════════════════════════════════════════════════
-          SECTION 2 — HOW IT WORKS: 3 clear steps
+          SECTION 2 — ГЕОГРАФИЯ
+          ═══════════════════════════════════════════════════════ */}
+      <section className="border-b border-border/60 bg-[#f5f1ea] py-20 md:py-28">
+        <div className="container">
+          <div className="grid gap-10 lg:grid-cols-[1fr_1.15fr] lg:items-center">
+            {/* Left column — text + distance cards */}
+            <div>
+              <motion.span
+                initial={{ opacity: 0, y: 16 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.5 }}
+                className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-4 py-1.5 text-xs font-semibold uppercase tracking-wider text-primary"
+              >
+                <Navigation className="h-3.5 w-3.5" />
+                {cms.getText("geo_badge", "География")}
+              </motion.span>
+
+              <motion.h2
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.5, delay: 0.1 }}
+                className="mt-5 text-2xl font-bold tracking-tight sm:text-3xl lg:text-[2.5rem] lg:leading-[1.15]"
+              >
+                {cms.getText("geo_heading", "На расстоянии загородной прогулки от вашего дома по Новорижскому шоссе")}
+              </motion.h2>
+
+              <motion.p
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.5, delay: 0.2 }}
+                className="mt-4 text-muted-foreground sm:text-lg max-w-lg"
+              >
+                {cms.getText("geo_subtitle", "Ферма Назарово расположена в самом сердце Новорижского направления")}
+              </motion.p>
+
+              {/* Distance cards grid */}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.5, delay: 0.3 }}
+                className="mt-8 grid grid-cols-2 gap-3"
+              >
+                {distanceCards.map((card) => (
+                  <div
+                    key={card.city}
+                    className="flex items-center gap-3 rounded-xl border border-border/60 bg-white/90 px-4 py-3 shadow-sm backdrop-blur-sm"
+                  >
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10">
+                      <MapPin className="h-4 w-4 text-primary" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-foreground truncate">{card.city}</p>
+                      <p className="text-xs text-muted-foreground">{card.km} км</p>
+                    </div>
+                  </div>
+                ))}
+              </motion.div>
+            </div>
+
+            {/* Right column — interactive map */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.5, delay: 0.2 }}
+              className="relative"
+            >
+              <FarmMap className="rounded-2xl" />
+            </motion.div>
+          </div>
+        </div>
+      </section>
+
+      {/* ═══════════════════════════════════════════════════════
+          SECTION 3 — HOW IT WORKS: 3 clear steps
           ═══════════════════════════════════════════════════════ */}
       <section id="how-it-works" className="py-20 md:py-28">
         <div className="container">

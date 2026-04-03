@@ -16,7 +16,6 @@
 import { motion } from "framer-motion";
 import { Link } from "wouter";
 import Navbar from "@/components/Navbar";
-import FarmMap from "@/components/FarmMap";
 import PageBreadcrumbs from "@/components/PageBreadcrumbs";
 import { useCmsContent } from "@/hooks/useCmsContent";
 import {
@@ -31,7 +30,6 @@ import {
   Users,
   Baby,
   Milk,
-  Navigation,
 } from "lucide-react";
 
 const CDN = {
@@ -107,14 +105,6 @@ const galleryImages = [
   { src: CDN.philosophy, alt: "Именные сыры фермы Шерь Козу", caption: "Именные продукты — от конкретного животного к вашему столу" },
   { src: CDN.breeds, alt: "Элитные породы коз и овец", caption: "Англо-нубийские козы, альпийские козы и остфризские овцы" },
   { src: CDN.visit, alt: "Дети на ферме", caption: "Визиты на ферму — дети знают своих животных по имени" },
-];
-
-/* ─── Distance cards data ─── */
-const distanceCards = [
-  { city: "Истра", km: 35 },
-  { city: "Павловская Слобода", km: 59 },
-  { city: "Красногорск", km: 80 },
-  { city: "МКАД", km: 84 },
 ];
 
 /* ─── Icon map for JSON-driven principles ─── */
@@ -589,79 +579,6 @@ export default function AboutFarm() {
         </div>
       </section>
 
-      {/* ═══════════════════════════════════════════════════════
-          SECTION 7 — ГЕОГРАФИЯ
-          ═══════════════════════════════════════════════════════ */}
-      <section className="border-b border-border/60 bg-[#f5f1ea] py-20 md:py-28">
-        <div className="container">
-          <motion.div
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true }}
-            variants={staggerContainer}
-            className="grid gap-10 lg:grid-cols-[1fr_1.15fr] lg:items-center"
-          >
-            {/* Left column — text + distance cards */}
-            <div>
-              <motion.span
-                variants={fadeUp}
-                custom={0}
-                className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-4 py-1.5 text-xs font-semibold uppercase tracking-wider text-primary"
-              >
-                <Navigation className="h-3.5 w-3.5" />
-                {cms.getText("geo_badge", "География")}
-              </motion.span>
-
-              <motion.h2
-                variants={fadeUp}
-                custom={1}
-                className="mt-5 text-2xl font-bold tracking-tight sm:text-3xl lg:text-[2.5rem] lg:leading-[1.15]"
-              >
-                {cms.getText("geo_heading", "На расстоянии загородной прогулки от вашего дома по Новорижскому шоссе")}
-              </motion.h2>
-
-              <motion.p
-                variants={fadeUp}
-                custom={2}
-                className="mt-4 text-muted-foreground sm:text-lg max-w-lg"
-              >
-                {cms.getText("geo_subtitle", "Ферма Назарово расположена в самом сердце Новорижского направления")}
-              </motion.p>
-
-              {/* Distance cards grid */}
-              <motion.div
-                variants={fadeUp}
-                custom={3}
-                className="mt-8 grid grid-cols-2 gap-3"
-              >
-                {distanceCards.map((card) => (
-                  <div
-                    key={card.city}
-                    className="flex items-center gap-3 rounded-xl border border-border/60 bg-white/90 px-4 py-3 shadow-sm backdrop-blur-sm"
-                  >
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10">
-                      <MapPin className="h-4 w-4 text-primary" />
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-sm font-semibold text-foreground truncate">{card.city}</p>
-                      <p className="text-xs text-muted-foreground">{card.km} км</p>
-                    </div>
-                  </div>
-                ))}
-              </motion.div>
-            </div>
-
-            {/* Right column — interactive map */}
-            <motion.div
-              variants={fadeUp}
-              custom={2}
-              className="relative"
-            >
-              <FarmMap className="rounded-2xl" />
-            </motion.div>
-          </motion.div>
-        </div>
-      </section>
 
       {/* ═══════════════════════════════════════════════════════
           SECTION 8 — CTA
