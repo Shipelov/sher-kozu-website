@@ -833,78 +833,33 @@ function OwnerDeliveryTimeline({ animalSlug }: { animalSlug: string }) {
   const handleExportPdf = async () => {
     setExportingPdf(true);
     try {
-      const { default: jsPDF } = await import("jspdf");
-      const { default: autoTable } = await import("jspdf-autotable");
-
-      const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
-
-      // Load Cyrillic font (NotoSans) from CDN
-      const FONT_URL = "https://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/NotoSans-Regular_62fad82d.ttf";
-      const fontResp = await fetch(FONT_URL);
-      const fontBuf = await fontResp.arrayBuffer();
-      const fontBase64 = btoa(
-        new Uint8Array(fontBuf).reduce((data, byte) => data + String.fromCharCode(byte), "")
-      );
-      doc.addFileToVFS("NotoSans-Regular.ttf", fontBase64);
-      doc.addFont("NotoSans-Regular.ttf", "NotoSans", "normal");
-      doc.setFont("NotoSans");
-
-      // Status translation helper
-      const statusRu = (s: string) => {
-        const map: Record<string, string> = {
-          planned: "Запланировано",
-          ready: "Готово",
-          delivered: "Доставлено",
-          cancelled: "Отменено",
-        };
-        return map[s] ?? s;
-      };
-
-      // Title
-      doc.setFontSize(16);
-      doc.text(`Мой график доставок — ${selectedYear}`, 14, 18);
-
-      // Summary
-      doc.setFontSize(10);
-      doc.text(
-        `Всего: ${stats.total}  |  Доставлено: ${stats.delivered}  |  Готово: ${stats.ready}  |  Запланировано: ${stats.planned}`,
-        14,
-        26
-      );
-
-      // Table
-      autoTable(doc, {
-        startY: 32,
-        head: [["Месяц", "Статус", "Продукты", "Дата доставки", "Заметка"]],
-        body: allEntries.map((e) => {
-          const items = (() => { try { return JSON.parse(e.itemsJson) as Array<{ label: string; quantity: number; unit: string }>; } catch { return []; } })();
-          const productList = items.map((it) => `${it.label}: ${it.quantity} ${it.unit}`).join(", ");
-          return [
-            MONTH_NAMES_FULL[e.month - 1],
-            statusRu(e.status),
-            productList,
-            e.deliveredAt ? new Date(e.deliveredAt).toLocaleDateString("ru-RU") : "—",
-            e.adminNote ?? "",
-          ];
+      const response = await fetch("/api/delivery/owner/pdf", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          year: selectedYear,
+          stats,
+          entries: allEntries.map((e) => ({
+            month: e.month,
+            status: e.status,
+            itemsJson: e.itemsJson,
+            deliveredAt: e.deliveredAt,
+            adminNote: e.adminNote,
+          })),
         }),
-        styles: {
-          fontSize: 8,
-          cellPadding: 2,
-          font: "NotoSans",
-          overflow: "linebreak",
-        },
-        headStyles: { fillColor: [34, 85, 51], font: "NotoSans", fontStyle: "normal" },
-        columnStyles: {
-          0: { cellWidth: 25 },
-          1: { cellWidth: 28 },
-          2: { cellWidth: 65 },
-          3: { cellWidth: 25 },
-          4: { cellWidth: "auto" },
-        },
-        margin: { left: 14, right: 14 },
       });
 
-      doc.save(`мои_доставки_${selectedYear}.pdf`);
+      if (!response.ok) throw new Error("PDF generation failed");
+
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `мои_доставки_${selectedYear}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
     } catch (err: any) {
       console.error("PDF export error:", err);
     } finally {

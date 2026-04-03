@@ -141,6 +141,40 @@ async function startServer() {
     }
   });
 
+  // Owner delivery PDF generation endpoint
+  app.post("/api/delivery/owner/pdf", async (req, res) => {
+    try {
+      const { generateOwnerDeliveryPdf } = await import("../pdfDeliveryGenerator");
+      const pdfBuffer = await generateOwnerDeliveryPdf(req.body);
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader(
+        "Content-Disposition",
+        `attachment; filename*=UTF-8''${encodeURIComponent(`мои_доставки_${req.body.year || "доставки"}.pdf`)}`
+      );
+      res.send(pdfBuffer);
+    } catch (err: any) {
+      console.error("Owner delivery PDF error:", err);
+      res.status(500).json({ error: "Failed to generate PDF", message: err?.message });
+    }
+  });
+
+  // Admin delivery PDF generation endpoint
+  app.post("/api/delivery/admin/pdf", async (req, res) => {
+    try {
+      const { generateAdminDeliveryPdf } = await import("../pdfDeliveryGenerator");
+      const pdfBuffer = await generateAdminDeliveryPdf(req.body);
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader(
+        "Content-Disposition",
+        `attachment; filename*=UTF-8''${encodeURIComponent(`доставка_${req.body.animalName || "доставка"}_${req.body.year || ""}.pdf`)}`
+      );
+      res.send(pdfBuffer);
+    } catch (err: any) {
+      console.error("Admin delivery PDF error:", err);
+      res.status(500).json({ error: "Failed to generate PDF", message: err?.message });
+    }
+  });
+
   // OAuth callback under /api/oauth/callback
   registerOAuthRoutes(app);
   // tRPC API

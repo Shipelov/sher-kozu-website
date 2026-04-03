@@ -1268,76 +1268,29 @@ function DeliveryScheduleOverview({ animalId, ownerPlans }: { animalId: number; 
         toast.error("Нет данных для экспорта");
         return;
       }
-      const { default: jsPDF } = await import("jspdf");
-      const { default: autoTable } = await import("jspdf-autotable");
 
-      const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
-
-      // Load Cyrillic font (NotoSans) from CDN
-      const FONT_URL = "https://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/NotoSans-Regular_62fad82d.ttf";
-      const fontResp = await fetch(FONT_URL);
-      const fontBuf = await fontResp.arrayBuffer();
-      const fontBase64 = btoa(
-        new Uint8Array(fontBuf).reduce((data, byte) => data + String.fromCharCode(byte), "")
-      );
-      doc.addFileToVFS("NotoSans-Regular.ttf", fontBase64);
-      doc.addFont("NotoSans-Regular.ttf", "NotoSans", "normal");
-      doc.setFont("NotoSans");
-
-      // Title
-      doc.setFontSize(16);
-      doc.text(`График доставки: ${data.animalName} — ${data.year}`, 14, 18);
-
-      // Summary
-      doc.setFontSize(10);
-      doc.text(
-        `Всего: ${data.stats?.total ?? 0}  |  Доставлено: ${data.stats?.delivered ?? 0}  |  Готово: ${data.stats?.ready ?? 0}  |  Запланировано: ${data.stats?.planned ?? 0}`,
-        14,
-        26
-      );
-
-      // Status translation helper
-      const statusRu = (s: string) => {
-        const map: Record<string, string> = {
-          planned: "Запланировано",
-          ready: "Готово",
-          delivered: "Доставлено",
-          cancelled: "Отменено",
-        };
-        return map[s] ?? s;
-      };
-
-      // Table
-      autoTable(doc, {
-        startY: 32,
-        head: [["Месяц", "Владелец", "Продукты", "Статус", "Дата доставки", "Заметка"]],
-        body: data.rows.map((r: any) => [
-          r.month,
-          r.ownerName,
-          r.products,
-          statusRu(r.status),
-          r.deliveredAt || "—",
-          r.adminNote || "",
-        ]),
-        styles: {
-          fontSize: 8,
-          cellPadding: 2,
-          font: "NotoSans",
-          overflow: "linebreak",
-        },
-        headStyles: { fillColor: [26, 58, 42], font: "NotoSans", fontStyle: "normal" },
-        columnStyles: {
-          0: { cellWidth: 28 },
-          1: { cellWidth: 40 },
-          2: { cellWidth: 75 },
-          3: { cellWidth: 30 },
-          4: { cellWidth: 30 },
-          5: { cellWidth: "auto" },
-        },
-        margin: { left: 14, right: 14 },
+      const response = await fetch("/api/delivery/admin/pdf", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          animalName: data.animalName,
+          year: data.year,
+          stats: data.stats ?? { total: 0, delivered: 0, ready: 0, planned: 0 },
+          rows: data.rows,
+        }),
       });
 
-      doc.save(`доставка_${data.animalName}_${data.year}.pdf`);
+      if (!response.ok) throw new Error("Ошибка генерации PDF");
+
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `доставка_${data.animalName}_${data.year}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
       toast.success("PDF файл скачан");
     } catch (err: any) {
       toast.error(err.message ?? "Ошибка экспорта");
