@@ -7,6 +7,8 @@ import { registerOAuthRoutes } from "./oauth";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
+import { withRetry, isTransientDbError } from "../retryUtils";
+import { analyticsMonitor } from "../analyticsMonitor";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -32,12 +34,21 @@ async function runCmsHistoryCleanup() {
     const { getDb } = await import("../db");
     const { cmsBlockHistory } = await import("../../drizzle/schema");
     const { lt } = await import("drizzle-orm");
-    const db = await getDb();
-    const cutoff = new Date();
-    cutoff.setDate(cutoff.getDate() - 30);
 
-    const result = await db.delete(cmsBlockHistory)
-      .where(lt(cmsBlockHistory.changedAt, cutoff));
+    const result = await withRetry(
+      async () => {
+        const db = await getDb();
+        const cutoff = new Date();
+        cutoff.setDate(cutoff.getDate() - 30);
+        return db.delete(cmsBlockHistory).where(lt(cmsBlockHistory.changedAt, cutoff));
+      },
+      {
+        label: "CMS History Cleanup",
+        maxAttempts: 3,
+        baseDelayMs: 2000,
+        isRetryable: isTransientDbError,
+      }
+    );
 
     const deleted = (result as any)[0]?.affectedRows ?? 0;
     if (deleted > 0) {
@@ -46,27 +57,46 @@ async function runCmsHistoryCleanup() {
       console.log(`[CMS History Cleanup] No old records to clean up`);
     }
   } catch (err) {
-    console.error("[CMS History Cleanup] Error during cleanup:", err);
+    console.error("[CMS History Cleanup] Error during cleanup (all retries exhausted):", err);
   }
 }
 
 async function runTrashCleanup() {
   try {
     const { findExpiredTrashedUsers, permanentDeleteUser } = await import("../db");
-    const expired = await findExpiredTrashedUsers(30);
+
+    const expired = await withRetry(
+      () => findExpiredTrashedUsers(30),
+      {
+        label: "Trash Cleanup/Find",
+        maxAttempts: 3,
+        baseDelayMs: 2000,
+        isRetryable: isTransientDbError,
+      }
+    );
+
     if (expired.length === 0) return;
     console.log(`[Trash Cleanup] Found ${expired.length} expired user(s) to permanently delete`);
+
     for (const user of expired) {
       try {
-        await permanentDeleteUser(user.id);
+        await withRetry(
+          () => permanentDeleteUser(user.id),
+          {
+            label: `Trash Cleanup/Delete(${user.id})`,
+            maxAttempts: 3,
+            baseDelayMs: 1000,
+            isRetryable: isTransientDbError,
+          }
+        );
         console.log(`[Trash Cleanup] Permanently deleted user ${user.id} (${user.name || "no name"})`);
       } catch (err) {
-        console.error(`[Trash Cleanup] Failed to delete user ${user.id}:`, err);
+        console.error(`[Trash Cleanup] Failed to delete user ${user.id} (all retries exhausted):`, err);
       }
     }
     console.log(`[Trash Cleanup] Completed. Deleted ${expired.length} user(s).`);
   } catch (err) {
-    console.error("[Trash Cleanup] Error during cleanup:", err);
+    console.error("[Trash Cleanup] Error during cleanup (all retries exhausted):", err);
   }
 }
 
@@ -243,6 +273,9 @@ async function startServer() {
     // Run CMS history cleanup on startup and then every 24 hours
     runCmsHistoryCleanup();
     setInterval(runCmsHistoryCleanup, 24 * 60 * 60 * 1000);
+
+    // Start analytics monitoring (reports every 5 minutes)
+    analyticsMonitor.startReporting();
   });
 }
 

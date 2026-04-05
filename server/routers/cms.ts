@@ -4,6 +4,7 @@ import { adminProcedure, publicProcedure, router } from "../_core/trpc";
 import { getDb } from "../db";
 import { cmsBlocks, cmsBlockHistory } from "../../drizzle/schema";
 import { storagePut } from "../storage";
+import { cmsCache, cmsCacheKey, CMS_TTL_MS, invalidateCmsPageCache, invalidateAllCmsCache } from "../cache";
 
 /**
  * CMS Router — admin-managed content blocks for public pages.
@@ -78,6 +79,11 @@ export const cmsRouter = router({
       includeHidden: z.boolean().default(false),
     }))
     .query(async ({ input }) => {
+      // Check cache first
+      const cacheKey = cmsCacheKey(input.page, input.includeHidden);
+      const cached = cmsCache.get<any[]>(cacheKey);
+      if (cached) return cached;
+
       const db = await getDb();
       let rows = await db
         .select()
@@ -117,8 +123,10 @@ export const cmsRouter = router({
         }
       }
 
-      if (input.includeHidden) return rows;
-      return rows.filter((r: typeof rows[number]) => r.visible);
+      const result = input.includeHidden ? rows : rows.filter((r: typeof rows[number]) => r.visible);
+      // Cache the result for 5 minutes
+      cmsCache.set(cacheKey, result, CMS_TTL_MS);
+      return result;
     }),
 
   /**
@@ -191,6 +199,7 @@ export const cmsRouter = router({
           changedByName: ctx.user!.name ?? null,
         });
 
+        invalidateCmsPageCache(prev.page);
         return { id: prev.id, action: "updated" as const };
       }
 
@@ -205,6 +214,7 @@ export const cmsRouter = router({
         sortOrder: input.sortOrder,
         visible: input.visible,
       });
+      invalidateCmsPageCache(input.page);
       return { id: Number(result[0].insertId), action: "created" as const };
     }),
 
@@ -248,6 +258,7 @@ export const cmsRouter = router({
       }
 
       await db.update(cmsBlocks).set(updates).where(eq(cmsBlocks.id, input.id));
+      if (prev) invalidateCmsPageCache(prev.page);
       return { success: true };
     }),
 
@@ -285,6 +296,7 @@ export const cmsRouter = router({
         .update(cmsBlocks)
         .set({ visible: input.visible })
         .where(eq(cmsBlocks.id, input.id));
+      if (prev) invalidateCmsPageCache(prev.page);
       return { success: true };
     }),
 
@@ -316,6 +328,7 @@ export const cmsRouter = router({
       }
 
       await db.delete(cmsBlocks).where(eq(cmsBlocks.id, input.id));
+      if (prev) invalidateCmsPageCache(prev.page);
       return { success: true };
     }),
 
@@ -361,6 +374,7 @@ export const cmsRouter = router({
         .set({ imageUrl: url })
         .where(eq(cmsBlocks.id, input.blockId));
 
+      if (prev) invalidateCmsPageCache(prev.page);
       return { url };
     }),
 
@@ -440,6 +454,7 @@ export const cmsRouter = router({
         })
         .where(eq(cmsBlocks.id, historyEntry.blockId));
 
+      invalidateCmsPageCache(currentBlock.page);
       return {
         success: true,
         restoredFrom: {
@@ -563,6 +578,7 @@ export const cmsRouter = router({
           .set({ sortOrder: item.sortOrder })
           .where(eq(cmsBlocks.id, item.id));
       }
+      invalidateAllCmsCache();
       return { success: true, updated: input.items.length };
     }),
 
@@ -619,6 +635,7 @@ export const cmsRouter = router({
         return { seeded: false, message: "All blocks already exist for this page" };
       }
 
+      if (created > 0) invalidateCmsPageCache(input.page);
       return {
         seeded: created > 0,
         count: created,

@@ -17,6 +17,8 @@ import {
   getVisitorLocations,
 } from "../db";
 import { extractClientIp, lookupGeoIp } from "../geoip";
+import { withRetry, isTransientDbError } from "../retryUtils";
+import { analyticsMonitor } from "../analyticsMonitor";
 
 /* ── Zod schemas ── */
 
@@ -85,8 +87,18 @@ export const analyticsRouter = router({
       } catch {
         // GeoIP enrichment is best-effort
       }
-      await recordSiteVisit({ ...input, ...geoData });
+      await withRetry(
+        () => recordSiteVisit({ ...input, ...geoData }),
+        {
+          label: "Analytics/trackVisit",
+          maxAttempts: 3,
+          baseDelayMs: 500,
+          isRetryable: isTransientDbError,
+        }
+      );
+      analyticsMonitor.recordSuccess("trackVisit");
     } catch (err) {
+      analyticsMonitor.recordFailure("trackVisit", err);
       console.error("[Analytics] trackVisit failed (silenced):", err instanceof Error ? err.message : err);
     }
     return { success: true };
@@ -94,8 +106,18 @@ export const analyticsRouter = router({
 
   trackEvent: publicProcedure.input(trackEventInput).mutation(async ({ input }) => {
     try {
-      await recordSiteEvent(input);
+      await withRetry(
+        () => recordSiteEvent(input),
+        {
+          label: "Analytics/trackEvent",
+          maxAttempts: 3,
+          baseDelayMs: 500,
+          isRetryable: isTransientDbError,
+        }
+      );
+      analyticsMonitor.recordSuccess("trackEvent");
     } catch (err) {
+      analyticsMonitor.recordFailure("trackEvent", err);
       console.error("[Analytics] trackEvent failed (silenced):", err instanceof Error ? err.message : err);
     }
     return { success: true };
@@ -103,8 +125,18 @@ export const analyticsRouter = router({
 
   updateTime: publicProcedure.input(updateTimeInput).mutation(async ({ input }) => {
     try {
-      await updateVisitTimeOnPage(input.sessionId, input.pagePath, input.timeOnPage);
+      await withRetry(
+        () => updateVisitTimeOnPage(input.sessionId, input.pagePath, input.timeOnPage),
+        {
+          label: "Analytics/updateTime",
+          maxAttempts: 3,
+          baseDelayMs: 500,
+          isRetryable: isTransientDbError,
+        }
+      );
+      analyticsMonitor.recordSuccess("updateTime");
     } catch (err) {
+      analyticsMonitor.recordFailure("updateTime", err);
       console.error("[Analytics] updateTime failed (silenced):", err instanceof Error ? err.message : err);
     }
     return { success: true };
@@ -184,5 +216,13 @@ export const analyticsRouter = router({
     const from = new Date(input.from);
     const to = new Date(input.to);
     return getVisitorLocations(from, to, input.limit);
+  }),
+
+  /**
+   * Get analytics pipeline health stats (admin only).
+   * Shows success/failure rates for trackVisit, trackEvent, updateTime.
+   */
+  pipelineHealth: adminProcedure.query(async () => {
+    return analyticsMonitor.getStats();
   }),
 });
