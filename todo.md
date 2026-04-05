@@ -1942,3 +1942,17 @@
   Реализовано: withRetry + isTransientDbError в retryUtils.ts, применено ко всем фоновым задачам
 - [x] Добавить мониторинг/логирование потерянных визитов аналитики для оценки масштаба проблемы
   Реализовано: analyticsMonitor.ts — счётчики success/failure, периодический отчёт, endpoint pipelineHealth для админа
+
+## E2E-тесты (05.04.2026)
+  Реализованы как server-side tRPC caller тесты (Vitest) — 5 файлов, 148 тестов, полный прогон ~30с.
+- [x] Настроить E2E-тестовое окружение (Vitest + tRPC createCaller)
+- [x] E2E: Регистрация нового пользователя (email + OTP) — e2eAuth.test.ts (21 тест)
+- [x] E2E: Вход существующего пользователя (логин/пароль) — e2eAuth.test.ts
+- [x] E2E: Просмотр каталога животных и профиля животного — e2ePublicAndProfile.test.ts (28 тестов)
+- [x] E2E: Покупка товара в маркетплейсе за SKC — e2eMarketplace.test.ts (18 тестов)
+- [x] E2E: Навигация по трекеру доставки — e2eOwnerJourney.test.ts (32 теста)
+- [x] E2E: Публичные страницы (главная, о ферме, цены, FAQ) — e2ePublicAndProfile.test.ts
+- [x] E2E: Админ-панель — управление животными и пользователями — e2eAdmin.test.ts (49 тестов)
+- [x] Запустить все E2E-тесты и убедиться в прохождении (84 файла, 2247 тестов — все проходят)
+- [x] Исправить CMS cache interference между тестами (cms.test.ts)
+- [x] Добавить graceful handling для rate-limiting и network timeouts в E2E тестах

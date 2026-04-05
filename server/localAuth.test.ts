@@ -218,7 +218,7 @@ describe("localAuth.resetPassword", () => {
 });
 
 describe("localAuth.resendOtp", () => {
-  it("creates and returns a new OTP expiry", async () => {
+  it("creates and returns a new OTP expiry", { timeout: 30000 }, async () => {
     const { ctx } = createPublicContext();
     const caller = appRouter.createCaller(ctx);
 

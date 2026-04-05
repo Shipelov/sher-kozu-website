@@ -64,6 +64,15 @@ const mockDb = {
 vi.mock("./db", () => ({
   getDb: vi.fn(() => Promise.resolve(mockDb)),
 }));
+vi.mock("./cache", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("./cache")>();
+  // Return a fresh cache instance that auto-clears, preventing cross-test interference
+  const freshCmsCache = new actual.TtlCache();
+  return {
+    ...actual,
+    cmsCache: freshCmsCache,
+  };
+});
 
 vi.mock("./storage", () => ({
   storagePut: vi.fn(() => Promise.resolve({ url: "https://cdn.example.com/cms/test-image.png", key: "cms/test-image.png" })),
@@ -71,6 +80,7 @@ vi.mock("./storage", () => ({
 
 import { appRouter } from "./routers";
 import type { TrpcContext } from "./_core/context";
+import { cmsCache } from "./cache";
 
 /* ─── Context helpers ─── */
 function createAdminContext(): TrpcContext {
@@ -125,6 +135,7 @@ beforeEach(() => {
   lastInsertId = 100;
   selectCallCount = 0;
   mockRowsSequence = [];
+  cmsCache.clear(); // Clear cache between tests to prevent stale data
 });
 
 /* ═══════════════════════════════════════════════════════
