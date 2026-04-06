@@ -123,6 +123,7 @@ type AdminAnimalRecord = {
   isFeatured: number | boolean;
   sortOrder?: number;
   coverImageUrl: string | null;
+  birthDate?: string | number | null;
   publishedAt?: string | number | null;
   media?: AdminAnimalMediaItem[];
   occupiedValueMinor?: number;
@@ -150,6 +151,7 @@ type AnimalFormValues = {
   careLevelScore: number;
   isFeatured: boolean;
   sortOrder: number;
+  birthDate: string;
   publishedAt: string;
 };
 
@@ -196,6 +198,7 @@ const DEMO_ANIMAL_PRESETS: Record<"goat" | "sheep", AnimalProfilePreset> = {
       careLevelScore: 71,
       isFeatured: true,
       sortOrder: 0,
+      birthDate: "2024-04-12",
       publishedAt: "2026-03-16T10:30",
     },
     media: [
@@ -251,6 +254,7 @@ const DEMO_ANIMAL_PRESETS: Record<"goat" | "sheep", AnimalProfilePreset> = {
       careLevelScore: 63,
       isFeatured: false,
       sortOrder: 1,
+      birthDate: "2023-09-20",
       publishedAt: "2026-03-16T10:45",
     },
     media: [
@@ -449,6 +453,7 @@ export function createEmptyAnimalForm(): AnimalFormValues {
     careLevelScore: 75,
     isFeatured: false,
     sortOrder: 0,
+    birthDate: "",
     publishedAt: "",
   };
 }
@@ -479,6 +484,10 @@ export function normalizeAnimalFormValues(animal?: AdminAnimalRecord | null): An
     ? new Date(typeof animal.publishedAt === "number" ? animal.publishedAt : animal.publishedAt).toISOString().slice(0, 16)
     : "";
 
+  const birthDateValue = animal.birthDate
+    ? new Date(typeof animal.birthDate === "number" ? animal.birthDate : animal.birthDate).toISOString().slice(0, 10)
+    : "";
+
   return {
     id: animal.id,
     name: animal.name,
@@ -498,6 +507,7 @@ export function normalizeAnimalFormValues(animal?: AdminAnimalRecord | null): An
     careLevelScore: animal.careLevelScore ?? 50,
     isFeatured: Boolean(animal.isFeatured),
     sortOrder: animal.sortOrder ?? 0,
+    birthDate: birthDateValue,
     publishedAt: publishedAtValue,
   };
 }
@@ -536,6 +546,7 @@ export function buildAnimalMutationPayload(values: AnimalFormValues, media: Admi
     careLevelScore: values.careLevelScore,
     isFeatured: values.isFeatured,
     sortOrder: values.sortOrder,
+    birthDate: values.birthDate ? new Date(values.birthDate).getTime() : null,
     publishedAt: values.publishedAt ? new Date(values.publishedAt).getTime() : null,
     media: media.map((item, index) => ({
       kind: "image" as const,
@@ -1451,6 +1462,7 @@ function AnimalEditorCard({
   onCancel,
   onApplyPreset,
   isSubmitting,
+  isGenerating,
 }: {
   mode: "create" | "edit";
   values: AnimalFormValues;
@@ -1459,6 +1471,7 @@ function AnimalEditorCard({
   onCancel: () => void;
   onApplyPreset: (species: "goat" | "sheep") => void;
   isSubmitting: boolean;
+  isGenerating: boolean;
 }) {
   const gallerySlug = values.slug.trim();
   const sharePriceMinor = Math.round(values.baseMonthlyPriceMinor / 2);
@@ -1577,6 +1590,15 @@ function AnimalEditorCard({
 
         <div className="grid gap-4 md:grid-cols-2">
           <div className="space-y-2">
+            <Label htmlFor="animal-birth-date">Дата рождения</Label>
+            <Input
+              id="animal-birth-date"
+              type="date"
+              value={values.birthDate}
+              onChange={(event) => onChange("birthDate", event.target.value)}
+            />
+          </div>
+          <div className="space-y-2">
             <Label htmlFor="animal-published-at">Дата публикации</Label>
             <Input
               id="animal-published-at"
@@ -1633,11 +1655,11 @@ function AnimalEditorCard({
         </div>
 
         <div className="grid gap-3 sm:grid-cols-2">
-          <Button type="button" variant="outline" className="rounded-full" onClick={() => onApplyPreset("goat")}>
-            Демо-коза
+          <Button type="button" variant="outline" className="rounded-full" onClick={() => onApplyPreset("goat")} disabled={isGenerating}>
+            {isGenerating ? <span className="flex items-center gap-2"><Loader2 className="h-4 w-4 animate-spin" />Генерация…</span> : "Сгенерировать козу"}
           </Button>
-          <Button type="button" variant="outline" className="rounded-full" onClick={() => onApplyPreset("sheep")}>
-            Демо-овца
+          <Button type="button" variant="outline" className="rounded-full" onClick={() => onApplyPreset("sheep")} disabled={isGenerating}>
+            {isGenerating ? <span className="flex items-center gap-2"><Loader2 className="h-4 w-4 animate-spin" />Генерация…</span> : "Сгенерировать овцу"}
           </Button>
         </div>
 
@@ -1793,11 +1815,36 @@ export default function AdminAnimalsPage() {
     setFormValues(createEmptyAnimalForm());
   }
 
+  const generatePreset = trpc.adminAnimals.generatePreset.useMutation({
+    onSuccess: (data) => {
+      setEditorMode("create");
+      setEditingAnimalId(null);
+      setFormValues({
+        ...createEmptyAnimalForm(),
+        name: data.name,
+        slug: data.slug,
+        species: data.species,
+        breed: data.breed,
+        shortDescription: data.shortDescription,
+        story: data.story,
+        galleryIntro: data.galleryIntro,
+        baseMonthlyPriceMinor: data.baseMonthlyPriceMinor,
+        healthScore: data.healthScore,
+        happinessScore: data.happinessScore,
+        milkPotentialScore: data.milkPotentialScore,
+        careLevelScore: data.careLevelScore,
+        birthDate: data.birthDate || "",
+        status: "hidden",
+      });
+      toast.success(`Профиль «${data.name}» сгенерирован`);
+    },
+    onError: (error) => {
+      toast.error("Не удалось сгенерировать профиль", { description: error.message });
+    },
+  });
+
   function applyDemoPreset(species: "goat" | "sheep") {
-    const preset = createDemoAnimalPreset(species);
-    setEditorMode("create");
-    setEditingAnimalId(null);
-    setFormValues(preset.values);
+    generatePreset.mutate({ species });
   }
 
   function handleFormChange<K extends keyof AnimalFormValues>(key: K, value: AnimalFormValues[K]) {
@@ -2097,6 +2144,7 @@ export default function AdminAnimalsPage() {
               }}
               onApplyPreset={applyDemoPreset}
               isSubmitting={createAnimal.isPending || updateAnimal.isPending}
+              isGenerating={generatePreset.isPending}
             />
           </div>
         </SheetContent>

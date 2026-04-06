@@ -4,6 +4,7 @@ import { COOKIE_NAME } from "../shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { adminProcedure, protectedProcedure, publicProcedure, router } from "./_core/trpc";
+import { invokeLLM } from "./_core/llm";
 import { catalogCache, CATALOG_CACHE_KEY, CATALOG_TTL_MS, invalidateCatalogCache } from "./cache";
 import {
   createAnimalPhoto,
@@ -278,6 +279,7 @@ const animalUpsertInput = z.object({
   careLevelScore: z.number().int().min(0).max(100),
   isFeatured: z.boolean().default(false),
   sortOrder: z.number().int().min(0).max(9999).default(0),
+  birthDate: z.number().int().nullable().optional(),
   publishedAt: z.number().int().nullable().optional(),
   media: z.array(animalMediaInput).default([]),
 });
@@ -991,6 +993,7 @@ export const appRouter = router({
         careLevelScore: input.careLevelScore,
         isFeatured: input.isFeatured ? 1 : 0,
         sortOrder: input.sortOrder,
+        birthDate: input.birthDate ? new Date(input.birthDate) : null,
         publishedAt: input.publishedAt ? new Date(input.publishedAt) : null,
         media: input.media.map((item) => ({
           animalId: 0,
@@ -1027,6 +1030,7 @@ export const appRouter = router({
         careLevelScore: input.careLevelScore,
         isFeatured: input.isFeatured ? 1 : 0,
         sortOrder: input.sortOrder,
+        birthDate: input.birthDate ? new Date(input.birthDate) : null,
         publishedAt: input.publishedAt ? new Date(input.publishedAt) : null,
         media: input.media.map((item) => ({
           animalId: 0,
@@ -1072,6 +1076,73 @@ export const appRouter = router({
       invalidateCatalogCache();
       return restored;
     }),
+    generatePreset: adminProcedure
+      .input(z.object({ species: z.enum(["goat", "sheep"]) }))
+      .mutation(async ({ input }) => {
+        const speciesLabel = input.species === "goat" ? "козы" : "овцы";
+        const speciesLabelNom = input.species === "goat" ? "коза" : "овца";
+
+        const result = await invokeLLM({
+          messages: [
+            {
+              role: "system",
+              content: `Ты — копирайтер семейной фермы «Шерь Козу». Ферма предлагает персональное фермерство: семьи выбирают конкретное животное, наблюдают за его жизнью, участвуют в уходе и получают именную молочную продукцию. Пиши только на русском языке. Тон: тёплый, личный, премиальный, без клише.`,
+            },
+            {
+              role: "user",
+              content: `Сгенерируй уникальный профиль ${speciesLabel} для каталога фермы. Требования:\n- Имя: красивое женское имя для ${speciesLabel} (не Мира, не Лана, не Белла, не Зоя)\n- Slug: транслитерация имени латиницей в нижнем регистре\n- Порода: реальная порода ${speciesLabel} (не Зааненская, не Романовская)\n- Краткое описание: 1–2 предложения, почему эта ${speciesLabelNom} подходит для персонального фермерства (10–200 символов)\n- История: 2–4 предложения о характере, привычках, отношении к людям (100–1000 символов)\n- Введение галереи: 1 предложение о фотогалерее этого животного (30–300 символов)\n- Цена: целое число от 80000 до 200000 (копейки, т.е. 80000 = 800 руб/мес)\n- Показатели: healthScore, happinessScore, milkPotentialScore, careLevelScore — целые числа от 50 до 99\n- Дата рождения: реалистичная дата в формате YYYY-MM-DD (животное от 6 месяцев до 5 лет)`,
+            },
+          ],
+          response_format: {
+            type: "json_schema",
+            json_schema: {
+              name: "animal_preset",
+              strict: true,
+              schema: {
+                type: "object",
+                properties: {
+                  name: { type: "string", description: "Имя животного" },
+                  slug: { type: "string", description: "Транслит-slug латиницей" },
+                  breed: { type: "string", description: "Порода" },
+                  shortDescription: { type: "string", description: "Краткое описание" },
+                  story: { type: "string", description: "История животного" },
+                  galleryIntro: { type: "string", description: "Введение галереи" },
+                  baseMonthlyPriceMinor: { type: "integer", description: "Цена в копейках" },
+                  healthScore: { type: "integer", description: "Здоровье 0–100" },
+                  happinessScore: { type: "integer", description: "Счастье 0–100" },
+                  milkPotentialScore: { type: "integer", description: "Молочный потенциал 0–100" },
+                  careLevelScore: { type: "integer", description: "Уровень ухода 0–100" },
+                  birthDate: { type: "string", description: "Дата рождения YYYY-MM-DD" },
+                },
+                required: ["name", "slug", "breed", "shortDescription", "story", "galleryIntro", "baseMonthlyPriceMinor", "healthScore", "happinessScore", "milkPotentialScore", "careLevelScore", "birthDate"],
+                additionalProperties: false,
+              },
+            },
+          },
+        });
+
+        const rawContent = result.choices?.[0]?.message?.content;
+        if (!rawContent || typeof rawContent !== "string") {
+          throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Не удалось сгенерировать профиль животного." });
+        }
+
+        const parsed = JSON.parse(rawContent);
+        return {
+          name: String(parsed.name),
+          slug: String(parsed.slug).toLowerCase().replace(/[^a-z0-9-]/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, ""),
+          species: input.species,
+          breed: String(parsed.breed),
+          shortDescription: String(parsed.shortDescription),
+          story: String(parsed.story),
+          galleryIntro: String(parsed.galleryIntro),
+          baseMonthlyPriceMinor: Number(parsed.baseMonthlyPriceMinor) || 120000,
+          healthScore: Math.min(100, Math.max(0, Number(parsed.healthScore) || 80)),
+          happinessScore: Math.min(100, Math.max(0, Number(parsed.happinessScore) || 80)),
+          milkPotentialScore: Math.min(100, Math.max(0, Number(parsed.milkPotentialScore) || 80)),
+          careLevelScore: Math.min(100, Math.max(0, Number(parsed.careLevelScore) || 60)),
+          birthDate: parsed.birthDate || null,
+        };
+      }),
   }),
   animalPhotos: router({
     list: protectedProcedure.input(animalPhotoListInput).query(async ({ ctx, input }) => {

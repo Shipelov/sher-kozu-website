@@ -18,6 +18,7 @@ import {
   Heart,
   Thermometer,
   Milk,
+  Cake,
   Camera,
   Star,
   ChevronLeft,
@@ -515,11 +516,48 @@ export default function AnimalProfile() {
   const healthScore = data?.healthScore ?? 94;
   const happinessScore = data?.happinessScore ?? 87;
 
+  /* ── age & birthday countdown ── */
+  const ageInfo = useMemo(() => {
+    if (!data?.birthDate) return null;
+    const birth = new Date(typeof data.birthDate === "number" ? data.birthDate : data.birthDate);
+    if (isNaN(birth.getTime())) return null;
+    const now = new Date();
+
+    // Calculate age in years and months (rounded down for months)
+    let years = now.getFullYear() - birth.getFullYear();
+    let months = now.getMonth() - birth.getMonth();
+    if (months < 0) { years--; months += 12; }
+    if (now.getDate() < birth.getDate()) {
+      months--;
+      if (months < 0) { years--; months += 12; }
+    }
+
+    // Format age string
+    const yLabel = years === 1 ? "год" : (years >= 2 && years <= 4) ? "года" : "лет";
+    const mLabel = months === 1 ? "месяц" : (months >= 2 && months <= 4) ? "месяца" : "месяцев";
+    let ageStr = "";
+    if (years > 0) ageStr += `${years} ${yLabel}`;
+    if (months > 0) ageStr += `${ageStr ? ", " : ""}${months} ${mLabel}`;
+    if (!ageStr) ageStr = "менее месяца";
+
+    // Days until next birthday
+    const nextBirthday = new Date(now.getFullYear(), birth.getMonth(), birth.getDate());
+    if (nextBirthday <= now) nextBirthday.setFullYear(nextBirthday.getFullYear() + 1);
+    const diffMs = nextBirthday.getTime() - now.getTime();
+    const daysUntil = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+    const dLabel = daysUntil === 1 ? "день" : (daysUntil >= 2 && daysUntil <= 4) ? "дня" : "дней";
+    const birthdayStr = daysUntil === 0 ? "Сегодня день рождения!" : `До дня рождения: ${daysUntil} ${dLabel}`;
+
+    return { ageStr, birthdayStr, daysUntil };
+  }, [data?.birthDate]);
+
   /* ── passport rows ── */
   const passportRows = [
     { label: "Вид", value: speciesLabel },
     { label: "Порода", value: breedLabel },
     { label: "Имя", value: displayName },
+    ...(ageInfo ? [{ label: "Возраст", value: ageInfo.ageStr }] : []),
+    ...(ageInfo ? [{ label: "День рождения", value: ageInfo.birthdayStr }] : []),
     { label: "Здоровье", value: `${healthScore}/100` },
     { label: "Настроение", value: `${happinessScore}/100` },
     ...(data?.shortDescription ? [{ label: "Описание", value: data.shortDescription }] : []),
@@ -664,7 +702,19 @@ export default function AnimalProfile() {
 
                 <h1 className="mt-3 font-display text-4xl font-bold leading-tight text-foreground md:text-5xl lg:text-6xl">
                   {displayName}
+                  {ageInfo && (
+                    <span className="ml-3 align-middle text-lg font-normal text-muted-foreground md:text-xl">
+                      {ageInfo.ageStr}
+                    </span>
+                  )}
                 </h1>
+
+                {ageInfo && (
+                  <div className="mt-1.5 flex items-center gap-2 text-sm text-muted-foreground">
+                    <Cake className="h-4 w-4 text-primary/70" />
+                    <span>{ageInfo.daysUntil === 0 ? <span className="font-semibold text-primary">{ageInfo.birthdayStr}</span> : ageInfo.birthdayStr}</span>
+                  </div>
+                )}
 
                 {data?.shortDescription ? (
                   <p className="mt-3 max-w-lg text-base leading-7 text-muted-foreground">{data.shortDescription}</p>
