@@ -172,12 +172,14 @@ describe("generatePreset procedure", () => {
 
   it("breed options are correct for each species", () => {
     const BREED_OPTIONS: Record<"goat" | "sheep", string[]> = {
-      goat: ["Англо-нубийская", "Альпийская", "Зааненская", "Тоггенбургская"],
-      sheep: ["Остфризская", "Лакон", "Романовская", "Ассаф"],
+      goat: ["Англо-нубийская", "Альпийская"],
+      sheep: ["Лакон", "Остфризская"],
     };
-    expect(BREED_OPTIONS.goat).toHaveLength(4);
-    expect(BREED_OPTIONS.sheep).toHaveLength(4);
+    expect(BREED_OPTIONS.goat).toHaveLength(2);
+    expect(BREED_OPTIONS.sheep).toHaveLength(2);
     expect(BREED_OPTIONS.goat).toContain("Альпийская");
+    expect(BREED_OPTIONS.goat).toContain("Англо-нубийская");
+    expect(BREED_OPTIONS.sheep).toContain("Лакон");
     expect(BREED_OPTIONS.sheep).toContain("Остфризская");
   });
 

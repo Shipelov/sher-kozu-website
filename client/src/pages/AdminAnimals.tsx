@@ -184,7 +184,7 @@ const DEMO_ANIMAL_PRESETS: Record<"goat" | "sheep", AnimalProfilePreset> = {
       name: "Мира",
       slug: "mira",
       species: "goat",
-      breed: "Зааненская",
+      breed: "Альпийская",
       shortDescription: "Контактная молочная коза для семейного участия, визитов на ферму и прозрачного пути от ухода до продукции.",
       story: "Мира любит подходить первой к гостям, спокойно реагирует на детей и лучше всего чувствует себя в ритме регулярных визитов семьи. Её карточка подходит для демонстрации полного сценария Sher Kozu: выбор животного, наблюдение за жизнью на ферме, участие в уходе и получение именной молочной продукции.",
       coverImageUrl: "https://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/goat_portrait_80fc5726.jpg",
@@ -240,7 +240,7 @@ const DEMO_ANIMAL_PRESETS: Record<"goat" | "sheep", AnimalProfilePreset> = {
       name: "Лана",
       slug: "lana-sheep",
       species: "sheep",
-      breed: "Романовская",
+      breed: "Лакон",
       shortDescription: "Спокойная овца для мягкого семейного сценария знакомства с фермой, наблюдения и клубных визитов.",
       story: "Лана подходит семьям, которым важен более спокойный ритм знакомства с персональным фермерством. В её карточке акцент сделан на доверии, регулярном наблюдении и понятной клиентской навигации: от выбора в каталоге до открытия подробного профиля и дальнейшего участия.",
       coverImageUrl: "https://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/family_farm_446b395e.jpg",
@@ -1477,8 +1477,8 @@ function AnimalEditorCard({
   const [genBreed, setGenBreed] = useState<string>("")
 
   const BREED_OPTIONS: Record<"goat" | "sheep", string[]> = {
-    goat: ["Англо-нубийская", "Альпийская", "Зааненская", "Тоггенбургская"],
-    sheep: ["Остфризская", "Лакон", "Романовская", "Ассаф"],
+    goat: ["Англо-нубийская", "Альпийская"],
+    sheep: ["Лакон", "Остфризская"],
   }
 
   const availableBreeds = genSpecies ? BREED_OPTIONS[genSpecies] : []
@@ -1506,8 +1506,11 @@ function AnimalEditorCard({
           </div>
           <div className="space-y-2">
             <Label>Вид</Label>
-            <Select value={values.species} onValueChange={(value) => onChange("species", value as AdminAnimalSpecies)}>
-              <SelectTrigger><SelectValue placeholder="Вид" /></SelectTrigger>
+            <Select value={values.species} onValueChange={(value) => {
+              onChange("species", value as AdminAnimalSpecies);
+              onChange("breed", "");
+            }}>
+              <SelectTrigger><SelectValue placeholder="Выберите вид" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="goat">Коза</SelectItem>
                 <SelectItem value="sheep">Овца</SelectItem>
@@ -1515,8 +1518,20 @@ function AnimalEditorCard({
             </Select>
           </div>
           <div className="space-y-2">
-            <Label htmlFor="animal-breed">Порода</Label>
-            <Input id="animal-breed" value={values.breed} onChange={(event) => onChange("breed", event.target.value)} placeholder="Англо-нубийская" />
+            <Label>Порода</Label>
+            <Select value={values.breed} onValueChange={(value) => onChange("breed", value)} disabled={!values.species}>
+              <SelectTrigger><SelectValue placeholder={values.species ? "Выберите породу" : "Сначала выберите вид"} /></SelectTrigger>
+              <SelectContent>
+                {(values.species === "goat"
+                  ? ["Англо-нубийская", "Альпийская"]
+                  : values.species === "sheep"
+                    ? ["Лакон", "Остфризская"]
+                    : []
+                ).map((b) => (
+                  <SelectItem key={b} value={b}>{b}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </div>
 
@@ -1925,9 +1940,15 @@ export default function AdminAnimalsPage() {
   async function handleSubmit() {
     const payload = buildAnimalMutationPayload(formValues);
 
-    if (!payload.name || !payload.slug || payload.shortDescription.length < 10) {
-      toast.error("Проверьте обязательные поля", {
-        description: "Имя, slug и короткое описание должны быть заполнены корректно.",
+    const missing: string[] = [];
+    if (!payload.name) missing.push("имя");
+    if (!payload.slug) missing.push("slug");
+    if (!payload.species) missing.push("вид");
+    if (!payload.breed) missing.push("порода");
+    if (payload.shortDescription.length < 10) missing.push("короткое описание (мин. 10 симв.)");
+    if (missing.length > 0) {
+      toast.error("Заполните обязательные поля", {
+        description: `Не заполнено: ${missing.join(", ")}`,
       });
       return;
     }
