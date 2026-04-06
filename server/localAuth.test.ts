@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterAll, describe, expect, it } from "vitest";
 import {
   validatePasswordStrength,
   generateOtpCode,
@@ -7,6 +7,32 @@ import {
 } from "./localAuth";
 import { appRouter } from "./routers";
 import type { TrpcContext } from "./_core/context";
+
+// ─── Cleanup test data after all tests ─────────────────────
+const TEST_EMAILS = [
+  "resend-test@example.com",
+  "test-weak-pw@example.com",
+  "test-short-pw@example.com",
+  "test-bad-phone@example.com",
+  "nonexistent-user-xyz@example.com",
+  "nonexistent-reset-xyz@example.com",
+  "test-reset@example.com",
+];
+
+afterAll(async () => {
+  try {
+    const { getDb } = await import("./db");
+    const { sql } = await import("drizzle-orm");
+    const db = await getDb();
+    if (!db) return;
+    for (const email of TEST_EMAILS) {
+      await db.execute(sql`DELETE FROM otpCodes WHERE target = ${email}`);
+      await db.execute(sql`DELETE FROM users WHERE email = ${email}`);
+    }
+  } catch (err) {
+    console.warn("[localAuth.test cleanup] Failed:", err);
+  }
+});
 
 // ─── Helper to create a public (unauthenticated) context ────
 

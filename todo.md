@@ -1956,3 +1956,4 @@
 - [x] Запустить все E2E-тесты и убедиться в прохождении (84 файла, 2247 тестов — все проходят)
 - [x] Исправить CMS cache interference между тестами (cms.test.ts)
 - [x] Добавить graceful handling для rate-limiting и network timeouts в E2E тестах
+- [x] Очистить тестовую запись resend-test@example.com из БД (308 OTP-кодов + 1 user) и добавить afterAll cleanup в localAuth.test.ts
