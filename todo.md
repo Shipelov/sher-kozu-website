@@ -1957,3 +1957,10 @@
 - [x] Исправить CMS cache interference между тестами (cms.test.ts)
 - [x] Добавить graceful handling для rate-limiting и network timeouts в E2E тестах
 - [x] Очистить тестовую запись resend-test@example.com из БД (308 OTP-кодов + 1 user) и добавить afterAll cleanup в localAuth.test.ts
+
+## Баг: Тестовые записи попадают в Bitrix24 при синхронизации (06.04.2026)
+- [x] Выяснить, какие тестовые записи попали в Bitrix24 CRM (9 контактов: resend-test, e2e-auth-*, e2e-partner-*)
+- [x] Найти точку в коде, где тесты вызывают Bitrix24 sync (verifyRegistration → findOrCreateBitrixContact, partnerLeads.create → attemptBitrixSync)
+- [x] Заблокировать отправку тестовых данных в Bitrix24 при прогоне тестов (isTestEnvironment() guard в isBitrixConfigured)
+- [x] Очистить тестовые записи из Bitrix24 CRM (удалено 9 контактов, компании и сделки чистые)
+- [x] Очистить тестовые записи из локальной БД (8 users, 1 OTP, 16 partner leads)

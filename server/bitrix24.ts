@@ -42,10 +42,24 @@ function trimTrailingSlash(value: string) {
 }
 
 /**
- * Returns true when all three Bitrix24 webhook secrets are present.
+ * Returns true if we are running inside a test runner (vitest / jest).
+ * Used to block external API calls during automated tests.
+ */
+function isTestEnvironment(): boolean {
+  return (
+    process.env.VITEST === "true" ||
+    process.env.NODE_ENV === "test" ||
+    typeof (globalThis as any).__vitest_worker__ !== "undefined"
+  );
+}
+
+/**
+ * Returns true when all three Bitrix24 webhook secrets are present
+ * AND we are NOT running inside a test runner.
  * Use this before calling any sync/pull function to enable graceful degradation.
  */
 export function isBitrixConfigured(): boolean {
+  if (isTestEnvironment()) return false;
   return Boolean(
     ENV.bitrix24BaseUrl?.trim() &&
     ENV.bitrix24RestUserId?.trim() &&
