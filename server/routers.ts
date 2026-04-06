@@ -1077,7 +1077,10 @@ export const appRouter = router({
       return restored;
     }),
     generatePreset: adminProcedure
-      .input(z.object({ species: z.enum(["goat", "sheep"]) }))
+      .input(z.object({
+        species: z.enum(["goat", "sheep"]),
+        breed: z.string().min(1),
+      }))
       .mutation(async ({ input }) => {
         const speciesLabel = input.species === "goat" ? "козы" : "овцы";
         const speciesLabelNom = input.species === "goat" ? "коза" : "овца";
@@ -1090,7 +1093,7 @@ export const appRouter = router({
             },
             {
               role: "user",
-              content: `Сгенерируй уникальный профиль ${speciesLabel} для каталога фермы. Требования:\n- Имя: красивое женское имя для ${speciesLabel} (не Мира, не Лана, не Белла, не Зоя)\n- Slug: транслитерация имени латиницей в нижнем регистре\n- Порода: реальная порода ${speciesLabel} (не Зааненская, не Романовская)\n- Краткое описание: 1–2 предложения, почему эта ${speciesLabelNom} подходит для персонального фермерства (10–200 символов)\n- История: 2–4 предложения о характере, привычках, отношении к людям (100–1000 символов)\n- Введение галереи: 1 предложение о фотогалерее этого животного (30–300 символов)\n- Цена: целое число от 80000 до 200000 (копейки, т.е. 80000 = 800 руб/мес)\n- Показатели: healthScore, happinessScore, milkPotentialScore, careLevelScore — целые числа от 50 до 99\n- Дата рождения: реалистичная дата в формате YYYY-MM-DD (животное от 6 месяцев до 5 лет)`,
+              content: `Сгенерируй уникальный профиль ${speciesLabel} породы «${input.breed}» для каталога фермы. Требования:\n- Имя: красивое женское имя для ${speciesLabel} (не Мира, не Лана, не Белла, не Зоя, не Марта)\n- Slug: транслитерация имени латиницей в нижнем регистре\n- Краткое описание: 1–2 предложения, почему эта ${speciesLabelNom} породы «${input.breed}» подходит для персонального фермерства. Упомяни особенности породы. (10–200 символов)\n- История: 2–4 предложения о характере, привычках, отношении к людям. Учитывай типичные черты породы «${input.breed}». (100–1000 символов)\n- Введение галереи: 1 предложение о фотогалерее этого животного (30–300 символов)\n- Цена: целое число от 80000 до 200000 (копейки, т.е. 80000 = 800 руб/мес)\n- Показатели: healthScore, happinessScore, milkPotentialScore, careLevelScore — целые числа от 50 до 99\n- Дата рождения: реалистичная дата в формате YYYY-MM-DD (животное от 6 месяцев до 5 лет)`,
             },
           ],
           response_format: {
@@ -1103,7 +1106,6 @@ export const appRouter = router({
                 properties: {
                   name: { type: "string", description: "Имя животного" },
                   slug: { type: "string", description: "Транслит-slug латиницей" },
-                  breed: { type: "string", description: "Порода" },
                   shortDescription: { type: "string", description: "Краткое описание" },
                   story: { type: "string", description: "История животного" },
                   galleryIntro: { type: "string", description: "Введение галереи" },
@@ -1114,7 +1116,7 @@ export const appRouter = router({
                   careLevelScore: { type: "integer", description: "Уровень ухода 0–100" },
                   birthDate: { type: "string", description: "Дата рождения YYYY-MM-DD" },
                 },
-                required: ["name", "slug", "breed", "shortDescription", "story", "galleryIntro", "baseMonthlyPriceMinor", "healthScore", "happinessScore", "milkPotentialScore", "careLevelScore", "birthDate"],
+                required: ["name", "slug", "shortDescription", "story", "galleryIntro", "baseMonthlyPriceMinor", "healthScore", "happinessScore", "milkPotentialScore", "careLevelScore", "birthDate"],
                 additionalProperties: false,
               },
             },
@@ -1131,7 +1133,7 @@ export const appRouter = router({
           name: String(parsed.name),
           slug: String(parsed.slug).toLowerCase().replace(/[^a-z0-9-]/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, ""),
           species: input.species,
-          breed: String(parsed.breed),
+          breed: input.breed,
           shortDescription: String(parsed.shortDescription),
           story: String(parsed.story),
           galleryIntro: String(parsed.galleryIntro),

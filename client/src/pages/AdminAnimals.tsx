@@ -1469,10 +1469,20 @@ function AnimalEditorCard({
   onChange: <K extends keyof AnimalFormValues>(key: K, value: AnimalFormValues[K]) => void;
   onSubmit: () => void;
   onCancel: () => void;
-  onApplyPreset: (species: "goat" | "sheep") => void;
+  onApplyPreset: (species: "goat" | "sheep", breed: string) => void;
   isSubmitting: boolean;
   isGenerating: boolean;
 }) {
+  const [genSpecies, setGenSpecies] = useState<"goat" | "sheep" | "">("")
+  const [genBreed, setGenBreed] = useState<string>("")
+
+  const BREED_OPTIONS: Record<"goat" | "sheep", string[]> = {
+    goat: ["Англо-нубийская", "Альпийская", "Зааненская", "Тоггенбургская"],
+    sheep: ["Остфризская", "Лакон", "Романовская", "Ассаф"],
+  }
+
+  const availableBreeds = genSpecies ? BREED_OPTIONS[genSpecies] : []
+  const canGenerate = genSpecies !== "" && genBreed !== ""
   const gallerySlug = values.slug.trim();
   const sharePriceMinor = Math.round(values.baseMonthlyPriceMinor / 2);
   const hasSlug = gallerySlug.length > 0;
@@ -1654,13 +1664,44 @@ function AnimalEditorCard({
           </div>
         </div>
 
-        <div className="grid gap-3 sm:grid-cols-2">
-          <Button type="button" variant="outline" className="rounded-full" onClick={() => onApplyPreset("goat")} disabled={isGenerating}>
-            {isGenerating ? <span className="flex items-center gap-2"><Loader2 className="h-4 w-4 animate-spin" />Генерация…</span> : "Сгенерировать козу"}
-          </Button>
-          <Button type="button" variant="outline" className="rounded-full" onClick={() => onApplyPreset("sheep")} disabled={isGenerating}>
-            {isGenerating ? <span className="flex items-center gap-2"><Loader2 className="h-4 w-4 animate-spin" />Генерация…</span> : "Сгенерировать овцу"}
-          </Button>
+        <div className="rounded-2xl border border-dashed border-primary/30 bg-primary/5 p-4 space-y-3">
+          <p className="text-sm font-semibold text-foreground">Сгенерировать профиль животного</p>
+          <div className="grid gap-3 sm:grid-cols-3">
+            <div className="space-y-1">
+              <Label className="text-xs text-muted-foreground">Вид</Label>
+              <Select value={genSpecies} onValueChange={(v) => { setGenSpecies(v as "goat" | "sheep"); setGenBreed(""); }}>
+                <SelectTrigger><SelectValue placeholder="Выберите вид" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="goat">Коза</SelectItem>
+                  <SelectItem value="sheep">Овца</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs text-muted-foreground">Порода</Label>
+              <Select value={genBreed} onValueChange={setGenBreed} disabled={!genSpecies}>
+                <SelectTrigger><SelectValue placeholder={genSpecies ? "Выберите породу" : "Сначала вид"} /></SelectTrigger>
+                <SelectContent>
+                  {availableBreeds.map((b) => (
+                    <SelectItem key={b} value={b}>{b}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex items-end">
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full rounded-full"
+                onClick={() => { if (genSpecies && genBreed) onApplyPreset(genSpecies as "goat" | "sheep", genBreed); }}
+                disabled={!canGenerate || isGenerating}
+              >
+                {isGenerating
+                  ? <span className="flex items-center gap-2"><Loader2 className="h-4 w-4 animate-spin" />Генерация…</span>
+                  : "Сгенерировать"}
+              </Button>
+            </div>
+          </div>
         </div>
 
         <div className={`rounded-[1.75rem] border px-4 py-4 ${isCreateMode ? "border-amber-200 bg-amber-50/80" : "border-emerald-200 bg-emerald-50/70"}`}>
@@ -1843,8 +1884,8 @@ export default function AdminAnimalsPage() {
     },
   });
 
-  function applyDemoPreset(species: "goat" | "sheep") {
-    generatePreset.mutate({ species });
+  function applyDemoPreset(species: "goat" | "sheep", breed: string) {
+    generatePreset.mutate({ species, breed });
   }
 
   function handleFormChange<K extends keyof AnimalFormValues>(key: K, value: AnimalFormValues[K]) {
