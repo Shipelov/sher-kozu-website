@@ -560,6 +560,8 @@ export function buildAdminClubEventsTabProps(props: EventsBuilderProps): AdminCl
         tone: event.tone,
         sortOrder: event.sortOrder,
         hidden: Boolean(event.hidden),
+        maxCapacity: (event as any).maxCapacity ?? 0,
+        registrationOpen: (event as any).registrationOpen !== false,
       }),
       extraActions: [
         { label: "Регистрации", icon: <Users className="h-4 w-4" />, href: `/admin/club/registrations?eventId=${event.id}` },

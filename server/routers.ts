@@ -104,6 +104,7 @@ import { ENV } from "./_core/env";
 import { isBitrixConfigured, pullBitrixDealSnapshot, syncPartnerLeadToBitrix } from "./bitrix24";
 import { runDiagnostics } from "./diagnostics";
 import { notifyOwner } from "./_core/notification";
+import { moderateComment } from "./commentModeration";
 import { productTrackRouter } from "./routers/productTrack";
 import { gamificationRouter } from "./routers/gamification";
 import { faqChatRouter } from "./routers/faqChat";
@@ -188,6 +189,8 @@ const clubEventInput = z.object({
   tone: z.string().min(1).max(32),
   sortOrder: z.number().int().min(0).max(9999),
   hidden: z.boolean().default(false),
+  maxCapacity: z.number().int().min(0).max(10000).default(0),
+  registrationOpen: z.boolean().default(true),
 });
 
 const clubMemberInput = z.object({
@@ -1426,13 +1429,34 @@ export const appRouter = router({
         text: z.string().min(1).max(2000),
       }))
       .mutation(async ({ ctx, input }) => {
+        // Moderate comment before saving
+        const moderation = moderateComment(input.text);
+        if (!moderation.approved) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: moderation.reason || "Комментарий не прошёл модерацию.",
+          });
+        }
+
+        const finalText = moderation.cleaned && moderation.cleanedText
+          ? moderation.cleanedText
+          : input.text;
+
         const userName = ctx.user.name || "Участник";
-        return createPostComment({
+        const comment = await createPostComment({
           postId: input.postId,
           userOpenId: ctx.user.openId,
           userName,
-          text: input.text,
+          text: finalText,
         });
+
+        // Push notification to owner (fire-and-forget)
+        notifyOwner({
+          title: `💬 Новый комментарий от ${userName}`,
+          content: `К посту #${input.postId}: "${finalText.slice(0, 200)}${finalText.length > 200 ? '…' : ''}"`,
+        }).catch(() => {});
+
+        return comment;
       }),
 
     // ── Event Registration ──
@@ -1462,12 +1486,22 @@ export const appRouter = router({
         }
 
         const userName = ctx.user.name || "Участник";
-        return registerForEvent({
+        const registration = await registerForEvent({
           eventId: input.eventId,
           userOpenId: ctx.user.openId,
           userName,
           status: regStatus,
         });
+
+        // Push notification to owner (fire-and-forget)
+        const eventTitle = (event as any).title || `Событие #${input.eventId}`;
+        const statusLabel = regStatus === "registered" ? "подтверждена" : "лист ожидания";
+        notifyOwner({
+          title: `📋 Новая запись на событие`,
+          content: `${userName} записался на «${eventTitle}» (${statusLabel}).`,
+        }).catch(() => {});
+
+        return registration;
       }),
 
     cancelRegistration: protectedProcedure

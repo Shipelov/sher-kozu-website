@@ -1515,6 +1515,8 @@ export async function updateClubEvent(input: InsertClubEvent & { id: number }) {
     tone: input.tone,
     sortOrder: input.sortOrder,
     ...(input.hidden !== undefined ? { hidden: input.hidden } : {}),
+    ...(input.maxCapacity !== undefined ? { maxCapacity: input.maxCapacity } : {}),
+    ...(input.registrationOpen !== undefined ? { registrationOpen: input.registrationOpen } : {}),
   }).where(and(eq(clubEvents.id, input.id), eq(clubEvents.ownerOpenId, input.ownerOpenId)));
 
   const updated = await db.select().from(clubEvents).where(eq(clubEvents.id, input.id)).limit(1);

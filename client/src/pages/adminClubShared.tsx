@@ -28,6 +28,8 @@ export type EventFormState = {
   tone: string;
   sortOrder: number;
   hidden: boolean;
+  maxCapacity: number;
+  registrationOpen: boolean;
 };
 
 export type MemberFormState = {
@@ -103,7 +105,7 @@ export type ClubAdminPreset = {
 export type FormErrors<T extends string> = Partial<Record<T, string>>;
 
 export type PostFormField = "category" | "author" | "role" | "timeLabel" | "title" | "text";
-export type EventFormField = "title" | "dateLabel" | "description" | "status" | "tone";
+export type EventFormField = "title" | "dateLabel" | "description" | "status" | "tone" | "maxCapacity";
 export type MemberFormField = "name" | "animal" | "sinceLabel";
 
 export type SelectionState = Record<EntityAdminTabValue, number[]>;
@@ -151,6 +153,8 @@ export const defaultEventForm = (): EventFormState => ({
   tone: "warm",
   sortOrder: 0,
   hidden: false,
+  maxCapacity: 0,
+  registrationOpen: true,
 });
 
 export const defaultMemberForm = (): MemberFormState => ({
