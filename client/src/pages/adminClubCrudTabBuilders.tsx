@@ -1,4 +1,4 @@
-import { ArrowDown, CalendarRange, CheckSquare, Crown, Pin, Square, Trash2 } from "lucide-react";
+import { ArrowDown, CalendarRange, CheckSquare, Crown, Eye, EyeOff, Pin, Square, Trash2 } from "lucide-react";
 import {
   defaultEventFilters,
   defaultEventForm,
@@ -85,6 +85,7 @@ type PostItem = {
   tagsCsv: string;
   pinned: boolean;
   sortOrder: number;
+  hidden: boolean;
 };
 
 type EventItem = {
@@ -95,6 +96,7 @@ type EventItem = {
   status: string;
   tone: string;
   sortOrder: number;
+  hidden: boolean;
 };
 
 type MemberItem = {
@@ -104,6 +106,7 @@ type MemberItem = {
   sinceLabel: string;
   badge: string;
   sortOrder: number;
+  hidden: boolean;
 };
 
 type MutationLike<TInput> = {
@@ -155,6 +158,7 @@ type PostsBuilderProps = {
   updatePost: MutationLike<PostItem>;
   toast: ToastLike;
   pendingDelete: PendingDeleteState;
+  bulkHidePosts: MutationLike<{ ids: number[]; hidden: boolean }>;
 };
 
 type EventsBuilderProps = {
@@ -194,6 +198,7 @@ type EventsBuilderProps = {
   updateEvent: MutationLike<EventItem>;
   toast: ToastLike;
   pendingDelete: PendingDeleteState;
+  bulkHideEvents: MutationLike<{ ids: number[]; hidden: boolean }>;
   setActionLog: StateSetter<AdminActionLogEntry[]>;
   recordAdminAction: (
     current: AdminActionLogEntry[],
@@ -240,6 +245,7 @@ type MembersBuilderProps = {
   updateMember: MutationLike<MemberItem>;
   toast: ToastLike;
   pendingDelete: PendingDeleteState;
+  bulkHideMembers: MutationLike<{ ids: number[]; hidden: boolean }>;
   setActionLog: StateSetter<AdminActionLogEntry[]>;
   recordAdminAction: (
     current: AdminActionLogEntry[],
@@ -287,6 +293,26 @@ export function buildAdminClubPostsTabProps(props: PostsBuilderProps): AdminClub
         onClick: () => props.toggleSelectAllVisible("posts", props.filteredPosts.map((post) => post.id)),
       },
       {
+        label: "Скрыть",
+        icon: <EyeOff className="h-4 w-4" />,
+        variant: "outline",
+        disabled: props.selectedPosts.length === 0 || props.bulkHidePosts.isPending,
+        onClick: async () => {
+          await props.bulkHidePosts.mutateAsync({ ids: props.selectedPosts.map((p) => p.id), hidden: true });
+          props.clearSelection("posts");
+        },
+      },
+      {
+        label: "Показать",
+        icon: <Eye className="h-4 w-4" />,
+        variant: "outline",
+        disabled: props.selectedPosts.length === 0 || props.bulkHidePosts.isPending,
+        onClick: async () => {
+          await props.bulkHidePosts.mutateAsync({ ids: props.selectedPosts.map((p) => p.id), hidden: false });
+          props.clearSelection("posts");
+        },
+      },
+      {
         label: "Удалить выбранные",
         icon: <Trash2 className="h-4 w-4" />,
         variant: "outline",
@@ -320,6 +346,8 @@ export function buildAdminClubPostsTabProps(props: PostsBuilderProps): AdminClub
     onCategoryChange: (value) => props.setPostFilters((current) => ({ ...current, category: value })),
     pinnedValue: props.postFilters.pinned,
     onPinnedChange: (value) => props.setPostFilters((current) => ({ ...current, pinned: value })),
+    visibilityValue: props.postFilters.visibility,
+    onVisibilityChange: (value: string) => props.setPostFilters((current) => ({ ...current, visibility: value as "all" | "visible" | "hidden" })),
     sortByValue: props.postFilters.sortBy,
     onSortByChange: (value) => props.setPostFilters((current) => ({ ...current, sortBy: value })),
     sortDirectionValue: props.postFilters.sortDirection,
@@ -331,6 +359,7 @@ export function buildAdminClubPostsTabProps(props: PostsBuilderProps): AdminClub
       subtitle: `${post.author} · ${post.category}`,
       meta: `${post.timeLabel} · ${post.likes} лайков · ${post.comments} комментариев`,
       badge: post.pinned ? "Закреплён" : undefined,
+      hidden: Boolean(post.hidden),
       onToggleSelected: () => props.toggleSelection("posts", post.id),
       inlineActions: [
         {
@@ -375,6 +404,7 @@ export function buildAdminClubPostsTabProps(props: PostsBuilderProps): AdminClub
         tagsCsv: post.tagsCsv,
         pinned: post.pinned,
         sortOrder: post.sortOrder,
+        hidden: Boolean(post.hidden),
       }),
       onDelete: () => props.setPendingDelete({ entity: "post", id: post.id, title: post.title, description: `пост «${post.title}»` }),
       deleting: props.isDeleting && props.pendingDelete?.entity === "post" && props.pendingDelete.id === post.id,
@@ -422,6 +452,26 @@ export function buildAdminClubEventsTabProps(props: EventsBuilderProps): AdminCl
         onClick: () => props.toggleSelectAllVisible("events", props.filteredEvents.map((event) => event.id)),
       },
       {
+        label: "Скрыть",
+        icon: <EyeOff className="h-4 w-4" />,
+        variant: "outline",
+        disabled: props.selectedEvents.length === 0 || props.bulkHideEvents.isPending,
+        onClick: async () => {
+          await props.bulkHideEvents.mutateAsync({ ids: props.selectedEvents.map((e) => e.id), hidden: true });
+          props.clearSelection("events");
+        },
+      },
+      {
+        label: "Показать",
+        icon: <Eye className="h-4 w-4" />,
+        variant: "outline",
+        disabled: props.selectedEvents.length === 0 || props.bulkHideEvents.isPending,
+        onClick: async () => {
+          await props.bulkHideEvents.mutateAsync({ ids: props.selectedEvents.map((e) => e.id), hidden: false });
+          props.clearSelection("events");
+        },
+      },
+      {
         label: "Удалить выбранные",
         icon: <Trash2 className="h-4 w-4" />,
         variant: "outline",
@@ -454,6 +504,8 @@ export function buildAdminClubEventsTabProps(props: EventsBuilderProps): AdminCl
     statusOptions: [{ label: "Все статусы", value: "all" }, ...props.eventStatuses.map((value) => ({ label: value, value }))],
     onStatusChange: (value) => props.setEventFilters((current) => ({ ...current, status: value })),
     toneValue: props.eventFilters.tone,
+    visibilityValue: props.eventFilters.visibility,
+    onVisibilityChange: (value: string) => props.setEventFilters((current) => ({ ...current, visibility: value as "all" | "visible" | "hidden" })),
     toneOptions: [{ label: "Все тональности", value: "all" }, ...props.eventTones.map((value) => ({ label: value, value }))],
     onToneChange: (value) => props.setEventFilters((current) => ({ ...current, tone: value })),
     sortByValue: props.eventFilters.sortBy,
@@ -464,8 +516,9 @@ export function buildAdminClubEventsTabProps(props: EventsBuilderProps): AdminCl
       id: event.id,
       selected: props.selectedIds.events.includes(event.id),
       title: event.title,
-      subtitle: event.description,
-      meta: `${event.dateLabel} · ${event.status} · ${event.tone} · Порядок: ${event.sortOrder}`,
+      subtitle: event.dateLabel,
+      meta: `${event.status} · ${event.tone} · Порядок: ${event.sortOrder}`,
+      hidden: Boolean(event.hidden),
       onToggleSelected: () => props.toggleSelection("events", event.id),
       inlineActions: [
         {
@@ -503,6 +556,7 @@ export function buildAdminClubEventsTabProps(props: EventsBuilderProps): AdminCl
         status: event.status,
         tone: event.tone,
         sortOrder: event.sortOrder,
+        hidden: Boolean(event.hidden),
       }),
       onDelete: () => props.setPendingDelete({ entity: "event", id: event.id, title: event.title, description: `событие «${event.title}»` }),
       deleting: props.isDeleting && props.pendingDelete?.entity === "event" && props.pendingDelete.id === event.id,
@@ -549,6 +603,26 @@ export function buildAdminClubMembersTabProps(props: MembersBuilderProps): Admin
         onClick: () => props.toggleSelectAllVisible("members", props.filteredMembers.map((member) => member.id)),
       },
       {
+        label: "Скрыть",
+        icon: <EyeOff className="h-4 w-4" />,
+        variant: "outline",
+        disabled: props.selectedMembers.length === 0 || props.bulkHideMembers.isPending,
+        onClick: async () => {
+          await props.bulkHideMembers.mutateAsync({ ids: props.selectedMembers.map((m) => m.id), hidden: true });
+          props.clearSelection("members");
+        },
+      },
+      {
+        label: "Показать",
+        icon: <Eye className="h-4 w-4" />,
+        variant: "outline",
+        disabled: props.selectedMembers.length === 0 || props.bulkHideMembers.isPending,
+        onClick: async () => {
+          await props.bulkHideMembers.mutateAsync({ ids: props.selectedMembers.map((m) => m.id), hidden: false });
+          props.clearSelection("members");
+        },
+      },
+      {
         label: "Удалить выбранных",
         icon: <Trash2 className="h-4 w-4" />,
         variant: "outline",
@@ -578,6 +652,8 @@ export function buildAdminClubMembersTabProps(props: MembersBuilderProps): Admin
     },
     deletePresetPending: props.deletePreset.isPending,
     badgeValue: props.memberFilters.badge,
+    visibilityValue: props.memberFilters.visibility,
+    onVisibilityChange: (value: string) => props.setMemberFilters((current) => ({ ...current, visibility: value as "all" | "visible" | "hidden" })),
     badgeOptions: [{ label: "Все бейджи", value: "all" }, ...props.memberBadges.map((value) => ({ label: value, value }))],
     onBadgeChange: (value) => props.setMemberFilters((current) => ({ ...current, badge: value })),
     sortByValue: props.memberFilters.sortBy,
@@ -590,6 +666,7 @@ export function buildAdminClubMembersTabProps(props: MembersBuilderProps): Admin
       title: member.name,
       subtitle: member.animal,
       meta: `${member.sinceLabel} · ${member.badge} · Порядок: ${member.sortOrder}`,
+      hidden: Boolean(member.hidden),
       onToggleSelected: () => props.toggleSelection("members", member.id),
       inlineActions: [
         {
@@ -626,6 +703,7 @@ export function buildAdminClubMembersTabProps(props: MembersBuilderProps): Admin
         sinceLabel: member.sinceLabel,
         badge: member.badge,
         sortOrder: member.sortOrder,
+        hidden: Boolean(member.hidden),
       }),
     onDelete: () => props.setPendingDelete({ entity: "member", id: member.id, title: member.name, description: `участника «${member.name}»` }),
       deleting: props.isDeleting && props.pendingDelete?.entity === "member" && props.pendingDelete.id === member.id,

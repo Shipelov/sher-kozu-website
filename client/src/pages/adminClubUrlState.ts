@@ -73,15 +73,18 @@ export function buildAdminClubUrl(
   if (postFilters.pinned !== "all") params.set("postPinned", postFilters.pinned);
   if (postFilters.sortBy !== "sortOrder") params.set("postSortBy", postFilters.sortBy);
   if (postFilters.sortDirection !== "asc") params.set("postSortDirection", postFilters.sortDirection);
+  if (postFilters.visibility !== "all") params.set("postVisibility", postFilters.visibility);
   if (eventFilters.query) params.set("eventQuery", eventFilters.query);
   if (eventFilters.status !== "all") params.set("eventStatus", eventFilters.status);
   if (eventFilters.tone !== "all") params.set("eventTone", eventFilters.tone);
   if (eventFilters.sortBy !== "sortOrder") params.set("eventSortBy", eventFilters.sortBy);
   if (eventFilters.sortDirection !== "asc") params.set("eventSortDirection", eventFilters.sortDirection);
+  if (eventFilters.visibility !== "all") params.set("eventVisibility", eventFilters.visibility);
   if (memberFilters.query) params.set("memberQuery", memberFilters.query);
   if (memberFilters.badge !== "all") params.set("memberBadge", memberFilters.badge);
   if (memberFilters.sortBy !== "sortOrder") params.set("memberSortBy", memberFilters.sortBy);
   if (memberFilters.sortDirection !== "asc") params.set("memberSortDirection", memberFilters.sortDirection);
+  if (memberFilters.visibility !== "all") params.set("memberVisibility", memberFilters.visibility);
   if (pagination.posts.page !== 1) params.set("postPage", String(pagination.posts.page));
   if (pagination.posts.pageSize !== 10) params.set("postPageSize", String(pagination.posts.pageSize));
   if (pagination.events.page !== 1) params.set("eventPage", String(pagination.events.page));
@@ -110,6 +113,7 @@ export function applyPresetToFilters(
         query: config.query ?? "",
         category: config.category ?? "all",
         pinned: config.pinned ?? "all",
+        visibility: "all",
         sortBy: (config.sortBy === "timeLabel" || config.sortBy === "title" ? config.sortBy : "sortOrder") as PostSortField,
         sortDirection: config.sortDirection === "desc" ? "desc" : "asc",
       },
@@ -123,6 +127,7 @@ export function applyPresetToFilters(
         query: config.query ?? "",
         status: config.status ?? "all",
         tone: config.tone ?? "all",
+        visibility: "all",
         sortBy: (config.sortBy === "dateLabel" || config.sortBy === "status" ? config.sortBy : "sortOrder") as EventSortField,
         sortDirection: config.sortDirection === "desc" ? "desc" : "asc",
       },
@@ -134,6 +139,7 @@ export function applyPresetToFilters(
     memberFilters: {
       query: config.query ?? "",
       badge: config.badge ?? "all",
+      visibility: "all",
       sortBy: (config.sortBy === "name" || config.sortBy === "badge" ? config.sortBy : "sortOrder") as MemberSortField,
       sortDirection: config.sortDirection === "desc" ? "desc" : "asc",
     },
@@ -187,6 +193,10 @@ export function readAdminClubStateFromUrl(): {
         const value = params.get("postSortBy");
         return value === "timeLabel" || value === "title" ? value : "sortOrder";
       })(),
+      visibility: (() => {
+        const value = params.get("postVisibility");
+        return value === "visible" || value === "hidden" ? value : "all";
+      })(),
       sortDirection: params.get("postSortDirection") === "desc" ? "desc" : "asc",
     },
     eventFilters: {
@@ -197,6 +207,10 @@ export function readAdminClubStateFromUrl(): {
         const value = params.get("eventSortBy");
         return value === "dateLabel" || value === "status" ? value : "sortOrder";
       })(),
+      visibility: (() => {
+        const value = params.get("eventVisibility");
+        return value === "visible" || value === "hidden" ? value : "all";
+      })(),
       sortDirection: params.get("eventSortDirection") === "desc" ? "desc" : "asc",
     },
     memberFilters: {
@@ -205,6 +219,10 @@ export function readAdminClubStateFromUrl(): {
       sortBy: (() => {
         const value = params.get("memberSortBy");
         return value === "name" || value === "badge" ? value : "sortOrder";
+      })(),
+      visibility: (() => {
+        const value = params.get("memberVisibility");
+        return value === "visible" || value === "hidden" ? value : "all";
       })(),
       sortDirection: params.get("memberSortDirection") === "desc" ? "desc" : "asc",
     },

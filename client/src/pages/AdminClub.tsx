@@ -336,6 +336,7 @@ export default function AdminClub() {
                 updatePost: mutations.updatePost,
                 toast,
                 pendingDelete: state.pendingDelete,
+                bulkHidePosts: mutations.bulkHidePosts,
               })}
             />
           </AdminClubPostsTabSection>
@@ -380,6 +381,7 @@ export default function AdminClub() {
                 updateEvent: mutations.updateEvent,
                 toast,
                 pendingDelete: state.pendingDelete,
+                bulkHideEvents: mutations.bulkHideEvents,
                 setActionLog: state.setActionLog,
                 recordAdminAction,
               })}
@@ -425,6 +427,7 @@ export default function AdminClub() {
                 updateMember: mutations.updateMember,
                 toast,
                 pendingDelete: state.pendingDelete,
+                bulkHideMembers: mutations.bulkHideMembers,
                 setActionLog: state.setActionLog,
                 recordAdminAction,
               })}

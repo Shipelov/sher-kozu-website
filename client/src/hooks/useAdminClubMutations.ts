@@ -255,6 +255,91 @@ export function useAdminClubMutations(deps: MutationDeps) {
     },
   });
 
+  // ── Bulk mutations ──
+  const bulkHidePosts = trpc.adminClub.bulkHidePosts.useMutation({
+    onSuccess: async (_, variables) => {
+      await refreshAdminData();
+      const label = variables.hidden ? "скрыто" : "показано";
+      toast.success(`${variables.ids.length} постов ${label}`, {
+        description: variables.hidden
+          ? "Выбранные посты больше не видны в публичной ленте."
+          : "Выбранные посты снова видны в публичной ленте.",
+      });
+    },
+    onError: (error) => {
+      toast.error("Не удалось изменить видимость постов", { description: error.message });
+    },
+  });
+
+  const bulkDeletePosts = trpc.adminClub.bulkDeletePosts.useMutation({
+    onSuccess: async (_, variables) => {
+      await refreshAdminData();
+      setPendingDelete(null);
+      toast.success(`${variables.ids.length} постов удалено`, {
+        description: "Выбранные посты безвозвратно удалены.",
+      });
+    },
+    onError: (error) => {
+      toast.error("Не удалось удалить посты", { description: error.message });
+    },
+  });
+
+  const bulkHideEvents = trpc.adminClub.bulkHideEvents.useMutation({
+    onSuccess: async (_, variables) => {
+      await refreshAdminData();
+      const label = variables.hidden ? "скрыто" : "показано";
+      toast.success(`${variables.ids.length} событий ${label}`, {
+        description: variables.hidden
+          ? "Выбранные события больше не видны в публичной ленте."
+          : "Выбранные события снова видны в публичной ленте.",
+      });
+    },
+    onError: (error) => {
+      toast.error("Не удалось изменить видимость событий", { description: error.message });
+    },
+  });
+
+  const bulkDeleteEvents = trpc.adminClub.bulkDeleteEvents.useMutation({
+    onSuccess: async (_, variables) => {
+      await refreshAdminData();
+      setPendingDelete(null);
+      toast.success(`${variables.ids.length} событий удалено`, {
+        description: "Выбранные события безвозвратно удалены.",
+      });
+    },
+    onError: (error) => {
+      toast.error("Не удалось удалить события", { description: error.message });
+    },
+  });
+
+  const bulkHideMembers = trpc.adminClub.bulkHideMembers.useMutation({
+    onSuccess: async (_, variables) => {
+      await refreshAdminData();
+      const label = variables.hidden ? "скрыто" : "показано";
+      toast.success(`${variables.ids.length} участников ${label}`, {
+        description: variables.hidden
+          ? "Выбранные участники больше не видны в публичной ленте."
+          : "Выбранные участники снова видны в публичной ленте.",
+      });
+    },
+    onError: (error) => {
+      toast.error("Не удалось изменить видимость участников", { description: error.message });
+    },
+  });
+
+  const bulkDeleteMembers = trpc.adminClub.bulkDeleteMembers.useMutation({
+    onSuccess: async (_, variables) => {
+      await refreshAdminData();
+      setPendingDelete(null);
+      toast.success(`${variables.ids.length} участников удалено`, {
+        description: "Выбранные участники безвозвратно удалены.",
+      });
+    },
+    onError: (error) => {
+      toast.error("Не удалось удалить участников", { description: error.message });
+    },
+  });
+
   // ── Preset mutations ──
   const createPreset = trpc.adminClub.createPreset.useMutation({
     onSuccess: async (_, variables) => {
@@ -289,6 +374,9 @@ export function useAdminClubMutations(deps: MutationDeps) {
     createPost, updatePost, deletePost,
     createEvent, updateEvent, deleteEvent,
     createMember, updateMember, deleteMember,
+    bulkHidePosts, bulkDeletePosts,
+    bulkHideEvents, bulkDeleteEvents,
+    bulkHideMembers, bulkDeleteMembers,
     createPreset, deletePreset,
   };
 }

@@ -412,6 +412,7 @@ export function ListRow({
   subtitle,
   meta,
   badge,
+  hidden,
   selected,
   onToggleSelected,
   inlineActions,
@@ -423,6 +424,7 @@ export function ListRow({
   subtitle: string;
   meta: string;
   badge?: string;
+  hidden?: boolean;
   selected?: boolean;
   onToggleSelected?: () => void;
   inlineActions?: InlineActionConfig[];
@@ -449,6 +451,7 @@ export function ListRow({
             <div className="flex flex-wrap items-center gap-2">
               <p className="font-medium text-stone-950">{title}</p>
               {badge ? <Badge variant="secondary">{badge}</Badge> : null}
+              {hidden ? <Badge variant="outline" className="border-red-200 bg-red-50 text-red-700">Скрыт</Badge> : null}
             </div>
             <p className="text-sm text-stone-600">{subtitle}</p>
             <p className="text-xs text-stone-500">{meta}</p>

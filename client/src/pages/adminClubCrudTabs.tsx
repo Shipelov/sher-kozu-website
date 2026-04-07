@@ -77,6 +77,7 @@ type PostItem = {
   tagsCsv: string;
   pinned: boolean;
   sortOrder: number;
+  hidden: boolean;
 };
 
 type EventItem = {
@@ -87,6 +88,7 @@ type EventItem = {
   status: string;
   tone: string;
   sortOrder: number;
+  hidden: boolean;
 };
 
 type MemberItem = {
@@ -96,6 +98,7 @@ type MemberItem = {
   sinceLabel: string;
   badge: string;
   sortOrder: number;
+  hidden: boolean;
 };
 
 type PostsListRow = {
@@ -105,6 +108,7 @@ type PostsListRow = {
   subtitle: string;
   meta: string;
   badge?: string;
+  hidden?: boolean;
   inlineActions: InlineAction[];
   onToggleSelected: () => void;
   onEdit: () => void;
@@ -118,6 +122,7 @@ type EventsListRow = {
   title: string;
   subtitle: string;
   meta: string;
+  hidden?: boolean;
   inlineActions: InlineAction[];
   onToggleSelected: () => void;
   onEdit: () => void;
@@ -131,6 +136,7 @@ type MembersListRow = {
   title: string;
   subtitle: string;
   meta: string;
+  hidden?: boolean;
   inlineActions: InlineAction[];
   onToggleSelected: () => void;
   onEdit: () => void;
@@ -175,6 +181,8 @@ type PostsTabListProps = {
   onCategoryChange: (value: string) => void;
   pinnedValue: PostFilterState["pinned"];
   onPinnedChange: (value: PostFilterState["pinned"]) => void;
+  visibilityValue: string;
+  onVisibilityChange: (value: string) => void;
   sortByValue: PostSortField;
   onSortByChange: (value: PostSortField) => void;
   sortDirectionValue: SortDirection;
@@ -220,6 +228,8 @@ type EventsTabListProps = {
   toneValue: string;
   toneOptions: Array<{ label: string; value: string }>;
   onToneChange: (value: string) => void;
+  visibilityValue: string;
+  onVisibilityChange: (value: string) => void;
   sortByValue: EventSortField;
   onSortByChange: (value: EventSortField) => void;
   sortDirectionValue: SortDirection;
@@ -262,6 +272,8 @@ type MembersTabListProps = {
   badgeValue: string;
   badgeOptions: Array<{ label: string; value: string }>;
   onBadgeChange: (value: string) => void;
+  visibilityValue: string;
+  onVisibilityChange: (value: string) => void;
   sortByValue: MemberSortField;
   onSortByChange: (value: MemberSortField) => void;
   sortDirectionValue: SortDirection;
@@ -307,6 +319,8 @@ export function AdminClubPostsTabContent({
   onCategoryChange,
   pinnedValue,
   onPinnedChange,
+  visibilityValue,
+  onVisibilityChange,
   sortByValue,
   onSortByChange,
   sortDirectionValue,
@@ -338,8 +352,9 @@ export function AdminClubPostsTabContent({
         <Field label="Теги CSV"><Input value={postForm.tagsCsv} onChange={(e) => onPostFormChange({ ...postForm, tagsCsv: e.target.value })} placeholder="утро,марта,клуб" /></Field>
         <Field label="Текст поста" error={postErrors.text}><Textarea aria-invalid={Boolean(postErrors.text)} value={postForm.text} onChange={(e) => { onPostFormChange({ ...postForm, text: e.target.value }); if (postErrors.text) onPostFieldErrorClear("text"); }} className="min-h-32" /></Field>
         <div className="flex items-center justify-between rounded-xl border border-stone-200 px-4 py-3"><div><p className="font-medium text-stone-950">Закрепить пост</p><p className="text-sm text-stone-500">Закреплённые посты поднимаются вверх в ленте.</p></div><Switch checked={postForm.pinned} onCheckedChange={(checked) => onPostFormChange({ ...postForm, pinned: checked })} /></div>
+        <div className="flex items-center justify-between rounded-xl border border-red-100 bg-red-50/30 px-4 py-3"><div><p className="font-medium text-stone-950">Скрыть пост</p><p className="text-sm text-stone-500">Скрытые посты не отображаются в публичной ленте.</p></div><Switch checked={postForm.hidden} onCheckedChange={(checked) => onPostFormChange({ ...postForm, hidden: checked })} /></div>
       </EntityFormCard>
-      <EntityListCard title="Текущие посты" description="Быстрое редактирование, удаление, поиск и фильтрация материалов клуба." sortIndicator={sortIndicator} toolbar={<FilterToolbar searchPlaceholder="Искать по заголовку, тексту, автору или тегам" selectionCount={selectedCount} bulkActions={bulkActions} onClearSelection={onClearSelection} presetPanel={<PresetToolbar presetName={presetName} onPresetNameChange={onPresetNameChange} onSave={onSavePreset} saveDisabled={savePresetDisabled} presets={presets} onApplyPreset={onApplyPreset} onDeletePreset={onDeletePreset} deletePending={deletePresetPending} />} searchValue={searchValue} resultCount={resultCount} resultLabel="постов" resetLabel="Сбросить фильтры постов" activeFilterChips={activeFilters} onSearchChange={onSearchChange} onReset={onResetFilters} hasActiveFilters={hasActiveFilters}><SelectFilter label="Категория" value={categoryValue} onChange={onCategoryChange} options={categoryOptions} /><SelectFilter label="Тип" value={pinnedValue} onChange={(value) => onPinnedChange(value as PostFilterState["pinned"])} options={[{ label: "Все посты", value: "all" }, { label: "Только pinned", value: "pinned" }, { label: "Только обычные", value: "regular" }]} /><SelectFilter label="Сортировать по" value={sortByValue} onChange={(value) => onSortByChange(value as PostSortField)} options={[{ label: "Порядок", value: "sortOrder" }, { label: "Время", value: "timeLabel" }, { label: "Заголовок", value: "title" }]} /><SelectFilter label="Направление" value={sortDirectionValue} onChange={(value) => onSortDirectionChange(value as SortDirection)} options={[{ label: "По возрастанию", value: "asc" }, { label: "По убыванию", value: "desc" }]} /></FilterToolbar>} items={items} pagination={pagination} onPageChange={onPageChange} onPageSizeChange={onPageSizeChange} emptyText="По текущим фильтрам посты не найдены." renderItem={(item: PostsListRow) => <ListRow selected={item.selected} onToggleSelected={item.onToggleSelected} title={item.title} subtitle={item.subtitle} meta={item.meta} badge={item.badge} inlineActions={item.inlineActions} onEdit={item.onEdit} onDelete={item.onDelete} deleting={item.deleting} />} />
+      <EntityListCard title="Текущие посты" description="Быстрое редактирование, удаление, поиск и фильтрация материалов клуба." sortIndicator={sortIndicator} toolbar={<FilterToolbar searchPlaceholder="Искать по заголовку, тексту, автору или тегам" selectionCount={selectedCount} bulkActions={bulkActions} onClearSelection={onClearSelection} presetPanel={<PresetToolbar presetName={presetName} onPresetNameChange={onPresetNameChange} onSave={onSavePreset} saveDisabled={savePresetDisabled} presets={presets} onApplyPreset={onApplyPreset} onDeletePreset={onDeletePreset} deletePending={deletePresetPending} />} searchValue={searchValue} resultCount={resultCount} resultLabel="постов" resetLabel="Сбросить фильтры постов" activeFilterChips={activeFilters} onSearchChange={onSearchChange} onReset={onResetFilters} hasActiveFilters={hasActiveFilters}><SelectFilter label="Категория" value={categoryValue} onChange={onCategoryChange} options={categoryOptions} /><SelectFilter label="Тип" value={pinnedValue} onChange={(value) => onPinnedChange(value as PostFilterState["pinned"])} options={[{ label: "Все посты", value: "all" }, { label: "Только pinned", value: "pinned" }, { label: "Только обычные", value: "regular" }]} /><SelectFilter label="Видимость" value={visibilityValue} onChange={onVisibilityChange} options={[{ label: "Все", value: "all" }, { label: "Только видимые", value: "visible" }, { label: "Только скрытые", value: "hidden" }]} /><SelectFilter label="Сортировать по" value={sortByValue} onChange={(value) => onSortByChange(value as PostSortField)} options={[{ label: "Порядок", value: "sortOrder" }, { label: "Время", value: "timeLabel" }, { label: "Заголовок", value: "title" }]} /><SelectFilter label="Направление" value={sortDirectionValue} onChange={(value) => onSortDirectionChange(value as SortDirection)} options={[{ label: "По возрастанию", value: "asc" }, { label: "По убыванию", value: "desc" }]} /></FilterToolbar>} items={items} pagination={pagination} onPageChange={onPageChange} onPageSizeChange={onPageSizeChange} emptyText="По текущим фильтрам посты не найдены." renderItem={(item: PostsListRow) => <ListRow selected={item.selected} onToggleSelected={item.onToggleSelected} title={item.title} subtitle={item.subtitle} meta={item.meta} badge={item.badge} hidden={item.hidden} inlineActions={item.inlineActions} onEdit={item.onEdit} onDelete={item.onDelete} deleting={item.deleting} />} />
     </>
   );
 }
@@ -376,6 +391,8 @@ export function AdminClubEventsTabContent({
   toneValue,
   toneOptions,
   onToneChange,
+  visibilityValue,
+  onVisibilityChange,
   sortByValue,
   onSortByChange,
   sortDirectionValue,
@@ -396,8 +413,9 @@ export function AdminClubEventsTabContent({
           <Field label="Порядок"><Input type="number" value={eventForm.sortOrder} onChange={(e) => onEventFormChange({ ...eventForm, sortOrder: Number(e.target.value) || 0 })} /></Field>
         </div>
         <Field label="Описание" error={eventErrors.description}><Textarea aria-invalid={Boolean(eventErrors.description)} value={eventForm.description} onChange={(e) => { onEventFormChange({ ...eventForm, description: e.target.value }); if (eventErrors.description) onEventFieldErrorClear("description"); }} className="min-h-32" /></Field>
+        <div className="flex items-center justify-between rounded-xl border border-red-100 bg-red-50/30 px-4 py-3"><div><p className="font-medium text-stone-950">Скрыть событие</p><p className="text-sm text-stone-500">Скрытые события не отображаются в публичной ленте.</p></div><Switch checked={eventForm.hidden} onCheckedChange={(checked) => onEventFormChange({ ...eventForm, hidden: checked })} /></div>
       </EntityFormCard>
-      <EntityListCard title="События клуба" description="Редактируйте даты, статусы и тексты, а также быстро находите нужные записи." sortIndicator={sortIndicator} toolbar={<FilterToolbar searchPlaceholder="Искать по названию, описанию или дате" selectionCount={selectedCount} bulkActions={bulkActions} onClearSelection={onClearSelection} presetPanel={<PresetToolbar presetName={presetName} onPresetNameChange={onPresetNameChange} onSave={onSavePreset} saveDisabled={savePresetDisabled} presets={presets} onApplyPreset={onApplyPreset} onDeletePreset={onDeletePreset} deletePending={deletePresetPending} />} searchValue={searchValue} resultCount={resultCount} resultLabel="событий" resetLabel="Сбросить фильтры событий" activeFilterChips={activeFilters} onSearchChange={onSearchChange} onReset={onResetFilters} hasActiveFilters={hasActiveFilters}><SelectFilter label="Статус" value={statusValue} onChange={onStatusChange} options={statusOptions} /><SelectFilter label="Тон" value={toneValue} onChange={onToneChange} options={toneOptions} /><SelectFilter label="Сортировать по" value={sortByValue} onChange={(value) => onSortByChange(value as EventSortField)} options={[{ label: "Порядок", value: "sortOrder" }, { label: "Дату", value: "dateLabel" }, { label: "Статус", value: "status" }]} /><SelectFilter label="Направление" value={sortDirectionValue} onChange={(value) => onSortDirectionChange(value as SortDirection)} options={[{ label: "По возрастанию", value: "asc" }, { label: "По убыванию", value: "desc" }]} /></FilterToolbar>} items={items} pagination={pagination} onPageChange={onPageChange} onPageSizeChange={onPageSizeChange} emptyText="По текущим фильтрам события не найдены." renderItem={(item: EventsListRow) => <ListRow selected={item.selected} onToggleSelected={item.onToggleSelected} title={item.title} subtitle={item.subtitle} meta={item.meta} inlineActions={item.inlineActions} onEdit={item.onEdit} onDelete={item.onDelete} deleting={item.deleting} />} />
+      <EntityListCard title="События клуба" description="Редактируйте даты, статусы и тексты, а также быстро находите нужные записи." sortIndicator={sortIndicator} toolbar={<FilterToolbar searchPlaceholder="Искать по названию, описанию или дате" selectionCount={selectedCount} bulkActions={bulkActions} onClearSelection={onClearSelection} presetPanel={<PresetToolbar presetName={presetName} onPresetNameChange={onPresetNameChange} onSave={onSavePreset} saveDisabled={savePresetDisabled} presets={presets} onApplyPreset={onApplyPreset} onDeletePreset={onDeletePreset} deletePending={deletePresetPending} />} searchValue={searchValue} resultCount={resultCount} resultLabel="событий" resetLabel="Сбросить фильтры событий" activeFilterChips={activeFilters} onSearchChange={onSearchChange} onReset={onResetFilters} hasActiveFilters={hasActiveFilters}><SelectFilter label="Статус" value={statusValue} onChange={onStatusChange} options={statusOptions} /><SelectFilter label="Тон" value={toneValue} onChange={onToneChange} options={toneOptions} /><SelectFilter label="Видимость" value={visibilityValue} onChange={onVisibilityChange} options={[{ label: "Все", value: "all" }, { label: "Только видимые", value: "visible" }, { label: "Только скрытые", value: "hidden" }]} /><SelectFilter label="Сортировать по" value={sortByValue} onChange={(value) => onSortByChange(value as EventSortField)} options={[{ label: "Порядок", value: "sortOrder" }, { label: "Дату", value: "dateLabel" }, { label: "Статус", value: "status" }]} /><SelectFilter label="Направление" value={sortDirectionValue} onChange={(value) => onSortDirectionChange(value as SortDirection)} options={[{ label: "По возрастанию", value: "asc" }, { label: "По убыванию", value: "desc" }]} /></FilterToolbar>} items={items} pagination={pagination} onPageChange={onPageChange} onPageSizeChange={onPageSizeChange} emptyText="По текущим фильтрам события не найдены." renderItem={(item: EventsListRow) => <ListRow selected={item.selected} onToggleSelected={item.onToggleSelected} title={item.title} subtitle={item.subtitle} meta={item.meta} hidden={item.hidden} inlineActions={item.inlineActions} onEdit={item.onEdit} onDelete={item.onDelete} deleting={item.deleting} />} />
     </>
   );
 }
@@ -431,6 +449,8 @@ export function AdminClubMembersTabContent({
   badgeValue,
   badgeOptions,
   onBadgeChange,
+  visibilityValue,
+  onVisibilityChange,
   sortByValue,
   onSortByChange,
   sortDirectionValue,
@@ -450,8 +470,9 @@ export function AdminClubMembersTabContent({
           <Field label="Бейдж"><Input value={memberForm.badge} onChange={(e) => onMemberFormChange({ ...memberForm, badge: e.target.value })} /></Field>
           <Field label="Порядок"><Input type="number" value={memberForm.sortOrder} onChange={(e) => onMemberFormChange({ ...memberForm, sortOrder: Number(e.target.value) || 0 })} /></Field>
         </div>
+        <div className="flex items-center justify-between rounded-xl border border-red-100 bg-red-50/30 px-4 py-3"><div><p className="font-medium text-stone-950">Скрыть участника</p><p className="text-sm text-stone-500">Скрытые участники не отображаются в публичной ленте.</p></div><Switch checked={memberForm.hidden} onCheckedChange={(checked) => onMemberFormChange({ ...memberForm, hidden: checked })} /></div>
       </EntityFormCard>
-      <EntityListCard title="Участники клуба" description="Ищите по имени, животному или бейджу и быстро поддерживайте состав сообщества в порядке." sortIndicator={sortIndicator} toolbar={<FilterToolbar searchPlaceholder="Искать по имени, животному или периоду участия" selectionCount={selectedCount} bulkActions={bulkActions} onClearSelection={onClearSelection} presetPanel={<PresetToolbar presetName={presetName} onPresetNameChange={onPresetNameChange} onSave={onSavePreset} saveDisabled={savePresetDisabled} presets={presets} onApplyPreset={onApplyPreset} onDeletePreset={onDeletePreset} deletePending={deletePresetPending} />} searchValue={searchValue} resultCount={resultCount} resultLabel="участников" resetLabel="Сбросить фильтры участников" activeFilterChips={activeFilters} onSearchChange={onSearchChange} onReset={onResetFilters} hasActiveFilters={hasActiveFilters}><SelectFilter label="Бейдж" value={badgeValue} onChange={onBadgeChange} options={badgeOptions} /><SelectFilter label="Сортировать по" value={sortByValue} onChange={(value) => onSortByChange(value as MemberSortField)} options={[{ label: "Порядок", value: "sortOrder" }, { label: "Имени", value: "name" }, { label: "Бейджу", value: "badge" }]} /><SelectFilter label="Направление" value={sortDirectionValue} onChange={(value) => onSortDirectionChange(value as SortDirection)} options={[{ label: "По возрастанию", value: "asc" }, { label: "По убыванию", value: "desc" }]} /></FilterToolbar>} items={items} pagination={pagination} onPageChange={onPageChange} onPageSizeChange={onPageSizeChange} emptyText="По текущим фильтрам участники не найдены." renderItem={(item: MembersListRow) => <ListRow selected={item.selected} onToggleSelected={item.onToggleSelected} title={item.title} subtitle={item.subtitle} meta={item.meta} inlineActions={item.inlineActions} onEdit={item.onEdit} onDelete={item.onDelete} deleting={item.deleting} />} />
+      <EntityListCard title="Участники клуба" description="Ищите по имени, животному или бейджу и быстро поддерживайте состав сообщества в порядке." sortIndicator={sortIndicator} toolbar={<FilterToolbar searchPlaceholder="Искать по имени, животному или периоду участия" selectionCount={selectedCount} bulkActions={bulkActions} onClearSelection={onClearSelection} presetPanel={<PresetToolbar presetName={presetName} onPresetNameChange={onPresetNameChange} onSave={onSavePreset} saveDisabled={savePresetDisabled} presets={presets} onApplyPreset={onApplyPreset} onDeletePreset={onDeletePreset} deletePending={deletePresetPending} />} searchValue={searchValue} resultCount={resultCount} resultLabel="участников" resetLabel="Сбросить фильтры участников" activeFilterChips={activeFilters} onSearchChange={onSearchChange} onReset={onResetFilters} hasActiveFilters={hasActiveFilters}><SelectFilter label="Бейдж" value={badgeValue} onChange={onBadgeChange} options={badgeOptions} /><SelectFilter label="Видимость" value={visibilityValue} onChange={onVisibilityChange} options={[{ label: "Все", value: "all" }, { label: "Только видимые", value: "visible" }, { label: "Только скрытые", value: "hidden" }]} /><SelectFilter label="Сортировать по" value={sortByValue} onChange={(value) => onSortByChange(value as MemberSortField)} options={[{ label: "Порядок", value: "sortOrder" }, { label: "Имени", value: "name" }, { label: "Бейджу", value: "badge" }]} /><SelectFilter label="Направление" value={sortDirectionValue} onChange={(value) => onSortDirectionChange(value as SortDirection)} options={[{ label: "По возрастанию", value: "asc" }, { label: "По убыванию", value: "desc" }]} /></FilterToolbar>} items={items} pagination={pagination} onPageChange={onPageChange} onPageSizeChange={onPageSizeChange} emptyText="По текущим фильтрам участники не найдены." renderItem={(item: MembersListRow) => <ListRow selected={item.selected} onToggleSelected={item.onToggleSelected} title={item.title} subtitle={item.subtitle} meta={item.meta} hidden={item.hidden} inlineActions={item.inlineActions} onEdit={item.onEdit} onDelete={item.onDelete} deleting={item.deleting} />} />
     </>
   );
 }
@@ -608,11 +629,13 @@ export function buildAdminClubPostsTabProps(props: AdminClubPostsTabContainerPro
     onCategoryChange: (value) => props.setPostFilters((current) => ({ ...current, category: value })),
     pinnedValue: props.postFilters.pinned,
     onPinnedChange: (value) => props.setPostFilters((current) => ({ ...current, pinned: value })),
+    visibilityValue: props.postFilters.visibility,
+    onVisibilityChange: (value) => props.setPostFilters((current) => ({ ...current, visibility: value as "all" | "visible" | "hidden" })),
     sortByValue: props.postFilters.sortBy,
     onSortByChange: (value) => props.setPostFilters((current) => ({ ...current, sortBy: value })),
     sortDirectionValue: props.postFilters.sortDirection,
     onSortDirectionChange: (value) => props.setPostFilters((current) => ({ ...current, sortDirection: value })),
-    items: props.paginatedPosts.map((post) => ({ id: post.id, selected: props.selectedIds.posts.includes(post.id), title: post.title, subtitle: `${post.author} · ${post.timeLabel}`, meta: `Категория: ${post.category} · Порядок: ${post.sortOrder}`, badge: post.pinned ? "Pinned" : undefined, onToggleSelected: () => props.toggleSelection("posts", post.id), inlineActions: [{ label: "Порядок", value: post.sortOrder, icon: <ArrowDown className="h-3.5 w-3.5" />, disabled: props.updatePost.isPending, onClick: async () => { const nextSortOrder = post.sortOrder + 1; await props.updatePost.mutateAsync({ ...post, sortOrder: nextSortOrder }); const toastCopy = props.getInlineActionToastCopy("post", { title: post.title, sortOrder: nextSortOrder, pinned: post.pinned }); props.toast.success(toastCopy.sortOrder.title, { description: toastCopy.sortOrder.description }); } }, { label: post.pinned ? "Pinned" : "Обычный", icon: <Pin className="h-3.5 w-3.5" />, disabled: props.updatePost.isPending, onClick: async () => { const nextPinned = !post.pinned; await props.updatePost.mutateAsync({ ...post, pinned: nextPinned }); const toastCopy = props.getInlineActionToastCopy("post", { title: post.title, sortOrder: post.sortOrder, pinned: nextPinned }); props.toast.success(toastCopy.status.title, { description: toastCopy.status.description }); } }], onEdit: () => props.setPostForm({ id: post.id, category: post.category, author: post.author, avatar: post.avatar, role: post.role, timeLabel: post.timeLabel, title: post.title, text: post.text, imageUrl: post.imageUrl, likes: post.likes, comments: post.comments, tagsCsv: post.tagsCsv, pinned: Boolean(post.pinned), sortOrder: post.sortOrder }), onDelete: () => props.setPendingDelete({ entity: "post", id: post.id, title: post.title, description: `пост «${post.title}»` }), deleting: props.isDeleting && props.pendingDelete?.entity === "post" && props.pendingDelete.id === post.id })),
+    items: props.paginatedPosts.map((post) => ({ id: post.id, selected: props.selectedIds.posts.includes(post.id), title: post.title, subtitle: `${post.author} · ${post.timeLabel}`, meta: `Категория: ${post.category} · Порядок: ${post.sortOrder}`, badge: post.pinned ? "Pinned" : undefined, onToggleSelected: () => props.toggleSelection("posts", post.id), inlineActions: [{ label: "Порядок", value: post.sortOrder, icon: <ArrowDown className="h-3.5 w-3.5" />, disabled: props.updatePost.isPending, onClick: async () => { const nextSortOrder = post.sortOrder + 1; await props.updatePost.mutateAsync({ ...post, sortOrder: nextSortOrder }); const toastCopy = props.getInlineActionToastCopy("post", { title: post.title, sortOrder: nextSortOrder, pinned: post.pinned }); props.toast.success(toastCopy.sortOrder.title, { description: toastCopy.sortOrder.description }); } }, { label: post.pinned ? "Pinned" : "Обычный", icon: <Pin className="h-3.5 w-3.5" />, disabled: props.updatePost.isPending, onClick: async () => { const nextPinned = !post.pinned; await props.updatePost.mutateAsync({ ...post, pinned: nextPinned }); const toastCopy = props.getInlineActionToastCopy("post", { title: post.title, sortOrder: post.sortOrder, pinned: nextPinned }); props.toast.success(toastCopy.status.title, { description: toastCopy.status.description }); } }], onEdit: () => props.setPostForm({ id: post.id, category: post.category, author: post.author, avatar: post.avatar, role: post.role, timeLabel: post.timeLabel, title: post.title, text: post.text, imageUrl: post.imageUrl, likes: post.likes, comments: post.comments, tagsCsv: post.tagsCsv, pinned: Boolean(post.pinned), sortOrder: post.sortOrder, hidden: Boolean(post.hidden) }), onDelete: () => props.setPendingDelete({ entity: "post", id: post.id, title: post.title, description: `пост «${post.title}»` }), deleting: props.isDeleting && props.pendingDelete?.entity === "post" && props.pendingDelete.id === post.id })),
     pagination: props.paginationMeta,
     onPageChange: (page) => props.setTabPage("posts", page),
     onPageSizeChange: (pageSize) => props.setTabPageSize("posts", pageSize),
@@ -626,7 +649,7 @@ export function buildAdminClubEventsTabProps(props: AdminClubEventsTabContainerP
     onEventFormChange: (next) => props.setEventForm(next),
     onEventFieldErrorClear: (field) => props.setEventErrors((current) => ({ ...current, [field]: undefined })),
     onSubmit: props.handleEventSubmit,
-    onResetForm: () => { props.setEventForm({ id: undefined, title: "", dateLabel: "", description: "", status: "", tone: "", sortOrder: 0 }); props.setEventErrors({}); },
+    onResetForm: () => { props.setEventForm({ id: undefined, title: "", dateLabel: "", description: "", status: "", tone: "", sortOrder: 0, hidden: false }); props.setEventErrors({}); },
     submitDisabled: props.createEventPending || props.updateEventPending,
     sortIndicator: { fieldLabel: props.eventFilters.sortBy === "dateLabel" ? "дате" : props.eventFilters.sortBy === "status" ? "статусу" : "порядку", directionLabel: props.eventFilters.sortDirection === "asc" ? "↑" : "↓" },
     searchValue: props.eventFilters.query,
@@ -652,11 +675,13 @@ export function buildAdminClubEventsTabProps(props: AdminClubEventsTabContainerP
     toneValue: props.eventFilters.tone,
     toneOptions: [{ label: "Все тона", value: "all" }, ...props.eventTones.map((value) => ({ label: value, value }))],
     onToneChange: (value) => props.setEventFilters((current) => ({ ...current, tone: value })),
+    visibilityValue: props.eventFilters.visibility,
+    onVisibilityChange: (value) => props.setEventFilters((current) => ({ ...current, visibility: value as "all" | "visible" | "hidden" })),
     sortByValue: props.eventFilters.sortBy,
     onSortByChange: (value) => props.setEventFilters((current) => ({ ...current, sortBy: value })),
     sortDirectionValue: props.eventFilters.sortDirection,
     onSortDirectionChange: (value) => props.setEventFilters((current) => ({ ...current, sortDirection: value })),
-    items: props.paginatedEvents.map((event) => ({ id: event.id, selected: props.selectedIds.events.includes(event.id), title: event.title, subtitle: event.dateLabel, meta: `${event.status} · ${event.tone} · Порядок: ${event.sortOrder}`, onToggleSelected: () => props.toggleSelection("events", event.id), inlineActions: [{ label: "Порядок", value: event.sortOrder, icon: <ArrowDown className="h-3.5 w-3.5" />, disabled: props.updateEvent.isPending, onClick: async () => { const nextSortOrder = event.sortOrder + 1; await props.updateEvent.mutateAsync({ ...event, sortOrder: nextSortOrder }); const toastCopy = props.getInlineActionToastCopy("event", { title: event.title, sortOrder: nextSortOrder, status: event.status }); props.toast.success(toastCopy.sortOrder.title, { description: toastCopy.sortOrder.description }); props.setActionLog((current) => props.recordAdminAction(current, "events", "update", toastCopy.sortOrder.title, toastCopy.sortOrder.description)); } }, { label: "Статус", value: event.status, icon: <CalendarRange className="h-3.5 w-3.5" />, disabled: props.updateEvent.isPending, onClick: async () => { const nextStatus = event.status === "Открыта регистрация" ? "Мест нет" : "Открыта регистрация"; await props.updateEvent.mutateAsync({ ...event, status: nextStatus }); const toastCopy = props.getInlineActionToastCopy("event", { title: event.title, sortOrder: event.sortOrder, status: nextStatus }); props.toast.success(toastCopy.status.title, { description: toastCopy.status.description }); props.setActionLog((current) => props.recordAdminAction(current, "events", "update", toastCopy.status.title, toastCopy.status.description)); } }], onEdit: () => props.setEventForm({ id: event.id, title: event.title, dateLabel: event.dateLabel, description: event.description, status: event.status, tone: event.tone, sortOrder: event.sortOrder }), onDelete: () => props.setPendingDelete({ entity: "event", id: event.id, title: event.title, description: `событие «${event.title}»` }), deleting: props.isDeleting && props.pendingDelete?.entity === "event" && props.pendingDelete.id === event.id })),
+    items: props.paginatedEvents.map((event) => ({ id: event.id, selected: props.selectedIds.events.includes(event.id), title: event.title, subtitle: event.dateLabel, meta: `${event.status} · ${event.tone} · Порядок: ${event.sortOrder}`, onToggleSelected: () => props.toggleSelection("events", event.id), inlineActions: [{ label: "Порядок", value: event.sortOrder, icon: <ArrowDown className="h-3.5 w-3.5" />, disabled: props.updateEvent.isPending, onClick: async () => { const nextSortOrder = event.sortOrder + 1; await props.updateEvent.mutateAsync({ ...event, sortOrder: nextSortOrder }); const toastCopy = props.getInlineActionToastCopy("event", { title: event.title, sortOrder: nextSortOrder, status: event.status }); props.toast.success(toastCopy.sortOrder.title, { description: toastCopy.sortOrder.description }); props.setActionLog((current) => props.recordAdminAction(current, "events", "update", toastCopy.sortOrder.title, toastCopy.sortOrder.description)); } }, { label: "Статус", value: event.status, icon: <CalendarRange className="h-3.5 w-3.5" />, disabled: props.updateEvent.isPending, onClick: async () => { const nextStatus = event.status === "Открыта регистрация" ? "Мест нет" : "Открыта регистрация"; await props.updateEvent.mutateAsync({ ...event, status: nextStatus }); const toastCopy = props.getInlineActionToastCopy("event", { title: event.title, sortOrder: event.sortOrder, status: nextStatus }); props.toast.success(toastCopy.status.title, { description: toastCopy.status.description }); props.setActionLog((current) => props.recordAdminAction(current, "events", "update", toastCopy.status.title, toastCopy.status.description)); } }], onEdit: () => props.setEventForm({ id: event.id, title: event.title, dateLabel: event.dateLabel, description: event.description, status: event.status, tone: event.tone, sortOrder: event.sortOrder, hidden: Boolean(event.hidden) }), onDelete: () => props.setPendingDelete({ entity: "event", id: event.id, title: event.title, description: `событие «${event.title}»` }), deleting: props.isDeleting && props.pendingDelete?.entity === "event" && props.pendingDelete.id === event.id })),
     pagination: props.paginationMeta,
     onPageChange: (page) => props.setTabPage("events", page),
     onPageSizeChange: (pageSize) => props.setTabPageSize("events", pageSize),
@@ -670,7 +695,7 @@ export function buildAdminClubMembersTabProps(props: AdminClubMembersTabContaine
     onMemberFormChange: (next) => props.setMemberForm(next),
     onMemberFieldErrorClear: (field) => props.setMemberErrors((current) => ({ ...current, [field]: undefined })),
     onSubmit: props.handleMemberSubmit,
-    onResetForm: () => { props.setMemberForm({ id: undefined, name: "", animal: "", sinceLabel: "", badge: "", sortOrder: 0 }); props.setMemberErrors({}); },
+    onResetForm: () => { props.setMemberForm({ id: undefined, name: "", animal: "", sinceLabel: "", badge: "", sortOrder: 0, hidden: false }); props.setMemberErrors({}); },
     submitDisabled: props.createMemberPending || props.updateMemberPending,
     sortIndicator: { fieldLabel: props.memberFilters.sortBy === "name" ? "имени" : props.memberFilters.sortBy === "badge" ? "бейджу" : "порядку", directionLabel: props.memberFilters.sortDirection === "asc" ? "↑" : "↓" },
     searchValue: props.memberFilters.query,
@@ -693,11 +718,13 @@ export function buildAdminClubMembersTabProps(props: AdminClubMembersTabContaine
     badgeValue: props.memberFilters.badge,
     badgeOptions: [{ label: "Все бейджи", value: "all" }, ...props.memberBadges.map((value) => ({ label: value, value }))],
     onBadgeChange: (value) => props.setMemberFilters((current) => ({ ...current, badge: value })),
+    visibilityValue: props.memberFilters.visibility,
+    onVisibilityChange: (value) => props.setMemberFilters((current) => ({ ...current, visibility: value as "all" | "visible" | "hidden" })),
     sortByValue: props.memberFilters.sortBy,
     onSortByChange: (value) => props.setMemberFilters((current) => ({ ...current, sortBy: value })),
     sortDirectionValue: props.memberFilters.sortDirection,
     onSortDirectionChange: (value) => props.setMemberFilters((current) => ({ ...current, sortDirection: value })),
-    items: props.paginatedMembers.map((member) => ({ id: member.id, selected: props.selectedIds.members.includes(member.id), title: member.name, subtitle: member.animal, meta: `${member.sinceLabel} · ${member.badge} · Порядок: ${member.sortOrder}`, onToggleSelected: () => props.toggleSelection("members", member.id), inlineActions: [{ label: "Порядок", value: member.sortOrder, icon: <ArrowDown className="h-3.5 w-3.5" />, disabled: props.updateMember.isPending, onClick: async () => { const nextSortOrder = member.sortOrder + 1; await props.updateMember.mutateAsync({ ...member, sortOrder: nextSortOrder }); const toastCopy = props.getInlineActionToastCopy("member", { name: member.name, sortOrder: nextSortOrder, badge: member.badge }); props.toast.success(toastCopy.sortOrder.title, { description: toastCopy.sortOrder.description }); props.setActionLog((current) => props.recordAdminAction(current, "members", "update", toastCopy.sortOrder.title, toastCopy.sortOrder.description)); } }, { label: "Бейдж", value: member.badge || "без бейджа", icon: <Crown className="h-3.5 w-3.5" />, disabled: props.updateMember.isPending, onClick: async () => { const nextBadge = member.badge === "Амбассадор" ? "Гость фермы" : "Амбассадор"; await props.updateMember.mutateAsync({ ...member, badge: nextBadge }); const toastCopy = props.getInlineActionToastCopy("member", { name: member.name, sortOrder: member.sortOrder, badge: nextBadge }); props.toast.success(toastCopy.status.title, { description: toastCopy.status.description }); props.setActionLog((current) => props.recordAdminAction(current, "members", "update", toastCopy.status.title, toastCopy.status.description)); } }], onEdit: () => props.setMemberForm({ id: member.id, name: member.name, animal: member.animal, sinceLabel: member.sinceLabel, badge: member.badge, sortOrder: member.sortOrder }), onDelete: () => props.setPendingDelete({ entity: "member", id: member.id, title: member.name, description: `участника «${member.name}»` }), deleting: props.isDeleting && props.pendingDelete?.entity === "member" && props.pendingDelete.id === member.id })),
+    items: props.paginatedMembers.map((member) => ({ id: member.id, selected: props.selectedIds.members.includes(member.id), title: member.name, subtitle: member.animal, meta: `${member.sinceLabel} · ${member.badge} · Порядок: ${member.sortOrder}`, onToggleSelected: () => props.toggleSelection("members", member.id), inlineActions: [{ label: "Порядок", value: member.sortOrder, icon: <ArrowDown className="h-3.5 w-3.5" />, disabled: props.updateMember.isPending, onClick: async () => { const nextSortOrder = member.sortOrder + 1; await props.updateMember.mutateAsync({ ...member, sortOrder: nextSortOrder }); const toastCopy = props.getInlineActionToastCopy("member", { name: member.name, sortOrder: nextSortOrder, badge: member.badge }); props.toast.success(toastCopy.sortOrder.title, { description: toastCopy.sortOrder.description }); props.setActionLog((current) => props.recordAdminAction(current, "members", "update", toastCopy.sortOrder.title, toastCopy.sortOrder.description)); } }, { label: "Бейдж", value: member.badge || "без бейджа", icon: <Crown className="h-3.5 w-3.5" />, disabled: props.updateMember.isPending, onClick: async () => { const nextBadge = member.badge === "Амбассадор" ? "Гость фермы" : "Амбассадор"; await props.updateMember.mutateAsync({ ...member, badge: nextBadge }); const toastCopy = props.getInlineActionToastCopy("member", { name: member.name, sortOrder: member.sortOrder, badge: nextBadge }); props.toast.success(toastCopy.status.title, { description: toastCopy.status.description }); props.setActionLog((current) => props.recordAdminAction(current, "members", "update", toastCopy.status.title, toastCopy.status.description)); } }], onEdit: () => props.setMemberForm({ id: member.id, name: member.name, animal: member.animal, sinceLabel: member.sinceLabel, badge: member.badge, sortOrder: member.sortOrder, hidden: Boolean(member.hidden) }), onDelete: () => props.setPendingDelete({ entity: "member", id: member.id, title: member.name, description: `участника «${member.name}»` }), deleting: props.isDeleting && props.pendingDelete?.entity === "member" && props.pendingDelete.id === member.id })),
     pagination: props.paginationMeta,
     onPageChange: (page) => props.setTabPage("members", page),
     onPageSizeChange: (pageSize) => props.setTabPageSize("members", pageSize),

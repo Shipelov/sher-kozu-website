@@ -16,6 +16,7 @@ export type PostFormState = {
   tagsCsv: string;
   pinned: boolean;
   sortOrder: number;
+  hidden: boolean;
 };
 
 export type EventFormState = {
@@ -26,6 +27,7 @@ export type EventFormState = {
   status: string;
   tone: string;
   sortOrder: number;
+  hidden: boolean;
 };
 
 export type MemberFormState = {
@@ -35,6 +37,7 @@ export type MemberFormState = {
   sinceLabel: string;
   badge: string;
   sortOrder: number;
+  hidden: boolean;
 };
 
 export type SortDirection = "asc" | "desc";
@@ -47,6 +50,7 @@ export type PostFilterState = {
   query: string;
   category: string;
   pinned: "all" | "pinned" | "regular";
+  visibility: "all" | "visible" | "hidden";
   sortBy: PostSortField;
   sortDirection: SortDirection;
 };
@@ -55,6 +59,7 @@ export type EventFilterState = {
   query: string;
   status: string;
   tone: string;
+  visibility: "all" | "visible" | "hidden";
   sortBy: EventSortField;
   sortDirection: SortDirection;
 };
@@ -62,6 +67,7 @@ export type EventFilterState = {
 export type MemberFilterState = {
   query: string;
   badge: string;
+  visibility: "all" | "visible" | "hidden";
   sortBy: MemberSortField;
   sortDirection: SortDirection;
 };
@@ -134,6 +140,7 @@ export const defaultPostForm = (): PostFormState => ({
   tagsCsv: "",
   pinned: false,
   sortOrder: 0,
+  hidden: false,
 });
 
 export const defaultEventForm = (): EventFormState => ({
@@ -143,6 +150,7 @@ export const defaultEventForm = (): EventFormState => ({
   status: "Открыта регистрация",
   tone: "warm",
   sortOrder: 0,
+  hidden: false,
 });
 
 export const defaultMemberForm = (): MemberFormState => ({
@@ -151,12 +159,14 @@ export const defaultMemberForm = (): MemberFormState => ({
   sinceLabel: "",
   badge: "",
   sortOrder: 0,
+  hidden: false,
 });
 
 export const defaultPostFilters = (): PostFilterState => ({
   query: "",
   category: "all",
   pinned: "all",
+  visibility: "all",
   sortBy: "sortOrder",
   sortDirection: "asc",
 });
@@ -165,6 +175,7 @@ export const defaultEventFilters = (): EventFilterState => ({
   query: "",
   status: "all",
   tone: "all",
+  visibility: "all",
   sortBy: "sortOrder",
   sortDirection: "asc",
 });
@@ -172,6 +183,7 @@ export const defaultEventFilters = (): EventFilterState => ({
 export const defaultMemberFilters = (): MemberFilterState => ({
   query: "",
   badge: "all",
+  visibility: "all",
   sortBy: "sortOrder",
   sortDirection: "asc",
 });
@@ -201,7 +213,11 @@ export function filterPosts(posts: any[], filters: PostFilterState) {
       || (filters.pinned === "pinned" && Boolean(post.pinned))
       || (filters.pinned === "regular" && !Boolean(post.pinned));
 
-    return matchesQuery && matchesCategory && matchesPinned;
+    const matchesVisibility = filters.visibility === "all"
+      || (filters.visibility === "visible" && !Boolean(post.hidden))
+      || (filters.visibility === "hidden" && Boolean(post.hidden));
+
+    return matchesQuery && matchesCategory && matchesPinned && matchesVisibility;
   });
 }
 
@@ -218,7 +234,11 @@ export function filterEvents(events: any[], filters: EventFilterState) {
     const matchesStatus = filters.status === "all" || event.status === filters.status;
     const matchesTone = filters.tone === "all" || event.tone === filters.tone;
 
-    return matchesQuery && matchesStatus && matchesTone;
+    const matchesVisibility = filters.visibility === "all"
+      || (filters.visibility === "visible" && !Boolean(event.hidden))
+      || (filters.visibility === "hidden" && Boolean(event.hidden));
+
+    return matchesQuery && matchesStatus && matchesTone && matchesVisibility;
   });
 }
 
@@ -233,7 +253,11 @@ export function filterMembers(members: any[], filters: MemberFilterState) {
     ], query);
     const matchesBadge = filters.badge === "all" || member.badge === filters.badge;
 
-    return matchesQuery && matchesBadge;
+    const matchesVisibility = filters.visibility === "all"
+      || (filters.visibility === "visible" && !Boolean(member.hidden))
+      || (filters.visibility === "hidden" && Boolean(member.hidden));
+
+    return matchesQuery && matchesBadge && matchesVisibility;
   });
 }
 
