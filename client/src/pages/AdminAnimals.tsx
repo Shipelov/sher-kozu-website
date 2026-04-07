@@ -1467,7 +1467,7 @@ function AnimalEditorCard({
   mode: "create" | "edit";
   values: AnimalFormValues;
   onChange: <K extends keyof AnimalFormValues>(key: K, value: AnimalFormValues[K]) => void;
-  onSubmit: () => void;
+  onSubmit: () => void | Promise<void>;
   onCancel: () => void;
   onApplyPreset: (species: "goat" | "sheep", breed: string) => void;
   isSubmitting: boolean;
@@ -1937,7 +1937,7 @@ export default function AdminAnimalsPage() {
     await deleteAnimal.mutateAsync({ id: animalPendingArchive.id });
   }
 
-  async function handleSubmit() {
+  async function handleSubmit(): Promise<boolean> {
     const payload = buildAnimalMutationPayload(formValues);
 
     const missing: string[] = [];
@@ -1950,20 +1950,25 @@ export default function AdminAnimalsPage() {
       toast.error("Заполните обязательные поля", {
         description: `Не заполнено: ${missing.join(", ")}`,
       });
-      return;
+      return false;
     }
 
-    if (editorMode === "create") {
-      await createAnimal.mutateAsync(payload);
-      return;
-    }
+    try {
+      if (editorMode === "create") {
+        await createAnimal.mutateAsync(payload);
+        return true;
+      }
 
-    if (!editingAnimalId) {
-      toast.error("Не найдено животное для редактирования");
-      return;
-    }
+      if (!editingAnimalId) {
+        toast.error("Не найдено животное для редактирования");
+        return false;
+      }
 
-    await updateAnimal.mutateAsync({ id: editingAnimalId, ...payload });
+      await updateAnimal.mutateAsync({ id: editingAnimalId, ...payload });
+      return true;
+    } catch {
+      return false;
+    }
   }
 
   useEffect(() => {
@@ -2196,9 +2201,11 @@ export default function AdminAnimalsPage() {
               mode={editorMode}
               values={formValues}
               onChange={handleFormChange}
-              onSubmit={() => {
-                handleSubmit();
-                setIsEditorSheetOpen(false);
+              onSubmit={async () => {
+                const success = await handleSubmit();
+                if (success) {
+                  setIsEditorSheetOpen(false);
+                }
               }}
               onCancel={() => {
                 resetEditor();

@@ -101,6 +101,12 @@ jspm_packages/
 tmp/
 temp/
 
+# AI development artifacts (Manus)
+.tmp_*
+.adminclub_*
+.manus-logs/
+.manus-notes/
+
 # Database
 *.db
 *.sqlite
