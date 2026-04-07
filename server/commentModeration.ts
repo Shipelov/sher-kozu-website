@@ -3,6 +3,7 @@
  *
  * Three-layer approach:
  * 1. Profanity / banned-word filter (Russian + transliterated)
+ *    - Pre-processing: normalize text (remove spaces between letters, replace leet-speak)
  *    - Hard-banned: always blocked (unambiguous profanity)
  *    - Context-sensitive: words like "сука", "тварь" that can be
  *      legitimate animal terms OR insults — blocked only when
@@ -14,27 +15,80 @@
  * whether to publish immediately or hold for admin review.
  */
 
+// ── Pre-processing: normalize evasion tricks ──────────────────────
+
+/**
+ * Normalize text for profanity detection:
+ * - Remove spaces/dots/dashes between Cyrillic letters (anti-evasion)
+ * - Replace common leet-speak substitutions (numbers → letters)
+ */
+function normalizeForCheck(text: string): string {
+  let t = text.toLowerCase();
+
+  // Remove separators between Cyrillic letters: "х у й" → "хуй", "б.л.я.д.ь" → "блядь"
+  t = t.replace(/([а-яёa-z])[\s.\-_*]+(?=[а-яёa-z])/gi, "$1");
+
+  // Common leet-speak / number substitutions
+  t = t
+    .replace(/0/g, "о")
+    .replace(/1/g, "и")
+    .replace(/3/g, "з")
+    .replace(/4/g, "ч")
+    .replace(/6/g, "б")
+    .replace(/9/g, "д");
+
+  return t;
+}
+
 // ── Layer 1: Banned words ──────────────────────────────────────────
 
 // Hard-banned patterns — always blocked regardless of context.
-// Note: \b does NOT work with Cyrillic in JS regex, so we match substrings.
+// Tested against normalized (lowercased, de-spaced) text.
 const HARD_BANNED: RegExp[] = [
-  // Core Russian mat roots — unambiguous profanity
-  /х[уyу][йиеёяю]/i,
-  /п[иi]зд/i,
+  // ── Core Russian mat roots ──
+  // хуй and all derivatives
+  /х[уyу][йиеёяюл3з]/i,
+  /хуес/i,       // хуесос
+  /нах[уy]/i,    // нахуй, нахуя
+  /пох[уy]/i,    // похуй
+
+  // пизд and all derivatives
+  /п[иi1]зд/i,
+
+  // бляд/блять and all derivatives
   /бл[яa][дт]/i,
-  /е[бb][аaлтиу]/i,
+
+  // ебать and all derivatives (including ё variants)
+  /[еёe][бb][аaлтиуо]/i,
+  /[еёe]бн/i,    // ёбнутый, ебнуть
+  /за[еёe]б/i,   // заебал, заебись
+  /у[еёe]б/i,    // уёбок, уебок, уёбище
+  /долбо[еёe]б/i, // долбоёб, долбоеб
+  /[еёe]бан/i,   // ебаный, ёбаный, ебанат, ебанутый
+
+  // говно
   /г[оа]вн/i,
+
+  // дерьмо
   /дерьм/i,
+
+  // шлюха
   /шлюх/i,
-  /п[еe]д[еиоа]р/i,
-  /муд[аоиы]к/i,
-  /муд[аоиы]л/i,
-  // Transliterated / Latin-mixed attempts (use \b for Latin — it works)
+
+  // пидор / педераст and variants
+  /п[иеe][дd][оаeи]р/i,
+  /п[иеe][дd][аеи]р/i,
+  /педераст/i,
+
+  // мудак / мудило
+  /муд[аоиы][клз]/i,
+
+  // ── Transliterated / Latin profanity ──
   /\bf+u+c+k/i,
   /\bs+h+i+t\b/i,
   /\ba+s+s+h+o+l+e/i,
   /\bb+i+t+c+h/i,
+  /\bd+a+m+n\b/i,
 ];
 
 // Context-sensitive words: legitimate in farming context but offensive as insults.
@@ -63,14 +117,20 @@ const CONTEXT_WORDS: { detect: RegExp; insultPatterns: RegExp[] }[] = [
 ];
 
 function containsBannedWords(text: string): boolean {
-  // Check hard-banned first
-  if (HARD_BANNED.some((rx) => rx.test(text))) return true;
+  // Normalize for evasion detection
+  const normalized = normalizeForCheck(text);
 
-  // Check context-sensitive words
+  // Check hard-banned against both original and normalized text
+  if (HARD_BANNED.some((rx) => rx.test(normalized) || rx.test(text.toLowerCase()))) {
+    return true;
+  }
+
+  // Check context-sensitive words (use original text for context analysis)
+  const lowerText = text.toLowerCase();
   for (const cw of CONTEXT_WORDS) {
-    if (cw.detect.test(text)) {
+    if (cw.detect.test(lowerText)) {
       // Word is present — check if it's used as an insult
-      if (cw.insultPatterns.some((rx) => rx.test(text))) {
+      if (cw.insultPatterns.some((rx) => rx.test(lowerText))) {
         return true;
       }
       // Otherwise it's a legitimate use (animal term) — allow
