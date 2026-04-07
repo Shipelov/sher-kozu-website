@@ -1450,11 +1450,15 @@ export const appRouter = router({
           text: finalText,
         });
 
-        // Push notification to owner (fire-and-forget)
+        // Push notification to owner
         notifyOwner({
           title: `💬 Новый комментарий от ${userName}`,
           content: `К посту #${input.postId}: "${finalText.slice(0, 200)}${finalText.length > 200 ? '…' : ''}"`,
-        }).catch(() => {});
+        }).then((ok) => {
+          console.log(`[Notification] Comment notification sent: ${ok}`);
+        }).catch((err) => {
+          console.error(`[Notification] Comment notification error:`, err?.message || err);
+        });
 
         return comment;
       }),
@@ -1499,7 +1503,11 @@ export const appRouter = router({
         notifyOwner({
           title: `📋 Новая запись на событие`,
           content: `${userName} записался на «${eventTitle}» (${statusLabel}).`,
-        }).catch(() => {});
+        }).then((ok) => {
+          console.log(`[Notification] Event registration notification sent: ${ok}`);
+        }).catch((err) => {
+          console.error(`[Notification] Event registration notification error:`, err?.message || err);
+        });
 
         return registration;
       }),
