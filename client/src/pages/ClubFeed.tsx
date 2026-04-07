@@ -433,7 +433,34 @@ function PostCard({
             />
             {post.comments}
           </button>
-          <button className="ml-auto flex items-center gap-2 transition-colors hover:text-foreground">
+          <button
+            onClick={async () => {
+              const shareUrl = `${window.location.origin}/club#post-${post.id}`;
+              const shareData = {
+                title: post.title,
+                text: post.text?.slice(0, 120) || post.title,
+                url: shareUrl,
+              };
+              try {
+                if (navigator.share && navigator.canShare?.(shareData)) {
+                  await navigator.share(shareData);
+                } else {
+                  await navigator.clipboard.writeText(shareUrl);
+                  toast.success("Ссылка скопирована в буфер обмена");
+                }
+              } catch (err: any) {
+                if (err?.name !== "AbortError") {
+                  try {
+                    await navigator.clipboard.writeText(shareUrl);
+                    toast.success("Ссылка скопирована в буфер обмена");
+                  } catch {
+                    toast.error("Не удалось поделиться");
+                  }
+                }
+              }
+            }}
+            className="ml-auto flex items-center gap-2 transition-colors hover:text-foreground"
+          >
             <Share2 className="h-4 w-4" />
             Поделиться
           </button>
