@@ -232,8 +232,8 @@ export default function AdminClub() {
                   <div className="rounded-lg border border-stone-200 bg-white p-3">
                     <p className="text-xs font-semibold uppercase tracking-[0.12em] text-stone-500">Первые выбранные записи</p>
                     <div className="mt-2 space-y-2">
-                      {state.pendingDelete.summaryItems.map((item) => (
-                        <div key={item} className="rounded-md bg-stone-50 px-3 py-2 text-sm text-stone-700">
+                      {state.pendingDelete.summaryItems.map((item, idx) => (
+                        <div key={`${idx}-${item}`} className="rounded-md bg-stone-50 px-3 py-2 text-sm text-stone-700">
                           {item}
                         </div>
                       ))}

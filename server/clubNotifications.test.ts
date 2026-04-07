@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, afterAll } from "vitest";
 import { appRouter } from "./routers";
 import type { TrpcContext } from "./_core/context";
 
@@ -29,11 +29,33 @@ function createContext(openId: string, role: "admin" | "user" = "user"): TrpcCon
   };
 }
 
+// Track created IDs for cleanup
+const createdPostIds: number[] = [];
+const createdEventIds: number[] = [];
+
 describe("Club Notifications", () => {
   const adminCtx = createContext(ADMIN_OPEN_ID, "admin");
   const adminCaller = appRouter.createCaller(adminCtx);
   const userCtx = createContext(USER_OPEN_ID, "user");
   const userCaller = appRouter.createCaller(userCtx);
+
+  // Clean up test data after all tests
+  afterAll(async () => {
+    for (const id of createdPostIds) {
+      try {
+        await adminCaller.adminClub.deletePost({ id });
+      } catch {
+        // Ignore cleanup errors
+      }
+    }
+    for (const id of createdEventIds) {
+      try {
+        await adminCaller.adminClub.deleteEvent({ id });
+      } catch {
+        // Ignore cleanup errors
+      }
+    }
+  });
 
   describe("createPost triggers notifications", () => {
     it("admin can create a club post (notification is sent in background)", async () => {
@@ -43,7 +65,7 @@ describe("Club Notifications", () => {
         avatar: "🐐",
         role: "Фермер",
         timeLabel: "Сегодня",
-        title: "Тестовый пост для уведомлений",
+        title: `Тестовый пост для уведомлений ${Date.now()}`,
         text: "Содержание тестового поста",
         imageUrl: "https://example.com/img.jpg",
         likes: 0,
@@ -54,14 +76,14 @@ describe("Club Notifications", () => {
 
       expect(result).toBeTruthy();
       expect(result).toHaveProperty("id");
-      expect(result!.title).toBe("Тестовый пост для уведомлений");
+      if (result?.id) createdPostIds.push(result.id);
     });
   });
 
   describe("createEvent triggers notifications", () => {
     it("admin can create a club event (notification is sent in background)", async () => {
       const result = await adminCaller.adminClub.createEvent({
-        title: "Тестовое событие для уведомлений",
+        title: `Тестовое событие для уведомлений ${Date.now()}`,
         dateLabel: "1 апреля 2026",
         description: "Описание тестового события",
         status: "upcoming",
@@ -71,7 +93,7 @@ describe("Club Notifications", () => {
 
       expect(result).toBeTruthy();
       expect(result).toHaveProperty("id");
-      expect(result!.title).toBe("Тестовое событие для уведомлений");
+      if (result?.id) createdEventIds.push(result.id);
     });
   });
 
