@@ -292,11 +292,13 @@ export const clubPosts = mysqlTable("clubPosts", {
   tagsCsv: varchar("tagsCsv", { length: 255 }).notNull(),
   pinned: int("pinned").default(0).notNull(),
   sortOrder: int("sortOrder").default(0).notNull(),
+  hidden: boolean("hidden").default(false).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 }, (t) => ([
   index("idx_clubPosts_ownerOpenId").on(t.ownerOpenId),
   index("idx_clubPosts_category").on(t.category),
+  index("idx_clubPosts_hidden").on(t.hidden),
 ]));
 
 export const clubEvents = mysqlTable("clubEvents", {
@@ -308,6 +310,7 @@ export const clubEvents = mysqlTable("clubEvents", {
   status: varchar("status", { length: 120 }).notNull(),
   tone: varchar("tone", { length: 32 }).notNull(),
   sortOrder: int("sortOrder").default(0).notNull(),
+  hidden: boolean("hidden").default(false).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
@@ -320,6 +323,7 @@ export const clubMembers = mysqlTable("clubMembers", {
   sinceLabel: varchar("sinceLabel", { length: 120 }).notNull(),
   badge: varchar("badge", { length: 80 }).notNull(),
   sortOrder: int("sortOrder").default(0).notNull(),
+  hidden: boolean("hidden").default(false).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });

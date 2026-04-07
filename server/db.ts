@@ -1306,9 +1306,9 @@ export async function getClubFeedData(ownerOpenId: string) {
   }
 
   const [posts, events, members, presets] = await Promise.all([
-    db.select().from(clubPosts).where(eq(clubPosts.ownerOpenId, ownerOpenId)).orderBy(asc(clubPosts.sortOrder), desc(clubPosts.createdAt)),
-    db.select().from(clubEvents).where(eq(clubEvents.ownerOpenId, ownerOpenId)).orderBy(asc(clubEvents.sortOrder), desc(clubEvents.createdAt)),
-    db.select().from(clubMembers).where(eq(clubMembers.ownerOpenId, ownerOpenId)).orderBy(asc(clubMembers.sortOrder), desc(clubMembers.createdAt)),
+    db.select().from(clubPosts).where(and(eq(clubPosts.ownerOpenId, ownerOpenId), eq(clubPosts.hidden, false))).orderBy(asc(clubPosts.sortOrder), desc(clubPosts.createdAt)),
+    db.select().from(clubEvents).where(and(eq(clubEvents.ownerOpenId, ownerOpenId), eq(clubEvents.hidden, false))).orderBy(asc(clubEvents.sortOrder), desc(clubEvents.createdAt)),
+    db.select().from(clubMembers).where(and(eq(clubMembers.ownerOpenId, ownerOpenId), eq(clubMembers.hidden, false))).orderBy(asc(clubMembers.sortOrder), desc(clubMembers.createdAt)),
     db.select().from(clubAdminPresets).where(eq(clubAdminPresets.ownerOpenId, ownerOpenId)).orderBy(asc(clubAdminPresets.sortOrder), asc(clubAdminPresets.id)),
   ]);
 
@@ -1449,6 +1449,7 @@ export async function updateClubPost(input: InsertClubPost & { id: number }) {
     tagsCsv: input.tagsCsv,
     pinned: input.pinned,
     sortOrder: input.sortOrder,
+    ...(input.hidden !== undefined ? { hidden: input.hidden } : {}),
   }).where(and(eq(clubPosts.id, input.id), eq(clubPosts.ownerOpenId, input.ownerOpenId)));
 
   const updated = await db.select().from(clubPosts).where(eq(clubPosts.id, input.id)).limit(1);
@@ -1508,6 +1509,7 @@ export async function updateClubEvent(input: InsertClubEvent & { id: number }) {
     status: input.status,
     tone: input.tone,
     sortOrder: input.sortOrder,
+    ...(input.hidden !== undefined ? { hidden: input.hidden } : {}),
   }).where(and(eq(clubEvents.id, input.id), eq(clubEvents.ownerOpenId, input.ownerOpenId)));
 
   const updated = await db.select().from(clubEvents).where(eq(clubEvents.id, input.id)).limit(1);
@@ -1549,6 +1551,7 @@ export async function updateClubMember(input: InsertClubMember & { id: number })
     sinceLabel: input.sinceLabel,
     badge: input.badge,
     sortOrder: input.sortOrder,
+    ...(input.hidden !== undefined ? { hidden: input.hidden } : {}),
   }).where(and(eq(clubMembers.id, input.id), eq(clubMembers.ownerOpenId, input.ownerOpenId)));
 
   const updated = await db.select().from(clubMembers).where(eq(clubMembers.id, input.id)).limit(1);
@@ -1565,6 +1568,50 @@ export async function deleteClubMember(id: number, ownerOpenId: string) {
   if (!existing[0]) return null;
   await db.delete(clubMembers).where(and(eq(clubMembers.id, id), eq(clubMembers.ownerOpenId, ownerOpenId)));
   return existing[0];
+}
+
+/* ── Bulk operations for club admin ── */
+
+export async function bulkDeleteClubPosts(ids: number[], ownerOpenId: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.delete(clubPosts).where(and(inArray(clubPosts.id, ids), eq(clubPosts.ownerOpenId, ownerOpenId)));
+  return { deleted: ids.length };
+}
+
+export async function bulkHideClubPosts(ids: number[], hidden: boolean, ownerOpenId: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(clubPosts).set({ hidden }).where(and(inArray(clubPosts.id, ids), eq(clubPosts.ownerOpenId, ownerOpenId)));
+  return { updated: ids.length };
+}
+
+export async function bulkDeleteClubEvents(ids: number[], ownerOpenId: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.delete(clubEvents).where(and(inArray(clubEvents.id, ids), eq(clubEvents.ownerOpenId, ownerOpenId)));
+  return { deleted: ids.length };
+}
+
+export async function bulkHideClubEvents(ids: number[], hidden: boolean, ownerOpenId: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(clubEvents).set({ hidden }).where(and(inArray(clubEvents.id, ids), eq(clubEvents.ownerOpenId, ownerOpenId)));
+  return { updated: ids.length };
+}
+
+export async function bulkDeleteClubMembers(ids: number[], ownerOpenId: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.delete(clubMembers).where(and(inArray(clubMembers.id, ids), eq(clubMembers.ownerOpenId, ownerOpenId)));
+  return { deleted: ids.length };
+}
+
+export async function bulkHideClubMembers(ids: number[], hidden: boolean, ownerOpenId: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(clubMembers).set({ hidden }).where(and(inArray(clubMembers.id, ids), eq(clubMembers.ownerOpenId, ownerOpenId)));
+  return { updated: ids.length };
 }
 
 export async function createPartnerLead(input: InsertPartnerLead) {

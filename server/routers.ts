@@ -77,6 +77,12 @@ import {
   getNotificationPreferences,
   upsertNotificationPreferences,
   shouldNotifyUser,
+  bulkDeleteClubPosts,
+  bulkHideClubPosts,
+  bulkDeleteClubEvents,
+  bulkHideClubEvents,
+  bulkDeleteClubMembers,
+  bulkHideClubMembers,
 } from "./db";
 import { storagePut } from "./storage";
 import { ENV } from "./_core/env";
@@ -156,6 +162,7 @@ const clubPostInput = z.object({
   likes: z.number().int().min(0).max(999999),
   comments: z.number().int().min(0).max(999999),
   isPinned: z.boolean().default(false),
+  hidden: z.boolean().default(false),
 });
 
 const clubEventInput = z.object({
@@ -165,6 +172,7 @@ const clubEventInput = z.object({
   status: z.string().min(1).max(120),
   tone: z.string().min(1).max(32),
   sortOrder: z.number().int().min(0).max(9999),
+  hidden: z.boolean().default(false),
 });
 
 const clubMemberInput = z.object({
@@ -173,6 +181,16 @@ const clubMemberInput = z.object({
   sinceLabel: z.string().min(1).max(120),
   badge: z.string().min(1).max(80),
   sortOrder: z.number().int().min(0).max(9999),
+  hidden: z.boolean().default(false),
+});
+
+const bulkIdsInput = z.object({
+  ids: z.array(z.number().int().positive()).min(1).max(500),
+});
+
+const bulkHideInput = z.object({
+  ids: z.array(z.number().int().positive()).min(1).max(500),
+  hidden: z.boolean(),
 });
 
 const idInput = z.object({
@@ -1533,6 +1551,25 @@ export const appRouter = router({
     }),
     deletePreset: adminProcedure.input(idInput).mutation(async ({ ctx, input }) => {
       return deleteClubAdminPreset(input.id, ctx.user.openId);
+    }),
+    /* Bulk operations */
+    bulkDeletePosts: adminProcedure.input(bulkIdsInput).mutation(async ({ ctx, input }) => {
+      return bulkDeleteClubPosts(input.ids, ctx.user.openId);
+    }),
+    bulkHidePosts: adminProcedure.input(bulkHideInput).mutation(async ({ ctx, input }) => {
+      return bulkHideClubPosts(input.ids, input.hidden, ctx.user.openId);
+    }),
+    bulkDeleteEvents: adminProcedure.input(bulkIdsInput).mutation(async ({ ctx, input }) => {
+      return bulkDeleteClubEvents(input.ids, ctx.user.openId);
+    }),
+    bulkHideEvents: adminProcedure.input(bulkHideInput).mutation(async ({ ctx, input }) => {
+      return bulkHideClubEvents(input.ids, input.hidden, ctx.user.openId);
+    }),
+    bulkDeleteMembers: adminProcedure.input(bulkIdsInput).mutation(async ({ ctx, input }) => {
+      return bulkDeleteClubMembers(input.ids, ctx.user.openId);
+    }),
+    bulkHideMembers: adminProcedure.input(bulkHideInput).mutation(async ({ ctx, input }) => {
+      return bulkHideClubMembers(input.ids, input.hidden, ctx.user.openId);
     }),
   }),
   productTrack: productTrackRouter,
