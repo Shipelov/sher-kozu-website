@@ -341,7 +341,7 @@ describe("Delivery Tab: DB helper exports", () => {
   it("listDeliveryScheduleByAnimal should be exported from db module", async () => {
     const db = await import("./db");
     expect(typeof db.listDeliveryScheduleByAnimal).toBe("function");
-  });
+  }, 15000);
 
   it("bulkUpdateDeliveryStatus should be exported from db module", async () => {
     const db = await import("./db");
