@@ -311,6 +311,12 @@ export const clubEvents = mysqlTable("clubEvents", {
   tone: varchar("tone", { length: 32 }).notNull(),
   sortOrder: int("sortOrder").default(0).notNull(),
   hidden: boolean("hidden").default(false).notNull(),
+  /** Max number of registrations allowed. 0 = unlimited. */
+  maxCapacity: int("maxCapacity").default(0).notNull(),
+  /** Denormalized count of confirmed registrations */
+  registrationCount: int("registrationCount").default(0).notNull(),
+  /** Whether registration is open for this event */
+  registrationOpen: boolean("registrationOpen").default(true).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
@@ -1757,3 +1763,79 @@ export const pricingPageViews = mysqlTable("pricingPageViews", {
 ]);
 export type PricingPageView = typeof pricingPageViews.$inferSelect;
 export type InsertPricingPageView = typeof pricingPageViews.$inferInsert;
+
+/* ───────────────────────────────────────────────
+   Club Interactivity — Likes, Comments, Event Registrations
+   ─────────────────────────────────────────────── */
+
+/**
+ * Per-user likes on club posts. One row per user-post pair.
+ * The denormalized `likes` counter on clubPosts is updated on toggle.
+ */
+export const clubPostLikes = mysqlTable("clubPostLikes", {
+  id: int("id").autoincrement().primaryKey(),
+  postId: int("postId").notNull(),
+  userOpenId: varchar("userOpenId", { length: 64 }).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, (t) => ([
+  index("idx_cpl_postId").on(t.postId),
+  index("idx_cpl_userOpenId").on(t.userOpenId),
+]));
+
+/**
+ * Comments on club posts. Authenticated users only.
+ * The denormalized `comments` counter on clubPosts is updated on create/delete.
+ */
+export const clubPostComments = mysqlTable("clubPostComments", {
+  id: int("id").autoincrement().primaryKey(),
+  postId: int("postId").notNull(),
+  userOpenId: varchar("userOpenId", { length: 64 }).notNull(),
+  userName: varchar("userName", { length: 160 }).notNull(),
+  text: text("text").notNull(),
+  hidden: boolean("hidden").default(false).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (t) => ([
+  index("idx_cpc_postId").on(t.postId),
+  index("idx_cpc_userOpenId").on(t.userOpenId),
+]));
+
+export const eventRegistrationStatusEnum = mysqlEnum("eventRegistrationStatus", [
+  "registered",   // confirmed registration
+  "waitlist",     // on waiting list
+  "cancelled",    // user cancelled
+  "rejected",     // admin rejected
+]);
+
+/**
+ * Event registrations. Access policy:
+ * - Active owners (animalOwnerships.status = 'active') → can register freely
+ * - Pending owners (status = 'pending_payment') → waitlist
+ * - Authenticated non-owners → depends on event status
+ * - Unauthenticated → must log in first
+ */
+export const clubEventRegistrations = mysqlTable("clubEventRegistrations", {
+  id: int("id").autoincrement().primaryKey(),
+  eventId: int("eventId").notNull(),
+  userOpenId: varchar("userOpenId", { length: 64 }).notNull(),
+  userName: varchar("userName", { length: 160 }).notNull(),
+  status: eventRegistrationStatusEnum.default("registered").notNull(),
+  /** Admin note or rejection reason */
+  adminNote: text("adminNote"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (t) => ([
+  index("idx_cer_eventId").on(t.eventId),
+  index("idx_cer_userOpenId").on(t.userOpenId),
+]));
+
+/** Add maxCapacity and registrationCount to clubEvents for capacity tracking */
+
+export type ClubPostLike = typeof clubPostLikes.$inferSelect;
+export type InsertClubPostLike = typeof clubPostLikes.$inferInsert;
+
+export type ClubPostComment = typeof clubPostComments.$inferSelect;
+export type InsertClubPostComment = typeof clubPostComments.$inferInsert;
+
+export type ClubEventRegistration = typeof clubEventRegistrations.$inferSelect;
+export type InsertClubEventRegistration = typeof clubEventRegistrations.$inferInsert;

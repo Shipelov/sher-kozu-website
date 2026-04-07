@@ -44,6 +44,8 @@ const PricingCalculator = lazy(() => import("./pages/PricingCalculator"));
 const PricingCompare = lazy(() => import("./pages/PricingCompare"));
 const PricingTierDetail = lazy(() => import("./pages/PricingTierDetail"));
 const AdminPricing = lazy(() => import("./pages/AdminPricing"));
+const AdminClubComments = lazy(() => import("./pages/AdminClubComments"));
+const AdminClubRegistrations = lazy(() => import("./pages/AdminClubRegistrations"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 /* ─── Suspense fallback spinner ─── */
@@ -103,6 +105,8 @@ function Router() {
         <Route path="/admin" component={AdminHub} />
         <Route path="/admin/users" component={AdminUsers} />
         <Route path="/admin/club" component={AdminClub} />
+        <Route path="/admin/club/comments" component={AdminClubComments} />
+        <Route path="/admin/club/registrations" component={AdminClubRegistrations} />
         <Route path="/admin/animals" component={AdminAnimals} />
         <Route path="/admin/product-track" component={AdminProductTrack} />
         <Route path="/admin/product-track/:animalId" component={AdminProductTrack} />

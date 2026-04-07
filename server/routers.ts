@@ -83,6 +83,21 @@ import {
   bulkHideClubEvents,
   bulkDeleteClubMembers,
   bulkHideClubMembers,
+  togglePostLike,
+  getUserLikedPostIds,
+  getPostLikers,
+  createPostComment,
+  listPostComments,
+  listAllPostComments,
+  hidePostComment,
+  unhidePostComment,
+  deletePostComment,
+  registerForEvent,
+  cancelEventRegistration,
+  getUserEventRegistrations,
+  listEventRegistrations,
+  adminUpdateRegistrationStatus,
+  getUserOwnershipStatus,
 } from "./db";
 import { storagePut } from "./storage";
 import { ENV } from "./_core/env";
@@ -1381,8 +1396,134 @@ export const appRouter = router({
   club: router({
     feed: publicProcedure.query(async ({ ctx }) => {
       const ownerOpenId = ctx.user?.openId ?? ENV.ownerOpenId;
-      return getClubFeedData(ownerOpenId);
+      const feedData = await getClubFeedData(ownerOpenId);
+      const likedPostIds = ctx.user ? await getUserLikedPostIds(ctx.user.openId) : [];
+      const eventRegistrations = ctx.user ? await getUserEventRegistrations(ctx.user.openId) : [];
+      return {
+        ...feedData,
+        likedPostIds,
+        eventRegistrations,
+      };
     }),
+
+    // ── Likes ──
+    toggleLike: protectedProcedure
+      .input(z.object({ postId: z.number().int().positive() }))
+      .mutation(async ({ ctx, input }) => {
+        return togglePostLike(input.postId, ctx.user.openId);
+      }),
+
+    // ── Comments ──
+    listComments: publicProcedure
+      .input(z.object({ postId: z.number().int().positive() }))
+      .query(async ({ input }) => {
+        return listPostComments(input.postId);
+      }),
+
+    addComment: protectedProcedure
+      .input(z.object({
+        postId: z.number().int().positive(),
+        text: z.string().min(1).max(2000),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const userName = ctx.user.name || "Участник";
+        return createPostComment({
+          postId: input.postId,
+          userOpenId: ctx.user.openId,
+          userName,
+          text: input.text,
+        });
+      }),
+
+    // ── Event Registration ──
+    register: protectedProcedure
+      .input(z.object({ eventId: z.number().int().positive() }))
+      .mutation(async ({ ctx, input }) => {
+        // Check event exists and registration is open
+        const feedData = await getClubFeedData(ENV.ownerOpenId);
+        const event = feedData.events.find((e: any) => e.id === input.eventId);
+        if (!event) throw new TRPCError({ code: "NOT_FOUND", message: "Событие не найдено." });
+        if (!(event as any).registrationOpen) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Регистрация на это событие закрыта." });
+
+        // Check capacity
+        const maxCap = (event as any).maxCapacity ?? 0;
+        const currentCount = (event as any).registrationCount ?? 0;
+        if (maxCap > 0 && currentCount >= maxCap) {
+          throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Все места заняты. Вы можете встать в лист ожидания." });
+        }
+
+        // Determine registration status based on ownership
+        const ownershipStatus = await getUserOwnershipStatus(ctx.user.openId);
+        let regStatus: "registered" | "waitlist" = "registered";
+        if (ownershipStatus === "none") {
+          regStatus = "waitlist";
+        } else if (ownershipStatus === "pending_payment") {
+          regStatus = "waitlist";
+        }
+
+        const userName = ctx.user.name || "Участник";
+        return registerForEvent({
+          eventId: input.eventId,
+          userOpenId: ctx.user.openId,
+          userName,
+          status: regStatus,
+        });
+      }),
+
+    cancelRegistration: protectedProcedure
+      .input(z.object({ eventId: z.number().int().positive() }))
+      .mutation(async ({ ctx, input }) => {
+        return cancelEventRegistration(input.eventId, ctx.user.openId);
+      }),
+
+    // ── Admin: Comments ──
+    adminListComments: adminProcedure
+      .input(z.object({ postId: z.number().int().positive() }))
+      .query(async ({ input }) => {
+        return listAllPostComments(input.postId);
+      }),
+
+    adminHideComment: adminProcedure
+      .input(z.object({ commentId: z.number().int().positive() }))
+      .mutation(async ({ input }) => {
+        return hidePostComment(input.commentId);
+      }),
+
+    adminUnhideComment: adminProcedure
+      .input(z.object({ commentId: z.number().int().positive() }))
+      .mutation(async ({ input }) => {
+        return unhidePostComment(input.commentId);
+      }),
+
+    adminDeleteComment: adminProcedure
+      .input(z.object({ commentId: z.number().int().positive() }))
+      .mutation(async ({ input }) => {
+        return deletePostComment(input.commentId);
+      }),
+
+    // ── Admin: Event Registrations ──
+    adminListRegistrations: adminProcedure
+      .input(z.object({ eventId: z.number().int().positive() }))
+      .query(async ({ input }) => {
+        return listEventRegistrations(input.eventId);
+      }),
+
+    adminUpdateRegistration: adminProcedure
+      .input(z.object({
+        registrationId: z.number().int().positive(),
+        status: z.enum(["registered", "waitlist", "cancelled", "rejected"]),
+        adminNote: z.string().max(500).optional(),
+      }))
+      .mutation(async ({ input }) => {
+        return adminUpdateRegistrationStatus(input.registrationId, input.status, input.adminNote);
+      }),
+
+    // ── Admin: Post Likers ──
+    adminListLikers: adminProcedure
+      .input(z.object({ postId: z.number().int().positive() }))
+      .query(async ({ input }) => {
+        return getPostLikers(input.postId);
+      }),
   }),
   diagnostics: router({
     report: protectedProcedure.query(async ({ ctx }) => {

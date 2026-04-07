@@ -419,6 +419,7 @@ export function ListRow({
   onEdit,
   onDelete,
   deleting,
+  extraActions,
 }: {
   title: string;
   subtitle: string;
@@ -431,6 +432,7 @@ export function ListRow({
   onEdit: () => void;
   onDelete: () => void;
   deleting?: boolean;
+  extraActions?: { label: string; icon?: ReactNode; href: string }[];
 }) {
   return (
     <div className={`rounded-2xl border p-4 transition-colors ${selected ? "border-amber-300 bg-amber-50/50" : "border-stone-200"}`}>
@@ -476,7 +478,14 @@ export function ListRow({
             ) : null}
           </div>
         </div>
-        <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center sm:justify-end flex-shrink-0">
+        <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center sm:justify-end flex-shrink-0">
+          {extraActions?.map((ea) => (
+            <a key={ea.label} href={ea.href} className="w-full sm:w-auto">
+              <Button variant="outline" size="sm" className="w-full justify-center sm:min-w-[132px] sm:w-[132px]">
+                {ea.icon ? <span className="mr-2">{ea.icon}</span> : null}{ea.label}
+              </Button>
+            </a>
+          ))}
           <Button variant="outline" size="sm" onClick={onEdit} className="w-full justify-center sm:min-w-[132px] sm:w-[132px]">
             <Pencil className="mr-2 h-4 w-4" />Править
           </Button>

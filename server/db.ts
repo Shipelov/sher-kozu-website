@@ -67,6 +67,11 @@ import {
   animalWellnessMetrics,
   ownerTierStatus,
   tierProductCatalog,
+  clubPostLikes,
+  clubPostComments,
+  clubEventRegistrations,
+  InsertClubPostComment,
+  InsertClubEventRegistration,
 } from "../drizzle/schema";
 import { ENV } from "./_core/env";
 
@@ -5974,4 +5979,254 @@ export async function getDeliveryExportData(animalId: number, year?: number) {
     year: targetYear,
     stats: { total, delivered, ready, planned },
   };
+}
+
+
+/* ───────────────────────────────────────────────
+   Club Interactivity — Likes, Comments, Event Registrations
+   ─────────────────────────────────────────────── */
+
+// ── Post Likes ──
+
+export async function togglePostLike(postId: number, userOpenId: string): Promise<{ liked: boolean; likeCount: number }> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  const existing = await db.select().from(clubPostLikes)
+    .where(and(eq(clubPostLikes.postId, postId), eq(clubPostLikes.userOpenId, userOpenId)))
+    .limit(1);
+
+  if (existing[0]) {
+    // Unlike
+    await db.delete(clubPostLikes).where(eq(clubPostLikes.id, existing[0].id));
+    await db.update(clubPosts).set({ likes: sql`GREATEST(${clubPosts.likes} - 1, 0)` }).where(eq(clubPosts.id, postId));
+    const post = await db.select({ likes: clubPosts.likes }).from(clubPosts).where(eq(clubPosts.id, postId)).limit(1);
+    return { liked: false, likeCount: post[0]?.likes ?? 0 };
+  } else {
+    // Like
+    await db.insert(clubPostLikes).values({ postId, userOpenId });
+    await db.update(clubPosts).set({ likes: sql`${clubPosts.likes} + 1` }).where(eq(clubPosts.id, postId));
+    const post = await db.select({ likes: clubPosts.likes }).from(clubPosts).where(eq(clubPosts.id, postId)).limit(1);
+    return { liked: true, likeCount: post[0]?.likes ?? 0 };
+  }
+}
+
+export async function getUserLikedPostIds(userOpenId: string): Promise<number[]> {
+  const db = await getDb();
+  if (!db) return [];
+  const rows = await db.select({ postId: clubPostLikes.postId }).from(clubPostLikes)
+    .where(eq(clubPostLikes.userOpenId, userOpenId));
+  return rows.map((r: { postId: number }) => r.postId);
+}
+
+export async function getPostLikers(postId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  const rows = await db.select({
+    id: clubPostLikes.id,
+    userOpenId: clubPostLikes.userOpenId,
+    createdAt: clubPostLikes.createdAt,
+  }).from(clubPostLikes).where(eq(clubPostLikes.postId, postId)).orderBy(desc(clubPostLikes.createdAt));
+  return rows;
+}
+
+// ── Post Comments ──
+
+export async function createPostComment(input: { postId: number; userOpenId: string; userName: string; text: string }) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  await db.insert(clubPostComments).values({
+    postId: input.postId,
+    userOpenId: input.userOpenId,
+    userName: input.userName,
+    text: input.text,
+  });
+  // Update denormalized counter
+  await db.update(clubPosts).set({ comments: sql`${clubPosts.comments} + 1` }).where(eq(clubPosts.id, input.postId));
+
+  const created = await db.select().from(clubPostComments)
+    .where(and(eq(clubPostComments.postId, input.postId), eq(clubPostComments.userOpenId, input.userOpenId)))
+    .orderBy(desc(clubPostComments.id)).limit(1);
+  return created[0] ?? null;
+}
+
+export async function listPostComments(postId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(clubPostComments)
+    .where(and(eq(clubPostComments.postId, postId), eq(clubPostComments.hidden, false)))
+    .orderBy(asc(clubPostComments.createdAt));
+}
+
+export async function listAllPostComments(postId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(clubPostComments)
+    .where(eq(clubPostComments.postId, postId))
+    .orderBy(desc(clubPostComments.createdAt));
+}
+
+export async function hidePostComment(commentId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const comment = await db.select().from(clubPostComments).where(eq(clubPostComments.id, commentId)).limit(1);
+  if (!comment[0]) return null;
+  const wasHidden = comment[0].hidden;
+  await db.update(clubPostComments).set({ hidden: true }).where(eq(clubPostComments.id, commentId));
+  // Decrement counter only if it wasn't already hidden
+  if (!wasHidden) {
+    await db.update(clubPosts).set({ comments: sql`GREATEST(${clubPosts.comments} - 1, 0)` }).where(eq(clubPosts.id, comment[0].postId));
+  }
+  return { ...comment[0], hidden: true };
+}
+
+export async function unhidePostComment(commentId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const comment = await db.select().from(clubPostComments).where(eq(clubPostComments.id, commentId)).limit(1);
+  if (!comment[0]) return null;
+  const wasHidden = comment[0].hidden;
+  await db.update(clubPostComments).set({ hidden: false }).where(eq(clubPostComments.id, commentId));
+  if (wasHidden) {
+    await db.update(clubPosts).set({ comments: sql`${clubPosts.comments} + 1` }).where(eq(clubPosts.id, comment[0].postId));
+  }
+  return { ...comment[0], hidden: false };
+}
+
+export async function deletePostComment(commentId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const comment = await db.select().from(clubPostComments).where(eq(clubPostComments.id, commentId)).limit(1);
+  if (!comment[0]) return null;
+  await db.delete(clubPostComments).where(eq(clubPostComments.id, commentId));
+  if (!comment[0].hidden) {
+    await db.update(clubPosts).set({ comments: sql`GREATEST(${clubPosts.comments} - 1, 0)` }).where(eq(clubPosts.id, comment[0].postId));
+  }
+  return comment[0];
+}
+
+// ── Event Registrations ──
+
+export async function registerForEvent(input: {
+  eventId: number;
+  userOpenId: string;
+  userName: string;
+  status: "registered" | "waitlist";
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  // Check if already registered
+  const existing = await db.select().from(clubEventRegistrations)
+    .where(and(
+      eq(clubEventRegistrations.eventId, input.eventId),
+      eq(clubEventRegistrations.userOpenId, input.userOpenId),
+    )).limit(1);
+
+  if (existing[0]) {
+    // If cancelled, allow re-registration
+    if (existing[0].status === "cancelled" || existing[0].status === "rejected") {
+      await db.update(clubEventRegistrations).set({
+        status: input.status,
+        adminNote: null,
+      }).where(eq(clubEventRegistrations.id, existing[0].id));
+      if (input.status === "registered") {
+        await db.update(clubEvents).set({ registrationCount: sql`${clubEvents.registrationCount} + 1` }).where(eq(clubEvents.id, input.eventId));
+      }
+      const updated = await db.select().from(clubEventRegistrations).where(eq(clubEventRegistrations.id, existing[0].id)).limit(1);
+      return updated[0] ?? null;
+    }
+    return existing[0]; // Already registered
+  }
+
+  await db.insert(clubEventRegistrations).values({
+    eventId: input.eventId,
+    userOpenId: input.userOpenId,
+    userName: input.userName,
+    status: input.status,
+  });
+  if (input.status === "registered") {
+    await db.update(clubEvents).set({ registrationCount: sql`${clubEvents.registrationCount} + 1` }).where(eq(clubEvents.id, input.eventId));
+  }
+
+  const created = await db.select().from(clubEventRegistrations)
+    .where(and(eq(clubEventRegistrations.eventId, input.eventId), eq(clubEventRegistrations.userOpenId, input.userOpenId)))
+    .orderBy(desc(clubEventRegistrations.id)).limit(1);
+  return created[0] ?? null;
+}
+
+export async function cancelEventRegistration(eventId: number, userOpenId: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  const existing = await db.select().from(clubEventRegistrations)
+    .where(and(
+      eq(clubEventRegistrations.eventId, eventId),
+      eq(clubEventRegistrations.userOpenId, userOpenId),
+    )).limit(1);
+
+  if (!existing[0] || existing[0].status === "cancelled") return null;
+
+  const wasRegistered = existing[0].status === "registered";
+  await db.update(clubEventRegistrations).set({ status: "cancelled" }).where(eq(clubEventRegistrations.id, existing[0].id));
+  if (wasRegistered) {
+    await db.update(clubEvents).set({ registrationCount: sql`GREATEST(${clubEvents.registrationCount} - 1, 0)` }).where(eq(clubEvents.id, eventId));
+  }
+  return { ...existing[0], status: "cancelled" as const };
+}
+
+export async function getUserEventRegistrations(userOpenId: string) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(clubEventRegistrations)
+    .where(eq(clubEventRegistrations.userOpenId, userOpenId))
+    .orderBy(desc(clubEventRegistrations.createdAt));
+}
+
+export async function listEventRegistrations(eventId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(clubEventRegistrations)
+    .where(eq(clubEventRegistrations.eventId, eventId))
+    .orderBy(desc(clubEventRegistrations.createdAt));
+}
+
+export async function adminUpdateRegistrationStatus(registrationId: number, status: "registered" | "waitlist" | "cancelled" | "rejected", adminNote?: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  const existing = await db.select().from(clubEventRegistrations).where(eq(clubEventRegistrations.id, registrationId)).limit(1);
+  if (!existing[0]) return null;
+
+  const oldStatus = existing[0].status;
+  await db.update(clubEventRegistrations).set({ status, adminNote: adminNote ?? existing[0].adminNote }).where(eq(clubEventRegistrations.id, registrationId));
+
+  // Update denormalized counter
+  const wasActive = oldStatus === "registered";
+  const isActive = status === "registered";
+  if (wasActive && !isActive) {
+    await db.update(clubEvents).set({ registrationCount: sql`GREATEST(${clubEvents.registrationCount} - 1, 0)` }).where(eq(clubEvents.id, existing[0].eventId));
+  } else if (!wasActive && isActive) {
+    await db.update(clubEvents).set({ registrationCount: sql`${clubEvents.registrationCount} + 1` }).where(eq(clubEvents.id, existing[0].eventId));
+  }
+
+  const updated = await db.select().from(clubEventRegistrations).where(eq(clubEventRegistrations.id, registrationId)).limit(1);
+  return updated[0] ?? null;
+}
+
+export async function getUserOwnershipStatus(userOpenId: string): Promise<"active" | "pending_payment" | "none"> {
+  const db = await getDb();
+  if (!db) return "none";
+  const activeOwnership = await db.select({ id: animalOwnerships.id }).from(animalOwnerships)
+    .where(and(eq(animalOwnerships.ownerOpenId, userOpenId), eq(animalOwnerships.status, "active")))
+    .limit(1);
+  if (activeOwnership.length) return "active";
+
+  const pendingOwnership = await db.select({ id: animalOwnerships.id }).from(animalOwnerships)
+    .where(and(eq(animalOwnerships.ownerOpenId, userOpenId), eq(animalOwnerships.status, "pending_payment")))
+    .limit(1);
+  if (pendingOwnership.length) return "pending_payment";
+
+  return "none";
 }

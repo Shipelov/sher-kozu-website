@@ -1,4 +1,4 @@
-import { ArrowDown, CalendarRange, CheckSquare, Crown, Eye, EyeOff, Pin, Square, Trash2 } from "lucide-react";
+import { ArrowDown, CalendarRange, CheckSquare, Crown, Eye, EyeOff, MessageCircle, Pin, Square, Trash2, Users } from "lucide-react";
 import {
   defaultEventFilters,
   defaultEventForm,
@@ -406,6 +406,9 @@ export function buildAdminClubPostsTabProps(props: PostsBuilderProps): AdminClub
         sortOrder: post.sortOrder,
         hidden: Boolean(post.hidden),
       }),
+      extraActions: [
+        { label: "Комментарии", icon: <MessageCircle className="h-4 w-4" />, href: `/admin/club/comments?postId=${post.id}` },
+      ],
       onDelete: () => props.setPendingDelete({ entity: "post", id: post.id, title: post.title, description: `пост «${post.title}»` }),
       deleting: props.isDeleting && props.pendingDelete?.entity === "post" && props.pendingDelete.id === post.id,
     })),
@@ -558,6 +561,9 @@ export function buildAdminClubEventsTabProps(props: EventsBuilderProps): AdminCl
         sortOrder: event.sortOrder,
         hidden: Boolean(event.hidden),
       }),
+      extraActions: [
+        { label: "Регистрации", icon: <Users className="h-4 w-4" />, href: `/admin/club/registrations?eventId=${event.id}` },
+      ],
       onDelete: () => props.setPendingDelete({ entity: "event", id: event.id, title: event.title, description: `событие «${event.title}»` }),
       deleting: props.isDeleting && props.pendingDelete?.entity === "event" && props.pendingDelete.id === event.id,
     })),
