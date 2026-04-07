@@ -304,7 +304,7 @@ export function FilterToolbar({
           ))}
         </div>
       ) : null}
-      {children ? <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">{children}</div> : null}
+      {children ? <div className="flex flex-wrap gap-3">{children}</div> : null}
     </div>
   );
 }
@@ -392,8 +392,8 @@ export function SelectFilter({
   options: Array<{ label: string; value: string }>;
 }) {
   return (
-    <div className="space-y-2">
-      <Label>{label}</Label>
+    <div className="space-y-1 min-w-[140px] flex-1">
+      <Label className="text-xs whitespace-nowrap">{label}</Label>
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
@@ -435,7 +435,7 @@ export function ListRow({
   return (
     <div className={`rounded-2xl border p-4 transition-colors ${selected ? "border-amber-300 bg-amber-50/50" : "border-stone-200"}`}>
       <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-        <div className="flex items-start gap-3">
+        <div className="flex items-start gap-3 min-w-0 flex-1">
           {onToggleSelected ? (
             <button
               type="button"
@@ -449,7 +449,7 @@ export function ListRow({
           ) : null}
           <div className="space-y-2">
             <div className="flex flex-wrap items-center gap-2">
-              <p className="font-medium text-stone-950">{title}</p>
+              <p className="font-medium text-stone-950 break-words">{title}</p>
               {badge ? <Badge variant="secondary">{badge}</Badge> : null}
               {hidden ? <Badge variant="outline" className="border-red-200 bg-red-50 text-red-700">Скрыт</Badge> : null}
             </div>
@@ -476,7 +476,7 @@ export function ListRow({
             ) : null}
           </div>
         </div>
-        <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center sm:justify-end">
+        <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center sm:justify-end flex-shrink-0">
           <Button variant="outline" size="sm" onClick={onEdit} className="w-full justify-center sm:min-w-[132px] sm:w-[132px]">
             <Pencil className="mr-2 h-4 w-4" />Править
           </Button>
@@ -491,8 +491,8 @@ export function ListRow({
 
 export function Field({ label, error, children }: { label: string; error?: string; children: ReactNode }) {
   return (
-    <div className="space-y-2">
-      <Label>{label}</Label>
+    <div className="space-y-1">
+      <Label className="text-xs whitespace-nowrap">{label}</Label>
       {children}
       {error ? <p className="text-sm font-medium text-red-600">{error}</p> : null}
     </div>

@@ -115,7 +115,7 @@ export function AdminClubOverviewSection({
 
 export function AdminClubPostsTabSection({ children, className, ...props }: AdminClubTabSectionProps) {
   return (
-    <TabsContent value="posts" className={className ?? "grid gap-6 xl:grid-cols-[0.95fr_1.05fr]"} {...props}>
+    <TabsContent value="posts" className={className ?? "space-y-6"} {...props}>
       {children}
     </TabsContent>
   );
@@ -123,7 +123,7 @@ export function AdminClubPostsTabSection({ children, className, ...props }: Admi
 
 export function AdminClubEventsTabSection({ children, className, ...props }: AdminClubTabSectionProps) {
   return (
-    <TabsContent value="events" className={className ?? "grid gap-6 xl:grid-cols-[0.95fr_1.05fr]"} {...props}>
+    <TabsContent value="events" className={className ?? "space-y-6"} {...props}>
       {children}
     </TabsContent>
   );
@@ -131,7 +131,7 @@ export function AdminClubEventsTabSection({ children, className, ...props }: Adm
 
 export function AdminClubMembersTabSection({ children, className, ...props }: AdminClubTabSectionProps) {
   return (
-    <TabsContent value="members" className={className ?? "grid gap-6 xl:grid-cols-[0.95fr_1.05fr]"} {...props}>
+    <TabsContent value="members" className={className ?? "space-y-6"} {...props}>
       {children}
     </TabsContent>
   );
