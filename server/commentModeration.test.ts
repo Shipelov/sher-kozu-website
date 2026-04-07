@@ -22,6 +22,32 @@ describe("moderateComment", () => {
     expect(result.cleanedText).not.toContain("https://");
   });
 
+  // ── Farming context words — should be ALLOWED ──
+  it("allows 'тварь' in animal context", () => {
+    expect(moderateComment("Тварь какая милая").approved).toBe(true);
+    expect(moderateComment("Божья тварь").approved).toBe(true);
+  });
+
+  it("allows 'сука/суки' in animal context", () => {
+    expect(moderateComment("Сука родила щенков").approved).toBe(true);
+    expect(moderateComment("Какие суки милые").approved).toBe(true);
+    expect(moderateComment("Сучка родила щенков").approved).toBe(true);
+  });
+
+  // ── Directed insults with context words — should be BLOCKED ──
+  it("blocks 'суки вы' as directed insult", () => {
+    expect(moderateComment("Суки вы").approved).toBe(false);
+  });
+
+  it("blocks 'ты сука' as directed insult", () => {
+    expect(moderateComment("Ты сука").approved).toBe(false);
+  });
+
+  it("blocks 'вот тварь' as directed insult", () => {
+    expect(moderateComment("Вот тварь такая").approved).toBe(false);
+    expect(moderateComment("Вот тварь").approved).toBe(false);
+  });
+
   // ── Blocked: profanity ──
   it("blocks comments with Russian profanity", () => {
     const result = moderateComment("Это полный пиздец какой-то");
@@ -36,22 +62,35 @@ describe("moderateComment", () => {
   });
 
   // ── Blocked: spam ──
-  it("blocks comments with multiple URLs", () => {
-    const result = moderateComment("Купите тут https://spam1.com и тут https://spam2.com");
+  it("blocks comments with 3+ URLs", () => {
+    const result = moderateComment(
+      "Купите тут https://spam1.com и тут https://spam2.com и тут https://spam3.com"
+    );
     expect(result.approved).toBe(false);
     expect(result.reason).toContain("ссылок");
   });
 
-  it("blocks comments with repeated characters", () => {
-    const result = moderateComment("Ааааааааааааааа это круто");
+  it("allows comments with 2 URLs", () => {
+    const result = moderateComment(
+      "Сайт https://example.com и https://other.com"
+    );
+    expect(result.approved).toBe(true);
+  });
+
+  it("blocks comments with repeated characters (8+)", () => {
+    const result = moderateComment("Привееееееееет это круто");
     expect(result.approved).toBe(false);
     expect(result.reason).toContain("Повторяющиеся символы");
   });
 
-  it("blocks comments that are mostly uppercase (>20 chars)", () => {
-    const result = moderateComment("ЭТО ОЧЕНЬ ПЛОХОЙ ПОСТ И Я ТАК СЧИТАЮ ВСЕГДА");
+  it("blocks comments that are mostly uppercase (>30 chars)", () => {
+    const result = moderateComment("ЭТО ПОЛНЫЙ БРЕД И ЕРУНДА ПОЛНАЯ ЧУШЬ БРЕД БРЕД");
     expect(result.approved).toBe(false);
     expect(result.reason).toContain("заглавных букв");
+  });
+
+  it("allows short caps text", () => {
+    expect(moderateComment("СУПЕР!").approved).toBe(true);
   });
 
   // ── Blocked: sanity ──
@@ -62,7 +101,8 @@ describe("moderateComment", () => {
   });
 
   it("blocks comments exceeding 2000 chars", () => {
-    const longText = "А".repeat(2001);
+    const phrase = "Это нормальное предложение для теста. ";
+    const longText = phrase.repeat(100);
     const result = moderateComment(longText);
     expect(result.approved).toBe(false);
     expect(result.reason).toContain("длинный");
@@ -70,7 +110,6 @@ describe("moderateComment", () => {
 
   // ── Edge cases ──
   it("approves a comment at exactly 2000 chars", () => {
-    // Use a realistic long text that doesn't trigger spam filters
     const phrase = "Отличный пост о ферме. ";
     const text = phrase.repeat(Math.ceil(2000 / phrase.length)).slice(0, 2000);
     const result = moderateComment(text);
