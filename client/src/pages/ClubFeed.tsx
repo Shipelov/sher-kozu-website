@@ -158,7 +158,15 @@ function CommentsPanel({
       toast.success("Комментарий добавлен");
     },
     onError: (err) => {
-      toast.error(err.message || "Не удалось добавить комментарий");
+      const msg = err.message || "";
+      if (msg.includes("недопустимые") || msg.includes("ссылок") || msg.includes("символы") || msg.includes("заглавных") || msg.includes("короткий") || msg.includes("длинный")) {
+        toast.warning(msg, {
+          description: "Пожалуйста, отредактируйте текст и попробуйте снова.",
+          duration: 5000,
+        });
+      } else {
+        toast.error("Не удалось добавить комментарий. Попробуйте позже.");
+      }
     },
   });
 
