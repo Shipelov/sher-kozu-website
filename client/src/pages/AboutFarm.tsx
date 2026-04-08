@@ -16,6 +16,7 @@
 import { motion } from "framer-motion";
 import { Link } from "wouter";
 import Navbar from "@/components/Navbar";
+import Footer from "@/components/Footer";
 import PageBreadcrumbs from "@/components/PageBreadcrumbs";
 import { useCmsContent } from "@/hooks/useCmsContent";
 import {
@@ -635,34 +636,7 @@ export default function AboutFarm() {
         </div>
       </section>
 
-      {/* ═══════════════════════════════════════════════════════
-          FOOTER
-          ═══════════════════════════════════════════════════════ */}
-      <footer className="border-t border-border bg-card py-10">
-        <div className="container flex flex-col items-center gap-4 text-center">
-          <div className="flex items-center gap-2">
-            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary">
-              <Leaf className="h-3.5 w-3.5 text-white" />
-            </div>
-            <span className="text-base font-bold tracking-tight">
-              Шерь <span className="text-primary">Козу</span>
-            </span>
-          </div>
-          <p className="text-sm text-muted-foreground max-w-md">
-            Семейная ферма персонального фермерства. Элитные породы коз и овец,
-            именные продукты, закрытый клуб.
-          </p>
-          <div className="flex flex-wrap justify-center gap-6 text-sm text-muted-foreground">
-            <Link href="/" className="hover:text-foreground transition-colors">Главная</Link>
-            <Link href="/animals" className="hover:text-foreground transition-colors">Каталог</Link>
-            <Link href="/club" className="hover:text-foreground transition-colors">Клуб</Link>
-            <Link href="/partners" className="hover:text-foreground transition-colors">Для партнёров</Link>
-          </div>
-          <p className="text-xs text-muted-foreground/60 mt-2">
-            &copy; {new Date().getFullYear()} Шерь Козу. Все права защищены.
-          </p>
-        </div>
-      </footer>
+      <Footer />
     </div>
   );
 }

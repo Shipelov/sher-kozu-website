@@ -23,6 +23,7 @@ import Navbar from "@/components/Navbar";
 import LazyImage from "@/components/LazyImage";
 import FarmMap from "@/components/FarmMap";
 import AuthModal from "@/components/AuthModal";
+import Footer from "@/components/Footer";
 import {
   ArrowRight,
   ChevronRight,
@@ -41,6 +42,7 @@ import {
   Eye,
   Truck,
   Navigation,
+  Mail,
   X,
 } from "lucide-react";
 
@@ -791,29 +793,32 @@ export default function Home() {
       </section>
 
       {/* ═══════════════════════════════════════════════════════
-          FOOTER LINKS: Partners & info
+          SECTION 8 — CONTACT STRIP
           ═══════════════════════════════════════════════════════ */}
-      <footer className="border-t border-border/60 bg-card py-10">
+      <section className="bg-primary/5 py-14 md:py-16">
         <div className="container">
-          <div className="flex flex-col items-center justify-between gap-6 md:flex-row">
-            <div className="flex items-center gap-3">
-              <Leaf className="h-5 w-5 text-primary" />
-              <span className="font-display text-lg text-foreground">Шерь Козу</span>
-              <span className="text-sm text-muted-foreground">Персональное фермерство</span>
-            </div>
-            <div className="flex flex-wrap items-center gap-6 text-sm text-muted-foreground">
-              <Link href="/animals" className="transition-colors hover:text-foreground">Животные</Link>
-              <Link href="/club" className="transition-colors hover:text-foreground">Клуб</Link>
-              <Link href="/tracker" className="transition-colors hover:text-foreground">Трекер</Link>
-              <Link href="/partners" className="transition-colors hover:text-foreground">Для партнёров</Link>
-              <Link href="/faq" className="transition-colors hover:text-foreground">FAQ</Link>
-            </div>
-          </div>
-          <div className="mt-6 text-center text-xs text-muted-foreground">
-            &copy; {new Date().getFullYear()} Шерь Козу. Семейная ферма персонального фермерства.
+          <div className="mx-auto max-w-2xl text-center">
+            <h2 className="font-display text-2xl md:text-3xl text-foreground">
+              Остались вопросы?
+            </h2>
+            <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
+              Напишите нам — расскажем о ферме, поможем выбрать животное и ответим на любые вопросы о персональном фермерстве.
+            </p>
+            <a
+              href="mailto:info@sherkozu.ru"
+              className="mt-6 inline-flex items-center gap-3 rounded-full border-2 border-primary/30 bg-white px-8 py-4 text-base font-semibold text-primary shadow-md transition-all hover:border-primary/50 hover:shadow-lg hover:scale-[1.02]"
+            >
+              <Mail className="h-5 w-5" />
+              info@sherkozu.ru
+            </a>
           </div>
         </div>
-      </footer>
+      </section>
+
+      {/* ═══════════════════════════════════════════════════════
+          FOOTER
+          ═══════════════════════════════════════════════════════ */}
+      <Footer />
 
       {/* Auth Modal */}
       <AuthModal

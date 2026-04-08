@@ -12,6 +12,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
 import { Link } from "wouter";
 import Navbar from "@/components/Navbar";
+import Footer from "@/components/Footer";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -504,27 +505,7 @@ export default function FAQ() {
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="border-t border-border/60 bg-card py-10">
-        <div className="container">
-          <div className="flex flex-col items-center justify-between gap-6 md:flex-row">
-            <div className="flex items-center gap-3">
-              <Leaf className="h-5 w-5 text-primary" />
-              <span className="font-display text-lg text-foreground">Шерь Козу</span>
-              <span className="text-sm text-muted-foreground">Персональное фермерство</span>
-            </div>
-            <div className="flex flex-wrap items-center gap-6 text-sm text-muted-foreground">
-              <Link href="/animals" className="transition-colors hover:text-foreground">Животные</Link>
-              <Link href="/club" className="transition-colors hover:text-foreground">Клуб</Link>
-              <Link href="/tracker" className="transition-colors hover:text-foreground">Трекер</Link>
-              <Link href="/partners" className="transition-colors hover:text-foreground">Для партнёров</Link>
-            </div>
-          </div>
-          <div className="mt-6 text-center text-xs text-muted-foreground">
-            &copy; {new Date().getFullYear()} Шерь Козу. Семейная ферма персонального фермерства.
-          </div>
-        </div>
-      </footer>
+      <Footer />
     </div>
   );
 }

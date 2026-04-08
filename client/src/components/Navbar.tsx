@@ -27,6 +27,7 @@ import {
   UserPlus,
   ChevronDown,
   Briefcase,
+  Mail,
   MoreHorizontal,
   Tag,
 } from "lucide-react";
@@ -253,6 +254,16 @@ export default function Navbar() {
           {/* Right side: auth state */}
           <div className="flex items-center gap-2 md:gap-3">
 
+            {/* Contact email — always visible */}
+            <a
+              href="mailto:info@sherkozu.ru"
+              title="Написать нам: info@sherkozu.ru"
+              className="hidden items-center gap-1.5 rounded-full border border-primary/20 bg-primary/5 px-3 py-1.5 text-xs font-medium text-primary transition-all hover:border-primary/40 hover:bg-primary/10 sm:inline-flex"
+            >
+              <Mail className="h-3.5 w-3.5" />
+              <span className="hidden lg:inline">info@sherkozu.ru</span>
+            </a>
+
             {/* Notification bell for authenticated users */}
             {isAuthenticated && user && (
               <div className="hidden sm:block">
@@ -463,6 +474,18 @@ export default function Navbar() {
                   </button>
                 </Link>
               )}
+
+              {/* Contact email (mobile) */}
+              <a
+                href="mailto:info@sherkozu.ru"
+                className="flex w-full items-center justify-between rounded-2xl bg-primary/5 border border-primary/15 px-4 py-3 text-left transition-colors hover:bg-primary/10"
+              >
+                <span className="flex items-center gap-3 text-sm font-medium text-primary">
+                  <Mail className="h-4 w-4" />
+                  info@sherkozu.ru
+                </span>
+                <ChevronRight className="h-4 w-4 text-primary/50" />
+              </a>
 
               {/* Bottom action */}
               {isAuthenticated ? (

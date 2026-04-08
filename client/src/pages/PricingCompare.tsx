@@ -7,6 +7,7 @@ import React from "react";
 import { motion } from "framer-motion";
 import { Link } from "wouter";
 import Navbar from "@/components/Navbar";
+import Footer from "@/components/Footer";
 import PageBreadcrumbs from "@/components/PageBreadcrumbs";
 import { trpc } from "@/lib/trpc";
 import { Check, X, ArrowRight, Leaf, Loader2 } from "lucide-react";
@@ -203,26 +204,7 @@ export default function PricingCompare() {
           </div>
         </div>
 
-        {/* Footer */}
-        <footer className="border-t border-border/60 bg-card py-10">
-          <div className="container">
-            <div className="flex flex-col items-center justify-between gap-6 md:flex-row">
-              <div className="flex items-center gap-3">
-                <Leaf className="h-5 w-5 text-primary" />
-                <span className="font-display text-lg text-foreground">Шерь Козу</span>
-                <span className="text-sm text-muted-foreground">Персональное фермерство</span>
-              </div>
-              <div className="flex flex-wrap items-center gap-6 text-sm text-muted-foreground">
-                <Link href="/pricing" className="transition-colors hover:text-foreground">Цены</Link>
-                <Link href="/animals" className="transition-colors hover:text-foreground">Животные</Link>
-                <Link href="/faq" className="transition-colors hover:text-foreground">FAQ</Link>
-              </div>
-            </div>
-            <div className="mt-6 text-center text-xs text-muted-foreground">
-              &copy; {new Date().getFullYear()} Шерь Козу. Семейная ферма персонального фермерства.
-            </div>
-          </div>
-        </footer>
+        <Footer />
       </main>
     </div>
   );
