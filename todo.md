@@ -2057,3 +2057,9 @@
 - [x] Fix demo tracker: DemoHint labels overlapping text in sections (changed from absolute to inline)
 - [x] Fix Club page hero: labels overlapping main heading text on mobile (increased height, hidden badges on mobile)
 - [x] Audit other pages for similar mobile layout/overlap issues
+
+## Homepage Badges Update (2026-04-08)
+
+- [x] Replace 5 generic badges with 4 new ones: 4 элитные породы, 18 видов сыра, 100% гарантия качества, 1 час от Москвы
+- [x] Make badges visually attractive and in a single row (grid-cols-4 with gradient backgrounds, icons, hover effects)
+- [x] Stretch Masha AI button to be symmetrical with the two CTA buttons above (min-w-[420px], full width on mobile)

@@ -268,49 +268,57 @@ export default function Home() {
                   <ChevronRight className="h-4 w-4" />
                 </a>
 
-                {/* Masha AI Manager — inline with CTA buttons */}
+              </motion.div>
+
+              {/* Masha AI Manager — stretched to match CTA buttons */}
+              <motion.div
+                initial={{ opacity: 0, y: 18 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.26 }}
+                className="mt-3"
+              >
                 <button
                   type="button"
                   onClick={() => setMashaVideoOpen(true)}
-                  className="group inline-flex items-center gap-2.5 rounded-full border border-primary/20 bg-white/90 py-2 pl-2 pr-5 shadow-md backdrop-blur transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5 hover:border-primary/40 cursor-pointer"
+                  className="group inline-flex w-full sm:w-auto items-center gap-3 rounded-full border border-primary/20 bg-white/90 py-2.5 pl-2.5 pr-8 shadow-md backdrop-blur transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5 hover:border-primary/40 cursor-pointer sm:min-w-[420px]"
                 >
-                  <div className="relative">
+                  <div className="relative flex-shrink-0">
                     <img
                       src="https://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/manager-v1_e0256177.jpg"
                       alt="Маша — AI Управляющая"
-                      className="h-10 w-10 rounded-full object-cover ring-2 ring-primary/20 group-hover:ring-primary/40 transition-all"
+                      className="h-11 w-11 rounded-full object-cover ring-2 ring-primary/20 group-hover:ring-primary/40 transition-all"
                     />
                     <div className="absolute -bottom-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-primary shadow-sm">
                       <svg className="h-2.5 w-2.5 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
                     </div>
                   </div>
-                  <div className="text-left">
-                    <p className="text-xs font-semibold text-foreground leading-tight">Маша — AI Управляющая</p>
-                    <p className="text-[11px] text-muted-foreground group-hover:text-primary transition-colors">Познакомиться ▶</p>
+                  <div className="text-left flex-1">
+                    <p className="text-sm font-semibold text-foreground leading-tight">Маша — AI Управляющая фермой</p>
+                    <p className="text-xs text-muted-foreground group-hover:text-primary transition-colors">Познакомиться и задать вопрос ▶</p>
                   </div>
                 </button>
               </motion.div>
 
-              {/* Trust signals */}
+              {/* Trust signals — 4 key facts */}
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.3 }}
-                className="mt-10 flex flex-wrap gap-4"
+                className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4"
               >
                 {[
-                  { value: "\u2764\uFE0F", label: "здоровое питание" },
-                  { value: "\uD83C\uDF3E", label: "основатель фермы" },
-                  { value: "100%", label: "прозрачность" },
-                  { value: "24/7", label: "сервис" },
-                  { value: "50", label: "семей" },
+                  { value: "4", label: "элитные породы", icon: "🐐", accent: "from-emerald-500/10 to-emerald-600/5" },
+                  { value: "18", label: "видов сыра", icon: "🧀", accent: "from-amber-500/10 to-amber-600/5" },
+                  { value: "100%", label: "гарантия качества", icon: "✅", accent: "from-green-500/10 to-green-600/5" },
+                  { value: "1 час", label: "от Москвы", icon: "📍", accent: "from-rose-500/10 to-rose-600/5" },
                 ].map((signal) => (
                   <div
                     key={signal.label}
-                    className="rounded-2xl border border-border/60 bg-card/70 px-5 py-3 shadow-sm backdrop-blur"
+                    className={`relative overflow-hidden rounded-2xl border border-border/60 bg-gradient-to-br ${signal.accent} px-4 py-4 shadow-sm backdrop-blur transition-all duration-300 hover:shadow-md hover:-translate-y-0.5`}
                   >
-                    <div className="text-xl font-semibold tracking-tight text-foreground">{signal.value}</div>
-                    <div className="mt-1 text-xs uppercase tracking-[0.18em] text-muted-foreground">{signal.label}</div>
+                    <div className="text-lg mb-1">{signal.icon}</div>
+                    <div className="text-2xl font-bold tracking-tight text-foreground leading-none">{signal.value}</div>
+                    <div className="mt-1.5 text-[11px] uppercase tracking-[0.15em] text-muted-foreground font-medium">{signal.label}</div>
                   </div>
                 ))}
               </motion.div>
