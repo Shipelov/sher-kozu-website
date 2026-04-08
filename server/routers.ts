@@ -108,6 +108,7 @@ import { moderateComment } from "./commentModeration";
 import { productTrackRouter } from "./routers/productTrack";
 import { gamificationRouter } from "./routers/gamification";
 import { faqChatRouter } from "./routers/faqChat";
+import { nutritionistRouter } from "./routers/nutritionist";
 import { cmsRouter } from "./routers/cms";
 import { analyticsRouter } from "./routers/analytics";
 import { analyticsAlertsRouter } from "./routers/analyticsAlerts";
@@ -2101,6 +2102,7 @@ export const appRouter = router({
 
   // ─── Trash / Soft-Delete ──────────────────────────────────────────────────
   faqChat: faqChatRouter,
+  nutritionist: nutritionistRouter,
   cms: cmsRouter,
   adminTrash: router({
     /** Move user to trash (soft-delete) */

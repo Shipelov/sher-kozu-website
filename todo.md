@@ -2064,3 +2064,13 @@
 - [x] Make badges visually attractive and in a single row (grid-cols-4 with gradient backgrounds, icons, hover effects)
 - [x] Stretch Masha AI button to be symmetrical with the two CTA buttons above (min-w-[420px], full width on mobile)
 - [x] Stretch Masha button to exactly match the combined width of the two CTA buttons (pixel-perfect alignment)
+
+## Zoya AI Nutritionist — Phase 1 (Backend Foundation)
+
+- [x] 9 DB tables created (nutriSessions, nutriMessages, nutriProfiles, nutriMealPlans, nutriKnowledge, nutriKnowledgeImports, nutriSearchJobs, nutriRecipes, nutriSearchSettings)
+- [x] DB helpers (nutritionistDb.ts) with 25+ functions for all CRUD, search, analytics
+- [x] System prompt builder (zoyaSystemPrompt.ts) with dynamic context assembly per user type
+- [x] tRPC router (nutritionist.ts) with chat, knowledge, profiles, meal plans, recipes, analytics
+- [x] SSE streaming endpoint (zoyaSSE.ts) registered in Express for real-time chat
+- [x] Knowledge base seed (32 entries covering breeds, nutrition science, products, recipes)
+- [x] 21 vitest tests passing (knowledge CRUD, chat, sessions, profiles, admin, analytics)

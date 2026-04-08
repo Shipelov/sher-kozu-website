@@ -239,6 +239,10 @@ async function startServer() {
     }
   });
 
+  // Zoya AI Nutritionist SSE streaming endpoint
+  const { registerZoyaSSE } = await import("../zoyaSSE");
+  registerZoyaSSE(app);
+
   // OAuth callback under /api/oauth/callback
   registerOAuthRoutes(app);
   // tRPC API
