@@ -247,40 +247,36 @@ export default function Home() {
                 {cms.getText("hero_subtitle", "Выберите конкретную козу или овцу элитной породы, наблюдайте за её жизнью, воспитывайте её на ферме и получайте именные молочные продукты — с прозрачным процессом создания.")}
               </motion.p>
 
+              {/* CTA buttons + Masha — shared inline-size container */}
               <motion.div
                 initial={{ opacity: 0, y: 22 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.22 }}
-                className="mt-9 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center"
+                className="mt-9 flex flex-col gap-3 sm:inline-flex sm:items-stretch"
               >
-                <Link
-                  href="/animals"
-                  className="group inline-flex items-center justify-center gap-2 rounded-full bg-primary px-8 py-4 text-sm font-semibold text-primary-foreground shadow-[0_18px_40px_-20px_rgba(26,58,42,0.65)] transition-all duration-300 hover:-translate-y-0.5 hover:bg-primary/95"
-                >
-                  Выбрать животное
-                  <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
-                </Link>
-                <a
-                  href="#how-it-works"
-                  className="inline-flex items-center justify-center gap-2 rounded-full border border-border bg-white/80 px-8 py-4 text-sm font-semibold text-foreground backdrop-blur transition-colors hover:bg-white"
-                >
-                  Как это устроено
-                  <ChevronRight className="h-4 w-4" />
-                </a>
+                {/* Row 1: two CTA buttons side by side */}
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <Link
+                    href="/animals"
+                    className="group flex-1 inline-flex items-center justify-center gap-2 rounded-full bg-primary px-8 py-4 text-sm font-semibold text-primary-foreground shadow-[0_18px_40px_-20px_rgba(26,58,42,0.65)] transition-all duration-300 hover:-translate-y-0.5 hover:bg-primary/95"
+                  >
+                    Выбрать животное
+                    <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+                  </Link>
+                  <a
+                    href="#how-it-works"
+                    className="flex-1 inline-flex items-center justify-center gap-2 rounded-full border border-border bg-white/80 px-8 py-4 text-sm font-semibold text-foreground backdrop-blur transition-colors hover:bg-white"
+                  >
+                    Как это устроено
+                    <ChevronRight className="h-4 w-4" />
+                  </a>
+                </div>
 
-              </motion.div>
-
-              {/* Masha AI Manager — stretched to match CTA buttons */}
-              <motion.div
-                initial={{ opacity: 0, y: 18 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.26 }}
-                className="mt-3"
-              >
+                {/* Row 2: Masha button — w-full stretches to match the row above */}
                 <button
                   type="button"
                   onClick={() => setMashaVideoOpen(true)}
-                  className="group inline-flex w-full sm:w-auto items-center gap-3 rounded-full border border-primary/20 bg-white/90 py-2.5 pl-2.5 pr-8 shadow-md backdrop-blur transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5 hover:border-primary/40 cursor-pointer sm:min-w-[420px]"
+                  className="group w-full inline-flex items-center gap-3 rounded-full border border-primary/20 bg-white/90 py-2.5 pl-2.5 pr-8 shadow-md backdrop-blur transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5 hover:border-primary/40 cursor-pointer"
                 >
                   <div className="relative flex-shrink-0">
                     <img

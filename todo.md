@@ -2063,3 +2063,4 @@
 - [x] Replace 5 generic badges with 4 new ones: 4 элитные породы, 18 видов сыра, 100% гарантия качества, 1 час от Москвы
 - [x] Make badges visually attractive and in a single row (grid-cols-4 with gradient backgrounds, icons, hover effects)
 - [x] Stretch Masha AI button to be symmetrical with the two CTA buttons above (min-w-[420px], full width on mobile)
+- [x] Stretch Masha button to exactly match the combined width of the two CTA buttons (pixel-perfect alignment)
