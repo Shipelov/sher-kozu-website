@@ -154,10 +154,10 @@ function iconForStat(icon: "milk" | "truck" | "sparkles" | "flask") {
 }
 
 /** Tooltip-style hint badge shown on demo sections */
-function DemoHint({ text }: { text: string }) {
+function DemoHint({ text, className }: { text: string; className?: string }) {
   return (
-    <div className="inline-flex items-center gap-1.5 rounded-full bg-amber-100 px-3 py-1 text-xs font-medium text-amber-800">
-      <Info className="h-3 w-3" />
+    <div className={`inline-flex items-center gap-1.5 rounded-full bg-amber-100 px-3 py-1 text-xs font-medium text-amber-800 ${className ?? ""}`}>
+      <Info className="h-3 w-3 shrink-0" />
       {text}
     </div>
   );
@@ -245,23 +245,18 @@ export default function DemoTracker() {
             animate={{ opacity: 1, y: 0 }}
             className="relative mb-8 overflow-hidden rounded-[2.25rem] border border-border/70 bg-card shadow-[0_28px_80px_-42px_rgba(32,26,20,0.26)]"
           >
-            {/* Demo overlay badge */}
-            <div className="absolute right-4 top-4 z-20">
-              <DemoHint text="Демо-данные" />
-            </div>
-
             <div className="grid gap-0 lg:grid-cols-[1.05fr_0.95fr] lg:items-stretch">
               <div className="relative min-h-[360px] overflow-hidden">
                 <img src={DEMO_ANIMAL.coverImageUrl} alt="Демо — козье молоко" className="h-full w-full object-cover" />
                 <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(25,22,20,0.84),rgba(25,22,20,0.42),rgba(25,22,20,0.14))]" />
                 <div className="absolute inset-0 flex flex-col justify-between p-6 text-white md:p-8">
                   <div className="flex flex-wrap items-center gap-2">
+                    <DemoHint text="Демо-данные" className="bg-amber-100/90" />
                     <div className="inline-flex items-center gap-2 rounded-full bg-white/15 px-3 py-1 text-xs backdrop-blur">
                       <Leaf className="h-3.5 w-3.5" />
                       Партия SK-2026-031
                     </div>
                     <div className="rounded-full bg-green-500 px-3 py-1 text-xs font-semibold">Органик</div>
-                    <div className="rounded-full bg-white/12 px-3 py-1 text-xs font-medium backdrop-blur">Демо-маршрут</div>
                   </div>
 
                   <div className="max-w-2xl">
@@ -318,12 +313,12 @@ export default function DemoTracker() {
               transition={{ delay: 0.08 }}
               className="relative col-span-12 overflow-hidden rounded-[2rem] border border-border/70 bg-card shadow-sm lg:col-span-5"
             >
-              <div className="absolute right-4 top-4 z-10">
-                <DemoHint text="Пример анализа" />
-              </div>
               <div className="space-y-4 p-5">
                 <div>
-                  <p className="text-sm uppercase tracking-[0.22em] text-primary">{cms.getText("composition_label", "Состав партии")}</p>
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <p className="text-sm uppercase tracking-[0.22em] text-primary">{cms.getText("composition_label", "Состав партии")}</p>
+                    <DemoHint text="Пример анализа" />
+                  </div>
                   <h2 className="mt-3 text-2xl font-semibold text-foreground">{cms.getText("composition_heading", `Состав молока от ${DEMO_ANIMAL.name}`)}</h2>
                   <p className="mt-2 text-sm leading-7 text-muted-foreground">
                     {cms.getText("composition_description", "Качество партии видно прямо здесь — никаких абстрактных обещаний. Данные привязаны к вашему животному и вашей доле участия.")}
@@ -355,12 +350,12 @@ export default function DemoTracker() {
               transition={{ delay: 0.12 }}
               className="relative col-span-12 rounded-[2rem] border border-border/70 bg-card p-5 shadow-sm lg:col-span-7"
             >
-              <div className="absolute right-4 top-4 z-10">
-                <DemoHint text="Пример графика" />
-              </div>
               <div className="flex flex-col items-start gap-4 sm:flex-row sm:justify-between">
                 <div>
-                  <p className="text-sm uppercase tracking-[0.22em] text-primary">{cms.getText("chart_label", "Динамика надоев")}</p>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <p className="text-sm uppercase tracking-[0.22em] text-primary">{cms.getText("chart_label", "Динамика надоев")}</p>
+                    <DemoHint text="Пример графика" />
+                  </div>
                   <h2 className="mt-3 text-2xl font-semibold text-foreground">{cms.getText("chart_heading", "Сезонный ритм животного")}</h2>
                   <p className="mt-2 text-sm leading-7 text-muted-foreground">
                     {cms.getText("chart_description", "График показывает сезонность и связь между жизнью животного и объёмом продукта.")}
@@ -421,9 +416,6 @@ export default function DemoTracker() {
               transition={{ delay: 0.2 }}
               className="relative col-span-12 overflow-hidden rounded-[2rem] border border-border/70 bg-card shadow-sm"
             >
-              <div className="absolute right-4 top-4 z-10">
-                <DemoHint text="Пример доставок" />
-              </div>
               <div className="grid gap-0 lg:grid-cols-[0.95fr_1.05fr]">
                 <div className="overflow-hidden border-b border-border/70 lg:border-b-0 lg:border-r">
                   <img src={cms.getImage("delivery_image", CDN.delivery)} alt="История доставок" className="h-full min-h-[260px] w-full object-cover" />
@@ -431,7 +423,10 @@ export default function DemoTracker() {
                 <div className="p-5">
                   <div className="flex flex-col items-start gap-4 sm:flex-row sm:justify-between">
                     <div>
-                      <p className="text-sm uppercase tracking-[0.22em] text-primary">{cms.getText("delivery_label", "История доставок")}</p>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="text-sm uppercase tracking-[0.22em] text-primary">{cms.getText("delivery_label", "История доставок")}</p>
+                        <DemoHint text="Пример доставок" />
+                      </div>
                       <h2 className="mt-3 text-2xl font-semibold text-foreground">{cms.getText("delivery_heading", "Каждая доставка — часть истории, а не просто заказ.")}</h2>
                     </div>
                     <Package className="h-6 w-6 text-primary" />
@@ -578,12 +573,12 @@ export default function DemoTracker() {
                 transition={{ delay: 0.22 }}
                 className="relative col-span-12 rounded-[2rem] border border-border/70 bg-card p-5 shadow-sm"
               >
-                <div className="absolute right-4 top-4 z-10">
-                  <DemoHint text="Пример статуса" />
-                </div>
                 <div className="grid gap-5 lg:grid-cols-[1.1fr_0.9fr] lg:items-start">
                   <div>
-                    <p className="text-sm uppercase tracking-[0.22em] text-primary">{cms.getText("status_label", "Текущий статус маршрута")}</p>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="text-sm uppercase tracking-[0.22em] text-primary">{cms.getText("status_label", "Текущий статус маршрута")}</p>
+                      <DemoHint text="Пример статуса" />
+                    </div>
                     <h2 className="mt-3 text-2xl font-semibold text-foreground">{cms.getText("status_heading", "Текущая доставка — часть вашей истории с животным.")}</h2>
                     <p className="mt-3 max-w-2xl text-sm leading-7 text-muted-foreground">
                       {cms.getText("status_description", "Вы всегда знаете, какая именно доставка сейчас в пути, что в ней и откуда она.")}

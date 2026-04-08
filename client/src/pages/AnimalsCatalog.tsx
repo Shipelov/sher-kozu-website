@@ -256,13 +256,6 @@ function AnimalCard({ animal, config, selectedSharePercent }: { animal: CatalogA
 
         <CardContent className="space-y-5 p-6">
           <div className="space-y-3">
-            <Badge className={`rounded-full border px-3 py-1 text-xs font-medium ${availability.className}`}>
-              {availability.label}
-            </Badge>
-            <div className="space-y-1">
-              <h3 className="text-2xl font-semibold text-stone-900">{animal.name}</h3>
-              <p className="text-sm text-stone-500">{animal.breed ?? `${config.singular} Sher Kozu`}</p>
-            </div>
             <AnimalShareCard
               statusLabel={availability.label}
               statusClassName={availability.className}

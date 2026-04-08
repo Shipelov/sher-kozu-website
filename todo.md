@@ -2050,3 +2050,10 @@
 - [x] Добавить контактную секцию на главную страницу
 - [x] Создать общий компонент Footer с email и заменить дублирование на всех страницах
 - [x] Добавить email в мобильное меню навбара
+
+## Mobile UI Bugs (2026-04-08)
+
+- [x] Fix demo animal card: duplicate status/name/breed blocks on mobile
+- [x] Fix demo tracker: DemoHint labels overlapping text in sections (changed from absolute to inline)
+- [x] Fix Club page hero: labels overlapping main heading text on mobile (increased height, hidden badges on mobile)
+- [x] Audit other pages for similar mobile layout/overlap issues

@@ -834,11 +834,11 @@ export default function ClubFeed() {
             <img
               src={cms.getImage("hero_image", CDN.club)}
               alt="Клуб Шерь Козу"
-              className="h-[420px] w-full object-cover"
+              className="h-[520px] w-full object-cover sm:h-[420px]"
             />
-            <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(25,22,20,0.82),rgba(25,22,20,0.34),rgba(25,22,20,0.18))]" />
-            <div className="absolute inset-0 flex flex-col justify-between p-6 text-white md:p-8">
-              <div className="flex flex-wrap items-center gap-2">
+            <div className="absolute inset-0 bg-[linear-gradient(0deg,rgba(25,22,20,0.88)_40%,rgba(25,22,20,0.5)_70%,rgba(25,22,20,0.3))] sm:bg-[linear-gradient(90deg,rgba(25,22,20,0.82),rgba(25,22,20,0.34),rgba(25,22,20,0.18))]" />
+            <div className="absolute inset-0 flex flex-col justify-end gap-4 p-5 text-white sm:justify-between sm:p-8">
+              <div className="hidden flex-wrap items-center gap-2 sm:flex">
                 <div className="inline-flex items-center gap-2 rounded-full bg-white/12 px-4 py-2 text-xs uppercase tracking-[0.18em] text-amber-300 backdrop-blur">
                   <Award className="h-4 w-4" />
                   {cms.getText(
@@ -859,17 +859,23 @@ export default function ClubFeed() {
 
               <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
                 <div className="max-w-2xl">
-                  <h1 className="font-display text-4xl text-white md:text-6xl">
+                  <div className="mb-3 flex flex-wrap items-center gap-2 sm:hidden">
+                    <div className="inline-flex items-center gap-1.5 rounded-full bg-white/12 px-3 py-1.5 text-[10px] uppercase tracking-[0.14em] text-amber-300 backdrop-blur">
+                      <Award className="h-3.5 w-3.5" />
+                      {cms.getText("hero_badge", "Закрытый клуб владельцев")}
+                    </div>
+                  </div>
+                  <h1 className="font-display text-2xl text-white sm:text-4xl md:text-6xl">
                     {cms.getText(
                       "hero_title",
                       "Клуб Шерь Козу — сообщество семей, которые знают своих животных по имени."
                     )}
                   </h1>
-                  <p className="mt-4 text-sm leading-7 text-white/75 md:text-base">
+                  <p className="mt-2 text-xs leading-6 text-white/75 sm:mt-4 sm:text-sm sm:leading-7 md:text-base">
                     {heroDescription}
                   </p>
                 </div>
-                <div className="grid grid-cols-1 gap-3 text-center text-white sm:grid-cols-2">
+                <div className="hidden gap-3 text-center text-white sm:grid sm:grid-cols-2">
                   {stats.map((item) => (
                     <div
                       key={item.label}
