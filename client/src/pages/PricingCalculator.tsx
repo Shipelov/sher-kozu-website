@@ -91,6 +91,7 @@ export default function PricingCalculator() {
   }, [breed, share, alloc]);
 
   const result = calcMut.data;
+  const isCalculating = calcMut.isPending;
 
   // Monthly fee with annual discount
   const monthlyFee = result?.monthlyFeeRub ?? (share === 50 ? 7500 : 14900);
@@ -99,9 +100,11 @@ export default function PricingCalculator() {
   const annualFee = effectiveMonthly * 12;
   const ownershipCost = Math.round((breedObj.price * share) / 100);
   const totalCost = ownershipCost + annualFee;
+  // Only use server market value when calculation is complete; avoid showing 0 during loading
   const marketValue = result?.totalMarketValueRub ?? 0;
-  const savings = marketValue - annualFee;
-  const savingsPercent = marketValue > 0 ? Math.round((savings / marketValue) * 100) : 0;
+  const hasResult = !!result && !isCalculating;
+  const savings = hasResult ? marketValue - annualFee : 0;
+  const savingsPercent = hasResult && marketValue > 0 ? Math.round((savings / marketValue) * 100) : 0;
 
   // Estimated monthly milk
   const BREED_MONTHLY_MILK: Record<string, number> = {
@@ -369,10 +372,19 @@ export default function PricingCalculator() {
               {/* Savings hero */}
               <div className="rounded-2xl bg-primary p-5 text-center text-primary-foreground">
                 <p className="text-sm font-medium opacity-80">{cms.getText("savings_title", "Ваша выгода за год")}</p>
-                <p className="text-4xl font-bold mt-1">{savingsPercent > 0 ? `${savingsPercent}%` : "—"}</p>
-                <p className="text-sm font-semibold mt-1">
-                  Экономия: {savings > 0 ? `${fmt(savings)} ₽` : "—"}
-                </p>
+                {isCalculating ? (
+                  <>
+                    <p className="text-4xl font-bold mt-1 animate-pulse">...</p>
+                    <p className="text-sm font-semibold mt-1 opacity-60">Рассчитываем</p>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-4xl font-bold mt-1">{savingsPercent > 0 ? `${savingsPercent}%` : "—"}</p>
+                    <p className="text-sm font-semibold mt-1">
+                      Экономия: {savings > 0 ? `${fmt(savings)} ₽` : "—"}
+                    </p>
+                  </>
+                )}
               </div>
 
               {/* Cost breakdown */}
@@ -400,7 +412,7 @@ export default function PricingCalculator() {
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Продукция (рыночная цена)</span>
-                    <span className="font-semibold text-foreground">{fmt(marketValue)} ₽</span>
+                    <span className="font-semibold text-foreground">{isCalculating ? <span className="animate-pulse">...</span> : `${fmt(marketValue)} ₽`}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Привилегии и клуб</span>
@@ -413,7 +425,7 @@ export default function PricingCalculator() {
                   <div className="flex justify-between border-t border-border pt-2">
                     <span className="font-bold text-foreground">Итого ценность</span>
                     <span className="font-bold text-primary">
-                      {fmt(marketValue + (share === 100 ? 171000 : 81000))} ₽
+                      {isCalculating ? <span className="animate-pulse">...</span> : `${fmt(marketValue + (share === 100 ? 171000 : 81000))} ₽`}
                     </span>
                   </div>
                 </div>
@@ -442,7 +454,7 @@ export default function PricingCalculator() {
                       style={{ height: "100%" }}
                     >
                       <span className="absolute -top-6 text-xs font-bold text-primary whitespace-nowrap">
-                        {fmt(marketValue + (share === 100 ? 171000 : 81000))} ₽
+                        {isCalculating ? "..." : `${fmt(marketValue + (share === 100 ? 171000 : 81000))} ₽`}
                       </span>
                     </div>
                     <span className="text-xs text-muted-foreground mt-2 text-center">Рыночная<br />стоимость</span>

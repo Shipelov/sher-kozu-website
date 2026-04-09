@@ -68,39 +68,43 @@ const dateRangeInput = z.object({
 export const analyticsRouter = router({
   /* ─── Public tracking endpoints (called from client) ─── */
 
-  trackVisit: publicProcedure.input(trackVisitInput).mutation(async ({ input, ctx }) => {
-    try {
-      // Enrich with GeoIP data from the request IP
-      let geoData: { country?: string | null; city?: string | null; region?: string | null; latitude?: number | null; longitude?: number | null } = {};
+  trackVisit: publicProcedure.input(trackVisitInput).mutation(({ input, ctx }) => {
+    // Fire-and-forget: return immediately, process GeoIP + DB insert in background
+    // This prevents trackVisit from blocking the tRPC batch (auth.me, animals, etc.)
+    const ip = extractClientIp(ctx.req);
+    const bgTask = async () => {
       try {
-        const ip = extractClientIp(ctx.req);
-        if (ip) {
-          const geo = await lookupGeoIp(ip);
-          geoData = {
-            country: geo.country || input.country,
-            city: geo.city,
-            region: geo.region,
-            latitude: geo.latitude,
-            longitude: geo.longitude,
-          };
+        let geoData: { country?: string | null; city?: string | null; region?: string | null; latitude?: number | null; longitude?: number | null } = {};
+        try {
+          if (ip) {
+            const geo = await lookupGeoIp(ip);
+            geoData = {
+              country: geo.country || input.country,
+              city: geo.city,
+              region: geo.region,
+              latitude: geo.latitude,
+              longitude: geo.longitude,
+            };
+          }
+        } catch {
+          // GeoIP enrichment is best-effort
         }
-      } catch {
-        // GeoIP enrichment is best-effort
+        await withRetry(
+          () => recordSiteVisit({ ...input, ...geoData }),
+          {
+            label: "Analytics/trackVisit",
+            maxAttempts: 3,
+            baseDelayMs: 500,
+            isRetryable: isTransientDbError,
+          }
+        );
+        analyticsMonitor.recordSuccess("trackVisit");
+      } catch (err) {
+        analyticsMonitor.recordFailure("trackVisit", err);
+        console.error("[Analytics] trackVisit failed (silenced):", err instanceof Error ? err.message : err);
       }
-      await withRetry(
-        () => recordSiteVisit({ ...input, ...geoData }),
-        {
-          label: "Analytics/trackVisit",
-          maxAttempts: 3,
-          baseDelayMs: 500,
-          isRetryable: isTransientDbError,
-        }
-      );
-      analyticsMonitor.recordSuccess("trackVisit");
-    } catch (err) {
-      analyticsMonitor.recordFailure("trackVisit", err);
-      console.error("[Analytics] trackVisit failed (silenced):", err instanceof Error ? err.message : err);
-    }
+    };
+    bgTask(); // fire-and-forget — do NOT await
     return { success: true };
   }),
 

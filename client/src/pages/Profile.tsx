@@ -1,4 +1,5 @@
 import { useAuth } from "@/_core/hooks/useAuth";
+import { formatDisplayName, getInitials } from "@shared/formatName";
 import { getLoginUrl } from "@/const";
 import Navbar from "@/components/Navbar";
 import ProfileContactForm from "@/components/ProfileContactForm";
@@ -66,14 +67,8 @@ export default function Profile() {
   }
 
   const isAdmin = (user as any).role === "admin";
-  const userInitials = user.name
-    ? user.name
-        .split(" ")
-        .map((w: string) => w[0])
-        .join("")
-        .toUpperCase()
-        .slice(0, 2)
-    : "?";
+  const userInitials = getInitials(user.name);
+  const displayName = formatDisplayName(user.name);
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -98,7 +93,7 @@ export default function Profile() {
                     {userInitials}
                   </div>
                   <div className="min-w-0 flex-1">
-                    <h1 className="text-2xl font-semibold text-foreground">{user.name || "Пользователь"}</h1>
+                    <h1 className="text-2xl font-semibold text-foreground">{displayName}</h1>
                     <div className="mt-1 flex flex-wrap items-center gap-2">
                       <Badge
                         variant="outline"

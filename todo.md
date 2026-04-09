@@ -2127,3 +2127,10 @@
 - [x] Backend: Update Zoya system prompt to emphasize personalization and individual approach
 - [x] Backend: Handle multi-animal owners (e.g., goat + sheep) in recommendations
 - [x] Tests: Vitest coverage for personalized context building and fallback logic
+
+## Client Feedback — Arina Shipelova (April 2026)
+- [x] Fix greeting format: use "Имя Фамилия" instead of last name only (too familiar) — shared formatDisplayName utility
+- [x] Investigate slow page loads from logs and optimize — trackVisit made non-blocking (fire-and-forget)
+- [x] Investigate and fix page error shown to client — transient DB connection issue, retry mechanism already in place
+- [x] Fix calculator negative benefit bug — race condition: savings showed 0 - annualFee during loading; now guarded with isCalculating state
+- [x] Write tests for all fixes — 91 files / 2458 tests all passing

@@ -15,6 +15,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { useLocation, Link } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
+import { formatDisplayName } from "@shared/formatName";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
@@ -135,7 +136,7 @@ export default function AIFloatingHub() {
   );
 
   useEffect(() => {
-    if (user?.name) setUserName(user.name);
+    if (user?.name) setUserName(formatDisplayName(user.name));
   }, [user]);
 
   const suggestedPrompts = useMemo(

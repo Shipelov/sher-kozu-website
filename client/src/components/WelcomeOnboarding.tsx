@@ -1,4 +1,5 @@
 import { trpc } from "@/lib/trpc";
+import { formatDisplayName } from "@shared/formatName";
 import { motion, AnimatePresence } from "framer-motion";
 import { useState } from "react";
 import { Link } from "wouter";
@@ -79,7 +80,7 @@ export default function WelcomeOnboarding({ userName, onComplete }: WelcomeOnboa
             Добро пожаловать в Шерь Козу
           </div>
           <h2 className="text-2xl font-bold text-foreground">
-            Привет, {userName.split(" ")[0]}!
+            Привет, {formatDisplayName(userName)}!
           </h2>
           <p className="mt-1 text-sm text-muted-foreground">
             Вот как работает персональное фермерство

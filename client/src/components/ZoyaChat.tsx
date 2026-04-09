@@ -13,6 +13,7 @@
 
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { useAuth } from "@/_core/hooks/useAuth";
+import { formatDisplayName } from "@shared/formatName";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
@@ -129,8 +130,9 @@ export default function ZoyaChat({
     if (initialized) return;
     setInitialized(true);
 
+    const displayName = formatDisplayName(user?.name);
     const greeting = user?.name
-      ? `Здравствуйте, ${user.name}! Я Зоя — AI-нутрициолог фермы «Шерь Козу» 🌿\n\nЯ помогу разобраться в пользе козьего и овечьего молока, подберу продукты под ваши цели и составлю план здорового питания. Чем могу помочь?`
+      ? `Здравствуйте, ${displayName}! Я Зоя — AI-нутрициолог фермы «Шерь Козу» 🌿\n\nЯ помогу разобраться в пользе козьего и овечьего молока, подберу продукты под ваши цели и составлю план здорового питания. Чем могу помочь?`
       : `Здравствуйте! Я Зоя — AI-нутрициолог фермы «Шерь Козу» 🌿\n\nЯ расскажу о пользе козьего и овечьего молока, помогу выбрать продукты и составлю план питания. Спрашивайте!`;
 
     setMessages([{ role: "assistant", content: greeting }]);
@@ -342,7 +344,7 @@ export default function ZoyaChat({
                   className="h-16 w-16 rounded-full object-cover ring-2 ring-emerald-200/40 shadow-md"
                 />
                 <p className="mt-1.5 text-sm font-medium text-foreground">
-                  {user?.name ? `Привет, ${user.name}! 🌿` : "Привет! Я Зоя 🌿"}
+                  {user?.name ? `Привет, ${formatDisplayName(user.name)}! 🌿` : "Привет! Я Зоя 🌿"}
                 </p>
                 <p className="max-w-[300px] text-xs leading-relaxed text-muted-foreground">
                   Спросите о пользе козьего и овечьего молока, продуктах фермы или попросите составить план питания

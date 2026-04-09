@@ -6,6 +6,7 @@ Auth-aware: shows login/register for guests, avatar+dropdown for authenticated u
 */
 
 import { useAuth } from "@/_core/hooks/useAuth";
+import { formatDisplayName, getInitials } from "@shared/formatName";
 import { trpc } from "@/lib/trpc";
 import { Link, useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
@@ -157,14 +158,8 @@ export default function Navbar() {
     }
   }, [userMenuOpen, moreMenuOpen]);
 
-  const userInitials = user?.name
-    ? user.name
-        .split(" ")
-        .map((w: string) => w[0])
-        .join("")
-        .toUpperCase()
-        .slice(0, 2)
-    : "?";
+  const userInitials = getInitials(user?.name);
+  const displayName = formatDisplayName(user?.name);
 
   return (
     <>
@@ -286,7 +281,7 @@ export default function Navbar() {
                   <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-bold text-white">
                     {userInitials}
                   </div>
-                  <span className="max-w-[120px] truncate">{user.name}</span>
+                  <span className="max-w-[120px] truncate">{displayName}</span>
                   <ChevronDown className={`h-3.5 w-3.5 transition-transform ${userMenuOpen ? "rotate-180" : ""}`} />
                 </button>
 
@@ -300,7 +295,7 @@ export default function Navbar() {
                       className="absolute right-0 top-full mt-2 w-56 rounded-xl border border-border bg-card shadow-lg"
                     >
                       <div className="border-b border-border px-4 py-3">
-                        <p className="text-sm font-medium text-foreground">{user.name}</p>
+                        <p className="text-sm font-medium text-foreground">{displayName}</p>
                         <p className="text-xs text-muted-foreground">
                           {isAdmin ? "Администратор" : "Владелец"}
                         </p>
@@ -400,7 +395,7 @@ export default function Navbar() {
                     {userInitials}
                   </div>
                   <div className="flex-1">
-                    <p className="text-sm font-medium text-foreground">{user.name}</p>
+                    <p className="text-sm font-medium text-foreground">{displayName}</p>
                     <p className="text-xs text-muted-foreground">
                       {isAdmin ? "Администратор" : "Владелец"}
                     </p>
