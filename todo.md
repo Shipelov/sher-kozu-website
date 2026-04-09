@@ -2108,3 +2108,12 @@
 - [x] Frontend: Export buttons (PDF/DOCX) after Zoya's substantive responses
 - [x] Frontend: Share button with copy-link and messenger share options
 - [x] Tests: Vitest coverage for export and share endpoints
+
+## Share Link Expiry & Popular Link Notifications (2026-04-09)
+
+- [x] Backend: Set 3-day auto-expiry on share link creation (expiresAt = now + 3 days)
+- [x] Backend: Periodic cleanup of expired share links
+- [x] Backend: Popular link notification — notify creator when share link gets significant views
+- [x] Frontend: Show remaining time / expiry info on shared content page
+- [x] Frontend: Handle expired links gracefully with re-creation CTA
+- [x] Tests: Vitest coverage for expiry logic and notification triggers

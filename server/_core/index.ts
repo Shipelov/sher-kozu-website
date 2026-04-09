@@ -361,6 +361,23 @@ async function startServer() {
     runCmsHistoryCleanup();
     setInterval(runCmsHistoryCleanup, 24 * 60 * 60 * 1000);
 
+    // Run expired share link cleanup on startup and every 12 hours
+    (async () => {
+      try {
+        const { cleanupExpiredShareLinks } = await import("../nutritionistDb");
+        await cleanupExpiredShareLinks();
+        setInterval(async () => {
+          try {
+            await cleanupExpiredShareLinks();
+          } catch (err) {
+            console.error("[Zoya Share Cleanup] Error:", err);
+          }
+        }, 12 * 60 * 60 * 1000);
+      } catch (err) {
+        console.error("[Zoya Share Cleanup] Startup error:", err);
+      }
+    })();
+
     // Start analytics monitoring (reports every 5 minutes)
     analyticsMonitor.startReporting();
   });

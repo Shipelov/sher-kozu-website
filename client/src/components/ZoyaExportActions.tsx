@@ -151,7 +151,7 @@ export default function ZoyaExportActions({
 
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
-      const { shareToken } = await response.json();
+      const { shareToken, expiresAt } = await response.json();
       const shareUrl = `${window.location.origin}/zoya/share/${shareToken}`;
 
       // Try native share API first (mobile)
@@ -162,7 +162,9 @@ export default function ZoyaExportActions({
             text: "Посмотрите рекомендации AI-нутрициолога фермы «Шерь Козу»",
             url: shareUrl,
           });
-          toast.success("Отправлено!");
+          toast.success("Отправлено!", {
+            description: "Ссылка действительна 3 дня",
+          });
           return;
         } catch {
           // User cancelled native share — fall through to copy
@@ -173,7 +175,7 @@ export default function ZoyaExportActions({
       await navigator.clipboard.writeText(shareUrl);
       setCopied(true);
       toast.success("Ссылка скопирована!", {
-        description: "Отправьте её друзьям или в мессенджер",
+        description: "Действительна 3 дня. Отправьте друзьям или в мессенджер",
       });
       setTimeout(() => setCopied(false), 3000);
     } catch (err) {
@@ -209,17 +211,19 @@ export default function ZoyaExportActions({
               `https://t.me/share/url?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(text)}`,
               "_blank"
             );
+            toast.success("Отправлено!", { description: "Ссылка действительна 3 дня" });
             break;
           case "whatsapp":
             window.open(
               `https://wa.me/?text=${encodeURIComponent(`${text}\n${shareUrl}`)}`,
               "_blank"
             );
+            toast.success("Отправлено!", { description: "Ссылка действительна 3 дня" });
             break;
           case "copy":
             await navigator.clipboard.writeText(shareUrl);
             setCopied(true);
-            toast.success("Ссылка скопирована!");
+            toast.success("Ссылка скопирована!", { description: "Действительна 3 дня" });
             setTimeout(() => setCopied(false), 3000);
             break;
         }

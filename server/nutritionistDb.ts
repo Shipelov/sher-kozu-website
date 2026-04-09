@@ -809,6 +809,12 @@ export async function getNutriAnalytics(days = 30) {
 import { zoyaSharedContent } from "../drizzle/schema";
 import crypto from "crypto";
 
+/** Share links expire after this many days */
+const SHARE_LINK_EXPIRY_DAYS = 3;
+
+/** View count threshold to trigger a "popular link" notification */
+const POPULAR_LINK_VIEW_THRESHOLD = 10;
+
 export async function createSharedContent(data: {
   content: string;
   title?: string;
@@ -820,6 +826,9 @@ export async function createSharedContent(data: {
 
   const shareToken = crypto.randomUUID().replace(/-/g, "").slice(0, 16);
 
+  // Set expiry to 3 days from now
+  const expiresAt = new Date(Date.now() + SHARE_LINK_EXPIRY_DAYS * 24 * 60 * 60 * 1000);
+
   await db.insert(zoyaSharedContent).values({
     shareToken,
     content: data.content,
@@ -827,9 +836,10 @@ export async function createSharedContent(data: {
     userQuestion: data.userQuestion ?? null,
     userId: data.userId ?? null,
     viewCount: 0,
+    expiresAt,
   });
 
-  return { shareToken };
+  return { shareToken, expiresAt: expiresAt.toISOString() };
 }
 
 export async function getSharedContent(shareToken: string) {
@@ -845,13 +855,96 @@ export async function getSharedContent(shareToken: string) {
   if (!entry) return null;
 
   // Check expiry
-  if (entry.expiresAt && entry.expiresAt < new Date()) return null;
+  if (entry.expiresAt && entry.expiresAt < new Date()) {
+    return { ...entry, expired: true };
+  }
 
   // Increment view count
+  const newViewCount = (entry.viewCount ?? 0) + 1;
   await db
     .update(zoyaSharedContent)
     .set({ viewCount: sql`${zoyaSharedContent.viewCount} + 1` })
     .where(eq(zoyaSharedContent.id, entry.id));
 
-  return entry;
+  // Trigger popular link notification at threshold
+  if (
+    newViewCount === POPULAR_LINK_VIEW_THRESHOLD &&
+    entry.userId
+  ) {
+    triggerPopularLinkNotification(entry.id, entry.userId, shareToken, entry.title, newViewCount).catch(
+      (err) => console.warn("[Zoya Share] Popular notification error:", err)
+    );
+  }
+
+  return { ...entry, viewCount: newViewCount, expired: false };
+}
+
+/**
+ * Clean up expired share links older than the expiry window.
+ * Called periodically (e.g., on server startup or via cron).
+ */
+export async function cleanupExpiredShareLinks() {
+  const db = await getDb();
+  if (!db) return 0;
+
+  const now = new Date();
+  const result = await db
+    .delete(zoyaSharedContent)
+    .where(
+      and(
+        sql`${zoyaSharedContent.expiresAt} IS NOT NULL`,
+        lt(zoyaSharedContent.expiresAt, now)
+      )
+    );
+
+  const deleted = (result as any)?.[0]?.affectedRows ?? 0;
+  if (deleted > 0) {
+    console.log(`[Zoya Share] Cleaned up ${deleted} expired share links`);
+  }
+  return deleted;
+}
+
+/**
+ * Check for popular share links and notify their creators.
+ * A link is "popular" when it reaches the view threshold.
+ */
+async function triggerPopularLinkNotification(
+  entryId: number,
+  userId: number,
+  shareToken: string,
+  title: string | null,
+  viewCount: number
+) {
+  // Resolve user's openId for in-app notification
+  const db = await getDb();
+  if (!db) return;
+
+  const [user] = await db
+    .select({ openId: users.openId, name: users.name })
+    .from(users)
+    .where(eq(users.id, userId))
+    .limit(1);
+
+  if (!user?.openId) return;
+
+  // Send in-app notification
+  const { createUserNotification } = await import("./db");
+  await createUserNotification({
+    userOpenId: user.openId,
+    type: "zoya_popular_share",
+    title: "\u{1F31F} Ваша ссылка набирает просмотры!",
+    body: `Рекомендация «${title || "от Зои"}» уже набрала ${viewCount} просмотров. Люди ценят полезные советы!`,
+    link: `/zoya/share/${shareToken}`,
+  });
+
+  // Also notify the farm owner via system notification
+  try {
+    const { notifyOwner } = await import("./_core/notification");
+    await notifyOwner({
+      title: "Популярная ссылка Зои",
+      content: `Ссылка «${title || "рекомендация Зои"}» (пользователь: ${user.name || "аноним"}) набрала ${viewCount} просмотров. Токен: ${shareToken}`,
+    });
+  } catch {
+    // Non-critical — don't fail the view
+  }
 }

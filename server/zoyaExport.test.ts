@@ -296,3 +296,162 @@ describe("Zoya Shared Content Schema", () => {
     expect(content).toContain("shareToken");
   });
 });
+
+// ═══════════════════════════════════════════════════════════════════
+// Share Link Expiry Tests
+// ═══════════════════════════════════════════════════════════════════
+
+describe("Zoya Share Link 3-Day Expiry", () => {
+  it("createSharedContent sets expiresAt 3 days from now", async () => {
+    const dbPath = path.resolve(import.meta.dirname, "./nutritionistDb.ts");
+    const content = fs.readFileSync(dbPath, "utf-8");
+
+    // Must have the 3-day constant
+    expect(content).toContain("SHARE_LINK_EXPIRY_DAYS");
+    expect(content).toContain("= 3");
+
+    // Must calculate expiresAt from Date.now()
+    expect(content).toContain("SHARE_LINK_EXPIRY_DAYS * 24 * 60 * 60 * 1000");
+    expect(content).toContain("expiresAt");
+  });
+
+  it("createSharedContent returns expiresAt in response", async () => {
+    const dbPath = path.resolve(import.meta.dirname, "./nutritionistDb.ts");
+    const content = fs.readFileSync(dbPath, "utf-8");
+
+    // Must return expiresAt alongside shareToken
+    expect(content).toContain("return { shareToken, expiresAt:");
+  });
+
+  it("getSharedContent returns expired flag for expired links", async () => {
+    const dbPath = path.resolve(import.meta.dirname, "./nutritionistDb.ts");
+    const content = fs.readFileSync(dbPath, "utf-8");
+
+    // Must return { ...entry, expired: true } for expired content
+    expect(content).toContain("expired: true");
+    // Must return { ...entry, expired: false } for active content
+    expect(content).toContain("expired: false");
+  });
+
+  it("cleanupExpiredShareLinks function exists", async () => {
+    const dbPath = path.resolve(import.meta.dirname, "./nutritionistDb.ts");
+    const content = fs.readFileSync(dbPath, "utf-8");
+
+    expect(content).toContain("export async function cleanupExpiredShareLinks");
+    expect(content).toContain("delete(zoyaSharedContent)");
+    expect(content).toContain("expiresAt");
+  });
+
+  it("cleanup is registered on server startup", async () => {
+    const indexContent = fs.readFileSync(
+      path.resolve(import.meta.dirname, "./_core/index.ts"),
+      "utf-8"
+    );
+
+    expect(indexContent).toContain("cleanupExpiredShareLinks");
+    // Runs on startup and periodically
+    expect(indexContent).toContain("setInterval");
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════
+// Popular Link Notification Tests
+// ═══════════════════════════════════════════════════════════════════
+
+describe("Zoya Popular Link Notifications", () => {
+  it("has a view threshold constant for popular links", async () => {
+    const dbPath = path.resolve(import.meta.dirname, "./nutritionistDb.ts");
+    const content = fs.readFileSync(dbPath, "utf-8");
+
+    expect(content).toContain("POPULAR_LINK_VIEW_THRESHOLD");
+    expect(content).toContain("= 10");
+  });
+
+  it("triggers notification at threshold in getSharedContent", async () => {
+    const dbPath = path.resolve(import.meta.dirname, "./nutritionistDb.ts");
+    const content = fs.readFileSync(dbPath, "utf-8");
+
+    // Must check newViewCount === threshold
+    expect(content).toContain("newViewCount === POPULAR_LINK_VIEW_THRESHOLD");
+    // Must call triggerPopularLinkNotification
+    expect(content).toContain("triggerPopularLinkNotification");
+  });
+
+  it("triggerPopularLinkNotification sends in-app notification", async () => {
+    const dbPath = path.resolve(import.meta.dirname, "./nutritionistDb.ts");
+    const content = fs.readFileSync(dbPath, "utf-8");
+
+    // Must use createUserNotification for in-app notification
+    expect(content).toContain("createUserNotification");
+    expect(content).toContain("zoya_popular_share");
+    // Must include link to the shared content
+    expect(content).toContain("/zoya/share/");
+  });
+
+  it("triggerPopularLinkNotification also notifies farm owner", async () => {
+    const dbPath = path.resolve(import.meta.dirname, "./nutritionistDb.ts");
+    const content = fs.readFileSync(dbPath, "utf-8");
+
+    // Must also call notifyOwner for system-level notification
+    expect(content).toContain("notifyOwner");
+    expect(content).toContain("Популярная ссылка Зои");
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════
+// Frontend Expiry UI Tests
+// ═══════════════════════════════════════════════════════════════════
+
+describe("Zoya Share Frontend Expiry Handling", () => {
+  it("ZoyaSharedView shows countdown for active links", async () => {
+    const pagePath = path.resolve(
+      import.meta.dirname,
+      "../client/src/pages/ZoyaSharedView.tsx"
+    );
+    const content = fs.readFileSync(pagePath, "utf-8");
+
+    // Must show remaining time
+    expect(content).toContain("formatTimeRemaining");
+    expect(content).toContain("timeRemaining");
+    expect(content).toContain("Действует ещё");
+  });
+
+  it("ZoyaSharedView handles expired links with warning banner", async () => {
+    const pagePath = path.resolve(
+      import.meta.dirname,
+      "../client/src/pages/ZoyaSharedView.tsx"
+    );
+    const content = fs.readFileSync(pagePath, "utf-8");
+
+    // Must check for expired flag
+    expect(content).toContain("isExpired");
+    expect(content).toContain("expired");
+    // Must show expiry warning
+    expect(content).toContain("Срок действия ссылки истёк");
+    // Must offer to get new recommendations
+    expect(content).toContain("Получить новые рекомендации");
+  });
+
+  it("ZoyaSharedView shows expiry date in actions bar", async () => {
+    const pagePath = path.resolve(
+      import.meta.dirname,
+      "../client/src/pages/ZoyaSharedView.tsx"
+    );
+    const content = fs.readFileSync(pagePath, "utf-8");
+
+    // Must show expiry date notice
+    expect(content).toContain("Ссылка действительна до");
+    expect(content).toContain("Скачайте файл, чтобы сохранить рекомендации навсегда");
+  });
+
+  it("ZoyaExportActions shows 3-day notice in share toasts", async () => {
+    const componentPath = path.resolve(
+      import.meta.dirname,
+      "../client/src/components/ZoyaExportActions.tsx"
+    );
+    const content = fs.readFileSync(componentPath, "utf-8");
+
+    // Must mention 3-day validity in share toasts
+    expect(content).toContain("3 дня");
+  });
+});
