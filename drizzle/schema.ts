@@ -1422,6 +1422,62 @@ export type SiteEvent = typeof siteEvents.$inferSelect;
 export type InsertSiteEvent = typeof siteEvents.$inferInsert;
 
 /**
+ * Page Performance Metrics — tracks page load times from Navigation Timing API.
+ * Used for performance monitoring and slow page detection.
+ */
+export const pagePerformance = mysqlTable("pagePerformance", {
+  id: int("id").autoincrement().primaryKey(),
+  /** Anonymous visitor fingerprint */
+  visitorId: varchar("visitorId", { length: 64 }).notNull(),
+  /** Session identifier */
+  sessionId: varchar("sessionId", { length: 64 }).notNull(),
+  /** Authenticated user openId (null for anonymous) */
+  userOpenId: varchar("userOpenId", { length: 64 }),
+  /** Page path */
+  pagePath: varchar("pagePath", { length: 512 }).notNull(),
+  /** DNS lookup time (ms) */
+  dnsMs: int("dnsMs"),
+  /** TCP connection time (ms) */
+  tcpMs: int("tcpMs"),
+  /** TLS handshake time (ms) */
+  tlsMs: int("tlsMs"),
+  /** Time to first byte (ms) */
+  ttfbMs: int("ttfbMs"),
+  /** Content download time (ms) */
+  downloadMs: int("downloadMs"),
+  /** DOM interactive time (ms) — when HTML is parsed */
+  domInteractiveMs: int("domInteractiveMs"),
+  /** DOM content loaded time (ms) */
+  domContentLoadedMs: int("domContentLoadedMs"),
+  /** Full page load time (ms) — loadEventEnd */
+  pageLoadMs: int("pageLoadMs"),
+  /** First Contentful Paint (ms) */
+  fcpMs: int("fcpMs"),
+  /** Largest Contentful Paint (ms) */
+  lcpMs: int("lcpMs"),
+  /** First Input Delay (ms) */
+  fidMs: int("fidMs"),
+  /** Cumulative Layout Shift (x1000 for integer storage) */
+  clsX1000: int("clsX1000"),
+  /** Transfer size in bytes */
+  transferSizeBytes: int("transferSizeBytes"),
+  /** Number of resources loaded */
+  resourceCount: int("resourceCount"),
+  /** Device type: desktop, mobile, tablet */
+  deviceType: varchar("deviceType", { length: 16 }),
+  /** Connection effective type: 4g, 3g, 2g, slow-2g */
+  connectionType: varchar("connectionType", { length: 16 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, (t) => [
+  index("pp_pagePath_idx").on(t.pagePath),
+  index("pp_createdAt_idx").on(t.createdAt),
+  index("pp_pageLoadMs_idx").on(t.pageLoadMs),
+  index("pp_sessionId_idx").on(t.sessionId),
+]);
+export type PagePerformance = typeof pagePerformance.$inferSelect;
+export type InsertPagePerformance = typeof pagePerformance.$inferInsert;
+
+/**
  * Analytics Alerts — rules and history for anomaly detection.
  * Each rule defines a metric, threshold, and comparison method.
  * When triggered, a notification is sent to the owner.

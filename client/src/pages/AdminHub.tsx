@@ -17,6 +17,7 @@ import {
   FileText,
   BookOpen,
   FlaskConical,
+  Gauge,
   Gamepad2,
   KeyRound,
   Loader2,
@@ -101,6 +102,7 @@ export default function AdminHub() {
     { title: "A/B тестирование", path: "/admin/ab-experiments", icon: FlaskConical },
     { title: "Управление ценами", path: "/admin/pricing", icon: Tag },
     { title: "База знаний Зои", path: "/admin/nutri-knowledge", icon: BookOpen },
+    { title: "Производительность", path: "/admin/performance", icon: Gauge },
   ];
 
   // ── Loading ──

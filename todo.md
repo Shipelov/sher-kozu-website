@@ -2134,3 +2134,11 @@
 - [x] Investigate and fix page error shown to client — transient DB connection issue, retry mechanism already in place
 - [x] Fix calculator negative benefit bug — race condition: savings showed 0 - annualFee during loading; now guarded with isCalculating state
 - [x] Write tests for all fixes — 91 files / 2458 tests all passing
+
+## Performance Monitoring & GeoIP Caching (April 2026)
+- [x] Backend: In-memory GeoIP cache with TTL (6h, 5000 entries, 600ms timeout, hit/miss/eviction stats)
+- [x] Backend: Page load performance tracking endpoint (collect timing data from frontend)
+- [x] Database: Performance metrics table (pagePerformance — 22 columns, 4 indexes)
+- [x] Frontend: Collect and send page load timing data (Navigation Timing API + Web Vitals)
+- [x] Admin UI: Performance monitoring dashboard (/admin/performance) with Web Vitals, slow page detection, GeoIP cache stats
+- [x] Tests: Vitest coverage for GeoIP cache and performance tracking (92 files / 2478 tests all passing)

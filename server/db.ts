@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, gte, isNotNull, isNull, like, lt, lte, ne, or, sql } from "drizzle-orm";
+import { and, asc, between, desc, eq, gt, gte, isNotNull, isNull, like, lt, lte, ne, or, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import { inArray } from "drizzle-orm";
 import { createPool, type Pool } from "mysql2/promise";
@@ -72,6 +72,8 @@ import {
   clubEventRegistrations,
   InsertClubPostComment,
   InsertClubEventRegistration,
+  pagePerformance,
+  InsertPagePerformance,
 } from "../drizzle/schema";
 import { ENV } from "./_core/env";
 
@@ -6231,4 +6233,166 @@ export async function getUserOwnershipStatus(userOpenId: string): Promise<"activ
   if (pendingOwnership.length) return "pending_payment";
 
   return "none";
+}
+
+
+/* ─── Page Performance Helpers ─── */
+
+export async function recordPagePerformance(data: InsertPagePerformance) {
+  const db = await getDb();
+  await db.insert(pagePerformance).values(data);
+}
+
+/**
+ * Get performance overview: P50/P95/P99 for key metrics over a date range.
+ */
+export async function getPerformanceOverview(fromDate: Date, toDate: Date) {
+  const db = await getDb();
+  const rows = await db
+    .select({
+      totalSamples: sql<number>`COUNT(*)`,
+      avgPageLoad: sql<number>`ROUND(AVG(${pagePerformance.pageLoadMs}))`,
+      p50PageLoad: sql<number>`ROUND(AVG(${pagePerformance.pageLoadMs}))`,
+      p95PageLoad: sql<number>`ROUND(MAX(${pagePerformance.pageLoadMs}))`,
+      p99PageLoad: sql<number>`ROUND(MAX(${pagePerformance.pageLoadMs}))`,
+      avgTtfb: sql<number>`ROUND(AVG(${pagePerformance.ttfbMs}))`,
+      avgFcp: sql<number>`ROUND(AVG(${pagePerformance.fcpMs}))`,
+      avgLcp: sql<number>`ROUND(AVG(${pagePerformance.lcpMs}))`,
+      avgCls: sql<number>`ROUND(AVG(${pagePerformance.clsX1000}) / 1000, 3)`,
+      slowPages: sql<number>`SUM(CASE WHEN ${pagePerformance.pageLoadMs} > 2000 THEN 1 ELSE 0 END)`,
+    })
+    .from(pagePerformance)
+    .where(between(pagePerformance.createdAt, fromDate, toDate));
+
+  return rows[0] ?? {
+    totalSamples: 0, avgPageLoad: 0, p50PageLoad: 0, p95PageLoad: 0, p99PageLoad: 0,
+    avgTtfb: 0, avgFcp: 0, avgLcp: 0, avgCls: 0, slowPages: 0,
+  };
+}
+
+/**
+ * Get performance by page path — avg load time per page.
+ */
+export async function getPerformanceByPage(fromDate: Date, toDate: Date, limit = 20) {
+  const db = await getDb();
+  return db
+    .select({
+      pagePath: pagePerformance.pagePath,
+      samples: sql<number>`COUNT(*)`,
+      avgPageLoad: sql<number>`ROUND(AVG(${pagePerformance.pageLoadMs}))`,
+      avgTtfb: sql<number>`ROUND(AVG(${pagePerformance.ttfbMs}))`,
+      avgFcp: sql<number>`ROUND(AVG(${pagePerformance.fcpMs}))`,
+      avgLcp: sql<number>`ROUND(AVG(${pagePerformance.lcpMs}))`,
+      p95PageLoad: sql<number>`ROUND(MAX(${pagePerformance.pageLoadMs}))`,
+      slowCount: sql<number>`SUM(CASE WHEN ${pagePerformance.pageLoadMs} > 2000 THEN 1 ELSE 0 END)`,
+    })
+    .from(pagePerformance)
+    .where(between(pagePerformance.createdAt, fromDate, toDate))
+    .groupBy(pagePerformance.pagePath)
+    .orderBy(sql`AVG(${pagePerformance.pageLoadMs}) DESC`)
+    .limit(limit);
+}
+
+/**
+ * Get performance trend by day — daily averages for charting.
+ */
+export async function getPerformanceTrend(fromDate: Date, toDate: Date) {
+  const db = await getDb();
+  const rows = await db.execute(sql`
+    SELECT
+      DATE(createdAt) AS day,
+      COUNT(*) AS samples,
+      ROUND(AVG(pageLoadMs)) AS avgPageLoad,
+      ROUND(AVG(ttfbMs)) AS avgTtfb,
+      ROUND(AVG(fcpMs)) AS avgFcp,
+      ROUND(AVG(lcpMs)) AS avgLcp,
+      ROUND(MAX(pageLoadMs)) AS p95PageLoad
+    FROM pagePerformance
+    WHERE createdAt BETWEEN ${fromDate} AND ${toDate}
+    GROUP BY DATE(createdAt)
+    ORDER BY DATE(createdAt)
+  `);
+  return (rows[0] as any[]) || [];
+}
+
+/**
+ * Get Web Vitals breakdown (FCP, LCP, FID, CLS) with Good/Needs Improvement/Poor counts.
+ */
+export async function getWebVitalsBreakdown(fromDate: Date, toDate: Date) {
+  const db = await getDb();
+  const rows = await db
+    .select({
+      totalSamples: sql<number>`COUNT(*)`,
+      // FCP thresholds: Good < 1800ms, Poor > 3000ms
+      fcpGood: sql<number>`SUM(CASE WHEN ${pagePerformance.fcpMs} IS NOT NULL AND ${pagePerformance.fcpMs} <= 1800 THEN 1 ELSE 0 END)`,
+      fcpNeedsWork: sql<number>`SUM(CASE WHEN ${pagePerformance.fcpMs} IS NOT NULL AND ${pagePerformance.fcpMs} > 1800 AND ${pagePerformance.fcpMs} <= 3000 THEN 1 ELSE 0 END)`,
+      fcpPoor: sql<number>`SUM(CASE WHEN ${pagePerformance.fcpMs} IS NOT NULL AND ${pagePerformance.fcpMs} > 3000 THEN 1 ELSE 0 END)`,
+      // LCP thresholds: Good < 2500ms, Poor > 4000ms
+      lcpGood: sql<number>`SUM(CASE WHEN ${pagePerformance.lcpMs} IS NOT NULL AND ${pagePerformance.lcpMs} <= 2500 THEN 1 ELSE 0 END)`,
+      lcpNeedsWork: sql<number>`SUM(CASE WHEN ${pagePerformance.lcpMs} IS NOT NULL AND ${pagePerformance.lcpMs} > 2500 AND ${pagePerformance.lcpMs} <= 4000 THEN 1 ELSE 0 END)`,
+      lcpPoor: sql<number>`SUM(CASE WHEN ${pagePerformance.lcpMs} IS NOT NULL AND ${pagePerformance.lcpMs} > 4000 THEN 1 ELSE 0 END)`,
+      // FID thresholds: Good < 100ms, Poor > 300ms
+      fidGood: sql<number>`SUM(CASE WHEN ${pagePerformance.fidMs} IS NOT NULL AND ${pagePerformance.fidMs} <= 100 THEN 1 ELSE 0 END)`,
+      fidNeedsWork: sql<number>`SUM(CASE WHEN ${pagePerformance.fidMs} IS NOT NULL AND ${pagePerformance.fidMs} > 100 AND ${pagePerformance.fidMs} <= 300 THEN 1 ELSE 0 END)`,
+      fidPoor: sql<number>`SUM(CASE WHEN ${pagePerformance.fidMs} IS NOT NULL AND ${pagePerformance.fidMs} > 300 THEN 1 ELSE 0 END)`,
+      // CLS thresholds: Good < 0.1 (100 in x1000), Poor > 0.25 (250 in x1000)
+      clsGood: sql<number>`SUM(CASE WHEN ${pagePerformance.clsX1000} IS NOT NULL AND ${pagePerformance.clsX1000} <= 100 THEN 1 ELSE 0 END)`,
+      clsNeedsWork: sql<number>`SUM(CASE WHEN ${pagePerformance.clsX1000} IS NOT NULL AND ${pagePerformance.clsX1000} > 100 AND ${pagePerformance.clsX1000} <= 250 THEN 1 ELSE 0 END)`,
+      clsPoor: sql<number>`SUM(CASE WHEN ${pagePerformance.clsX1000} IS NOT NULL AND ${pagePerformance.clsX1000} > 250 THEN 1 ELSE 0 END)`,
+    })
+    .from(pagePerformance)
+    .where(between(pagePerformance.createdAt, fromDate, toDate));
+
+  return rows[0] ?? {
+    totalSamples: 0,
+    fcpGood: 0, fcpNeedsWork: 0, fcpPoor: 0,
+    lcpGood: 0, lcpNeedsWork: 0, lcpPoor: 0,
+    fidGood: 0, fidNeedsWork: 0, fidPoor: 0,
+    clsGood: 0, clsNeedsWork: 0, clsPoor: 0,
+  };
+}
+
+/**
+ * Get slow page loads (>2s) for alerting.
+ */
+export async function getSlowPageLoads(fromDate: Date, toDate: Date, limit = 50) {
+  const db = await getDb();
+  return db
+    .select({
+      id: pagePerformance.id,
+      pagePath: pagePerformance.pagePath,
+      pageLoadMs: pagePerformance.pageLoadMs,
+      ttfbMs: pagePerformance.ttfbMs,
+      fcpMs: pagePerformance.fcpMs,
+      lcpMs: pagePerformance.lcpMs,
+      deviceType: pagePerformance.deviceType,
+      connectionType: pagePerformance.connectionType,
+      createdAt: pagePerformance.createdAt,
+    })
+    .from(pagePerformance)
+    .where(and(
+      between(pagePerformance.createdAt, fromDate, toDate),
+      gt(pagePerformance.pageLoadMs, 2000),
+    ))
+    .orderBy(desc(pagePerformance.pageLoadMs))
+    .limit(limit);
+}
+
+/**
+ * Get performance by device type.
+ */
+export async function getPerformanceByDevice(fromDate: Date, toDate: Date) {
+  const db = await getDb();
+  return db
+    .select({
+      deviceType: pagePerformance.deviceType,
+      samples: sql<number>`COUNT(*)`,
+      avgPageLoad: sql<number>`ROUND(AVG(${pagePerformance.pageLoadMs}))`,
+      avgTtfb: sql<number>`ROUND(AVG(${pagePerformance.ttfbMs}))`,
+      avgFcp: sql<number>`ROUND(AVG(${pagePerformance.fcpMs}))`,
+      avgLcp: sql<number>`ROUND(AVG(${pagePerformance.lcpMs}))`,
+    })
+    .from(pagePerformance)
+    .where(between(pagePerformance.createdAt, fromDate, toDate))
+    .groupBy(pagePerformance.deviceType);
 }

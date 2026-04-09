@@ -67,12 +67,12 @@ describe("Analytics error silencing", () => {
 
     it("logs errors server-side with console.error for debugging", () => {
       expect(analyticsRouterSrc).toContain("console.error");
-      // All three procedures should have server-side logging
+      // All four procedures should have server-side logging (trackVisit, trackEvent, updateTime, trackPerformance)
       const errorLogs = analyticsRouterSrc.match(
         /console\.error\("\[Analytics\]/g,
       );
       expect(errorLogs).not.toBeNull();
-      expect(errorLogs!.length).toBe(3);
+      expect(errorLogs!.length).toBe(4);
     });
   });
 

@@ -15,8 +15,15 @@ import {
   getHourlyTraffic,
   getGeoBreakdown,
   getVisitorLocations,
+  recordPagePerformance,
+  getPerformanceOverview,
+  getPerformanceByPage,
+  getPerformanceTrend,
+  getWebVitalsBreakdown,
+  getSlowPageLoads,
+  getPerformanceByDevice,
 } from "../db";
-import { extractClientIp, lookupGeoIp } from "../geoip";
+import { extractClientIp, lookupGeoIp, getGeoIpCacheStats } from "../geoip";
 import { withRetry, isTransientDbError } from "../retryUtils";
 import { analyticsMonitor } from "../analyticsMonitor";
 
@@ -56,6 +63,29 @@ const updateTimeInput = z.object({
   sessionId: z.string().min(1).max(64),
   pagePath: z.string().min(1).max(512),
   timeOnPage: z.number().int().min(0).max(86400),
+});
+
+const trackPerformanceInput = z.object({
+  visitorId: z.string().min(1).max(64),
+  sessionId: z.string().min(1).max(64),
+  userOpenId: z.string().max(64).optional().nullable(),
+  pagePath: z.string().min(1).max(512),
+  dnsMs: z.number().int().min(0).max(30000).optional().nullable(),
+  tcpMs: z.number().int().min(0).max(30000).optional().nullable(),
+  tlsMs: z.number().int().min(0).max(30000).optional().nullable(),
+  ttfbMs: z.number().int().min(0).max(30000).optional().nullable(),
+  downloadMs: z.number().int().min(0).max(60000).optional().nullable(),
+  domInteractiveMs: z.number().int().min(0).max(60000).optional().nullable(),
+  domContentLoadedMs: z.number().int().min(0).max(60000).optional().nullable(),
+  pageLoadMs: z.number().int().min(0).max(120000).optional().nullable(),
+  fcpMs: z.number().int().min(0).max(60000).optional().nullable(),
+  lcpMs: z.number().int().min(0).max(60000).optional().nullable(),
+  fidMs: z.number().int().min(0).max(30000).optional().nullable(),
+  clsX1000: z.number().int().min(0).max(10000).optional().nullable(),
+  transferSizeBytes: z.number().int().min(0).optional().nullable(),
+  resourceCount: z.number().int().min(0).max(5000).optional().nullable(),
+  deviceType: z.string().max(16).optional().nullable(),
+  connectionType: z.string().max(16).optional().nullable(),
 });
 
 const dateRangeInput = z.object({
@@ -228,5 +258,77 @@ export const analyticsRouter = router({
    */
   pipelineHealth: adminProcedure.query(async () => {
     return analyticsMonitor.getStats();
+  }),
+
+  /* ─── Public performance tracking ─── */
+
+  trackPerformance: publicProcedure.input(trackPerformanceInput).mutation(({ input }) => {
+    // Fire-and-forget like trackVisit
+    const bgTask = async () => {
+      try {
+        await withRetry(
+          () => recordPagePerformance(input),
+          {
+            label: "Analytics/trackPerformance",
+            maxAttempts: 2,
+            baseDelayMs: 300,
+            isRetryable: isTransientDbError,
+          }
+        );
+        analyticsMonitor.recordSuccess("trackPerformance");
+      } catch (err) {
+        analyticsMonitor.recordFailure("trackPerformance", err);
+        console.error("[Analytics] trackPerformance failed (silenced):", err instanceof Error ? err.message : err);
+      }
+    };
+    bgTask();
+    return { success: true };
+  }),
+
+  /* ─── Admin performance dashboard endpoints ─── */
+
+  performanceOverview: adminProcedure.input(dateRangeInput).query(async ({ input }) => {
+    const from = new Date(input.from);
+    const to = new Date(input.to);
+    return getPerformanceOverview(from, to);
+  }),
+
+  performanceByPage: adminProcedure.input(dateRangeInput.extend({
+    limit: z.number().int().min(1).max(100).default(20),
+  })).query(async ({ input }) => {
+    const from = new Date(input.from);
+    const to = new Date(input.to);
+    return getPerformanceByPage(from, to, input.limit);
+  }),
+
+  performanceTrend: adminProcedure.input(dateRangeInput).query(async ({ input }) => {
+    const from = new Date(input.from);
+    const to = new Date(input.to);
+    return getPerformanceTrend(from, to);
+  }),
+
+  webVitals: adminProcedure.input(dateRangeInput).query(async ({ input }) => {
+    const from = new Date(input.from);
+    const to = new Date(input.to);
+    return getWebVitalsBreakdown(from, to);
+  }),
+
+  slowPages: adminProcedure.input(dateRangeInput.extend({
+    limit: z.number().int().min(1).max(200).default(50),
+  })).query(async ({ input }) => {
+    const from = new Date(input.from);
+    const to = new Date(input.to);
+    return getSlowPageLoads(from, to, input.limit);
+  }),
+
+  performanceByDevice: adminProcedure.input(dateRangeInput).query(async ({ input }) => {
+    const from = new Date(input.from);
+    const to = new Date(input.to);
+    return getPerformanceByDevice(from, to);
+  }),
+
+  /** GeoIP cache statistics for monitoring. */
+  geoIpCacheStats: adminProcedure.query(async () => {
+    return getGeoIpCacheStats();
   }),
 });

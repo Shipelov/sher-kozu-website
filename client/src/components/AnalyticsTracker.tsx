@@ -7,6 +7,7 @@
 
 import { createContext, useContext } from "react";
 import { useAnalytics } from "@/hooks/useAnalytics";
+import { usePerformanceTracking } from "@/hooks/usePerformanceTracking";
 
 type TrackEventFn = (
   category: string,
@@ -26,6 +27,7 @@ export function useTrackEvent() {
 
 export default function AnalyticsTracker({ children }: { children: React.ReactNode }) {
   const { trackEvent } = useAnalytics();
+  usePerformanceTracking(); // Collect Web Vitals + Navigation Timing on page load
 
   return (
     <AnalyticsContext.Provider value={{ trackEvent }}>

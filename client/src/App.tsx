@@ -48,6 +48,7 @@ const AdminPricing = lazy(() => import("./pages/AdminPricing"));
 const AdminClubComments = lazy(() => import("./pages/AdminClubComments"));
 const AdminNutriKnowledge = lazy(() => import("./pages/AdminNutriKnowledge"));
 const AdminClubRegistrations = lazy(() => import("./pages/AdminClubRegistrations"));
+const AdminPerformance = lazy(() => import("./pages/AdminPerformance"));
 const ZoyaSharedView = lazy(() => import("./pages/ZoyaSharedView"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
@@ -133,6 +134,7 @@ function Router() {
         <Route path="/pricing/:slug" component={PricingTierDetail} />
         <Route path="/admin/pricing" component={AdminPricing} />
         <Route path="/admin/nutri-knowledge" component={AdminNutriKnowledge} />
+        <Route path="/admin/performance" component={AdminPerformance} />
         <Route path="/faq" component={FAQ} />
         <Route path="/nutritionist" component={Nutritionist} />
         <Route path="/zoya/share/:token" component={ZoyaSharedView} />
