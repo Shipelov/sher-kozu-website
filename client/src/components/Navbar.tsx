@@ -119,6 +119,7 @@ export default function Navbar() {
       { href: "/animals", label: "Каталог", icon: PawPrint, authOnly: false, primary: true },
       { href: "/tracker", label: "Трекер", icon: Milk, authOnly: false, primary: true },
       { href: "/club", label: "Клуб", icon: Users, authOnly: false, primary: true },
+      { href: "/nutritionist", label: "Нутрициолог", icon: Leaf, authOnly: false, primary: false },
       { href: "/faq", label: "FAQ", icon: HelpCircle, authOnly: false, primary: false },
       { href: "/partners", label: "B2B", icon: Briefcase, authOnly: false, primary: false },
     ],

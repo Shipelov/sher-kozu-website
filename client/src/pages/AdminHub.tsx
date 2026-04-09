@@ -15,6 +15,7 @@ import {
   Coins,
   Crown,
   FileText,
+  BookOpen,
   FlaskConical,
   Gamepad2,
   KeyRound,
@@ -99,6 +100,7 @@ export default function AdminHub() {
     { title: "Уведомления аналитики", path: "/admin/analytics-alerts", icon: Bell },
     { title: "A/B тестирование", path: "/admin/ab-experiments", icon: FlaskConical },
     { title: "Управление ценами", path: "/admin/pricing", icon: Tag },
+    { title: "База знаний Зои", path: "/admin/nutri-knowledge", icon: BookOpen },
   ];
 
   // ── Loading ──

@@ -8,6 +8,7 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import WelcomeOnboarding from "@/components/WelcomeOnboarding";
 import { Loader2 } from "lucide-react";
 import MashaFloatingChat from "@/components/MashaFloatingChat";
+import ZoyaFloatingChat from "@/components/ZoyaFloatingChat";
 import AnalyticsTracker from "@/components/AnalyticsTracker";
 
 /* ─── Lazy-loaded page components (code-split per route) ─── */
@@ -36,6 +37,7 @@ const Partners = lazy(() => import("./pages/Partners"));
 const AboutFarm = lazy(() => import("./pages/AboutFarm"));
 const AnimalCompare = lazy(() => import("./pages/AnimalCompare"));
 const FAQ = lazy(() => import("./pages/FAQ"));
+const Nutritionist = lazy(() => import("./pages/Nutritionist"));
 const NotificationSettings = lazy(() => import("./pages/NotificationSettings"));
 const AdminAnalyticsAlerts = lazy(() => import("./pages/AdminAnalyticsAlerts"));
 const AdminABExperiments = lazy(() => import("./pages/AdminABExperiments"));
@@ -45,6 +47,7 @@ const PricingCompare = lazy(() => import("./pages/PricingCompare"));
 const PricingTierDetail = lazy(() => import("./pages/PricingTierDetail"));
 const AdminPricing = lazy(() => import("./pages/AdminPricing"));
 const AdminClubComments = lazy(() => import("./pages/AdminClubComments"));
+const AdminNutriKnowledge = lazy(() => import("./pages/AdminNutriKnowledge"));
 const AdminClubRegistrations = lazy(() => import("./pages/AdminClubRegistrations"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
@@ -129,7 +132,9 @@ function Router() {
         <Route path="/pricing/compare" component={PricingCompare} />
         <Route path="/pricing/:slug" component={PricingTierDetail} />
         <Route path="/admin/pricing" component={AdminPricing} />
+        <Route path="/admin/nutri-knowledge" component={AdminNutriKnowledge} />
         <Route path="/faq" component={FAQ} />
+        <Route path="/nutritionist" component={Nutritionist} />
         <Route path="/register">{() => <Redirect to="/?register=1" />}</Route>
         <Route path="/login">{() => <Redirect to="/?login=1" />}</Route>
         <Route path="/404" component={NotFound} />
@@ -164,6 +169,7 @@ function App() {
           <OnboardingGate />
           <Router />
           <MashaFloatingChat />
+          <ZoyaFloatingChat />
         </TooltipProvider>
       </ThemeProvider>
     </ErrorBoundary>

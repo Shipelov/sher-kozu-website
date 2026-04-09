@@ -243,6 +243,10 @@ async function startServer() {
   const { registerZoyaSSE } = await import("../zoyaSSE");
   registerZoyaSSE(app);
 
+  // Zoya Knowledge Base file upload & URL import endpoints
+  const { registerNutriFileUpload } = await import("../nutriFileUpload");
+  registerNutriFileUpload(app);
+
   // OAuth callback under /api/oauth/callback
   registerOAuthRoutes(app);
   // tRPC API

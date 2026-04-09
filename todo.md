@@ -2074,3 +2074,21 @@
 - [x] SSE streaming endpoint (zoyaSSE.ts) registered in Express for real-time chat
 - [x] Knowledge base seed (32 entries covering breeds, nutrition science, products, recipes)
 - [x] 21 vitest tests passing (knowledge CRUD, chat, sessions, profiles, admin, analytics)
+
+## Zoya AI Nutritionist — Phase 2 (Page + Chat + Avatar)
+
+- [x] Generate AI avatar for Zoya character (full portrait + chat headshot, uploaded to CDN)
+- [x] Create /nutritionist page with hero block, scenario cards, scientific showcase
+- [x] Create ZoyaChat component with SSE streaming and 3 user type logic (guest/registered/owner)
+- [x] Create floating Zoya button across the site (ZoyaFloatingChat.tsx)
+- [x] Add "Нутрициолог" to navbar after "Клуб"
+- [x] Register /nutritionist route in App.tsx
+
+## Zoya AI Nutritionist — Phase 3 (Admin Knowledge Base)
+
+- [x] Admin knowledge base CRUD interface (list, create, edit, delete entries)
+- [x] File upload interface (PDF/DOCX) with analysis and verification pipeline
+- [x] URL import interface with content extraction and analysis
+- [x] Conflict verification interface with resolution actions
+- [x] "Find new knowledge" auto-search function
+- [x] Auto-search settings (schedule, priority topics, trusted/excluded sources)
