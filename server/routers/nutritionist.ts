@@ -46,6 +46,7 @@ import {
   determineNutriUserType,
   getOwnerNutriContext,
   getNutriAnalytics,
+  getNutriAnalyticsExtended,
 } from "../nutritionistDb";
 import {
   buildZoyaPrompt,
@@ -532,6 +533,13 @@ export const nutritionistRouter = router({
     .input(z.object({ days: z.number().min(1).max(365).optional() }).optional())
     .query(async ({ input }) => {
       return getNutriAnalytics(input?.days);
+    }),
+
+  // ─── Extended Analytics (admin dashboard) ─────────────────────
+  analyticsExtended: adminProcedure
+    .input(z.object({ days: z.number().min(1).max(365).optional() }).optional())
+    .query(async ({ input }) => {
+      return getNutriAnalyticsExtended(input?.days);
     }),
 });
 

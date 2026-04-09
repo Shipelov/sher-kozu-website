@@ -19,6 +19,7 @@ import {
   FlaskConical,
   Gauge,
   Gamepad2,
+  Leaf,
   KeyRound,
   Loader2,
   PawPrint,
@@ -102,6 +103,7 @@ export default function AdminHub() {
     { title: "A/B тестирование", path: "/admin/ab-experiments", icon: FlaskConical },
     { title: "Управление ценами", path: "/admin/pricing", icon: Tag },
     { title: "База знаний Зои", path: "/admin/nutri-knowledge", icon: BookOpen },
+    { title: "Аналитика нутрициологии", path: "/admin/nutri-analytics", icon: Leaf },
     { title: "Производительность", path: "/admin/performance", icon: Gauge },
   ];
 

@@ -1036,3 +1036,191 @@ async function triggerPopularLinkNotification(
     // Non-critical — don't fail the view
   }
 }
+
+
+// ═══════════════════════════════════════════════════════════════════
+// Extended Nutrition Analytics (Admin Dashboard)
+// ═══════════════════════════════════════════════════════════════════
+
+/**
+ * Get extended nutrition analytics for the admin dashboard.
+ * Includes chat trends, popular topics, user engagement, recipes, shares, etc.
+ */
+export async function getNutriAnalyticsExtended(days = 30) {
+  const db = await getDb();
+  if (!db) return null;
+
+  const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+
+  // ─── Basic counts ───
+  const [totalSessions] = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(nutriSessions)
+    .where(gte(nutriSessions.createdAt, since));
+
+  const [totalMessages] = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(nutriMessages)
+    .where(gte(nutriMessages.createdAt, since));
+
+  const [userMessages] = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(nutriMessages)
+    .where(and(gte(nutriMessages.createdAt, since), eq(nutriMessages.role, "user")));
+
+  const [assistantMessages] = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(nutriMessages)
+    .where(and(gte(nutriMessages.createdAt, since), eq(nutriMessages.role, "assistant")));
+
+  // ─── User type breakdown ───
+  const userTypeBreakdown = await db
+    .select({
+      userType: nutriSessions.userType,
+      count: sql<number>`count(*)`,
+    })
+    .from(nutriSessions)
+    .where(gte(nutriSessions.createdAt, since))
+    .groupBy(nutriSessions.userType);
+
+  // ─── Knowledge base stats ───
+  const [knowledgeCount] = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(nutriKnowledge)
+    .where(eq(nutriKnowledge.status, "active"));
+
+  const knowledgeByCategory = await db
+    .select({
+      category: nutriKnowledge.category,
+      count: sql<number>`count(*)`,
+    })
+    .from(nutriKnowledge)
+    .where(eq(nutriKnowledge.status, "active"))
+    .groupBy(nutriKnowledge.category);
+
+  // ─── Profiles & meal plans ───
+  const [profileCount] = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(nutriProfiles);
+
+  const [mealPlanCount] = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(nutriMealPlans)
+    .where(gte(nutriMealPlans.createdAt, since));
+
+  const [favoriteMealPlans] = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(nutriMealPlans)
+    .where(eq(nutriMealPlans.isFavorite, true));
+
+  // ─── Recipes ───
+  const [recipeCount] = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(nutriRecipes)
+    .where(eq(nutriRecipes.status, "active"));
+
+  // ─── Shared content ───
+  const [shareCount] = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(zoyaSharedContent)
+    .where(gte(zoyaSharedContent.createdAt, since));
+
+  const [totalShareViews] = await db
+    .select({ total: sql<number>`COALESCE(SUM(viewCount), 0)` })
+    .from(zoyaSharedContent)
+    .where(gte(zoyaSharedContent.createdAt, since));
+
+  // ─── Chat trend by day (raw SQL for GROUP BY compatibility) ───
+  const chatTrendRows = await db.execute(sql`
+    SELECT
+      DATE(createdAt) AS day,
+      COUNT(*) AS sessions,
+      SUM(messageCount) AS messages
+    FROM nutriSessions
+    WHERE createdAt >= ${since}
+    GROUP BY DATE(createdAt)
+    ORDER BY DATE(createdAt)
+  `);
+  const chatTrend = (chatTrendRows[0] as any[]) || [];
+
+  // ─── Avg messages per session ───
+  const [avgMsgsPerSession] = await db
+    .select({
+      avg: sql<number>`ROUND(AVG(messageCount), 1)`,
+    })
+    .from(nutriSessions)
+    .where(and(gte(nutriSessions.createdAt, since), sql`messageCount > 0`));
+
+  // ─── Top user questions (last N user messages for topic analysis) ───
+  const recentUserMessages = await db
+    .select({
+      content: nutriMessages.content,
+      createdAt: nutriMessages.createdAt,
+    })
+    .from(nutriMessages)
+    .where(and(gte(nutriMessages.createdAt, since), eq(nutriMessages.role, "user")))
+    .orderBy(desc(nutriMessages.createdAt))
+    .limit(100);
+
+  // ─── Guest conversion (guests who later registered) ───
+  const [guestSessions] = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(nutriSessions)
+    .where(and(gte(nutriSessions.createdAt, since), eq(nutriSessions.userType, "guest")));
+
+  const [registeredSessions] = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(nutriSessions)
+    .where(and(gte(nutriSessions.createdAt, since), eq(nutriSessions.userType, "registered")));
+
+  const [ownerSessions] = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(nutriSessions)
+    .where(and(gte(nutriSessions.createdAt, since), eq(nutriSessions.userType, "owner")));
+
+  // ─── Popular shared content ───
+  const popularShares = await db
+    .select({
+      id: zoyaSharedContent.id,
+      title: zoyaSharedContent.title,
+      shareToken: zoyaSharedContent.shareToken,
+      viewCount: zoyaSharedContent.viewCount,
+      createdAt: zoyaSharedContent.createdAt,
+    })
+    .from(zoyaSharedContent)
+    .where(gte(zoyaSharedContent.createdAt, since))
+    .orderBy(desc(zoyaSharedContent.viewCount))
+    .limit(10);
+
+  return {
+    period: { days, since: since.toISOString() },
+    // Overview
+    sessions: totalSessions?.count ?? 0,
+    messages: totalMessages?.count ?? 0,
+    userMessages: userMessages?.count ?? 0,
+    assistantMessages: assistantMessages?.count ?? 0,
+    avgMessagesPerSession: avgMsgsPerSession?.avg ?? 0,
+    // User segments
+    userTypeBreakdown,
+    guestSessions: guestSessions?.count ?? 0,
+    registeredSessions: registeredSessions?.count ?? 0,
+    ownerSessions: ownerSessions?.count ?? 0,
+    // Knowledge
+    activeKnowledgeEntries: knowledgeCount?.count ?? 0,
+    knowledgeByCategory,
+    // Profiles & plans
+    totalProfiles: profileCount?.count ?? 0,
+    mealPlansCreated: mealPlanCount?.count ?? 0,
+    favoriteMealPlans: favoriteMealPlans?.count ?? 0,
+    // Recipes
+    activeRecipes: recipeCount?.count ?? 0,
+    // Shares
+    sharesCreated: shareCount?.count ?? 0,
+    totalShareViews: totalShareViews?.total ?? 0,
+    popularShares,
+    // Trends
+    chatTrend,
+    // Recent questions (for topic cloud)
+    recentQuestions: recentUserMessages.map((m: { content: string; createdAt: Date }) => m.content).slice(0, 50),
+  };
+}

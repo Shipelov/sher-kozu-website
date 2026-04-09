@@ -2142,3 +2142,10 @@
 - [x] Frontend: Collect and send page load timing data (Navigation Timing API + Web Vitals)
 - [x] Admin UI: Performance monitoring dashboard (/admin/performance) with Web Vitals, slow page detection, GeoIP cache stats
 - [x] Tests: Vitest coverage for GeoIP cache and performance tracking (92 files / 2478 tests all passing)
+
+## Nutrition Analytics in Admin Panel (April 2026)
+- [x] Investigate current nutrition feature structure and existing event tracking
+- [x] Add nutrition-specific event tracking on frontend (recipe views, AI chats, meal plans)
+- [x] Add nutrition analytics DB helpers and admin endpoints (getNutriAnalyticsExtended — sessions, messages, user types, knowledge, shares, trends, topics)
+- [x] Build nutrition analytics page /admin/nutri-analytics with 5 tabs (overview, users, content, shares, topics)
+- [x] Tests: Vitest coverage for nutrition analytics (93 files / 2505 tests passing)
