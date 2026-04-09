@@ -113,14 +113,16 @@ describe("Navbar: fixed button order", () => {
     expect(NAVBAR_SRC).not.toMatch(/\bconst authNavItems\b/);
   });
 
-  it("defines items in correct order: Главная, Мой кабинет, О ферме, Каталог, Трекер, Клуб, FAQ, B2B", () => {
+  it("defines items in correct order: Главная, Мой кабинет, Нутрициология, Цены, Каталог, Трекер, Клуб, О ферме, FAQ, B2B", () => {
     const expectedOrder = [
       "Главная",
       "Мой кабинет",
-      "О ферме",
+      "Нутрициология",
+      "Цены",
       "Каталог",
       "Трекер",
       "Клуб",
+      "О ферме",
       "FAQ",
       "B2B",
     ];

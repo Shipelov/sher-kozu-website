@@ -293,6 +293,28 @@ export default function Home() {
                     <p className="text-xs text-muted-foreground group-hover:text-primary transition-colors">Познакомиться и задать вопрос ▶</p>
                   </div>
                 </button>
+
+                {/* Row 3: Zoya AI Nutritionist — same width as Masha above */}
+                <Link
+                  href="/nutritionist"
+                  className="group w-full inline-flex items-center gap-3 rounded-full border border-emerald-500/20 bg-white/90 py-2.5 pl-2.5 pr-8 shadow-md backdrop-blur transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5 hover:border-emerald-500/40 cursor-pointer"
+                >
+                  <div className="relative flex-shrink-0">
+                    <img
+                      src="https://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/zoya_avatar_chat_80047a81.png"
+                      alt="Зоя — AI Нутрициолог"
+                      className="h-11 w-11 rounded-full object-cover ring-2 ring-emerald-500/20 group-hover:ring-emerald-500/40 transition-all"
+                    />
+                    <div className="absolute -bottom-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-emerald-500 shadow-sm">
+                      <Leaf className="h-2.5 w-2.5 text-white" />
+                    </div>
+                  </div>
+                  <div className="text-left flex-1">
+                    <p className="text-sm font-semibold text-foreground leading-tight">Зоя — AI Нутрициолог фермы</p>
+                    <p className="text-xs text-muted-foreground group-hover:text-emerald-600 transition-colors">Составит рацион здорового питания для вашей семьи</p>
+                  </div>
+                  <ArrowRight className="h-4 w-4 text-emerald-500/60 group-hover:text-emerald-600 transition-colors flex-shrink-0" />
+                </Link>
               </motion.div>
 
               {/* Trust signals — 4 key facts */}

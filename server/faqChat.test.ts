@@ -412,11 +412,12 @@ describe("Floating Masha chat widget", () => {
     ).toBe(true);
   });
 
-  it("MashaFloatingChat is imported in App.tsx", async () => {
+  it("AI floating hub is imported in App.tsx (unified Masha + Zoya)", async () => {
     const fs = await import("fs");
     const appContent = fs.readFileSync("client/src/App.tsx", "utf-8");
-    expect(appContent).toContain("MashaFloatingChat");
-    expect(appContent).toContain("<MashaFloatingChat />");
+    // MashaFloatingChat and ZoyaFloatingChat were unified into AIFloatingHub
+    expect(appContent).toContain("AIFloatingHub");
+    expect(appContent).toContain("<AIFloatingHub />");
   });
 
   it("MashaFloatingChat hides on /faq page", async () => {

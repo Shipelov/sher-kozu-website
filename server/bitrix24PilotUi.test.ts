@@ -19,9 +19,11 @@ describe("Bitrix24 pilot UI source smoke", () => {
     expect(partnersSource).toContain("trpc.partnerLeads.create.useMutation");
     expect(partnersSource).toContain("Партнёрская заявка");
     expect(partnersSource).toContain("createPartnerLead");
-    // Home links to /partners
-    expect(homeSource).toContain('href="/partners"');
-    expect(homeSource).toContain("Для партнёров");
+    // Home uses shared Footer component which contains /partners link
+    expect(homeSource).toContain("Footer");
+    const footerSource = fs.readFileSync("/home/ubuntu/sher-kozu-website/client/src/components/Footer.tsx", "utf8");
+    expect(footerSource).toContain('href="/partners"');
+    expect(footerSource).toContain("Для партнёров");
   });
 
   it("keeps admin club activity empty-state recovery flow", () => {

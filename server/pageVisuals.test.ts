@@ -28,12 +28,12 @@ describe("page visual integration source smoke", () => {
     expect(homeSource).toContain("Выбрать животное");
     expect(homeSource).toContain("Как это устроено");
 
-    // Trust signals
-    expect(homeSource).toContain("здоровое питание");
-    expect(homeSource).toContain("основатель фермы");
+    // Trust signal badges (updated April 2026)
+    expect(homeSource).toContain("элитные породы");
+    expect(homeSource).toContain("видов сыра");
+    expect(homeSource).toContain("гарантия качества");
+    expect(homeSource).toContain("от Москвы");
     expect(homeSource).toContain("прозрачность");
-    expect(homeSource).toContain("сервис");
-    expect(homeSource).toContain("семей");
 
     // How it works section
     expect(homeSource).toContain('id="how-it-works"');
@@ -87,9 +87,12 @@ describe("page visual integration source smoke", () => {
     expect(homeSource).not.toContain("Биоморфный");
   });
 
-  it("links to /partners from home footer", () => {
-    expect(homeSource).toContain('href="/partners"');
-    expect(homeSource).toContain("Для партнёров");
+  it("links to /partners from shared Footer component used by Home", () => {
+    // Home.tsx uses the shared <Footer /> component which contains the /partners link
+    expect(homeSource).toContain("Footer");
+    const footerSource = fs.readFileSync("/home/ubuntu/sher-kozu-website/client/src/components/Footer.tsx", "utf8");
+    expect(footerSource).toContain('href="/partners"');
+    expect(footerSource).toContain("Для партнёров");
   });
 
   /* ─── AboutFarm.tsx — О ферме page ─── */
@@ -143,7 +146,8 @@ describe("page visual integration source smoke", () => {
   it("renders the partner page with CRM form, FAQ, and sync status", () => {
     // Navigation — breadcrumbs replaced the old back link
     expect(partnersSource).toContain("PageBreadcrumbs");
-    expect(partnersSource).toContain('href="/"');
+    // Breadcrumb home link is passed via items prop: { label: "Главная", href: "/" }
+    expect(partnersSource).toContain('Главная');
 
     // Hero
     expect(partnersSource).toContain("Партнёрская программа");

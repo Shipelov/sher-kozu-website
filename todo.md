@@ -2092,3 +2092,10 @@
 - [x] Conflict verification interface with resolution actions
 - [x] "Find new knowledge" auto-search function
 - [x] Auto-search settings (schedule, priority topics, trusted/excluded sources)
+
+## User Refinements — April 9, 2026
+
+- [x] Add dates (createdAt) display to admin knowledge base entries list
+- [x] Add AI-nutritionist CTA button on homepage next to "Выбрать животное" and "Как это устроено" (per strategy)
+- [x] Swap Нутрициология and О ферме in navbar (Нутрициология right after Мой кабинет)
+- [x] Resolve two floating buttons issue (Masha + Zoya causing confusion) — unified into AIFloatingHub with selector panel

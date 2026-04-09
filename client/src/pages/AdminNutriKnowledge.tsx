@@ -303,6 +303,11 @@ function KnowledgeEntriesTab() {
                         <Badge variant="outline" className={`text-[10px] ${confInfo.color}`}>
                           {confInfo.label}
                         </Badge>
+                        {entry.createdAt && (
+                          <span className="text-[10px] text-muted-foreground ml-auto flex-shrink-0">
+                            {new Date(entry.createdAt).toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit", year: "numeric" })}
+                          </span>
+                        )}
                       </div>
 
                       {isExpanded && (
@@ -335,6 +340,14 @@ function KnowledgeEntriesTab() {
                                 )
                               )}
                             </div>
+                          )}
+                          {(entry.createdAt || entry.updatedAt) && (
+                            <p className="text-xs text-muted-foreground">
+                              Добавлено: {entry.createdAt ? new Date(entry.createdAt).toLocaleDateString("ru-RU", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }) : "—"}
+                              {entry.updatedAt && entry.updatedAt !== entry.createdAt && (
+                                <> · Обновлено: {new Date(entry.updatedAt).toLocaleDateString("ru-RU", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}</>
+                              )}
+                            </p>
                           )}
                         </div>
                       )}
