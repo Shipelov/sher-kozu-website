@@ -2094,3 +2094,30 @@ export type InsertNutriRecipe = typeof nutriRecipes.$inferInsert;
 
 export type NutriSearchSettings = typeof nutriSearchSettings.$inferSelect;
 export type InsertNutriSearchSettings = typeof nutriSearchSettings.$inferInsert;
+
+// ═══════════════════════════════════════════════════════════════════
+// Zoya Shared Content (for shareable links)
+// ═══════════════════════════════════════════════════════════════════
+
+export const zoyaSharedContent = mysqlTable("zoyaSharedContent", {
+  id: int("id").autoincrement().primaryKey(),
+  /** Unique share token (UUID-based, URL-safe) */
+  shareToken: varchar("shareToken", { length: 64 }).notNull().unique(),
+  /** The AI response content (markdown) */
+  content: text("content").notNull(),
+  /** Title extracted or provided */
+  title: varchar("title", { length: 500 }),
+  /** The user's question that prompted the response */
+  userQuestion: text("userQuestion"),
+  /** User who created the share (null for guests) */
+  userId: int("userId"),
+  /** View count */
+  viewCount: int("viewCount").default(0).notNull(),
+  /** Created timestamp */
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  /** Expiry (optional, null = never expires) */
+  expiresAt: timestamp("expiresAt"),
+});
+
+export type ZoyaSharedContent = typeof zoyaSharedContent.$inferSelect;
+export type InsertZoyaSharedContent = typeof zoyaSharedContent.$inferInsert;

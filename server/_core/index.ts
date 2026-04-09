@@ -9,6 +9,7 @@ import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
 import { withRetry, isTransientDbError } from "../retryUtils";
 import { analyticsMonitor } from "../analyticsMonitor";
+import { sdk } from "./sdk";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -236,6 +237,84 @@ async function startServer() {
     } catch (err: any) {
       console.error("Admin delivery Excel error:", err);
       res.status(500).json({ error: "Failed to generate Excel", message: err?.message });
+    }
+  });
+
+  // ─── Zoya Export Endpoints (PDF / DOCX) ───
+  app.post("/api/zoya/export/pdf", async (req, res) => {
+    try {
+      const { generateZoyaPdfBuffer } = await import("../zoyaExportGenerator");
+      const pdfBuffer = await generateZoyaPdfBuffer(req.body);
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader(
+        "Content-Disposition",
+        `attachment; filename*=UTF-8''${encodeURIComponent(`Зоя_рекомендации_${new Date().toISOString().slice(0, 10)}.pdf`)}`
+      );
+      res.send(pdfBuffer);
+    } catch (err: any) {
+      console.error("Zoya PDF export error:", err);
+      res.status(500).json({ error: "Failed to generate PDF", message: err?.message });
+    }
+  });
+
+  app.post("/api/zoya/export/docx", async (req, res) => {
+    try {
+      const { generateZoyaDocxBuffer } = await import("../zoyaExportGenerator");
+      const docxBuffer = await generateZoyaDocxBuffer(req.body);
+      res.setHeader(
+        "Content-Type",
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+      );
+      res.setHeader(
+        "Content-Disposition",
+        `attachment; filename*=UTF-8''${encodeURIComponent(`Зоя_рекомендации_${new Date().toISOString().slice(0, 10)}.docx`)}`
+      );
+      res.send(docxBuffer);
+    } catch (err: any) {
+      console.error("Zoya DOCX export error:", err);
+      res.status(500).json({ error: "Failed to generate DOCX", message: err?.message });
+    }
+  });
+
+  // ─── Zoya Share Link Endpoints ───
+  app.post("/api/zoya/share", async (req, res) => {
+    try {
+      const { createSharedContent } = await import("../nutritionistDb");
+      const user = await (async () => {
+        try {
+          return await sdk.authenticateRequest(req);
+        } catch {
+          return null;
+        }
+      })();
+      const { content, title, userQuestion } = req.body;
+      if (!content) {
+        return res.status(400).json({ error: "Content is required" });
+      }
+      const { shareToken } = await createSharedContent({
+        content,
+        title,
+        userQuestion,
+        userId: user?.id ?? null,
+      });
+      res.json({ shareToken });
+    } catch (err: any) {
+      console.error("Zoya share error:", err);
+      res.status(500).json({ error: "Failed to create share link", message: err?.message });
+    }
+  });
+
+  app.get("/api/zoya/share/:token", async (req, res) => {
+    try {
+      const { getSharedContent } = await import("../nutritionistDb");
+      const entry = await getSharedContent(req.params.token);
+      if (!entry) {
+        return res.status(404).json({ error: "Content not found or expired" });
+      }
+      res.json(entry);
+    } catch (err: any) {
+      console.error("Zoya share fetch error:", err);
+      res.status(500).json({ error: "Failed to fetch shared content", message: err?.message });
     }
   });
 

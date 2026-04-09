@@ -48,6 +48,7 @@ const AdminPricing = lazy(() => import("./pages/AdminPricing"));
 const AdminClubComments = lazy(() => import("./pages/AdminClubComments"));
 const AdminNutriKnowledge = lazy(() => import("./pages/AdminNutriKnowledge"));
 const AdminClubRegistrations = lazy(() => import("./pages/AdminClubRegistrations"));
+const ZoyaSharedView = lazy(() => import("./pages/ZoyaSharedView"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 /* ─── Suspense fallback spinner ─── */
@@ -134,6 +135,7 @@ function Router() {
         <Route path="/admin/nutri-knowledge" component={AdminNutriKnowledge} />
         <Route path="/faq" component={FAQ} />
         <Route path="/nutritionist" component={Nutritionist} />
+        <Route path="/zoya/share/:token" component={ZoyaSharedView} />
         <Route path="/register">{() => <Redirect to="/?register=1" />}</Route>
         <Route path="/login">{() => <Redirect to="/?login=1" />}</Route>
         <Route path="/404" component={NotFound} />

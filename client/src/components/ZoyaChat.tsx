@@ -25,6 +25,7 @@ import {
   Lock,
   ArrowRight,
 } from "lucide-react";
+import ZoyaExportActions from "./ZoyaExportActions";
 import { cn } from "@/lib/utils";
 
 const ZOYA_AVATAR =
@@ -373,39 +374,68 @@ export default function ZoyaChat({
         ) : (
           <ScrollArea className="h-full">
             <div className="flex flex-col gap-3 p-3">
-              {messages.map((msg, i) => (
-                <div
-                  key={i}
-                  className={cn(
-                    "flex gap-2",
-                    msg.role === "user" ? "justify-end" : "justify-start"
-                  )}
-                >
-                  {msg.role === "assistant" && (
-                    <img
-                      src={ZOYA_AVATAR}
-                      alt="Зоя"
-                      className="h-6 w-6 shrink-0 rounded-full object-cover mt-1"
-                    />
-                  )}
-                  <div
-                    className={cn(
-                      "max-w-[82%] rounded-2xl px-3.5 py-2 text-[13px]",
-                      msg.role === "user"
-                        ? "bg-emerald-600 text-white rounded-br-md"
-                        : "bg-muted text-foreground rounded-bl-md"
-                    )}
-                  >
-                    {msg.role === "assistant" ? (
-                      <div className="prose prose-sm dark:prose-invert max-w-none [&_p]:my-0.5">
-                        <Streamdown>{msg.content}</Streamdown>
+              {messages.map((msg, i) => {
+                // Find the user question that preceded this assistant message
+                const prevUserMsg =
+                  msg.role === "assistant" && i > 0
+                    ? messages
+                        .slice(0, i)
+                        .reverse()
+                        .find((m) => m.role === "user")
+                    : undefined;
+                const isLastAssistant =
+                  msg.role === "assistant" &&
+                  !isStreaming &&
+                  i === messages.length - 1;
+
+                return (
+                  <div key={i}>
+                    <div
+                      className={cn(
+                        "flex gap-2",
+                        msg.role === "user"
+                          ? "justify-end"
+                          : "justify-start"
+                      )}
+                    >
+                      {msg.role === "assistant" && (
+                        <img
+                          src={ZOYA_AVATAR}
+                          alt="Зоя"
+                          className="h-6 w-6 shrink-0 rounded-full object-cover mt-1"
+                        />
+                      )}
+                      <div
+                        className={cn(
+                          "max-w-[82%] rounded-2xl px-3.5 py-2 text-[13px]",
+                          msg.role === "user"
+                            ? "bg-emerald-600 text-white rounded-br-md"
+                            : "bg-muted text-foreground rounded-bl-md"
+                        )}
+                      >
+                        {msg.role === "assistant" ? (
+                          <div className="prose prose-sm dark:prose-invert max-w-none [&_p]:my-0.5">
+                            <Streamdown>{msg.content}</Streamdown>
+                          </div>
+                        ) : (
+                          <p className="whitespace-pre-wrap">
+                            {msg.content}
+                          </p>
+                        )}
                       </div>
-                    ) : (
-                      <p className="whitespace-pre-wrap">{msg.content}</p>
+                    </div>
+                    {/* Export actions for substantive assistant responses */}
+                    {msg.role === "assistant" && isLastAssistant && (
+                      <ZoyaExportActions
+                        content={msg.content}
+                        userQuestion={prevUserMsg?.content}
+                        userName={user?.name ?? undefined}
+                        compact={mode === "compact"}
+                      />
                     )}
                   </div>
-                </div>
-              ))}
+                );
+              })}
 
               {/* Streaming message */}
               {isStreaming && streamingContent && (

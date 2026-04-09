@@ -2099,3 +2099,12 @@
 - [x] Add AI-nutritionist CTA button on homepage next to "Выбрать животное" and "Как это устроено" (per strategy)
 - [x] Swap Нутрициология and О ферме in navbar (Нутрициология right after Мой кабинет)
 - [x] Resolve two floating buttons issue (Masha + Zoya causing confusion) — unified into AIFloatingHub with selector panel
+
+## Zoya Chat Export & Share (2026-04-09)
+
+- [x] Backend: PDF generation endpoint for Zoya chat responses (meal plans, menus, recommendations)
+- [x] Backend: DOCX generation endpoint for Zoya chat responses
+- [x] Backend: Share link generation (create shareable URL for chat content)
+- [x] Frontend: Export buttons (PDF/DOCX) after Zoya's substantive responses
+- [x] Frontend: Share button with copy-link and messenger share options
+- [x] Tests: Vitest coverage for export and share endpoints

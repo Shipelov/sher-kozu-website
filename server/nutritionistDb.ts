@@ -801,3 +801,57 @@ export async function getNutriAnalytics(days = 30) {
     mealPlansCreated: mealPlanCount?.count ?? 0,
   };
 }
+
+// ═══════════════════════════════════════════════════════════════════
+// Shared Content (shareable links for Zoya responses)
+// ═══════════════════════════════════════════════════════════════════
+
+import { zoyaSharedContent } from "../drizzle/schema";
+import crypto from "crypto";
+
+export async function createSharedContent(data: {
+  content: string;
+  title?: string;
+  userQuestion?: string;
+  userId?: number | null;
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+
+  const shareToken = crypto.randomUUID().replace(/-/g, "").slice(0, 16);
+
+  await db.insert(zoyaSharedContent).values({
+    shareToken,
+    content: data.content,
+    title: data.title ?? null,
+    userQuestion: data.userQuestion ?? null,
+    userId: data.userId ?? null,
+    viewCount: 0,
+  });
+
+  return { shareToken };
+}
+
+export async function getSharedContent(shareToken: string) {
+  const db = await getDb();
+  if (!db) return null;
+
+  const [entry] = await db
+    .select()
+    .from(zoyaSharedContent)
+    .where(eq(zoyaSharedContent.shareToken, shareToken))
+    .limit(1);
+
+  if (!entry) return null;
+
+  // Check expiry
+  if (entry.expiresAt && entry.expiresAt < new Date()) return null;
+
+  // Increment view count
+  await db
+    .update(zoyaSharedContent)
+    .set({ viewCount: sql`${zoyaSharedContent.viewCount} + 1` })
+    .where(eq(zoyaSharedContent.id, entry.id));
+
+  return entry;
+}
