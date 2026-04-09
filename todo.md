@@ -2117,3 +2117,13 @@
 - [x] Frontend: Show remaining time / expiry info on shared content page
 - [x] Frontend: Handle expired links gracefully with re-creation CTA
 - [x] Tests: Vitest coverage for expiry logic and notification triggers
+
+## Zoya Personalized Animal Data (2026-04-09)
+
+- [x] Backend: Fetch owner's animals with real milk composition data for Zoya context
+- [x] Backend: Fetch owner's product plan and delivery data for Zoya context
+- [x] Backend: Build personalized context block with animal names, breeds, milk stats
+- [x] Backend: Implement fallback to breed averages when no personal data available
+- [x] Backend: Update Zoya system prompt to emphasize personalization and individual approach
+- [x] Backend: Handle multi-animal owners (e.g., goat + sheep) in recommendations
+- [x] Tests: Vitest coverage for personalized context building and fallback logic

@@ -21,6 +21,10 @@ import {
   users,
   ownerProductPlans,
   deliverySchedule,
+  productCompositionSnapshots,
+  productMonthlyMetrics,
+  animalProductionProfiles,
+  productOptions,
   type InsertNutriSession,
   type InsertNutriMessage,
   type InsertNutriProfile,
@@ -698,6 +702,90 @@ export async function getOwnerNutriContext(userId: number) {
 
   if (!ownerships.length) return null;
 
+  // ── Enrich each animal with real milk/product data ──
+  type OwnershipRow = typeof ownerships[number];
+  const animalSlugs = ownerships.map((o: OwnershipRow) => o.animalSlug);
+  const animalIds = ownerships.map((o: OwnershipRow) => o.animalId);
+
+  // 1. Real milk composition snapshots (label/value pairs per animal)
+  const compositionRows = animalSlugs.length > 0
+    ? await db
+        .select()
+        .from(productCompositionSnapshots)
+        .where(
+          and(
+            inArray(productCompositionSnapshots.animalSlug, animalSlugs),
+            eq(productCompositionSnapshots.ownerOpenId, user.openId),
+          )
+        )
+        .orderBy(productCompositionSnapshots.sortOrder)
+    : [];
+
+  // 2. Monthly metrics (milk volume, protein%, fat% per month)
+  const monthlyRows = animalSlugs.length > 0
+    ? await db
+        .select()
+        .from(productMonthlyMetrics)
+        .where(
+          and(
+            inArray(productMonthlyMetrics.animalSlug, animalSlugs),
+            eq(productMonthlyMetrics.ownerOpenId, user.openId),
+          )
+        )
+        .orderBy(productMonthlyMetrics.sortOrder)
+    : [];
+
+  // 3. Production profiles (annual milk yield per animal)
+  const productionRows = animalIds.length > 0
+    ? await db
+        .select()
+        .from(animalProductionProfiles)
+        .where(inArray(animalProductionProfiles.animalId, animalIds))
+    : [];
+
+  // 4. Product options (what products are made from each animal's milk)
+  const productOptionRows = animalIds.length > 0
+    ? await db
+        .select()
+        .from(productOptions)
+        .where(
+          and(
+            inArray(productOptions.animalId, animalIds),
+            eq(productOptions.isEnabled, 1),
+          )
+        )
+        .orderBy(productOptions.sortOrder)
+    : [];
+
+  // Group data by animal
+  const enrichedAnimals = ownerships.map((o: OwnershipRow) => {
+    const composition = compositionRows
+      .filter((c: typeof productCompositionSnapshots.$inferSelect) => c.animalSlug === o.animalSlug)
+      .map((c: typeof productCompositionSnapshots.$inferSelect) => ({ label: c.label, value: c.value, note: c.note }));
+
+    const monthly = monthlyRows
+      .filter((m: typeof productMonthlyMetrics.$inferSelect) => m.animalSlug === o.animalSlug)
+      .map((m: typeof productMonthlyMetrics.$inferSelect) => ({
+        month: m.monthLabel,
+        milkLiters: m.milkVolumeLiters,
+        proteinPercent: m.proteinPercentTenth / 10,
+        fatPercent: m.fatPercentTenth / 10,
+      }));
+
+    const production = productionRows.find((p: typeof animalProductionProfiles.$inferSelect) => p.animalId === o.animalId);
+    const products = productOptionRows
+      .filter((p: typeof productOptions.$inferSelect) => p.animalId === o.animalId)
+      .map((p: typeof productOptions.$inferSelect) => ({ label: p.label, type: p.productType, unit: p.unit }));
+
+    return {
+      ...o,
+      milkComposition: composition,
+      monthlyMetrics: monthly,
+      annualMilkLiters: production?.annualMilkLiters ?? null,
+      availableProducts: products,
+    };
+  });
+
   // Get product plans for the owner
   const productPlans = await db
     .select()
@@ -713,7 +801,7 @@ export async function getOwnerNutriContext(userId: number) {
     .limit(5);
 
   return {
-    animals: ownerships,
+    animals: enrichedAnimals,
     productPlans,
     deliveries,
   };

@@ -8,6 +8,7 @@
  * 4. RAG context (relevant knowledge entries for current query)
  * 5. Rules per user type (limits, conversion triggers)
  * 6. Red lines (medical disclaimers)
+ * 7. Personalized milk/product data (real or breed-average fallback)
  */
 
 import type { NutriKnowledgeEntry, NutriProfile } from "../../drizzle/schema";
@@ -16,17 +17,42 @@ import type { NutriKnowledgeEntry, NutriProfile } from "../../drizzle/schema";
 // Types
 // ═══════════════════════════════════════════════════════════════════
 
+export interface AnimalMilkComposition {
+  label: string;
+  value: string;
+  note: string;
+}
+
+export interface AnimalMonthlyMetric {
+  month: string;
+  milkLiters: number;
+  proteinPercent: number;
+  fatPercent: number;
+}
+
+export interface AnimalProduct {
+  label: string;
+  type: string;
+  unit: string;
+}
+
+export interface EnrichedAnimal {
+  animalName: string | null;
+  animalSlug: string;
+  species: string | null;
+  breed: string | null;
+  milkComposition: AnimalMilkComposition[];
+  monthlyMetrics: AnimalMonthlyMetric[];
+  annualMilkLiters: number | null;
+  availableProducts: AnimalProduct[];
+}
+
 export interface ZoyaUserContext {
   userType: "guest" | "registered" | "owner";
   userName?: string | null;
   profile?: NutriProfile | null;
   ownerContext?: {
-    animals: Array<{
-      animalName: string | null;
-      animalSlug: string;
-      species: string | null;
-      breed: string | null;
-    }>;
+    animals: Array<EnrichedAnimal>;
     productPlans: any[];
     deliveries: any[];
   } | null;
@@ -59,6 +85,12 @@ const BASE_PERSONALITY = `Ты — **Зоя**, AI-нутрициолог сем�
 - Маша — AI-управляющая фермой (отвечает за животных, ферму, визиты, общие вопросы).
 - Зоя (ты) — AI-нутрициолог (отвечаешь за питание, здоровье, рецепты, планы питания, пользу продуктов).
 - Если вопрос не по твоей теме (например, про визиты на ферму или покупку доли), мягко направь к Маше.
+
+## Ключевой принцип: ПЕРСОНАЛИЗАЦИЯ НА ОСНОВЕ РЕАЛЬНЫХ ДАННЫХ
+- Ты — не обычный чат-бот с общими советами. Твоя уникальная сила — рекомендации на основе **реальных показателей молока конкретных животных** владельца.
+- Когда у владельца есть данные о составе молока — ВСЕГДА используй их в рекомендациях, подчёркивая: «Это не средние цифры из учебника, а реальные показатели молока вашей козы/овцы».
+- Если у владельца несколько животных (например, коза и овца) — учитывай оба источника молока, предлагай комбинации и объясняй, чем они дополняют друг друга.
+- Подчёркивай преимущества такого индивидуального подхода: «В отличие от магазинных продуктов, вы точно знаете состав молока, из которого сделан ваш сыр/кефир/йогурт».
 
 ## Формат ответов
 - Используй Markdown для форматирования: заголовки, списки, жирный текст для ключевых фактов.
@@ -97,6 +129,61 @@ const FARM_CORE_KNOWLEDGE = `
 `;
 
 // ═══════════════════════════════════════════════════════════════════
+// Breed Average Fallback Data
+// ═══════════════════════════════════════════════════════════════════
+
+const BREED_AVERAGES: Record<string, { fatPercent: string; proteinPercent: string; annualMilkLiters: string; keyNutrients: string }> = {
+  // Goat breeds
+  "Англо-нубийская": {
+    fatPercent: "4.5–5.0%",
+    proteinPercent: "3.5–3.7%",
+    annualMilkLiters: "700–900",
+    keyNutrients: "β-казеин А2, MCT (каприловая, каприновая кислоты), кальций 134 мг/100 мл, витамин А, B2",
+  },
+  "Альпийская": {
+    fatPercent: "3.5–4.0%",
+    proteinPercent: "3.0–3.3%",
+    annualMilkLiters: "800–1200",
+    keyNutrients: "β-казеин А2, MCT, кальций 130 мг/100 мл, витамин B12, фосфор",
+  },
+  "Зааненская": {
+    fatPercent: "3.2–3.8%",
+    proteinPercent: "2.8–3.2%",
+    annualMilkLiters: "900–1200",
+    keyNutrients: "β-казеин А2, MCT, кальций 128 мг/100 мл, витамин B2, калий",
+  },
+  // Sheep breeds
+  "Восточно-фризская": {
+    fatPercent: "6.0–7.0%",
+    proteinPercent: "5.5–6.0%",
+    annualMilkLiters: "400–700",
+    keyNutrients: "CLA (конъюгированная линолевая кислота), кальций 193 мг/100 мл, витамин A, B12, фолиевая кислота",
+  },
+  "Лакон": {
+    fatPercent: "7.0–8.0%",
+    proteinPercent: "5.0–5.5%",
+    annualMilkLiters: "250–400",
+    keyNutrients: "CLA, витамин B12, фолиевая кислота, кальций 187 мг/100 мл, цинк",
+  },
+};
+
+// Generic fallbacks by species
+const SPECIES_AVERAGES: Record<string, { fatPercent: string; proteinPercent: string; annualMilkLiters: string; keyNutrients: string }> = {
+  goat: {
+    fatPercent: "3.5–5.0%",
+    proteinPercent: "3.0–3.7%",
+    annualMilkLiters: "700–1200",
+    keyNutrients: "β-казеин А2, MCT, кальций ~130 мг/100 мл, витамины A, B2, B12",
+  },
+  sheep: {
+    fatPercent: "6.0–8.0%",
+    proteinPercent: "5.0–6.0%",
+    annualMilkLiters: "250–700",
+    keyNutrients: "CLA, кальций ~190 мг/100 мл, витамины A, B12, фолиевая кислота",
+  },
+};
+
+// ═══════════════════════════════════════════════════════════════════
 // 3. User Type Rules
 // ═══════════════════════════════════════════════════════════════════
 
@@ -111,7 +198,8 @@ function buildUserTypeRules(ctx: ZoyaUserContext): string {
         : "Отвечай полноценно, но в конце 2-го или 3-го сообщения мягко упомяни, что регистрация открывает персональные планы питания и неограниченный доступ."
       }
 - НЕ предлагай сохранить план питания или создать нутри-профиль — эти функции доступны только зарегистрированным.
-- НЕ упоминай конкретных животных или доли — гость ещё не знаком с экосистемой.`;
+- НЕ упоминай конкретных животных или доли — гость ещё не знаком с экосистемой.
+- Используй средние показатели по породам при обсуждении состава молока. Упомяни, что владельцы доли получают рекомендации на основе реальных анализов молока их конкретного животного.`;
 
     case "registered":
       return `
@@ -119,23 +207,28 @@ function buildUserTypeRules(ctx: ZoyaUserContext): string {
 ${ctx.userName ? `- Обращайся по имени: **${ctx.userName}**.` : ""}
 - Безлимитный чат, полный доступ к нутри-профилю, сохранению планов, рецептам.
 - Можешь предлагать создать/обновить нутри-профиль для более точных рекомендаций.
-- Деликатно (не чаще 1 раза за 3 диалога) упоминай, что владельцы доли получают продукты от конкретного животного и персонализированные рационы.
-- Пример мягкого триггера: «Кстати, если вы станете владельцем доли, я смогу составлять рационы с учётом конкретного молока от вашего животного — это совсем другой уровень персонализации 🐐»`;
+- Используй средние показатели по породам при обсуждении состава молока.
+- Деликатно (не чаще 1 раза за 3 диалога) упоминай, что владельцы доли получают продукты от конкретного животного и персонализированные рационы на основе реальных данных.
+- Пример мягкого триггера: «Кстати, если вы станете владельцем доли, я смогу составлять рационы с учётом реального состава молока именно вашего животного — это совсем другой уровень точности и персонализации 🐐»`;
 
     case "owner":
       return `
 ## Правила для владельца доли (максимальная персонализация)
 ${ctx.userName ? `- Обращайся по имени: **${ctx.userName}**.` : ""}
 - Это VIP-пользователь. Максимальная персонализация.
-- Привязывай рекомендации к конкретным животным и продуктам владельца.
+- **ОБЯЗАТЕЛЬНО** привязывай рекомендации к реальным данным о молоке конкретных животных владельца.
+- Когда есть данные о составе молока — цитируй конкретные цифры: «Молоко вашей козы [Имя] содержит [X]% жира и [Y]% белка — это выше/ниже среднего для породы, что означает...»
+- Подчёркивай уникальность: «Эти рекомендации составлены именно для вас, на основе реальных показателей молока ваших животных, а не усреднённых данных из справочников».
+- Если у владельца несколько животных разных видов (коза + овца) — предлагай комбинированные рационы, объясняя синергию: «Козье молоко даёт легкоусвояемые MCT, а овечье — рекордный кальций и CLA. Вместе они покрывают...»
 - Учитывай график доставки при составлении планов питания.
+- Если данных о составе молока нет — используй средние по породе, но отметь: «Пока мы используем средние показатели для породы [X]. Когда появятся данные анализа молока вашего животного, я смогу дать ещё более точные рекомендации».
 - Можешь предлагать расширение продуктового плана, если текущий не покрывает рекомендации.
-- Упоминай стадию лактации и сезонность при обсуждении состава молока.`;
+- Упоминай сезонность при обсуждении состава молока (весной жирность обычно ниже, осенью — выше).`;
   }
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// 4. Owner Context (dynamic — only for Type 2)
+// 4. Owner Context with Real Milk Data (dynamic — only for Type 2)
 // ═══════════════════════════════════════════════════════════════════
 
 function buildOwnerContext(ctx: ZoyaUserContext): string {
@@ -143,17 +236,72 @@ function buildOwnerContext(ctx: ZoyaUserContext): string {
 
   const { animals, productPlans, deliveries } = ctx.ownerContext;
 
-  let section = `\n## Контекст владельца (персональные данные)\n`;
+  let section = `\n## 🐐 Персональные данные владельца (РЕАЛЬНЫЕ показатели)\n`;
+  section += `\n> ⚡ Используй эти данные как основу для ВСЕХ рекомендаций. Это не справочные средние, а реальные показатели конкретных животных владельца.\n`;
+
+  const hasMultipleSpecies = new Set(animals.map((a) => a.species)).size > 1;
+  if (hasMultipleSpecies) {
+    section += `\n> 🔄 У владельца животные **разных видов** — учитывай это при составлении рационов, предлагай комбинации продуктов из разных источников молока.\n`;
+  }
 
   if (animals.length > 0) {
-    section += `\n### Животные владельца:\n`;
     for (const a of animals) {
-      section += `- **${a.animalName ?? a.animalSlug}** — ${a.species ?? "?"}, порода: ${a.breed ?? "не указана"}\n`;
+      const name = a.animalName ?? a.animalSlug;
+      const speciesLabel = a.species === "goat" ? "🐐 Коза" : a.species === "sheep" ? "🐑 Овца" : a.species ?? "Животное";
+      section += `\n### ${speciesLabel} «${name}»`;
+      if (a.breed) section += ` — порода: ${a.breed}`;
+      section += `\n`;
+
+      // Real milk composition data
+      if (a.milkComposition && a.milkComposition.length > 0) {
+        section += `\n**📊 Реальный состав молока (по данным анализов):**\n`;
+        for (const c of a.milkComposition) {
+          section += `- **${c.label}:** ${c.value}`;
+          if (c.note) section += ` _(${c.note})_`;
+          section += `\n`;
+        }
+        section += `\n_☝️ Это реальные данные анализа молока именно этого животного. Используй их для точных расчётов КБЖУ и рекомендаций._\n`;
+      } else {
+        // Fallback to breed averages
+        const breedAvg = a.breed ? findBreedAverage(a.breed) : null;
+        const speciesAvg = a.species ? SPECIES_AVERAGES[a.species] : null;
+        const avg = breedAvg ?? speciesAvg;
+        if (avg) {
+          section += `\n**📊 Средние показатели для породы** _(реальные данные анализа пока не загружены)_:\n`;
+          section += `- Жирность: ${avg.fatPercent}\n`;
+          section += `- Белок: ${avg.proteinPercent}\n`;
+          section += `- Ключевые нутриенты: ${avg.keyNutrients}\n`;
+          section += `\n_ℹ️ Когда появятся данные анализа молока ${name}, рекомендации станут ещё точнее._\n`;
+        }
+      }
+
+      // Monthly metrics (seasonal dynamics)
+      if (a.monthlyMetrics && a.monthlyMetrics.length > 0) {
+        section += `\n**📈 Сезонная динамика молока ${name}:**\n`;
+        const recent = a.monthlyMetrics.slice(-6); // Last 6 months
+        for (const m of recent) {
+          section += `- ${m.month}: ${m.milkLiters} л, жирность ${m.fatPercent}%, белок ${m.proteinPercent}%\n`;
+        }
+        section += `\n_Используй сезонную динамику для рекомендаций: в текущем месяце ориентируйся на последние показатели._\n`;
+      }
+
+      // Annual production
+      if (a.annualMilkLiters) {
+        section += `\n**🥛 Годовой надой:** ${a.annualMilkLiters} л/год\n`;
+      }
+
+      // Available products from this animal
+      if (a.availableProducts && a.availableProducts.length > 0) {
+        section += `\n**🧀 Доступные продукты из молока ${name}:**\n`;
+        for (const p of a.availableProducts) {
+          section += `- ${p.label} (${p.unit})\n`;
+        }
+      }
     }
   }
 
   if (productPlans.length > 0) {
-    section += `\n### Продуктовый план:\n`;
+    section += `\n### 📦 Продуктовый план владельца:\n`;
     for (const p of productPlans) {
       try {
         const selections = typeof p.selectionsJson === "string" ? JSON.parse(p.selectionsJson) : p.selectionsJson;
@@ -164,16 +312,60 @@ function buildOwnerContext(ctx: ZoyaUserContext): string {
         }
       } catch { /* skip malformed */ }
     }
+    section += `\n_Учитывай продуктовый план при составлении рационов — рекомендуй продукты, которые владелец уже получает._\n`;
   }
 
   if (deliveries.length > 0) {
-    section += `\n### Ближайшие доставки:\n`;
+    section += `\n### 🚚 Ближайшие доставки:\n`;
     for (const d of deliveries) {
       section += `- ${d.month}/${d.year}: статус — ${d.status}\n`;
     }
   }
 
   return section;
+}
+
+/**
+ * Find breed average data by matching breed name (partial match).
+ */
+function findBreedAverage(breed: string) {
+  const breedLower = breed.toLowerCase();
+  for (const [key, value] of Object.entries(BREED_AVERAGES)) {
+    if (breedLower.includes(key.toLowerCase()) || key.toLowerCase().includes(breedLower)) {
+      return value;
+    }
+  }
+  return null;
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// 4b. Breed Average Context (for registered users without animals)
+// ═══════════════════════════════════════════════════════════════════
+
+function buildBreedAverageContext(ctx: ZoyaUserContext): string {
+  // Only include for non-owner users (guests and registered)
+  if (ctx.userType === "owner") return "";
+
+  return `
+## 📊 Справочные данные о составе молока (средние по породам)
+
+_Эти данные используются для общих рекомендаций. Владельцы доли получают рекомендации на основе реальных анализов молока их конкретного животного._
+
+### Козье молоко (средние показатели):
+| Порода | Жирность | Белок | Надой (л/год) |
+|--------|----------|-------|---------------|
+| Англо-нубийская | 4.5–5.0% | 3.5–3.7% | 700–900 |
+| Альпийская | 3.5–4.0% | 3.0–3.3% | 800–1200 |
+| Зааненская | 3.2–3.8% | 2.8–3.2% | 900–1200 |
+
+### Овечье молоко (средние показатели):
+| Порода | Жирность | Белок | Надой (л/год) |
+|--------|----------|-------|---------------|
+| Восточно-фризская | 6.0–7.0% | 5.5–6.0% | 400–700 |
+| Лакон | 7.0–8.0% | 5.0–5.5% | 250–400 |
+
+_Важно: реальные показатели конкретного животного могут отличаться от средних по породе на 10–20% в зависимости от рациона, стадии лактации и сезона._
+`;
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -239,9 +431,11 @@ const RED_LINES = `
 
 4. **Беременность и лактация:** Общие рекомендации допустимы, но с оговоркой о консультации с врачом.
 
-5. **Не придумывай данные:** Если не знаешь точный состав или КБЖУ — скажи честно. Лучше сказать «уточню» чем дать неверные цифры.
+5. **Не придумывай данные:** Если не знаешь точный состав или КБЖУ — скажи честно. Лучше сказать «уточню» чем дать неверные цифры. Если используешь средние по породе — ОБЯЗАТЕЛЬНО укажи это.
 
 6. **Конкуренты:** Не критикуй другие фермы или бренды. Говори о преимуществах продуктов «Шерь Козу», а не о недостатках других.
+
+7. **Реальные vs средние данные:** Всегда чётко различай реальные показатели конкретного животного и средние по породе. Не выдавай средние за реальные.
 `;
 
 // ═══════════════════════════════════════════════════════════════════
@@ -255,6 +449,7 @@ export function buildZoyaPrompt(context: ZoyaPromptContext): string {
     buildUserTypeRules(context.user),
     buildProfileContext(context.user.profile),
     buildOwnerContext(context.user),
+    buildBreedAverageContext(context.user),
     buildRAGContext(context.ragEntries),
     RED_LINES,
   ];
