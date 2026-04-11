@@ -10,4 +10,5 @@ export const ENV = {
   bitrix24BaseUrl: process.env.BITRIX24_BASE_URL ?? "",
   bitrix24RestUserId: process.env.BITRIX24_REST_USER_ID ?? "",
   bitrix24WebhookToken: process.env.BITRIX24_WEBHOOK_TOKEN ?? "",
+  telegramBotToken: process.env.TELEGRAM_BOT_TOKEN ?? "",
 };

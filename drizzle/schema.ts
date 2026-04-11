@@ -28,6 +28,8 @@ export const users = mysqlTable("users", {
   onboardingCompleted: boolean("onboardingCompleted").default(false).notNull(),
   /** User's preferred primary animal for the dashboard. Nullable — when null, auto-select by ownership priority. */
   primaryAnimalId: int("primaryAnimalId"),
+  /** Telegram chat ID for bot notifications. Set when user links their Telegram account. */
+  telegramChatId: varchar("telegramChatId", { length: 20 }),
   /** Soft-delete timestamp. When set, user is in trash and access is blocked. */
   deletedAt: timestamp("deletedAt"),
   /** Admin openId who moved the user to trash. */
@@ -2181,3 +2183,36 @@ export const zoyaSharedContent = mysqlTable("zoyaSharedContent", {
 
 export type ZoyaSharedContent = typeof zoyaSharedContent.$inferSelect;
 export type InsertZoyaSharedContent = typeof zoyaSharedContent.$inferInsert;
+
+
+/* ─── Telegram Bot ─── */
+
+export const telegramLinkTokens = mysqlTable("telegramLinkTokens", {
+  id: int("id").autoincrement().primaryKey(),
+  /** One-time token for linking Telegram account */
+  token: varchar("token", { length: 64 }).notNull().unique(),
+  /** User who generated the link */
+  userOpenId: varchar("userOpenId", { length: 64 }).notNull(),
+  /** When the token expires (15 minutes after creation) */
+  expiresAt: timestamp("expiresAt").notNull(),
+  /** When the token was used (null = unused) */
+  usedAt: timestamp("usedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type TelegramLinkToken = typeof telegramLinkTokens.$inferSelect;
+export type InsertTelegramLinkToken = typeof telegramLinkTokens.$inferInsert;
+
+export const telegramSessionStateEnum = mysqlEnum("telegramSessionState", ["idle", "chat_zoya", "chat_masha"]);
+
+export const telegramSessions = mysqlTable("telegramSessions", {
+  id: int("id").autoincrement().primaryKey(),
+  /** Telegram chat ID */
+  chatId: varchar("chatId", { length: 20 }).notNull().unique(),
+  /** Current conversation state */
+  state: telegramSessionStateEnum.default("idle").notNull(),
+  /** JSON context for the current conversation (message history, etc.) */
+  contextJson: text("contextJson"),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type TelegramSession = typeof telegramSessions.$inferSelect;
+export type InsertTelegramSession = typeof telegramSessions.$inferInsert;

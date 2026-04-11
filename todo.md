@@ -2209,3 +2209,28 @@
 - [x] Use real animal wellbeing data from API in ProductTracker (happinessScore, healthScore, careLevelScore from ownerDashboard)
 - [x] Use demo wellbeing data in DemoTracker (89, 92, 85)
 - [x] Test and verify (TS compiles, 93 files / 2505 tests pass)
+
+## Telegram Bot MVP (April 2026)
+- [x] Add TELEGRAM_BOT_TOKEN secret
+- [x] Install grammy package
+- [x] Add telegramChatId field to users table
+- [x] Create telegramLinkTokens table
+- [x] Create telegramSessions table
+- [x] Run pnpm db:push
+- [x] Build webhook handler on grammY
+- [x] Implement account linking via deep link /start <token>
+- [x] Implement /status command (animal summary + wellness metrics)
+- [x] Implement /delivery command (delivery status)
+- [x] Implement /balance command (SKC token balance)
+- [x] Implement /events command (upcoming club events)
+- [x] Implement /photo command (latest animal photo)
+- [x] Implement /settings command (notification preferences)
+- [x] Build push notification dispatcher (sendTelegramNotification)
+- [x] Integrate push into delivery status changes
+- [x] Integrate push into club event creation
+- [x] Implement /zoya command (AI nutritionist chat mode)
+- [x] Implement /help command (AI assistant Masha chat mode)
+- [x] Handle voice messages for Zoya via Whisper
+- [x] Add "Connect Telegram" card to NotificationSettings page
+- [x] Write vitest tests for bot module (95 files, 2519 tests pass)
+- [x] Register webhook URL on production startup (auto)

@@ -114,6 +114,7 @@ import { analyticsRouter } from "./routers/analytics";
 import { analyticsAlertsRouter } from "./routers/analyticsAlerts";
 import { pricingRouter } from "./routers/pricing";
 import { abExperimentsRouter } from "./routers/abExperiments";
+import { generateLinkToken, getUserByTelegramChatId } from "./telegramBot";
 import { getOwnerBadges, checkAndAwardBadges, revokeInvalidBadges, BADGE_DEFINITIONS } from "./badges";
 import {
   checkRateLimit,
@@ -1710,7 +1711,28 @@ export const appRouter = router({
       return deleteClubPost(input.id, ctx.user.openId);
     }),
     createEvent: adminProcedure.input(clubEventInput).mutation(async ({ ctx, input }) => {
-      return createClubEvent({ ownerOpenId: ctx.user.openId, ...input });
+      const event = await createClubEvent({ ownerOpenId: ctx.user.openId, ...input });
+      // Notify all linked Telegram users about new club event
+      (async () => {
+        try {
+          const { getDb } = await import("./db");
+          const db = await getDb();
+          if (!db) return;
+          const { users: usersTable } = await import("../drizzle/schema");
+          const { isNotNull } = await import("drizzle-orm");
+          const linkedUsers = await db.select({ openId: usersTable.openId }).from(usersTable).where(isNotNull(usersTable.telegramChatId));
+          const { sendTelegramNotification } = await import("./telegramBot");
+          for (const u of linkedUsers) {
+            sendTelegramNotification(
+              u.openId,
+              `📅 Новое событие клуба\n\n${input.title}${input.description ? `\n${input.description.slice(0, 120)}` : ""}${input.dateLabel ? `\n📆 ${input.dateLabel}` : ""}\n\nПодробнее: koza.vip/club`,
+            ).catch(() => {});
+          }
+        } catch (err) {
+          console.warn("[Telegram Club Event Push] Failed:", err);
+        }
+      })();
+      return event;
     }),
     updateEvent: adminProcedure.input(updateClubEventInput).mutation(async ({ ctx, input }) => {
       return updateClubEvent({ ownerOpenId: ctx.user.openId, ...input });
@@ -2183,6 +2205,35 @@ export const appRouter = router({
         const ok = await upsertNotificationPreferences(ctx.user.openId, input);
         return { success: ok };
       }),
+  }),
+  telegram: router({
+    /** Generate a one-time link token for connecting Telegram account */
+    generateLinkToken: protectedProcedure.mutation(async ({ ctx }) => {
+      const token = await generateLinkToken(ctx.user.openId);
+      const botUsername = "sherkozu_bot";
+      const deepLink = `https://t.me/${botUsername}?start=${token}`;
+      return { token, deepLink };
+    }),
+    /** Check if the current user has Telegram connected */
+    status: protectedProcedure.query(async ({ ctx }) => {
+      const { getDb } = await import("./db");
+      const { users } = await import("../drizzle/schema");
+      const { eq } = await import("drizzle-orm");
+      const db = await getDb();
+      if (!db) return { connected: false, chatId: null };
+      const [user] = await db.select({ telegramChatId: users.telegramChatId }).from(users).where(eq(users.openId, ctx.user.openId)).limit(1);
+      return { connected: !!user?.telegramChatId, chatId: user?.telegramChatId ?? null };
+    }),
+    /** Disconnect Telegram account */
+    disconnect: protectedProcedure.mutation(async ({ ctx }) => {
+      const { getDb } = await import("./db");
+      const { users } = await import("../drizzle/schema");
+      const { eq } = await import("drizzle-orm");
+      const db = await getDb();
+      if (!db) return { success: false };
+      await db.update(users).set({ telegramChatId: null }).where(eq(users.openId, ctx.user.openId));
+      return { success: true };
+    }),
   }),
 });
 

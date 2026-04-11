@@ -1,10 +1,12 @@
+import { useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import { Bell, Camera, Newspaper, CalendarHeart, Loader2, CheckCircle2, Milk, BarChart3, Truck } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Bell, Camera, Newspaper, CalendarHeart, Loader2, CheckCircle2, Milk, BarChart3, Truck, MessageCircle, LinkIcon, Unlink, ExternalLink, Copy, Check } from "lucide-react";
 import { toast } from "sonner";
 import DashboardLayout from "@/components/DashboardLayout";
 
@@ -59,6 +61,133 @@ const NOTIFICATION_TYPES = [
     iconColor: "text-orange-500",
   },
 ];
+
+function TelegramConnectionCard() {
+  const utils = trpc.useUtils();
+  const { data: tgStatus, isLoading: tgLoading } = trpc.telegram.status.useQuery();
+  const generateLink = trpc.telegram.generateLinkToken.useMutation({
+    onError: () => toast.error("Не удалось создать ссылку"),
+  });
+  const disconnect = trpc.telegram.disconnect.useMutation({
+    onSuccess: () => {
+      toast.success("Telegram отключён");
+      utils.telegram.status.invalidate();
+      setDeepLink(null);
+    },
+    onError: () => toast.error("Не удалось отключить"),
+  });
+
+  const [deepLink, setDeepLink] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+
+  async function handleConnect() {
+    const result = await generateLink.mutateAsync();
+    setDeepLink(result.deepLink);
+  }
+
+  function handleCopy() {
+    if (deepLink) {
+      navigator.clipboard.writeText(deepLink);
+      setCopied(true);
+      toast.success("Ссылка скопирована");
+      setTimeout(() => setCopied(false), 2000);
+    }
+  }
+
+  const isConnected = tgStatus?.connected;
+
+  return (
+    <Card className="border-border/50 mt-6">
+      <CardHeader className="pb-4">
+        <div className="flex items-center gap-3">
+          <div className="flex items-center justify-center h-10 w-10 rounded-xl bg-[#229ED9]/10">
+            <MessageCircle className="h-5 w-5 text-[#229ED9]" />
+          </div>
+          <div>
+            <CardTitle className="text-lg">Telegram-бот</CardTitle>
+            <CardDescription>
+              {isConnected
+                ? "Аккаунт подключён — вы получаете уведомления в Telegram"
+                : "Подключите Telegram для быстрых уведомлений и команд прямо в мессенджере"}
+            </CardDescription>
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent>
+        {tgLoading ? (
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            Проверка статуса...
+          </div>
+        ) : isConnected ? (
+          <div className="space-y-3">
+            <div className="flex items-center gap-2 text-sm">
+              <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+              <span className="text-emerald-600 font-medium">Подключён</span>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Вы можете использовать команды /status, /delivery, /balance, /events, /zoya, /masha прямо в боте @sherkozu_bot
+            </p>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => disconnect.mutate()}
+              disabled={disconnect.isPending}
+              className="text-rose-600 hover:text-rose-700 hover:bg-rose-50"
+            >
+              {disconnect.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Unlink className="h-4 w-4 mr-2" />}
+              Отключить Telegram
+            </Button>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              После подключения вы сможете получать уведомления о доставках, событиях клуба, а также общаться с Зоей и Машей прямо в Telegram.
+            </p>
+            {!deepLink ? (
+              <Button
+                onClick={handleConnect}
+                disabled={generateLink.isPending}
+                className="bg-[#229ED9] hover:bg-[#1a8bc2] text-white"
+              >
+                {generateLink.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <LinkIcon className="h-4 w-4 mr-2" />}
+                Подключить Telegram
+              </Button>
+            ) : (
+              <div className="space-y-3">
+                <p className="text-sm font-medium text-foreground">
+                  Нажмите кнопку ниже или откройте ссылку в Telegram:
+                </p>
+                <div className="flex gap-2">
+                  <Button
+                    asChild
+                    className="bg-[#229ED9] hover:bg-[#1a8bc2] text-white"
+                  >
+                    <a href={deepLink} target="_blank" rel="noopener noreferrer">
+                      <ExternalLink className="h-4 w-4 mr-2" />
+                      Открыть в Telegram
+                    </a>
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={handleCopy}
+                    title="Скопировать ссылку"
+                  >
+                    {copied ? <Check className="h-4 w-4 text-emerald-500" /> : <Copy className="h-4 w-4" />}
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Ссылка действительна 15 минут. После подключения обновите эту страницу.
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
 
 export default function NotificationSettings() {
   const { user, loading: authLoading } = useAuth();
@@ -175,6 +304,9 @@ export default function NotificationSettings() {
             })}
           </CardContent>
         </Card>
+
+        {/* Telegram Connection */}
+        <TelegramConnectionCard />
 
         {/* Info note */}
         <p className="text-xs text-muted-foreground mt-4 text-center">

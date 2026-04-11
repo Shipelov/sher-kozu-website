@@ -326,6 +326,15 @@ async function startServer() {
   const { registerNutriFileUpload } = await import("../nutriFileUpload");
   registerNutriFileUpload(app);
 
+  // Telegram bot webhook
+  try {
+    const { getTelegramWebhookHandler } = await import("../telegramBot");
+    app.post("/api/telegram/webhook", getTelegramWebhookHandler());
+    console.log("[Telegram] Webhook handler registered at /api/telegram/webhook");
+  } catch (err) {
+    console.warn("[Telegram] Failed to register webhook handler:", err);
+  }
+
   // OAuth callback under /api/oauth/callback
   registerOAuthRoutes(app);
   // tRPC API
@@ -380,6 +389,23 @@ async function startServer() {
 
     // Start analytics monitoring (reports every 5 minutes)
     analyticsMonitor.startReporting();
+
+    // Set Telegram webhook URL in production
+    if (process.env.NODE_ENV === "production") {
+      (async () => {
+        try {
+          const { getBot } = await import("../telegramBot");
+          const bot = getBot();
+          // Use the first available custom domain, fallback to manus.space
+          const domain = process.env.DEPLOY_DOMAIN || "koza.vip";
+          const webhookUrl = `https://${domain}/api/telegram/webhook`;
+          await bot.api.setWebhook(webhookUrl, { drop_pending_updates: true });
+          console.log(`[Telegram] Webhook set to ${webhookUrl}`);
+        } catch (err) {
+          console.warn("[Telegram] Failed to set webhook:", err);
+        }
+      })();
+    }
   });
 }
 

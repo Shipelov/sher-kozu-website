@@ -746,6 +746,13 @@ export const productTrackRouter = router({
         body: `Доставка продукции от ${animalName || "вашего животного"} за ${monthLabel} ${result.year} ${statusLabel}.`,
         link: `/tracker?animal=${animalSlug || ""}`,
       }).catch((err) => console.warn("[Delivery Notification] Failed:", err));
+      // Telegram push notification
+      import("../telegramBot").then(({ sendTelegramNotification }) => {
+        sendTelegramNotification(
+          result.ownerOpenId,
+          `📦 Доставка за ${monthLabel} — ${statusLabel}\n${animalName || "Ваше животное"} • ${result.year}\n\nПодробнее: koza.vip/tracker?animal=${animalSlug || ""}`,
+        ).catch((err) => console.warn("[Telegram Delivery Push] Failed:", err));
+      }).catch(() => {});
     }
 
     return result;
@@ -807,6 +814,14 @@ export const productTrackRouter = router({
                 body: `${info.months.length > 1 ? "Доставки" : "Доставка"} от ${animalName || "вашего животного"} за ${monthLabels} ${info.year} ${statusLabel}.`,
                 link: `/tracker?animal=${animalSlug || ""}`,
               }).catch((err) => console.warn("[Delivery Bulk Notification] Failed:", err));
+              // Telegram push
+              import("../telegramBot").then(({ sendTelegramNotification }) => {
+                const label = info.months.length > 1 ? "Доставки" : "Доставка";
+                sendTelegramNotification(
+                  ownerOpenId,
+                  `📦 ${label} — ${statusLabel}\n${animalName || "Ваше животное"} • ${monthLabels} ${info.year}\n\nПодробнее: koza.vip/tracker?animal=${animalSlug || ""}`,
+                ).catch((err) => console.warn("[Telegram Bulk Delivery Push] Failed:", err));
+              }).catch(() => {});
             }
           } catch (err) {
             console.warn("[Delivery Bulk Notification] Error fetching entries:", err);
