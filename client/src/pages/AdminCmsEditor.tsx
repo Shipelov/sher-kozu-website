@@ -99,6 +99,26 @@ const PAGE_PREVIEW_URLS: Record<string, string> = {
   calculator: "/pricing/calculator",
 };
 
+/* ─── Block-specific crop aspect ratios ─── 
+   Maps blockKey patterns to the aspect ratio that matches their display on the site.
+   Default is 16/9 for hero banners and general images.
+*/
+const BLOCK_ASPECT_RATIOS: Record<string, { ratio: number; label: string; description: string }> = {
+  gallery_goats_image: { ratio: 3 / 4, label: "3:4 (портрет)", description: "Как в карточке на главной (десктоп)" },
+  gallery_sheep_image: { ratio: 3 / 4, label: "3:4 (портрет)", description: "Как в карточке на главной (десктоп)" },
+  hero_image: { ratio: 16 / 9, label: "16:9 (широкий)", description: "Баннер на всю ширину" },
+  about_hero_image: { ratio: 4 / 3, label: "4:3 (альбомный)", description: "Фото в карточке О ферме" },
+};
+
+function getBlockAspectRatio(blockKey: string): { ratio: number; label: string; description: string } {
+  // Exact match first
+  if (BLOCK_ASPECT_RATIOS[blockKey]) return BLOCK_ASPECT_RATIOS[blockKey];
+  // Pattern match: any key containing "hero_image" → 16:9
+  if (blockKey.includes("hero_image")) return { ratio: 16 / 9, label: "16:9 (широкий)", description: "Баннер" };
+  // Default for image blocks
+  return { ratio: 16 / 9, label: "16:9 (стандарт)", description: "Стандартная пропорция" };
+}
+
 const ACTION_LABELS: Record<string, { label: string; color: string }> = {
   update_content: { label: "Обновление контента", color: "bg-blue-100 text-blue-800" },
   upload_image: { label: "Загрузка изображения", color: "bg-emerald-100 text-emerald-800" },
@@ -1338,31 +1358,69 @@ export default function AdminCmsEditor() {
                   </label>
 
                   {editImageUrl && !showCropEditor && (
-                    <div className="mb-3 relative inline-block">
-                      <img
-                        src={editImageUrl}
-                        alt="Preview"
-                        className="h-40 w-auto rounded-lg object-cover border border-border"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setEditImageUrl("")}
-                        className="absolute -top-2 -right-2 h-6 w-6 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center text-xs hover:bg-destructive/90"
-                      >
-                        ×
-                      </button>
+                    <div className="mb-3 space-y-2">
+                      {/* Current image preview */}
+                      <div className="relative inline-block">
+                        <img
+                          src={editImageUrl}
+                          alt="Preview"
+                          className="h-40 w-auto rounded-lg object-cover border border-border"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setEditImageUrl("")}
+                          className="absolute -top-2 -right-2 h-6 w-6 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center text-xs hover:bg-destructive/90"
+                        >
+                          ×
+                        </button>
+                      </div>
+                      {/* Site preview: how image will look on the page */}
+                      {(editBlock.blockKey === "gallery_goats_image" || editBlock.blockKey === "gallery_sheep_image") && (
+                        <div className="rounded-lg border border-dashed border-border/60 bg-muted/20 p-3">
+                          <p className="text-xs font-medium text-muted-foreground mb-2">Предпросмотр на сайте:</p>
+                          <div className="flex gap-3">
+                            <div>
+                              <p className="text-[10px] text-muted-foreground mb-1">Десктоп (200×250)</p>
+                              <img src={editImageUrl} alt="Desktop preview" className="rounded-md object-cover border border-border" style={{ width: 80, height: 100 }} />
+                            </div>
+                            <div>
+                              <p className="text-[10px] text-muted-foreground mb-1">Мобильный (full×192)</p>
+                              <img src={editImageUrl} alt="Mobile preview" className="rounded-md object-cover border border-border" style={{ width: 160, height: 77 }} />
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                      {editBlock.blockKey.includes("hero_image") && (
+                        <div className="rounded-lg border border-dashed border-border/60 bg-muted/20 p-3">
+                          <p className="text-xs font-medium text-muted-foreground mb-2">Предпросмотр на сайте:</p>
+                          <img src={editImageUrl} alt="Hero preview" className="rounded-md object-cover border border-border w-full" style={{ height: 100 }} />
+                        </div>
+                      )}
                     </div>
                   )}
 
                   {showCropEditor ? (
                     <div className="border border-border rounded-xl p-4 bg-muted/30">
-                      <ImageCropEditor
-                        onCropComplete={handleCropComplete}
-                        onCancel={() => setShowCropEditor(false)}
-                        aspectRatio={16 / 9}
-                        maxOutputWidth={1200}
-                        frameLabel="Область обрезки"
-                      />
+                      {(() => {
+                        const cropInfo = getBlockAspectRatio(editBlock.blockKey);
+                        return (
+                          <>
+                            <div className="mb-3 flex items-center gap-2 px-2 py-1.5 rounded-lg bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 text-xs">
+                              <ImageIcon className="h-3.5 w-3.5 text-blue-600 shrink-0" />
+                              <span className="text-blue-800 dark:text-blue-200">
+                                Рамка обрезки: <strong>{cropInfo.label}</strong> — {cropInfo.description}
+                              </span>
+                            </div>
+                            <ImageCropEditor
+                              onCropComplete={handleCropComplete}
+                              onCancel={() => setShowCropEditor(false)}
+                              aspectRatio={cropInfo.ratio}
+                              maxOutputWidth={1200}
+                              frameLabel={`Область обрезки (${cropInfo.label})`}
+                            />
+                          </>
+                        );
+                      })()}
                       {uploading && (
                         <div className="flex items-center justify-center gap-2 mt-3 text-sm text-muted-foreground">
                           <Loader2 className="h-4 w-4 animate-spin" />

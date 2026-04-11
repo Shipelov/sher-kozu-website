@@ -2167,3 +2167,11 @@
 - [x] Fix 3: Delete confirmation warns about image blocks and explains no auto-recovery
 - [x] Fix 4: seedDefaults clears delete history so "Инициализировать" can restore blocks
 - [x] All 93 test files / 2505 tests passing
+
+## Bug Fix: CMS crop frame vs homepage display size mismatch (April 2026)
+- [x] Investigate CMS crop dimensions (was fixed 16:9 for all blocks) vs homepage display (200×full height portrait on desktop)
+- [x] Add BLOCK_ASPECT_RATIOS mapping: gallery_goats/sheep → 3:4 portrait, hero → 16:9, about_hero → 4:3
+- [x] Dynamic aspect ratio in CMS crop editor based on blockKey
+- [x] Add site preview (desktop + mobile) in CMS editor when editing gallery/hero images
+- [x] Aspect ratio label shown in crop editor ("Рамка обрезки: 3:4 (портрет) — Как в карточке на главной")
+- [x] All 93 test files / 2505 tests passing
