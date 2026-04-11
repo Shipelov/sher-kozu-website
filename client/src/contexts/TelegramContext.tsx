@@ -1,6 +1,7 @@
 /**
  * Telegram Mini App context — provides auth state and Telegram WebApp SDK access.
- * Only active when running inside Telegram WebView.
+ * Only active when running inside Telegram WebView on /tg/* routes.
+ * Dynamically loads the Telegram WebApp SDK to avoid DOM conflicts on regular pages.
  */
 
 import {
@@ -116,6 +117,37 @@ export function useTelegram() {
   return useContext(TelegramContext);
 }
 
+/**
+ * Dynamically loads the Telegram WebApp SDK script.
+ * Returns a promise that resolves when the script is loaded.
+ */
+function loadTelegramScript(): Promise<void> {
+  return new Promise((resolve, reject) => {
+    // Already loaded
+    if (window.Telegram?.WebApp) {
+      resolve();
+      return;
+    }
+
+    // Check if script is already being loaded
+    const existing = document.querySelector(
+      'script[src="https://telegram.org/js/telegram-web-app.js"]'
+    );
+    if (existing) {
+      existing.addEventListener("load", () => resolve());
+      existing.addEventListener("error", () => reject(new Error("Failed to load Telegram SDK")));
+      return;
+    }
+
+    const script = document.createElement("script");
+    script.src = "https://telegram.org/js/telegram-web-app.js";
+    script.async = true;
+    script.onload = () => resolve();
+    script.onerror = () => reject(new Error("Failed to load Telegram SDK"));
+    document.head.appendChild(script);
+  });
+}
+
 export function TelegramProvider({ children }: { children: ReactNode }) {
   const [webApp, setWebApp] = useState<TelegramWebApp | null>(null);
   const [token, setToken] = useState<string | null>(null);
@@ -157,26 +189,42 @@ export function TelegramProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    const wa = window.Telegram?.WebApp;
-    if (!wa || !wa.initData) {
-      // Not running inside Telegram
+    const isTgRoute = window.location.pathname.startsWith("/tg");
+
+    if (!isTgRoute) {
+      // Not on a Telegram Mini App route — skip SDK loading entirely
       setLoading(false);
       return;
     }
 
-    setWebApp(wa);
-    wa.ready();
-    wa.expand();
+    // On /tg/* route — load SDK dynamically, then init
+    loadTelegramScript()
+      .then(() => {
+        const wa = window.Telegram?.WebApp;
+        if (!wa || !wa.initData) {
+          // SDK loaded but not inside Telegram WebView (e.g. direct browser access to /tg)
+          setLoading(false);
+          return;
+        }
 
-    // Set Telegram-native colors
-    try {
-      wa.setHeaderColor("#1a3a2a");
-      wa.setBackgroundColor("#f5f0e8");
-    } catch {
-      // Older clients may not support this
-    }
+        setWebApp(wa);
+        wa.ready();
+        wa.expand();
 
-    authenticate(wa);
+        // Set Telegram-native colors
+        try {
+          wa.setHeaderColor("#1a3a2a");
+          wa.setBackgroundColor("#f5f0e8");
+        } catch {
+          // Older clients may not support this
+        }
+
+        authenticate(wa);
+      })
+      .catch(() => {
+        // Failed to load SDK — not critical, just mark as not-telegram
+        setLoading(false);
+      });
   }, [authenticate]);
 
   return (

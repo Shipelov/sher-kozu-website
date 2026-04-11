@@ -2258,3 +2258,7 @@
 - [x] Register bot commands via setMyCommands on deploy
 - [x] Set Mini App as menu button via setChatMenuButton on deploy
 - [x] All 95 files / 2519 tests pass, TS compiles clean
+
+## Bug Fix: removeChild + double createRoot in dev preview
+- [x] Fix main.tsx to be HMR-safe — cache root on container, reuse on HMR reload
+- [x] Verify error no longer appears in dev preview (0 errors after restart)

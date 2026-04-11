@@ -2,7 +2,7 @@ import { trpc } from "@/lib/trpc";
 import { UNAUTHED_ERR_MSG } from '@shared/const';
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { httpBatchLink, TRPCClientError } from "@trpc/client";
-import { createRoot } from "react-dom/client";
+import { createRoot, type Root } from "react-dom/client";
 import superjson from "superjson";
 import App from "./App";
 import { getLoginUrl, navigateToLogin } from "./const";
@@ -87,7 +87,7 @@ const trpcClient = trpc.createClient({
   ],
 });
 
-createRoot(document.getElementById("root")!).render(
+const appTree = (
   <trpc.Provider client={trpcClient} queryClient={queryClient}>
     <QueryClientProvider client={queryClient}>
       <TelegramProvider>
@@ -96,3 +96,23 @@ createRoot(document.getElementById("root")!).render(
     </QueryClientProvider>
   </trpc.Provider>
 );
+
+/**
+ * HMR-safe root management.
+ * Cache the React root on the container element so that Vite HMR
+ * re-executes this module without calling createRoot() twice on the
+ * same DOM node — which triggers the "container already passed to
+ * createRoot" warning and cascading removeChild errors.
+ */
+const container = document.getElementById("root")!;
+const existingRoot = (container as any).__reactRoot as Root | undefined;
+
+if (existingRoot) {
+  // HMR reload — reuse the existing root
+  existingRoot.render(appTree);
+} else {
+  // First mount
+  const root = createRoot(container);
+  (container as any).__reactRoot = root;
+  root.render(appTree);
+}
