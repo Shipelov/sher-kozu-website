@@ -46,6 +46,7 @@ import { BadgeGrid } from "@/components/BadgeCard";
 import PageBreadcrumbs from "@/components/PageBreadcrumbs";
 import { Award } from "lucide-react";
 import { useCmsContent } from "@/hooks/useCmsContent";
+import { QRCodeSVG } from "qrcode.react";
 
 /** Badges section for the owner dashboard */
 function DashboardBadgesSection() {
@@ -347,17 +348,34 @@ function TelegramBotBanner() {
                     Подключить Telegram-бот
                   </button>
                 ) : (
-                  <div className="space-y-2">
-                    <a
-                      href={deepLink}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-2 rounded-full bg-[#229ED9] px-6 py-3 text-sm font-semibold text-white shadow-md transition-all hover:bg-[#1a8bc2] hover:-translate-y-0.5"
-                    >
-                      <MessageCircle className="h-4 w-4" />
-                      Открыть в Telegram
-                    </a>
-                    <p className="text-xs text-muted-foreground">Ссылка действительна 15 минут</p>
+                  <div className="flex items-start gap-5">
+                    {/* QR Code */}
+                    <div className="hidden sm:flex flex-col items-center gap-2">
+                      <div className="rounded-2xl border border-border/70 bg-white p-3 shadow-sm">
+                        <QRCodeSVG
+                          value={deepLink}
+                          size={120}
+                          level="M"
+                          fgColor="#229ED9"
+                          bgColor="#ffffff"
+                        />
+                      </div>
+                      <p className="text-[10px] uppercase tracking-widest text-muted-foreground">Сканируйте камерой</p>
+                    </div>
+                    {/* Button + hint */}
+                    <div className="space-y-3">
+                      <a
+                        href={deepLink}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-2 rounded-full bg-[#229ED9] px-6 py-3 text-sm font-semibold text-white shadow-md transition-all hover:bg-[#1a8bc2] hover:-translate-y-0.5"
+                      >
+                        <MessageCircle className="h-4 w-4" />
+                        Открыть в Telegram
+                      </a>
+                      <p className="text-xs text-muted-foreground">Или отсканируйте QR-код с телефона</p>
+                      <p className="text-[11px] text-muted-foreground/70">Ссылка действительна 15 минут</p>
+                    </div>
                   </div>
                 )}
               </div>

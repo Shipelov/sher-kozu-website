@@ -2239,3 +2239,8 @@
 - [x] Add feature description block below photo, symmetric with existing metric blocks
 - [x] Show bot capabilities: статус животного, доставки, AI-чат с Зоей и Машей, события клуба
 - [x] Include connect button with deep link generation + link to /settings/notifications
+
+## QR Code for Telegram Connect
+- [x] Install qrcode.react library
+- [x] Show QR code next to connect button when deep link is generated
+- [x] QR code should encode the deep link URL for scanning from phone
