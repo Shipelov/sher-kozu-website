@@ -2203,3 +2203,9 @@
 - [x] Add same mini-stats to ProductTracker using real API data
 - [x] Add smooth page transition animation when clicking 'Перейти к профилю'
 - [x] Test on desktop and mobile (TS compiles, 93 files / 2505 tests pass)
+
+## Tracker Animal Card: Replace stats with wellbeing metrics (April 2026)
+- [x] Replace duplicated liters/deliveries/analyses mini-stats with wellbeing metrics (happiness, health, mood)
+- [x] Use real animal wellbeing data from API in ProductTracker (happinessScore, healthScore, careLevelScore from ownerDashboard)
+- [x] Use demo wellbeing data in DemoTracker (89, 92, 85)
+- [x] Test and verify (TS compiles, 93 files / 2505 tests pass)

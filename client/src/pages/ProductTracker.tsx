@@ -34,6 +34,9 @@ import {
   FileSpreadsheet,
   FileText,
   ArrowRight,
+  Heart,
+  Smile,
+  Activity,
 } from "lucide-react";
 
 const CDN = {
@@ -443,25 +446,38 @@ export default function ProductTracker() {
                       </div>
                     </div>
 
-                    {/* ─── Mini-stats row (from real data) ─── */}
-                    {summary?.stats && summary.stats.length > 0 && (
-                      <div className="mt-4 grid grid-cols-3 gap-2">
-                        {summary.stats
-                          .filter((s) => ["milk", "truck", "sparkles"].includes(s.icon))
-                          .map((stat) => {
-                            const Icon = iconForStat(stat.icon);
-                            return (
-                              <div key={stat.label} className="rounded-xl bg-secondary/60 px-3 py-2.5 text-center">
-                                <div className="flex items-center justify-center gap-1 text-primary">
-                                  <Icon className="h-3.5 w-3.5" />
-                                  <span className="text-base font-bold">{stat.value}</span>
-                                </div>
-                                <p className="mt-0.5 text-[10px] uppercase tracking-wider text-muted-foreground">{stat.label}</p>
-                              </div>
-                            );
-                          })}
-                      </div>
-                    )}
+                    {/* ─── Wellbeing metrics row (from real data) ─── */}
+                    {(() => {
+                      const animalData = ownerDashboardQuery.data?.animal;
+                      const happiness = animalData?.happinessScore ?? 50;
+                      const health = animalData?.healthScore ?? 50;
+                      const careLevel = animalData?.careLevelScore ?? 50;
+                      return (
+                        <div className="mt-4 grid grid-cols-3 gap-2">
+                          <div className="rounded-xl bg-secondary/60 px-3 py-2.5 text-center">
+                            <div className="flex items-center justify-center gap-1 text-rose-600">
+                              <Heart className="h-3.5 w-3.5" />
+                              <span className="text-base font-bold">{happiness}</span>
+                            </div>
+                            <p className="mt-0.5 text-[10px] uppercase tracking-wider text-muted-foreground">Счастье</p>
+                          </div>
+                          <div className="rounded-xl bg-secondary/60 px-3 py-2.5 text-center">
+                            <div className="flex items-center justify-center gap-1 text-emerald-600">
+                              <Activity className="h-3.5 w-3.5" />
+                              <span className="text-base font-bold">{health}</span>
+                            </div>
+                            <p className="mt-0.5 text-[10px] uppercase tracking-wider text-muted-foreground">Здоровье</p>
+                          </div>
+                          <div className="rounded-xl bg-secondary/60 px-3 py-2.5 text-center">
+                            <div className="flex items-center justify-center gap-1 text-amber-600">
+                              <Smile className="h-3.5 w-3.5" />
+                              <span className="text-base font-bold">{careLevel}</span>
+                            </div>
+                            <p className="mt-0.5 text-[10px] uppercase tracking-wider text-muted-foreground">Настроение</p>
+                          </div>
+                        </div>
+                      );
+                    })()}
 
                     {summary?.currentAnimal?.slug && (
                       <button

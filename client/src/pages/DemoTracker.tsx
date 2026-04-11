@@ -30,6 +30,9 @@ import {
   Truck,
   Users,
   ArrowRight,
+  Heart,
+  Smile,
+  Activity,
 } from "lucide-react";
 
 const CDN = {
@@ -307,28 +310,28 @@ export default function DemoTracker() {
                       </div>
                     </div>
 
-                    {/* ─── Mini-stats row ─── */}
+                    {/* ─── Wellbeing metrics row ─── */}
                     <div className="mt-4 grid grid-cols-3 gap-2">
                       <div className="rounded-xl bg-secondary/60 px-3 py-2.5 text-center">
-                        <div className="flex items-center justify-center gap-1 text-primary">
-                          <Milk className="h-3.5 w-3.5" />
-                          <span className="text-base font-bold">94 л</span>
+                        <div className="flex items-center justify-center gap-1 text-rose-600">
+                          <Heart className="h-3.5 w-3.5" />
+                          <span className="text-base font-bold">89</span>
                         </div>
-                        <p className="mt-0.5 text-[10px] uppercase tracking-wider text-muted-foreground">Молока</p>
+                        <p className="mt-0.5 text-[10px] uppercase tracking-wider text-muted-foreground">Счастье</p>
                       </div>
                       <div className="rounded-xl bg-secondary/60 px-3 py-2.5 text-center">
-                        <div className="flex items-center justify-center gap-1 text-primary">
-                          <Truck className="h-3.5 w-3.5" />
-                          <span className="text-base font-bold">8</span>
+                        <div className="flex items-center justify-center gap-1 text-emerald-600">
+                          <Activity className="h-3.5 w-3.5" />
+                          <span className="text-base font-bold">92</span>
                         </div>
-                        <p className="mt-0.5 text-[10px] uppercase tracking-wider text-muted-foreground">Доставок</p>
+                        <p className="mt-0.5 text-[10px] uppercase tracking-wider text-muted-foreground">Здоровье</p>
                       </div>
                       <div className="rounded-xl bg-secondary/60 px-3 py-2.5 text-center">
-                        <div className="flex items-center justify-center gap-1 text-primary">
-                          <FlaskConical className="h-3.5 w-3.5" />
-                          <span className="text-base font-bold">6</span>
+                        <div className="flex items-center justify-center gap-1 text-amber-600">
+                          <Smile className="h-3.5 w-3.5" />
+                          <span className="text-base font-bold">85</span>
                         </div>
-                        <p className="mt-0.5 text-[10px] uppercase tracking-wider text-muted-foreground">Анализов</p>
+                        <p className="mt-0.5 text-[10px] uppercase tracking-wider text-muted-foreground">Настроение</p>
                       </div>
                     </div>
 
