@@ -578,7 +578,7 @@ export default function Home() {
                 className="h-full overflow-hidden rounded-[2rem] border border-amber-200/80 bg-gradient-to-br from-amber-50 via-white to-[#fff5dd] shadow-sm transition-transform duration-300 group-hover:-translate-y-1"
               >
                 <div className="grid h-full md:grid-cols-[200px_1fr]">
-                  <LazyImage src={cms.getImage("gallery_goats_image", CDN.goat)} alt="Козы Шерь Козу" className="h-48 w-full object-cover md:h-full" wrapperClassName="h-48 w-full md:h-full" />
+                  <LazyImage src={cms.getImage("gallery_goats_image", CDN.goat)} alt="Козы Шерь Козу" className="h-48 w-full object-cover object-top md:h-full" wrapperClassName="h-48 w-full md:h-full" />
                   <div className="flex flex-col p-6">
                     <div className="inline-flex items-center self-start rounded-full border border-amber-200 bg-white/80 px-3 py-1 text-xs font-medium text-amber-900">
                       Козы
@@ -608,7 +608,7 @@ export default function Home() {
                 className="h-full overflow-hidden rounded-[2rem] border border-emerald-200/80 bg-gradient-to-br from-emerald-50 via-white to-[#eefbf4] shadow-sm transition-transform duration-300 group-hover:-translate-y-1"
               >
                 <div className="grid h-full md:grid-cols-[200px_1fr]">
-                  <LazyImage src={cms.getImage("gallery_sheep_image", CDN.family)} alt="Овцы Шерь Козу" className="h-48 w-full object-cover md:h-full" wrapperClassName="h-48 w-full md:h-full" />
+                  <LazyImage src={cms.getImage("gallery_sheep_image", CDN.family)} alt="Овцы Шерь Козу" className="h-48 w-full object-cover object-top md:h-full" wrapperClassName="h-48 w-full md:h-full" />
                   <div className="flex flex-col p-6">
                     <div className="inline-flex items-center self-start rounded-full border border-emerald-200 bg-white/80 px-3 py-1 text-xs font-medium text-emerald-900">
                       Овцы

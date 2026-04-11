@@ -10,6 +10,8 @@ import {
   Loader2,
   AlertTriangle,
   Move,
+  Maximize2,
+  Minimize2,
 } from "lucide-react";
 
 /* ─── Constants ─── */
@@ -48,6 +50,8 @@ interface Position {
  * 1. User selects a file → auto-compressed if > 2MB
  * 2. Shows crop frame overlay — user drags image inside or zooms
  * 3. On confirm → exports cropped region as base64
+ *
+ * Supports fullscreen mode for precise cropping.
  */
 export default function ImageCropEditor({
   onCropComplete,
@@ -64,6 +68,7 @@ export default function ImageCropEditor({
     originalSize: number;
     compressedSize: number;
   } | null>(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
 
   // Crop state
   const [zoom, setZoom] = useState(1);
@@ -76,11 +81,34 @@ export default function ImageCropEditor({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  /* ─── Frame dimensions (responsive to container) ─── */
-  const CONTAINER_W = 560;
-  const CONTAINER_H = 400;
-  const frameW = Math.min(CONTAINER_W - 40, 480);
-  const frameH = frameW / aspectRatio;
+  /* ─── Frame dimensions (responsive to container and fullscreen) ─── */
+  const [viewportSize, setViewportSize] = useState({ w: 0, h: 0 });
+
+  useEffect(() => {
+    const update = () => setViewportSize({ w: window.innerWidth, h: window.innerHeight });
+    update();
+    window.addEventListener("resize", update);
+    return () => window.removeEventListener("resize", update);
+  }, []);
+
+  // In fullscreen: use most of the viewport; in normal: fixed 560x400
+  const CONTAINER_W = isFullscreen ? Math.min(viewportSize.w - 48, 1400) : 560;
+  const CONTAINER_H = isFullscreen ? Math.min(viewportSize.h - 200, 800) : 400;
+
+  const framePadding = isFullscreen ? 60 : 40;
+  const maxFrameW = CONTAINER_W - framePadding;
+  const maxFrameH = CONTAINER_H - framePadding;
+
+  // Calculate frame to fit within container while maintaining aspect ratio
+  let frameW: number, frameH: number;
+  if (maxFrameW / aspectRatio <= maxFrameH) {
+    frameW = maxFrameW;
+    frameH = maxFrameW / aspectRatio;
+  } else {
+    frameH = maxFrameH;
+    frameW = maxFrameH * aspectRatio;
+  }
+
   const frameX = (CONTAINER_W - frameW) / 2;
   const frameY = (CONTAINER_H - frameH) / 2;
 
@@ -187,6 +215,22 @@ export default function ImageCropEditor({
     [frameW, frameH, frameX, frameY]
   );
 
+  /* ─── Recenter image when toggling fullscreen ─── */
+  useEffect(() => {
+    if (step !== "crop" || !imageSize.w) return;
+    const scaleX = frameW / imageSize.w;
+    const scaleY = frameH / imageSize.h;
+    const newZoom = Math.max(scaleX, scaleY);
+    setZoom(newZoom);
+
+    const scaledW = imageSize.w * newZoom;
+    const scaledH = imageSize.h * newZoom;
+    setPosition({
+      x: frameX + (frameW - scaledW) / 2,
+      y: frameY + (frameH - scaledH) / 2,
+    });
+  }, [isFullscreen, CONTAINER_W, CONTAINER_H]);
+
   /* ─── Drag handlers ─── */
   const handlePointerDown = useCallback(
     (e: React.PointerEvent) => {
@@ -255,6 +299,16 @@ export default function ImageCropEditor({
     return () => container.removeEventListener("wheel", handleWheel);
   }, [step, zoom, handleZoomChange, frameW, frameH, imageSize]);
 
+  /* ─── Escape key to exit fullscreen ─── */
+  useEffect(() => {
+    if (!isFullscreen) return;
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setIsFullscreen(false);
+    };
+    window.addEventListener("keydown", handleKey);
+    return () => window.removeEventListener("keydown", handleKey);
+  }, [isFullscreen]);
+
   /* ─── Reset position ─── */
   const handleReset = useCallback(() => {
     if (!imageSize.w) return;
@@ -305,6 +359,7 @@ export default function ImageCropEditor({
         ? originalFile.name.replace(/\.[^.]+$/, "") + "_cropped.jpg"
         : "cropped.jpg";
 
+      setIsFullscreen(false);
       onCropComplete({
         base64Data: base64,
         fileName,
@@ -338,6 +393,234 @@ export default function ImageCropEditor({
     if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} КБ`;
     return `${(bytes / (1024 * 1024)).toFixed(1)} МБ`;
   };
+
+  /* ─── Crop UI content (shared between normal and fullscreen) ─── */
+  const renderCropUI = () => (
+    <div className="space-y-3">
+      {/* Compression info */}
+      {compressionInfo && (
+        <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 text-xs">
+          <AlertTriangle className="h-3.5 w-3.5 text-amber-600 shrink-0" />
+          <span className="text-amber-800 dark:text-amber-200">
+            Изображение сжато: {formatSize(compressionInfo.originalSize)} →{" "}
+            {formatSize(compressionInfo.compressedSize)} (
+            {Math.round(
+              (1 - compressionInfo.compressedSize / compressionInfo.originalSize) * 100
+            )}
+            % экономии)
+          </span>
+        </div>
+      )}
+
+      {/* Crop area */}
+      <div
+        ref={containerRef}
+        className="relative overflow-hidden rounded-xl border border-border bg-neutral-900 select-none mx-auto"
+        style={{
+          width: CONTAINER_W,
+          height: CONTAINER_H,
+          maxWidth: "100%",
+          cursor: isDragging ? "grabbing" : "grab",
+          touchAction: "none",
+        }}
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+      >
+        {/* Image layer */}
+        <img
+          src={imageSrc!}
+          alt="Crop preview"
+          draggable={false}
+          style={{
+            position: "absolute",
+            left: position.x,
+            top: position.y,
+            width: imageSize.w * zoom,
+            height: imageSize.h * zoom,
+            pointerEvents: "none",
+            userSelect: "none",
+          }}
+        />
+
+        {/* Dark overlay outside crop frame */}
+        <svg
+          className="absolute inset-0 pointer-events-none"
+          width={CONTAINER_W}
+          height={CONTAINER_H}
+        >
+          <defs>
+            <mask id={`crop-mask-${isFullscreen ? "fs" : "n"}`}>
+              <rect width="100%" height="100%" fill="white" />
+              <rect
+                x={frameX}
+                y={frameY}
+                width={frameW}
+                height={frameH}
+                rx={8}
+                fill="black"
+              />
+            </mask>
+          </defs>
+          <rect
+            width="100%"
+            height="100%"
+            fill="rgba(0,0,0,0.55)"
+            mask={`url(#crop-mask-${isFullscreen ? "fs" : "n"})`}
+          />
+          {/* Frame border */}
+          <rect
+            x={frameX}
+            y={frameY}
+            width={frameW}
+            height={frameH}
+            rx={8}
+            fill="none"
+            stroke="white"
+            strokeWidth={2}
+            strokeDasharray="6 3"
+          />
+          {/* Grid lines (rule of thirds) */}
+          {[1 / 3, 2 / 3].map((frac) => (
+            <g key={frac} opacity={0.25}>
+              <line
+                x1={frameX + frameW * frac}
+                y1={frameY}
+                x2={frameX + frameW * frac}
+                y2={frameY + frameH}
+                stroke="white"
+                strokeWidth={0.5}
+              />
+              <line
+                x1={frameX}
+                y1={frameY + frameH * frac}
+                x2={frameX + frameW}
+                y2={frameY + frameH * frac}
+                stroke="white"
+                strokeWidth={0.5}
+              />
+            </g>
+          ))}
+          {/* Corner handles */}
+          {[
+            [frameX, frameY],
+            [frameX + frameW, frameY],
+            [frameX, frameY + frameH],
+            [frameX + frameW, frameY + frameH],
+          ].map(([cx, cy], i) => (
+            <circle
+              key={i}
+              cx={cx}
+              cy={cy}
+              r={5}
+              fill="white"
+              stroke="rgba(0,0,0,0.3)"
+              strokeWidth={1}
+            />
+          ))}
+        </svg>
+
+        {/* Frame label */}
+        <div
+          className="absolute pointer-events-none text-white/80 text-xs font-medium bg-black/40 px-2 py-0.5 rounded"
+          style={{
+            left: frameX + 8,
+            top: frameY + 8,
+          }}
+        >
+          {frameLabel}
+        </div>
+
+        {/* Frame dimensions */}
+        <div
+          className="absolute pointer-events-none text-white/50 text-[10px] bg-black/30 px-1.5 py-0.5 rounded"
+          style={{
+            right: CONTAINER_W - frameX - frameW + 8,
+            bottom: CONTAINER_H - frameY - frameH + 8,
+          }}
+        >
+          {Math.round(frameW / zoom)}×{Math.round(frameH / zoom)}px
+        </div>
+
+        {/* Drag hint */}
+        <div className="absolute bottom-2 left-1/2 -translate-x-1/2 pointer-events-none text-white/60 text-xs bg-black/40 px-2 py-0.5 rounded flex items-center gap-1">
+          <Move className="h-3 w-3" />
+          Перетащите фото · Колёсико для зума
+        </div>
+      </div>
+
+      {/* Zoom controls */}
+      <div className="flex items-center gap-3 px-1">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => handleZoomChange(Math.max(minZoom, zoom - 0.1))}
+          disabled={zoom <= minZoom}
+        >
+          <ZoomOut className="h-4 w-4" />
+        </Button>
+
+        <div className="flex-1">
+          <Slider
+            value={[zoom]}
+            min={minZoom}
+            max={maxZoom}
+            step={0.01}
+            onValueChange={([v]) => handleZoomChange(v)}
+          />
+        </div>
+
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => handleZoomChange(Math.min(maxZoom, zoom + 0.1))}
+          disabled={zoom >= maxZoom}
+        >
+          <ZoomIn className="h-4 w-4" />
+        </Button>
+
+        <span className="text-xs text-muted-foreground w-12 text-right tabular-nums">
+          {Math.round(zoom * 100)}%
+        </span>
+      </div>
+
+      {/* Action buttons */}
+      <div className="flex items-center justify-between">
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={handleReset}>
+            <RotateCcw className="h-4 w-4 mr-1" />
+            Сбросить
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setIsFullscreen(!isFullscreen)}
+            title={isFullscreen ? "Свернуть (Esc)" : "Развернуть на весь экран"}
+          >
+            {isFullscreen ? (
+              <>
+                <Minimize2 className="h-4 w-4 mr-1" />
+                Свернуть
+              </>
+            ) : (
+              <>
+                <Maximize2 className="h-4 w-4 mr-1" />
+                Развернуть
+              </>
+            )}
+          </Button>
+          <Button variant="ghost" size="sm" onClick={() => { setIsFullscreen(false); onCancel(); }}>
+            <X className="h-4 w-4 mr-1" />
+            Отмена
+          </Button>
+        </div>
+        <Button size="sm" onClick={handleExport}>
+          <Check className="h-4 w-4 mr-1" />
+          Обрезать и загрузить
+        </Button>
+      </div>
+    </div>
+  );
 
   return (
     <div className="space-y-4">
@@ -382,180 +665,22 @@ export default function ImageCropEditor({
         </div>
       )}
 
-      {/* Step: Crop */}
-      {step === "crop" && imageSrc && (
-        <div className="space-y-3">
-          {/* Compression info */}
-          {compressionInfo && (
-            <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 text-xs">
-              <AlertTriangle className="h-3.5 w-3.5 text-amber-600 shrink-0" />
-              <span className="text-amber-800 dark:text-amber-200">
-                Изображение сжато: {formatSize(compressionInfo.originalSize)} →{" "}
-                {formatSize(compressionInfo.compressedSize)} (
-                {Math.round(
-                  (1 - compressionInfo.compressedSize / compressionInfo.originalSize) * 100
-                )}
-                % экономии)
+      {/* Step: Crop — normal or fullscreen */}
+      {step === "crop" && imageSrc && !isFullscreen && renderCropUI()}
+
+      {/* Fullscreen overlay */}
+      {step === "crop" && imageSrc && isFullscreen && (
+        <div className="fixed inset-0 z-[9999] bg-background/95 backdrop-blur-sm flex flex-col items-center justify-center p-6">
+          <div className="w-full max-w-[1440px]">
+            <div className="mb-3 flex items-center justify-between">
+              <h3 className="text-sm font-semibold text-foreground">
+                Редактор изображения — полноэкранный режим
+              </h3>
+              <span className="text-xs text-muted-foreground">
+                Нажмите Esc для выхода
               </span>
             </div>
-          )}
-
-          {/* Crop area */}
-          <div
-            ref={containerRef}
-            className="relative overflow-hidden rounded-xl border border-border bg-neutral-900 select-none"
-            style={{
-              width: CONTAINER_W,
-              height: CONTAINER_H,
-              maxWidth: "100%",
-              cursor: isDragging ? "grabbing" : "grab",
-              touchAction: "none",
-            }}
-            onPointerDown={handlePointerDown}
-            onPointerMove={handlePointerMove}
-            onPointerUp={handlePointerUp}
-          >
-            {/* Image layer */}
-            <img
-              src={imageSrc}
-              alt="Crop preview"
-              draggable={false}
-              style={{
-                position: "absolute",
-                left: position.x,
-                top: position.y,
-                width: imageSize.w * zoom,
-                height: imageSize.h * zoom,
-                pointerEvents: "none",
-                userSelect: "none",
-              }}
-            />
-
-            {/* Dark overlay outside crop frame */}
-            <svg
-              className="absolute inset-0 pointer-events-none"
-              width={CONTAINER_W}
-              height={CONTAINER_H}
-            >
-              <defs>
-                <mask id="crop-mask">
-                  <rect width="100%" height="100%" fill="white" />
-                  <rect
-                    x={frameX}
-                    y={frameY}
-                    width={frameW}
-                    height={frameH}
-                    rx={8}
-                    fill="black"
-                  />
-                </mask>
-              </defs>
-              <rect
-                width="100%"
-                height="100%"
-                fill="rgba(0,0,0,0.55)"
-                mask="url(#crop-mask)"
-              />
-              {/* Frame border */}
-              <rect
-                x={frameX}
-                y={frameY}
-                width={frameW}
-                height={frameH}
-                rx={8}
-                fill="none"
-                stroke="white"
-                strokeWidth={2}
-                strokeDasharray="6 3"
-              />
-              {/* Corner handles */}
-              {[
-                [frameX, frameY],
-                [frameX + frameW, frameY],
-                [frameX, frameY + frameH],
-                [frameX + frameW, frameY + frameH],
-              ].map(([cx, cy], i) => (
-                <circle
-                  key={i}
-                  cx={cx}
-                  cy={cy}
-                  r={5}
-                  fill="white"
-                  stroke="rgba(0,0,0,0.3)"
-                  strokeWidth={1}
-                />
-              ))}
-            </svg>
-
-            {/* Frame label */}
-            <div
-              className="absolute pointer-events-none text-white/80 text-xs font-medium bg-black/40 px-2 py-0.5 rounded"
-              style={{
-                left: frameX + 8,
-                top: frameY + 8,
-              }}
-            >
-              {frameLabel}
-            </div>
-
-            {/* Drag hint */}
-            <div className="absolute bottom-2 left-1/2 -translate-x-1/2 pointer-events-none text-white/60 text-xs bg-black/40 px-2 py-0.5 rounded flex items-center gap-1">
-              <Move className="h-3 w-3" />
-              Перетащите фото · Колёсико для зума
-            </div>
-          </div>
-
-          {/* Zoom controls */}
-          <div className="flex items-center gap-3 px-1">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => handleZoomChange(Math.max(minZoom, zoom - 0.1))}
-              disabled={zoom <= minZoom}
-            >
-              <ZoomOut className="h-4 w-4" />
-            </Button>
-
-            <div className="flex-1">
-              <Slider
-                value={[zoom]}
-                min={minZoom}
-                max={maxZoom}
-                step={0.01}
-                onValueChange={([v]) => handleZoomChange(v)}
-              />
-            </div>
-
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => handleZoomChange(Math.min(maxZoom, zoom + 0.1))}
-              disabled={zoom >= maxZoom}
-            >
-              <ZoomIn className="h-4 w-4" />
-            </Button>
-
-            <span className="text-xs text-muted-foreground w-12 text-right tabular-nums">
-              {Math.round(zoom * 100)}%
-            </span>
-          </div>
-
-          {/* Action buttons */}
-          <div className="flex items-center justify-between">
-            <div className="flex gap-2">
-              <Button variant="outline" size="sm" onClick={handleReset}>
-                <RotateCcw className="h-4 w-4 mr-1" />
-                Сбросить
-              </Button>
-              <Button variant="ghost" size="sm" onClick={onCancel}>
-                <X className="h-4 w-4 mr-1" />
-                Отмена
-              </Button>
-            </div>
-            <Button size="sm" onClick={handleExport}>
-              <Check className="h-4 w-4 mr-1" />
-              Обрезать и загрузить
-            </Button>
+            {renderCropUI()}
           </div>
         </div>
       )}

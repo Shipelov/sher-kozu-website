@@ -2175,3 +2175,10 @@
 - [x] Add site preview (desktop + mobile) in CMS editor when editing gallery/hero images
 - [x] Aspect ratio label shown in crop editor ("Рамка обрезки: 3:4 (портрет) — Как в карточке на главной")
 - [x] All 93 test files / 2505 tests passing
+
+## UX Fix: CMS image editor fullscreen + consistent animal photo display (April 2026)
+- [x] Add fullscreen mode to CMS image crop editor (Maximize2 button, Esc to exit, responsive container up to 1400×800px)
+- [x] Add rule-of-thirds grid lines and pixel dimensions overlay in crop editor
+- [x] Fix object-position for animal photos: added object-top to gallery_goats_image and gallery_sheep_image
+- [x] Recenter image automatically when toggling fullscreen mode
+- [x] All 93 test files / 2505 tests passing
