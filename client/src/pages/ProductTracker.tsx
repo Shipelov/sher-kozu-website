@@ -420,20 +420,30 @@ export default function ProductTracker() {
                 </div>
 
                 <div className="mt-4 overflow-hidden rounded-[1.75rem] border border-border/70 bg-card shadow-sm">
-                  <img
-                    src={summary?.currentAnimal?.coverImageUrl ?? CDN.goat}
-                    alt={summary?.currentAnimal?.name ?? featuredAnimalName}
-                    className="h-44 w-full object-cover object-top"
-                  />
-                  <div className="p-4">
-                    <p className="text-sm uppercase tracking-[0.22em] text-primary">Ваше животное</p>
-                    <h2 className="mt-2 text-xl font-semibold text-foreground">
-                      {summary?.currentAnimal?.title ?? "Каждый продукт начинается с конкретного животного."}
-                    </h2>
-                    <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                      {summary?.currentAnimal?.description ??
-                        "Вы всегда знаете, от кого именно получено молоко и можете перейти к профилю животного."}
-                    </p>
+                  <div className="p-5">
+                    <div className="flex items-start gap-4">
+                      <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-secondary text-primary">
+                        <Milk className="h-7 w-7" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs uppercase tracking-[0.22em] text-primary">Ваше животное</p>
+                        <h2 className="mt-1.5 text-lg font-semibold text-foreground">
+                          {summary?.currentAnimal?.name ?? featuredAnimalName}
+                        </h2>
+                        <p className="mt-1 text-sm leading-6 text-muted-foreground">
+                          {summary?.currentAnimal?.description ??
+                            "Вы всегда знаете, от кого именно получено молоко."}
+                        </p>
+                      </div>
+                    </div>
+                    {summary?.currentAnimal?.slug && (
+                      <Link
+                        href={`/animals/${summary.currentAnimal.slug}`}
+                        className="mt-4 flex items-center gap-2 text-sm font-medium text-primary transition-colors hover:text-primary/80"
+                      >
+                        Перейти к профилю <ChevronRight className="h-4 w-4" />
+                      </Link>
+                    )}
                   </div>
                 </div>
               </div>

@@ -2191,3 +2191,9 @@
 - [x] Apply focal point as object-position on all pages: Home (5 images), AboutFarm (3), ClubFeed (2), DemoTracker (2)
 - [x] getImageWithFocus() helper in useCmsContent returns { url, objectPosition: "{focalX}% {focalY}%" }
 - [x] All 93 test files / 2505 tests passing
+
+## Bug Fix: Tracker 'Ваше животное' block — photo cropped badly, only ears visible (April 2026)
+- [x] Investigate: h-44 object-cover crops portrait animal photos to show only ears
+- [x] Fix: Replaced photo card with compact info block (icon + name + description + link to profile)
+- [x] Applied to both DemoTracker.tsx and ProductTracker.tsx
+- [x] All 93 test files / 2505 tests passing
