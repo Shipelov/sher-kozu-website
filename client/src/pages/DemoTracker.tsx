@@ -6,7 +6,7 @@ DemoTracker.tsx — Демо-версия трекера продукции
 
 import { useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import Navbar from "@/components/Navbar";
 import ScrollRemaining from "@/components/ScrollRemaining";
 import PageBreadcrumbs from "@/components/PageBreadcrumbs";
@@ -29,6 +29,7 @@ import {
   Star,
   Truck,
   Users,
+  ArrowRight,
 } from "lucide-react";
 
 const CDN = {
@@ -165,8 +166,10 @@ function DemoHint({ text, className }: { text: string; className?: string }) {
 
 export default function DemoTracker() {
   const { isAuthenticated } = useAuth();
+  const [, setLocation] = useLocation();
   const cms = useCmsContent("tracker");
   const [activeDelivery, setActiveDelivery] = useState(0);
+  const [navigatingToProfile, setNavigatingToProfile] = useState(false);
   const maxLiters = useMemo(() => Math.max(1, ...DEMO_MONTHLY.map((i) => i.liters)), []);
   const currentDelivery = DEMO_DELIVERIES[activeDelivery] ?? DEMO_DELIVERIES[0];
 
@@ -287,7 +290,11 @@ export default function DemoTracker() {
                   })}
                 </div>
 
-                <div className="mt-4 overflow-hidden rounded-[1.75rem] border border-border/70 bg-card shadow-sm">
+                <motion.div
+                  className="mt-4 overflow-hidden rounded-[1.75rem] border border-border/70 bg-card shadow-sm"
+                  animate={navigatingToProfile ? { scale: 0.97, opacity: 0, y: -8 } : { scale: 1, opacity: 1, y: 0 }}
+                  transition={{ duration: 0.35, ease: "easeInOut" }}
+                >
                   <div className="p-5">
                     <div className="flex items-start gap-4">
                       <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-secondary text-primary">
@@ -299,14 +306,44 @@ export default function DemoTracker() {
                         <p className="mt-1 text-sm leading-6 text-muted-foreground">{DEMO_ANIMAL.description}</p>
                       </div>
                     </div>
-                    <Link
-                      href="/animals"
-                      className="mt-4 flex items-center gap-2 text-sm font-medium text-primary transition-colors hover:text-primary/80"
+
+                    {/* ─── Mini-stats row ─── */}
+                    <div className="mt-4 grid grid-cols-3 gap-2">
+                      <div className="rounded-xl bg-secondary/60 px-3 py-2.5 text-center">
+                        <div className="flex items-center justify-center gap-1 text-primary">
+                          <Milk className="h-3.5 w-3.5" />
+                          <span className="text-base font-bold">94 л</span>
+                        </div>
+                        <p className="mt-0.5 text-[10px] uppercase tracking-wider text-muted-foreground">Молока</p>
+                      </div>
+                      <div className="rounded-xl bg-secondary/60 px-3 py-2.5 text-center">
+                        <div className="flex items-center justify-center gap-1 text-primary">
+                          <Truck className="h-3.5 w-3.5" />
+                          <span className="text-base font-bold">8</span>
+                        </div>
+                        <p className="mt-0.5 text-[10px] uppercase tracking-wider text-muted-foreground">Доставок</p>
+                      </div>
+                      <div className="rounded-xl bg-secondary/60 px-3 py-2.5 text-center">
+                        <div className="flex items-center justify-center gap-1 text-primary">
+                          <FlaskConical className="h-3.5 w-3.5" />
+                          <span className="text-base font-bold">6</span>
+                        </div>
+                        <p className="mt-0.5 text-[10px] uppercase tracking-wider text-muted-foreground">Анализов</p>
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={() => {
+                        setNavigatingToProfile(true);
+                        setTimeout(() => setLocation("/animals"), 350);
+                      }}
+                      className="mt-4 flex w-full items-center justify-between rounded-xl bg-primary/5 px-4 py-2.5 text-sm font-medium text-primary transition-all hover:bg-primary/10 active:scale-[0.98]"
                     >
-                      Перейти к профилю <ChevronRight className="h-4 w-4" />
-                    </Link>
+                      <span>Перейти к профилю</span>
+                      <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+                    </button>
                   </div>
-                </div>
+                </motion.div>
               </div>
             </div>
           </motion.section>

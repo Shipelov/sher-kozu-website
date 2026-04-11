@@ -33,6 +33,7 @@ import {
   Download,
   FileSpreadsheet,
   FileText,
+  ArrowRight,
 } from "lucide-react";
 
 const CDN = {
@@ -246,6 +247,7 @@ export default function ProductTracker() {
 
   const deliveries = summary?.deliveries ?? [];
   const [activeDelivery, setActiveDelivery] = useState(0);
+  const [navigatingToProfile, setNavigatingToProfile] = useState(false);
 
   useEffect(() => {
     if (activeDelivery > Math.max(0, deliveries.length - 1)) {
@@ -419,7 +421,11 @@ export default function ProductTracker() {
                   })}
                 </div>
 
-                <div className="mt-4 overflow-hidden rounded-[1.75rem] border border-border/70 bg-card shadow-sm">
+                <motion.div
+                  className="mt-4 overflow-hidden rounded-[1.75rem] border border-border/70 bg-card shadow-sm"
+                  animate={navigatingToProfile ? { scale: 0.97, opacity: 0, y: -8 } : { scale: 1, opacity: 1, y: 0 }}
+                  transition={{ duration: 0.35, ease: "easeInOut" }}
+                >
                   <div className="p-5">
                     <div className="flex items-start gap-4">
                       <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-secondary text-primary">
@@ -436,16 +442,41 @@ export default function ProductTracker() {
                         </p>
                       </div>
                     </div>
+
+                    {/* ─── Mini-stats row (from real data) ─── */}
+                    {summary?.stats && summary.stats.length > 0 && (
+                      <div className="mt-4 grid grid-cols-3 gap-2">
+                        {summary.stats
+                          .filter((s) => ["milk", "truck", "sparkles"].includes(s.icon))
+                          .map((stat) => {
+                            const Icon = iconForStat(stat.icon);
+                            return (
+                              <div key={stat.label} className="rounded-xl bg-secondary/60 px-3 py-2.5 text-center">
+                                <div className="flex items-center justify-center gap-1 text-primary">
+                                  <Icon className="h-3.5 w-3.5" />
+                                  <span className="text-base font-bold">{stat.value}</span>
+                                </div>
+                                <p className="mt-0.5 text-[10px] uppercase tracking-wider text-muted-foreground">{stat.label}</p>
+                              </div>
+                            );
+                          })}
+                      </div>
+                    )}
+
                     {summary?.currentAnimal?.slug && (
-                      <Link
-                        href={`/animals/${summary.currentAnimal.slug}`}
-                        className="mt-4 flex items-center gap-2 text-sm font-medium text-primary transition-colors hover:text-primary/80"
+                      <button
+                        onClick={() => {
+                          setNavigatingToProfile(true);
+                          setTimeout(() => setLocation(featuredAnimalProfileHref), 350);
+                        }}
+                        className="mt-4 flex w-full items-center justify-between rounded-xl bg-primary/5 px-4 py-2.5 text-sm font-medium text-primary transition-all hover:bg-primary/10 active:scale-[0.98]"
                       >
-                        Перейти к профилю <ChevronRight className="h-4 w-4" />
-                      </Link>
+                        <span>Перейти к профилю</span>
+                        <ArrowRight className="h-4 w-4" />
+                      </button>
                     )}
                   </div>
-                </div>
+                </motion.div>
               </div>
             </div>
           </motion.section>

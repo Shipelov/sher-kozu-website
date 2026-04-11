@@ -2197,3 +2197,9 @@
 - [x] Fix: Replaced photo card with compact info block (icon + name + description + link to profile)
 - [x] Applied to both DemoTracker.tsx and ProductTracker.tsx
 - [x] All 93 test files / 2505 tests passing
+
+## Tracker Animal Card: Mini-Stats + Page Transition Animation (April 2026)
+- [x] Add 2-3 mini-stats (liters, deliveries, analyses) to 'Ваше животное' card in DemoTracker
+- [x] Add same mini-stats to ProductTracker using real API data
+- [x] Add smooth page transition animation when clicking 'Перейти к профилю'
+- [x] Test on desktop and mobile (TS compiles, 93 files / 2505 tests pass)
