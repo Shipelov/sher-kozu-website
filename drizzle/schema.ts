@@ -1227,6 +1227,10 @@ export const cmsBlocks = mysqlTable("cmsBlocks", {
   imageUrl: text("imageUrl"),
   /** Section grouping for admin UI navigation */
   section: varchar("section", { length: 128 }),
+  /** Focal point X coordinate (0-100, percentage from left). Default 50 = center */
+  focalX: int("focalX").default(50).notNull(),
+  /** Focal point Y coordinate (0-100, percentage from top). Default 50 = center */
+  focalY: int("focalY").default(50).notNull(),
   /** Display order within section */
   sortOrder: int("sortOrder").default(0).notNull(),
   /** Whether this block is visible on the public site */

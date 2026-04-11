@@ -418,7 +418,7 @@ export default function DemoTracker() {
             >
               <div className="grid gap-0 lg:grid-cols-[0.95fr_1.05fr]">
                 <div className="overflow-hidden border-b border-border/70 lg:border-b-0 lg:border-r">
-                  <img src={cms.getImage("delivery_image", CDN.delivery)} alt="История доставок" className="h-full min-h-[260px] w-full object-cover" />
+                  <img src={cms.getImageWithFocus("delivery_image", CDN.delivery).url} alt="История доставок" className="h-full min-h-[260px] w-full object-cover" style={{ objectPosition: cms.getImageWithFocus("delivery_image", CDN.delivery).objectPosition }} />
                 </div>
                 <div className="p-5">
                   <div className="flex flex-col items-start gap-4 sm:flex-row sm:justify-between">
@@ -488,7 +488,7 @@ export default function DemoTracker() {
               transition={{ delay: 0.24 }}
               className="col-span-12 overflow-hidden rounded-[2rem] border border-border/70 bg-card shadow-sm lg:col-span-6"
             >
-              <img src={cms.getImage("named_product_image", CDN.cheese)} alt="Именной сыр" className="h-56 w-full object-cover" />
+              <img src={cms.getImageWithFocus("named_product_image", CDN.cheese).url} alt="Именной сыр" className="h-56 w-full object-cover" style={{ objectPosition: cms.getImageWithFocus("named_product_image", CDN.cheese).objectPosition }} />
               <div className="p-5">
                 <p className="text-sm uppercase tracking-[0.22em] text-primary">{cms.getText("named_product_label", "Именной продукт")}</p>
                 <h2 className="mt-3 text-2xl font-semibold text-foreground">

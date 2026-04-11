@@ -2182,3 +2182,12 @@
 - [x] Fix object-position for animal photos: added object-top to gallery_goats_image and gallery_sheep_image
 - [x] Recenter image automatically when toggling fullscreen mode
 - [x] All 93 test files / 2505 tests passing
+
+## Focal Point + Desktop/Mobile Preview in CMS (April 2026)
+- [x] Add focalX/focalY columns (int, 0-100, default 50) to cmsBlocks DB table + migration
+- [x] Update CMS backend: updateContent and uploadImage accept focalX/focalY
+- [x] Build focal point picker UI: click on image to set crosshair + coordinates display
+- [x] Build desktop (200×267px portrait) vs mobile (375×192px landscape) side-by-side preview in CMS editor
+- [x] Apply focal point as object-position on all pages: Home (5 images), AboutFarm (3), ClubFeed (2), DemoTracker (2)
+- [x] getImageWithFocus() helper in useCmsContent returns { url, objectPosition: "{focalX}% {focalY}%" }
+- [x] All 93 test files / 2505 tests passing

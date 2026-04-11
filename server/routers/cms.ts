@@ -251,12 +251,16 @@ export const cmsRouter = router({
       id: z.number().int().positive(),
       content: z.string().max(50000).nullable().optional(),
       imageUrl: z.string().max(2048).nullable().optional(),
+      focalX: z.number().int().min(0).max(100).optional(),
+      focalY: z.number().int().min(0).max(100).optional(),
     }))
     .mutation(async ({ input, ctx }) => {
       const db = await getDb();
       const updates: Record<string, unknown> = {};
       if (input.content !== undefined) updates.content = input.content;
       if (input.imageUrl !== undefined) updates.imageUrl = input.imageUrl;
+      if (input.focalX !== undefined) updates.focalX = input.focalX;
+      if (input.focalY !== undefined) updates.focalY = input.focalY;
 
       if (Object.keys(updates).length === 0) {
         return { success: true };
@@ -366,6 +370,8 @@ export const cmsRouter = router({
       fileName: z.string().min(1).max(180),
       mimeType: z.string().min(1).max(120),
       base64Data: z.string().min(1),
+      focalX: z.number().int().min(0).max(100).optional(),
+      focalY: z.number().int().min(0).max(100).optional(),
     }))
     .mutation(async ({ input, ctx }) => {
       const db = await getDb();
@@ -393,9 +399,12 @@ export const cmsRouter = router({
         });
       }
 
+      const setData: Record<string, unknown> = { imageUrl: url };
+      if (input.focalX !== undefined) setData.focalX = input.focalX;
+      if (input.focalY !== undefined) setData.focalY = input.focalY;
       await db
         .update(cmsBlocks)
-        .set({ imageUrl: url })
+        .set(setData)
         .where(eq(cmsBlocks.id, input.blockId));
 
       if (prev) invalidateCmsPageCache(prev.page);

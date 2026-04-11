@@ -47,6 +47,9 @@ import {
   Pencil,
   ChevronRight,
   Globe,
+  Crosshair,
+  Monitor,
+  Smartphone,
 } from "lucide-react";
 import ImageCropEditor from "@/components/ImageCropEditor";
 import {
@@ -139,6 +142,8 @@ type CmsBlock = {
   section: string | null;
   sortOrder: number;
   visible: boolean;
+  focalX: number;
+  focalY: number;
   updatedAt?: Date | string;
 };
 
@@ -421,6 +426,8 @@ export default function AdminCmsEditor() {
   const [editContent, setEditContent] = useState("");
   const [editImageUrl, setEditImageUrl] = useState("");
   const [uploading, setUploading] = useState(false);
+  const [editFocalX, setEditFocalX] = useState(50);
+  const [editFocalY, setEditFocalY] = useState(50);
   const [expandedBlocks, setExpandedBlocks] = useState<Set<number>>(new Set());
   const [seedDialogOpen, setSeedDialogOpen] = useState(false);
   const [showCropEditor, setShowCropEditor] = useState(false);
@@ -703,6 +710,8 @@ export default function AdminCmsEditor() {
     setEditBlock(block);
     setEditContent(block.content ?? "");
     setEditImageUrl(block.imageUrl ?? "");
+    setEditFocalX(block.focalX ?? 50);
+    setEditFocalY(block.focalY ?? 50);
     setShowCropEditor(false);
   }, []);
 
@@ -721,8 +730,10 @@ export default function AdminCmsEditor() {
       id: editBlock.id,
       content: editContent || null,
       imageUrl: editImageUrl || null,
+      focalX: editFocalX,
+      focalY: editFocalY,
     });
-  }, [editBlock, editContent, editImageUrl, updateContent]);
+  }, [editBlock, editContent, editImageUrl, editFocalX, editFocalY, updateContent]);
 
   const handleCropComplete = useCallback(
     (data: { base64Data: string; fileName: string; mimeType: string }) => {
@@ -733,9 +744,11 @@ export default function AdminCmsEditor() {
         fileName: data.fileName,
         mimeType: data.mimeType,
         base64Data: data.base64Data,
+        focalX: editFocalX,
+        focalY: editFocalY,
       });
     },
-    [editBlock, uploadImage]
+    [editBlock, editFocalX, editFocalY, uploadImage]
   );
 
   const formatJsonContent = useCallback((content: string): string => {
@@ -1358,42 +1371,127 @@ export default function AdminCmsEditor() {
                   </label>
 
                   {editImageUrl && !showCropEditor && (
-                    <div className="mb-3 space-y-2">
-                      {/* Current image preview */}
-                      <div className="relative inline-block">
-                        <img
-                          src={editImageUrl}
-                          alt="Preview"
-                          className="h-40 w-auto rounded-lg object-cover border border-border"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => setEditImageUrl("")}
-                          className="absolute -top-2 -right-2 h-6 w-6 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center text-xs hover:bg-destructive/90"
+                    <div className="mb-3 space-y-3">
+                      {/* ─── Focal Point Picker ─── */}
+                      <div className="rounded-lg border border-border bg-muted/20 p-3">
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center gap-1.5">
+                            <Crosshair className="h-3.5 w-3.5 text-primary" />
+                            <span className="text-xs font-medium text-foreground">Точка фокуса</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-[10px] text-muted-foreground font-mono">
+                              X:{editFocalX}% Y:{editFocalY}%
+                            </span>
+                            {(editFocalX !== 50 || editFocalY !== 50) && (
+                              <button
+                                type="button"
+                                onClick={() => { setEditFocalX(50); setEditFocalY(50); }}
+                                className="text-[10px] text-muted-foreground hover:text-foreground underline"
+                              >
+                                Сбросить
+                              </button>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => setEditImageUrl("")}
+                              className="h-5 w-5 rounded-full bg-destructive/80 text-destructive-foreground flex items-center justify-center text-[10px] hover:bg-destructive"
+                            >
+                              ×
+                            </button>
+                          </div>
+                        </div>
+                        <p className="text-[10px] text-muted-foreground mb-2">
+                          Кликните на фото, чтобы указать главный объект (например, морду животного). Эта точка всегда будет видна на всех устройствах.
+                        </p>
+                        <div
+                          className="relative cursor-crosshair rounded-lg overflow-hidden border border-border"
+                          style={{ maxHeight: 300 }}
+                          onClick={(e) => {
+                            const rect = e.currentTarget.getBoundingClientRect();
+                            const x = Math.round(((e.clientX - rect.left) / rect.width) * 100);
+                            const y = Math.round(((e.clientY - rect.top) / rect.height) * 100);
+                            setEditFocalX(Math.max(0, Math.min(100, x)));
+                            setEditFocalY(Math.max(0, Math.min(100, y)));
+                          }}
                         >
-                          ×
-                        </button>
-                      </div>
-                      {/* Site preview: how image will look on the page */}
-                      {(editBlock.blockKey === "gallery_goats_image" || editBlock.blockKey === "gallery_sheep_image") && (
-                        <div className="rounded-lg border border-dashed border-border/60 bg-muted/20 p-3">
-                          <p className="text-xs font-medium text-muted-foreground mb-2">Предпросмотр на сайте:</p>
-                          <div className="flex gap-3">
-                            <div>
-                              <p className="text-[10px] text-muted-foreground mb-1">Десктоп (200×250)</p>
-                              <img src={editImageUrl} alt="Desktop preview" className="rounded-md object-cover border border-border" style={{ width: 80, height: 100 }} />
-                            </div>
-                            <div>
-                              <p className="text-[10px] text-muted-foreground mb-1">Мобильный (full×192)</p>
-                              <img src={editImageUrl} alt="Mobile preview" className="rounded-md object-cover border border-border" style={{ width: 160, height: 77 }} />
+                          <img
+                            src={editImageUrl}
+                            alt="Focal point picker"
+                            className="w-full object-contain"
+                            style={{ maxHeight: 300 }}
+                            draggable={false}
+                          />
+                          {/* Crosshair marker */}
+                          <div
+                            className="absolute pointer-events-none"
+                            style={{
+                              left: `${editFocalX}%`,
+                              top: `${editFocalY}%`,
+                              transform: "translate(-50%, -50%)",
+                            }}
+                          >
+                            <div className="relative">
+                              {/* Outer ring */}
+                              <div className="w-8 h-8 rounded-full border-2 border-white shadow-lg" style={{ boxShadow: "0 0 0 1px rgba(0,0,0,0.3), 0 2px 8px rgba(0,0,0,0.3)" }} />
+                              {/* Inner dot */}
+                              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-primary border border-white" />
+                              {/* Crosshair lines */}
+                              <div className="absolute top-1/2 left-0 -translate-y-1/2 w-full h-px bg-white/70" />
+                              <div className="absolute top-0 left-1/2 -translate-x-1/2 w-px h-full bg-white/70" />
                             </div>
                           </div>
                         </div>
-                      )}
-                      {editBlock.blockKey.includes("hero_image") && (
+                      </div>
+
+                      {/* ─── Desktop vs Mobile Preview ─── */}
+                      {(editBlock.contentType === "image" || editBlock.blockKey.includes("image")) && (
                         <div className="rounded-lg border border-dashed border-border/60 bg-muted/20 p-3">
-                          <p className="text-xs font-medium text-muted-foreground mb-2">Предпросмотр на сайте:</p>
-                          <img src={editImageUrl} alt="Hero preview" className="rounded-md object-cover border border-border w-full" style={{ height: 100 }} />
+                          <div className="flex items-center gap-1.5 mb-2">
+                            <Monitor className="h-3.5 w-3.5 text-muted-foreground" />
+                            <span className="text-xs font-medium text-muted-foreground">Предпросмотр на сайте</span>
+                          </div>
+                          <div className="flex gap-4 items-start">
+                            {/* Desktop preview */}
+                            <div>
+                              <div className="flex items-center gap-1 mb-1">
+                                <Monitor className="h-3 w-3 text-muted-foreground" />
+                                <p className="text-[10px] text-muted-foreground">Десктоп</p>
+                              </div>
+                              <div className="rounded-md overflow-hidden border border-border bg-muted/30" style={{
+                                width: (editBlock.blockKey === "gallery_goats_image" || editBlock.blockKey === "gallery_sheep_image") ? 100 : 240,
+                                height: (editBlock.blockKey === "gallery_goats_image" || editBlock.blockKey === "gallery_sheep_image") ? 125 : 100,
+                              }}>
+                                <img
+                                  src={editImageUrl}
+                                  alt="Desktop preview"
+                                  className="w-full h-full object-cover"
+                                  style={{ objectPosition: `${editFocalX}% ${editFocalY}%` }}
+                                />
+                              </div>
+                            </div>
+                            {/* Mobile preview */}
+                            <div>
+                              <div className="flex items-center gap-1 mb-1">
+                                <Smartphone className="h-3 w-3 text-muted-foreground" />
+                                <p className="text-[10px] text-muted-foreground">Мобильный</p>
+                              </div>
+                              <div className="rounded-md overflow-hidden border border-border bg-muted/30" style={{
+                                width: 160,
+                                height: (editBlock.blockKey === "gallery_goats_image" || editBlock.blockKey === "gallery_sheep_image") ? 77 : 90,
+                              }}>
+                                <img
+                                  src={editImageUrl}
+                                  alt="Mobile preview"
+                                  className="w-full h-full object-cover"
+                                  style={{ objectPosition: `${editFocalX}% ${editFocalY}%` }}
+                                />
+                              </div>
+                            </div>
+                          </div>
+                          <p className="text-[10px] text-muted-foreground mt-2">
+                            Точка фокуса определяет, какая часть фото будет видна при обрезке на разных экранах.
+                          </p>
                         </div>
                       )}
                     </div>

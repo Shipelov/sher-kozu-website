@@ -248,9 +248,10 @@ export default function AboutFarm() {
               {/* Image side — fills full height */}
               <div className="relative min-h-[240px] md:min-h-[480px]">
                 <img
-                  src={cms.getImage("hero_image", CDN.hero)}
+                  src={cms.getImageWithFocus("hero_image", CDN.hero).url}
                   alt="Семья на ферме Шерь Козу с козами элитных пород"
                   className="absolute inset-0 h-full w-full object-cover"
+                  style={{ objectPosition: cms.getImageWithFocus("hero_image", CDN.hero).objectPosition }}
                   loading="eager"
                 />
               </div>
@@ -341,9 +342,10 @@ export default function AboutFarm() {
             <div className="grid gap-0 lg:grid-cols-[0.92fr_1.08fr]">
               <div className="relative min-h-[220px] lg:min-h-[380px] overflow-hidden">
                 <img
-                  src={cms.getImage("philosophy_image", CDN.philosophy)}
+                  src={cms.getImageWithFocus("philosophy_image", CDN.philosophy).url}
                   alt="Философия фермы Шерь Козу"
                   className="h-full w-full object-cover"
+                  style={{ objectPosition: cms.getImageWithFocus("philosophy_image", CDN.philosophy).objectPosition }}
                   loading="lazy"
                 />
               </div>
@@ -430,9 +432,10 @@ export default function AboutFarm() {
             <div className="grid gap-0 lg:grid-cols-[0.92fr_1.08fr]">
               <div className="relative min-h-[220px] lg:min-h-[380px] overflow-hidden">
                 <img
-                  src={cms.getImage("breeds_image", CDN.breeds)}
+                  src={cms.getImageWithFocus("breeds_image", CDN.breeds).url}
                   alt="Элитные породы коз и овец на ферме"
                   className="h-full w-full object-cover"
+                  style={{ objectPosition: cms.getImageWithFocus("breeds_image", CDN.breeds).objectPosition }}
                   loading="lazy"
                 />
               </div>

@@ -3,8 +3,7 @@ import { useMemo } from "react";
 
 /**
  * Hook to fetch CMS content blocks for a page.
- * Returns a helper function `get(blockKey, fallback)` that resolves
- * the content from DB or falls back to the hardcoded default.
+ * Returns helper functions to resolve content from DB or fall back to hardcoded defaults.
  */
 export function useCmsContent(page: string) {
   const { data: blocks, isLoading } = trpc.cms.getPageBlocks.useQuery(
@@ -13,7 +12,17 @@ export function useCmsContent(page: string) {
   );
 
   const blockMap = useMemo(() => {
-    const map = new Map<string, { content: string | null; imageUrl: string | null; contentType: string; visible: boolean }>();
+    const map = new Map<
+      string,
+      {
+        content: string | null;
+        imageUrl: string | null;
+        contentType: string;
+        visible: boolean;
+        focalX: number;
+        focalY: number;
+      }
+    >();
     if (blocks) {
       for (const b of blocks) {
         map.set(b.blockKey, {
@@ -21,6 +30,8 @@ export function useCmsContent(page: string) {
           imageUrl: b.imageUrl,
           contentType: b.contentType,
           visible: b.visible,
+          focalX: (b as any).focalX ?? 50,
+          focalY: (b as any).focalY ?? 50,
         });
       }
     }
@@ -47,6 +58,28 @@ export function useCmsContent(page: string) {
     if (!block.visible) return fallback;
     // Use || instead of ?? so empty strings also fall back
     return block.imageUrl || fallback;
+  }
+
+  /**
+   * Get image URL + focal point object-position for a block key.
+   * Returns { url, objectPosition } where objectPosition is a CSS value
+   * like "30% 20%" that can be applied to object-position.
+   */
+  function getImageWithFocus(
+    blockKey: string,
+    fallback: string
+  ): { url: string; objectPosition: string } {
+    const block = blockMap.get(blockKey);
+    if (!block || !block.visible) {
+      return { url: fallback, objectPosition: "50% 50%" };
+    }
+    const url = block.imageUrl || fallback;
+    const fx = block.focalX ?? 50;
+    const fy = block.focalY ?? 50;
+    return {
+      url,
+      objectPosition: `${fx}% ${fy}%`,
+    };
   }
 
   /**
@@ -78,6 +111,7 @@ export function useCmsContent(page: string) {
   return {
     getText,
     getImage,
+    getImageWithFocus,
     getJson,
     isVisible,
     isLoading,

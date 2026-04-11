@@ -832,9 +832,10 @@ export default function ClubFeed() {
             className="relative mb-8 overflow-hidden rounded-[2.25rem] border border-border/70 shadow-[0_28px_80px_-42px_rgba(32,26,20,0.26)]"
           >
             <img
-              src={cms.getImage("hero_image", CDN.club)}
+              src={cms.getImageWithFocus("hero_image", CDN.club).url}
               alt="Клуб Шерь Козу"
               className="h-[520px] w-full object-cover sm:h-[420px]"
+              style={{ objectPosition: cms.getImageWithFocus("hero_image", CDN.club).objectPosition }}
             />
             <div className="absolute inset-0 bg-[linear-gradient(0deg,rgba(25,22,20,0.88)_40%,rgba(25,22,20,0.5)_70%,rgba(25,22,20,0.3))] sm:bg-[linear-gradient(90deg,rgba(25,22,20,0.82),rgba(25,22,20,0.34),rgba(25,22,20,0.18))]" />
             <div className="absolute inset-0 flex flex-col justify-end gap-4 p-5 text-white sm:justify-between sm:p-8">
@@ -1315,12 +1316,10 @@ export default function ClubFeed() {
               >
                 <div className="grid gap-0 md:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
                   <img
-                    src={cms.getImage(
-                      "notif_family_image",
-                      CDN.family
-                    )}
+                    src={cms.getImageWithFocus("notif_family_image", CDN.family).url}
                     alt="Семейный визит"
                     className="h-full min-h-[220px] w-full object-cover"
+                    style={{ objectPosition: cms.getImageWithFocus("notif_family_image", CDN.family).objectPosition }}
                   />
                   <div className="p-5">
                     <p className="text-sm uppercase tracking-[0.22em] text-primary">
