@@ -5,9 +5,9 @@ import { useEffect, useState, useCallback, lazy, Suspense } from "react";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { useAuth } from "@/_core/hooks/useAuth";
-import WelcomeOnboarding from "@/components/WelcomeOnboarding";
+const WelcomeOnboarding = lazy(() => import("@/components/WelcomeOnboarding"));
 import { Loader2 } from "lucide-react";
-import AIFloatingHub from "@/components/AIFloatingHub";
+const AIFloatingHub = lazy(() => import("@/components/AIFloatingHub"));
 import AnalyticsTracker from "@/components/AnalyticsTracker";
 
 /* ─── Lazy-loaded page components (code-split per route) ─── */
@@ -162,7 +162,7 @@ function OnboardingGate() {
   if (dismissed) return null;
   if ((user as any).onboardingCompleted) return null;
 
-  return <WelcomeOnboarding userName={user.name || ""} onComplete={handleComplete} />;
+  return <Suspense fallback={null}><WelcomeOnboarding userName={user.name || ""} onComplete={handleComplete} /></Suspense>;
 }
 
 function App() {
@@ -173,7 +173,7 @@ function App() {
           <Toaster />
           <OnboardingGate />
           <Router />
-          <AIFloatingHub />
+          <Suspense fallback={null}><AIFloatingHub /></Suspense>
         </TooltipProvider>
       </ThemeProvider>
     </ErrorBoundary>

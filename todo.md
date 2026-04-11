@@ -2149,3 +2149,12 @@
 - [x] Add nutrition analytics DB helpers and admin endpoints (getNutriAnalyticsExtended — sessions, messages, user types, knowledge, shares, trends, topics)
 - [x] Build nutrition analytics page /admin/nutri-analytics with 5 tabs (overview, users, content, shares, topics)
 - [x] Tests: Vitest coverage for nutrition analytics (93 files / 2505 tests passing)
+
+## Performance Investigation (April 2026)
+- [x] Investigate slow page loads reported in admin performance dashboard
+- [x] Check server-side response times and slow queries (ECONNRESET from TiDB, trackVisit up to 3098ms)
+- [x] Analyze frontend bundle sizes and code-splitting (main bundle 1.9MB → 231KB, 88% reduction)
+- [x] Fix: manualChunks in vite.config.ts to isolate mermaid/shiki/cytoscape/recharts/framer-motion/xlsx/lucide
+- [x] Fix: Lazy-load AIFloatingHub and WelcomeOnboarding (were eagerly loaded with framer-motion+streamdown)
+- [x] Fix: DB pool config — reduced connectionLimit 20→10, added keepAliveInitialDelay, connectTimeout, idleTimeout, maxIdle
+- [x] All 93 test files / 2505 tests passing

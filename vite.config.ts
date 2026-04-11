@@ -167,6 +167,28 @@ export default defineConfig({
   build: {
     outDir: path.resolve(import.meta.dirname, "dist/public"),
     emptyOutDir: true,
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          // Isolate heavy streamdown transitive deps into lazy-loaded chunks
+          if (id.includes("node_modules/mermaid") || id.includes("node_modules/@mermaid")) return "vendor-mermaid";
+          if (id.includes("node_modules/shiki") || id.includes("node_modules/@shikijs")) return "vendor-shiki";
+          if (id.includes("node_modules/cytoscape")) return "vendor-cytoscape";
+          // Recharts is only used in admin pages
+          if (id.includes("node_modules/recharts") || id.includes("node_modules/d3-")) return "vendor-recharts";
+          // framer-motion is used across many pages but is heavy
+          if (id.includes("node_modules/framer-motion") || id.includes("node_modules/motion")) return "vendor-framer";
+          // xlsx is dynamically imported but still large
+          if (id.includes("node_modules/xlsx")) return "vendor-xlsx";
+          // streamdown + markdown rendering (used only in chat components)
+          if (id.includes("node_modules/streamdown") || id.includes("node_modules/react-markdown") || id.includes("node_modules/marked") || id.includes("node_modules/rehype") || id.includes("node_modules/remark") || id.includes("node_modules/unified") || id.includes("node_modules/hast") || id.includes("node_modules/mdast") || id.includes("node_modules/micromark") || id.includes("node_modules/katex")) return "vendor-markdown";
+          // lucide-react icons
+          if (id.includes("node_modules/lucide-react")) return "vendor-lucide";
+          // Core React + router
+          if (id.includes("node_modules/react-dom")) return "vendor-react";
+        },
+      },
+    },
   },
   server: {
     host: true,

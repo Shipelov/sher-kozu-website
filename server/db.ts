@@ -399,9 +399,15 @@ export async function getDb() {
   try {
     _pool = createPool({
       uri: ENV.databaseUrl,
-      connectionLimit: 20,
+      connectionLimit: 10,           // Reduced from 20 — TiDB serverless has connection limits
+      waitForConnections: true,
+      queueLimit: 0,                    // 0 = unlimited queue (prevents Queue limit reached errors)
       namedPlaceholders: true,
       enableKeepAlive: true,
+      keepAliveInitialDelay: 10000,   // Send keep-alive probe after 10s idle
+      connectTimeout: 5000,           // 5s connect timeout
+      idleTimeout: 60000,             // Close idle connections after 60s to avoid stale sockets
+      maxIdle: 5,                     // Keep at most 5 idle connections
       timezone: "Z",
       ssl: {
         minVersion: "TLSv1.2",
