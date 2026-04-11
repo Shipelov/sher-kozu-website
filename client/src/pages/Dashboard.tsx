@@ -37,6 +37,8 @@ import {
   ArrowUpRight,
   History,
   ShoppingCart,
+  MessageCircle,
+  Send,
 } from "lucide-react";
 import { toast } from "sonner";
 import ScrollRemaining from "@/components/ScrollRemaining";
@@ -272,6 +274,127 @@ function DashboardError({ onRetry }: { onRetry: () => void }) {
   );
 }
 
+/** Telegram Bot Banner — shows connect CTA or feature overview */
+function TelegramBotBanner() {
+  const { data: tgStatus, isLoading } = trpc.telegram.status.useQuery();
+  const generateLink = trpc.telegram.generateLinkToken.useMutation();
+  const [deepLink, setDeepLink] = useState<string | null>(null);
+
+  // Don't show banner while loading
+  if (isLoading) return null;
+
+  const isConnected = tgStatus?.connected;
+
+  const botFeatures = [
+    { icon: Heart, label: "Статус животного", desc: "Счастье, здоровье, настроение", accent: "from-rose-500/10 to-rose-600/5" },
+    { icon: Truck, label: "Трекинг доставки", desc: "Push-уведомления о статусе", accent: "from-emerald-500/10 to-emerald-600/5" },
+    { icon: Bot, label: "AI-чат с Зоей", desc: "Нутрициолог прямо в Telegram", accent: "from-sky-500/10 to-sky-600/5" },
+    { icon: Calendar, label: "События клуба", desc: "Анонсы визитов и ужинов", accent: "from-amber-500/10 to-amber-600/5" },
+  ];
+
+  async function handleConnect() {
+    try {
+      const result = await generateLink.mutateAsync();
+      setDeepLink(result.deepLink);
+    } catch {
+      toast.error("Не удалось создать ссылку");
+    }
+  }
+
+  return (
+    <motion.section
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 0.03 }}
+      className="overflow-hidden rounded-[2rem] border border-[#229ED9]/20 bg-gradient-to-br from-[#229ED9]/5 via-card to-card shadow-sm"
+      data-testid="dashboardTelegramBanner"
+    >
+      <div className="p-5 md:p-6">
+        <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:gap-8">
+          {/* Left: description + CTA */}
+          <div className="flex-1">
+            <div className="flex items-center gap-3">
+              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#229ED9]/10">
+                <Send className="h-5 w-5 text-[#229ED9]" />
+              </div>
+              <div>
+                <h3 className="text-xl font-semibold text-foreground">Telegram-бот @sherkozu_bot</h3>
+                <p className="text-sm text-muted-foreground">
+                  {isConnected ? "Подключён — все команды доступны" : "Ваша ферма в кармане — без открытия сайта"}
+                </p>
+              </div>
+            </div>
+
+            <p className="mt-4 max-w-xl text-sm leading-7 text-muted-foreground">
+              {isConnected
+                ? "Отправьте /status чтобы узнать как дела у вашего животного, /delivery для статуса доставки, /zoya для чата с нутрициологом. Бот также пришлёт push-уведомления о доставках и событиях."
+                : "Подключите бота и получайте статус животного, трекинг доставки, AI-чат с нутрициологом Зоей и анонсы клубных событий прямо в Telegram. Максимум 5–6 сообщений в месяц."}
+            </p>
+
+            {!isConnected && (
+              <div className="mt-4">
+                {!deepLink ? (
+                  <button
+                    onClick={handleConnect}
+                    disabled={generateLink.isPending}
+                    className="inline-flex items-center gap-2 rounded-full bg-[#229ED9] px-6 py-3 text-sm font-semibold text-white shadow-md transition-all hover:bg-[#1a8bc2] hover:-translate-y-0.5 disabled:opacity-60"
+                  >
+                    {generateLink.isPending ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Send className="h-4 w-4" />
+                    )}
+                    Подключить Telegram-бот
+                  </button>
+                ) : (
+                  <div className="space-y-2">
+                    <a
+                      href={deepLink}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2 rounded-full bg-[#229ED9] px-6 py-3 text-sm font-semibold text-white shadow-md transition-all hover:bg-[#1a8bc2] hover:-translate-y-0.5"
+                    >
+                      <MessageCircle className="h-4 w-4" />
+                      Открыть в Telegram
+                    </a>
+                    <p className="text-xs text-muted-foreground">Ссылка действительна 15 минут</p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {isConnected && (
+              <Link
+                href="/settings/notifications"
+                className="mt-4 inline-flex items-center gap-1.5 text-sm font-medium text-[#229ED9] hover:underline"
+              >
+                Настройки уведомлений <ChevronRight className="h-4 w-4" />
+              </Link>
+            )}
+          </div>
+
+          {/* Right: feature blocks — symmetric with Home metric blocks */}
+          <div className="grid grid-cols-2 gap-3 lg:w-[380px]">
+            {botFeatures.map((feature) => {
+              const Icon = feature.icon;
+              return (
+                <div
+                  key={feature.label}
+                  className={`relative overflow-hidden rounded-2xl border border-border/60 bg-gradient-to-br ${feature.accent} px-4 py-4 shadow-sm backdrop-blur`}
+                >
+                  <Icon className="h-5 w-5 text-muted-foreground mb-2" />
+                  <div className="text-sm font-semibold text-foreground leading-tight">{feature.label}</div>
+                  <div className="mt-1 text-[11px] text-muted-foreground">{feature.desc}</div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    </motion.section>
+  );
+}
+
 export default function Dashboard() {
   const { isAuthenticated } = useAuth();
   const ownerDashboardQuery = trpc.animals.ownerDashboard.useQuery(undefined, {
@@ -475,6 +598,9 @@ export default function Dashboard() {
               </div>
             </div>
           </motion.section>
+
+          {/* ── Telegram Bot Banner ── */}
+          <TelegramBotBanner />
 
           {/* ── Pending Payment Banner ── */}
           {ownership?.status === "pending_payment" && (

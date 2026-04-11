@@ -2234,3 +2234,8 @@
 - [x] Add "Connect Telegram" card to NotificationSettings page
 - [x] Write vitest tests for bot module (95 files, 2519 tests pass)
 - [x] Register webhook URL on production startup (auto)
+## Telegram Bot Banner on Dashboard
+- [x] Add Telegram bot banner/card to owner Dashboard top section
+- [x] Add feature description block below photo, symmetric with existing metric blocks
+- [x] Show bot capabilities: статус животного, доставки, AI-чат с Зоей и Машей, события клуба
+- [x] Include connect button with deep link generation + link to /settings/notifications
