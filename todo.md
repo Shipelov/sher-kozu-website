@@ -2158,3 +2158,12 @@
 - [x] Fix: Lazy-load AIFloatingHub and WelcomeOnboarding (were eagerly loaded with framer-motion+streamdown)
 - [x] Fix: DB pool config — reduced connectionLimit 20→10, added keepAliveInitialDelay, connectTimeout, idleTimeout, maxIdle
 - [x] All 93 test files / 2505 tests passing
+
+## Bug Fix: Homepage photo replacement shows old cached image (April 2026)
+- [x] Investigate how homepage images are managed (CMS blocks, CDN URLs, caching)
+- [x] Root cause: auto-recovery in getPageBlocks recreated deleted blocks with hardcoded default imageUrl
+- [x] Fix 1: Auto-recovery now checks cmsBlockHistory for "delete" actions — skips intentionally deleted blocks
+- [x] Fix 2: getImage/getText use || instead of ?? — empty strings now fall back correctly
+- [x] Fix 3: Delete confirmation warns about image blocks and explains no auto-recovery
+- [x] Fix 4: seedDefaults clears delete history so "Инициализировать" can restore blocks
+- [x] All 93 test files / 2505 tests passing

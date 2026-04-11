@@ -92,34 +92,58 @@ export const cmsRouter = router({
         .orderBy(asc(cmsBlocks.sortOrder));
 
       // Auto-recovery: if some default blocks are missing, create them
+      // BUT skip blocks that were intentionally deleted by a user (check history)
       const defaults = getDefaultBlocks(input.page);
       if (defaults.length > 0) {
         const existingKeys = new Set(rows.map((r: { blockKey: string }) => r.blockKey));
         const missing = defaults.filter(d => !existingKeys.has(d.blockKey));
 
         if (missing.length > 0) {
-          for (const block of missing) {
-            try {
-              await db.insert(cmsBlocks).values({
-                page: block.page,
-                blockKey: block.blockKey,
-                label: block.label,
-                contentType: block.contentType,
-                content: block.content ?? "",
-                imageUrl: block.imageUrl ?? null,
-                section: block.section ?? null,
-                sortOrder: block.sortOrder,
-                visible: block.visible,
-              });
-            } catch (err) {
-              console.warn(`[CMS] Auto-recovery: failed to create block "${block.blockKey}" for page "${block.page}":`, err);
+          // Check which missing blocks were intentionally deleted
+          const deletedBlockKeys = new Set<string>();
+          try {
+            const deleteHistory = await db
+              .select({ blockKey: cmsBlockHistory.blockKey })
+              .from(cmsBlockHistory)
+              .where(
+                and(
+                  eq(cmsBlockHistory.page, input.page),
+                  eq(cmsBlockHistory.action, "delete")
+                )
+              );
+            for (const h of deleteHistory) {
+              deletedBlockKeys.add(h.blockKey);
             }
+          } catch (err) {
+            console.warn(`[CMS] Auto-recovery: failed to check delete history for page "${input.page}":`, err);
           }
-          rows = await db
-            .select()
-            .from(cmsBlocks)
-            .where(eq(cmsBlocks.page, input.page))
-            .orderBy(asc(cmsBlocks.sortOrder));
+
+          const toRecover = missing.filter(d => !deletedBlockKeys.has(d.blockKey));
+
+          if (toRecover.length > 0) {
+            for (const block of toRecover) {
+              try {
+                await db.insert(cmsBlocks).values({
+                  page: block.page,
+                  blockKey: block.blockKey,
+                  label: block.label,
+                  contentType: block.contentType,
+                  content: block.content ?? "",
+                  imageUrl: block.imageUrl ?? null,
+                  section: block.section ?? null,
+                  sortOrder: block.sortOrder,
+                  visible: block.visible,
+                });
+              } catch (err) {
+                console.warn(`[CMS] Auto-recovery: failed to create block "${block.blockKey}" for page "${block.page}":`, err);
+              }
+            }
+            rows = await db
+              .select()
+              .from(cmsBlocks)
+              .where(eq(cmsBlocks.page, input.page))
+              .orderBy(asc(cmsBlocks.sortOrder));
+          }
         }
       }
 
@@ -594,6 +618,20 @@ export const cmsRouter = router({
       const defaults = getDefaultBlocks(input.page);
       if (defaults.length === 0) {
         return { seeded: false, message: "No default blocks defined for this page" };
+      }
+
+      // Clear delete history for this page so auto-recovery can work again
+      // This allows "Инициализировать" to restore previously deleted blocks
+      try {
+        await db.delete(cmsBlockHistory)
+          .where(
+            and(
+              eq(cmsBlockHistory.page, input.page),
+              eq(cmsBlockHistory.action, "delete")
+            )
+          );
+      } catch (err) {
+        console.warn(`[CMS Seed] Failed to clear delete history for page "${input.page}":`, err);
       }
 
       const existing = await db

@@ -375,7 +375,11 @@ function SortableBlockItem({
               size="sm"
               className="text-destructive hover:text-destructive"
               onClick={() => {
-                if (confirm(`Удалить блок "${block.blockKey}"?`)) {
+                const isImageBlock = block.contentType === "image";
+                const warning = isImageBlock
+                  ? `Удалить блок "${block.blockKey}"?\n\n⚠️ Это блок с изображением. Если вы хотите заменить фото, лучше отредактируйте блок (нажмите на него), а не удаляйте.\n\nУдалённый блок НЕ будет автоматически восстановлен.`
+                  : `Удалить блок "${block.blockKey}"?\n\nУдалённый блок НЕ будет автоматически восстановлен. Чтобы вернуть его, используйте кнопку «Инициализировать».`;
+                if (confirm(warning)) {
                   deleteBlock.mutate({ id: block.id });
                 }
               }}

@@ -34,7 +34,8 @@ export function useCmsContent(page: string) {
     const block = blockMap.get(blockKey);
     if (!block) return fallback;
     if (!block.visible) return fallback;
-    return block.content ?? fallback;
+    // Use || instead of ?? so empty strings also fall back
+    return block.content || fallback;
   }
 
   /**
@@ -44,7 +45,8 @@ export function useCmsContent(page: string) {
     const block = blockMap.get(blockKey);
     if (!block) return fallback;
     if (!block.visible) return fallback;
-    return block.imageUrl ?? fallback;
+    // Use || instead of ?? so empty strings also fall back
+    return block.imageUrl || fallback;
   }
 
   /**
