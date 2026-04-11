@@ -1,6 +1,8 @@
 /**
  * Telegram Mini App — SKC Balance screen
  * Shows token balance and recent transactions.
+ * API returns: { balanceSKC, walletId } for balance
+ * Transactions: { direction: "credit"|"debit", amountMinor, memo, createdAt, transactionType }
  */
 
 import { useState } from "react";
@@ -12,7 +14,23 @@ import {
   ArrowUpRight,
   ArrowDownLeft,
   ChevronDown,
+  Gift,
+  ShoppingCart,
+  Star,
+  Settings,
+  RotateCcw,
+  Timer,
 } from "lucide-react";
+
+const TX_TYPE_LABELS: Record<string, { label: string; icon: React.ElementType }> = {
+  topup: { label: "Пополнение", icon: ArrowDownLeft },
+  spend: { label: "Покупка", icon: ShoppingCart },
+  reward: { label: "Награда", icon: Star },
+  admin_grant: { label: "Начисление", icon: Gift },
+  admin_adjustment: { label: "Корректировка", icon: Settings },
+  refund: { label: "Возврат", icon: RotateCcw },
+  expiry: { label: "Истечение", icon: Timer },
+};
 
 export default function TgAppBalance() {
   const [showAll, setShowAll] = useState(false);
@@ -35,8 +53,9 @@ export default function TgAppBalance() {
     );
   }
 
-  const balance = (balanceData as any)?.balance ?? 0;
-  const transactions = (txData as any) ?? [];
+  // Correct field: balanceSKC (not balance)
+  const balance = (balanceData as any)?.balanceSKC ?? 0;
+  const transactions = Array.isArray(txData) ? txData : [];
   const visibleTx = showAll ? transactions : transactions.slice(0, 10);
 
   return (
@@ -76,10 +95,11 @@ export default function TgAppBalance() {
           ) : (
             <div className="divide-y divide-[#1a3a2a]/5">
               {visibleTx.map((tx: any, i: number) => {
-                const isCredit =
-                  tx.type === "credit" ||
-                  tx.type === "earn" ||
-                  (tx.amount && tx.amount > 0);
+                // Correct fields: direction (credit/debit), amountMinor, memo, transactionType
+                const isCredit = tx.direction === "credit";
+                const txTypeInfo = TX_TYPE_LABELS[tx.transactionType] || TX_TYPE_LABELS.topup;
+                const TxIcon = txTypeInfo.icon;
+
                 return (
                   <div
                     key={tx.id || i}
@@ -90,15 +110,11 @@ export default function TgAppBalance() {
                         isCredit ? "bg-emerald-100" : "bg-rose-100"
                       }`}
                     >
-                      {isCredit ? (
-                        <ArrowDownLeft className="h-4 w-4 text-emerald-500" />
-                      ) : (
-                        <ArrowUpRight className="h-4 w-4 text-rose-500" />
-                      )}
+                      <TxIcon className={`h-4 w-4 ${isCredit ? "text-emerald-500" : "text-rose-500"}`} />
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-xs font-medium text-[#1a3a2a] truncate">
-                        {tx.description || tx.reason || "Операция"}
+                        {tx.memo || txTypeInfo.label}
                       </p>
                       {tx.createdAt && (
                         <p className="text-[10px] text-[#1a3a2a]/40 mt-0.5">
@@ -115,7 +131,7 @@ export default function TgAppBalance() {
                       }`}
                     >
                       {isCredit ? "+" : "−"}
-                      {Math.abs(tx.amount ?? 0)}
+                      {Math.abs(tx.amountMinor ?? 0)}
                     </span>
                   </div>
                 );

@@ -2262,3 +2262,10 @@
 ## Bug Fix: removeChild + double createRoot in dev preview
 - [x] Fix main.tsx to be HMR-safe — cache root on container, reuse on HMR reload
 - [x] Verify error no longer appears in dev preview (0 errors after restart)
+
+## Bug Fix: Mini App — SKC balance + multi-animal support
+- [x] Fix SKC balance display — corrected field names (balanceSKC, direction, amountMinor, transactionType, memo)
+- [x] Add multi-animal support to TgAppStatus (animal selector/switcher using allOwnerships)
+- [x] Add multi-animal support to TgAppDelivery (animal selector + per-animal deliveries)
+- [x] TgAppHome is a navigation hub — no animal-specific data needed
+- [x] Test and verify fixes — all 95 files / 2519 tests pass, TS compiles clean
