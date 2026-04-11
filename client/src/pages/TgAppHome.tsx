@@ -20,7 +20,7 @@ import {
 const sections = [
   {
     id: "status",
-    path: "/tg-app/status",
+    path: "/tg/status",
     title: "Моё животное",
     subtitle: "Здоровье, счастье, настроение",
     icon: Heart,
@@ -29,7 +29,7 @@ const sections = [
   },
   {
     id: "delivery",
-    path: "/tg-app/delivery",
+    path: "/tg/delivery",
     title: "Доставки",
     subtitle: "Статус и расписание",
     icon: Truck,
@@ -38,7 +38,7 @@ const sections = [
   },
   {
     id: "balance",
-    path: "/tg-app/balance",
+    path: "/tg/balance",
     title: "Баланс SKC",
     subtitle: "Токены и транзакции",
     icon: Coins,
@@ -47,7 +47,7 @@ const sections = [
   },
   {
     id: "events",
-    path: "/tg-app/events",
+    path: "/tg/events",
     title: "События клуба",
     subtitle: "Ближайшие мероприятия",
     icon: CalendarDays,
@@ -56,7 +56,7 @@ const sections = [
   },
   {
     id: "zoya",
-    path: "/tg-app/zoya",
+    path: "/tg/zoya",
     title: "Зоя — нутрициолог",
     subtitle: "AI-консультации по питанию",
     icon: Stethoscope,

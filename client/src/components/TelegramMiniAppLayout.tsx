@@ -1,5 +1,5 @@
 /**
- * TelegramMiniAppLayout — wrapper for all /tg-app/* pages.
+ * TelegramMiniAppLayout — wrapper for all /tg/* pages.
  * No navbar (Telegram has its own), uses BackButton for navigation,
  * applies Telegram theme colors, and shows auth/error states.
  */
@@ -27,12 +27,12 @@ export default function TelegramMiniAppLayout({
   useEffect(() => {
     if (!webApp) return;
 
-    const isHome = location === "/tg-app" || location === "/tg-app/";
+    const isHome = location === "/tg" || location === "/tg/";
 
     if (showBack && !isHome) {
       webApp.BackButton.show();
       const handler = () => {
-        setLocation("/tg-app");
+        setLocation("/tg");
       };
       webApp.BackButton.onClick(handler);
       return () => {
