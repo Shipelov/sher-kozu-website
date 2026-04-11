@@ -335,6 +335,15 @@ async function startServer() {
     console.warn("[Telegram] Failed to register webhook handler:", err);
   }
 
+  // Telegram Mini App auth
+  try {
+    const { registerTelegramMiniAppRoutes } = await import("../telegramMiniApp");
+    registerTelegramMiniAppRoutes(app);
+    console.log("[Telegram] Mini App auth registered at /api/tg-auth");
+  } catch (err) {
+    console.warn("[Telegram] Failed to register Mini App auth:", err);
+  }
+
   // OAuth callback under /api/oauth/callback
   registerOAuthRoutes(app);
   // tRPC API
@@ -401,6 +410,30 @@ async function startServer() {
           const webhookUrl = `https://${domain}/api/telegram/webhook`;
           await bot.api.setWebhook(webhookUrl, { drop_pending_updates: true });
           console.log(`[Telegram] Webhook set to ${webhookUrl}`);
+
+          // Register bot commands
+          await bot.api.setMyCommands([
+            { command: "status", description: "Моё животное — статус и метрики" },
+            { command: "delivery", description: "Статус доставки" },
+            { command: "balance", description: "Баланс SKC токенов" },
+            { command: "events", description: "События клуба" },
+            { command: "photo", description: "Последнее фото животного" },
+            { command: "zoya", description: "AI-нутрициолог Зоя" },
+            { command: "help", description: "AI-ассистент Маша" },
+            { command: "settings", description: "Настройки уведомлений" },
+          ]);
+          console.log("[Telegram] Bot commands registered");
+
+          // Set Mini App as the menu button
+          const miniAppUrl = `https://${domain}/tg`;
+          await bot.api.setChatMenuButton({
+            menu_button: {
+              type: "web_app",
+              text: "Личный кабинет",
+              web_app: { url: miniAppUrl },
+            },
+          });
+          console.log(`[Telegram] Mini App menu button set to ${miniAppUrl}`);
         } catch (err) {
           console.warn("[Telegram] Failed to set webhook:", err);
         }

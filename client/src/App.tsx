@@ -51,6 +51,15 @@ const AdminClubRegistrations = lazy(() => import("./pages/AdminClubRegistrations
 const AdminPerformance = lazy(() => import("./pages/AdminPerformance"));
 const AdminNutriAnalytics = lazy(() => import("./pages/AdminNutriAnalytics"));
 const ZoyaSharedView = lazy(() => import("./pages/ZoyaSharedView"));
+
+/* ─── Telegram Mini App pages ─── */
+const TgAppHome = lazy(() => import("./pages/TgAppHome"));
+const TgAppStatus = lazy(() => import("./pages/TgAppStatus"));
+const TgAppDelivery = lazy(() => import("./pages/TgAppDelivery"));
+const TgAppBalance = lazy(() => import("./pages/TgAppBalance"));
+const TgAppEvents = lazy(() => import("./pages/TgAppEvents"));
+const TgAppZoya = lazy(() => import("./pages/TgAppZoya"));
+
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 /* ─── Suspense fallback spinner ─── */
@@ -140,6 +149,14 @@ function Router() {
         <Route path="/faq" component={FAQ} />
         <Route path="/nutritionist" component={Nutritionist} />
         <Route path="/zoya/share/:token" component={ZoyaSharedView} />
+        {/* ─── Telegram Mini App routes ─── */}
+        <Route path="/tg" component={TgAppHome} />
+        <Route path="/tg/status" component={TgAppStatus} />
+        <Route path="/tg/delivery" component={TgAppDelivery} />
+        <Route path="/tg/balance" component={TgAppBalance} />
+        <Route path="/tg/events" component={TgAppEvents} />
+        <Route path="/tg/zoya" component={TgAppZoya} />
+
         <Route path="/register">{() => <Redirect to="/?register=1" />}</Route>
         <Route path="/login">{() => <Redirect to="/?login=1" />}</Route>
         <Route path="/404" component={NotFound} />

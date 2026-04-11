@@ -6,12 +6,31 @@ import { createRoot } from "react-dom/client";
 import superjson from "superjson";
 import App from "./App";
 import { getLoginUrl, navigateToLogin } from "./const";
+import { TelegramProvider } from "./contexts/TelegramContext";
 import "./index.css";
+
+/**
+ * Telegram Mini App token store.
+ * Set by TelegramContext after successful auth, read by tRPC link.
+ */
+let _tgMiniAppToken: string | null = null;
+export function setTgMiniAppToken(token: string | null) {
+  _tgMiniAppToken = token;
+}
+export function getTgMiniAppToken() {
+  return _tgMiniAppToken;
+}
+
+/** Detect if we're inside Telegram WebView */
+const isTelegramMiniApp = !!(window as any).Telegram?.WebApp?.initData;
 
 const queryClient = new QueryClient();
 let hasScheduledUnauthorizedRedirect = false;
 
 const redirectToLoginIfUnauthorized = (error: unknown) => {
+  // Don't redirect inside Telegram Mini App
+  if (isTelegramMiniApp) return;
+
   if (!(error instanceof TRPCClientError)) return;
   if (typeof window === "undefined") return;
 
@@ -50,8 +69,17 @@ const trpcClient = trpc.createClient({
       url: "/api/trpc",
       transformer: superjson,
       fetch(input, init) {
+        const headers = new Headers((init as any)?.headers);
+
+        // Inject Telegram Mini App token if available
+        const tgToken = getTgMiniAppToken();
+        if (tgToken) {
+          headers.set("Authorization", `Bearer ${tgToken}`);
+        }
+
         return globalThis.fetch(input, {
           ...(init ?? {}),
+          headers,
           credentials: "include",
         });
       },
@@ -62,7 +90,9 @@ const trpcClient = trpc.createClient({
 createRoot(document.getElementById("root")!).render(
   <trpc.Provider client={trpcClient} queryClient={queryClient}>
     <QueryClientProvider client={queryClient}>
-      <App />
+      <TelegramProvider>
+        <App />
+      </TelegramProvider>
     </QueryClientProvider>
   </trpc.Provider>
 );

@@ -2244,3 +2244,17 @@
 - [x] Install qrcode.react library
 - [x] Show QR code next to connect button when deep link is generated
 - [x] QR code should encode the deep link URL for scanning from phone
+
+## Telegram Mini App
+- [x] Research Telegram Mini App SDK (native WebApp JS API)
+- [x] Set up /tg route prefix for Mini App pages
+- [x] Implement Telegram WebApp auth bridge (initData → server HMAC validation → JWT → tRPC)
+- [x] Build Mini App home screen with navigation cards (TgAppHome)
+- [x] Build animal status screen — wellness bars, photo, name (TgAppStatus)
+- [x] Build delivery tracker screen — timeline, status badges (TgAppDelivery)
+- [x] Build SKC balance screen — balance, recent transactions (TgAppBalance)
+- [x] Build club events screen — upcoming events list (TgAppEvents)
+- [x] Build Zoya AI chat screen — text + voice input (TgAppZoya)
+- [x] Register bot commands via setMyCommands on deploy
+- [x] Set Mini App as menu button via setChatMenuButton on deploy
+- [x] All 95 files / 2519 tests pass, TS compiles clean
