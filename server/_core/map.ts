@@ -1,9 +1,10 @@
 /**
- * Google Maps API Integration for Manus WebDev Templates
- * 
+ * Google Maps API Integration — Direct Google Maps API (no proxy)
+ *
  * Main function: makeRequest<T>(endpoint, params) - Makes authenticated requests to Google Maps APIs
- * All credentials are automatically injected. Array parameters use | as separator.
- * 
+ * Uses GOOGLE_MAPS_API_KEY environment variable for authentication.
+ * Array parameters use | as separator.
+ *
  * See API examples below the type definitions for usage patterns.
  */
 
@@ -19,17 +20,16 @@ type MapsConfig = {
 };
 
 function getMapsConfig(): MapsConfig {
-  const baseUrl = ENV.forgeApiUrl;
-  const apiKey = ENV.forgeApiKey;
+  const apiKey = ENV.googleMapsApiKey;
 
-  if (!baseUrl || !apiKey) {
+  if (!apiKey) {
     throw new Error(
-      "Google Maps proxy credentials missing: set BUILT_IN_FORGE_API_URL and BUILT_IN_FORGE_API_KEY"
+      "Google Maps API key missing: set GOOGLE_MAPS_API_KEY environment variable"
     );
   }
 
   return {
-    baseUrl: baseUrl.replace(/\/+$/, ""),
+    baseUrl: "https://maps.googleapis.com",
     apiKey,
   };
 }
@@ -45,7 +45,7 @@ interface RequestOptions {
 
 /**
  * Make authenticated requests to Google Maps APIs
- * 
+ *
  * @param endpoint - The API endpoint (e.g., "/maps/api/geocode/json")
  * @param params - Query parameters for the request
  * @param options - Additional request options
@@ -58,10 +58,10 @@ export async function makeRequest<T = unknown>(
 ): Promise<T> {
   const { baseUrl, apiKey } = getMapsConfig();
 
-  // Construct full URL: baseUrl + /v1/maps/proxy + endpoint
-  const url = new URL(`${baseUrl}/v1/maps/proxy${endpoint}`);
+  // Construct full URL: https://maps.googleapis.com + endpoint
+  const url = new URL(`${baseUrl}${endpoint}`);
 
-  // Add API key as query parameter (standard Google Maps API authentication)
+  // Add API key as query parameter
   url.searchParams.append("key", apiKey);
 
   // Add other query parameters
@@ -238,63 +238,63 @@ export type RoadsResult = {
 /**
  * GEOCODING - Convert between addresses and coordinates
  * Endpoint: /maps/api/geocode/json
- * Input: { address: string } OR { latlng: string }  // latlng: "37.42,-122.08"
- * Output: GeocodingResult  // results[0].geometry.location, results[0].formatted_address
+ * Input: { address: string } OR { latlng: string }
+ * Output: GeocodingResult
  */
 
 /**
  * DIRECTIONS - Get navigation routes between locations
  * Endpoint: /maps/api/directions/json
  * Input: { origin: string, destination: string, mode?: TravelMode, waypoints?: string, alternatives?: boolean }
- * Output: DirectionsResult  // routes[0].legs[0].distance, duration, steps
+ * Output: DirectionsResult
  */
 
 /**
  * DISTANCE MATRIX - Calculate travel times/distances for multiple origin-destination pairs
  * Endpoint: /maps/api/distancematrix/json
- * Input: { origins: string, destinations: string, mode?: TravelMode, units?: "metric"|"imperial" }  // origins: "NYC|Boston"
- * Output: DistanceMatrixResult  // rows[0].elements[1] = first origin to second destination
+ * Input: { origins: string, destinations: string, mode?: TravelMode, units?: "metric"|"imperial" }
+ * Output: DistanceMatrixResult
  */
 
 /**
  * PLACE SEARCH - Find businesses/POIs by text query
  * Endpoint: /maps/api/place/textsearch/json
- * Input: { query: string, location?: string, radius?: number, type?: string }  // location: "40.7,-74.0"
- * Output: PlacesSearchResult  // results[].name, rating, geometry.location, place_id
+ * Input: { query: string, location?: string, radius?: number, type?: string }
+ * Output: PlacesSearchResult
  */
 
 /**
  * NEARBY SEARCH - Find places near a specific location
  * Endpoint: /maps/api/place/nearbysearch/json
- * Input: { location: string, radius: number, type?: string, keyword?: string }  // location: "40.7,-74.0"
+ * Input: { location: string, radius: number, type?: string, keyword?: string }
  * Output: PlacesSearchResult
  */
 
 /**
  * PLACE DETAILS - Get comprehensive information about a specific place
  * Endpoint: /maps/api/place/details/json
- * Input: { place_id: string, fields?: string }  // fields: "name,rating,opening_hours,website"
- * Output: PlaceDetailsResult  // result.name, rating, opening_hours, etc.
+ * Input: { place_id: string, fields?: string }
+ * Output: PlaceDetailsResult
  */
 
 /**
  * ELEVATION - Get altitude data for geographic points
  * Endpoint: /maps/api/elevation/json
- * Input: { locations?: string, path?: string, samples?: number }  // locations: "39.73,-104.98|36.45,-116.86"
- * Output: ElevationResult  // results[].elevation (meters)
+ * Input: { locations?: string, path?: string, samples?: number }
+ * Output: ElevationResult
  */
 
 /**
  * TIME ZONE - Get timezone information for a location
  * Endpoint: /maps/api/timezone/json
- * Input: { location: string, timestamp: number }  // timestamp: Math.floor(Date.now()/1000)
- * Output: TimeZoneResult  // timeZoneId, timeZoneName
+ * Input: { location: string, timestamp: number }
+ * Output: TimeZoneResult
  */
 
 /**
  * ROADS - Snap GPS traces to roads, find nearest roads, get speed limits
- * - /v1/snapToRoads: Input: { path: string, interpolate?: boolean }  // path: "lat,lng|lat,lng"
- * - /v1/nearestRoads: Input: { points: string }  // points: "lat,lng|lat,lng"
+ * - /v1/snapToRoads: Input: { path: string, interpolate?: boolean }
+ * - /v1/nearestRoads: Input: { points: string }
  * - /v1/speedLimits: Input: { path: string, units?: SpeedUnit }
  * Output: RoadsResult
  */
@@ -307,13 +307,8 @@ export type RoadsResult = {
  */
 
 /**
- * STATIC MAPS - Generate map images as URLs (for emails, reports, <img> tags)
+ * STATIC MAPS - Generate map images as URLs
  * Endpoint: /maps/api/staticmap
  * Input: URL params - center: string, zoom: number, size: string, markers?: string, maptype?: MapType
  * Output: Image URL (not JSON) - use directly in <img src={url} />
- * Note: Construct URL manually with getMapsConfig() for auth
  */
-
-
-
-

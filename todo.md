@@ -2269,3 +2269,19 @@
 - [x] Add multi-animal support to TgAppDelivery (animal selector + per-animal deliveries)
 - [x] TgAppHome is a navigation hub — no animal-specific data needed
 - [x] Test and verify fixes — all 95 files / 2519 tests pass, TS compiles clean
+
+## Phase 0: Manus → Standalone Migration
+- [x] Fix frontend URL construction error — rewritten const.ts, getLoginUrl now returns /login path
+- [x] Remove Manus OAuth dependency — kept localAuth as sole auth, updated useAuth.ts, main.tsx
+- [x] Replace LLM helper — llm.ts now uses direct OpenAI API (OPENAI_API_KEY/OPENAI_API_URL)
+- [x] Replace S3 storage proxy — storage.ts now uses direct AWS S3 SDK (S3_ENDPOINT/S3_ACCESS_KEY_ID/S3_SECRET_ACCESS_KEY/S3_BUCKET)
+- [x] Replace Maps proxy — map.ts uses direct Google Maps API (GOOGLE_MAPS_API_KEY), Map.tsx uses VITE_GOOGLE_MAPS_API_KEY
+- [x] Replace notification helper — notification.ts now uses Telegram bot (TELEGRAM_BOT_TOKEN/TELEGRAM_ADMIN_CHAT_ID)
+- [x] Replace voice transcription — voiceTranscription.ts now uses direct OpenAI Whisper API
+- [x] Replace image generation — imageGeneration.ts now uses direct OpenAI DALL-E API
+- [x] Update env.ts — added standalone vars, Manus vars kept as fallback
+- [x] Update CSP headers — removed manus.im/manus.space, added Google Maps/OpenAI/Telegram
+- [x] Fix all references — AnimalProfile share URL, AdminUsers filter, cookie name
+- [x] Update all 8 failing tests — securityHeaders, googleOAuthButton, phaseD-regression, animalProfileVisuals
+- [x] Test build and all 2518 tests pass (95 files)
+- [ ] Deploy to VDS and verify working

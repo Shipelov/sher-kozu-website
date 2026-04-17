@@ -18,21 +18,21 @@ const FARM_LAT = 56.0598821;
 const FARM_LNG = 36.6134708;
 const FARM_TITLE = "Ферма Шерь Козу, д. Назарово";
 
-/* ─── Forge proxy for Google Maps Embed API ─── */
-const FORGE_API_KEY = import.meta.env.VITE_FRONTEND_FORGE_API_KEY;
-const FORGE_BASE_URL =
-  import.meta.env.VITE_FRONTEND_FORGE_API_URL ||
-  "https://forge.butterfly-effect.dev";
+/* ─── Google Maps API key ─── */
+const GOOGLE_MAPS_API_KEY =
+  import.meta.env.VITE_GOOGLE_MAPS_API_KEY ||
+  import.meta.env.VITE_FRONTEND_FORGE_API_KEY ||
+  "";
 
 /**
  * Multiple embed URL strategies for retry fallback.
  * Each attempt uses a different URL pattern for maximum reliability.
  */
 const EMBED_URLS = [
-  // Strategy 1: Simple Google Maps embed
+  // Strategy 1: Google Maps Embed API with API key
+  `https://www.google.com/maps/embed/v1/place?key=${GOOGLE_MAPS_API_KEY}&q=${FARM_LAT},${FARM_LNG}&zoom=12&language=ru`,
+  // Strategy 2: Simple Google Maps embed (no API key needed)
   `https://www.google.com/maps?q=${FARM_LAT},${FARM_LNG}&z=12&hl=ru&output=embed`,
-  // Strategy 2: Forge proxy embed
-  `${FORGE_BASE_URL}/v1/maps/proxy/maps/embed/v1/place?key=${FORGE_API_KEY}&q=${FARM_LAT},${FARM_LNG}&zoom=12&language=ru`,
   // Strategy 3: Direct Google Maps embed with pb parameter
   `https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d35000!2d${FARM_LNG}!3d${FARM_LAT}!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0%3A0x0!2zNTbCsDAzJzM1LjYiTiAzNsKwMzYnNDguNSJF!5e0!3m2!1sru!2sru!4v1`,
 ];

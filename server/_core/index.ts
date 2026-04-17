@@ -125,12 +125,12 @@ async function startServer() {
         "Content-Security-Policy",
         [
           "default-src 'self'",
-          "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://manus-analytics.com",
+          "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://maps.googleapis.com",
           "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net",
           "font-src 'self' https://fonts.gstatic.com",
-          "img-src 'self' data: blob: https://*.cloudfront.net https://*.amazonaws.com",
-          "connect-src 'self' ws: wss: https://*.manus.im https://*.manus.computer https://*.cloudfront.net https://*.amazonaws.com https://manus-analytics.com",
-          "frame-ancestors 'self' https://*.manus.im https://*.manus.space https://*.manus.computer",
+          "img-src 'self' data: blob: https://*.cloudfront.net https://*.amazonaws.com https://*.googleapis.com https://maps.gstatic.com https://maps.google.com",
+          "connect-src 'self' ws: wss: https://*.cloudfront.net https://*.amazonaws.com https://api.openai.com https://api.telegram.org https://maps.googleapis.com https://*.storage.yandexcloud.net",
+          "frame-ancestors 'self' https://koza.vip https://*.koza.vip",
         ].join("; ")
       );
     }
@@ -405,7 +405,7 @@ async function startServer() {
         try {
           const { getBot } = await import("../telegramBot");
           const bot = getBot();
-          // Use the first available custom domain, fallback to manus.space
+          // Use the configured domain (DEPLOY_DOMAIN env var), fallback to koza.vip
           const domain = process.env.DEPLOY_DOMAIN || "koza.vip";
           const webhookUrl = `https://${domain}/api/telegram/webhook`;
           await bot.api.setWebhook(webhookUrl, { drop_pending_updates: true });

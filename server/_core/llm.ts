@@ -1,3 +1,12 @@
+/**
+ * LLM helper — OpenAI-compatible API client.
+ *
+ * Priority: OPENAI_API_URL > BUILT_IN_FORGE_API_URL > https://api.openai.com
+ * Auth key: OPENAI_API_KEY > BUILT_IN_FORGE_API_KEY
+ *
+ * The request/response format is fully OpenAI Chat Completions compatible,
+ * so it works with OpenAI, Azure OpenAI, or any proxy that speaks the same protocol.
+ */
 import { ENV } from "./env";
 
 export type Role = "system" | "user" | "assistant" | "tool" | "function";
@@ -19,7 +28,7 @@ export type FileContent = {
   type: "file_url";
   file_url: {
     url: string;
-    mime_type?: "audio/mpeg" | "audio/wav" | "application/pdf" | "audio/mp4" | "video/mp4" ;
+    mime_type?: "audio/mpeg" | "audio/wav" | "application/pdf" | "audio/mp4" | "video/mp4";
   };
 };
 
@@ -120,19 +129,9 @@ const normalizeContentPart = (
   if (typeof part === "string") {
     return { type: "text", text: part };
   }
-
-  if (part.type === "text") {
-    return part;
-  }
-
-  if (part.type === "image_url") {
-    return part;
-  }
-
-  if (part.type === "file_url") {
-    return part;
-  }
-
+  if (part.type === "text") return part;
+  if (part.type === "image_url") return part;
+  if (part.type === "file_url") return part;
   throw new Error("Unsupported message content part");
 };
 
@@ -143,31 +142,16 @@ const normalizeMessage = (message: Message) => {
     const content = ensureArray(message.content)
       .map(part => (typeof part === "string" ? part : JSON.stringify(part)))
       .join("\n");
-
-    return {
-      role,
-      name,
-      tool_call_id,
-      content,
-    };
+    return { role, name, tool_call_id, content };
   }
 
   const contentParts = ensureArray(message.content).map(normalizeContentPart);
 
-  // If there's only text content, collapse to a single string for compatibility
   if (contentParts.length === 1 && contentParts[0].type === "text") {
-    return {
-      role,
-      name,
-      content: contentParts[0].text,
-    };
+    return { role, name, content: contentParts[0].text };
   }
 
-  return {
-    role,
-    name,
-    content: contentParts,
-  };
+  return { role, name, content: contentParts };
 };
 
 const normalizeToolChoice = (
@@ -175,49 +159,46 @@ const normalizeToolChoice = (
   tools: Tool[] | undefined
 ): "none" | "auto" | ToolChoiceExplicit | undefined => {
   if (!toolChoice) return undefined;
-
-  if (toolChoice === "none" || toolChoice === "auto") {
-    return toolChoice;
-  }
-
+  if (toolChoice === "none" || toolChoice === "auto") return toolChoice;
   if (toolChoice === "required") {
     if (!tools || tools.length === 0) {
-      throw new Error(
-        "tool_choice 'required' was provided but no tools were configured"
-      );
+      throw new Error("tool_choice 'required' was provided but no tools were configured");
     }
-
     if (tools.length > 1) {
-      throw new Error(
-        "tool_choice 'required' needs a single tool or specify the tool name explicitly"
-      );
+      throw new Error("tool_choice 'required' needs a single tool or specify the tool name explicitly");
     }
-
-    return {
-      type: "function",
-      function: { name: tools[0].function.name },
-    };
+    return { type: "function", function: { name: tools[0].function.name } };
   }
-
   if ("name" in toolChoice) {
-    return {
-      type: "function",
-      function: { name: toolChoice.name },
-    };
+    return { type: "function", function: { name: toolChoice.name } };
   }
-
   return toolChoice;
 };
 
-const resolveApiUrl = () =>
-  ENV.forgeApiUrl && ENV.forgeApiUrl.trim().length > 0
-    ? `${ENV.forgeApiUrl.replace(/\/$/, "")}/v1/chat/completions`
-    : "https://forge.manus.im/v1/chat/completions";
-
-const assertApiKey = () => {
-  if (!ENV.forgeApiKey) {
-    throw new Error("OPENAI_API_KEY is not configured");
+/**
+ * Resolve the LLM API URL.
+ * Priority: OPENAI_API_URL > BUILT_IN_FORGE_API_URL > https://api.openai.com
+ */
+const resolveApiUrl = (): string => {
+  if (ENV.openaiApiUrl && ENV.openaiApiUrl.trim().length > 0) {
+    return `${ENV.openaiApiUrl.replace(/\/$/, "")}/v1/chat/completions`;
   }
+  if (ENV.forgeApiUrl && ENV.forgeApiUrl.trim().length > 0) {
+    return `${ENV.forgeApiUrl.replace(/\/$/, "")}/v1/chat/completions`;
+  }
+  return "https://api.openai.com/v1/chat/completions";
+};
+
+/**
+ * Resolve the API key.
+ * Priority: OPENAI_API_KEY > BUILT_IN_FORGE_API_KEY
+ */
+const resolveApiKey = (): string => {
+  const key = ENV.openaiApiKey; // already falls back to forgeApiKey in env.ts
+  if (!key) {
+    throw new Error("LLM API key is not configured. Set OPENAI_API_KEY or BUILT_IN_FORGE_API_KEY.");
+  }
+  return key;
 };
 
 const normalizeResponseFormat = ({
@@ -241,9 +222,7 @@ const normalizeResponseFormat = ({
       explicitFormat.type === "json_schema" &&
       !explicitFormat.json_schema?.schema
     ) {
-      throw new Error(
-        "responseFormat json_schema requires a defined schema object"
-      );
+      throw new Error("responseFormat json_schema requires a defined schema object");
     }
     return explicitFormat;
   }
@@ -266,7 +245,7 @@ const normalizeResponseFormat = ({
 };
 
 export async function invokeLLM(params: InvokeParams): Promise<InvokeResult> {
-  assertApiKey();
+  const apiKey = resolveApiKey();
 
   const {
     messages,
@@ -280,7 +259,7 @@ export async function invokeLLM(params: InvokeParams): Promise<InvokeResult> {
   } = params;
 
   const payload: Record<string, unknown> = {
-    model: "gemini-2.5-flash",
+    model: "gpt-4o-mini",
     messages: messages.map(normalizeMessage),
   };
 
@@ -296,10 +275,7 @@ export async function invokeLLM(params: InvokeParams): Promise<InvokeResult> {
     payload.tool_choice = normalizedToolChoice;
   }
 
-  payload.max_tokens = 32768
-  payload.thinking = {
-    "budget_tokens": 128
-  }
+  payload.max_tokens = 32768;
 
   const normalizedResponseFormat = normalizeResponseFormat({
     responseFormat,
@@ -316,7 +292,7 @@ export async function invokeLLM(params: InvokeParams): Promise<InvokeResult> {
     method: "POST",
     headers: {
       "content-type": "application/json",
-      authorization: `Bearer ${ENV.forgeApiKey}`,
+      authorization: `Bearer ${apiKey}`,
     },
     body: JSON.stringify(payload),
   });

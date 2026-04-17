@@ -1,9 +1,11 @@
 /**
- * GOOGLE MAPS FRONTEND INTEGRATION - ESSENTIAL GUIDE
+ * GOOGLE MAPS FRONTEND INTEGRATION
+ *
+ * Uses direct Google Maps JavaScript API (no Manus proxy).
+ * Requires VITE_GOOGLE_MAPS_API_KEY in environment.
  *
  * USAGE FROM PARENT COMPONENT:
  * ======
- *
  * const mapRef = useRef<google.maps.Map | null>(null);
  *
  * <MapView
@@ -13,10 +15,8 @@
  *     mapRef.current = map;
  *   }}
  * />
- *
  * ======
  * Available Libraries: marker, places, geocoding, geometry, routes
- * See original documentation comments for full API reference.
  */
 
 /// <reference types="@types/google.maps" />
@@ -33,98 +33,67 @@ declare global {
   }
 }
 
-const API_KEY = import.meta.env.VITE_FRONTEND_FORGE_API_KEY;
-const FORGE_BASE_URL =
-  import.meta.env.VITE_FRONTEND_FORGE_API_URL ||
-  "https://forge.butterfly-effect.dev";
-const MAPS_PROXY_URL = `${FORGE_BASE_URL}/v1/maps/proxy`;
+const GOOGLE_MAPS_API_KEY =
+  import.meta.env.VITE_GOOGLE_MAPS_API_KEY ||
+  import.meta.env.VITE_FRONTEND_FORGE_API_KEY ||
+  "";
 
 /* ─── Retry configuration ─── */
 const MAX_RETRIES = 3;
-const BASE_DELAY_MS = 1000; // 1s, 2s, 4s exponential backoff
+const BASE_DELAY_MS = 1000;
 
 /**
- * Load the Google Maps script once using a blob URL approach.
- *
- * The Manus proxy may return response headers (e.g. Cross-Origin-Resource-Policy)
- * that prevent the browser from executing the script as a cross-origin resource.
- * To work around this, we:
- * 1. fetch() the script content (which works with CORS)
- * 2. Create a same-origin blob: URL from the response
- * 3. Load the blob URL as a script tag
- *
- * Uses window.__gmapsLoading to survive HMR module reloads.
- * Script is loaded with async pattern for better performance.
+ * Load the Google Maps script directly from Google CDN.
+ * Uses the standard script tag approach — no proxy needed.
  */
 function loadMapScript(): Promise<void> {
-  // Already fully loaded
   if (window.google?.maps) {
     return Promise.resolve();
   }
 
-  // A load is already in progress (survives HMR)
   if (window.__gmapsLoading) {
     return window.__gmapsLoading;
   }
 
-  window.__gmapsLoading = (async () => {
-    // Use loading=async parameter for better performance
-    const scriptUrl = `${MAPS_PROXY_URL}/maps/api/js?key=${API_KEY}&v=weekly&libraries=marker,places,geocoding,geometry,routes&loading=async`;
-
-    // If google.maps appeared while we were setting up (race condition), done
-    if (window.google?.maps) return;
-
-    // Fetch the script content
-    const response = await fetch(scriptUrl);
-    if (!response.ok) {
-      throw new Error(`Failed to fetch Google Maps script: ${response.status}`);
+  window.__gmapsLoading = new Promise<void>((resolve, reject) => {
+    if (window.google?.maps) {
+      resolve();
+      return;
     }
 
-    const scriptText = await response.text();
+    const script = document.createElement("script");
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&v=weekly&libraries=marker,places,geocoding,geometry,routes&loading=async`;
+    script.async = true;
+    script.defer = true;
 
-    // If google.maps appeared during fetch (another instance loaded it), done
-    if (window.google?.maps) return;
-
-    // Create a blob URL and load as same-origin script (async attribute for performance)
-    const blob = new Blob([scriptText], { type: "text/javascript" });
-    const blobUrl = URL.createObjectURL(blob);
-
-    await new Promise<void>((resolve, reject) => {
-      const script = document.createElement("script");
-      script.src = blobUrl;
-      script.async = true; // Async loading for better performance
-      script.onload = () => {
-        URL.revokeObjectURL(blobUrl);
-        if (window.google?.maps) {
-          resolve();
-        } else {
-          // Script loaded but google.maps not available — wait briefly
-          const check = setInterval(() => {
-            if (window.google?.maps) {
-              clearInterval(check);
-              resolve();
-            }
-          }, 100);
-          // Timeout after 10s
-          setTimeout(() => {
+    script.onload = () => {
+      if (window.google?.maps) {
+        resolve();
+      } else {
+        const check = setInterval(() => {
+          if (window.google?.maps) {
             clearInterval(check);
-            if (window.google?.maps) {
-              resolve();
-            } else {
-              reject(new Error("Google Maps script load timeout"));
-            }
-          }, 10000);
-        }
-      };
-      script.onerror = () => {
-        URL.revokeObjectURL(blobUrl);
-        reject(new Error("Failed to load Google Maps script"));
-      };
-      document.head.appendChild(script);
-    });
-  })();
+            resolve();
+          }
+        }, 100);
+        setTimeout(() => {
+          clearInterval(check);
+          if (window.google?.maps) {
+            resolve();
+          } else {
+            reject(new Error("Google Maps script load timeout"));
+          }
+        }, 10000);
+      }
+    };
 
-  // If loading fails, allow retry
+    script.onerror = () => {
+      reject(new Error("Failed to load Google Maps script"));
+    };
+
+    document.head.appendChild(script);
+  });
+
   window.__gmapsLoading.catch(() => {
     window.__gmapsLoading = undefined;
   });
@@ -134,7 +103,6 @@ function loadMapScript(): Promise<void> {
 
 /**
  * Load Google Maps with retry logic and exponential backoff.
- * Retries up to MAX_RETRIES times with delays of 1s, 2s, 4s.
  */
 async function loadMapScriptWithRetry(): Promise<{ success: boolean; error?: Error }> {
   let lastError: Error | null = null;
@@ -148,7 +116,6 @@ async function loadMapScriptWithRetry(): Promise<{ success: boolean; error?: Err
       window.__gmapsLoading = undefined;
 
       if (attempt < MAX_RETRIES - 1) {
-        // Exponential backoff: 1s, 2s, 4s
         const delay = BASE_DELAY_MS * Math.pow(2, attempt);
         await new Promise((r) => setTimeout(r, delay));
       }
@@ -266,7 +233,6 @@ export function MapView({
       };
 
       if (hasCustomStyles) {
-        // Use the `styles` property for cross-device reliability (raster rendering)
         mapOptions.styles = styles;
       } else {
         mapOptions.mapId = "DEMO_MAP_ID";

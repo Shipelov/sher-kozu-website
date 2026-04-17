@@ -427,7 +427,7 @@ export default function AnimalProfile() {
   }
 
   const shareUrl = useMemo(() => {
-    if (typeof window === "undefined") return `https://sherkozu.manus.space/animals/${animalSlug}`;
+    if (typeof window === "undefined") return `https://koza.vip/animals/${animalSlug}`;
     return `${window.location.origin}/animals/${animalSlug}?photo=${selectedImageId}`;
   }, [animalSlug, selectedImageId]);
 
@@ -490,7 +490,7 @@ export default function AnimalProfile() {
 
   async function handlePurchaseShare() {
     if (!data?.id) { toast.error("Профиль ещё загружается"); return; }
-    const hasSession = typeof document !== "undefined" && document.cookie.includes("manus_session=");
+    const hasSession = typeof document !== "undefined" && document.cookie.includes("session=");
     if (!isAuthenticated && !hasSession) { navigateToLogin(`/animals/${animalSlug}?share=${selectedSharePercent}`); return; }
     const plan = data?.plans?.[0] ?? null;
     const dur = plan?.durations?.[0] ?? null;

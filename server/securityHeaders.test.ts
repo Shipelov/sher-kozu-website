@@ -57,14 +57,14 @@ describe("Security Headers Middleware", () => {
     expect(cspIndex - lastProdCheck).toBeLessThan(200);
   });
 
-  it("CSP includes frame-ancestors for Manus domains", () => {
+  it("CSP includes frame-ancestors for self and koza.vip", () => {
     expect(serverEntry).toContain("frame-ancestors");
-    expect(serverEntry).toContain("https://*.manus.im");
-    expect(serverEntry).toContain("https://*.manus.space");
+    expect(serverEntry).toContain("https://koza.vip");
   });
 
-  it("CSP includes manus-analytics.com in script-src and connect-src", () => {
-    expect(serverEntry).toContain("https://manus-analytics.com");
+  it("CSP includes Google Maps and OpenAI in connect-src", () => {
+    expect(serverEntry).toContain("maps.googleapis.com");
+    expect(serverEntry).toContain("api.openai.com");
   });
 
   it("CSP includes ws: and wss: in connect-src for websocket support", () => {

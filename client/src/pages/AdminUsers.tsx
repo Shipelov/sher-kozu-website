@@ -606,7 +606,7 @@ export default function AdminUsers() {
                   <SelectItem value="all">Все методы</SelectItem>
                   <SelectItem value="local">Локальный</SelectItem>
                   <SelectItem value="bitrix">Bitrix</SelectItem>
-                  <SelectItem value="manus">Manus OAuth</SelectItem>
+                  <SelectItem value="telegram">Telegram</SelectItem>
                 </SelectContent>
               </Select>
 

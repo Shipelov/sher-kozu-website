@@ -1,3 +1,9 @@
+/**
+ * Owner notification helper — sends alerts via Telegram Bot.
+ *
+ * Falls back to the Manus Forge notification service if TELEGRAM_ADMIN_CHAT_ID
+ * is not configured (backward compatibility during migration).
+ */
 import { TRPCError } from "@trpc/server";
 import { ENV } from "./env";
 
@@ -12,16 +18,6 @@ const CONTENT_MAX_LENGTH = 20000;
 const trimValue = (value: string): string => value.trim();
 const isNonEmptyString = (value: unknown): value is string =>
   typeof value === "string" && value.trim().length > 0;
-
-const buildEndpointUrl = (baseUrl: string): string => {
-  const normalizedBase = baseUrl.endsWith("/")
-    ? baseUrl
-    : `${baseUrl}/`;
-  return new URL(
-    "webdevtoken.v1.WebDevService/SendNotification",
-    normalizedBase
-  ).toString();
-};
 
 const validatePayload = (input: NotificationPayload): NotificationPayload => {
   if (!isNonEmptyString(input.title)) {
@@ -58,31 +54,82 @@ const validatePayload = (input: NotificationPayload): NotificationPayload => {
 };
 
 /**
- * Dispatches a project-owner notification through the Manus Notification Service.
- * Returns `true` if the request was accepted, `false` when the upstream service
- * cannot be reached (callers can fall back to email/slack). Validation errors
- * bubble up as TRPC errors so callers can fix the payload.
+ * Send notification via Telegram Bot API.
  */
-export async function notifyOwner(
-  payload: NotificationPayload
+async function sendTelegramNotification(
+  title: string,
+  content: string
 ): Promise<boolean> {
-  const { title, content } = validatePayload(payload);
+  const botToken = ENV.telegramBotToken;
+  const chatId = ENV.telegramAdminChatId;
 
-  if (!ENV.forgeApiUrl) {
-    throw new TRPCError({
-      code: "INTERNAL_SERVER_ERROR",
-      message: "Notification service URL is not configured.",
-    });
+  if (!botToken || !chatId) {
+    console.warn("[Notification] Telegram bot token or admin chat ID not configured");
+    return false;
   }
 
-  if (!ENV.forgeApiKey) {
-    throw new TRPCError({
-      code: "INTERNAL_SERVER_ERROR",
-      message: "Notification service API key is not configured.",
-    });
+  // Truncate for Telegram's 4096 char limit
+  const maxLen = 4000;
+  let text = `<b>${escapeHtml(title)}</b>\n\n${escapeHtml(content)}`;
+  if (text.length > maxLen) {
+    text = text.slice(0, maxLen) + "\n\n<i>…(сообщение обрезано)</i>";
   }
 
-  const endpoint = buildEndpointUrl(ENV.forgeApiUrl);
+  try {
+    const response = await fetch(
+      `https://api.telegram.org/bot${botToken}/sendMessage`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          chat_id: chatId,
+          text,
+          parse_mode: "HTML",
+          disable_web_page_preview: true,
+        }),
+      }
+    );
+
+    if (!response.ok) {
+      const detail = await response.text().catch(() => "");
+      console.warn(
+        `[Notification] Telegram send failed (${response.status}): ${detail}`
+      );
+      return false;
+    }
+
+    return true;
+  } catch (error) {
+    console.warn("[Notification] Telegram send error:", error);
+    return false;
+  }
+}
+
+function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
+/**
+ * Send notification via legacy Manus Forge service.
+ */
+async function sendForgeNotification(
+  title: string,
+  content: string
+): Promise<boolean> {
+  if (!ENV.forgeApiUrl || !ENV.forgeApiKey) {
+    return false;
+  }
+
+  const baseUrl = ENV.forgeApiUrl.endsWith("/")
+    ? ENV.forgeApiUrl
+    : `${ENV.forgeApiUrl}/`;
+  const endpoint = new URL(
+    "webdevtoken.v1.WebDevService/SendNotification",
+    baseUrl
+  ).toString();
 
   try {
     const response = await fetch(endpoint, {
@@ -99,16 +146,39 @@ export async function notifyOwner(
     if (!response.ok) {
       const detail = await response.text().catch(() => "");
       console.warn(
-        `[Notification] Failed to notify owner (${response.status} ${response.statusText})${
-          detail ? `: ${detail}` : ""
-        }`
+        `[Notification] Forge send failed (${response.status}): ${detail}`
       );
       return false;
     }
-
     return true;
   } catch (error) {
-    console.warn("[Notification] Error calling notification service:", error);
+    console.warn("[Notification] Forge send error:", error);
     return false;
   }
+}
+
+/**
+ * Dispatches a project-owner notification.
+ * Priority: Telegram Bot > Manus Forge service.
+ * Returns `true` if the message was delivered, `false` otherwise.
+ */
+export async function notifyOwner(
+  payload: NotificationPayload
+): Promise<boolean> {
+  const { title, content } = validatePayload(payload);
+
+  // Try Telegram first
+  if (ENV.telegramBotToken && ENV.telegramAdminChatId) {
+    return sendTelegramNotification(title, content);
+  }
+
+  // Fallback to Manus Forge
+  if (ENV.forgeApiUrl && ENV.forgeApiKey) {
+    return sendForgeNotification(title, content);
+  }
+
+  console.warn(
+    "[Notification] No notification channel configured. Set TELEGRAM_BOT_TOKEN + TELEGRAM_ADMIN_CHAT_ID, or BUILT_IN_FORGE_API_URL + BUILT_IN_FORGE_API_KEY."
+  );
+  return false;
 }

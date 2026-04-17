@@ -1,43 +1,35 @@
-import { buildOAuthState, encodeOAuthState } from "@shared/oauthState";
-
 export { COOKIE_NAME, ONE_YEAR_MS } from "@shared/const";
 
-// Generate login URL at runtime so redirect URI reflects the current origin.
+/**
+ * getLoginUrl — returns a local login page URL.
+ * After removing Manus OAuth, all authentication goes through
+ * the local AuthModal (email/phone + OTP).
+ * The returnPath is encoded as a query parameter so the login page
+ * can redirect back after successful authentication.
+ */
 export const getLoginUrl = (returnPath?: string) => {
-  const oauthPortalUrl = import.meta.env.VITE_OAUTH_PORTAL_URL;
-  const appId = import.meta.env.VITE_APP_ID;
-  const origin = window.location.origin;
-  const targetPath = returnPath ?? `${window.location.pathname}${window.location.search}${window.location.hash}`;
-  const statePayload = buildOAuthState(origin, targetPath);
-  const state = encodeOAuthState(statePayload);
-
-  const url = new URL(`${oauthPortalUrl}/app-auth`);
-  url.searchParams.set("appId", appId);
-  url.searchParams.set("redirectUri", statePayload.redirectUri);
-  url.searchParams.set("state", state);
-  url.searchParams.set("type", "signIn");
-
-  return url.toString();
+  const targetPath =
+    returnPath ??
+    `${window.location.pathname}${window.location.search}${window.location.hash}`;
+  // Encode the return path so the login page can redirect back
+  return `/login?returnTo=${encodeURIComponent(targetPath)}`;
 };
 
 /**
- * Detect if the page is running inside an iframe (e.g. Manus Preview panel).
- * Cross-origin iframes will throw on `window.top` access, so we catch that too.
+ * Detect if the page is running inside an iframe.
  */
 export function isInsideIframe(): boolean {
   try {
     return window.self !== window.top;
   } catch {
-    // Cross-origin iframe — definitely inside an iframe
     return true;
   }
 }
 
 /**
- * Navigate to the OAuth login page.
- * When running inside an iframe (Manus Preview), opens in a new tab/window
- * to avoid the black screen caused by cross-origin navigation restrictions.
- * On a normal page, uses standard redirect.
+ * Navigate to the login page.
+ * Uses standard redirect for normal pages.
+ * Opens in a new tab when inside an iframe (e.g. Telegram WebView).
  */
 export function navigateToLogin(returnPath?: string): void {
   const url = getLoginUrl(returnPath);

@@ -1,5 +1,5 @@
 /**
- * Image generation helper using internal ImageService
+ * Image generation helper using OpenAI DALL-E API directly.
  *
  * Example usage:
  *   const { url: imageUrl } = await generateImage({
@@ -34,33 +34,85 @@ export type GenerateImageResponse = {
 export async function generateImage(
   options: GenerateImageOptions
 ): Promise<GenerateImageResponse> {
-  if (!ENV.forgeApiUrl) {
-    throw new Error("BUILT_IN_FORGE_API_URL is not configured");
-  }
-  if (!ENV.forgeApiKey) {
-    throw new Error("BUILT_IN_FORGE_API_KEY is not configured");
+  const apiKey = ENV.openaiApiKey;
+  if (!apiKey) {
+    throw new Error("OPENAI_API_KEY is not configured for image generation");
   }
 
-  // Build the full URL by appending the service path to the base URL
-  const baseUrl = ENV.forgeApiUrl.endsWith("/")
-    ? ENV.forgeApiUrl
-    : `${ENV.forgeApiUrl}/`;
-  const fullUrl = new URL(
-    "images.v1.ImageService/GenerateImage",
-    baseUrl
-  ).toString();
+  const baseUrl = (ENV.openaiApiUrl || "https://api.openai.com").replace(/\/+$/, "");
 
-  const response = await fetch(fullUrl, {
+  // If we have original images, use the edits endpoint
+  if (options.originalImages && options.originalImages.length > 0) {
+    const original = options.originalImages[0];
+    let imageBuffer: Buffer;
+
+    if (original.b64Json) {
+      imageBuffer = Buffer.from(original.b64Json, "base64");
+    } else if (original.url) {
+      const resp = await fetch(original.url);
+      if (!resp.ok) throw new Error(`Failed to fetch original image: ${resp.status}`);
+      imageBuffer = Buffer.from(await resp.arrayBuffer());
+    } else {
+      throw new Error("Original image must have either url or b64Json");
+    }
+
+    const formData = new FormData();
+    const imageBlob = new Blob([new Uint8Array(imageBuffer)], {
+      type: original.mimeType || "image/png",
+    });
+    formData.append("image", imageBlob, "image.png");
+    formData.append("prompt", options.prompt);
+    formData.append("model", "dall-e-2");
+    formData.append("n", "1");
+    formData.append("size", "1024x1024");
+    formData.append("response_format", "b64_json");
+
+    const response = await fetch(`${baseUrl}/v1/images/edits`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const detail = await response.text().catch(() => "");
+      throw new Error(
+        `Image edit request failed (${response.status} ${response.statusText})${detail ? `: ${detail}` : ""}`
+      );
+    }
+
+    const result = (await response.json()) as {
+      data: Array<{ b64_json?: string; url?: string }>;
+    };
+
+    const b64 = result.data[0]?.b64_json;
+    if (b64) {
+      const buffer = Buffer.from(b64, "base64");
+      const { url } = await storagePut(
+        `generated/${Date.now()}.png`,
+        buffer,
+        "image/png"
+      );
+      return { url };
+    }
+
+    return { url: result.data[0]?.url };
+  }
+
+  // Standard generation with DALL-E 3
+  const response = await fetch(`${baseUrl}/v1/images/generations`, {
     method: "POST",
     headers: {
-      accept: "application/json",
-      "content-type": "application/json",
-      "connect-protocol-version": "1",
-      authorization: `Bearer ${ENV.forgeApiKey}`,
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${apiKey}`,
     },
     body: JSON.stringify({
+      model: "dall-e-3",
       prompt: options.prompt,
-      original_images: options.originalImages || [],
+      n: 1,
+      size: "1024x1024",
+      response_format: "b64_json",
     }),
   });
 
@@ -72,21 +124,19 @@ export async function generateImage(
   }
 
   const result = (await response.json()) as {
-    image: {
-      b64Json: string;
-      mimeType: string;
-    };
+    data: Array<{ b64_json?: string; url?: string }>;
   };
-  const base64Data = result.image.b64Json;
-  const buffer = Buffer.from(base64Data, "base64");
 
-  // Save to S3
-  const { url } = await storagePut(
-    `generated/${Date.now()}.png`,
-    buffer,
-    result.image.mimeType
-  );
-  return {
-    url,
-  };
+  const b64 = result.data[0]?.b64_json;
+  if (b64) {
+    const buffer = Buffer.from(b64, "base64");
+    const { url } = await storagePut(
+      `generated/${Date.now()}.png`,
+      buffer,
+      "image/png"
+    );
+    return { url };
+  }
+
+  return { url: result.data[0]?.url };
 }

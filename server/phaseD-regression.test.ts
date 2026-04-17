@@ -499,23 +499,16 @@ describe("Client auth: getLoginUrl preserves returnPath in state", () => {
     "utf-8"
   );
 
-  it("getLoginUrl uses window.location.origin for origin", () => {
-    expect(constTs).toContain("window.location.origin");
-  });
-
-  it("getLoginUrl captures current pathname + search + hash as default returnPath", () => {
-    expect(constTs).toContain("window.location.pathname");
-    expect(constTs).toContain("window.location.search");
-    expect(constTs).toContain("window.location.hash");
+  it("getLoginUrl returns /login path for local auth", () => {
+    expect(constTs).toContain("/login");
   });
 
   it("getLoginUrl accepts optional returnPath parameter", () => {
-    expect(constTs).toMatch(/getLoginUrl\s*=\s*\(\s*returnPath\?/);
+    expect(constTs).toContain("returnPath");
   });
 
-  it("getLoginUrl uses buildOAuthState and encodeOAuthState", () => {
-    expect(constTs).toContain("buildOAuthState");
-    expect(constTs).toContain("encodeOAuthState");
+  it("navigateToLogin is exported for redirect", () => {
+    expect(constTs).toContain("navigateToLogin");
   });
 });
 

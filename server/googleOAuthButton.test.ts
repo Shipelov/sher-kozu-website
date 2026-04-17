@@ -94,18 +94,18 @@ describe("Google OAuth Button — AuthModal", () => {
     });
   });
 
-  // ── getLoginUrl contract ──
+  // ── getLoginUrl contract (standalone local auth) ──
   describe("getLoginUrl contract", () => {
-    it("getLoginUrl builds URL from VITE_OAUTH_PORTAL_URL", () => {
-      expect(constSrc).toContain("VITE_OAUTH_PORTAL_URL");
+    it("getLoginUrl returns /login path for local auth", () => {
+      expect(constSrc).toContain("/login");
     });
 
-    it("getLoginUrl uses window.location.origin for redirect", () => {
-      expect(constSrc).toContain("window.location.origin");
+    it("navigateToLogin is exported for redirect", () => {
+      expect(constSrc).toContain("navigateToLogin");
     });
 
-    it("getLoginUrl encodes state with buildOAuthState", () => {
-      expect(constSrc).toContain("buildOAuthState");
+    it("getLoginUrl supports returnPath parameter", () => {
+      expect(constSrc).toContain("returnPath");
     });
   });
 

@@ -58,7 +58,7 @@ export function useAuth(options?: UseAuthOptions) {
 
     try {
       window.localStorage.setItem(
-        "manus-runtime-user-info",
+        "app-user-info",
         JSON.stringify(null)
       );
     } catch (error) {
