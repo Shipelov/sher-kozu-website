@@ -119,32 +119,55 @@ export function useTelegram() {
 
 /**
  * Dynamically loads the Telegram WebApp SDK script.
- * Returns a promise that resolves when the script is loaded.
+ * Tries direct telegram.org first, falls back to Cloudflare Worker proxy
+ * for users in regions where telegram.org is blocked.
  */
 function loadTelegramScript(): Promise<void> {
-  return new Promise((resolve, reject) => {
-    // Already loaded
-    if (window.Telegram?.WebApp) {
-      resolve();
-      return;
-    }
+  // Already loaded (e.g. Telegram WebView auto-injected it)
+  if (window.Telegram?.WebApp) {
+    return Promise.resolve();
+  }
 
-    // Check if script is already being loaded
-    const existing = document.querySelector(
-      'script[src="https://telegram.org/js/telegram-web-app.js"]'
-    );
-    if (existing) {
-      existing.addEventListener("load", () => resolve());
-      existing.addEventListener("error", () => reject(new Error("Failed to load Telegram SDK")));
-      return;
-    }
+  const DIRECT_URL = "https://telegram.org/js/telegram-web-app.js";
+  const PROXY_URL = "https://tg-proxy.shipelovspain.workers.dev/sdk/telegram-web-app.js";
 
-    const script = document.createElement("script");
-    script.src = "https://telegram.org/js/telegram-web-app.js";
-    script.async = true;
-    script.onload = () => resolve();
-    script.onerror = () => reject(new Error("Failed to load Telegram SDK"));
-    document.head.appendChild(script);
+  function tryLoadScript(src: string): Promise<void> {
+    return new Promise((resolve, reject) => {
+      // Check if already loaded after a previous attempt
+      if (window.Telegram?.WebApp) {
+        resolve();
+        return;
+      }
+
+      // Check if this exact script is already in DOM
+      const existing = document.querySelector(`script[src="${src}"]`);
+      if (existing) {
+        if (window.Telegram?.WebApp) {
+          resolve();
+        } else {
+          existing.addEventListener("load", () => resolve());
+          existing.addEventListener("error", () => reject(new Error("SDK load failed")));
+        }
+        return;
+      }
+
+      const script = document.createElement("script");
+      script.src = src;
+      script.async = true;
+      script.onload = () => resolve();
+      script.onerror = () => {
+        // Remove failed script tag
+        script.remove();
+        reject(new Error("SDK load failed from " + src));
+      };
+      document.head.appendChild(script);
+    });
+  }
+
+  // Try direct first, fallback to proxy
+  return tryLoadScript(DIRECT_URL).catch(() => {
+    console.warn("[TG SDK] Direct load failed, trying proxy...");
+    return tryLoadScript(PROXY_URL);
   });
 }
 
