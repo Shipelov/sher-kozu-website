@@ -123,55 +123,29 @@ export function useTelegram() {
  * for users in regions where telegram.org is blocked.
  */
 function loadTelegramScript(): Promise<void> {
-  // Already loaded (e.g. Telegram WebView auto-injected it)
+  // Already loaded (e.g. Telegram WebView auto-injected it or from index.html script tag)
   if (window.Telegram?.WebApp) {
     return Promise.resolve();
   }
 
-  const DIRECT_URL = "https://telegram.org/js/telegram-web-app.js";
-  const PROXY_URL = "https://tg-proxy.shipelovspain.workers.dev/sdk/telegram-web-app.js";
-
-  function tryLoadScript(src: string): Promise<void> {
-    return new Promise((resolve, reject) => {
-      // Check if already loaded after a previous attempt
+  // The SDK is loaded via <script> in index.html from the Cloudflare Worker proxy.
+  // It may still be loading — poll for it with a timeout.
+  return new Promise((resolve, reject) => {
+    let attempts = 0;
+    const maxAttempts = 50; // 5 seconds total
+    const interval = setInterval(() => {
+      attempts++;
       if (window.Telegram?.WebApp) {
+        clearInterval(interval);
         resolve();
         return;
       }
-
-      // Check if this exact script is already in DOM
-      const existing = document.querySelector(`script[src="${src}"]`);
-      if (existing) {
-        if (window.Telegram?.WebApp) {
-          resolve();
-        } else {
-          existing.addEventListener("load", () => resolve());
-          existing.addEventListener("error", () => reject(new Error("SDK load failed")));
-        }
-        return;
+      if (attempts >= maxAttempts) {
+        clearInterval(interval);
+        console.error("[TG SDK] Telegram SDK did not load within timeout");
+        reject(new Error("Telegram SDK load timeout"));
       }
-
-      const script = document.createElement("script");
-      script.src = src;
-      script.async = true;
-      script.onload = () => resolve();
-      script.onerror = () => {
-        // Remove failed script tag
-        script.remove();
-        reject(new Error("SDK load failed from " + src));
-      };
-      document.head.appendChild(script);
-    });
-  }
-
-  // Race both sources — whichever loads first wins.
-  // This avoids waiting for telegram.org timeout in blocked regions.
-  return Promise.any([
-    tryLoadScript(DIRECT_URL),
-    tryLoadScript(PROXY_URL),
-  ]).catch(() => {
-    console.error("[TG SDK] All sources failed");
-    return Promise.reject(new Error("Failed to load Telegram SDK from all sources"));
+    }, 100);
   });
 }
 

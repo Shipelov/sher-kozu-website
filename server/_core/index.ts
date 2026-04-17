@@ -125,12 +125,12 @@ async function startServer() {
         "Content-Security-Policy",
         [
           "default-src 'self'",
-          "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://maps.googleapis.com",
+          "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://maps.googleapis.com https://*.workers.dev https://telegram.org",
           "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net",
           "font-src 'self' https://fonts.gstatic.com",
           "img-src 'self' data: blob: https://*.cloudfront.net https://*.amazonaws.com https://*.googleapis.com https://maps.gstatic.com https://maps.google.com",
           "connect-src 'self' ws: wss: https://*.cloudfront.net https://*.amazonaws.com https://api.openai.com https://api.telegram.org https://*.workers.dev https://maps.googleapis.com https://*.storage.yandexcloud.net",
-          "frame-ancestors 'self' https://koza.vip https://*.koza.vip",
+          "frame-ancestors 'self' https://koza.vip https://*.koza.vip https://web.telegram.org https://*.telegram.org",
         ].join("; ")
       );
     }
