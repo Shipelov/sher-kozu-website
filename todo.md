@@ -2305,3 +2305,9 @@
 - [x] Update CSP script-src to allow *.workers.dev and telegram.org
 - [x] Update CSP frame-ancestors to allow Telegram WebView
 - [x] Remove debug info from TelegramMiniAppLayout
+
+## Phase 1.5: CI/CD & Monitoring
+- [ ] Create GitHub Actions workflow for auto-deploy to VDS on push to main
+- [ ] Set up GitHub Secrets (VDS_SSH_KEY, VDS_HOST, VDS_USER)
+- [ ] Configure Cloudflare Worker monitoring and alerts
+- [ ] Test deployment pipeline end-to-end

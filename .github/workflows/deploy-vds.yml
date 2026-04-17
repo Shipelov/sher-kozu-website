@@ -1,0 +1,80 @@
+name: Deploy to VDS
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-vds
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    name: Deploy to VDS (koza.vip)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.VDS_HOST }}
+          username: ${{ secrets.VDS_USER }}
+          key: ${{ secrets.VDS_SSH_KEY }}
+          port: 22
+          command_timeout: 5m
+          script: |
+            set -e
+
+            echo "=== Deploying Sherkozu to VDS ==="
+            cd /var/www/sherkozu/current
+
+            # Pull latest code
+            echo "→ Pulling latest code..."
+            git pull origin main
+
+            # Check if dependencies changed
+            if git diff HEAD~1 --name-only | grep -q "pnpm-lock.yaml"; then
+              echo "→ Dependencies changed, running pnpm install..."
+              pnpm install --frozen-lockfile
+            else
+              echo "→ No dependency changes, skipping install"
+            fi
+
+            # Check if migrations needed
+            if git diff HEAD~1 --name-only | grep -q "drizzle/"; then
+              echo "→ Schema changes detected, running migrations..."
+              pnpm db:push
+            else
+              echo "→ No schema changes, skipping migrations"
+            fi
+
+            # Build frontend
+            echo "→ Building frontend..."
+            npx vite build
+
+            # Build server
+            echo "→ Building server..."
+            npx esbuild server/_core/index.ts \
+              --platform=node \
+              --packages=external \
+              --bundle \
+              --format=esm \
+              --outdir=dist
+
+            # Restart application
+            echo "→ Restarting application..."
+            pm2 restart sherkozu
+
+            # Wait for startup and verify
+            sleep 3
+            if pm2 show sherkozu | grep -q "online"; then
+              echo "✅ Deploy successful — sherkozu is online"
+            else
+              echo "❌ Deploy failed — sherkozu is not online"
+              pm2 logs sherkozu --lines 20 --nostream
+              exit 1
+            fi
+
+            echo "=== Deploy complete ==="
