@@ -11,7 +11,7 @@ concurrency:
 
 jobs:
   deploy:
-    name: Deploy to VDS (koza.vip)
+    name: Deploy to VDS (koza.vip )
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
@@ -30,11 +30,9 @@ jobs:
             echo "=== Deploying Sherkozu to VDS ==="
             cd /var/www/sherkozu/current
 
-            # Pull latest code
             echo "→ Pulling latest code..."
             git pull origin main
 
-            # Check if dependencies changed
             if git diff HEAD~1 --name-only | grep -q "pnpm-lock.yaml"; then
               echo "→ Dependencies changed, running pnpm install..."
               pnpm install --frozen-lockfile
@@ -42,7 +40,6 @@ jobs:
               echo "→ No dependency changes, skipping install"
             fi
 
-            # Check if migrations needed
             if git diff HEAD~1 --name-only | grep -q "drizzle/"; then
               echo "→ Schema changes detected, running migrations..."
               pnpm db:push
@@ -50,11 +47,9 @@ jobs:
               echo "→ No schema changes, skipping migrations"
             fi
 
-            # Build frontend
             echo "→ Building frontend..."
             npx vite build
 
-            # Build server
             echo "→ Building server..."
             npx esbuild server/_core/index.ts \
               --platform=node \
@@ -63,11 +58,9 @@ jobs:
               --format=esm \
               --outdir=dist
 
-            # Restart application
             echo "→ Restarting application..."
             pm2 restart sherkozu
 
-            # Wait for startup and verify
             sleep 3
             if pm2 show sherkozu | grep -q "online"; then
               echo "✅ Deploy successful — sherkozu is online"
