@@ -164,10 +164,14 @@ function loadTelegramScript(): Promise<void> {
     });
   }
 
-  // Try direct first, fallback to proxy
-  return tryLoadScript(DIRECT_URL).catch(() => {
-    console.warn("[TG SDK] Direct load failed, trying proxy...");
-    return tryLoadScript(PROXY_URL);
+  // Race both sources — whichever loads first wins.
+  // This avoids waiting for telegram.org timeout in blocked regions.
+  return Promise.any([
+    tryLoadScript(DIRECT_URL),
+    tryLoadScript(PROXY_URL),
+  ]).catch(() => {
+    console.error("[TG SDK] All sources failed");
+    return Promise.reject(new Error("Failed to load Telegram SDK from all sources"));
   });
 }
 
