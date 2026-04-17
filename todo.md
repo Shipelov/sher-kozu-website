@@ -2284,4 +2284,17 @@
 - [x] Fix all references — AnimalProfile share URL, AdminUsers filter, cookie name
 - [x] Update all 8 failing tests — securityHeaders, googleOAuthButton, phaseD-regression, animalProfileVisuals
 - [x] Test build and all 2518 tests pass (95 files)
-- [ ] Deploy to VDS and verify working
+- [x] Deploy to VDS and verify working — HTTP 200, frontend renders correctly on http://89.111.165.77/
+
+## Phase 1: Telegram API Proxy (Cloudflare Worker)
+- [x] Create Cloudflare Worker code for Telegram API proxy (worker.js + wrangler.toml)
+- [x] Add TELEGRAM_API_PROXY_URL env var to server/_core/env.ts
+- [x] Create centralized telegramApiBase.ts helper (getTelegramApiRoot, getTelegramApiUrl, getTelegramFileUrl)
+- [x] Update telegramBot.ts — grammY Bot constructor uses apiRoot from proxy, file URLs use getTelegramFileUrl
+- [x] Update notification.ts — direct fetch uses getTelegramApiUrl instead of hardcoded api.telegram.org
+- [x] Update CSP connect-src — added *.workers.dev for Cloudflare Worker proxy
+- [x] All 95 test files / 2518 tests pass, TypeScript compiles clean
+- [ ] User deploys Cloudflare Worker and provides the URL
+- [ ] Set TELEGRAM_API_PROXY_URL on VDS .env
+- [ ] Deploy updated code to VDS and verify Telegram webhook sets successfully
+- [ ] Get TELEGRAM_ADMIN_CHAT_ID from user

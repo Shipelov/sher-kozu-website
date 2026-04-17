@@ -35,6 +35,9 @@ export const ENV = {
   // ─── Telegram ───
   telegramBotToken: process.env.TELEGRAM_BOT_TOKEN ?? "",
 
+  // ─── Telegram API proxy (Cloudflare Worker) — bypasses ISP blocks in Russia ───
+  telegramApiProxyUrl: process.env.TELEGRAM_API_PROXY_URL ?? "",
+
   // ─── Telegram admin chat for owner notifications ───
   telegramAdminChatId: process.env.TELEGRAM_ADMIN_CHAT_ID ?? "",
 };

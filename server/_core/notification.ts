@@ -6,6 +6,7 @@
  */
 import { TRPCError } from "@trpc/server";
 import { ENV } from "./env";
+import { getTelegramApiUrl } from "./telegramApiBase";
 
 export type NotificationPayload = {
   title: string;
@@ -77,7 +78,7 @@ async function sendTelegramNotification(
 
   try {
     const response = await fetch(
-      `https://api.telegram.org/bot${botToken}/sendMessage`,
+      getTelegramApiUrl("sendMessage"),
       {
         method: "POST",
         headers: { "content-type": "application/json" },

@@ -16,6 +16,7 @@
 
 import { Bot, webhookCallback, InlineKeyboard } from "grammy";
 import { ENV } from "./_core/env";
+import { getTelegramApiRoot, getTelegramFileUrl } from "./_core/telegramApiBase";
 import { getDb } from "./db";
 import {
   users,
@@ -34,7 +35,13 @@ export function getBot(): Bot {
     if (!ENV.telegramBotToken) {
       throw new Error("[Telegram] TELEGRAM_BOT_TOKEN is not configured");
     }
-    botInstance = new Bot(ENV.telegramBotToken);
+    const apiRoot = getTelegramApiRoot();
+    botInstance = new Bot(ENV.telegramBotToken, {
+      client: { apiRoot },
+    });
+    if (apiRoot !== "https://api.telegram.org") {
+      console.log(`[Telegram] Using API proxy: ${apiRoot}`);
+    }
     registerHandlers(botInstance);
   }
   return botInstance;
@@ -528,7 +535,7 @@ function registerHandlers(bot: Bot) {
 
       // Get file URL from Telegram
       const file = await ctx.getFile();
-      const fileUrl = `https://api.telegram.org/file/bot${ENV.telegramBotToken}/${file.file_path}`;
+      const fileUrl = getTelegramFileUrl(file.file_path!);
 
       // Transcribe
       const { transcribeAudio } = await import("./_core/voiceTranscription");

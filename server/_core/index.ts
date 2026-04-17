@@ -129,7 +129,7 @@ async function startServer() {
           "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net",
           "font-src 'self' https://fonts.gstatic.com",
           "img-src 'self' data: blob: https://*.cloudfront.net https://*.amazonaws.com https://*.googleapis.com https://maps.gstatic.com https://maps.google.com",
-          "connect-src 'self' ws: wss: https://*.cloudfront.net https://*.amazonaws.com https://api.openai.com https://api.telegram.org https://maps.googleapis.com https://*.storage.yandexcloud.net",
+          "connect-src 'self' ws: wss: https://*.cloudfront.net https://*.amazonaws.com https://api.openai.com https://api.telegram.org https://*.workers.dev https://maps.googleapis.com https://*.storage.yandexcloud.net",
           "frame-ancestors 'self' https://koza.vip https://*.koza.vip",
         ].join("; ")
       );
