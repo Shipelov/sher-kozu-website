@@ -83,12 +83,26 @@ export default function TelegramMiniAppLayout({
 
   // Not in Telegram
   if (!isAuthenticated) {
+    // Debug info to diagnose SDK loading issues
+    const debugInfo = {
+      hasTelegramObj: !!window.Telegram,
+      hasWebApp: !!window.Telegram?.WebApp,
+      initData: window.Telegram?.WebApp?.initData ? window.Telegram.WebApp.initData.substring(0, 50) + '...' : '(empty)',
+      initDataLength: window.Telegram?.WebApp?.initData?.length || 0,
+      platform: window.Telegram?.WebApp?.platform || '(unknown)',
+      version: window.Telegram?.WebApp?.version || '(unknown)',
+      userAgent: navigator.userAgent.includes('Telegram') ? 'Telegram WebView' : 'Regular browser',
+    };
+
     return (
       <div className="flex flex-col items-center justify-center min-h-screen bg-[#f5f0e8] p-6 gap-4 text-center">
         <AlertCircle className="h-12 w-12 text-[#1a3a2a]/40" />
         <p className="text-sm text-[#1a3a2a]/60">
           Откройте это приложение через Telegram-бот @sherkozu_bot
         </p>
+        <pre className="mt-4 text-left text-xs text-[#1a3a2a]/50 bg-white/50 p-3 rounded-lg max-w-xs overflow-auto">
+          {JSON.stringify(debugInfo, null, 2)}
+        </pre>
       </div>
     );
   }
