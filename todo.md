@@ -2294,7 +2294,7 @@
 - [x] Update notification.ts — direct fetch uses getTelegramApiUrl instead of hardcoded api.telegram.org
 - [x] Update CSP connect-src — added *.workers.dev for Cloudflare Worker proxy
 - [x] All 95 test files / 2518 tests pass, TypeScript compiles clean
-- [ ] User deploys Cloudflare Worker and provides the URL
-- [ ] Set TELEGRAM_API_PROXY_URL on VDS .env
-- [ ] Deploy updated code to VDS and verify Telegram webhook sets successfully
-- [ ] Get TELEGRAM_ADMIN_CHAT_ID from user
+- [x] User deploys Cloudflare Worker (tg-proxy.shipelovspain.workers.dev)
+- [x] Set TELEGRAM_API_PROXY_URL on VDS .env
+- [x] Deploy updated code to VDS and verify Telegram webhook sets successfully
+- [x] Get TELEGRAM_ADMIN_CHAT_ID from user (35731545)

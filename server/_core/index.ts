@@ -407,7 +407,12 @@ async function startServer() {
           const bot = getBot();
           // Use the configured domain (DEPLOY_DOMAIN env var), fallback to koza.vip
           const domain = process.env.DEPLOY_DOMAIN || "koza.vip";
-          const webhookUrl = `https://${domain}/api/telegram/webhook`;
+          // Route webhook through Cloudflare Worker relay if proxy is configured
+          // Telegram → Worker /webhook/api/telegram/webhook → koza.vip/api/telegram/webhook
+          const proxyUrl = process.env.TELEGRAM_API_PROXY_URL;
+          const webhookUrl = proxyUrl
+            ? `${proxyUrl.replace(/\/+$/, "")}/webhook/api/telegram/webhook`
+            : `https://${domain}/api/telegram/webhook`;
           await bot.api.setWebhook(webhookUrl, { drop_pending_updates: true });
           console.log(`[Telegram] Webhook set to ${webhookUrl}`);
 
