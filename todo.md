@@ -2298,3 +2298,10 @@
 - [x] Set TELEGRAM_API_PROXY_URL on VDS .env
 - [x] Deploy updated code to VDS and verify Telegram webhook sets successfully
 - [x] Get TELEGRAM_ADMIN_CHAT_ID from user (35731545)
+- [x] Set up webhook relay through Cloudflare Worker (Telegram → Worker → koza.vip)
+- [x] Fix DATABASE_URL on VDS to point to TiDB (was using empty local MySQL)
+- [x] Add missing primaryAnimalId column to production database
+- [x] Fix Telegram Mini App SDK loading — added script tag via Cloudflare Worker proxy to bypass Russian blocking
+- [x] Update CSP script-src to allow *.workers.dev and telegram.org
+- [x] Update CSP frame-ancestors to allow Telegram WebView
+- [x] Remove debug info from TelegramMiniAppLayout
