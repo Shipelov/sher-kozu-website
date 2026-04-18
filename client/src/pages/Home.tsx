@@ -171,6 +171,13 @@ export default function Home() {
   const cmsAudiences = cms.getJson("audiences", audiences.map(a => ({ title: a.title, text: a.text })));
   const cmsValues = cms.getJson("values", values.map(v => ({ title: v.title, text: v.text, stat: v.stat, statLabel: v.statLabel })));
   const cmsTestimonials = cms.getJson("testimonials", testimonials);
+  // Memoize hero image to prevent flash when CMS data arrives
+  // While CMS is loading, show placeholder instead of fallback image to avoid image swap
+  const heroImage = useMemo(() => {
+    if (cms.isLoading) return null; // CMS still loading — don't render any image yet
+    return cms.getImageWithFocus("hero_image", CDN.hero);
+  }, [cms.isLoading, cms.hasBlocks]);
+
   const cmsProducts = cms.getJson("products_list", [{ label: "Свежее молоко", desc: "Козье или овечье молоко от вашего животного. Доставка в течение 24 часов после надоя." }, { label: "Именные сыры", desc: "Мягкие и выдержанные сыры ручной работы — с именем владельца на этикетке. Статусный подарок и семейная традиция." }, { label: "Сезонные наборы", desc: "Подарочные боксы с лучшими продуктами фермы — для себя, семьи или в подарок близким." }]);
 
   const openAuthRegister = () => {
@@ -350,12 +357,16 @@ export default function Home() {
               className="relative"
             >
               <div className="overflow-hidden rounded-[2rem] border border-white/60 bg-card shadow-[0_30px_70px_-35px_rgba(33,30,24,0.35)]">
-                <img
-                  src={cms.getImageWithFocus("hero_image", CDN.hero).url}
-                  alt="Семейная ферма Шерь Козу"
-                  className="h-[540px] w-full object-cover"
-                  style={{ objectPosition: cms.getImageWithFocus("hero_image", CDN.hero).objectPosition }}
-                />
+                {heroImage ? (
+                  <img
+                    src={heroImage.url}
+                    alt="Семейная ферма Шерь Козу"
+                    className="h-[540px] w-full object-cover transition-opacity duration-300"
+                    style={{ objectPosition: heroImage.objectPosition }}
+                  />
+                ) : (
+                  <div className="h-[540px] w-full animate-pulse bg-secondary/60" />
+                )}
                 <div className="absolute inset-0 bg-gradient-to-t from-dark-oak/80 via-dark-oak/15 to-transparent rounded-[2rem]" />
                 <div className="absolute bottom-0 left-0 right-0 p-7 text-white">
                   <div className="inline-flex items-center gap-2 rounded-full bg-white/15 px-3 py-1.5 text-xs backdrop-blur">

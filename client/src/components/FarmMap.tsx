@@ -235,7 +235,7 @@ export default function FarmMap({ className }: { className?: string }) {
         {!hasError && !isLoading && (
           <button
             onClick={toggleSatellite}
-            className="absolute bottom-3 left-3 z-10 inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium bg-white/90 dark:bg-card/90 backdrop-blur-sm border border-border shadow-sm hover:bg-white dark:hover:bg-card transition-colors"
+            className="absolute top-3 left-3 z-10 inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium bg-white/90 dark:bg-card/90 backdrop-blur-sm border border-border shadow-sm hover:bg-white dark:hover:bg-card transition-colors"
             title={isSatellite ? "Карта" : "Спутник"}
           >
             <Layers className="h-3.5 w-3.5" />

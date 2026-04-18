@@ -2336,3 +2336,5 @@
 - [x] Fix: Yandex Map not rendering on koza.vip (CSP was blocking api-maps.yandex.ru)
 - [x] Fix: Replace Google Maps route button with Yandex Maps route button
 - [x] Fix: Yandex Maps spinner shows but map never loads on koza.vip (CSP was blocking yastatic.net where Yandex loads JS bundle)
+- [x] Fix: Satellite button on Yandex Maps overlaps another label/text (moved from bottom-left to top-left)
+- [x] Fix: Old hero image flashes for ~5 seconds before new image loads on homepage (show placeholder while CMS loads, then render final image directly)
