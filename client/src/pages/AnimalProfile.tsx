@@ -50,7 +50,9 @@ import {
   CircleDot,
   Trash2,
   XCircle,
+  Users,
 } from "lucide-react";
+import { formatOwnerNamePublic } from "@shared/formatOwnerName";
 import OwnerProductPlanSection from "./OwnerProductPlanSection";
 import WellnessRadarChart from "@/components/WellnessRadarChart";
 import PageBreadcrumbs from "@/components/PageBreadcrumbs";
@@ -844,6 +846,30 @@ export default function AnimalProfile() {
                 }
               />
             </div>
+
+            {/* Owner names - public view */}
+            {data?.shareDistribution && data.shareDistribution.length > 0 && (
+              <div className="mt-4 rounded-2xl border border-border/70 bg-card/80 p-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <Users className="h-4 w-4 text-primary" />
+                  <span className="text-sm font-medium text-foreground">Владельцы</span>
+                </div>
+                <div className="space-y-2">
+                  {data.shareDistribution.map((entry: { familyName: string; percent: number; planLabel: string }, idx: number) => (
+                    <div key={idx} className="flex items-center justify-between gap-2">
+                      <span className="text-sm text-foreground">{formatOwnerNamePublic(entry.familyName)}</span>
+                      <span className="text-xs font-medium text-primary bg-primary/10 rounded-full px-2.5 py-0.5">{entry.percent}%</span>
+                    </div>
+                  ))}
+                  {(data?.availablePercent ?? 0) > 0 && (
+                    <div className="flex items-center justify-between gap-2 pt-1 border-t border-border/50">
+                      <span className="text-sm text-muted-foreground">Свободно</span>
+                      <span className="text-xs text-muted-foreground">{data?.availablePercent}%</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         </section>
 

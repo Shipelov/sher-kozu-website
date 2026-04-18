@@ -6,7 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { trpc } from "@/lib/trpc";
-import { ArrowRight, Heart, Sparkles, Waves } from "lucide-react";
+import { ArrowRight, Heart, Sparkles, Users, Waves } from "lucide-react";
+import { formatOwnerNamePublic } from "@shared/formatOwnerName";
 import { Link } from "wouter";
 import AnimalShareCard from "@/components/AnimalShareCard";
 import Navbar from "@/components/Navbar";
@@ -76,6 +77,8 @@ type CatalogAnimal = {
   shareUnitPercent?: number;
   shareUnitPriceMinor?: number;
   availableSharePercents?: number[];
+  shareDistribution?: { familyName: string; percent: number; slots: number[]; planLabel: string }[];
+  ownersCount?: number;
 };
 
 const statusFilterOptions: Array<{
@@ -281,6 +284,16 @@ function AnimalCard({ animal, config, selectedSharePercent }: { animal: CatalogA
             />
 
             <p className="line-clamp-3 text-sm leading-6 text-stone-600">{animal.shortDescription}</p>
+
+            {/* Owner names */}
+            {animal.shareDistribution && animal.shareDistribution.length > 0 && (
+              <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                <Users className="h-3.5 w-3.5 text-stone-400 shrink-0" />
+                <span className="text-xs text-stone-500">
+                  {animal.shareDistribution.map(e => formatOwnerNamePublic(e.familyName)).join(", ")}
+                </span>
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>

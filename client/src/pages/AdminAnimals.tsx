@@ -684,6 +684,9 @@ export function ShareSlotsGrid({ animal, compact = false }: { animal: AdminAnima
     );
   }
 
+  // Build owner list from shareDistribution
+  const ownerEntries = animal.shareDistribution ?? [];
+
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between gap-2">
@@ -704,6 +707,29 @@ export function ShareSlotsGrid({ animal, compact = false }: { animal: AdminAnima
           />
         ))}
       </div>
+      {/* Owner details list */}
+      {ownerEntries.length > 0 && (
+        <div className="space-y-1.5 pt-1">
+          {ownerEntries.map((entry, idx) => (
+            <div key={idx} className="flex items-center justify-between gap-2 rounded-xl bg-white/80 border border-border/50 px-3 py-1.5">
+              <div className="flex items-center gap-2 min-w-0">
+                <Users className="h-3.5 w-3.5 shrink-0 text-emerald-600" />
+                <span className="text-sm font-medium text-foreground truncate">{entry.familyName}</span>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <span className="text-xs font-semibold text-emerald-700 bg-emerald-50 rounded-full px-2 py-0.5">{entry.percent}%</span>
+                <span className="text-xs text-muted-foreground">{entry.planLabel}</span>
+              </div>
+            </div>
+          ))}
+          {animal.availableSlots > 0 && (
+            <div className="flex items-center gap-2 rounded-xl bg-stone-50/80 border border-dashed border-stone-200 px-3 py-1.5">
+              <div className="h-3.5 w-3.5 rounded-full border border-stone-300 bg-stone-200 shrink-0" />
+              <span className="text-sm text-muted-foreground">Свободно — {animal.availablePercent}%</span>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

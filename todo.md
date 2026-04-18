@@ -2322,3 +2322,8 @@
 - [x] Fix Google login not working on koza.vip (removed Google OAuth, switched to email/password)
 - [x] Remove Google OAuth button from AuthModal (login and register views)
 - [x] Create owner account with email/password in database
+- [x] Fix admin panel: show real owner names/shares in animal card 'Распределение долей' section
+- [x] Remove hardcoded 'Демо-семья Sher Kozu' from admin animal cards (renamed in DB to 'Семья Шипеловых')
+- [x] Rename 'Семья-демо Sher Kozu' to 'Семья Шипеловых' in database
+- [x] Add owner display to public animal catalog (format: Имя Ф.)
+- [x] Add owner display to public animal profile page (format: Имя Ф.)
