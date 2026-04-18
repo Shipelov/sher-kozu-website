@@ -386,7 +386,7 @@ export default function Navbar() {
 
         {/* Mobile menu */}
         {mobileOpen && (
-          <div className="border-t border-border bg-white/96 shadow-sm backdrop-blur md:hidden">
+          <div className="border-t border-border bg-white/96 shadow-sm backdrop-blur md:hidden" style={{ maxHeight: 'calc(100dvh - 4rem)', overflowY: 'auto' }}>
             <div className="container flex flex-col gap-2 py-3">
               {/* User info (mobile) */}
               {isAuthenticated && user && (

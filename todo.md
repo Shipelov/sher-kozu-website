@@ -2343,3 +2343,4 @@
 - [x] Mobile: Created 800px-wide WebP images for mobile (hero 62KB, goat 55KB, milk 53KB, club 108KB) with <picture> srcset
 - [x] Mobile: Optimized Google Fonts — split critical/non-critical, removed DM Sans 300, async-loaded JetBrains Mono + italic variants
 - [x] Mobile: Added prefers-reduced-motion CSS to disable animations for users who prefer it
+- [x] Fix: Mobile hamburger menu has no scrolling — added max-height: calc(100dvh - 4rem) and overflow-y: auto
