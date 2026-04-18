@@ -24,6 +24,10 @@ export const ENV = {
   s3AccessKeyId: process.env.S3_ACCESS_KEY_ID ?? "",
   s3SecretAccessKey: process.env.S3_SECRET_ACCESS_KEY ?? "",
 
+  // ─── VDS Local File Storage ───
+  localUploadsDir: process.env.LOCAL_UPLOADS_DIR ?? "",
+  baseUrl: process.env.BASE_URL ?? "",
+
   // ─── Google Maps (direct API key) ───
   googleMapsApiKey: process.env.GOOGLE_MAPS_API_KEY ?? "",
 

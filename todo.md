@@ -2311,3 +2311,9 @@
 - [ ] Set up GitHub Secrets (VDS_SSH_KEY, VDS_HOST, VDS_USER)
 - [ ] Configure Cloudflare Worker monitoring and alerts
 - [ ] Test deployment pipeline end-to-end
+
+## Phase 1.6: VDS Local File Storage
+- [x] Switch file/photo storage from S3 to VDS local disk
+- [x] Update server/storage.ts to write files to VDS filesystem
+- [x] Configure nginx to serve uploaded files from /var/www/sherkozu/uploads/
+- [ ] Test upload and serving of photos on koza.vip

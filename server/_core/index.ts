@@ -128,7 +128,7 @@ async function startServer() {
           "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://maps.googleapis.com https://*.workers.dev https://telegram.org",
           "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net",
           "font-src 'self' https://fonts.gstatic.com",
-          "img-src 'self' data: blob: https://*.cloudfront.net https://*.amazonaws.com https://*.googleapis.com https://maps.gstatic.com https://maps.google.com",
+          "img-src 'self' data: blob: https://*.cloudfront.net https://*.amazonaws.com https://*.googleapis.com https://maps.gstatic.com https://maps.google.com https://koza.vip",
           "connect-src 'self' ws: wss: https://*.cloudfront.net https://*.amazonaws.com https://api.openai.com https://api.telegram.org https://*.workers.dev https://maps.googleapis.com https://*.storage.yandexcloud.net",
           "frame-ancestors 'self' https://koza.vip https://*.koza.vip https://web.telegram.org https://*.telegram.org",
         ].join("; ")
@@ -342,6 +342,17 @@ async function startServer() {
     console.log("[Telegram] Mini App auth registered at /api/tg-auth");
   } catch (err) {
     console.warn("[Telegram] Failed to register Mini App auth:", err);
+  }
+
+  // ── Serve uploaded files from VDS local disk ──
+  if (process.env.LOCAL_UPLOADS_DIR) {
+    const uploadsPath = process.env.LOCAL_UPLOADS_DIR;
+    app.use("/uploads", express.static(uploadsPath, {
+      maxAge: "7d",
+      immutable: true,
+      fallthrough: false,
+    }));
+    console.log(`[Storage] Serving local uploads from ${uploadsPath}`);
   }
 
   // OAuth callback under /api/oauth/callback

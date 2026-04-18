@@ -1,10 +1,24 @@
 /**
- * S3 Storage helpers — direct AWS SDK (compatible with Yandex Object Storage).
+ * File Storage helpers.
  *
- * Falls back to the Manus Forge proxy if S3_ENDPOINT is not configured,
- * so the code works in both environments during migration.
+ * Priority order:
+ * 1. VDS local disk (LOCAL_UPLOADS_DIR + BASE_URL configured)
+ * 2. Direct S3 (S3_ENDPOINT + credentials configured)
+ * 3. Manus Forge proxy (BUILT_IN_FORGE_API_URL + key)
  */
 import { ENV } from "./_core/env";
+import * as fs from "fs";
+import * as path from "path";
+
+// ─── VDS local storage mode ────────────────────────────────
+
+function isLocalStorageConfigured(): boolean {
+  return !!(ENV.localUploadsDir && ENV.baseUrl);
+}
+
+async function ensureDir(dirPath: string): Promise<void> {
+  await fs.promises.mkdir(dirPath, { recursive: true });
+}
 
 // ─── Direct S3 mode (AWS SDK) ───────────────────────────────
 
@@ -41,7 +55,7 @@ function getStorageConfig(): StorageConfig {
   const apiKey = ENV.forgeApiKey;
   if (!baseUrl || !apiKey) {
     throw new Error(
-      "Storage credentials missing: configure S3_ENDPOINT+S3_ACCESS_KEY_ID+S3_SECRET_ACCESS_KEY+S3_BUCKET, or BUILT_IN_FORGE_API_URL+BUILT_IN_FORGE_API_KEY"
+      "Storage credentials missing: configure LOCAL_UPLOADS_DIR+BASE_URL, or S3_ENDPOINT+S3_ACCESS_KEY_ID+S3_SECRET_ACCESS_KEY+S3_BUCKET, or BUILT_IN_FORGE_API_URL+BUILT_IN_FORGE_API_KEY"
     );
   }
   return { baseUrl: baseUrl.replace(/\/+$/, ""), apiKey };
@@ -67,6 +81,20 @@ export async function storagePut(
   contentType = "application/octet-stream"
 ): Promise<{ key: string; url: string }> {
   const key = normalizeKey(relKey);
+
+  // ── VDS local disk ──
+  if (isLocalStorageConfigured()) {
+    const uploadsDir = ENV.localUploadsDir;
+    const filePath = path.join(uploadsDir, key);
+    await ensureDir(path.dirname(filePath));
+
+    const body = typeof data === "string" ? Buffer.from(data) : Buffer.from(data);
+    await fs.promises.writeFile(filePath, body);
+
+    const baseUrl = ENV.baseUrl.replace(/\/+$/, "");
+    const url = `${baseUrl}/uploads/${key}`;
+    return { key, url };
+  }
 
   // ── Direct S3 ──
   if (isDirectS3Configured()) {
@@ -120,6 +148,13 @@ export async function storagePut(
 export async function storageGet(relKey: string): Promise<{ key: string; url: string }> {
   const key = normalizeKey(relKey);
 
+  // ── VDS local disk ──
+  if (isLocalStorageConfigured()) {
+    const baseUrl = ENV.baseUrl.replace(/\/+$/, "");
+    const url = `${baseUrl}/uploads/${key}`;
+    return { key, url };
+  }
+
   // ── Direct S3 ──
   if (isDirectS3Configured()) {
     const endpoint = ENV.s3Endpoint.replace(/\/+$/, "");
@@ -136,4 +171,36 @@ export async function storageGet(relKey: string): Promise<{ key: string; url: st
     headers: buildAuthHeaders(apiKey),
   });
   return { key, url: (await response.json()).url };
+}
+
+/**
+ * Delete a file from storage.
+ * Only supported for VDS local and S3 modes.
+ */
+export async function storageDelete(relKey: string): Promise<void> {
+  const key = normalizeKey(relKey);
+
+  // ── VDS local disk ──
+  if (isLocalStorageConfigured()) {
+    const filePath = path.join(ENV.localUploadsDir, key);
+    await fs.promises.unlink(filePath).catch(() => {
+      // File may already be deleted — ignore
+    });
+    return;
+  }
+
+  // ── Direct S3 ──
+  if (isDirectS3Configured()) {
+    const { DeleteObjectCommand } = await import("@aws-sdk/client-s3");
+    const client = await getS3Client();
+    await client.send(
+      new DeleteObjectCommand({
+        Bucket: ENV.s3Bucket,
+        Key: key,
+      })
+    );
+    return;
+  }
+
+  // Legacy Manus proxy doesn't support delete
 }
