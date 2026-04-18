@@ -32,7 +32,7 @@ import {
   MoreHorizontal,
   Tag,
 } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type TouchEvent as ReactTouchEvent } from "react";
 import AuthModal from "./AuthModal";
 import NotificationBell from "./NotificationBell";
 
@@ -43,6 +43,9 @@ export default function Navbar() {
   const [moreMenuOpen, setMoreMenuOpen] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
   const moreMenuRef = useRef<HTMLDivElement>(null);
+  const mobileMenuRef = useRef<HTMLDivElement>(null);
+  const touchStartY = useRef<number | null>(null);
+  const [showScrollHint, setShowScrollHint] = useState(false);
   const animalsQuery = trpc.animals.listPublic.useQuery();
   const { user, isAuthenticated, loading: authLoading, logout } = useAuth();
 
@@ -157,6 +160,21 @@ export default function Navbar() {
       return () => document.removeEventListener("mousedown", handleClickOutside);
     }
   }, [userMenuOpen, moreMenuOpen]);
+
+  // Initialize scroll hint when mobile menu opens
+  useEffect(() => {
+    if (mobileOpen) {
+      // Small delay to let the DOM render
+      requestAnimationFrame(() => {
+        const el = mobileMenuRef.current;
+        if (!el) return;
+        const canScroll = el.scrollHeight > el.clientHeight;
+        setShowScrollHint(canScroll);
+      });
+    } else {
+      setShowScrollHint(false);
+    }
+  }, [mobileOpen]);
 
   const userInitials = getInitials(user?.name);
   const displayName = formatDisplayName(user?.name);
@@ -386,7 +404,31 @@ export default function Navbar() {
 
         {/* Mobile menu */}
         {mobileOpen && (
-          <div className="border-t border-border bg-white/96 shadow-sm backdrop-blur md:hidden" style={{ maxHeight: 'calc(100dvh - 4rem)', overflowY: 'auto' }}>
+          <div
+            ref={mobileMenuRef}
+            className="border-t border-border bg-white/96 shadow-sm backdrop-blur md:hidden relative"
+            style={{ maxHeight: 'calc(100dvh - 4rem)', overflowY: 'auto' }}
+            onTouchStart={(e: ReactTouchEvent) => {
+              touchStartY.current = e.touches[0].clientY;
+            }}
+            onTouchEnd={(e: ReactTouchEvent) => {
+              if (touchStartY.current === null) return;
+              const deltaY = e.changedTouches[0].clientY - touchStartY.current;
+              const el = mobileMenuRef.current;
+              // Swipe up to close: only when scrolled to top or swipe is fast/long enough
+              if (deltaY < -80 && el && el.scrollTop <= 0) {
+                setMobileOpen(false);
+              }
+              touchStartY.current = null;
+            }}
+            onScroll={() => {
+              const el = mobileMenuRef.current;
+              if (!el) return;
+              const canScroll = el.scrollHeight > el.clientHeight;
+              const atBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 8;
+              setShowScrollHint(canScroll && !atBottom);
+            }}
+          >
             <div className="container flex flex-col gap-2 py-3">
               {/* User info (mobile) */}
               {isAuthenticated && user && (
@@ -515,6 +557,13 @@ export default function Navbar() {
                 </div>
               )}
             </div>
+            {/* Scroll gradient indicator — sticky at bottom */}
+            {showScrollHint && (
+              <div
+                className="pointer-events-none sticky bottom-0 left-0 right-0 z-10 h-10 -mt-10"
+                style={{ background: 'linear-gradient(to top, rgba(255,255,255,0.95), rgba(255,255,255,0))' }}
+              />
+            )}
           </div>
         )}
       </header>
