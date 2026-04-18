@@ -19,6 +19,8 @@ type LazyImageProps = Omit<ImgHTMLAttributes<HTMLImageElement>, "onLoad" | "onEr
   wrapperClassName?: string;
   /** Whether to skip the blur animation (e.g. when image is cached) */
   skipTransition?: boolean;
+  /** Mobile-optimized image URL (served below 768px viewport) */
+  mobileSrc?: string;
 };
 
 export default function LazyImage({
@@ -28,6 +30,7 @@ export default function LazyImage({
   wrapperClassName,
   placeholderColor = "rgb(231 229 224)", // stone-200 equivalent
   skipTransition = false,
+  mobileSrc,
   ...rest
 }: LazyImageProps) {
   const [loaded, setLoaded] = useState(false);
@@ -78,22 +81,27 @@ export default function LazyImage({
 
       {/* Actual image */}
       {src && !error ? (
-        <img
-          ref={imgRef}
-          src={src}
-          alt={alt}
-          loading="lazy"
-          decoding="async"
-          onLoad={() => setLoaded(true)}
-          onError={() => setError(true)}
-          className={cn(
-            "transition-opacity",
-            instant ? "duration-0" : "duration-500 ease-out",
-            loaded ? "opacity-100" : "opacity-0",
-            className
+        <picture>
+          {mobileSrc && (
+            <source media="(max-width: 768px)" srcSet={mobileSrc} type="image/webp" />
           )}
-          {...rest}
-        />
+          <img
+            ref={imgRef}
+            src={src}
+            alt={alt}
+            loading="lazy"
+            decoding="async"
+            onLoad={() => setLoaded(true)}
+            onError={() => setError(true)}
+            className={cn(
+              "transition-opacity",
+              instant ? "duration-0" : "duration-500 ease-out",
+              loaded ? "opacity-100" : "opacity-0",
+              className
+            )}
+            {...rest}
+          />
+        </picture>
       ) : error ? (
         <div className={cn("flex items-center justify-center text-muted-foreground text-sm", className)}>
           Фото скоро появится

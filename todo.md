@@ -2340,3 +2340,6 @@
 - [x] Fix: Old hero image flashes for ~5 seconds before new image loads on homepage (show placeholder while CMS loads, then render final image directly)
 - [x] Audit: Homepage loading performance — identified 4 critical bottlenecks (12MB avatars, 10MB+ modulePreload, no compression, eager FarmMap)
 - [x] Optimize: Resized avatars (12MB→8KB), disabled modulePreload (10MB+), added compression middleware, lazy-loaded FarmMap, added Express cache headers, deferred Telegram SDK, added meta description
+- [x] Mobile: Created 800px-wide WebP images for mobile (hero 62KB, goat 55KB, milk 53KB, club 108KB) with <picture> srcset
+- [x] Mobile: Optimized Google Fonts — split critical/non-critical, removed DM Sans 300, async-loaded JetBrains Mono + italic variants
+- [x] Mobile: Added prefers-reduced-motion CSS to disable animations for users who prefer it
