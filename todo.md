@@ -2338,3 +2338,5 @@
 - [x] Fix: Yandex Maps spinner shows but map never loads on koza.vip (CSP was blocking yastatic.net where Yandex loads JS bundle)
 - [x] Fix: Satellite button on Yandex Maps overlaps another label/text (moved from bottom-left to top-left)
 - [x] Fix: Old hero image flashes for ~5 seconds before new image loads on homepage (show placeholder while CMS loads, then render final image directly)
+- [x] Audit: Homepage loading performance — identified 4 critical bottlenecks (12MB avatars, 10MB+ modulePreload, no compression, eager FarmMap)
+- [x] Optimize: Resized avatars (12MB→8KB), disabled modulePreload (10MB+), added compression middleware, lazy-loaded FarmMap, added Express cache headers, deferred Telegram SDK, added meta description

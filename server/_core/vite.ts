@@ -58,7 +58,15 @@ export function serveStatic(app: Express) {
     );
   }
 
-  app.use(express.static(distPath));
+  // Hashed assets (/assets/*) get long-term caching
+  app.use("/assets", express.static(path.join(distPath, "assets"), {
+    maxAge: "7d",
+    immutable: true,
+  }));
+  // Other static files (index.html, favicon, etc.) — short cache
+  app.use(express.static(distPath, {
+    maxAge: 0,
+  }));
 
   // fall through to index.html if the file doesn't exist
   app.use("*", (_req, res) => {

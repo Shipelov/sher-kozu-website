@@ -24,7 +24,7 @@ import { Send, Loader2, X, MessageCircle, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const MASHA_AVATAR =
-  "https://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/manager-v1_e0256177.jpg";
+  "https://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/masha_avatar_128_ad92cbd8.webp";
 
 type ChatMessage = {
   role: "user" | "assistant";

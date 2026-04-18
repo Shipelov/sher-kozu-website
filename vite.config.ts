@@ -167,6 +167,7 @@ export default defineConfig({
   build: {
     outDir: path.resolve(import.meta.dirname, "dist/public"),
     emptyOutDir: true,
+    modulePreload: false, // Disable modulepreload hints — prevents preloading 10MB+ of vendor chunks (shiki, cytoscape, markdown) that are only needed in admin/chat pages
     rollupOptions: {
       output: {
         manualChunks(id) {

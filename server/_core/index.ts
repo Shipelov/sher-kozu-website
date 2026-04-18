@@ -1,5 +1,6 @@
 import "dotenv/config";
 import express from "express";
+import compression from "compression";
 import { createServer } from "http";
 import net from "net";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
@@ -104,6 +105,8 @@ async function runTrashCleanup() {
 async function startServer() {
   const app = express();
   const server = createServer(app);
+  // Gzip/deflate compression for all responses
+  app.use(compression());
   // Configure body parser with reasonable size limit
   app.use(express.json({ limit: "10mb" }));
   app.use(express.urlencoded({ limit: "10mb", extended: true }));

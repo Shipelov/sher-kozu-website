@@ -268,7 +268,7 @@ function MashaChat() {
       <div className="flex items-center gap-3 border-b border-border/60 bg-gradient-to-r from-primary/5 to-transparent px-5 py-4">
         <div className="relative">
           <img
-            src="https://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/manager-v1_e0256177.jpg"
+            src="https://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/masha_avatar_128_ad92cbd8.webp"
             alt="Маша — AI Управляющая"
             className="h-11 w-11 rounded-full object-cover ring-2 ring-primary/20"
           />
@@ -286,7 +286,7 @@ function MashaChat() {
           <div className="flex h-full flex-col items-center justify-center gap-5 p-6 text-center">
             <div className="flex flex-col items-center gap-2">
               <img
-                src="https://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/manager-v1_e0256177.jpg"
+                src="https://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/masha_avatar_128_ad92cbd8.webp"
                 alt="Маша"
                 className="h-20 w-20 rounded-full object-cover ring-2 ring-primary/10 shadow-md"
               />
@@ -315,7 +315,7 @@ function MashaChat() {
                 <div key={i} className={cn("flex gap-2.5", msg.role === "user" ? "justify-end" : "justify-start")}>
                   {msg.role === "assistant" && (
                     <img
-                      src="https://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/manager-v1_e0256177.jpg"
+                      src="https://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/masha_avatar_128_ad92cbd8.webp"
                       alt="Маша"
                       className="h-7 w-7 shrink-0 rounded-full object-cover mt-1"
                     />
@@ -342,7 +342,7 @@ function MashaChat() {
               {chatMutation.isPending && (
                 <div className="flex gap-2.5">
                   <img
-                    src="https://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/manager-v1_e0256177.jpg"
+                    src="https://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/masha_avatar_128_ad92cbd8.webp"
                     alt="Маша"
                     className="h-7 w-7 shrink-0 rounded-full object-cover mt-1"
                   />

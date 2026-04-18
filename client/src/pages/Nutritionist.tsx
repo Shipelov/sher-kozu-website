@@ -36,7 +36,7 @@ const ZOYA_HERO =
   "https://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/zoya_avatar_v1_aeb7b33a.png";
 
 const ZOYA_AVATAR =
-  "https://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/zoya_avatar_chat_80047a81.png";
+  "https://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/zoya_avatar_128_9c34a1ee.webp";
 
 /* ─── Scenario Cards Data ─── */
 const scenarios = [

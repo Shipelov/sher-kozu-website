@@ -14,14 +14,14 @@
   Internal language (ecosystem routes, AI curator) removed.
 */
 
-import { useState, useMemo, useCallback, useRef, useEffect } from "react";
+import { useState, useMemo, useCallback, useRef, useEffect, lazy, Suspense } from "react";
 import { useCmsContent } from "@/hooks/useCmsContent";
 import { motion, AnimatePresence } from "framer-motion";
 import { Link } from "wouter";
 import { useAuth } from "@/_core/hooks/useAuth";
 import Navbar from "@/components/Navbar";
 import LazyImage from "@/components/LazyImage";
-import FarmMap from "@/components/FarmMap";
+const FarmMap = lazy(() => import("@/components/FarmMap"));
 import AuthModal from "@/components/AuthModal";
 import Footer from "@/components/Footer";
 import {
@@ -287,7 +287,7 @@ export default function Home() {
                 >
                   <div className="relative flex-shrink-0">
                     <img
-                      src="https://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/manager-v1_e0256177.jpg"
+                      src="https://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/masha_avatar_128_ad92cbd8.webp"
                       alt="Маша — AI Управляющая"
                       className="h-11 w-11 rounded-full object-cover ring-2 ring-primary/20 group-hover:ring-primary/40 transition-all"
                     />
@@ -308,7 +308,7 @@ export default function Home() {
                 >
                   <div className="relative flex-shrink-0">
                     <img
-                      src="https://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/zoya_avatar_chat_80047a81.png"
+                      src="https://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/zoya_avatar_128_9c34a1ee.webp"
                       alt="Зоя — AI Нутрициолог"
                       className="h-11 w-11 rounded-full object-cover ring-2 ring-emerald-500/20 group-hover:ring-emerald-500/40 transition-all"
                     />
@@ -457,7 +457,9 @@ export default function Home() {
               transition={{ duration: 0.5, delay: 0.2 }}
               className="relative"
             >
-              <FarmMap className="rounded-2xl" />
+              <Suspense fallback={<div className="h-[400px] w-full rounded-2xl bg-secondary/40 animate-pulse flex items-center justify-center"><span className="text-muted-foreground text-sm">Загрузка карты...</span></div>}>
+                <FarmMap className="rounded-2xl" />
+              </Suspense>
             </motion.div>
           </div>
         </div>
@@ -899,7 +901,7 @@ export default function Home() {
                 {/* Header */}
                 <div className="flex items-center gap-3 bg-gradient-to-r from-primary/90 to-primary/70 px-5 py-3">
                   <img
-                    src="https://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/manager-v1_e0256177.jpg"
+                    src="https://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/masha_avatar_128_ad92cbd8.webp"
                     alt="Маша"
                     className="h-10 w-10 rounded-full object-cover ring-2 ring-white/30"
                   />
@@ -915,6 +917,7 @@ export default function Home() {
                   src="https://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/masha-intro-video-compressed_ee7518ad.mp4"
                   controls
                   autoPlay
+                  preload="metadata"
                   className="w-full aspect-video bg-black"
                   playsInline
                 />

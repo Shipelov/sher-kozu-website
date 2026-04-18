@@ -14,7 +14,7 @@ import ZoyaChat from "./ZoyaChat";
 import AuthModal from "./AuthModal";
 
 const ZOYA_AVATAR =
-  "https://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/zoya_avatar_chat_80047a81.png";
+  "https://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/zoya_avatar_128_9c34a1ee.webp";
 
 export default function ZoyaFloatingChat() {
   const [location] = useLocation();
