@@ -125,11 +125,11 @@ async function startServer() {
         "Content-Security-Policy",
         [
           "default-src 'self'",
-          "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://maps.googleapis.com https://*.workers.dev https://telegram.org https://api-maps.yandex.ru https://yandex.st https://*.yastatic.net",
-          "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net https://*.yastatic.net",
+          "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://maps.googleapis.com https://*.workers.dev https://telegram.org https://api-maps.yandex.ru https://yandex.st https://*.yastatic.net https://yastatic.net",
+          "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net https://*.yastatic.net https://yastatic.net",
           "font-src 'self' https://fonts.gstatic.com",
-          "img-src 'self' data: blob: https://*.cloudfront.net https://*.amazonaws.com https://*.googleapis.com https://maps.gstatic.com https://maps.google.com https://koza.vip https://*.yandex.ru https://*.yandex.net https://api-maps.yandex.ru https://*.yastatic.net",
-          "connect-src 'self' ws: wss: https://*.cloudfront.net https://*.amazonaws.com https://api.openai.com https://api.telegram.org https://*.workers.dev https://maps.googleapis.com https://*.storage.yandexcloud.net https://api-maps.yandex.ru https://*.yandex.ru https://*.yandex.net https://*.yastatic.net",
+          "img-src 'self' data: blob: https://*.cloudfront.net https://*.amazonaws.com https://*.googleapis.com https://maps.gstatic.com https://maps.google.com https://koza.vip https://*.yandex.ru https://*.yandex.net https://api-maps.yandex.ru https://*.yastatic.net https://yastatic.net",
+          "connect-src 'self' ws: wss: https://*.cloudfront.net https://*.amazonaws.com https://api.openai.com https://api.telegram.org https://*.workers.dev https://maps.googleapis.com https://*.storage.yandexcloud.net https://api-maps.yandex.ru https://*.yandex.ru https://*.yandex.net https://*.yastatic.net https://yastatic.net",
           "frame-ancestors 'self' https://koza.vip https://*.koza.vip https://web.telegram.org https://*.telegram.org",
         ].join("; ")
       );

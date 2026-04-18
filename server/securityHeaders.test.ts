@@ -69,12 +69,14 @@ describe("Security Headers Middleware", () => {
   });
 
   it("CSP includes yastatic.net for Yandex Maps JS bundle", () => {
-    // Yandex Maps v2.1 loads its main JS bundle from yastatic.net
-    expect(serverEntry).toContain("yastatic.net");
+    // Yandex Maps v2.1 loads its main JS bundle from yastatic.net (bare domain, not subdomain)
+    // CSP wildcard *.yastatic.net does NOT match bare yastatic.net, so both must be present
+    expect(serverEntry).toContain("https://yastatic.net");
+    expect(serverEntry).toContain("https://*.yastatic.net");
     // Must be in script-src (JS bundle) and connect-src (API calls)
-    const scriptSrcMatch = serverEntry.match(/script-src[^;]+yastatic\.net/);
+    const scriptSrcMatch = serverEntry.match(/script-src[^;]+https:\/\/yastatic\.net/);
     expect(scriptSrcMatch).not.toBeNull();
-    const connectSrcMatch = serverEntry.match(/connect-src[^;]+yastatic\.net/);
+    const connectSrcMatch = serverEntry.match(/connect-src[^;]+https:\/\/yastatic\.net/);
     expect(connectSrcMatch).not.toBeNull();
   });
 
