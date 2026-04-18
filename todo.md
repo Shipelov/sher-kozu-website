@@ -2335,3 +2335,4 @@
 - [x] Test map rendering on koza.vip
 - [x] Fix: Yandex Map not rendering on koza.vip (CSP was blocking api-maps.yandex.ru)
 - [x] Fix: Replace Google Maps route button with Yandex Maps route button
+- [x] Fix: Yandex Maps spinner shows but map never loads on koza.vip (CSP was blocking yastatic.net where Yandex loads JS bundle)

@@ -68,6 +68,16 @@ describe("Security Headers Middleware", () => {
     expect(serverEntry).toContain("api-maps.yandex.ru");
   });
 
+  it("CSP includes yastatic.net for Yandex Maps JS bundle", () => {
+    // Yandex Maps v2.1 loads its main JS bundle from yastatic.net
+    expect(serverEntry).toContain("yastatic.net");
+    // Must be in script-src (JS bundle) and connect-src (API calls)
+    const scriptSrcMatch = serverEntry.match(/script-src[^;]+yastatic\.net/);
+    expect(scriptSrcMatch).not.toBeNull();
+    const connectSrcMatch = serverEntry.match(/connect-src[^;]+yastatic\.net/);
+    expect(connectSrcMatch).not.toBeNull();
+  });
+
   it("CSP includes ws: and wss: in connect-src for websocket support", () => {
     expect(serverEntry).toContain("ws:");
     expect(serverEntry).toContain("wss:");
