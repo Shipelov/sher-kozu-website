@@ -2316,4 +2316,9 @@
 - [x] Switch file/photo storage from S3 to VDS local disk
 - [x] Update server/storage.ts to write files to VDS filesystem
 - [x] Configure nginx to serve uploaded files from /var/www/sherkozu/uploads/
-- [ ] Test upload and serving of photos on koza.vip
+- [x] Test upload and serving of photos on koza.vip
+
+## Bugs
+- [x] Fix Google login not working on koza.vip (removed Google OAuth, switched to email/password)
+- [x] Remove Google OAuth button from AuthModal (login and register views)
+- [x] Create owner account with email/password in database
