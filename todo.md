@@ -2332,4 +2332,6 @@
 - [x] Store Yandex Maps API key as env secret
 - [x] Create YandexMap reusable component
 - [x] Integrate map into farm location / about page (FarmMap.tsx rewritten to Yandex Maps v2.1)
-- [ ] Test map rendering on koza.vip
+- [x] Test map rendering on koza.vip
+- [x] Fix: Yandex Map not rendering on koza.vip (CSP was blocking api-maps.yandex.ru)
+- [x] Fix: Replace Google Maps route button with Yandex Maps route button

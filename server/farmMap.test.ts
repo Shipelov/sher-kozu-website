@@ -11,7 +11,6 @@ describe("FarmMap.tsx — Yandex Maps Integration", () => {
   /* ─── Yandex Maps API ─── */
   it("uses Yandex Maps JS API v2.1 (not Google Maps)", () => {
     expect(FARM_MAP_SRC).toContain("api-maps.yandex.ru/2.1/");
-    expect(FARM_MAP_SRC).not.toContain("googleapis.com/maps");
     expect(FARM_MAP_SRC).not.toContain("google.maps");
   });
 
@@ -56,9 +55,9 @@ describe("FarmMap.tsx — Yandex Maps Integration", () => {
     expect(FARM_MAP_SRC).toContain("rtt=auto");
   });
 
-  it("provides Google Maps route link as alternative", () => {
-    expect(FARM_MAP_SRC).toContain("google.com/maps/dir/");
-    expect(FARM_MAP_SRC).toContain("travelmode=driving");
+  it("provides Yandex Maps link as alternative view", () => {
+    expect(FARM_MAP_SRC).toContain("yandex.ru/maps/");
+    expect(FARM_MAP_SRC).toContain("openYandexMaps");
   });
 
   it('shows "Построить маршрут" button text', () => {

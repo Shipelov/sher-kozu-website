@@ -182,9 +182,9 @@ export default function FarmMap({ className }: { className?: string }) {
     );
   };
 
-  const openGoogleMapsRoute = () => {
+  const openYandexMaps = () => {
     window.open(
-      `https://www.google.com/maps/dir/?api=1&destination=${FARM_LAT},${FARM_LNG}&travelmode=driving`,
+      `https://yandex.ru/maps/?pt=${FARM_LNG},${FARM_LAT}&z=13&l=map`,
       "_blank",
       "noopener,noreferrer"
     );
@@ -258,11 +258,11 @@ export default function FarmMap({ className }: { className?: string }) {
           <ExternalLink className="h-3 w-3 opacity-60" />
         </button>
         <button
-          onClick={openGoogleMapsRoute}
+          onClick={openYandexMaps}
           className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-border bg-white/80 px-4 py-2.5 sm:py-3 text-sm font-semibold text-foreground shadow-sm hover:bg-white transition-colors"
         >
           <MapPin className="h-4 w-4 text-primary" />
-          Google Maps
+          Яндекс Карты
           <ExternalLink className="h-3 w-3 opacity-60" />
         </button>
       </div>

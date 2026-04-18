@@ -62,9 +62,10 @@ describe("Security Headers Middleware", () => {
     expect(serverEntry).toContain("https://koza.vip");
   });
 
-  it("CSP includes Google Maps and OpenAI in connect-src", () => {
+  it("CSP includes Google Maps, OpenAI and Yandex Maps in connect-src", () => {
     expect(serverEntry).toContain("maps.googleapis.com");
     expect(serverEntry).toContain("api.openai.com");
+    expect(serverEntry).toContain("api-maps.yandex.ru");
   });
 
   it("CSP includes ws: and wss: in connect-src for websocket support", () => {
