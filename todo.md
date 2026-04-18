@@ -2327,3 +2327,9 @@
 - [x] Rename 'Семья-демо Sher Kozu' to 'Семья Шипеловых' in database
 - [x] Add owner display to public animal catalog (format: Имя Ф.)
 - [x] Add owner display to public animal profile page (format: Имя Ф.)
+
+## Yandex Maps Integration
+- [x] Store Yandex Maps API key as env secret
+- [x] Create YandexMap reusable component
+- [x] Integrate map into farm location / about page (FarmMap.tsx rewritten to Yandex Maps v2.1)
+- [ ] Test map rendering on koza.vip
