@@ -2346,3 +2346,9 @@
 - [x] Fix: Mobile hamburger menu has no scrolling — added max-height: calc(100dvh - 4rem) and overflow-y: auto
 - [x] Mobile menu: Swipe up to close menu (touch gesture — 80px threshold when scrolled to top)
 - [x] Mobile menu: Gradient scroll indicator at bottom when more items below (auto-detects, hides at bottom)
+- [x] Investigate: Admin shows 3 animals for Shipelov family, but user dashboard shows only 2 — DATA issue: "Тестовый Владелец" (separate openId) assigned to familyId=1 (Семья Шипеловых), owns Аврора; Andrey's cabinet correctly shows only his 2 animals (Мира, Злата)
+- [x] Delete test owner (Тестовый Владелец, openId: local_4c7c291d11134adeb638f404) and their ownership of Аврора — all records removed, Аврора set to public_available
+- [x] Coming soon gate: Server middleware to check access cookie and redirect unauthorized users
+- [x] Coming soon gate: POST /api/gate-auth endpoint to verify login/password and set cookie
+- [x] Coming soon gate: Beautiful landing page with brand, "Первый в России клуб персонального фермерства скоро откроется", and login form
+- [x] Coming soon gate: Cookie-based 30-day session so users don't re-enter password

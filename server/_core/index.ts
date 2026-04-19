@@ -11,6 +11,7 @@ import { serveStatic, setupVite } from "./vite";
 import { withRetry, isTransientDbError } from "../retryUtils";
 import { analyticsMonitor } from "../analyticsMonitor";
 import { sdk } from "./sdk";
+import { registerGate } from "../gateMiddleware";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -143,6 +144,9 @@ async function startServer() {
     );
     next();
   });
+
+  // ── Coming Soon Gate (password-protects the site during development) ──
+  registerGate(app);
 
   // Analytics beacon endpoint (for sendBeacon on page unload)
   app.post("/api/analytics/time", async (req, res) => {
