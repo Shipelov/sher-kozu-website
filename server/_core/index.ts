@@ -148,6 +148,15 @@ async function startServer() {
   // ── Coming Soon Gate (password-protects the site during development) ──
   registerGate(app);
 
+  // ── Build version endpoint for deploy verification ──
+  app.get("/api/version", (_req, res) => {
+    res.json({
+      commit: process.env.GIT_COMMIT || "unknown",
+      buildTime: process.env.BUILD_TIME || "unknown",
+      nodeEnv: process.env.NODE_ENV || "unknown",
+    });
+  });
+
   // Analytics beacon endpoint (for sendBeacon on page unload)
   app.post("/api/analytics/time", async (req, res) => {
     try {
