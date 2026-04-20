@@ -66,12 +66,19 @@ jobs:
               --outdir=dist
 
             echo "→ Restarting application with version info..."
-            BUILD_TIME=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+            export GIT_COMMIT=$DEPLOYED_COMMIT
+            export BUILD_TIME=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+
+            # Stop and delete existing process (ignore errors if not running)
+            pm2 stop sherkozu 2>/dev/null || true
             pm2 delete sherkozu 2>/dev/null || true
-            GIT_COMMIT=$DEPLOYED_COMMIT BUILD_TIME=$BUILD_TIME pm2 start dist/index.js \
+
+            # Start fresh with env vars
+            pm2 start dist/index.js \
               --name sherkozu \
-              --node-args="--experimental-specifier-resolution=node" \
-              -- || pm2 restart sherkozu
+              --node-args="--experimental-specifier-resolution=node"
+
+            pm2 save
 
             sleep 5
 
