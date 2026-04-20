@@ -853,7 +853,7 @@ const clubDefaults: DefaultBlock[] = [
   { page: "club", blockKey: "notif_label", label: "Уведомления — Метка", contentType: "text", content: "Уведомления клуба", section: "Уведомления", sortOrder: 50, visible: true },
   { page: "club", blockKey: "notif_heading", label: "Уведомления — Заголовок", contentType: "text", content: "Уведомления клуба", section: "Уведомления", sortOrder: 51, visible: true },
   { page: "club", blockKey: "notif_hint", label: "Уведомления — Подсказка", contentType: "text", content: "Уведомления помогают не пропустить важное.", section: "Уведомления", sortOrder: 52, visible: true },
-  { page: "club", blockKey: "notif_family_image", label: "Уведомления — Фото", contentType: "image", content: null, imageUrl: "https://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/sherkozu_family_farm_hero-UF9QBY2UhWL9gdEpLXiEFS.webp", section: "Уведомления", sortOrder: 53, visible: true },
+  { page: "club", blockKey: "notif_family_image", label: "Уведомления — Фото", contentType: "image", content: null, imageUrl: "https://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/cms/150001-5t4v0ner-Главная_ШК1-Photoroom_cropped.jpg", section: "Уведомления", sortOrder: 53, visible: true },
 
   // Section 7 — Loading/Error/Empty states
   { page: "club", blockKey: "loading_text", label: "Загрузка — Текст", contentType: "text", content: "Загружаем живую клубную ленту фермы…", section: "Состояния", sortOrder: 60, visible: true },
@@ -892,7 +892,7 @@ const trackerDefaults: DefaultBlock[] = [
   // Section 6 — Delivery
   { page: "tracker", blockKey: "delivery_label", label: "Доставки — Метка", contentType: "text", content: "История доставок", section: "Доставки", sortOrder: 50, visible: true },
   { page: "tracker", blockKey: "delivery_heading", label: "Доставки — Заголовок", contentType: "text", content: "Каждая доставка — часть истории, а не просто заказ.", section: "Доставки", sortOrder: 51, visible: true },
-  { page: "tracker", blockKey: "delivery_image", label: "Доставки — Фото", contentType: "image", content: null, imageUrl: "https://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/sherkozu_family_farm_hero-UF9QBY2UhWL9gdEpLXiEFS.webp", section: "Доставки", sortOrder: 52, visible: true },
+  { page: "tracker", blockKey: "delivery_image", label: "Доставки — Фото", contentType: "image", content: null, imageUrl: "https://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/cms/150001-5t4v0ner-Главная_ШК1-Photoroom_cropped.jpg", section: "Доставки", sortOrder: 52, visible: true },
 
   // Section 7 — Named product
   { page: "tracker", blockKey: "named_product_label", label: "Именной продукт — Метка", contentType: "text", content: "Именной продукт", section: "Именной продукт", sortOrder: 60, visible: true },
@@ -1066,7 +1066,7 @@ const homeDefaults: DefaultBlock[] = [
   { page: "home", blockKey: "hero_badge", label: "Hero — Бейдж", contentType: "text", content: "Первый в России клуб персонального фермерства", section: "Hero", sortOrder: 1, visible: true },
   { page: "home", blockKey: "hero_title", label: "Hero — Заголовок", contentType: "text", content: "Ваша ферма. Ваше молоко. Ваша история.", section: "Hero", sortOrder: 2, visible: true },
   { page: "home", blockKey: "hero_subtitle", label: "Hero — Описание", contentType: "richtext", content: "Выберите конкретную козу или овцу элитной породы, наблюдайте за её жизнью, воспитывайте её на ферме и получайте именные молочные продукты — с прозрачным процессом создания.", section: "Hero", sortOrder: 3, visible: true },
-  { page: "home", blockKey: "hero_image", label: "Hero — Фото", contentType: "image", content: "", imageUrl: "https://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/sherkozu_family_farm_hero-UF9QBY2UhWL9gdEpLXiEFS.webp", section: "Hero", sortOrder: 4, visible: true },
+  { page: "home", blockKey: "hero_image", label: "Hero — Фото", contentType: "image", content: "", imageUrl: "https://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/cms/150001-5t4v0ner-Главная_ШК1-Photoroom_cropped.jpg", section: "Hero", sortOrder: 4, visible: true },
   { page: "home", blockKey: "hero_image_caption", label: "Hero — Подпись к фото", contentType: "text", content: "Конкретная ферма — конкретное животное с именем, породой и историей.", section: "Hero", sortOrder: 5, visible: true },
 
   // Section 1.5 — Geography
@@ -1101,7 +1101,7 @@ const homeDefaults: DefaultBlock[] = [
   // Section 4 — Gallery Preview
   { page: "home", blockKey: "gallery_label", label: "Галерея — Подзаголовок (label)", contentType: "text", content: "Галерея животных", section: "Галерея", sortOrder: 29, visible: true },
   { page: "home", blockKey: "gallery_goats_image", label: "Галерея — Фото коз", contentType: "image", content: "", imageUrl: "https://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/sherkozu_anglonubian_portrait-fvqToDAjgebgcmNhLN93Db.webp", section: "Галерея", sortOrder: 37, visible: true },
-  { page: "home", blockKey: "gallery_sheep_image", label: "Галерея — Фото овец", contentType: "image", content: "", imageUrl: "https://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/sherkozu_family_farm_hero-UF9QBY2UhWL9gdEpLXiEFS.webp", section: "Галерея", sortOrder: 38, visible: true },
+  { page: "home", blockKey: "gallery_sheep_image", label: "Галерея — Фото овец", contentType: "image", content: "", imageUrl: "https://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/cms/150001-5t4v0ner-Главная_ШК1-Photoroom_cropped.jpg", section: "Галерея", sortOrder: 38, visible: true },
   { page: "home", blockKey: "gallery_title", label: "Галерея — Подзаголовок", contentType: "text", content: "Галерея животных", section: "Галерея", sortOrder: 30, visible: true },
   { page: "home", blockKey: "gallery_heading", label: "Галерея — Заголовок", contentType: "text", content: "Познакомьтесь с животными фермы", section: "Галерея", sortOrder: 31, visible: true },
   { page: "home", blockKey: "gallery_subtitle", label: "Галерея — Описание", contentType: "richtext", content: "Элитные породы с европейской генетикой. У каждого — имя, характер, родословная и доступные доли.", section: "Галерея", sortOrder: 32, visible: true },

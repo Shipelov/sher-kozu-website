@@ -47,19 +47,19 @@ import {
 } from "lucide-react";
 
 const CDN = {
-  hero: "https://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/sherkozu_family_farm_hero-UF9QBY2UhWL9gdEpLXiEFS.webp",
+  hero: "https://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/cms/150001-5t4v0ner-Главная_ШК1-Photoroom_cropped.jpg",
   goat: "https://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/sherkozu_anglonubian_portrait-fvqToDAjgebgcmNhLN93Db.webp",
   milk: "https://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/sherkozu_named_dairy_box-3mP3ykmuPDWBoKghC7cnDc.webp",
-  family: "https://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/sherkozu_family_farm_hero-UF9QBY2UhWL9gdEpLXiEFS.webp",
+  family: "https://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/cms/150001-5t4v0ner-Главная_ШК1-Photoroom_cropped.jpg",
   club: "https://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/sherkozu_club_visit-mmi2c8j4W8VB63TUjVvZ4S.webp",
 };
 
 /* Mobile-optimized images (800px wide, ~60-110KB vs 140-450KB desktop) */
 const CDN_MOBILE = {
-  hero: "https://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/hero_mobile_ed4b7a69.webp",
+  hero: "https://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/hero_new_mobile_85d5495b.webp",
   goat: "https://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/goat_mobile_d87a953e.webp",
   milk: "https://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/milk_mobile_a93dfe41.webp",
-  family: "https://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/hero_mobile_ed4b7a69.webp",
+  family: "https://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/hero_new_mobile_85d5495b.webp",
   club: "https://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/club_mobile_f0f950d7.webp",
 };
 
@@ -186,6 +186,13 @@ export default function Home() {
     if (cms.isLoading) return null; // CMS still loading — don't render any image yet
     return cms.getImageWithFocus("hero_image", CDN.hero);
   }, [cms.isLoading, cms.hasBlocks]);
+
+  // Build mobile hero URL: if CMS provides a custom image, use it directly (no mobile variant);
+  // if it falls back to CDN.hero, use the pre-resized mobile version
+  const heroMobileSrc = useMemo(() => {
+    if (!heroImage) return CDN_MOBILE.hero;
+    return heroImage.url === CDN.hero ? CDN_MOBILE.hero : heroImage.url;
+  }, [heroImage]);
 
   const cmsProducts = cms.getJson("products_list", [{ label: "Свежее молоко", desc: "Козье или овечье молоко от вашего животного. Доставка в течение 24 часов после надоя." }, { label: "Именные сыры", desc: "Мягкие и выдержанные сыры ручной работы — с именем владельца на этикетке. Статусный подарок и семейная традиция." }, { label: "Сезонные наборы", desc: "Подарочные боксы с лучшими продуктами фермы — для себя, семьи или в подарок близким." }]);
 
@@ -368,7 +375,7 @@ export default function Home() {
               <div className="overflow-hidden rounded-[2rem] border border-white/60 bg-card shadow-[0_30px_70px_-35px_rgba(33,30,24,0.35)]">
                 {heroImage ? (
                   <picture>
-                    <source media="(max-width: 768px)" srcSet={CDN_MOBILE.hero} type="image/webp" />
+                    <source media="(max-width: 768px)" srcSet={heroMobileSrc} />
                     <img
                       src={heroImage.url}
                       alt="Семейная ферма Шерь Козу"

@@ -230,9 +230,9 @@ describe("page visual integration source smoke", () => {
 
   /* ─── Dashboard ─── */
   it("keeps premium farm and dairy box imagery on dashboard", () => {
-    expect(dashboardSource).toContain("sherkozu_family_farm_hero");
+    expect(dashboardSource).toContain("150001-5t4v0ner");
     expect(dashboardSource).toContain("sherkozu_named_dairy_box");
-    expect(dashboardSource).toContain("sherkozu_family_farm_hero");
+    expect(dashboardSource).toContain("150001-5t4v0ner");
     expect(dashboardSource).toContain("featuredAnimalProfileHref");
     expect(dashboardSource).toContain("Профиль {featuredAnimalName}");
     expect(dashboardSource).toContain("dashboardGuestPreview");
