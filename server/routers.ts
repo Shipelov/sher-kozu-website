@@ -101,7 +101,7 @@ import {
 } from "./db";
 import { storagePut } from "./storage";
 import { ENV } from "./_core/env";
-import { isBitrixConfigured, pullBitrixDealSnapshot, syncPartnerLeadToBitrix } from "./bitrix24";
+import { isBitrixConfigured, pullBitrixDealSnapshot, syncPartnerLeadToBitrix, syncOwnershipDealToBitrix, updateBitrixDealStage } from "./bitrix24";
 import { runDiagnostics } from "./diagnostics";
 import { notifyOwner } from "./_core/notification";
 import { moderateComment } from "./commentModeration";
@@ -968,7 +968,7 @@ export const appRouter = router({
           notes: input.notes ?? null,
         });
 
-        // Fire-and-forget: notify admin about new ownership request
+        // Fire-and-forget: notify admin + sync to Bitrix24
         (async () => {
           try {
             const animalName = await getAnimalNameById(input.animalId);
@@ -978,6 +978,56 @@ export const appRouter = router({
             });
           } catch (e) {
             console.warn("[purchaseShare] Failed to notify admin:", e);
+          }
+        })();
+
+        // Fire-and-forget: create deal in Bitrix24 CRM
+        (async () => {
+          try {
+            const animalName = result.animal?.name || await getAnimalNameById(input.animalId);
+            const animalSpecies = result.animal?.species || "goat";
+            // Get plan name
+            const activePlans = await listActivePlans();
+            const plan = activePlans.find((p: any) => p.id === resolvedPlanId);
+            const tariffName = plan?.name || "Стандарт";
+
+            const syncResult = await syncOwnershipDealToBitrix({
+              ownershipId: result.slotIndexes[0] ?? 0,
+              ownerOpenId: ctx.user.openId,
+              ownerName: ctx.user.name || "Пользователь",
+              ownerEmail: ctx.user.email,
+              ownerPhone: ctx.user.phone,
+              animalId: input.animalId,
+              animalName,
+              animalSpecies: animalSpecies as "goat" | "sheep",
+              sharePercent: input.sharePercent,
+              tariffName,
+              priceMinor: result.priceMinor,
+              profileUrl: `https://koza.vip/dashboard`,
+            });
+
+            if (syncResult) {
+              // Save Bitrix24 deal ID to all ownership rows
+              const { getDb } = await import("./db");
+              const db = await getDb();
+              const { animalOwnerships } = await import("../drizzle/schema");
+              const { eq, and, inArray } = await import("drizzle-orm");
+              await db.update(animalOwnerships)
+                .set({
+                  bitrixDealId: syncResult.dealId,
+                  bitrixStageId: syncResult.stageId,
+                })
+                .where(
+                  and(
+                    eq(animalOwnerships.ownerOpenId, ctx.user.openId),
+                    eq(animalOwnerships.animalId, input.animalId),
+                    inArray(animalOwnerships.slotIndex, result.slotIndexes),
+                  )
+                );
+              console.log(`[purchaseShare] Bitrix24 deal ${syncResult.dealId} linked to ownership`);
+            }
+          } catch (e) {
+            console.warn("[purchaseShare] Failed to sync to Bitrix24:", e);
           }
         })();
 

@@ -151,6 +151,10 @@ export const animalOwnerships = mysqlTable("animalOwnerships", {
   paidAt: timestamp("paidAt"),
   cancelledAt: timestamp("cancelledAt"),
   notes: text("notes"),
+  /** Bitrix24 deal ID linked to this ownership */
+  bitrixDealId: varchar("bitrixDealId", { length: 64 }),
+  /** Current Bitrix24 stage ID */
+  bitrixStageId: varchar("bitrixStageId", { length: 120 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 }, (t) => ([

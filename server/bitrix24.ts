@@ -459,3 +459,207 @@ export async function pullBitrixDealSnapshot(dealId: string) {
     responsePayload: JSON.stringify(dealGetResponse),
   };
 }
+
+
+// ─── Ownership → Bitrix24 Deal Sync ─────────────────────────────────────────
+import {
+  B24_CATEGORY_MAIN,
+  B24_STAGE,
+  B24_FIELD,
+} from "@shared/bitrix24Constants";
+
+export type OwnershipDealPayload = {
+  ownershipId: number;
+  ownerOpenId: string;
+  ownerName: string;
+  ownerEmail?: string | null;
+  ownerPhone?: string | null;
+  animalId: number;
+  animalName: string;
+  animalSpecies: "goat" | "sheep";
+  sharePercent: number;
+  tariffName: string;
+  priceMinor: number;
+  profileUrl?: string;
+};
+
+/**
+ * Create a deal in Bitrix24 "Персональное фермерство" funnel
+ * when a user purchases an animal share on koza.vip.
+ *
+ * Returns the Bitrix24 deal ID and initial stage, or null on failure.
+ */
+export async function syncOwnershipDealToBitrix(
+  payload: OwnershipDealPayload,
+): Promise<{ dealId: string; stageId: string; contactId: string } | null> {
+  if (!isBitrixConfigured()) {
+    console.warn("[syncOwnershipDeal] Bitrix24 not configured — skipping sync");
+    return null;
+  }
+
+  try {
+    // 1. Find or create contact in Bitrix24
+    let contactId: string | null = null;
+
+    if (payload.ownerEmail) {
+      contactId = await findBitrixContactByEmail(payload.ownerEmail);
+    }
+    if (!contactId && payload.ownerPhone) {
+      contactId = await findBitrixContactByPhone(payload.ownerPhone);
+    }
+    if (!contactId) {
+      const { firstName, lastName, secondName } = splitFullName(payload.ownerName);
+      contactId = await createBitrixContact({
+        firstName,
+        lastName,
+        secondName: secondName || undefined,
+        email: payload.ownerEmail || "noemail@koza.vip",
+        phone: payload.ownerPhone ?? undefined,
+      });
+    }
+
+    // 2. Create deal in the main funnel
+    const dealFields: Record<string, unknown> = {
+      TITLE: `Доля ${payload.sharePercent}%: ${payload.animalName}`,
+      CATEGORY_ID: B24_CATEGORY_MAIN,
+      STAGE_ID: B24_STAGE.NEW_REQUEST,
+      CONTACT_ID: contactId,
+      OPPORTUNITY: payload.priceMinor / 100, // Convert minor to major currency
+      CURRENCY_ID: "RUB",
+      COMMENTS: [
+        `Животное: ${payload.animalName} (${payload.animalSpecies === "goat" ? "коза" : "овца"})`,
+        `Доля: ${payload.sharePercent}%`,
+        `Тариф: ${payload.tariffName}`,
+        `Цена: ${(payload.priceMinor / 100).toLocaleString("ru-RU")} ₽`,
+        `Профиль: ${payload.profileUrl || "N/A"}`,
+      ].join("\n"),
+      // Custom fields
+      [B24_FIELD.OWNERSHIP_ID]: String(payload.ownershipId),
+      [B24_FIELD.ANIMAL_NAME]: payload.animalName,
+      [B24_FIELD.SHARE_PCT]: payload.sharePercent,
+      [B24_FIELD.TARIFF]: payload.tariffName,
+      [B24_FIELD.PROFILE_URL]: payload.profileUrl || "",
+      [B24_FIELD.USER_ID]: payload.ownerOpenId,
+    };
+
+    const dealResponse = await callBitrix<{ result: number | string }>("crm.deal.add", {
+      fields: dealFields,
+      params: { REGISTER_SONET_EVENT: "Y" },
+    });
+
+    const dealId = String(dealResponse.result);
+
+    // 3. Create a task for the manager: "Позвонить новому клиенту"
+    try {
+      await callBitrix<{ result: { task: { id: number } } }>("tasks.task.add", {
+        fields: {
+          TITLE: `Позвонить: ${payload.ownerName} — ${payload.animalName} (${payload.sharePercent}%)`,
+          DESCRIPTION: [
+            `Новая заявка на долю животного.`,
+            ``,
+            `Клиент: ${payload.ownerName}`,
+            `Email: ${payload.ownerEmail || "—"}`,
+            `Телефон: ${payload.ownerPhone || "—"}`,
+            `Животное: ${payload.animalName}`,
+            `Доля: ${payload.sharePercent}%`,
+            `Тариф: ${payload.tariffName}`,
+            ``,
+            `Необходимо связаться с клиентом в течение 2 часов.`,
+          ].join("\n"),
+          RESPONSIBLE_ID: 1, // Default to admin (ID 1)
+          DEADLINE: new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString(), // 2 hours
+          PRIORITY: 2, // High
+          UF_CRM_TASK: [`D_${dealId}`], // Link task to deal
+        },
+      });
+    } catch (taskErr) {
+      console.warn("[syncOwnershipDeal] Failed to create task:", taskErr);
+      // Non-critical — deal was created successfully
+    }
+
+    console.log(`[syncOwnershipDeal] Created deal ${dealId} for ownership ${payload.ownershipId}`);
+
+    return {
+      dealId,
+      stageId: B24_STAGE.NEW_REQUEST,
+      contactId: contactId!,
+    };
+  } catch (error) {
+    console.error("[syncOwnershipDeal] Failed:", error);
+    return null;
+  }
+}
+
+/**
+ * Update a Bitrix24 deal stage when ownership status changes on koza.vip.
+ */
+export async function updateBitrixDealStage(
+  dealId: string,
+  newStageId: string,
+): Promise<boolean> {
+  if (!isBitrixConfigured()) return false;
+
+  try {
+    await callBitrix<{ result: boolean }>("crm.deal.update", {
+      id: dealId,
+      fields: { STAGE_ID: newStageId },
+    });
+    console.log(`[updateBitrixDealStage] Deal ${dealId} → ${newStageId}`);
+    return true;
+  } catch (error) {
+    console.error(`[updateBitrixDealStage] Failed for deal ${dealId}:`, error);
+    return false;
+  }
+}
+
+/**
+ * Escalate a chat conversation from Masha AI to a client manager in Bitrix24.
+ * Creates a CRM activity linked to the client's deal.
+ */
+export async function escalateChatToManager(params: {
+  dealId: string;
+  contactId: string;
+  clientName: string;
+  reason: string;
+  chatSnapshot: string;
+  topic: string;
+}): Promise<{ activityId: string } | null> {
+  if (!isBitrixConfigured()) return null;
+
+  try {
+    const activityResponse = await callBitrix<{ result: number | string }>("crm.activity.add", {
+      fields: {
+        OWNER_TYPE_ID: 2, // Deal
+        OWNER_ID: params.dealId,
+        TYPE_ID: 6, // Task
+        SUBJECT: `Эскалация из чата: ${params.topic}`,
+        DESCRIPTION: [
+          `Причина эскалации: ${params.reason}`,
+          `Клиент: ${params.clientName}`,
+          ``,
+          `--- Контекст разговора ---`,
+          params.chatSnapshot,
+        ].join("\n"),
+        DESCRIPTION_TYPE: 1, // Plain text
+        RESPONSIBLE_ID: 1, // Default manager
+        PRIORITY: 2, // High
+        DIRECTION: 1, // Incoming
+        COMMUNICATIONS: [
+          {
+            TYPE: "PHONE",
+            VALUE: "",
+            ENTITY_ID: params.contactId,
+            ENTITY_TYPE_ID: 3, // Contact
+          },
+        ],
+      },
+    });
+
+    const activityId = String(activityResponse.result);
+    console.log(`[escalateChatToManager] Created activity ${activityId} for deal ${params.dealId}`);
+    return { activityId };
+  } catch (error) {
+    console.error("[escalateChatToManager] Failed:", error);
+    return null;
+  }
+}

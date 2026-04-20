@@ -360,6 +360,14 @@ async function startServer() {
     console.warn("[Telegram] Failed to register Mini App auth:", err);
   }
 
+  // ── Bitrix24 inbound webhook ──
+  try {
+    const { registerBitrix24WebhookRoutes } = await import("../bitrix24Webhook");
+    registerBitrix24WebhookRoutes(app);
+  } catch (err) {
+    console.warn("[Bitrix24] Failed to register webhook routes:", err);
+  }
+
   // ── Serve uploaded files from VDS local disk ──
   if (process.env.LOCAL_UPLOADS_DIR) {
     const uploadsPath = process.env.LOCAL_UPLOADS_DIR;

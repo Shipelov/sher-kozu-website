@@ -2363,3 +2363,18 @@
 - [x] Add /api/version endpoint returning git commit hash for deploy verification
 - [x] Update deploy-vds.yml workflow with post-deploy version check + clean dist/public/assets + GIT_COMMIT env injection
 - [ ] BUG: Hero image not loading on mobile version of the main page
+
+## АРМ Клиентского менеджера — Битрикс24 CRM интеграция
+- [x] Audit Bitrix24 API access and existing CRM state — access OK, clean B24 (0 deals, 2 contacts, default funnel only)
+- [x] Create sales funnel "Персональное фермерство" with stages in Bitrix24 (cat=1, 8 stages)
+- [x] Create custom deal fields (7 fields: ownership_id, animal_name, animal_type, share_pct, tariff, profile_url, user_id)
+- [x] Build koza.vip → Б24: auto-create deal on share purchase (syncOwnershipDealToBitrix in bitrix24.ts)
+- [x] Add bitrixDealId, bitrixStageId to animalOwnerships (schema + db:push)
+- [ ] Add frozen, renewal_pending to ownershipStatusEnum
+- [ ] Create clientManagerActions table
+- [x] Build Б24 → koza.vip: webhook endpoint /api/bitrix24/webhook for stage changes (bitrix24Webhook.ts)
+- [x] Implement stage mapping (B24_STAGE_TO_OWNERSHIP_STATUS in bitrix24Constants.ts)
+- [ ] Build Masha AI → Б24 escalation: chatEscalations table, escalateToManager procedure
+- [x] Build escalateChatToManager function in bitrix24.ts
+- [ ] Handle onCrmActivityUpdate webhook for escalation resolution
+- [ ] Test full cycle: registration → booking → payment → activation → delivery → escalation → renewal
