@@ -33,6 +33,10 @@ jobs:
             echo "→ Pulling latest code..."
             git pull origin main
 
+            # Capture the deployed commit hash
+            DEPLOYED_COMMIT=$(git rev-parse --short HEAD)
+            echo "→ Deployed commit: $DEPLOYED_COMMIT"
+
             if git diff HEAD~1 --name-only | grep -q "pnpm-lock.yaml"; then
               echo "→ Dependencies changed, running pnpm install..."
               pnpm install --frozen-lockfile
@@ -47,6 +51,9 @@ jobs:
               echo "→ No schema changes, skipping migrations"
             fi
 
+            echo "→ Cleaning old build artifacts..."
+            rm -rf dist/public/assets
+
             echo "→ Building frontend..."
             npx vite build
 
@@ -58,16 +65,36 @@ jobs:
               --format=esm \
               --outdir=dist
 
-            echo "→ Restarting application..."
-            pm2 restart sherkozu
+            echo "→ Restarting application with version info..."
+            BUILD_TIME=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+            pm2 delete sherkozu 2>/dev/null || true
+            GIT_COMMIT=$DEPLOYED_COMMIT BUILD_TIME=$BUILD_TIME pm2 start dist/index.js \
+              --name sherkozu \
+              --node-args="--experimental-specifier-resolution=node" \
+              -- || pm2 restart sherkozu
 
-            sleep 3
+            sleep 5
+
+            # Verify PM2 status
             if pm2 show sherkozu | grep -q "online"; then
-              echo "✅ Deploy successful — sherkozu is online"
+              echo "✅ PM2 status: online"
             else
               echo "❌ Deploy failed — sherkozu is not online"
               pm2 logs sherkozu --lines 20 --nostream
               exit 1
+            fi
+
+            # Verify deployed version via /api/version endpoint
+            echo "→ Verifying deployed version..."
+            VERSION_RESPONSE=$(curl -s http://localhost:3000/api/version 2>/dev/null || echo '{}' )
+            LIVE_COMMIT=$(echo "$VERSION_RESPONSE" | grep -oP '"commit"\s*:\s*"\K[^"]+' || echo "unknown")
+
+            if [ "$LIVE_COMMIT" = "$DEPLOYED_COMMIT" ]; then
+              echo "✅ Version verified: $LIVE_COMMIT matches deployed commit $DEPLOYED_COMMIT"
+            else
+              echo "⚠️  Version mismatch: live=$LIVE_COMMIT expected=$DEPLOYED_COMMIT"
+              echo "    Response: $VERSION_RESPONSE"
+              echo "    This may indicate the server is still starting up or env vars were not passed."
             fi
 
             echo "=== Deploy complete ==="
