@@ -1227,6 +1227,8 @@ export const cmsBlocks = mysqlTable("cmsBlocks", {
   content: text("content"),
   /** Image URL if contentType is 'image' */
   imageUrl: text("imageUrl"),
+  /** Mobile-optimized image URL (800px wide WebP) — auto-generated on upload */
+  mobileImageUrl: text("mobileImageUrl"),
   /** Section grouping for admin UI navigation */
   section: varchar("section", { length: 128 }),
   /** Focal point X coordinate (0-100, percentage from left). Default 50 = center */
@@ -1262,12 +1264,16 @@ export const cmsBlockHistory = mysqlTable("cmsBlockHistory", {
   prevContent: text("prevContent"),
   /** Previous imageUrl value before the change (null if unchanged) */
   prevImageUrl: text("prevImageUrl"),
+  /** Previous mobileImageUrl value before the change (null if unchanged) */
+  prevMobileImageUrl: text("prevMobileImageUrl"),
   /** Previous visibility value before the change */
   prevVisible: boolean("prevVisible"),
   /** New content value after the change */
   newContent: text("newContent"),
   /** New imageUrl value after the change */
   newImageUrl: text("newImageUrl"),
+  /** New mobileImageUrl value after the change */
+  newMobileImageUrl: text("newMobileImageUrl"),
   /** New visibility value after the change */
   newVisible: boolean("newVisible"),
   /** OpenId of the admin who made the change */

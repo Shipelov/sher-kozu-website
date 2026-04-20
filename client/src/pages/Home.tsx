@@ -187,10 +187,13 @@ export default function Home() {
     return cms.getImageWithFocus("hero_image", CDN.hero);
   }, [cms.isLoading, cms.hasBlocks]);
 
-  // Build mobile hero URL: if CMS provides a custom image, use it directly (no mobile variant);
-  // if it falls back to CDN.hero, use the pre-resized mobile version
+  // Build mobile hero URL: prefer CMS auto-generated mobile variant (800px WebP),
+  // then fall back to pre-resized CDN mobile, then the full-size image
   const heroMobileSrc = useMemo(() => {
     if (!heroImage) return CDN_MOBILE.hero;
+    // If CMS generated a mobile variant, use it
+    if (heroImage.mobileUrl) return heroImage.mobileUrl;
+    // If still using CDN fallback, use pre-resized mobile version
     return heroImage.url === CDN.hero ? CDN_MOBILE.hero : heroImage.url;
   }, [heroImage]);
 

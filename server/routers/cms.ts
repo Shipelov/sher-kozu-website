@@ -29,9 +29,11 @@ async function recordHistory(
     action: string;
     prevContent: string | null;
     prevImageUrl: string | null;
+    prevMobileImageUrl?: string | null;
     prevVisible: boolean | null;
     newContent: string | null;
     newImageUrl: string | null;
+    newMobileImageUrl?: string | null;
     newVisible: boolean | null;
     changedByOpenId: string;
     changedByName: string | null;
@@ -45,9 +47,11 @@ async function recordHistory(
       action: opts.action,
       prevContent: opts.prevContent,
       prevImageUrl: opts.prevImageUrl,
+      prevMobileImageUrl: opts.prevMobileImageUrl ?? null,
       prevVisible: opts.prevVisible,
       newContent: opts.newContent,
       newImageUrl: opts.newImageUrl,
+      newMobileImageUrl: opts.newMobileImageUrl ?? null,
       newVisible: opts.newVisible,
       changedByOpenId: opts.changedByOpenId,
       changedByName: opts.changedByName,
@@ -380,6 +384,29 @@ export const cmsRouter = router({
       const fileKey = `cms/${input.blockId}-${suffix}-${input.fileName}`;
       const { url } = await storagePut(fileKey, buffer, input.mimeType);
 
+      // Generate mobile-optimized WebP variant (800px wide)
+      let mobileUrl: string | null = null;
+      try {
+        const sharp = (await import("sharp")).default;
+        const metadata = await sharp(buffer).metadata();
+        // Only create mobile variant if original is wider than 800px
+        if (metadata.width && metadata.width > 800) {
+          const mobileBuffer = await sharp(buffer)
+            .resize(800, null, { withoutEnlargement: true })
+            .webp({ quality: 80 })
+            .toBuffer();
+          const mobileKey = `cms/${input.blockId}-${suffix}-mobile.webp`;
+          const mobileResult = await storagePut(mobileKey, mobileBuffer, "image/webp");
+          mobileUrl = mobileResult.url;
+          console.log(`[CMS] Mobile variant created: ${mobileKey} (${(mobileBuffer.length / 1024).toFixed(0)}KB)`);
+        } else {
+          console.log(`[CMS] Skipping mobile variant: image width ${metadata.width}px <= 800px`);
+        }
+      } catch (err) {
+        console.error("[CMS] Failed to create mobile image variant:", err);
+        // Non-fatal: original image is still saved
+      }
+
       // Fetch current state before update
       const prev = await fetchBlock(db, input.blockId);
       if (prev) {
@@ -390,16 +417,18 @@ export const cmsRouter = router({
           action: "upload_image",
           prevContent: prev.content,
           prevImageUrl: prev.imageUrl,
+          prevMobileImageUrl: prev.mobileImageUrl,
           prevVisible: prev.visible,
           newContent: prev.content,
           newImageUrl: url,
+          newMobileImageUrl: mobileUrl,
           newVisible: prev.visible,
           changedByOpenId: ctx.user!.openId,
           changedByName: ctx.user!.name ?? null,
         });
       }
 
-      const setData: Record<string, unknown> = { imageUrl: url };
+      const setData: Record<string, unknown> = { imageUrl: url, mobileImageUrl: mobileUrl };
       if (input.focalX !== undefined) setData.focalX = input.focalX;
       if (input.focalY !== undefined) setData.focalY = input.focalY;
       await db
@@ -408,7 +437,7 @@ export const cmsRouter = router({
         .where(eq(cmsBlocks.id, input.blockId));
 
       if (prev) invalidateCmsPageCache(prev.page);
-      return { url };
+      return { url, mobileUrl };
     }),
 
   /**

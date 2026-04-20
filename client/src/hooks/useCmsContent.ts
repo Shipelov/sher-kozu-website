@@ -17,6 +17,7 @@ export function useCmsContent(page: string) {
       {
         content: string | null;
         imageUrl: string | null;
+        mobileImageUrl: string | null;
         contentType: string;
         visible: boolean;
         focalX: number;
@@ -28,6 +29,7 @@ export function useCmsContent(page: string) {
         map.set(b.blockKey, {
           content: b.content,
           imageUrl: b.imageUrl,
+          mobileImageUrl: (b as any).mobileImageUrl ?? null,
           contentType: b.contentType,
           visible: b.visible,
           focalX: (b as any).focalX ?? 50,
@@ -62,22 +64,25 @@ export function useCmsContent(page: string) {
 
   /**
    * Get image URL + focal point object-position for a block key.
-   * Returns { url, objectPosition } where objectPosition is a CSS value
+   * Returns { url, mobileUrl, objectPosition } where objectPosition is a CSS value
    * like "30% 20%" that can be applied to object-position.
+   * mobileUrl is the 800px-wide WebP variant (null if not available).
    */
   function getImageWithFocus(
     blockKey: string,
     fallback: string
-  ): { url: string; objectPosition: string } {
+  ): { url: string; mobileUrl: string | null; objectPosition: string } {
     const block = blockMap.get(blockKey);
     if (!block || !block.visible) {
-      return { url: fallback, objectPosition: "50% 50%" };
+      return { url: fallback, mobileUrl: null, objectPosition: "50% 50%" };
     }
     const url = block.imageUrl || fallback;
+    const mobileUrl = block.mobileImageUrl || null;
     const fx = block.focalX ?? 50;
     const fy = block.focalY ?? 50;
     return {
       url,
+      mobileUrl,
       objectPosition: `${fx}% ${fy}%`,
     };
   }

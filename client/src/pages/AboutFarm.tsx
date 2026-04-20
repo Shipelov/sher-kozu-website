@@ -247,13 +247,23 @@ export default function AboutFarm() {
 
               {/* Image side — fills full height */}
               <div className="relative min-h-[240px] md:min-h-[480px]">
-                <img
-                  src={cms.getImageWithFocus("hero_image", CDN.hero).url}
-                  alt="Семья на ферме Шерь Козу с козами элитных пород"
-                  className="absolute inset-0 h-full w-full object-cover"
-                  style={{ objectPosition: cms.getImageWithFocus("hero_image", CDN.hero).objectPosition }}
-                  loading="eager"
-                />
+                {(() => {
+                  const hero = cms.getImageWithFocus("hero_image", CDN.hero);
+                  return (
+                    <picture>
+                      {hero.mobileUrl && (
+                        <source media="(max-width: 768px)" srcSet={hero.mobileUrl} type="image/webp" />
+                      )}
+                      <img
+                        src={hero.url}
+                        alt="Семья на ферме Шерь Козу с козами элитных пород"
+                        className="absolute inset-0 h-full w-full object-cover"
+                        style={{ objectPosition: hero.objectPosition }}
+                        loading="eager"
+                      />
+                    </picture>
+                  );
+                })()}
               </div>
             </div>
           </motion.div>
@@ -341,13 +351,23 @@ export default function AboutFarm() {
           >
             <div className="grid gap-0 lg:grid-cols-[0.92fr_1.08fr]">
               <div className="relative min-h-[220px] lg:min-h-[380px] overflow-hidden">
-                <img
-                  src={cms.getImageWithFocus("philosophy_image", CDN.philosophy).url}
-                  alt="Философия фермы Шерь Козу"
-                  className="h-full w-full object-cover"
-                  style={{ objectPosition: cms.getImageWithFocus("philosophy_image", CDN.philosophy).objectPosition }}
-                  loading="lazy"
-                />
+                {(() => {
+                  const img = cms.getImageWithFocus("philosophy_image", CDN.philosophy);
+                  return (
+                    <picture>
+                      {img.mobileUrl && (
+                        <source media="(max-width: 768px)" srcSet={img.mobileUrl} type="image/webp" />
+                      )}
+                      <img
+                        src={img.url}
+                        alt="Философия фермы Шерь Козу"
+                        className="h-full w-full object-cover"
+                        style={{ objectPosition: img.objectPosition }}
+                        loading="lazy"
+                      />
+                    </picture>
+                  );
+                })()}
               </div>
               <div className="p-6 md:p-8">
                 <span className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-4 py-1.5 text-xs font-semibold uppercase tracking-wider text-primary">
@@ -431,13 +451,23 @@ export default function AboutFarm() {
           >
             <div className="grid gap-0 lg:grid-cols-[0.92fr_1.08fr]">
               <div className="relative min-h-[220px] lg:min-h-[380px] overflow-hidden">
-                <img
-                  src={cms.getImageWithFocus("breeds_image", CDN.breeds).url}
-                  alt="Элитные породы коз и овец на ферме"
-                  className="h-full w-full object-cover"
-                  style={{ objectPosition: cms.getImageWithFocus("breeds_image", CDN.breeds).objectPosition }}
-                  loading="lazy"
-                />
+                {(() => {
+                  const img = cms.getImageWithFocus("breeds_image", CDN.breeds);
+                  return (
+                    <picture>
+                      {img.mobileUrl && (
+                        <source media="(max-width: 768px)" srcSet={img.mobileUrl} type="image/webp" />
+                      )}
+                      <img
+                        src={img.url}
+                        alt="Элитные породы коз и овец на ферме"
+                        className="h-full w-full object-cover"
+                        style={{ objectPosition: img.objectPosition }}
+                        loading="lazy"
+                      />
+                    </picture>
+                  );
+                })()}
               </div>
               <div className="p-6 md:p-8 space-y-4">
                 {breeds.map((b: { name: string; origin: string; trait: string; character: string }, i: number) => (

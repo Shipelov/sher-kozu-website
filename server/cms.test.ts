@@ -352,7 +352,7 @@ describe("cms.deleteBlock", () => {
 });
 
 describe("cms.uploadImage", () => {
-  it("uploads image and returns URL", async () => {
+  it("uploads image and returns URL with mobileUrl", async () => {
     const caller = appRouter.createCaller(createAdminContext());
     const result = await caller.cms.uploadImage({
       blockId: 1,
@@ -362,8 +362,12 @@ describe("cms.uploadImage", () => {
     });
 
     expect(result.url).toBe("https://cdn.example.com/cms/test-image.png");
+    // mobileUrl should be null for 1x1px image (too small for mobile variant)
+    expect(result.mobileUrl).toBeNull();
     expect(updatedSets).toHaveLength(1);
     expect(updatedSets[0].imageUrl).toBe("https://cdn.example.com/cms/test-image.png");
+    // mobileImageUrl should be set (null for small images)
+    expect(updatedSets[0]).toHaveProperty("mobileImageUrl");
     // uploadImage should NOT override contentType
     expect(updatedSets[0].contentType).toBeUndefined();
   });
@@ -960,7 +964,7 @@ describe("CMS history recording on mutations", () => {
     expect(historyRecord.newVisible).toBe(false);
   });
 
-  it("records history when uploadImage is called", async () => {
+  it("records history when uploadImage is called (includes mobileImageUrl)", async () => {
     mockRows = [{
       id: 5,
       page: "home",
@@ -968,6 +972,7 @@ describe("CMS history recording on mutations", () => {
       contentType: "image",
       content: "",
       imageUrl: "https://old-image.com/img.jpg",
+      mobileImageUrl: "https://old-image.com/img-mobile.webp",
       sortOrder: 1,
       visible: true,
       createdAt: new Date(),
@@ -986,7 +991,10 @@ describe("CMS history recording on mutations", () => {
     const historyRecord = insertedRows.find((r: any) => r.action === "upload_image");
     expect(historyRecord).toBeDefined();
     expect(historyRecord.prevImageUrl).toBe("https://old-image.com/img.jpg");
+    expect(historyRecord.prevMobileImageUrl).toBe("https://old-image.com/img-mobile.webp");
     expect(historyRecord.newImageUrl).toBe("https://cdn.example.com/cms/test-image.png");
+    // newMobileImageUrl should be null for small (1x1px) test image
+    expect(historyRecord.newMobileImageUrl).toBeNull();
   });
 
   it("records history when deleteBlock is called", async () => {

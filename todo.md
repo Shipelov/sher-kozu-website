@@ -2353,3 +2353,6 @@
 - [x] Coming soon gate: Beautiful landing page with brand, "Первый в России клуб персонального фермерства скоро откроется", and login form
 - [x] Coming soon gate: Cookie-based 30-day session so users don't re-enter password
 - [x] Fix: Old hero photo shows on mobile version while new photo shows on desktop — replaced all old hero refs (sherkozu_family_farm_hero, hero_farm_ab0d054b, hero_mobile_ed4b7a69) with new CMS image across 8 files, created dynamic mobile hero source
+- [x] Auto-resize: Server-side image resize on CMS upload — create mobile WebP variant (800px wide)
+- [x] Auto-resize: Store mobile variant URL in CMS block metadata
+- [x] Auto-resize: Frontend uses mobile variant via <picture> srcset on mobile devices
