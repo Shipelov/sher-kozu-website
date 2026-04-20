@@ -167,10 +167,18 @@ export default defineConfig({
   build: {
     outDir: path.resolve(import.meta.dirname, "dist/public"),
     emptyOutDir: true,
-    modulePreload: false, // Disable modulepreload hints — prevents preloading 10MB+ of vendor chunks (shiki, cytoscape, markdown) that are only needed in admin/chat pages
+    modulePreload: false, // Completely disable modulePreload polyfill + __vitePreload CSS preload helper
     rollupOptions: {
       output: {
+        hoistTransitiveImports: false, // CRITICAL: prevents index.js from hoisting transitive imports (vendor-shiki 9MB, vendor-cytoscape 645KB) through vendor-markdown
         manualChunks(id) {
+          // ── Vite preload helper (MUST be isolated to prevent index → vendor-markdown → vendor-shiki chain) ──
+          if (id.includes("vite/preload-helper")) return "vendor-preload";
+          // ── Core UI utilities (must stay out of heavy vendor chunks) ──
+          // tailwind-merge, clsx, class-variance-authority are used by cn() everywhere.
+          // Without this rule they leak into vendor-markdown via streamdown, creating
+          // a static import chain: index → vendor-markdown → vendor-shiki (9 MB).
+          if (id.includes("node_modules/tailwind-merge") || id.includes("node_modules/clsx") || id.includes("node_modules/class-variance-authority")) return "vendor-utils";
           // Isolate heavy streamdown transitive deps into lazy-loaded chunks
           if (id.includes("node_modules/mermaid") || id.includes("node_modules/@mermaid")) return "vendor-mermaid";
           if (id.includes("node_modules/shiki") || id.includes("node_modules/@shikijs")) return "vendor-shiki";

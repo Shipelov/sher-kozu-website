@@ -19,7 +19,7 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
-import { Streamdown } from "streamdown";
+import LazyStreamdown from "@/components/LazyStreamdown";
 import { Send, Loader2, X, MessageCircle, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -461,7 +461,7 @@ export default function MashaFloatingChat() {
                         >
                           {msg.role === "assistant" ? (
                             <div className="prose prose-sm dark:prose-invert max-w-none [&_p]:my-0.5">
-                              <Streamdown>{msg.content}</Streamdown>
+                              <LazyStreamdown>{msg.content}</LazyStreamdown>
                             </div>
                           ) : (
                             <p className="whitespace-pre-wrap">{msg.content}</p>

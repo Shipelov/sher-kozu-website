@@ -2356,3 +2356,4 @@
 - [x] Auto-resize: Server-side image resize on CMS upload — create mobile WebP variant (800px wide)
 - [x] Auto-resize: Store mobile variant URL in CMS block metadata
 - [x] Auto-resize: Frontend uses mobile variant via <picture> srcset on mobile devices
+- [x] BUG: Mobile page load freezes for ~30 seconds at 70% — fixed: isolated __vitePreload helper into vendor-preload chunk + lazy-loaded Streamdown to eliminate 11MB initial JS load (93% reduction)
