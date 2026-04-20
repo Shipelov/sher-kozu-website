@@ -93,7 +93,7 @@ jobs:
 
             # Verify deployed version via /api/version endpoint
             echo "→ Verifying deployed version..."
-            VERSION_RESPONSE=$(curl -s http://localhost:3000/api/version 2>/dev/null || echo '{}')
+            VERSION_RESPONSE=$(curl -s http://localhost:3000/api/version 2>/dev/null || echo '{}' )
             LIVE_COMMIT=$(echo "$VERSION_RESPONSE" | grep -oP '"commit"\s*:\s*"\K[^"]+' || echo "unknown")
 
             if [ "$LIVE_COMMIT" = "$DEPLOYED_COMMIT" ]; then
