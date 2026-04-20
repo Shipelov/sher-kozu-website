@@ -68,7 +68,7 @@ export const OWNERSHIP_STATUS_TO_B24_STAGE: Record<string, string> = {
   active: B24_STAGE.ACTIVE_OWNER,
   expired: B24_STAGE.FROZEN,
   cancelled: B24_STAGE.FROZEN,
-
+  frozen: B24_STAGE.FROZEN,
 };
 
 /* ─── Mapping: B24 stage → koza.vip ownership status ─────── */
@@ -80,5 +80,5 @@ export const B24_STAGE_TO_OWNERSHIP_STATUS: Record<string, string> = {
   [B24_STAGE.CABINET_SETUP]: "active",
   [B24_STAGE.FIRST_DELIVERY]: "active",
   [B24_STAGE.ACTIVE_OWNER]: "active",
-  [B24_STAGE.FROZEN]: "cancelled",
+  [B24_STAGE.FROZEN]: "frozen",
 };

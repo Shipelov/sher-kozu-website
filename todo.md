@@ -36,6 +36,14 @@
 - [x] Завершить только действительно нужный Bitrix24/CRM контур для поддержки лидов и сопровождения семей
 - [x] Добавить минимальный operational monitoring по критичным маршрутам и интеграциям
 
+## Bitrix24 Integration — Phase 2
+
+- [x] Add 'frozen' to ownershipStatusEnum in schema.ts and push migration
+- [x] Update B24_STAGE_TO_OWNERSHIP_STATUS mapping: FROZEN → 'frozen'
+- [x] Update all code references that check ownership status to handle 'frozen' properly
+- [ ] Configure outbound webhook in Bitrix24 for ONCRMDEALUPDATE → koza.vip
+- [ ] Verify webhook fires automatically when deal stage changes in B24
+
 ## Phase D — Stability and Publish Readiness
 
 - [ ] Привести OAuth и redirect-flow к схеме `origin + returnPath` без случайных возвратов на корень

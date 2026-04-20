@@ -170,13 +170,15 @@ export async function runDiagnostics(ownerOpenId: string): Promise<DiagnosticsRe
   };
 
   // 4. Ownership flow
-  const [activeOwnerships, cancelledOwnerships] = await Promise.all([
+  const [activeOwnerships, cancelledOwnerships, frozenOwnerships] = await Promise.all([
     db.select({ cnt: count() }).from(animalOwnerships).where(eq(animalOwnerships.status, "active")),
     db.select({ cnt: count() }).from(animalOwnerships).where(eq(animalOwnerships.status, "cancelled")),
+    db.select({ cnt: count() }).from(animalOwnerships).where(eq(animalOwnerships.status, "frozen")),
   ]);
 
   const activeCount = activeOwnerships[0]?.cnt ?? 0;
   const cancelledCount = cancelledOwnerships[0]?.cnt ?? 0;
+  const frozenCount = frozenOwnerships[0]?.cnt ?? 0;
 
   const ownershipSection: DiagnosticSection = {
     status: "healthy",
@@ -184,6 +186,7 @@ export async function runDiagnostics(ownerOpenId: string): Promise<DiagnosticsRe
     details: {
       activeOwnerships: activeCount,
       cancelledOwnerships: cancelledCount,
+      frozenOwnerships: frozenCount,
     },
   };
 

@@ -344,6 +344,13 @@
       "when": 1776692401514,
       "tag": "0049_wonderful_goliath",
       "breakpoints": true
+    },
+    {
+      "idx": 50,
+      "version": "5",
+      "when": 1776703813557,
+      "tag": "0050_illegal_zarek",
+      "breakpoints": true
     }
   ]
 }

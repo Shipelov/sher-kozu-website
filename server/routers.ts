@@ -1899,7 +1899,7 @@ export const appRouter = router({
       .input(
         z.object({
           ownershipId: z.number().int().positive(),
-          status: z.enum(["active", "cancelled", "expired"]),
+          status: z.enum(["active", "cancelled", "expired", "frozen"]),
         }),
       )
       .mutation(async ({ ctx, input }) => {

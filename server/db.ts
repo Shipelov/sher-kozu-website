@@ -2687,7 +2687,7 @@ export async function listAnimalOwnerships(animalId: number) {
 
 export async function updateOwnershipStatus(
   ownershipId: number,
-  newStatus: "active" | "cancelled" | "expired",
+  newStatus: "active" | "cancelled" | "expired" | "frozen",
   adminOpenId: string,
 ) {
   const db = await getDb();

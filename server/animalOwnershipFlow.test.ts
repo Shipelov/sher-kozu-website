@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-type OwnershipStatus = "active" | "pending_payment" | "cancelled" | "expired";
+type OwnershipStatus = "active" | "pending_payment" | "cancelled" | "expired" | "frozen";
 type AnimalStatus = "public_available" | "public_limited" | "fully_booked" | "hidden" | "archived";
 type UserRole = "admin" | "user";
 type PlanRecord = { id: number; ownerOpenId: string; status: "active" | "archived" };
