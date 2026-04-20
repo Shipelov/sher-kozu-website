@@ -8,8 +8,9 @@
  *   event: "ONCRMDEALADD" | "ONCRMDEALUPDATE" | "ONCRMDEALDELETE"
  *   data[FIELDS][ID]: deal ID
  *
- * Security: we verify by fetching the deal from Bitrix24 API using our webhook token
- * (no shared secret from Bitrix24 outbound webhooks — we validate by round-trip).
+ * Security: two-layer verification:
+ *   1. Token check — Bitrix24 sends auth.application_token, we compare with BITRIX24_OUTBOUND_WEBHOOK_TOKEN
+ *   2. Round-trip — we fetch the deal from Bitrix24 API to get current stage (prevents spoofing).
  */
 import type { Request, Response, Express } from "express";
 import {
@@ -19,6 +20,7 @@ import {
 } from "../shared/bitrix24Constants";
 import { isBitrixConfigured, getBitrixWebhookBaseUrl } from "./bitrix24";
 import { createIntegrationAudit, recalculateAnimalStatus } from "./db";
+import { ENV } from "./_core/env";
 
 async function callBitrixDirect<T>(method: string, body: Record<string, unknown>): Promise<T> {
   const response = await fetch(`${getBitrixWebhookBaseUrl()}/${method}.json`, {
@@ -41,7 +43,32 @@ interface BitrixDeal {
   [key: string]: unknown;
 }
 
+/**
+ * Verify that the incoming request contains the correct Bitrix24 outbound webhook token.
+ * Bitrix24 sends `auth[application_token]` in the POST body.
+ */
+function verifyBitrixToken(req: Request): boolean {
+  const token = ENV.bitrix24OutboundWebhookToken;
+  if (!token) {
+    // If no token configured, skip verification (dev mode)
+    console.warn("[B24 Webhook] No BITRIX24_OUTBOUND_WEBHOOK_TOKEN configured, skipping verification");
+    return true;
+  }
+  const body = req.body || {};
+  const incomingToken =
+    body?.auth?.application_token ||
+    body?.auth?.APPLICATION_TOKEN ||
+    body?.application_token;
+  return incomingToken === token;
+}
+
 async function handleDealUpdate(req: Request, res: Response) {
+  // Verify the request is from our Bitrix24 instance
+  if (!verifyBitrixToken(req)) {
+    console.warn("[B24 Webhook] Invalid token, rejecting request");
+    return res.status(403).json({ ok: false, error: "invalid_token" });
+  }
+
   // Bitrix24 outbound webhook sends form-encoded or JSON
   const body = req.body || {};
   const event = body.event as string | undefined;
