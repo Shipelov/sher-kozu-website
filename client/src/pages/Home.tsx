@@ -173,6 +173,20 @@ export default function Home() {
   const [authModalView, setAuthModalView] = useState<"login" | "register">("register");
   const [mashaVideoOpen, setMashaVideoOpen] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const [mapVisible, setMapVisible] = useState(false);
+  const mapSentinelRef = useRef<HTMLDivElement>(null);
+
+  // Lazy-load Yandex Maps only when the geography section scrolls near viewport
+  useEffect(() => {
+    const el = mapSentinelRef.current;
+    if (!el) return;
+    const io = new IntersectionObserver(
+      ([entry]) => { if (entry.isIntersecting) { setMapVisible(true); io.disconnect(); } },
+      { rootMargin: "200px" } // start loading 200px before section enters viewport
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
   const cms = useCmsContent("home");
 
   // CMS-powered data with fallbacks to hardcoded defaults
@@ -471,17 +485,27 @@ export default function Home() {
               </motion.div>
             </div>
 
-            {/* Right column — interactive map */}
+            {/* Right column — interactive map (deferred until section is near viewport) */}
             <motion.div
+              ref={mapSentinelRef}
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.5, delay: 0.2 }}
               className="relative"
             >
-              <Suspense fallback={<div className="h-[400px] w-full rounded-2xl bg-secondary/40 animate-pulse flex items-center justify-center"><span className="text-muted-foreground text-sm">Загрузка карты...</span></div>}>
-                <FarmMap className="rounded-2xl" />
-              </Suspense>
+              {mapVisible ? (
+                <Suspense fallback={<div className="h-[400px] w-full rounded-2xl bg-secondary/40 animate-pulse flex items-center justify-center"><span className="text-muted-foreground text-sm">Загрузка карты...</span></div>}>
+                  <FarmMap className="rounded-2xl" />
+                </Suspense>
+              ) : (
+                <div className="h-[400px] sm:h-[480px] w-full rounded-2xl bg-secondary/40 flex items-center justify-center">
+                  <div className="flex flex-col items-center gap-3">
+                    <MapPin className="h-8 w-8 text-primary/40" />
+                    <span className="text-muted-foreground text-sm">Карта загрузится при прокрутке</span>
+                  </div>
+                </div>
+              )}
             </motion.div>
           </div>
         </div>

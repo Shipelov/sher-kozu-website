@@ -2359,3 +2359,4 @@
 - [x] BUG: Mobile page load freezes for ~30 seconds at 70% — fixed: isolated __vitePreload helper into vendor-preload chunk + lazy-loaded Streamdown to eliminate 11MB initial JS load (93% reduction)
 - [x] Backfill: Generated mobile WebP variants for 12 of 13 CMS images (1 skipped — already ≤800px). All pages: home, about, club, tracker.
 - [x] BUG: Mobile loading freeze persists — root cause: AIFloatingHub statically imported ZoyaChat→vendor-markdown→vendor-shiki (9.3MB). Fixed: ZoyaChat now React.lazy(), initial JS ~934KB (was ~12MB)
+- [ ] BUG: Mobile loading still freezes ~30s after Gate login — previous fixes didn't help. Compare Manus vs VDS builds, check actual browser downloads

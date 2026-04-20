@@ -12,14 +12,19 @@
     <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=DM+Sans:ital,opsz,wght@1,9..40,400&family=Cormorant+Garamond:ital,wght@0,400;1,400;1,600&display=swap" />
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=DM+Sans:ital,opsz,wght@1,9..40,400&family=Cormorant+Garamond:ital,wght@0,400;1,400;1,600&display=swap" rel="stylesheet" media="print" onload="this.media='all'" />
     <meta name="description" content="Шерь Козу — персональное фермерство. Выберите своё животное, следите за жизнью на ферме, получайте премиальные молочные продукты." />
-    <script defer src="https://tg-proxy.shipelovspain.workers.dev/sdk/telegram-web-app.js"></script>
+    <!-- Telegram SDK: load only inside Telegram WebApp context -->
+    <script>
+      if (window.TelegramWebviewProxy || navigator.userAgent.includes('Telegram')) {
+        var s = document.createElement('script');
+        s.src = 'https://tg-proxy.shipelovspain.workers.dev/sdk/telegram-web-app.js';
+        s.defer = true;
+        document.head.appendChild(s);
+      }
+    </script>
   </head>
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
-    <script
-      defer
-      src="%VITE_ANALYTICS_ENDPOINT%/umami"
-      data-website-id="%VITE_ANALYTICS_WEBSITE_ID%"></script>
+    <!-- Analytics: loaded dynamically via useAnalytics hook to avoid broken %VITE_*% in HTML -->
   </body>
 </html>
