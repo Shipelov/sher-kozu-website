@@ -10,7 +10,7 @@
  * - Hidden on /faq (Masha embedded) and /nutritionist (Zoya embedded)
  */
 
-import { useState, useRef, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useRef, useEffect, useCallback, useMemo, Suspense } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useLocation, Link } from "wouter";
 import { trpc } from "@/lib/trpc";
@@ -31,7 +31,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import ZoyaChat from "./ZoyaChat";
+const ZoyaChat = React.lazy(() => import("./ZoyaChat"));
 import AuthModal from "./AuthModal";
 
 /* ─── Avatars ─── */
@@ -577,7 +577,13 @@ export default function AIFloatingHub() {
               <ChevronDown className="h-5 w-5 sm:hidden" />
             </button>
 
-            <ZoyaChat mode="compact" onAuthRequired={handleZoyaAuthRequired} />
+            <Suspense fallback={
+              <div className="flex-1 flex items-center justify-center">
+                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+              </div>
+            }>
+              <ZoyaChat mode="compact" onAuthRequired={handleZoyaAuthRequired} />
+            </Suspense>
           </motion.div>
         )}
       </AnimatePresence>

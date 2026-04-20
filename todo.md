@@ -2357,4 +2357,5 @@
 - [x] Auto-resize: Store mobile variant URL in CMS block metadata
 - [x] Auto-resize: Frontend uses mobile variant via <picture> srcset on mobile devices
 - [x] BUG: Mobile page load freezes for ~30 seconds at 70% — fixed: isolated __vitePreload helper into vendor-preload chunk + lazy-loaded Streamdown to eliminate 11MB initial JS load (93% reduction)
-- [ ] Backfill: Generate mobile WebP variants for all existing CMS images that don't have mobileImageUrl yet
+- [x] Backfill: Generated mobile WebP variants for 12 of 13 CMS images (1 skipped — already ≤800px). All pages: home, about, club, tracker.
+- [x] BUG: Mobile loading freeze persists — root cause: AIFloatingHub statically imported ZoyaChat→vendor-markdown→vendor-shiki (9.3MB). Fixed: ZoyaChat now React.lazy(), initial JS ~934KB (was ~12MB)
