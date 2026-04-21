@@ -2309,6 +2309,8 @@ export const milkProcessingStatusEnum = mysqlEnum("milkProcessingStatus", [
 
 export const milkAuditActionEnum = mysqlEnum("milkAuditAction", [
   "session_created",
+  "session_updated",
+  "session_cancelled",
   "session_confirmed",
   "session_disputed",
   "session_auto_confirmed",

@@ -266,6 +266,152 @@ export const milkSessionRouter = router({
     }),
 
   /**
+   * Update a pending session (milker can edit before confirmation).
+   * Only sessions in 'pending_confirm' status owned by the milker can be updated.
+   */
+  update: publicProcedure
+    .input(
+      z.object({
+        sessionId: z.number().int().positive(),
+        shift: z.enum(["morning", "evening"]).optional(),
+        goat: animalTypeInput.optional(),
+        sheep: animalTypeInput.optional(),
+        cow: animalTypeInput.optional(),
+        note: z.string().max(1000).optional().nullable(),
+      }),
+    )
+    .mutation(async ({ input, ctx }) => {
+      const worker = requireMilker(ctx.req);
+      const db = await getDb();
+
+      // Fetch session
+      const [session] = await db
+        .select()
+        .from(milkSessions)
+        .where(eq(milkSessions.id, input.sessionId))
+        .limit(1);
+
+      if (!session) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Сессия не найдена" });
+      }
+      if (session.workerId !== worker.workerId) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Можно редактировать только свои дойки" });
+      }
+      if (session.status !== "pending_confirm") {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Редактировать можно только дойки в статусе \"ожидание подтверждения\"" });
+      }
+
+      // Build update fields
+      const updates: Record<string, any> = {};
+
+      if (input.goat) {
+        updates.goatVolumeMl = input.goat.volumeMl;
+        updates.goatHeadCount = input.goat.headCount;
+      }
+      if (input.sheep) {
+        updates.sheepVolumeMl = input.sheep.volumeMl;
+        updates.sheepHeadCount = input.sheep.headCount;
+      }
+      if (input.cow) {
+        updates.cowVolumeMl = input.cow.volumeMl;
+        updates.cowHeadCount = input.cow.headCount;
+      }
+      if (input.note !== undefined) {
+        updates.note = input.note;
+      }
+
+      // Validate at least one type has volume after update
+      const newGoatMl = input.goat?.volumeMl ?? session.goatVolumeMl;
+      const newSheepMl = input.sheep?.volumeMl ?? session.sheepVolumeMl;
+      const newCowMl = input.cow?.volumeMl ?? session.cowVolumeMl;
+      const totalVolume = newGoatMl + newSheepMl + newCowMl;
+
+      if (totalVolume === 0) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Укажите объём молока хотя бы для одного вида животных",
+        });
+      }
+
+      // If shift changed, regenerate session code
+      if (input.shift && input.shift !== session.shift) {
+        const moscowOffset = 3 * 60 * 60 * 1000;
+        const moscowDate = new Date(session.createdAt.getTime() + moscowOffset);
+        updates.shift = input.shift;
+        updates.sessionCode = generateSessionCode(moscowDate, input.shift);
+      }
+
+      if (Object.keys(updates).length === 0) {
+        return { success: true, message: "Нет изменений" };
+      }
+
+      await db.update(milkSessions).set(updates).where(eq(milkSessions.id, input.sessionId));
+
+      // Audit log
+      await logMilkAudit({
+        action: "session_updated",
+        workerId: worker.workerId,
+        entityType: "session",
+        entityId: input.sessionId,
+        detailsJson: JSON.stringify({
+          sessionCode: session.sessionCode,
+          changes: updates,
+        }),
+      });
+
+      return { success: true, message: "Дойка обновлена" };
+    }),
+
+  /**
+   * Cancel a pending session (milker can delete before confirmation).
+   * Only sessions in 'pending_confirm' status owned by the milker can be cancelled.
+   */
+  cancel: publicProcedure
+    .input(
+      z.object({
+        sessionId: z.number().int().positive(),
+      }),
+    )
+    .mutation(async ({ input, ctx }) => {
+      const worker = requireMilker(ctx.req);
+      const db = await getDb();
+
+      // Fetch session
+      const [session] = await db
+        .select()
+        .from(milkSessions)
+        .where(eq(milkSessions.id, input.sessionId))
+        .limit(1);
+
+      if (!session) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Сессия не найдена" });
+      }
+      if (session.workerId !== worker.workerId) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Можно отменять только свои дойки" });
+      }
+      if (session.status !== "pending_confirm") {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Отменить можно только дойки в статусе \"ожидание подтверждения\"" });
+      }
+
+      // Delete the session
+      await db.delete(milkSessions).where(eq(milkSessions.id, input.sessionId));
+
+      // Audit log
+      await logMilkAudit({
+        action: "session_cancelled",
+        workerId: worker.workerId,
+        entityType: "session",
+        entityId: input.sessionId,
+        detailsJson: JSON.stringify({
+          sessionCode: session.sessionCode,
+          reason: "Отменена дояром",
+        }),
+      });
+
+      return { success: true, message: "Дойка отменена" };
+    }),
+
+  /**
    * List all sessions (for admin dashboard / cheesemaker).
    */
   listAll: publicProcedure

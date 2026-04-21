@@ -379,6 +379,13 @@
       "when": 1776797471960,
       "tag": "0054_slimy_richard_fisk",
       "breakpoints": true
+    },
+    {
+      "idx": 55,
+      "version": "5",
+      "when": 1776802754071,
+      "tag": "0055_oval_squadron_supreme",
+      "breakpoints": true
     }
   ]
 }

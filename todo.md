@@ -2499,4 +2499,14 @@ Module: Контроль оборота молока. Spec v2.1. Mobile-first AR
 - [x] Frontend: Cheesemaker ARM — reception and tanks split by milk type
 - [x] Frontend: Admin Milk Dashboard — stats, sessions table, receptions table, tank cards per milk type
 - [x] Tests: Updated all milk module tests for new schema (2531 passing)
+- [x] Deploy to VDS — commit d06ddaee, PM2 sherkozu online, /farm 200 OK
+
+## Fix: Milker ARM UX issues — April 21, 2026
+
+- [x] Fix volume input: replaced with free text input (inputMode=decimal), allows multi-digit entry
+- [x] Add edit button (pencil) for pending sessions in history — inline edit all params
+- [x] Add cancel/delete button (trash) for pending sessions in history
+- [x] Server: added milkSession.update and milkSession.cancel endpoints + audit log
+- [x] Remove temperature and density fields from Milker ARM form (cheesemaker-only)
+- [x] Added session_updated and session_cancelled to milkAuditAction enum + migration
 - [ ] Deploy to VDS
