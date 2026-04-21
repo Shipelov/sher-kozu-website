@@ -68,6 +68,7 @@ function StatusBadge({ status }: { status: string | null | undefined }) {
     active: { variant: "default", label: "Активно" },
     confirmed: { variant: "default", label: "Подтверждено" },
     pending: { variant: "secondary", label: "Ожидание" },
+    frozen: { variant: "secondary", label: "Заморожено" },
     draft: { variant: "outline", label: "Черновик" },
     cancelled: { variant: "destructive", label: "Отменено" },
     expired: { variant: "destructive", label: "Истекло" },

@@ -69,6 +69,7 @@ import {
   Search,
   ShieldAlert,
   ShieldCheck,
+  Snowflake,
   Sparkles,
   Star,
   Trash2,
@@ -855,6 +856,7 @@ type OwnershipRow = {
 const OWNERSHIP_STATUS_MAP: Record<string, { label: string; icon: typeof CheckCircle2; className: string }> = {
   active: { label: "Активно", icon: CheckCircle2, className: "border-emerald-200 bg-emerald-50 text-emerald-800" },
   pending_payment: { label: "Ожидает оплаты", icon: Clock, className: "border-amber-200 bg-amber-50 text-amber-800" },
+  frozen: { label: "Заморожено", icon: Snowflake, className: "border-sky-200 bg-sky-50 text-sky-800" },
   expired: { label: "Истекло", icon: Clock, className: "border-stone-200 bg-stone-50 text-stone-600" },
   cancelled: { label: "Отменено", icon: XCircle, className: "border-rose-200 bg-rose-50 text-rose-700" },
 };
@@ -918,7 +920,7 @@ function OwnershipManagementDialog({
             {ownerships.map((ownership) => {
               const statusInfo = OWNERSHIP_STATUS_MAP[ownership.status] ?? OWNERSHIP_STATUS_MAP.expired;
               const StatusIcon = statusInfo.icon;
-              const isOccupied = ownership.status === "active" || ownership.status === "pending_payment";
+              const isOccupied = ownership.status === "active" || ownership.status === "pending_payment" || ownership.status === "frozen";
               return (
                 <div
                   key={ownership.id}
@@ -977,6 +979,30 @@ function OwnershipManagementDialog({
                       >
                         <XCircle className="mr-1 h-3.5 w-3.5" />
                         Отменить
+                      </Button>
+                    ) : null}
+                    {ownership.status === "active" ? (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="rounded-full border-sky-200 text-sky-700 hover:bg-sky-50"
+                        disabled={updateStatus.isPending}
+                        onClick={() => updateStatus.mutate({ ownershipId: ownership.id, status: "frozen" })}
+                      >
+                        <Snowflake className="mr-1 h-3.5 w-3.5" />
+                        Заморозить
+                      </Button>
+                    ) : null}
+                    {ownership.status === "frozen" ? (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="rounded-full border-emerald-200 text-emerald-700 hover:bg-emerald-50"
+                        disabled={updateStatus.isPending}
+                        onClick={() => updateStatus.mutate({ ownershipId: ownership.id, status: "active" })}
+                      >
+                        <CheckCircle2 className="mr-1 h-3.5 w-3.5" />
+                        Разморозить
                       </Button>
                     ) : null}
                     {ownership.status === "expired" || ownership.status === "cancelled" ? (

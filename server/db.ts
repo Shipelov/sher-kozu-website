@@ -1014,7 +1014,7 @@ export async function getOwnerDashboardData(ownerOpenId: string) {
     })
     .from(animalOwnerships)
     .innerJoin(animals, eq(animalOwnerships.animalId, animals.id))
-    .where(and(eq(animalOwnerships.ownerOpenId, ownerOpenId), or(eq(animalOwnerships.status, "active"), eq(animalOwnerships.status, "pending_payment"))))
+    .where(and(eq(animalOwnerships.ownerOpenId, ownerOpenId), or(eq(animalOwnerships.status, "active"), eq(animalOwnerships.status, "pending_payment"), eq(animalOwnerships.status, "frozen"))))
     .orderBy(desc(animalOwnerships.status), desc(animalOwnerships.startsAt), desc(animalOwnerships.id));
 
   const groupedByAnimal = new Map<number, any[]>();
@@ -1049,6 +1049,7 @@ export async function getOwnerDashboardData(ownerOpenId: string) {
     const sharePercent = slotsCount * Math.round(getPercentPerSlot(totalSlots));
     const hasPending = group.some((item: any) => item.status === "pending_payment");
     const hasActive = group.some((item: any) => item.status === "active");
+    const hasFrozen = group.some((item: any) => item.status === "frozen");
 
     // Resolve cover: animalMedia cover → animalPhotos cover → first photo → animal.coverImageUrl
     let resolvedCover = first.coverImageUrl;
@@ -1095,8 +1096,8 @@ export async function getOwnerDashboardData(ownerOpenId: string) {
       coverImageUrl: resolvedCover,
       sharePercent,
       slotsCount,
-      status: hasPending ? "pending_payment" as const : "active" as const,
-      statusLabel: hasPending ? "Ожидает подтверждения" : hasActive ? "Активное участие" : "Без активного участия",
+      status: hasPending ? "pending_payment" as const : hasFrozen ? "frozen" as const : "active" as const,
+      statusLabel: hasPending ? "Ожидает подтверждения" : hasFrozen ? "Заморожено" : hasActive ? "Активное участие" : "Без активного участия",
       startsAt: first.startsAt,
       endsAt: first.endsAt,
       priceMinorTotal: group.reduce((sum: number, item: any) => sum + Number(item.priceMinor ?? 0), 0),
@@ -1114,9 +1115,11 @@ export async function getOwnerDashboardData(ownerOpenId: string) {
 
   const statusLabel = primaryOwnershipGroup?.some((item) => item.status === "pending_payment")
     ? "Ожидает подтверждения"
-    : primaryOwnershipGroup?.some((item) => item.status === "active")
-      ? "Активное участие"
-      : "Без активного участия";
+    : primaryOwnershipGroup?.some((item) => item.status === "frozen")
+      ? "Заморожено"
+      : primaryOwnershipGroup?.some((item) => item.status === "active")
+        ? "Активное участие"
+        : "Без активного участия";
 
   const animalHref = currentAnimal ? `/animals/${currentAnimal.slug}` : "/animals";
   const trackerHref = currentAnimal ? `/tracker?animal=${currentAnimal.slug}` : "/tracker";
@@ -1196,7 +1199,7 @@ export async function getOwnerDashboardData(ownerOpenId: string) {
           animalName: primaryOwnership.animalName,
           sharePercent: mySharePercent,
           slotsCount: primaryOwnershipGroup?.length ?? 0,
-          status: primaryOwnershipGroup?.some((item) => item.status === "pending_payment") ? "pending_payment" : "active",
+          status: primaryOwnershipGroup?.some((item) => item.status === "pending_payment") ? "pending_payment" : primaryOwnershipGroup?.some((item) => item.status === "frozen") ? "frozen" : "active",
           statusLabel,
           startsAt: primaryOwnership.startsAt,
           endsAt: primaryOwnership.endsAt,
@@ -1865,7 +1868,7 @@ export async function listBitrixAdminData(
 }
 
 function isOccupiedOwnershipStatus(status: string) {
-  return status === "active" || status === "pending_payment";
+  return status === "active" || status === "pending_payment" || status === "frozen";
 }
 
 function normalizeOwnershipSlots(totalOwnershipSlots: number | null | undefined) {
@@ -5298,7 +5301,7 @@ export async function getUserOwnedAnimalSlugs(userOpenId: string): Promise<strin
     .where(
       and(
         eq(animalOwnerships.ownerOpenId, userOpenId),
-        or(eq(animalOwnerships.status, "active"), eq(animalOwnerships.status, "pending_payment")),
+        or(eq(animalOwnerships.status, "active"), eq(animalOwnerships.status, "pending_payment"), eq(animalOwnerships.status, "frozen")),
       ),
     );
   return Array.from(new Set(rows.map((r: { slug: string }) => r.slug)));

@@ -39,6 +39,8 @@ import {
   ShoppingCart,
   MessageCircle,
   Send,
+  Snowflake,
+  Pause,
 } from "lucide-react";
 import { toast } from "sonner";
 import ScrollRemaining from "@/components/ScrollRemaining";
@@ -153,6 +155,30 @@ function getOwnershipTone(status?: string | null) {
       pill: "Ожидает подтверждения",
       description:
         "Участие уже забронировано, и следующий шаг — подтвердить маршрут владельца и закрепить его в кабинете.",
+    };
+  }
+
+  if (status === "frozen") {
+    return {
+      pill: "Заморожено",
+      description:
+        "Участие временно приостановлено. Свяжитесь с фермой, чтобы узнать подробности и возобновить владение.",
+    };
+  }
+
+  if (status === "cancelled") {
+    return {
+      pill: "Отменено",
+      description:
+        "Участие было отменено. Вы можете выбрать новое животное в галерее или связаться с фермой.",
+    };
+  }
+
+  if (status === "expired") {
+    return {
+      pill: "Истекло",
+      description:
+        "Срок участия истёк. Вы можете продлить владение или выбрать новое животное.",
     };
   }
 
@@ -711,6 +737,54 @@ export default function Dashboard() {
             </motion.section>
           )}
 
+          {/* ── Frozen Banner ── */}
+          {ownership?.status === "frozen" && (
+            <motion.section
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.04 }}
+              className="overflow-hidden rounded-[2rem] border border-sky-300/50 bg-gradient-to-br from-sky-50 to-blue-50 p-5 shadow-sm md:p-6"
+              data-testid="dashboardFrozenBanner"
+            >
+              <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:gap-8">
+                <div className="flex-1">
+                  <div className="inline-flex items-center gap-2 rounded-full bg-sky-100 px-3 py-1 text-xs font-semibold uppercase tracking-widest text-sky-700">
+                    <Snowflake className="h-3.5 w-3.5" />
+                    Участие заморожено
+                  </div>
+                  <h3 className="mt-3 text-2xl font-semibold text-foreground">
+                    Ваша доля {ownership.sharePercent}% в {featuredAnimalName} временно приостановлена
+                  </h3>
+                  <p className="mt-2 max-w-xl text-sm leading-7 text-muted-foreground">
+                    Ферма временно приостановила ваше участие. Это может быть связано с сезонным перерывом, техническими работами или индивидуальными обстоятельствами. Доступ к дневнику и галерее сохраняется, но доставки приостановлены.
+                  </p>
+                </div>
+
+                {/* Info card */}
+                <div className="w-full rounded-2xl border border-sky-200 bg-white p-4 shadow-sm lg:max-w-xs">
+                  <div className="text-xs font-semibold uppercase tracking-widest text-sky-700">Что делать</div>
+                  <div className="mt-3 space-y-2.5">
+                    <div className="flex items-start gap-2.5 text-sm text-foreground">
+                      <div className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-sky-100 text-[10px] font-bold text-sky-700">1</div>
+                      <span>Свяжитесь с фермой через чат или по контактам</span>
+                    </div>
+                    <div className="flex items-start gap-2.5 text-sm text-foreground">
+                      <div className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-sky-100 text-[10px] font-bold text-sky-700">2</div>
+                      <span>Узнайте причину заморозки и сроки возобновления</span>
+                    </div>
+                    <div className="flex items-start gap-2.5 text-sm text-foreground">
+                      <div className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-sky-100 text-[10px] font-bold text-sky-700">3</div>
+                      <span>После разморозки кабинет восстановится автоматически</span>
+                    </div>
+                  </div>
+                  <div className="mt-4 rounded-xl bg-sky-50 px-3 py-2 text-xs text-sky-700">
+                    Ваша доля сохраняется за вами на весь период заморозки.
+                  </div>
+                </div>
+              </div>
+            </motion.section>
+          )}
+
           {/* ── Мои животные ── show when owner has multiple animals */}
           {allOwnerships.length > 1 && (
             <motion.section
@@ -778,7 +852,11 @@ export default function Dashboard() {
                           <div className="rounded-xl bg-secondary/55 px-3 py-2">
                             <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Статус</div>
                             <div className={`mt-0.5 text-sm font-semibold ${
-                              item.status === "pending_payment" ? "text-amber-600" : "text-emerald-600"
+                              (item.status as string) === "pending_payment" ? "text-amber-600"
+                              : (item.status as string) === "frozen" ? "text-sky-600"
+                              : (item.status as string) === "cancelled" ? "text-rose-600"
+                              : (item.status as string) === "expired" ? "text-stone-500"
+                              : "text-emerald-600"
                             }`}>
                               {item.statusLabel}
                             </div>

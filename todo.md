@@ -2389,5 +2389,12 @@
 
 ## Bugfixes — April 21, 2026
 
-- [ ] Fix slow hero image loading on homepage (7s gray placeholder before image appears)
-- [ ] Fix broken AI assistants (not working)
+- [x] Fix slow hero image loading on homepage (7s gray placeholder before image appears)
+- [x] Fix broken AI assistants (not working) — Cloudflare Worker placement hint fix
+
+## Frozen Status Display — April 21, 2026
+
+- [x] Add frozen status badge/indicator in owner dashboard (ownership card, status display)
+- [x] Add frozen status display in admin panel (ownership list, animal detail, status filters)
+- [x] Add frozen status explanation text for users in dashboard
+- [ ] Deploy frozen status display to VDS (pending)
