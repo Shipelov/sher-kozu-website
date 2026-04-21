@@ -41,8 +41,8 @@
 - [x] Add 'frozen' to ownershipStatusEnum in schema.ts and push migration
 - [x] Update B24_STAGE_TO_OWNERSHIP_STATUS mapping: FROZEN → 'frozen'
 - [x] Update all code references that check ownership status to handle 'frozen' properly
-- [ ] Configure outbound webhook in Bitrix24 for ONCRMDEALUPDATE → koza.vip
-- [ ] Verify webhook fires automatically when deal stage changes in B24
+- [x] Configure outbound webhook in Bitrix24 for ONCRMDEALUPDATE → koza.vip
+- [x] Verify webhook fires automatically when deal stage changes in B24
 
 ## Phase D — Stability and Publish Readiness
 
@@ -2386,3 +2386,8 @@
 - [x] Build escalateChatToManager function in bitrix24.ts
 - [ ] Handle onCrmActivityUpdate webhook for escalation resolution
 - [ ] Test full cycle: registration → booking → payment → activation → delivery → escalation → renewal
+
+## Bugfixes — April 21, 2026
+
+- [ ] Fix slow hero image loading on homepage (7s gray placeholder before image appears)
+- [ ] Fix broken AI assistants (not working)
