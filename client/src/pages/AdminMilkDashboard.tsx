@@ -2,7 +2,7 @@
  * Admin Milk Dashboard — /admin/milk
  *
  * Overview of milk turnover: stats, sessions, receptions, tanks, audit log.
- * With scrolling tables and clear data presentation.
+ * With scrolling tables, edit/delete sessions, and clear data presentation.
  */
 
 import { useState } from "react";
@@ -37,6 +37,7 @@ import {
   FileText,
   Loader2,
   Milk,
+  Pencil,
   Plus,
   Power,
   PowerOff,
@@ -70,12 +71,21 @@ const TANK_STATUS: Record<string, { label: string; color: string }> = {
 
 const ACTION_LABELS: Record<string, string> = {
   session_created: "Дойка создана",
+  session_updated: "Дойка обновлена",
   session_submitted: "Дойка отправлена",
   session_auto_confirmed: "Автоподтверждение",
+  session_confirmed: "Подтверждена",
+  session_cancelled: "Дойка удалена",
   reception_accepted: "Молоко принято",
   reception_rejected: "Молоко отклонено",
   tank_movement: "Движение танка",
 };
+
+/** Convert liters string to ml integer */
+function parseMl(s: string): number {
+  const n = parseFloat(s);
+  return isNaN(n) || n < 0 ? 0 : Math.round(n * 1000);
+}
 
 export default function AdminMilkDashboard() {
   const [tab, setTab] = useState<"overview" | "sessions" | "receptions" | "tanks" | "audit">(
@@ -92,6 +102,26 @@ export default function AdminMilkDashboard() {
   const [tankMilkType, setTankMilkType] = useState<string>("goat");
   const [tankCapacity, setTankCapacity] = useState("");
   const [tankLocation, setTankLocation] = useState("");
+
+  // ─── Session edit dialog ───
+  const [editSession, setEditSession] = useState<any>(null);
+  const [editGoatVol, setEditGoatVol] = useState("");
+  const [editGoatHeads, setEditGoatHeads] = useState("");
+  const [editGoatFeeding, setEditGoatFeeding] = useState("");
+  const [editGoatLosses, setEditGoatLosses] = useState("");
+  const [editSheepVol, setEditSheepVol] = useState("");
+  const [editSheepHeads, setEditSheepHeads] = useState("");
+  const [editSheepFeeding, setEditSheepFeeding] = useState("");
+  const [editSheepLosses, setEditSheepLosses] = useState("");
+  const [editCowVol, setEditCowVol] = useState("");
+  const [editCowHeads, setEditCowHeads] = useState("");
+  const [editCowFeeding, setEditCowFeeding] = useState("");
+  const [editCowLosses, setEditCowLosses] = useState("");
+  const [editNote, setEditNote] = useState("");
+  const [editStatus, setEditStatus] = useState("");
+
+  // ─── Delete confirm dialog ───
+  const [deleteSession, setDeleteSession] = useState<any>(null);
 
   const overviewQuery = trpc.milkAdmin.overview.useQuery(undefined, {
     enabled: tab === "overview",
@@ -144,6 +174,35 @@ export default function AdminMilkDashboard() {
     onError: (err: any) => toast.error("Ошибка", { description: err.message }),
   });
 
+  const updateSessionMutation = trpc.milkAdmin.updateSession.useMutation({
+    onSuccess: () => {
+      toast.success("Дойка обновлена");
+      setEditSession(null);
+      void utils.milkAdmin.sessions.invalidate();
+      void utils.milkAdmin.overview.invalidate();
+    },
+    onError: (err: any) => toast.error("Ошибка", { description: err.message }),
+  });
+
+  const deleteSessionMutation = trpc.milkAdmin.deleteSession.useMutation({
+    onSuccess: (data: any) => {
+      toast.success(data.message);
+      setDeleteSession(null);
+      void utils.milkAdmin.sessions.invalidate();
+      void utils.milkAdmin.overview.invalidate();
+      void utils.milkAdmin.receptions.invalidate();
+    },
+    onError: (err: any) => toast.error("Ошибка", { description: err.message }),
+  });
+
+  const clearAuditMutation = trpc.milkAdmin.clearAuditLog.useMutation({
+    onSuccess: (data: any) => {
+      toast.success(`Удалено ${data.deleted} записей старше 30 дней`);
+      void utils.milkAdmin.auditLog.invalidate();
+    },
+    onError: (err: any) => toast.error("Ошибка", { description: err.message }),
+  });
+
   const overview = overviewQuery.data;
 
   const TABS = [
@@ -154,13 +213,44 @@ export default function AdminMilkDashboard() {
     { key: "audit" as const, label: "Аудит", icon: ScrollText },
   ];
 
-  const clearAuditMutation = trpc.milkAdmin.clearAuditLog.useMutation({
-    onSuccess: (data: any) => {
-      toast.success(`Удалено ${data.deleted} записей старше 30 дней`);
-      void utils.milkAdmin.auditLog.invalidate();
-    },
-    onError: (err: any) => toast.error("Ошибка", { description: err.message }),
-  });
+  function openEditDialog(s: any) {
+    setEditSession(s);
+    setEditGoatVol(String(s.goat.volumeLiters));
+    setEditGoatHeads(String(s.goat.headCount));
+    setEditGoatFeeding(String(s.goat.feedingLiters));
+    setEditGoatLosses(String(s.goat.lossesLiters));
+    setEditSheepVol(String(s.sheep.volumeLiters));
+    setEditSheepHeads(String(s.sheep.headCount));
+    setEditSheepFeeding(String(s.sheep.feedingLiters));
+    setEditSheepLosses(String(s.sheep.lossesLiters));
+    setEditCowVol(String(s.cow.volumeLiters));
+    setEditCowHeads(String(s.cow.headCount));
+    setEditCowFeeding(String(s.cow.feedingLiters));
+    setEditCowLosses(String(s.cow.lossesLiters));
+    setEditNote(s.note ?? "");
+    setEditStatus(s.status);
+  }
+
+  function handleSaveEdit() {
+    if (!editSession) return;
+    updateSessionMutation.mutate({
+      sessionId: editSession.id,
+      goatVolumeMl: parseMl(editGoatVol),
+      goatHeadCount: parseInt(editGoatHeads) || 0,
+      goatFeedingMl: parseMl(editGoatFeeding),
+      goatLossesMl: parseMl(editGoatLosses),
+      sheepVolumeMl: parseMl(editSheepVol),
+      sheepHeadCount: parseInt(editSheepHeads) || 0,
+      sheepFeedingMl: parseMl(editSheepFeeding),
+      sheepLossesMl: parseMl(editSheepLosses),
+      cowVolumeMl: parseMl(editCowVol),
+      cowHeadCount: parseInt(editCowHeads) || 0,
+      cowFeedingMl: parseMl(editCowFeeding),
+      cowLossesMl: parseMl(editCowLosses),
+      status: editStatus as any,
+      note: editNote || null,
+    });
+  }
 
   return (
     <div className="space-y-6">
@@ -308,6 +398,7 @@ export default function AdminMilkDashboard() {
                       <th className="text-right px-3 py-2 font-medium">Итого</th>
                       <th className="text-left px-3 py-2 font-medium">Статус</th>
                       <th className="text-left px-3 py-2 font-medium">Дата</th>
+                      <th className="text-center px-3 py-2 font-medium">Действия</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y">
@@ -349,6 +440,24 @@ export default function AdminMilkDashboard() {
                               hour: "2-digit",
                               minute: "2-digit",
                             })}
+                          </td>
+                          <td className="px-3 py-2">
+                            <div className="flex items-center justify-center gap-1">
+                              <button
+                                onClick={() => openEditDialog(s)}
+                                className="w-8 h-8 rounded-lg bg-[oklch(0.94_0.02_90)] flex items-center justify-center hover:bg-[oklch(0.88_0.04_220)] transition-colors"
+                                title="Редактировать"
+                              >
+                                <Pencil className="w-3.5 h-3.5 text-[oklch(0.45_0.08_220)]" />
+                              </button>
+                              <button
+                                onClick={() => setDeleteSession(s)}
+                                className="w-8 h-8 rounded-lg bg-red-50 flex items-center justify-center hover:bg-red-100 transition-colors"
+                                title="Удалить"
+                              >
+                                <Trash2 className="w-3.5 h-3.5 text-red-500" />
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       );
@@ -691,6 +800,236 @@ export default function AdminMilkDashboard() {
           )}
         </div>
       )}
+
+      {/* ── Edit Session Dialog ── */}
+      <Dialog open={!!editSession} onOpenChange={(open) => !open && setEditSession(null)}>
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>
+              Редактировать дойку {editSession?.sessionCode}
+            </DialogTitle>
+          </DialogHeader>
+          {editSession && (
+            <div className="space-y-4 pt-2">
+              {/* Status */}
+              <div>
+                <label className="text-xs font-medium text-[oklch(0.52_0.04_80)] mb-1 block">
+                  Статус
+                </label>
+                <Select value={editStatus} onValueChange={setEditStatus}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="pending_confirm">Ожидает подтверждения</SelectItem>
+                    <SelectItem value="confirmed">Подтверждена</SelectItem>
+                    <SelectItem value="in_progress">В процессе</SelectItem>
+                    <SelectItem value="disputed">Оспорена</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Goat */}
+              <div className="border rounded-lg p-3">
+                <h4 className="text-sm font-semibold mb-2">🐐 Козье молоко</h4>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-[10px] text-[oklch(0.52_0.04_80)]">Объём (л)</label>
+                    <Input
+                      inputMode="decimal"
+                      value={editGoatVol}
+                      onChange={(e) => setEditGoatVol(e.target.value)}
+                      className="h-8 text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-[oklch(0.52_0.04_80)]">Голов</label>
+                    <Input
+                      inputMode="numeric"
+                      value={editGoatHeads}
+                      onChange={(e) => setEditGoatHeads(e.target.value)}
+                      className="h-8 text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-[oklch(0.52_0.04_80)]">Выпойка (л)</label>
+                    <Input
+                      inputMode="decimal"
+                      value={editGoatFeeding}
+                      onChange={(e) => setEditGoatFeeding(e.target.value)}
+                      className="h-8 text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-[oklch(0.52_0.04_80)]">Потери (л)</label>
+                    <Input
+                      inputMode="decimal"
+                      value={editGoatLosses}
+                      onChange={(e) => setEditGoatLosses(e.target.value)}
+                      className="h-8 text-sm"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Sheep */}
+              <div className="border rounded-lg p-3">
+                <h4 className="text-sm font-semibold mb-2">🐑 Овечье молоко</h4>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-[10px] text-[oklch(0.52_0.04_80)]">Объём (л)</label>
+                    <Input
+                      inputMode="decimal"
+                      value={editSheepVol}
+                      onChange={(e) => setEditSheepVol(e.target.value)}
+                      className="h-8 text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-[oklch(0.52_0.04_80)]">Голов</label>
+                    <Input
+                      inputMode="numeric"
+                      value={editSheepHeads}
+                      onChange={(e) => setEditSheepHeads(e.target.value)}
+                      className="h-8 text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-[oklch(0.52_0.04_80)]">Выпойка (л)</label>
+                    <Input
+                      inputMode="decimal"
+                      value={editSheepFeeding}
+                      onChange={(e) => setEditSheepFeeding(e.target.value)}
+                      className="h-8 text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-[oklch(0.52_0.04_80)]">Потери (л)</label>
+                    <Input
+                      inputMode="decimal"
+                      value={editSheepLosses}
+                      onChange={(e) => setEditSheepLosses(e.target.value)}
+                      className="h-8 text-sm"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Cow */}
+              <div className="border rounded-lg p-3">
+                <h4 className="text-sm font-semibold mb-2">🐄 Коровье молоко</h4>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-[10px] text-[oklch(0.52_0.04_80)]">Объём (л)</label>
+                    <Input
+                      inputMode="decimal"
+                      value={editCowVol}
+                      onChange={(e) => setEditCowVol(e.target.value)}
+                      className="h-8 text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-[oklch(0.52_0.04_80)]">Голов</label>
+                    <Input
+                      inputMode="numeric"
+                      value={editCowHeads}
+                      onChange={(e) => setEditCowHeads(e.target.value)}
+                      className="h-8 text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-[oklch(0.52_0.04_80)]">Выпойка (л)</label>
+                    <Input
+                      inputMode="decimal"
+                      value={editCowFeeding}
+                      onChange={(e) => setEditCowFeeding(e.target.value)}
+                      className="h-8 text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-[oklch(0.52_0.04_80)]">Потери (л)</label>
+                    <Input
+                      inputMode="decimal"
+                      value={editCowLosses}
+                      onChange={(e) => setEditCowLosses(e.target.value)}
+                      className="h-8 text-sm"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Note */}
+              <div>
+                <label className="text-xs font-medium text-[oklch(0.52_0.04_80)] mb-1 block">
+                  Примечание
+                </label>
+                <Input
+                  value={editNote}
+                  onChange={(e) => setEditNote(e.target.value)}
+                  placeholder="Примечание..."
+                />
+              </div>
+            </div>
+          )}
+          <DialogFooter className="pt-3">
+            <Button variant="outline" onClick={() => setEditSession(null)}>
+              Отмена
+            </Button>
+            <Button
+              disabled={updateSessionMutation.isPending}
+              onClick={handleSaveEdit}
+              className="bg-[oklch(0.35_0.12_150)] hover:bg-[oklch(0.30_0.12_150)]"
+            >
+              {updateSessionMutation.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : (
+                <Check className="h-4 w-4 mr-2" />
+              )}
+              Сохранить
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Delete Session Confirm Dialog ── */}
+      <Dialog open={!!deleteSession} onOpenChange={(open) => !open && setDeleteSession(null)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="text-red-600">Удалить дойку?</DialogTitle>
+          </DialogHeader>
+          <div className="py-2 text-sm text-[oklch(0.4_0.04_80)]">
+            <p>
+              Вы уверены, что хотите удалить дойку{" "}
+              <strong className="font-mono">{deleteSession?.sessionCode}</strong>?
+            </p>
+            <p className="mt-2 text-xs text-red-500">
+              Все связанные приёмки будут удалены, объёмы в танках будут откорректированы.
+              Это действие необратимо.
+            </p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteSession(null)}>
+              Отмена
+            </Button>
+            <Button
+              variant="destructive"
+              disabled={deleteSessionMutation.isPending}
+              onClick={() => {
+                if (deleteSession) {
+                  deleteSessionMutation.mutate({ sessionId: deleteSession.id });
+                }
+              }}
+            >
+              {deleteSessionMutation.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : (
+                <Trash2 className="h-4 w-4 mr-2" />
+              )}
+              Удалить
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -2526,7 +2526,9 @@ Module: Контроль оборота молока. Spec v2.1. Mobile-first AR
 
 - [x] Schema: Added goatFeedingMl, goatLossesMl, sheepFeedingMl, sheepLossesMl, cowFeedingMl, cowLossesMl to milkSessions
 - [x] Server: milkSession router — accepts feeding/losses per type, computes net volume (Nadoi − Feeding − Losses)
-- [x] Frontend: Milker ARM — added Feeding (Выпойка) and Losses (Потери) fields per animal type, formula display Сыроделу=Надой−Выпойка−Потери
+- [x] Frontend: Milker ARM — a- [x] Added feeding (Выпойка) and losses (Потери) per animal type
+- [x] Fix: session status not updating in Milker ARM and Admin panel after cheesemaker confirmation
+- [x] Add edit and delete session capabilities in Admin Milk Dashboard (Дойки table), formula display Сыроделу=Надой−Выпойка−Потери
 - [x] All number inputs use free text entry (inputMode=decimal) for multi-digit numbers
 - [x] Cheesemaker ARM shows net volume with feeding/losses breakdown in pending items
 - [x] Admin dashboard shows feeding/losses/net in overview stats and session table

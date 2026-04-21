@@ -66,6 +66,79 @@ const MILK_TYPE_LABELS: Record<string, string> = {
   cow: "Коровье",
 };
 
+// ─── Helper: update session status when all milk types processed ───
+
+/**
+ * After accepting or rejecting a milk type, check if ALL milk types
+ * in the session now have a reception record. If so, update the
+ * session status to "confirmed".
+ *
+ * A session has milk types with volume > 0 (net = volume - feeding - losses > 0).
+ * Each such type needs either an accepted or rejected reception.
+ */
+async function updateSessionStatusIfComplete(
+  db: any,
+  sessionId: number,
+  session: any,
+  workerId: number,
+) {
+  // Determine which milk types have net volume > 0 (need processing)
+  const milkTypesWithVolume: string[] = [];
+  const types = [
+    { key: "goat", vol: session.goatVolumeMl, feed: session.goatFeedingMl ?? 0, loss: session.goatLossesMl ?? 0 },
+    { key: "sheep", vol: session.sheepVolumeMl, feed: session.sheepFeedingMl ?? 0, loss: session.sheepLossesMl ?? 0 },
+    { key: "cow", vol: session.cowVolumeMl, feed: session.cowFeedingMl ?? 0, loss: session.cowLossesMl ?? 0 },
+  ];
+  for (const t of types) {
+    const net = t.vol - t.feed - t.loss;
+    if (t.vol > 0 && net > 0) {
+      milkTypesWithVolume.push(t.key);
+    }
+  }
+
+  if (milkTypesWithVolume.length === 0) return;
+
+  // Get all receptions for this session (accepted or rejected)
+  const receptions = await db
+    .select({ milkType: milkReceptions.milkType, status: milkReceptions.status })
+    .from(milkReceptions)
+    .where(
+      and(
+        eq(milkReceptions.sessionId, sessionId),
+        inArray(milkReceptions.status, ["accepted", "rejected"]),
+      ),
+    );
+
+  const processedTypes = new Set(receptions.map((r: any) => r.milkType));
+
+  // Check if all required types are processed
+  const allProcessed = milkTypesWithVolume.every((t) => processedTypes.has(t));
+
+  if (allProcessed) {
+    await db
+      .update(milkSessions)
+      .set({
+        status: "confirmed",
+        confirmedAt: new Date(),
+        confirmedBy: String(workerId),
+      })
+      .where(eq(milkSessions.id, sessionId));
+
+    // Audit log
+    await logMilkAudit({
+      action: "session_confirmed",
+      workerId,
+      entityType: "session",
+      entityId: sessionId,
+      detailsJson: JSON.stringify({
+        sessionCode: session.sessionCode,
+        confirmedByCheesemaker: true,
+        processedTypes: milkTypesWithVolume,
+      }),
+    });
+  }
+}
+
 // ─── Milk Reception Router ──────────────────────────────────
 
 export const milkReceptionRouter = router({
@@ -327,6 +400,9 @@ export const milkReceptionRouter = router({
         }),
       });
 
+      // ─── Update session status if all milk types are now processed ───
+      await updateSessionStatusIfComplete(db, input.sessionId, session, worker.workerId);
+
       return {
         receptionId: receptionResult.insertId,
         milkType: input.milkType,
@@ -393,6 +469,9 @@ export const milkReceptionRouter = router({
           rejectedVolumeMl: rejectedVolume,
         }),
       });
+
+      // ─── Update session status if all milk types are now processed ───
+      await updateSessionStatusIfComplete(db, input.sessionId, session, worker.workerId);
 
       return { receptionId: receptionResult.insertId, milkType: input.milkType };
     }),

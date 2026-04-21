@@ -46,7 +46,7 @@ export async function runMilkAutoConfirm(): Promise<number> {
           .set({
             status: "confirmed",
             confirmedAt: new Date(),
-            confirmedByWorkerId: null, // null = auto-confirmed
+            confirmedBy: "auto", // auto-confirmed after 72h
           })
           .where(eq(milkSessions.id, session.id));
 

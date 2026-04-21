@@ -13,6 +13,7 @@
  */
 
 import { z } from "zod";
+import { TRPCError } from "@trpc/server";
 import { router } from "../_core/trpc";
 import { adminProcedure } from "../_core/trpc";
 import {
@@ -24,7 +25,8 @@ import {
   farmWorkers,
 } from "../../drizzle/schema";
 import { getDb } from "../db";
-import { eq, and, gte, lte, desc, sql, like } from "drizzle-orm";
+import { logMilkAudit } from "../farmAuth";
+import { eq, and, gte, lte, desc, sql, like, inArray } from "drizzle-orm";
 
 const MILK_TYPE_LABELS: Record<string, string> = {
   goat: "Козье",
@@ -489,5 +491,172 @@ export const milkAdminRouter = router({
         page: input.page,
         pageSize: input.pageSize,
       };
+    }),
+
+  /**
+   * Admin: update a milking session (any status).
+   * Admin can edit volumes, feeding, losses, shift, note, and status.
+   */
+  updateSession: adminProcedure
+    .input(
+      z.object({
+        sessionId: z.number().int().positive(),
+        shift: z.enum(["morning", "evening"]).optional(),
+        goatVolumeMl: z.number().int().min(0).max(500_000).optional(),
+        goatHeadCount: z.number().int().min(0).max(500).optional(),
+        goatFeedingMl: z.number().int().min(0).max(500_000).optional(),
+        goatLossesMl: z.number().int().min(0).max(500_000).optional(),
+        sheepVolumeMl: z.number().int().min(0).max(500_000).optional(),
+        sheepHeadCount: z.number().int().min(0).max(500).optional(),
+        sheepFeedingMl: z.number().int().min(0).max(500_000).optional(),
+        sheepLossesMl: z.number().int().min(0).max(500_000).optional(),
+        cowVolumeMl: z.number().int().min(0).max(500_000).optional(),
+        cowHeadCount: z.number().int().min(0).max(500).optional(),
+        cowFeedingMl: z.number().int().min(0).max(500_000).optional(),
+        cowLossesMl: z.number().int().min(0).max(500_000).optional(),
+        status: z.enum(["in_progress", "pending_confirm", "confirmed", "disputed"]).optional(),
+        note: z.string().max(1000).optional().nullable(),
+      }),
+    )
+    .mutation(async ({ input, ctx }) => {
+      const db = await getDb();
+
+      const [session] = await db
+        .select()
+        .from(milkSessions)
+        .where(eq(milkSessions.id, input.sessionId))
+        .limit(1);
+
+      if (!session) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Сессия не найдена" });
+      }
+
+      const updates: Record<string, any> = {};
+
+      if (input.shift !== undefined) updates.shift = input.shift;
+      if (input.goatVolumeMl !== undefined) updates.goatVolumeMl = input.goatVolumeMl;
+      if (input.goatHeadCount !== undefined) updates.goatHeadCount = input.goatHeadCount;
+      if (input.goatFeedingMl !== undefined) updates.goatFeedingMl = input.goatFeedingMl;
+      if (input.goatLossesMl !== undefined) updates.goatLossesMl = input.goatLossesMl;
+      if (input.sheepVolumeMl !== undefined) updates.sheepVolumeMl = input.sheepVolumeMl;
+      if (input.sheepHeadCount !== undefined) updates.sheepHeadCount = input.sheepHeadCount;
+      if (input.sheepFeedingMl !== undefined) updates.sheepFeedingMl = input.sheepFeedingMl;
+      if (input.sheepLossesMl !== undefined) updates.sheepLossesMl = input.sheepLossesMl;
+      if (input.cowVolumeMl !== undefined) updates.cowVolumeMl = input.cowVolumeMl;
+      if (input.cowHeadCount !== undefined) updates.cowHeadCount = input.cowHeadCount;
+      if (input.cowFeedingMl !== undefined) updates.cowFeedingMl = input.cowFeedingMl;
+      if (input.cowLossesMl !== undefined) updates.cowLossesMl = input.cowLossesMl;
+      if (input.status !== undefined) {
+        updates.status = input.status;
+        if (input.status === "confirmed") {
+          updates.confirmedAt = new Date();
+          updates.confirmedBy = "admin";
+        }
+      }
+      if (input.note !== undefined) updates.note = input.note;
+
+      if (Object.keys(updates).length === 0) {
+        return { success: true, message: "Нет изменений" };
+      }
+
+      await db.update(milkSessions).set(updates).where(eq(milkSessions.id, input.sessionId));
+
+      await logMilkAudit({
+        action: "session_updated",
+        adminOpenId: ctx.user?.openId ?? "admin",
+        entityType: "session",
+        entityId: input.sessionId,
+        detailsJson: JSON.stringify({
+          sessionCode: session.sessionCode,
+          adminEdit: true,
+          changes: updates,
+        }),
+      });
+
+      return { success: true, message: "Дойка обновлена админом" };
+    }),
+
+  /**
+   * Admin: delete a milking session.
+   * Also deletes related receptions and reverses tank volumes.
+   */
+  deleteSession: adminProcedure
+    .input(
+      z.object({
+        sessionId: z.number().int().positive(),
+      }),
+    )
+    .mutation(async ({ input, ctx }) => {
+      const db = await getDb();
+
+      const [session] = await db
+        .select()
+        .from(milkSessions)
+        .where(eq(milkSessions.id, input.sessionId))
+        .limit(1);
+
+      if (!session) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Сессия не найдена" });
+      }
+
+      // Find related accepted receptions to reverse tank volumes
+      const receptions = await db
+        .select()
+        .from(milkReceptions)
+        .where(eq(milkReceptions.sessionId, input.sessionId));
+
+      // Reverse tank volumes for accepted receptions
+      for (const r of receptions) {
+        if (r.status === "accepted" && r.targetTankId && r.acceptedVolumeMl > 0) {
+          const [tank] = await db
+            .select()
+            .from(milkTanks)
+            .where(eq(milkTanks.id, r.targetTankId))
+            .limit(1);
+
+          if (tank) {
+            const newVol = Math.max(0, tank.currentVolumeMl - r.acceptedVolumeMl);
+            await db
+              .update(milkTanks)
+              .set({
+                currentVolumeMl: newVol,
+                status: newVol === 0 ? "empty" : "filling",
+              })
+              .where(eq(milkTanks.id, r.targetTankId));
+
+            // Log reversal movement
+            await db.insert(milkTankMovements).values({
+              tankId: r.targetTankId,
+              movementType: "waste",
+              volumeMl: -r.acceptedVolumeMl,
+              tankVolumeAfterMl: newVol,
+              note: `Отмена приёмки (админ): ${session.sessionCode}`,
+            });
+          }
+        }
+      }
+
+      // Delete receptions
+      if (receptions.length > 0) {
+        await db.delete(milkReceptions).where(eq(milkReceptions.sessionId, input.sessionId));
+      }
+
+      // Delete the session
+      await db.delete(milkSessions).where(eq(milkSessions.id, input.sessionId));
+
+      // Audit log
+      await logMilkAudit({
+        action: "session_cancelled",
+        adminOpenId: ctx.user?.openId ?? "admin",
+        entityType: "session",
+        entityId: input.sessionId,
+        detailsJson: JSON.stringify({
+          sessionCode: session.sessionCode,
+          adminDelete: true,
+          reversedReceptions: receptions.length,
+        }),
+      });
+
+      return { success: true, message: `Дойка ${session.sessionCode} удалена` };
     }),
 });
