@@ -2844,6 +2844,8 @@ export async function upsertProductOption(input: {
     unit: input.unit,
     maxAnnualUnits: input.maxAnnualUnits,
     isEnabled: input.isEnabled === false ? 0 : 1,
+    isAdminVerified: 1,
+    adminVerifiedAt: new Date(),
     sortOrder: input.sortOrder ?? 0,
   });
   const created = await db.select().from(productOptions).where(eq(productOptions.id, result.insertId)).limit(1);
@@ -5822,9 +5824,10 @@ export async function populateAnimalProductsFromCatalog(
       label: item.label,
       conversionRatio: Math.floor(item.conversionRatio),
       unit: item.unit,
-      maxAnnualUnits: 0, // Admin will set this during verification
+      maxAnnualUnits: 0,
       isEnabled: 1,
-      isAdminVerified: 0,
+      isAdminVerified: 1,
+      adminVerifiedAt: new Date(),
       catalogItemId: item.id,
       sortOrder: item.sortOrder,
     });

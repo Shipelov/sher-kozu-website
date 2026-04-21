@@ -761,3 +761,79 @@ export async function checkBitrixTaskCompleted(taskId: string): Promise<boolean>
     return false;
   }
 }
+
+/**
+ * Create a Bitrix24 task for a plan change request.
+ * When an owner with a confirmed plan wants to change it,
+ * the request goes through the manager instead of being auto-approved.
+ */
+export interface ProductPlanChangeTaskParams {
+  animalId: number;
+  animalName: string;
+  animalSlug: string;
+  ownerOpenId: string;
+  ownerName: string;
+  planId: number;
+  currentSelections: string; // JSON of current selections
+}
+
+export async function createProductPlanChangeTask(
+  params: ProductPlanChangeTaskParams,
+): Promise<{ taskId: string } | null> {
+  if (!isBitrixConfigured()) {
+    console.warn("[B24 Task] Bitrix24 not configured, skipping plan change task creation");
+    return null;
+  }
+
+  const deadline = new Date();
+  deadline.setDate(deadline.getDate() + 1);
+  deadline.setHours(18, 0, 0, 0);
+
+  const description = [
+    `📝 Запрос на изменение продуктового плана`,
+    ``,
+    `Владелец "${params.ownerName}" запросил изменение подтверждённого продуктового плана.`,
+    ``,
+    `📋 Что нужно сделать:`,
+    `1. Связаться с владельцем и уточнить, какие изменения он хочет внести`,
+    `2. При необходимости обновить доступные продукты в админке`,
+    `3. Перевести план в статус "pending_owner_config" через админку`,
+    `4. Уведомить владельца, что план открыт для изменения`,
+    ``,
+    `🔗 Данные:`,
+    `— Животное: ${params.animalName} (ID: ${params.animalId}, slug: ${params.animalSlug})`,
+    `— Владелец: ${params.ownerName} (openId: ${params.ownerOpenId})`,
+    `— План ID: ${params.planId}`,
+    `— Страница: koza.vip/dashboard → выбрать ${params.animalName} → Продуктовый план`,
+    ``,
+    `📊 Текущий план:`,
+    `${params.currentSelections}`,
+  ].join("\n");
+
+  try {
+    const response = await callBitrix<{ result: { task: { id: string } } }>(
+      "tasks.task.add",
+      {
+        fields: {
+          TITLE: `Изменение плана: ${params.ownerName} — ${params.animalName}`,
+          DESCRIPTION: description,
+          RESPONSIBLE_ID: B24_MANAGER_RESPONSIBLE_ID,
+          CREATED_BY: B24_MANAGER_RESPONSIBLE_ID,
+          PRIORITY: "1", // Normal
+          DEADLINE: deadline.toISOString(),
+          ALLOW_CHANGE_DEADLINE: "Y",
+          TAGS: ["product-plan-change", "auto-request"],
+        },
+      },
+    );
+
+    const taskId = String(response.result.task.id);
+    console.log(
+      `[B24 Task] Created plan change task #${taskId} for ${params.ownerName} — ${params.animalName} (plan #${params.planId})`,
+    );
+    return { taskId };
+  } catch (error) {
+    console.error("[B24 Task] Failed to create plan change task:", error);
+    return null;
+  }
+}

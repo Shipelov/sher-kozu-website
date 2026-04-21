@@ -2427,4 +2427,16 @@
 - [x] Fix: Added auto-create logic in getOwnerProductPlan() — creates plan record on first access when profile + ownership exist
 - [x] Fix: Auto-detect verified products → set status to pending_owner_config (or pending_admin_setup if not verified)
 - [x] TypeScript: 0 errors, all 2485 tests pass
-- [ ] Deploy fix to VDS (in progress)
+- [x] Deploy fix to VDS (included in unified deploy)
+
+## Unified Product Plan Logic — April 21, 2026
+
+Flow: Admin adds products → Owner configures plan → Changes only via manager
+
+- [x] Audit: Check DB state for all 5 animals (plans, products, verification status)
+- [x] Fix: Auto-create ownerProductPlans for ALL animals that have products + active ownership (getOwnerProductPlan auto-create)
+- [x] Fix: When admin adds products via admin panel, auto-verify them (isAdminVerified=1 in createProductOption + populateProductOptionsFromCatalog)
+- [x] Fix: OwnerProductPlanSection shows plan config UI when products exist (replaced static message with retry/loading)
+- [x] Fix: After plan is confirmed, owner can only request changes via manager (createProductPlanChangeTask in B24)
+- [x] Test: TypeScript 0 errors + all 2485 tests pass
+- [ ] Deploy to VDS (in progress)

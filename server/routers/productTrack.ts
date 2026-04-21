@@ -73,6 +73,7 @@ import type { ProductOption } from "../../drizzle/schema";
 import { storagePut } from "../storage";
 import { notifyOwner } from "../_core/notification";
 import { ENV } from "../_core/env";
+import { createProductPlanChangeTask } from "../bitrix24";
 
 /* ── Zod schemas ── */
 
@@ -597,7 +598,32 @@ export const productTrackRouter = router({
       if (!check.allowed) {
         throw new TRPCError({ code: "BAD_REQUEST", message: check.reason || "Изменение плана пока недоступно." });
       }
-      const updatedPlan = await ownerRequestPlanChange(input.planId);
+
+      // Create Bitrix24 task for manager instead of directly reopening the plan
+      const animalName = await getAnimalNameById(existingPlan.animalId);
+      const animalSlug = await getAnimalSlugById(existingPlan.animalId) ?? "unknown";
+
+      // Format current selections for the task description
+      let selectionsText = "Нет данных";
+      try {
+        const parsed = JSON.parse(existingPlan.selectionsJson || "[]");
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          selectionsText = parsed.map((s: { label?: string; annualUnits?: number; unit?: string }) =>
+            `— ${s.label ?? "Продукт"}: ${s.annualUnits ?? 0} ${s.unit ?? "ед."}/год`
+          ).join("\n");
+        }
+      } catch { selectionsText = existingPlan.selectionsJson || "[]"; }
+
+      const b24Task = await createProductPlanChangeTask({
+        animalId: existingPlan.animalId,
+        animalName,
+        animalSlug,
+        ownerOpenId: ctx.user.openId,
+        ownerName: ctx.user.name || "Владелец",
+        planId: input.planId,
+        currentSelections: selectionsText,
+      });
+
       await logPlanChange({
         planId: input.planId,
         animalId: existingPlan.animalId,
@@ -605,17 +631,19 @@ export const productTrackRouter = router({
         actorId: ctx.user.openId,
         action: "reset",
         previousStatus: "confirmed",
-        newStatus: "pending_owner_config",
+        newStatus: "change_requested",
         selectionsSnapshot: existingPlan.selectionsJson,
-        note: "Владелец запросил изменение плана",
+        note: `Владелец запросил изменение плана через менеджера${b24Task ? ` (задача Б24 #${b24Task.taskId})` : ""}`,
       });
-      // Notify admin that owner requested plan change
-      const animalName = await getAnimalNameById(existingPlan.animalId);
+
+      // Notify admin via in-app notification
       notifyOwner({
         title: `Запрос на изменение плана: ${ctx.user.name || "владелец"} (${animalName})`,
-        content: `Владелец запросил изменение продуктового плана для ${animalName}. План переведён в статус ожидания настройки.`,
+        content: `Владелец запросил изменение продуктового плана для ${animalName}. Необходимо связаться с владельцем и обработать запрос.${b24Task ? ` Задача Б24: #${b24Task.taskId}` : ""}`,
       }).catch(() => {});
-      return updatedPlan;
+
+      // Return the existing plan (not changed yet — manager will process)
+      return { ...existingPlan, changeRequested: true, bitrixTaskId: b24Task?.taskId ?? null };
     }),
 
   /** Check if owner can change plan */

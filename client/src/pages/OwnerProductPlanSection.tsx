@@ -435,7 +435,9 @@ export default function OwnerProductPlanSection({
     onSuccess: () => {
       utils.productTrack.getMyPlan.invalidate({ animalId });
       utils.productTrack.canChangePlan.invalidate();
-      toast.success("План открыт для изменения");
+      toast.success("Заявка отправлена менеджеру", {
+        description: "Ваш клиентский менеджер свяжется с вами для обсуждения изменений.",
+      });
     },
     onError: (err: { message: string }) => toast.error(err.message),
   });
@@ -757,14 +759,25 @@ export default function OwnerProductPlanSection({
                 </div>
               )}
 
-              {/* No plan exists yet */}
+              {/* No plan exists yet — auto-create should handle this, show retry */}
               {!existingPlan && profile && (
-                <div className="rounded-xl border border-stone-200 bg-stone-50 p-4 text-sm text-stone-700">
-                  <p className="font-medium">Продуктовый план ещё не создан</p>
-                  <p className="mt-1 text-xs text-stone-600">
-                    Администратор фермы создаст ваш продуктовый план после настройки доступных продуктов.
-                    Вы получите уведомление, когда план будет готов к настройке.
+                <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+                  <p className="font-medium">Инициализация продуктового плана…</p>
+                  <p className="mt-1 text-xs text-amber-700">
+                    Система настраивает ваш продуктовый план. Если страница не обновилась автоматически, нажмите кнопку ниже.
                   </p>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="mt-3 border-amber-300 text-amber-800 hover:bg-amber-100"
+                    onClick={() => {
+                      planQuery.refetch();
+                      profileQuery.refetch();
+                      verifiedOptionsQuery.refetch();
+                    }}
+                  >
+                    <RefreshCw className="mr-2 h-3.5 w-3.5" /> Обновить
+                  </Button>
                 </div>
               )}
 
@@ -1051,19 +1064,24 @@ export default function OwnerProductPlanSection({
                           tierSlug={tierSlug}
                         />
                         {canChangeQuery.data.allowed && (
-                          <Button
-                            onClick={handleRequestChange}
-                            disabled={requestChange.isPending}
-                            variant="outline"
-                            className="rounded-full w-full mt-3"
-                          >
-                            {requestChange.isPending ? (
-                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                            ) : (
-                              <RefreshCw className="mr-2 h-4 w-4" />
-                            )}
-                            Изменить план
-                          </Button>
+                          <>
+                            <p className="text-[11px] text-muted-foreground mt-2 mb-1">
+                              Изменения плана обрабатываются через вашего клиентского менеджера
+                            </p>
+                            <Button
+                              onClick={handleRequestChange}
+                              disabled={requestChange.isPending}
+                              variant="outline"
+                              className="rounded-full w-full mt-1"
+                            >
+                              {requestChange.isPending ? (
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                              ) : (
+                                <MessageCircle className="mr-2 h-4 w-4" />
+                              )}
+                              Запросить изменение плана
+                            </Button>
+                          </>
                         )}
                       </div>
                     )}
