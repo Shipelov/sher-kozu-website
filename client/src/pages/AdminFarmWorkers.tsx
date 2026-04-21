@@ -37,10 +37,12 @@ import {
   EyeOff,
   KeyRound,
   Loader2,
+  Pencil,
   Plus,
   Power,
   PowerOff,
   ShieldCheck,
+  Trash2,
   UserCog,
   Users,
 } from "lucide-react";
@@ -78,6 +80,13 @@ export default function AdminFarmWorkers() {
   const [newPassword, setNewPassword] = useState("");
   const [newRole, setNewRole] = useState<string>("milker");
   const [showNewPw, setShowNewPw] = useState(false);
+
+  // Edit dialog state
+  const [editWorker, setEditWorker] = useState<any>(null);
+  const [editName, setEditName] = useState("");
+  const [editRole, setEditRole] = useState("");
+  const [editPhone, setEditPhone] = useState("");
+  const [editTelegram, setEditTelegram] = useState("");
 
   // ─── Queries & Mutations ───
   const workersQuery = trpc.farmAdmin.listWorkers.useQuery(undefined, {
@@ -121,9 +130,31 @@ export default function AdminFarmWorkers() {
     onError: (err) => toast.error("Ошибка", { description: err.message }),
   });
 
+  const updateMutation = trpc.farmAdmin.updateWorker.useMutation({
+    onSuccess: () => {
+      toast.success("Данные обновлены");
+      setEditWorker(null);
+      void utils.farmAdmin.listWorkers.invalidate();
+    },
+    onError: (err) => toast.error("Ошибка", { description: err.message }),
+  });
+
+  const deleteMutation = trpc.farmAdmin.deleteWorker.useMutation({
+    onSuccess: () => {
+      toast.success("Сотрудник удалён");
+      void utils.farmAdmin.listWorkers.invalidate();
+    },
+    onError: (err) => toast.error("Ошибка", { description: err.message }),
+  });
+
   // ─── Derived ───
   const workers = workersQuery.data ?? [];
-  const activeCount = useMemo(() => workers.filter((w) => w.isActive).length, [workers]);
+  // Filter out soft-deleted workers (login starts with __deleted_)
+  const visibleWorkers = useMemo(
+    () => workers.filter((w) => !w.login.startsWith("__deleted_")),
+    [workers],
+  );
+  const activeCount = useMemo(() => visibleWorkers.filter((w) => w.isActive).length, [visibleWorkers]);
 
   // ─── Auth guards ───
   if (loading) {
@@ -173,6 +204,14 @@ export default function AdminFarmWorkers() {
     return pw;
   };
 
+  const openEditDialog = (w: any) => {
+    setEditWorker(w);
+    setEditName(w.name);
+    setEditRole(w.role);
+    setEditPhone(w.phone ?? "");
+    setEditTelegram(w.telegramChatId ?? "");
+  };
+
   return (
     <DashboardLayout>
       <div className="min-h-screen bg-[radial-gradient(circle_at_top,#f6efe6_0%,#f7f2ea_35%,#faf7f3_100%)] text-foreground">
@@ -200,7 +239,7 @@ export default function AdminFarmWorkers() {
                   Сотрудники фермы
                 </h1>
                 <p className="text-sm text-muted-foreground mt-0.5">
-                  {workers.length} всего · {activeCount} активных
+                  {visibleWorkers.length} всего · {activeCount} активных
                 </p>
               </div>
             </div>
@@ -226,14 +265,14 @@ export default function AdminFarmWorkers() {
                 <div className="flex items-center justify-center py-12 text-sm text-muted-foreground">
                   <Loader2 className="h-4 w-4 animate-spin mr-2" /> Загрузка…
                 </div>
-              ) : workers.length === 0 ? (
+              ) : visibleWorkers.length === 0 ? (
                 <div className="text-center py-12 text-sm text-muted-foreground">
                   <UserCog className="h-8 w-8 mx-auto mb-3 opacity-40" />
                   <p>Нет сотрудников</p>
                   <p className="text-xs mt-1">Нажмите «Добавить сотрудника» для создания</p>
                 </div>
               ) : (
-                <ScrollRemaining totalItems={workers.length} itemHeight={56}>
+                <ScrollRemaining totalItems={visibleWorkers.length} itemHeight={56}>
                   <div className="overflow-x-auto">
                     <Table>
                       <TableHeader>
@@ -248,7 +287,7 @@ export default function AdminFarmWorkers() {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {workers.map((w) => (
+                        {visibleWorkers.map((w) => (
                           <TableRow key={w.id} className="border-b border-border/40 last:border-0">
                             <TableCell className="font-medium whitespace-nowrap">
                               {w.name}
@@ -271,7 +310,7 @@ export default function AdminFarmWorkers() {
                             </TableCell>
                             <TableCell>
                               {w.isActive ? (
-                                <Badge className="rounded-full text-[10px] bg-emerald-100 text-emerald-700 border-emerald-200">
+                                <Badge variant="outline" className="rounded-full text-[10px] border-emerald-200 text-emerald-600">
                                   Активен
                                 </Badge>
                               ) : (
@@ -300,6 +339,17 @@ export default function AdminFarmWorkers() {
                             </TableCell>
                             <TableCell>
                               <div className="flex items-center justify-center gap-1">
+                                {/* Edit */}
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8 rounded-full"
+                                  title="Редактировать"
+                                  onClick={() => openEditDialog(w)}
+                                >
+                                  <Pencil className="h-3.5 w-3.5 text-blue-600" />
+                                </Button>
+                                {/* Toggle active */}
                                 <Button
                                   variant="ghost"
                                   size="icon"
@@ -319,6 +369,7 @@ export default function AdminFarmWorkers() {
                                     <Power className="h-3.5 w-3.5 text-emerald-600" />
                                   )}
                                 </Button>
+                                {/* Reset password */}
                                 <Button
                                   variant="ghost"
                                   size="icon"
@@ -331,6 +382,21 @@ export default function AdminFarmWorkers() {
                                   }}
                                 >
                                   <KeyRound className="h-3.5 w-3.5 text-amber-600" />
+                                </Button>
+                                {/* Delete */}
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8 rounded-full"
+                                  title="Удалить"
+                                  disabled={deleteMutation.isPending}
+                                  onClick={() => {
+                                    if (confirm(`Удалить сотрудника «${w.name}»? Это действие нельзя отменить.`)) {
+                                      deleteMutation.mutate({ workerId: w.id });
+                                    }
+                                  }}
+                                >
+                                  <Trash2 className="h-3.5 w-3.5 text-red-400" />
                                 </Button>
                               </div>
                             </TableCell>
@@ -462,6 +528,83 @@ export default function AdminFarmWorkers() {
                 <Loader2 className="h-4 w-4 animate-spin mr-2" />
               ) : null}
               Создать
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Edit Worker Dialog ── */}
+      <Dialog open={editWorker !== null} onOpenChange={(open) => { if (!open) setEditWorker(null); }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Редактировать сотрудника</DialogTitle>
+          </DialogHeader>
+          {editWorker && (
+            <div className="space-y-4 pt-2">
+              <div>
+                <label className="text-sm font-medium mb-1.5 block">Имя</label>
+                <Input
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium mb-1.5 block">Роль</label>
+                <Select value={editRole} onValueChange={setEditRole}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="milker">Дояр</SelectItem>
+                    <SelectItem value="cheesemaker">Сыродел</SelectItem>
+                    <SelectItem value="vet">Ветеринар</SelectItem>
+                    <SelectItem value="manager">Менеджер</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <label className="text-sm font-medium mb-1.5 block">Телефон</label>
+                <Input
+                  placeholder="+7 (999) 123-45-67"
+                  value={editPhone}
+                  onChange={(e) => setEditPhone(e.target.value)}
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium mb-1.5 block">Telegram Chat ID</label>
+                <Input
+                  placeholder="123456789"
+                  value={editTelegram}
+                  onChange={(e) => setEditTelegram(e.target.value)}
+                  className="font-mono"
+                />
+                <p className="text-[11px] text-muted-foreground mt-1">
+                  Сотрудник получает ID командой /myid у @sherkozu_bot
+                </p>
+              </div>
+            </div>
+          )}
+          <DialogFooter className="pt-4">
+            <Button variant="outline" onClick={() => setEditWorker(null)}>
+              Отмена
+            </Button>
+            <Button
+              disabled={!editName.trim() || updateMutation.isPending}
+              onClick={() => {
+                if (!editWorker) return;
+                updateMutation.mutate({
+                  workerId: editWorker.id,
+                  name: editName.trim(),
+                  role: editRole as any,
+                  phone: editPhone.trim() || null,
+                  telegramChatId: editTelegram.trim() || null,
+                });
+              }}
+            >
+              {updateMutation.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : null}
+              Сохранить
             </Button>
           </DialogFooter>
         </DialogContent>

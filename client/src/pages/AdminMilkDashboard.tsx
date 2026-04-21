@@ -25,6 +25,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
+  ArrowLeft,
   BarChart3,
   Calendar,
   Check,
@@ -40,8 +41,10 @@ import {
   Power,
   PowerOff,
   ScrollText,
+  Trash2,
   TrendingUp,
 } from "lucide-react";
+import { Link } from "wouter";
 import { toast } from "sonner";
 
 const SESSION_STATUS: Record<string, { label: string; color: string }> = {
@@ -151,9 +154,22 @@ export default function AdminMilkDashboard() {
     { key: "audit" as const, label: "Аудит", icon: ScrollText },
   ];
 
+  const clearAuditMutation = trpc.milkAdmin.clearAuditLog.useMutation({
+    onSuccess: (data: any) => {
+      toast.success(`Удалено ${data.deleted} записей старше 30 дней`);
+      void utils.milkAdmin.auditLog.invalidate();
+    },
+    onError: (err: any) => toast.error("Ошибка", { description: err.message }),
+  });
+
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center gap-3">
+        <Link href="/admin">
+          <Button variant="outline" size="icon" className="shrink-0">
+            <ArrowLeft className="w-4 h-4" />
+          </Button>
+        </Link>
         <h1 className="text-2xl font-bold text-[oklch(0.22_0.04_60)]">
           Контроль оборота молока
         </h1>
@@ -599,13 +615,34 @@ export default function AdminMilkDashboard() {
       {/* ── Audit Log ── */}
       {tab === "audit" && (
         <div>
+          {/* Audit header with clear button */}
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-sm text-[oklch(0.52_0.04_80)]">
+              {auditQuery.data ? `${auditQuery.data.total} записей` : ""}
+            </p>
+            <Button
+              variant="outline"
+              size="sm"
+              className="text-red-600 border-red-200 hover:bg-red-50"
+              disabled={clearAuditMutation.isPending}
+              onClick={() => {
+                if (confirm("Удалить записи аудита старше 30 дней?")) {
+                  clearAuditMutation.mutate({ olderThanDays: 30 });
+                }
+              }}
+            >
+              <Trash2 className="w-3.5 h-3.5 mr-1" />
+              Очистить (30+ дней)
+            </Button>
+          </div>
+
           {auditQuery.isLoading ? (
             <div className="flex items-center justify-center py-12">
               <Loader2 className="h-6 w-6 animate-spin" />
             </div>
           ) : (
             <>
-              <div className="overflow-x-auto border rounded-lg">
+              <div className="overflow-x-auto border rounded-lg max-h-[600px] overflow-y-auto">
                 <table className="w-full text-sm">
                   <thead className="bg-[oklch(0.96_0.01_90)]">
                     <tr>

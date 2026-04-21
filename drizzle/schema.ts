@@ -2337,6 +2337,8 @@ export const farmWorkers = mysqlTable("farmWorkers", {
   /** bcrypt hash of password */
   passwordHash: varchar("passwordHash", { length: 255 }).notNull(),
   role: farmWorkerRoleEnum.notNull(),
+  /** Phone number */
+  phone: varchar("phone", { length: 32 }),
   /** Telegram chat ID for notifications (set via /myid bot command) */
   telegramChatId: varchar("telegramChatId", { length: 20 }),
   /** Whether the worker must change password on next login */

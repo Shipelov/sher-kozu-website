@@ -2509,4 +2509,15 @@ Module: Контроль оборота молока. Spec v2.1. Mobile-first AR
 - [x] Server: added milkSession.update and milkSession.cancel endpoints + audit log
 - [x] Remove temperature and density fields from Milker ARM form (cheesemaker-only)
 - [x] Added session_updated and session_cancelled to milkAuditAction enum + migration
+- [x] Deploy to VDS — commit a8e25e29, PM2 sherkozu online, /farm 200 OK
+
+## Fix: Admin panel + Cheesemaker ARM issues — April 21, 2026
+
+- [x] AdminMilkDashboard: Add back button to return to admin hub
+- [x] AdminMilkDashboard: Audit log — scrollable, clearable (clearAuditLog endpoint)
+- [x] AdminFarmWorkers: Add delete worker (soft-delete with __deleted_ prefix)
+- [x] AdminFarmWorkers: Add edit worker dialog (name, phone, telegramChatId)
+- [x] AdminFarmWorkers: Add role change (milker/cheesemaker) in edit dialog
+- [x] Schema: Added phone column to farmWorkers table + migration
+- [x] Fix: Cheesemaker ARM redirect — /farm/* pages excluded from global UNAUTHORIZED redirect in main.tsx
 - [ ] Deploy to VDS

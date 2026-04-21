@@ -31,6 +31,9 @@ const redirectToLoginIfUnauthorized = (error: unknown) => {
   // Don't redirect inside Telegram Mini App
   if (isTelegramMiniApp) return;
 
+  // Don't redirect farm worker pages — they use separate auth (farm_session cookie)
+  if (typeof window !== "undefined" && window.location.pathname.startsWith("/farm")) return;
+
   if (!(error instanceof TRPCClientError)) return;
   if (typeof window === "undefined") return;
 

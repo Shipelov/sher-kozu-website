@@ -384,6 +384,25 @@ export const milkAdminRouter = router({
   /**
    * Audit log (paginated).
    */
+  /**
+   * Clear audit log entries older than N days (default 30).
+   */
+  clearAuditLog: adminProcedure
+    .input(
+      z.object({
+        olderThanDays: z.number().int().min(1).max(365).default(30),
+      }),
+    )
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      const cutoff = new Date();
+      cutoff.setDate(cutoff.getDate() - input.olderThanDays);
+      const [result] = await db
+        .delete(milkAuditLog)
+        .where(lte(milkAuditLog.createdAt, cutoff));
+      return { deleted: (result as any).affectedRows ?? 0 };
+    }),
+
   auditLog: adminProcedure
     .input(
       z.object({

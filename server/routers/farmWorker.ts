@@ -181,6 +181,7 @@ export const farmAdminRouter = router({
       role: w.role,
       isActive: w.isActive,
       mustChangePassword: w.mustChangePassword,
+      phone: w.phone,
       telegramChatId: w.telegramChatId,
       lastLoginAt: w.lastLoginAt,
       createdAt: w.createdAt,
@@ -264,7 +265,7 @@ export const farmAdminRouter = router({
     }),
 
   /**
-   * Update worker details (name, role).
+   * Update worker details (name, role, phone, telegramChatId).
    */
   updateWorker: adminProcedure
     .input(
@@ -272,6 +273,8 @@ export const farmAdminRouter = router({
         workerId: z.number().int().positive(),
         name: z.string().min(1).max(160).optional(),
         role: z.enum(["milker", "cheesemaker", "vet", "manager"]).optional(),
+        phone: z.string().max(32).optional().nullable(),
+        telegramChatId: z.string().max(64).optional().nullable(),
       }),
     )
     .mutation(async ({ input }) => {
@@ -279,6 +282,8 @@ export const farmAdminRouter = router({
       const updates: Record<string, any> = {};
       if (input.name !== undefined) updates.name = input.name;
       if (input.role !== undefined) updates.role = input.role;
+      if (input.phone !== undefined) updates.phone = input.phone;
+      if (input.telegramChatId !== undefined) updates.telegramChatId = input.telegramChatId;
 
       if (Object.keys(updates).length === 0) {
         throw new TRPCError({
@@ -291,6 +296,47 @@ export const farmAdminRouter = router({
         .update(farmWorkers)
         .set(updates)
         .where(eq(farmWorkers.id, input.workerId));
+
+      return { success: true };
+    }),
+
+  /**
+   * Soft-delete a worker (sets isActive=false and marks as deleted).
+   * Farm workers are not hard-deleted to preserve audit trail.
+   */
+  deleteWorker: adminProcedure
+    .input(
+      z.object({
+        workerId: z.number().int().positive(),
+      }),
+    )
+    .mutation(async ({ input, ctx }) => {
+      const db = await getDb();
+      // Soft-delete: deactivate and prefix login to free it
+      const [worker] = await db
+        .select({ login: farmWorkers.login, name: farmWorkers.name })
+        .from(farmWorkers)
+        .where(eq(farmWorkers.id, input.workerId));
+
+      if (!worker) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Сотрудник не найден" });
+      }
+
+      await db
+        .update(farmWorkers)
+        .set({
+          isActive: false,
+          login: `__deleted_${Date.now()}_${worker.login}`,
+        })
+        .where(eq(farmWorkers.id, input.workerId));
+
+      await logMilkAudit({
+        action: "worker_password_changed",
+        adminOpenId: ctx.user.openId,
+        entityType: "worker",
+        entityId: input.workerId,
+        detailsJson: JSON.stringify({ action: "deleted", workerName: worker.name }),
+      });
 
       return { success: true };
     }),
