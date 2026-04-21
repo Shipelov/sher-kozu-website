@@ -2412,4 +2412,11 @@
 - [x] Backend: Notification to owner via Telegram and in-app notification when product plan is ready
 - [x] Frontend: Empty state UI in OwnerProductPlanSection with explanation + "Запросить настройку плана" button
 - [x] Frontend: Show pending state after request is sent (waiting for manager)
-- [ ] Deploy and test full workflow on VDS (in progress)
+- [x] Deploy and test full workflow on VDS (commit 47a8574, verified via /api/version)
+
+## Product Plan Setup — Auto-check & Email Notification — April 21, 2026
+
+- [x] Server: Add cron job to automatically run checkPendingRequests every 5 minutes (setInterval in server/_core/index.ts)
+- [x] Server: Add email notification to owner when product plan is ready via Bitrix24 CRM (alongside Telegram + in-app)
+- [x] Tests: Verify TypeScript compilation + all 2485 tests pass
+- [ ] Deploy to VDS (in progress)

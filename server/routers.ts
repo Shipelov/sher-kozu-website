@@ -1897,50 +1897,12 @@ export const appRouter = router({
         return { success: true, requestId, bitrixTaskId: taskResult?.taskId };
       }),
 
-    /** Admin: check all pending requests and verify completion */
+    /** Admin: manually trigger check of pending requests (also runs automatically every 5 min) */
     checkPendingRequests: adminProcedure.mutation(async () => {
-      const { sendTelegramNotification } = await import("./telegramBot");
+      const { runProductPlanSetupCheck } = await import("./productPlanSetupCron");
+      await runProductPlanSetupCheck();
       const pending = await import("./db").then((m) => m.getPendingSetupRequests());
-      const results: Array<{ id: number; animalId: number; status: string; notified: boolean }> = [];
-
-      for (const req of pending) {
-        const configured = await isProductPlanConfigured(req.animalId);
-        if (configured) {
-          // Product plan is now configured — mark as completed and notify owner
-          await updateSetupRequestStatus(req.id, "completed", {
-            completedAt: new Date(),
-          });
-
-          // Get animal name for notification
-          const animalName = await getAnimalNameById(req.animalId);
-
-          // Notify owner via Telegram
-          const tgSent = await sendTelegramNotification(
-            req.ownerOpenId,
-            `🎉 Продуктовый план готов!\n\nПродуктовый план для ${animalName || "вашего животного"} настроен.\nТеперь вы можете выбрать продукты и сформировать свой план в личном кабинете.\n\n👉 koza.vip/dashboard`,
-          ).catch(() => false);
-
-          // Also create in-app notification
-          await createUserNotification({
-            userOpenId: req.ownerOpenId,
-            type: "product_plan_ready",
-            title: "Продуктовый план готов!",
-            body: `Продуктовый план для ${animalName || "вашего животного"} настроен. Зайдите в личный кабинет, чтобы выбрать продукты.`,
-            link: "/dashboard",
-          });
-
-          await updateSetupRequestStatus(req.id, "completed", {
-            completedAt: new Date(),
-            ownerNotified: true,
-          });
-
-          results.push({ id: req.id, animalId: req.animalId, status: "completed", notified: !!tgSent });
-        } else {
-          results.push({ id: req.id, animalId: req.animalId, status: req.status, notified: false });
-        }
-      }
-
-      return { checked: pending.length, results };
+      return { checked: pending.length, message: "Check completed. Remaining pending: " + pending.length };
     }),
   }),
 

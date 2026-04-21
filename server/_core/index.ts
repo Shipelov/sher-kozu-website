@@ -431,6 +431,20 @@ async function startServer() {
       }
     })();
 
+    // Check pending product plan setup requests every 5 minutes
+    (async () => {
+      try {
+        const { runProductPlanSetupCheck } = await import("../productPlanSetupCron");
+        // Run once on startup (with 30s delay to let DB connect)
+        setTimeout(() => runProductPlanSetupCheck().catch(console.error), 30_000);
+        // Then every 5 minutes
+        setInterval(() => runProductPlanSetupCheck().catch(console.error), 5 * 60 * 1000);
+        console.log("[ProductPlanCron] Scheduled every 5 minutes");
+      } catch (err) {
+        console.error("[ProductPlanCron] Failed to schedule:", err);
+      }
+    })();
+
     // Start analytics monitoring (reports every 5 minutes)
     analyticsMonitor.startReporting();
 
