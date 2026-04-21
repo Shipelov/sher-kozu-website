@@ -2226,3 +2226,31 @@ export const telegramSessions = mysqlTable("telegramSessions", {
 });
 export type TelegramSession = typeof telegramSessions.$inferSelect;
 export type InsertTelegramSession = typeof telegramSessions.$inferInsert;
+
+/* ─── Product Plan Setup Requests ─── */
+export const setupRequestStatusEnum = mysqlEnum("setupRequestStatus", [
+  "pending",
+  "in_progress",
+  "completed",
+  "failed",
+]);
+
+export const productPlanSetupRequests = mysqlTable("productPlanSetupRequests", {
+  id: int("id").autoincrement().primaryKey(),
+  /** Animal that needs product plan configuration */
+  animalId: int("animalId").notNull(),
+  /** Owner who requested the setup */
+  ownerOpenId: varchar("ownerOpenId", { length: 64 }).notNull(),
+  /** Bitrix24 task ID created for the manager */
+  bitrixTaskId: varchar("bitrixTaskId", { length: 32 }),
+  /** Current status of the setup request */
+  status: setupRequestStatusEnum.default("pending").notNull(),
+  /** When the manager completed the setup */
+  completedAt: timestamp("completedAt"),
+  /** Whether the owner was notified about completion */
+  ownerNotified: boolean("ownerNotified").default(false).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type ProductPlanSetupRequest = typeof productPlanSetupRequests.$inferSelect;
+export type InsertProductPlanSetupRequest = typeof productPlanSetupRequests.$inferInsert;

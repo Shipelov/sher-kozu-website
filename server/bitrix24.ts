@@ -663,3 +663,101 @@ export async function escalateChatToManager(params: {
     return null;
   }
 }
+
+
+// ─── Product Plan Setup Task ─────────────────────
+
+const B24_MANAGER_RESPONSIBLE_ID = "1"; // Андрей Шипелов
+
+export interface ProductPlanSetupTaskParams {
+  animalId: number;
+  animalName: string;
+  animalSlug: string;
+  ownerName: string;
+  ownerOpenId: string;
+}
+
+/**
+ * Create a task in Bitrix24 for the manager to set up
+ * the product plan (production profile + product options + plan) for an animal.
+ * Deadline: 1 business day from now.
+ */
+export async function createProductPlanSetupTask(
+  params: ProductPlanSetupTaskParams,
+): Promise<{ taskId: string } | null> {
+  if (!isBitrixConfigured()) {
+    console.warn("[B24 Task] Bitrix24 not configured, skipping task creation");
+    return null;
+  }
+
+  const deadline = new Date();
+  deadline.setDate(deadline.getDate() + 1);
+  deadline.setHours(18, 0, 0, 0);
+
+  const description = [
+    `🐐 Запрос на настройку продуктового плана`,
+    ``,
+    `Владелец "${params.ownerName}" запросил настройку продуктового плана для животного.`,
+    ``,
+    `📋 Что нужно сделать:`,
+    `1. Создать Production Profile (animalProductionProfiles) для животного:`,
+    `   — Указать annualMilkLiters, avgDailyMilkMl, fatPercent, proteinPercent`,
+    `2. Создать Product Options (productOptions) для животного:`,
+    `   — Добавить доступные продукты (молоко, сыр, творог и т.д.)`,
+    `   — Указать цены, описания, единицы измерения`,
+    `3. Убедиться, что владелец может создать план в дашборде`,
+    ``,
+    `🔗 Данные:`,
+    `— Животное: ${params.animalName} (ID: ${params.animalId}, slug: ${params.animalSlug})`,
+    `— Владелец: ${params.ownerName} (openId: ${params.ownerOpenId})`,
+    `— Страница: koza.vip/dashboard → выбрать ${params.animalName} → Продуктовый план`,
+    ``,
+    `⚠️ После настройки система автоматически проверит наличие данных и уведомит владельца.`,
+  ].join("\n");
+
+  try {
+    const response = await callBitrix<{ result: { task: { id: string } } }>(
+      "tasks.task.add",
+      {
+        fields: {
+          TITLE: `Настроить продуктовый план: ${params.animalName}`,
+          DESCRIPTION: description,
+          RESPONSIBLE_ID: B24_MANAGER_RESPONSIBLE_ID,
+          CREATED_BY: B24_MANAGER_RESPONSIBLE_ID,
+          PRIORITY: "2", // High
+          DEADLINE: deadline.toISOString(),
+          ALLOW_CHANGE_DEADLINE: "N",
+          TAGS: ["product-plan-setup", "auto-request"],
+        },
+      },
+    );
+
+    const taskId = String(response.result.task.id);
+    console.log(
+      `[B24 Task] Created product plan setup task #${taskId} for animal ${params.animalName} (${params.animalId})`,
+    );
+    return { taskId };
+  } catch (error) {
+    console.error("[B24 Task] Failed to create product plan setup task:", error);
+    return null;
+  }
+}
+
+/**
+ * Check if a B24 task is completed (status 5 = completed).
+ */
+export async function checkBitrixTaskCompleted(taskId: string): Promise<boolean> {
+  if (!isBitrixConfigured()) return false;
+
+  try {
+    const response = await callBitrix<{ result: { task: { status: string } } }>(
+      "tasks.task.get",
+      { taskId },
+    );
+    // Status 5 = Completed, 4 = Supposedly completed (waiting for approval)
+    return response.result.task.status === "5" || response.result.task.status === "4";
+  } catch (error) {
+    console.error(`[B24 Task] Failed to check task ${taskId}:`, error);
+    return false;
+  }
+}

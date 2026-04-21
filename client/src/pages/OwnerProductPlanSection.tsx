@@ -605,8 +605,95 @@ export default function OwnerProductPlanSection({
   const isLocked = isConfirmed || isPendingApproval;
   const isLoading = profileQuery.isLoading || planQuery.isLoading || tierQuery.isLoading || verifiedOptionsQuery.isLoading;
 
-  // Don't show if no production profile configured
-  if (!isLoading && !profile) return null;
+  // ── Product Plan Setup Request (when no profile exists) ──
+  const setupStatusQuery = trpc.productPlanSetup.getStatus.useQuery(
+    { animalId },
+    { enabled: !isLoading && !profile },
+  );
+  const requestSetupMutation = trpc.productPlanSetup.requestSetup.useMutation({
+    onSuccess: (data) => {
+      if (data.alreadyConfigured) {
+        toast.success("Продуктовый план уже настроен! Обновляем страницу…");
+        profileQuery.refetch();
+      } else if (data.alreadyRequested) {
+        toast.info("Заявка уже отправлена. Мы уведомим вас, когда план будет готов.");
+      } else {
+        toast.success("Заявка отправлена!", {
+          description: "Менеджер настроит продуктовый план в течение 1 рабочего дня.",
+        });
+      }
+      setupStatusQuery.refetch();
+    },
+    onError: (err: { message: string }) => toast.error(err.message),
+  });
+
+  // Show empty state with request button when no production profile
+  if (!isLoading && !profile) {
+    const hasActiveRequest = !!setupStatusQuery.data?.request;
+    const requestStatus = setupStatusQuery.data?.request?.status;
+    const requestDate = setupStatusQuery.data?.request?.createdAt;
+
+    return (
+      <section id="product-plan" className="border-b border-border/60 py-10 md:py-14">
+        <div className="container">
+          <div className="mx-auto max-w-7xl space-y-6">
+            <div className="flex flex-wrap items-center gap-3">
+              <Package className="h-5 w-5 text-primary" />
+              <h2 className="text-2xl font-semibold text-foreground">Продуктовый план</h2>
+            </div>
+
+            <Card className="rounded-2xl border-dashed border-2 border-amber-300 bg-amber-50/50">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-lg text-amber-900 flex items-center gap-2">
+                  <Clock className="h-5 w-5" />
+                  Продуктовый план ещё не настроен
+                </CardTitle>
+                <CardDescription className="text-amber-800">
+                  Для {animalName} пока не создан производственный профиль и каталог продуктов.
+                  Наш менеджер настроит всё в течение 1 рабочего дня после вашей заявки.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {hasActiveRequest ? (
+                  <div className="rounded-xl border border-blue-200 bg-blue-50 p-4 text-sm text-blue-800">
+                    <div className="flex items-center gap-2">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <p className="font-medium">
+                        {requestStatus === "in_progress" ? "Менеджер работает над настройкой" : "Заявка отправлена"}
+                      </p>
+                    </div>
+                    <p className="mt-1 text-xs text-blue-700">
+                      {requestDate && (
+                        <span>Отправлена {new Date(requestDate).toLocaleDateString("ru-RU", { day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" })}. </span>
+                      )}
+                      Вы получите уведомление в Telegram и в личном кабинете, когда план будет готов.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="flex flex-col sm:flex-row gap-3">
+                    <Button
+                      onClick={() => requestSetupMutation.mutate({ animalId })}
+                      disabled={requestSetupMutation.isPending}
+                      className="bg-amber-600 hover:bg-amber-700 text-white"
+                    >
+                      {requestSetupMutation.isPending ? (
+                        <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Отправляем…</>
+                      ) : (
+                        <><MessageCircle className="mr-2 h-4 w-4" /> Запросить настройку плана</>
+                      )}
+                    </Button>
+                    <p className="text-xs text-muted-foreground self-center">
+                      Менеджер получит задачу и настроит план в течение 1 рабочего дня
+                    </p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </section>
+    );
+  }
 
   // Active products (those with allocation > 0)
   const activeProducts = productOutputs.filter(p => p.annualUnits > 0);

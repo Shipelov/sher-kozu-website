@@ -2397,4 +2397,19 @@
 - [x] Add frozen status badge/indicator in owner dashboard (ownership card, status display)
 - [x] Add frozen status display in admin panel (ownership list, animal detail, status filters)
 - [x] Add frozen status explanation text for users in dashboard
-- [ ] Deploy frozen status display to VDS (pending)
+- [x] Deploy frozen status display to VDS
+
+## Bugfixes — April 21, 2026 (cont.)
+
+- [ ] Fix product plan page not loading for goat Mira (works for other animals)
+
+## Product Plan Setup Request Workflow — April 21, 2026
+
+- [x] DB: Add productPlanSetupRequests table (animalId, ownerOpenId, bitrixTaskId, status, createdAt, completedAt)
+- [x] Backend: Create B24 task via REST API (tasks.task.add) with deadline 1 day, detailed description
+- [x] Backend: tRPC procedure productPlanSetup.requestSetup (creates DB record + B24 task)
+- [x] Backend: Admin procedure checkPendingRequests → verify product profile/options exist → notify owner via Telegram + in-app notification
+- [x] Backend: Notification to owner via Telegram and in-app notification when product plan is ready
+- [x] Frontend: Empty state UI in OwnerProductPlanSection with explanation + "Запросить настройку плана" button
+- [x] Frontend: Show pending state after request is sent (waiting for manager)
+- [ ] Deploy and test full workflow on VDS (in progress)

@@ -26,6 +26,7 @@ import {
   InsertPlanDuration,
   integrationAudits,
   partnerLeads,
+  productPlanSetupRequests,
   planDurations,
   plans,
   productBatches,
@@ -6404,4 +6405,93 @@ export async function getPerformanceByDevice(fromDate: Date, toDate: Date) {
     .from(pagePerformance)
     .where(between(pagePerformance.createdAt, fromDate, toDate))
     .groupBy(pagePerformance.deviceType);
+}
+
+
+// ─── Product Plan Setup Requests ─────────────────────
+
+export async function createSetupRequest(params: {
+  animalId: number;
+  ownerOpenId: string;
+  bitrixTaskId?: string;
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  const [result] = await db.insert(productPlanSetupRequests).values({
+    animalId: params.animalId,
+    ownerOpenId: params.ownerOpenId,
+    bitrixTaskId: params.bitrixTaskId ?? null,
+    status: "pending",
+  });
+  return result.insertId;
+}
+
+export async function getActiveSetupRequest(animalId: number, ownerOpenId: string) {
+  const db = await getDb();
+  if (!db) return null;
+  const [row] = await db
+    .select()
+    .from(productPlanSetupRequests)
+    .where(
+      and(
+        eq(productPlanSetupRequests.animalId, animalId),
+        eq(productPlanSetupRequests.ownerOpenId, ownerOpenId),
+        inArray(productPlanSetupRequests.status, ["pending", "in_progress"]),
+      ),
+    )
+    .orderBy(sql`${productPlanSetupRequests.createdAt} DESC`)
+    .limit(1);
+  return row ?? null;
+}
+
+export async function updateSetupRequestStatus(
+  id: number,
+  status: "pending" | "in_progress" | "completed" | "failed",
+  extras?: { completedAt?: Date; ownerNotified?: boolean },
+) {
+  const db = await getDb();
+  if (!db) return;
+  await db
+    .update(productPlanSetupRequests)
+    .set({
+      status,
+      ...(extras?.completedAt ? { completedAt: extras.completedAt } : {}),
+      ...(extras?.ownerNotified !== undefined ? { ownerNotified: extras.ownerNotified } : {}),
+    })
+    .where(eq(productPlanSetupRequests.id, id));
+}
+
+export async function getPendingSetupRequests() {
+  const db = await getDb();
+  if (!db) return [];
+  return db
+    .select()
+    .from(productPlanSetupRequests)
+    .where(
+      inArray(productPlanSetupRequests.status, ["pending", "in_progress"]),
+    );
+}
+
+/**
+ * Check if an animal has a production profile and product options configured.
+ */
+export async function isProductPlanConfigured(animalId: number): Promise<boolean> {
+  const db = await getDb();
+  if (!db) return false;
+
+  const [profile] = await db
+    .select({ id: animalProductionProfiles.id })
+    .from(animalProductionProfiles)
+    .where(eq(animalProductionProfiles.animalId, animalId))
+    .limit(1);
+
+  if (!profile) return false;
+
+  const [option] = await db
+    .select({ id: productOptions.id })
+    .from(productOptions)
+    .where(eq(productOptions.animalId, animalId))
+    .limit(1);
+
+  return !!option;
 }

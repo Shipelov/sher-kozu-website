@@ -98,10 +98,14 @@ import {
   listEventRegistrations,
   adminUpdateRegistrationStatus,
   getUserOwnershipStatus,
+  createSetupRequest,
+  getActiveSetupRequest,
+  updateSetupRequestStatus,
+  isProductPlanConfigured,
 } from "./db";
 import { storagePut } from "./storage";
 import { ENV } from "./_core/env";
-import { isBitrixConfigured, pullBitrixDealSnapshot, syncPartnerLeadToBitrix, syncOwnershipDealToBitrix, updateBitrixDealStage } from "./bitrix24";
+import { isBitrixConfigured, pullBitrixDealSnapshot, syncPartnerLeadToBitrix, syncOwnershipDealToBitrix, updateBitrixDealStage, createProductPlanSetupTask } from "./bitrix24";
 import { runDiagnostics } from "./diagnostics";
 import { notifyOwner } from "./_core/notification";
 import { moderateComment } from "./commentModeration";
@@ -1830,6 +1834,116 @@ export const appRouter = router({
   }),
   productTrack: productTrackRouter,
   pricing: pricingRouter,
+
+  /** Product Plan Setup Request — owner requests manager to configure product plan */
+  productPlanSetup: router({
+    /** Check if a setup request already exists for this animal */
+    getStatus: protectedProcedure
+      .input(z.object({ animalId: z.number() }))
+      .query(async ({ ctx, input }) => {
+        const existing = await getActiveSetupRequest(input.animalId, ctx.user.openId);
+        const configured = await isProductPlanConfigured(input.animalId);
+        return {
+          configured,
+          request: existing
+            ? { id: existing.id, status: existing.status, createdAt: existing.createdAt }
+            : null,
+        };
+      }),
+
+    /** Owner requests product plan setup — creates B24 task */
+    requestSetup: protectedProcedure
+      .input(z.object({ animalId: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        // Check if already configured
+        const configured = await isProductPlanConfigured(input.animalId);
+        if (configured) {
+          return { success: true, alreadyConfigured: true };
+        }
+
+        // Check if there's already a pending request
+        const existing = await getActiveSetupRequest(input.animalId, ctx.user.openId);
+        if (existing) {
+          return { success: true, alreadyRequested: true, requestId: existing.id };
+        }
+
+        // Get animal info for the task description
+        const animalName = await getAnimalNameById(input.animalId);
+        const db = await import("./db").then((m) => m.getDb());
+        let animalSlug = "unknown";
+        if (db) {
+          const { animals: animalsTable } = await import("../drizzle/schema");
+          const { eq } = await import("drizzle-orm");
+          const [a] = await db.select({ slug: animalsTable.slug }).from(animalsTable).where(eq(animalsTable.id, input.animalId)).limit(1);
+          if (a) animalSlug = a.slug;
+        }
+
+        // Create B24 task
+        const taskResult = await createProductPlanSetupTask({
+          animalId: input.animalId,
+          animalName: animalName || `Animal #${input.animalId}`,
+          animalSlug,
+          ownerName: ctx.user.name || ctx.user.openId,
+          ownerOpenId: ctx.user.openId,
+        });
+
+        // Save to DB
+        const requestId = await createSetupRequest({
+          animalId: input.animalId,
+          ownerOpenId: ctx.user.openId,
+          bitrixTaskId: taskResult?.taskId,
+        });
+
+        return { success: true, requestId, bitrixTaskId: taskResult?.taskId };
+      }),
+
+    /** Admin: check all pending requests and verify completion */
+    checkPendingRequests: adminProcedure.mutation(async () => {
+      const { sendTelegramNotification } = await import("./telegramBot");
+      const pending = await import("./db").then((m) => m.getPendingSetupRequests());
+      const results: Array<{ id: number; animalId: number; status: string; notified: boolean }> = [];
+
+      for (const req of pending) {
+        const configured = await isProductPlanConfigured(req.animalId);
+        if (configured) {
+          // Product plan is now configured — mark as completed and notify owner
+          await updateSetupRequestStatus(req.id, "completed", {
+            completedAt: new Date(),
+          });
+
+          // Get animal name for notification
+          const animalName = await getAnimalNameById(req.animalId);
+
+          // Notify owner via Telegram
+          const tgSent = await sendTelegramNotification(
+            req.ownerOpenId,
+            `🎉 Продуктовый план готов!\n\nПродуктовый план для ${animalName || "вашего животного"} настроен.\nТеперь вы можете выбрать продукты и сформировать свой план в личном кабинете.\n\n👉 koza.vip/dashboard`,
+          ).catch(() => false);
+
+          // Also create in-app notification
+          await createUserNotification({
+            userOpenId: req.ownerOpenId,
+            type: "product_plan_ready",
+            title: "Продуктовый план готов!",
+            body: `Продуктовый план для ${animalName || "вашего животного"} настроен. Зайдите в личный кабинет, чтобы выбрать продукты.`,
+            link: "/dashboard",
+          });
+
+          await updateSetupRequestStatus(req.id, "completed", {
+            completedAt: new Date(),
+            ownerNotified: true,
+          });
+
+          results.push({ id: req.id, animalId: req.animalId, status: "completed", notified: !!tgSent });
+        } else {
+          results.push({ id: req.id, animalId: req.animalId, status: req.status, notified: false });
+        }
+      }
+
+      return { checked: pending.length, results };
+    }),
+  }),
+
   gamification: gamificationRouter,
   analytics: analyticsRouter,
   analyticsAlerts: analyticsAlertsRouter,
