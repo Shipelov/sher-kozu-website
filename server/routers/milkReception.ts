@@ -1,14 +1,19 @@
 /**
  * Milk Reception & Tank Management tRPC Router.
  *
- * Provides cheesemaker ARM endpoints:
- * - milkReception.pendingSessions — sessions awaiting reception
- * - milkReception.accept — accept milk from a session
- * - milkReception.reject — reject milk from a session
+ * Milk is tracked SEPARATELY by animal type (goat/sheep/cow).
+ * Each reception is for a specific milk type from a session.
+ * Each tank stores only one type of milk.
+ *
+ * Endpoints:
+ * - milkReception.pendingSessions — sessions with unreceived milk (per type)
+ * - milkReception.accept — accept milk of a specific type from a session
+ * - milkReception.reject — reject milk of a specific type from a session
  * - milkReception.myReceptions — cheesemaker's reception history
- * - milkTank.list — list all tanks
- * - milkTank.create — create a new tank (admin)
+ * - milkTank.list — list all tanks (grouped by milk type)
+ * - milkTank.create — create a new tank (admin, must specify milkType)
  * - milkTank.updateStatus — change tank status
+ * - milkTank.drain — drain/transfer milk from a tank
  */
 
 import { z } from "zod";
@@ -23,7 +28,7 @@ import {
   farmWorkers,
 } from "../../drizzle/schema";
 import { getDb } from "../db";
-import { eq, and, desc, sql, inArray, ne } from "drizzle-orm";
+import { eq, and, desc, sql, inArray } from "drizzle-orm";
 
 // ─── Auth helpers ────────────────────────────────────────────
 
@@ -55,18 +60,25 @@ function requireFarmWorker(req: any) {
   return worker;
 }
 
+const MILK_TYPE_LABELS: Record<string, string> = {
+  goat: "Козье",
+  sheep: "Овечье",
+  cow: "Коровье",
+};
+
 // ─── Milk Reception Router ──────────────────────────────────
 
 export const milkReceptionRouter = router({
   /**
-   * Get sessions that are pending_confirm and not yet received.
+   * Get sessions with unreceived milk, broken down by milk type.
+   * Returns a flat list of { session, milkType, volumeMl, headCount } items.
+   * A session with goat+sheep milk will appear as 2 items.
    */
   pendingSessions: publicProcedure.query(async ({ ctx }) => {
     requireCheesemaker(ctx.req);
     const db = await getDb();
 
-    // Get sessions that have status pending_confirm or confirmed
-    // and don't have an accepted reception yet
+    // Get sessions that are pending_confirm or confirmed
     const sessions = await db
       .select({
         id: milkSessions.id,
@@ -74,9 +86,12 @@ export const milkReceptionRouter = router({
         workerId: milkSessions.workerId,
         milkingDate: milkSessions.milkingDate,
         shift: milkSessions.shift,
-        totalVolumeMl: milkSessions.totalVolumeMl,
+        goatVolumeMl: milkSessions.goatVolumeMl,
         goatHeadCount: milkSessions.goatHeadCount,
+        sheepVolumeMl: milkSessions.sheepVolumeMl,
         sheepHeadCount: milkSessions.sheepHeadCount,
+        cowVolumeMl: milkSessions.cowVolumeMl,
+        cowHeadCount: milkSessions.cowHeadCount,
         temperatureTenths: milkSessions.temperatureTenths,
         densityThousandths: milkSessions.densityThousandths,
         note: milkSessions.note,
@@ -86,21 +101,20 @@ export const milkReceptionRouter = router({
       })
       .from(milkSessions)
       .leftJoin(farmWorkers, eq(milkSessions.workerId, farmWorkers.id))
-      .where(
-        and(
-          inArray(milkSessions.status, ["pending_confirm", "confirmed"]),
-        ),
-      )
+      .where(inArray(milkSessions.status, ["pending_confirm", "confirmed"]))
       .orderBy(desc(milkSessions.createdAt))
       .limit(50);
 
-    // Filter out sessions that already have accepted receptions
+    // Get existing accepted receptions to exclude already-received milk types
     const sessionIds = sessions.map((s: any) => s.id);
-    let acceptedSessionIds: Set<number> = new Set();
+    let acceptedReceptions: Array<{ sessionId: number; milkType: string }> = [];
 
     if (sessionIds.length > 0) {
-      const accepted = await db
-        .select({ sessionId: milkReceptions.sessionId })
+      acceptedReceptions = await db
+        .select({
+          sessionId: milkReceptions.sessionId,
+          milkType: milkReceptions.milkType,
+        })
         .from(milkReceptions)
         .where(
           and(
@@ -108,37 +122,61 @@ export const milkReceptionRouter = router({
             eq(milkReceptions.status, "accepted"),
           ),
         );
-      acceptedSessionIds = new Set(accepted.map((a: any) => a.sessionId));
     }
 
-    return sessions
-      .filter((s: any) => !acceptedSessionIds.has(s.id))
-      .map((s: any) => ({
-        id: s.id,
-        sessionCode: s.sessionCode,
-        workerId: s.workerId,
-        workerName: s.workerName ?? "—",
-        milkingDate: s.milkingDate,
-        shift: s.shift,
-        totalVolumeMl: s.totalVolumeMl,
-        totalVolumeLiters: +(s.totalVolumeMl / 1000).toFixed(2),
-        goatHeadCount: s.goatHeadCount,
-        sheepHeadCount: s.sheepHeadCount,
-        temperatureCelsius: s.temperatureTenths != null ? +(s.temperatureTenths / 10).toFixed(1) : null,
-        densityGCm3: s.densityThousandths != null ? +(s.densityThousandths / 1000).toFixed(3) : null,
-        note: s.note,
-        status: s.status,
-        createdAt: s.createdAt.toISOString(),
-      }));
+    // Build a set of "sessionId:milkType" that are already accepted
+    const acceptedSet = new Set(
+      acceptedReceptions.map((r: any) => `${r.sessionId}:${r.milkType}`),
+    );
+
+    // Flatten sessions into per-type items
+    const items: any[] = [];
+    const milkTypes = [
+      { key: "goat", volumeField: "goatVolumeMl", headField: "goatHeadCount" },
+      { key: "sheep", volumeField: "sheepVolumeMl", headField: "sheepHeadCount" },
+      { key: "cow", volumeField: "cowVolumeMl", headField: "cowHeadCount" },
+    ] as const;
+
+    for (const s of sessions) {
+      for (const mt of milkTypes) {
+        const vol = (s as any)[mt.volumeField] as number;
+        const heads = (s as any)[mt.headField] as number;
+        if (vol <= 0) continue; // No milk of this type
+        if (acceptedSet.has(`${s.id}:${mt.key}`)) continue; // Already accepted
+
+        items.push({
+          sessionId: s.id,
+          sessionCode: s.sessionCode,
+          workerId: s.workerId,
+          workerName: s.workerName ?? "—",
+          milkingDate: s.milkingDate,
+          shift: s.shift,
+          milkType: mt.key,
+          milkTypeLabel: MILK_TYPE_LABELS[mt.key],
+          volumeMl: vol,
+          volumeLiters: +(vol / 1000).toFixed(2),
+          headCount: heads,
+          temperatureCelsius: s.temperatureTenths != null ? +(s.temperatureTenths / 10).toFixed(1) : null,
+          densityGCm3: s.densityThousandths != null ? +(s.densityThousandths / 1000).toFixed(3) : null,
+          note: s.note,
+          sessionStatus: s.status,
+          createdAt: s.createdAt.toISOString(),
+        });
+      }
+    }
+
+    return items;
   }),
 
   /**
-   * Accept milk from a session.
+   * Accept milk of a specific type from a session.
+   * milkType must match the tank's milkType.
    */
   accept: publicProcedure
     .input(
       z.object({
         sessionId: z.number().int().positive(),
+        milkType: z.enum(["goat", "sheep", "cow"]),
         acceptedVolumeMl: z.number().int().positive().max(500_000),
         rejectedVolumeMl: z.number().int().min(0).max(500_000).default(0),
         targetTankId: z.number().int().positive(),
@@ -164,7 +202,7 @@ export const milkReceptionRouter = router({
         throw new TRPCError({ code: "NOT_FOUND", message: "Сессия дойки не найдена" });
       }
 
-      // Verify tank exists and is active
+      // Verify tank exists, is active, and matches milk type
       const [tank] = await db
         .select()
         .from(milkTanks)
@@ -173,6 +211,13 @@ export const milkReceptionRouter = router({
 
       if (!tank || !tank.isActive) {
         throw new TRPCError({ code: "NOT_FOUND", message: "Танк не найден или неактивен" });
+      }
+
+      if (tank.milkType !== input.milkType) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: `Танк "${tank.name}" предназначен для ${MILK_TYPE_LABELS[tank.milkType]} молока, а вы пытаетесь залить ${MILK_TYPE_LABELS[input.milkType]}`,
+        });
       }
 
       // Check tank capacity
@@ -184,13 +229,14 @@ export const milkReceptionRouter = router({
         });
       }
 
-      // Check no existing accepted reception for this session
+      // Check no existing accepted reception for this session + milkType
       const [existingReception] = await db
         .select({ id: milkReceptions.id })
         .from(milkReceptions)
         .where(
           and(
             eq(milkReceptions.sessionId, input.sessionId),
+            eq(milkReceptions.milkType, input.milkType),
             eq(milkReceptions.status, "accepted"),
           ),
         )
@@ -199,7 +245,7 @@ export const milkReceptionRouter = router({
       if (existingReception) {
         throw new TRPCError({
           code: "CONFLICT",
-          message: "Молоко из этой дойки уже принято",
+          message: `${MILK_TYPE_LABELS[input.milkType]} молоко из этой дойки уже принято`,
         });
       }
 
@@ -216,6 +262,7 @@ export const milkReceptionRouter = router({
       // Create reception
       const [receptionResult] = await db.insert(milkReceptions).values({
         sessionId: input.sessionId,
+        milkType: input.milkType,
         receivedByWorkerId: worker.workerId,
         acceptedVolumeMl: input.acceptedVolumeMl,
         rejectedVolumeMl: input.rejectedVolumeMl,
@@ -246,7 +293,7 @@ export const milkReceptionRouter = router({
         sessionId: input.sessionId,
         receptionId: receptionResult.insertId,
         performedByWorkerId: worker.workerId,
-        note: `Приёмка из ${session.sessionCode}`,
+        note: `Приёмка ${MILK_TYPE_LABELS[input.milkType]} из ${session.sessionCode}`,
       });
 
       // Audit log
@@ -257,6 +304,7 @@ export const milkReceptionRouter = router({
         entityId: receptionResult.insertId,
         detailsJson: JSON.stringify({
           sessionCode: session.sessionCode,
+          milkType: input.milkType,
           acceptedVolumeMl: input.acceptedVolumeMl,
           rejectedVolumeMl: input.rejectedVolumeMl,
           targetTankId: input.targetTankId,
@@ -265,18 +313,20 @@ export const milkReceptionRouter = router({
 
       return {
         receptionId: receptionResult.insertId,
+        milkType: input.milkType,
         tankNewVolumeMl: newVolume,
         tankNewVolumeLiters: +(newVolume / 1000).toFixed(2),
       };
     }),
 
   /**
-   * Reject milk from a session.
+   * Reject milk of a specific type from a session.
    */
   reject: publicProcedure
     .input(
       z.object({
         sessionId: z.number().int().positive(),
+        milkType: z.enum(["goat", "sheep", "cow"]),
         rejectionReason: z.string().min(3).max(1000),
         note: z.string().max(1000).optional(),
       }),
@@ -295,11 +345,20 @@ export const milkReceptionRouter = router({
         throw new TRPCError({ code: "NOT_FOUND", message: "Сессия дойки не найдена" });
       }
 
+      // Get the volume for this milk type
+      const volumeMap: Record<string, number> = {
+        goat: session.goatVolumeMl,
+        sheep: session.sheepVolumeMl,
+        cow: session.cowVolumeMl,
+      };
+      const rejectedVolume = volumeMap[input.milkType] ?? 0;
+
       const [receptionResult] = await db.insert(milkReceptions).values({
         sessionId: input.sessionId,
+        milkType: input.milkType,
         receivedByWorkerId: worker.workerId,
         acceptedVolumeMl: 0,
-        rejectedVolumeMl: session.totalVolumeMl,
+        rejectedVolumeMl: rejectedVolume,
         status: "rejected",
         rejectionReason: input.rejectionReason,
         note: input.note ?? null,
@@ -313,11 +372,13 @@ export const milkReceptionRouter = router({
         entityId: receptionResult.insertId,
         detailsJson: JSON.stringify({
           sessionCode: session.sessionCode,
+          milkType: input.milkType,
           reason: input.rejectionReason,
+          rejectedVolumeMl: rejectedVolume,
         }),
       });
 
-      return { receptionId: receptionResult.insertId };
+      return { receptionId: receptionResult.insertId, milkType: input.milkType };
     }),
 
   /**
@@ -343,6 +404,7 @@ export const milkReceptionRouter = router({
         .select({
           id: milkReceptions.id,
           sessionId: milkReceptions.sessionId,
+          milkType: milkReceptions.milkType,
           acceptedVolumeMl: milkReceptions.acceptedVolumeMl,
           rejectedVolumeMl: milkReceptions.rejectedVolumeMl,
           status: milkReceptions.status,
@@ -367,6 +429,8 @@ export const milkReceptionRouter = router({
           sessionCode: r.sessionCode ?? "—",
           milkingDate: r.milkingDate ?? "—",
           shift: r.shift ?? "morning",
+          milkType: r.milkType,
+          milkTypeLabel: MILK_TYPE_LABELS[r.milkType] ?? r.milkType,
           acceptedVolumeMl: r.acceptedVolumeMl,
           acceptedVolumeLiters: +(r.acceptedVolumeMl / 1000).toFixed(2),
           rejectedVolumeMl: r.rejectedVolumeMl,
@@ -386,7 +450,7 @@ export const milkReceptionRouter = router({
 
 export const milkTankRouter = router({
   /**
-   * List all tanks.
+   * List all tanks (includes milkType).
    */
   list: publicProcedure.query(async ({ ctx }) => {
     requireFarmWorker(ctx.req);
@@ -395,11 +459,13 @@ export const milkTankRouter = router({
     const tanks = await db
       .select()
       .from(milkTanks)
-      .orderBy(milkTanks.name);
+      .orderBy(milkTanks.milkType, milkTanks.name);
 
     return tanks.map((t: any) => ({
       id: t.id,
       name: t.name,
+      milkType: t.milkType,
+      milkTypeLabel: MILK_TYPE_LABELS[t.milkType] ?? t.milkType,
       capacityMl: t.capacityMl,
       capacityLiters: +(t.capacityMl / 1000).toFixed(2),
       currentVolumeMl: t.currentVolumeMl,
@@ -412,12 +478,13 @@ export const milkTankRouter = router({
   }),
 
   /**
-   * Create a new tank (admin only via site auth).
+   * Create a new tank (admin only via site auth). Must specify milkType.
    */
   create: adminProcedure
     .input(
       z.object({
         name: z.string().min(1).max(120),
+        milkType: z.enum(["goat", "sheep", "cow"]),
         capacityMl: z.number().int().positive().max(100_000_000),
         location: z.string().max(120).optional(),
       }),
@@ -426,10 +493,11 @@ export const milkTankRouter = router({
       const db = await getDb();
       const [result] = await db.insert(milkTanks).values({
         name: input.name,
+        milkType: input.milkType,
         capacityMl: input.capacityMl,
         location: input.location ?? null,
       });
-      return { id: result.insertId, name: input.name };
+      return { id: result.insertId, name: input.name, milkType: input.milkType };
     }),
 
   /**
@@ -446,7 +514,6 @@ export const milkTankRouter = router({
       requireCheesemaker(ctx.req);
       const db = await getDb();
 
-      // If setting to empty, reset volume
       const updates: Record<string, any> = { status: input.status };
       if (input.status === "empty") {
         updates.currentVolumeMl = 0;
@@ -462,6 +529,7 @@ export const milkTankRouter = router({
 
   /**
    * Drain/empty a tank (cheesemaker).
+   * Transfer only allowed between tanks of the same milkType.
    */
   drain: publicProcedure
     .input(
@@ -513,7 +581,7 @@ export const milkTankRouter = router({
         note: input.note ?? null,
       });
 
-      // If transfer, add to target tank
+      // If transfer, validate same milkType and add to target tank
       if (input.reason === "transfer" && input.targetTankId) {
         const [targetTank] = await db
           .select()
@@ -521,25 +589,34 @@ export const milkTankRouter = router({
           .where(eq(milkTanks.id, input.targetTankId))
           .limit(1);
 
-        if (targetTank) {
-          const targetNewVolume = targetTank.currentVolumeMl + input.volumeMl;
-          await db
-            .update(milkTanks)
-            .set({
-              currentVolumeMl: targetNewVolume,
-              status: targetNewVolume >= targetTank.capacityMl ? "full" : "filling",
-            })
-            .where(eq(milkTanks.id, input.targetTankId));
+        if (!targetTank) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Целевой танк не найден" });
+        }
 
-          await db.insert(milkTankMovements).values({
-            tankId: input.targetTankId,
-            movementType: "milking_in",
-            volumeMl: input.volumeMl,
-            tankVolumeAfterMl: targetNewVolume,
-            performedByWorkerId: worker.workerId,
-            note: `Перелив из ${tank.name}`,
+        if (targetTank.milkType !== tank.milkType) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: `Нельзя перелить ${MILK_TYPE_LABELS[tank.milkType]} молоко в танк для ${MILK_TYPE_LABELS[targetTank.milkType]}`,
           });
         }
+
+        const targetNewVolume = targetTank.currentVolumeMl + input.volumeMl;
+        await db
+          .update(milkTanks)
+          .set({
+            currentVolumeMl: targetNewVolume,
+            status: targetNewVolume >= targetTank.capacityMl ? "full" : "filling",
+          })
+          .where(eq(milkTanks.id, input.targetTankId));
+
+        await db.insert(milkTankMovements).values({
+          tankId: input.targetTankId,
+          movementType: "milking_in",
+          volumeMl: input.volumeMl,
+          tankVolumeAfterMl: targetNewVolume,
+          performedByWorkerId: worker.workerId,
+          note: `Перелив из ${tank.name}`,
+        });
       }
 
       await logMilkAudit({
@@ -549,6 +626,7 @@ export const milkTankRouter = router({
         entityId: input.tankId,
         detailsJson: JSON.stringify({
           type: input.reason,
+          milkType: tank.milkType,
           volumeMl: input.volumeMl,
           newVolumeMl: newVolume,
         }),

@@ -86,6 +86,7 @@ export default function AdminMilkDashboard() {
   // ─── Tank create dialog ───
   const [showTankDialog, setShowTankDialog] = useState(false);
   const [tankName, setTankName] = useState("");
+  const [tankMilkType, setTankMilkType] = useState<string>("goat");
   const [tankCapacity, setTankCapacity] = useState("");
   const [tankLocation, setTankLocation] = useState("");
 
@@ -192,12 +193,13 @@ export default function AdminMilkDashboard() {
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   <StatCard label="Дойки" value={overview.today.sessions} />
                   <StatCard
-                    label="Объём"
-                    value={`${overview.today.volumeLiters} л`}
+                    label="Объём (всего)"
+                    value={`${overview.today.volume.totalLiters} л`}
                     accent
                   />
-                  <StatCard label="🐐 Козы" value={overview.today.goatHeads} />
-                  <StatCard label="🐑 Овцы" value={overview.today.sheepHeads} />
+                  <StatCard label="🐐 Козы" value={overview.today.goatHeads} sub={`${overview.today.volume.goatLiters} л`} />
+                  <StatCard label="🐑 Овцы" value={overview.today.sheepHeads} sub={`${overview.today.volume.sheepLiters} л`} />
+                  <StatCard label="🐄 Коровы" value={overview.today.cowHeads} sub={`${overview.today.volume.cowLiters} л`} />
                 </div>
               </div>
 
@@ -206,12 +208,12 @@ export default function AdminMilkDashboard() {
                 <StatCard
                   label="Неделя (дойки)"
                   value={overview.week.sessions}
-                  sub={`${overview.week.volumeLiters} л`}
+                  sub={`Всего: ${overview.week.volume.totalLiters} л`}
                 />
                 <StatCard
                   label="Месяц (дойки)"
                   value={overview.month.sessions}
-                  sub={`${overview.month.volumeLiters} л`}
+                  sub={`Всего: ${overview.month.volume.totalLiters} л`}
                 />
                 <StatCard
                   label="Ожидают подтверждения"
@@ -284,9 +286,10 @@ export default function AdminMilkDashboard() {
                       <th className="text-left px-3 py-2 font-medium">Код</th>
                       <th className="text-left px-3 py-2 font-medium">Дояр</th>
                       <th className="text-left px-3 py-2 font-medium">Смена</th>
-                      <th className="text-right px-3 py-2 font-medium">Объём</th>
-                      <th className="text-right px-3 py-2 font-medium">🐐</th>
-                      <th className="text-right px-3 py-2 font-medium">🐑</th>
+                      <th className="text-right px-3 py-2 font-medium">🐐 л</th>
+                      <th className="text-right px-3 py-2 font-medium">🐑 л</th>
+                      <th className="text-right px-3 py-2 font-medium">🐄 л</th>
+                      <th className="text-right px-3 py-2 font-medium">Итого</th>
                       <th className="text-left px-3 py-2 font-medium">Статус</th>
                       <th className="text-left px-3 py-2 font-medium">Дата</th>
                     </tr>
@@ -303,11 +306,21 @@ export default function AdminMilkDashboard() {
                           <td className="px-3 py-2">
                             {s.shift === "morning" ? "🌅 Утро" : "🌙 Вечер"}
                           </td>
+                          <td className="px-3 py-2 text-right">
+                            {s.goat.volumeLiters > 0 ? `${s.goat.volumeLiters}` : "—"}
+                            {s.goat.headCount > 0 && <span className="text-[10px] text-[oklch(0.6_0.02_80)] ml-0.5">({s.goat.headCount})</span>}
+                          </td>
+                          <td className="px-3 py-2 text-right">
+                            {s.sheep.volumeLiters > 0 ? `${s.sheep.volumeLiters}` : "—"}
+                            {s.sheep.headCount > 0 && <span className="text-[10px] text-[oklch(0.6_0.02_80)] ml-0.5">({s.sheep.headCount})</span>}
+                          </td>
+                          <td className="px-3 py-2 text-right">
+                            {s.cow.volumeLiters > 0 ? `${s.cow.volumeLiters}` : "—"}
+                            {s.cow.headCount > 0 && <span className="text-[10px] text-[oklch(0.6_0.02_80)] ml-0.5">({s.cow.headCount})</span>}
+                          </td>
                           <td className="px-3 py-2 text-right font-semibold">
                             {s.totalVolumeLiters} л
                           </td>
-                          <td className="px-3 py-2 text-right">{s.goatHeadCount}</td>
-                          <td className="px-3 py-2 text-right">{s.sheepHeadCount}</td>
                           <td className="px-3 py-2">
                             <Badge className={`rounded-full text-[10px] ${st.color}`}>
                               {st.label}
@@ -352,6 +365,7 @@ export default function AdminMilkDashboard() {
                   <thead className="bg-[oklch(0.96_0.01_90)]">
                     <tr>
                       <th className="text-left px-3 py-2 font-medium">Дойка</th>
+                      <th className="text-left px-3 py-2 font-medium">Тип</th>
                       <th className="text-left px-3 py-2 font-medium">Сыродел</th>
                       <th className="text-right px-3 py-2 font-medium">Принято</th>
                       <th className="text-right px-3 py-2 font-medium">Отклонено</th>
@@ -366,6 +380,11 @@ export default function AdminMilkDashboard() {
                         <tr key={r.id} className="hover:bg-[oklch(0.98_0.01_90)]">
                           <td className="px-3 py-2 font-mono text-xs font-bold">
                             {r.sessionCode}
+                          </td>
+                          <td className="px-3 py-2">
+                            <Badge className="rounded-full text-[10px] bg-[oklch(0.92_0.04_80)] text-[oklch(0.3_0.08_80)]">
+                              {r.milkTypeLabel}
+                            </Badge>
                           </td>
                           <td className="px-3 py-2">{r.receiverName}</td>
                           <td className="px-3 py-2 text-right font-semibold text-emerald-700">
@@ -432,9 +451,14 @@ export default function AdminMilkDashboard() {
                   >
                     <div className="flex items-center justify-between mb-2">
                       <h4 className="font-bold text-[oklch(0.22_0.04_60)]">{t.name}</h4>
-                      <Badge className={`rounded-full text-[10px] ${st.color}`}>
-                        {st.label}
-                      </Badge>
+                      <div className="flex gap-1.5">
+                        <Badge className="rounded-full text-[10px] bg-[oklch(0.92_0.04_80)] text-[oklch(0.3_0.08_80)]">
+                          {t.milkTypeLabel}
+                        </Badge>
+                        <Badge className={`rounded-full text-[10px] ${st.color}`}>
+                          {st.label}
+                        </Badge>
+                      </div>
                     </div>
                     {t.location && (
                       <p className="text-xs text-[oklch(0.52_0.04_80)] mb-2">📍 {t.location}</p>
@@ -506,6 +530,21 @@ export default function AdminMilkDashboard() {
                 </div>
                 <div>
                   <label className="text-xs font-medium text-[oklch(0.52_0.04_80)] mb-1 block">
+                    Тип молока
+                  </label>
+                  <Select value={tankMilkType} onValueChange={setTankMilkType}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Тип молока" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="goat">🐐 Козье</SelectItem>
+                      <SelectItem value="sheep">🐑 Овечье</SelectItem>
+                      <SelectItem value="cow">🐄 Коровье</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-[oklch(0.52_0.04_80)] mb-1 block">
                     Ёмкость (литры)
                   </label>
                   <Input
@@ -537,6 +576,7 @@ export default function AdminMilkDashboard() {
                   onClick={() => {
                     createTankMutation.mutate({
                       name: tankName.trim(),
+                      milkType: tankMilkType as "goat" | "sheep" | "cow",
                       capacityLiters: parseFloat(tankCapacity),
                       location: tankLocation.trim() || undefined,
                     });

@@ -2269,6 +2269,7 @@ export const farmWorkerRoleEnum = mysqlEnum("farmWorkerRole", [
   "manager",      // Менеджер (reserved)
 ]);
 
+export const milkTypeEnum = mysqlEnum("milkType", ["goat", "sheep", "cow"]);
 export const milkSessionShiftEnum = mysqlEnum("milkSessionShift", ["morning", "evening"]);
 export const milkSessionStatusEnum = mysqlEnum("milkSessionStatus", [
   "in_progress",    // Дойка идёт
@@ -2362,12 +2363,16 @@ export const milkSessions = mysqlTable("milkSessions", {
   /** Date of milking (YYYY-MM-DD) */
   milkingDate: varchar("milkingDate", { length: 10 }).notNull(),
   shift: milkSessionShiftEnum.notNull(),
-  /** Total milk volume in milliliters */
-  totalVolumeMl: int("totalVolumeMl").notNull(),
+  /** Goat milk volume in milliliters */
+  goatVolumeMl: int("goatVolumeMl").default(0).notNull(),
   /** Number of goats milked */
   goatHeadCount: int("goatHeadCount").default(0).notNull(),
+  /** Sheep milk volume in milliliters */
+  sheepVolumeMl: int("sheepVolumeMl").default(0).notNull(),
   /** Number of sheep milked */
   sheepHeadCount: int("sheepHeadCount").default(0).notNull(),
+  /** Cow milk volume in milliliters */
+  cowVolumeMl: int("cowVolumeMl").default(0).notNull(),
   /** Number of cows milked */
   cowHeadCount: int("cowHeadCount").default(0).notNull(),
   /** Temperature at milking (°C × 10, e.g. 365 = 36.5°C) */
@@ -2417,9 +2422,11 @@ export const milkReceptions = mysqlTable("milkReceptions", {
   id: int("id").autoincrement().primaryKey(),
   /** Reference to milking session */
   sessionId: int("sessionId").notNull(),
+  /** Type of milk being received */
+  milkType: milkTypeEnum.notNull(),
   /** Cheesemaker who performed the reception */
   receivedByWorkerId: int("receivedByWorkerId").notNull(),
-  /** Accepted volume in milliliters (may differ from session total) */
+  /** Accepted volume in milliliters (may differ from session total for this type) */
   acceptedVolumeMl: int("acceptedVolumeMl").notNull(),
   /** Rejected volume in milliliters */
   rejectedVolumeMl: int("rejectedVolumeMl").default(0).notNull(),
@@ -2451,8 +2458,10 @@ export const milkReceptions = mysqlTable("milkReceptions", {
  */
 export const milkTanks = mysqlTable("milkTanks", {
   id: int("id").autoincrement().primaryKey(),
-  /** Human-readable name, e.g. "Танк-1", "Ведро утро" */
+  /** Human-readable name, e.g. "Танк-1 (козье)", "Ведро утро" */
   name: varchar("name", { length: 120 }).notNull(),
+  /** Type of milk stored in this tank */
+  milkType: milkTypeEnum.notNull(),
   /** Capacity in milliliters */
   capacityMl: int("capacityMl").notNull(),
   /** Current volume in milliliters */
@@ -2463,7 +2472,9 @@ export const milkTanks = mysqlTable("milkTanks", {
   isActive: boolean("isActive").default(true).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
+}, (t) => ([
+  index("idx_milkTanks_milkType").on(t.milkType),
+]));
 
 /**
  * Milk tank movements — every volume change is logged.

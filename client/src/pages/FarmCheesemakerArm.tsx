@@ -2,9 +2,9 @@
  * /farm/cheesemaker — Cheesemaker ARM (Automated Workstation).
  *
  * Mobile-first interface for:
- * - Accepting/rejecting milk from milking sessions
- * - Managing milk tanks (volumes, status)
- * - Viewing reception history
+ * - Accepting/rejecting milk per type (goat/sheep/cow) from milking sessions
+ * - Managing milk tanks (each tank is typed by milkType)
+ * - Viewing reception history with milkType labels
  */
 
 import { useEffect, useState } from "react";
@@ -41,6 +41,12 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
+const MILK_TYPE_EMOJI: Record<string, string> = {
+  goat: "🐐",
+  sheep: "🐑",
+  cow: "🐄",
+};
+
 const STATUS_MAP: Record<string, { label: string; color: string }> = {
   pending_confirm: { label: "Ожидает", color: "bg-amber-100 text-amber-700" },
   confirmed: { label: "Подтверждена", color: "bg-emerald-100 text-emerald-700" },
@@ -76,7 +82,7 @@ export default function FarmCheesemakerArm() {
   }, [meQuery.isLoading, meQuery.data, navigate]);
 
   // ─── Accept dialog state ───
-  const [acceptSession, setAcceptSession] = useState<any>(null);
+  const [acceptItem, setAcceptItem] = useState<any>(null);
   const [acceptVolume, setAcceptVolume] = useState("");
   const [rejectVolume, setRejectVolume] = useState("0");
   const [acceptTankId, setAcceptTankId] = useState<string>("");
@@ -87,7 +93,7 @@ export default function FarmCheesemakerArm() {
   const [acceptNote, setAcceptNote] = useState("");
 
   // ─── Reject dialog state ───
-  const [rejectSession, setRejectSession] = useState<any>(null);
+  const [rejectItem, setRejectItem] = useState<any>(null);
   const [rejectReason, setRejectReason] = useState("");
 
   // ─── Queries ───
@@ -110,9 +116,9 @@ export default function FarmCheesemakerArm() {
   const acceptMutation = trpc.milkReception.accept.useMutation({
     onSuccess: (data: any) => {
       toast.success("Молоко принято!", {
-        description: `В танке теперь ${data.tankNewVolumeLiters} л`,
+        description: `${MILK_TYPE_EMOJI[data.milkType] ?? ""} В танке теперь ${data.tankNewVolumeLiters} л`,
       });
-      setAcceptSession(null);
+      setAcceptItem(null);
       resetAcceptForm();
       void utils.milkReception.pendingSessions.invalidate();
       void utils.milkTank.list.invalidate();
@@ -124,7 +130,7 @@ export default function FarmCheesemakerArm() {
   const rejectMutation = trpc.milkReception.reject.useMutation({
     onSuccess: () => {
       toast.success("Молоко отклонено");
-      setRejectSession(null);
+      setRejectItem(null);
       setRejectReason("");
       void utils.milkReception.pendingSessions.invalidate();
       void utils.milkReception.myReceptions.invalidate();
@@ -143,10 +149,19 @@ export default function FarmCheesemakerArm() {
     setAcceptNote("");
   }
 
-  function openAcceptDialog(session: any) {
-    setAcceptSession(session);
-    setAcceptVolume(String(session.totalVolumeLiters));
+  function openAcceptDialog(item: any) {
+    setAcceptItem(item);
+    setAcceptVolume(String(item.volumeLiters));
     setRejectVolume("0");
+    // Auto-select tank matching milk type if only one available
+    const matchingTanks = (tanksQuery.data ?? []).filter(
+      (t: any) => t.isActive && t.milkType === item.milkType && t.status !== "cleaning" && t.status !== "processing",
+    );
+    if (matchingTanks.length === 1) {
+      setAcceptTankId(String(matchingTanks[0].id));
+    } else {
+      setAcceptTankId("");
+    }
   }
 
   // ─── Loading / Auth guard ───
@@ -161,9 +176,19 @@ export default function FarmCheesemakerArm() {
   const worker = meQuery.data;
   if (!worker) return null;
 
-  const pendingSessions = pendingQuery.data ?? [];
+  const pendingItems = pendingQuery.data ?? [];
   const tanks = (tanksQuery.data ?? []) as any[];
-  const activeTanks = tanks.filter((t: any) => t.isActive && t.status !== "cleaning" && t.status !== "processing");
+
+  // For accept dialog: only show tanks matching the selected milk type
+  const matchingTanks = acceptItem
+    ? tanks.filter(
+        (t: any) =>
+          t.isActive &&
+          t.milkType === acceptItem.milkType &&
+          t.status !== "cleaning" &&
+          t.status !== "processing",
+      )
+    : [];
 
   return (
     <div className="min-h-dvh flex flex-col bg-[oklch(0.97_0.015_90)]">
@@ -209,9 +234,9 @@ export default function FarmCheesemakerArm() {
         >
           <Milk className="w-4 h-4 inline-block mr-1 -mt-0.5" />
           Приёмка
-          {pendingSessions.length > 0 && (
+          {pendingItems.length > 0 && (
             <Badge className="ml-1 rounded-full text-[9px] bg-red-500 text-white px-1.5 py-0">
-              {pendingSessions.length}
+              {pendingItems.length}
             </Badge>
           )}
         </button>
@@ -235,57 +260,66 @@ export default function FarmCheesemakerArm() {
 
       {/* ── Content ── */}
       <div className="flex-1 overflow-y-auto pb-6">
+        {/* ═══ RECEPTION TAB ═══ */}
         {view === "reception" && (
           <div className="px-4 mt-4 space-y-3">
             {pendingQuery.isLoading ? (
               <div className="flex items-center justify-center py-12 text-sm text-[oklch(0.52_0.04_80)]">
                 <Loader2 className="h-4 w-4 animate-spin mr-2" /> Загрузка…
               </div>
-            ) : pendingSessions.length === 0 ? (
+            ) : pendingItems.length === 0 ? (
               <div className="text-center py-12">
                 <Check className="w-12 h-12 mx-auto mb-3 text-emerald-400" />
                 <p className="text-sm font-medium text-[oklch(0.3_0.04_60)]">Всё принято</p>
                 <p className="text-xs text-[oklch(0.52_0.04_80)] mt-1">
-                  Нет дойок, ожидающих приёмки
+                  Нет молока, ожидающего приёмки
                 </p>
               </div>
             ) : (
-              (pendingSessions as any[]).map((s: any) => (
+              (pendingItems as any[]).map((item: any, idx: number) => (
                 <div
-                  key={s.id}
+                  key={`${item.sessionId}-${item.milkType}`}
                   className="bg-white rounded-xl border border-[oklch(0.9_0.02_90)] p-4"
                 >
+                  {/* Header: session code + milk type badge */}
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm font-bold text-[oklch(0.22_0.04_60)] font-mono">
-                      {s.sessionCode}
-                    </span>
-                    <span className="text-xs text-[oklch(0.52_0.04_80)]">{s.workerName}</span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-bold text-[oklch(0.22_0.04_60)] font-mono">
+                        {item.sessionCode}
+                      </span>
+                      <Badge className="rounded-full text-[10px] bg-[oklch(0.92_0.04_80)] text-[oklch(0.3_0.08_80)]">
+                        {MILK_TYPE_EMOJI[item.milkType]} {item.milkTypeLabel}
+                      </Badge>
+                    </div>
+                    <span className="text-xs text-[oklch(0.52_0.04_80)]">{item.workerName}</span>
                   </div>
-                  <div className="grid grid-cols-3 gap-2 text-xs mb-3">
+
+                  {/* Volume + heads */}
+                  <div className="grid grid-cols-2 gap-2 text-xs mb-3">
                     <div>
                       <span className="text-[oklch(0.6_0.02_80)]">Объём</span>
                       <p className="font-bold text-base text-[oklch(0.22_0.04_60)]">
-                        {s.totalVolumeLiters} л
+                        {item.volumeLiters} л
                       </p>
                     </div>
                     <div>
-                      <span className="text-[oklch(0.6_0.02_80)]">🐐 Козы</span>
-                      <p className="font-semibold text-sm">{s.goatHeadCount}</p>
-                    </div>
-                    <div>
-                      <span className="text-[oklch(0.6_0.02_80)]">🐑 Овцы</span>
-                      <p className="font-semibold text-sm">{s.sheepHeadCount}</p>
+                      <span className="text-[oklch(0.6_0.02_80)]">Голов</span>
+                      <p className="font-semibold text-sm text-[oklch(0.22_0.04_60)]">
+                        {item.headCount}
+                      </p>
                     </div>
                   </div>
-                  {(s.temperatureCelsius != null || s.densityGCm3 != null) && (
+
+                  {(item.temperatureCelsius != null || item.densityGCm3 != null) && (
                     <div className="flex gap-3 text-[10px] text-[oklch(0.52_0.04_80)] mb-3">
-                      {s.temperatureCelsius != null && <span>🌡 {s.temperatureCelsius}°C</span>}
-                      {s.densityGCm3 != null && <span>💧 {s.densityGCm3}</span>}
+                      {item.temperatureCelsius != null && <span>🌡 {item.temperatureCelsius}°C</span>}
+                      {item.densityGCm3 != null && <span>💧 {item.densityGCm3}</span>}
                     </div>
                   )}
+
                   <div className="flex gap-2">
                     <Button
-                      onClick={() => openAcceptDialog(s)}
+                      onClick={() => openAcceptDialog(item)}
                       className="flex-1 h-12 rounded-xl bg-emerald-600 hover:bg-emerald-700
                                  active:bg-emerald-800 touch-manipulation text-sm font-medium"
                     >
@@ -294,7 +328,7 @@ export default function FarmCheesemakerArm() {
                     </Button>
                     <Button
                       variant="outline"
-                      onClick={() => setRejectSession(s)}
+                      onClick={() => setRejectItem(item)}
                       className="h-12 rounded-xl border-red-200 text-red-600 hover:bg-red-50
                                  active:bg-red-100 touch-manipulation px-4"
                     >
@@ -307,6 +341,7 @@ export default function FarmCheesemakerArm() {
           </div>
         )}
 
+        {/* ═══ TANKS TAB ═══ */}
         {view === "tanks" && (
           <div className="px-4 mt-4 space-y-3">
             {tanksQuery.isLoading ? (
@@ -330,23 +365,25 @@ export default function FarmCheesemakerArm() {
                     className="bg-white rounded-xl border border-[oklch(0.9_0.02_90)] p-4"
                   >
                     <div className="flex items-center justify-between mb-2">
-                      <div>
+                      <div className="flex items-center gap-2">
                         <span className="text-sm font-bold text-[oklch(0.22_0.04_60)]">
                           {t.name}
                         </span>
-                        {t.location && (
-                          <span className="text-xs text-[oklch(0.52_0.04_80)] ml-2">
-                            📍 {t.location}
-                          </span>
-                        )}
+                        <Badge className="rounded-full text-[10px] bg-[oklch(0.92_0.04_80)] text-[oklch(0.3_0.08_80)]">
+                          {MILK_TYPE_EMOJI[t.milkType]} {t.milkTypeLabel}
+                        </Badge>
                       </div>
                       <Badge className={`rounded-full text-[10px] ${st.color}`}>
                         {st.label}
                       </Badge>
                     </div>
 
+                    {t.location && (
+                      <p className="text-xs text-[oklch(0.52_0.04_80)] mb-2">📍 {t.location}</p>
+                    )}
+
                     {/* Volume bar */}
-                    <div className="mt-2">
+                    <div className="mt-1">
                       <div className="flex justify-between text-xs text-[oklch(0.52_0.04_80)] mb-1">
                         <span>{t.currentVolumeLiters} л</span>
                         <span>{t.capacityLiters} л</span>
@@ -378,6 +415,7 @@ export default function FarmCheesemakerArm() {
           </div>
         )}
 
+        {/* ═══ HISTORY TAB ═══ */}
         {view === "history" && (
           <div className="px-4 mt-4 space-y-3">
             {historyQuery.isLoading ? (
@@ -398,9 +436,14 @@ export default function FarmCheesemakerArm() {
                     className="bg-white rounded-xl border border-[oklch(0.9_0.02_90)] p-4"
                   >
                     <div className="flex items-center justify-between mb-2">
-                      <span className="text-sm font-bold text-[oklch(0.22_0.04_60)] font-mono">
-                        {r.sessionCode}
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-bold text-[oklch(0.22_0.04_60)] font-mono">
+                          {r.sessionCode}
+                        </span>
+                        <Badge className="rounded-full text-[10px] bg-[oklch(0.92_0.04_80)] text-[oklch(0.3_0.08_80)]">
+                          {MILK_TYPE_EMOJI[r.milkType]} {r.milkTypeLabel}
+                        </Badge>
+                      </div>
                       <Badge className={`rounded-full text-[10px] ${st.color}`}>
                         {st.label}
                       </Badge>
@@ -444,11 +487,16 @@ export default function FarmCheesemakerArm() {
       </div>
 
       {/* ── Accept Dialog ── */}
-      <Dialog open={!!acceptSession} onOpenChange={() => setAcceptSession(null)}>
+      <Dialog open={!!acceptItem} onOpenChange={() => setAcceptItem(null)}>
         <DialogContent className="max-w-md max-h-[90dvh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="text-base">
-              Приёмка {acceptSession?.sessionCode}
+            <DialogTitle className="text-base flex items-center gap-2">
+              Приёмка {acceptItem?.sessionCode}
+              {acceptItem && (
+                <Badge className="rounded-full text-[10px] bg-[oklch(0.92_0.04_80)] text-[oklch(0.3_0.08_80)]">
+                  {MILK_TYPE_EMOJI[acceptItem.milkType]} {acceptItem.milkTypeLabel}
+                </Badge>
+              )}
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4 pt-2">
@@ -466,7 +514,7 @@ export default function FarmCheesemakerArm() {
                 className="h-12 text-lg font-bold text-center rounded-xl"
               />
               <p className="text-[10px] text-[oklch(0.6_0.02_80)] mt-1">
-                Дояр заявил: {acceptSession?.totalVolumeLiters} л
+                Дояр заявил: {acceptItem?.volumeLiters} л ({acceptItem?.headCount} гол.)
               </p>
             </div>
 
@@ -485,23 +533,30 @@ export default function FarmCheesemakerArm() {
               />
             </div>
 
-            {/* Target tank */}
+            {/* Target tank (filtered by milk type) */}
             <div>
               <label className="text-xs font-medium text-[oklch(0.52_0.04_80)] mb-1.5 block">
-                Целевой танк
+                Целевой танк ({acceptItem?.milkTypeLabel})
               </label>
-              <Select value={acceptTankId} onValueChange={setAcceptTankId}>
-                <SelectTrigger className="h-12 rounded-xl">
-                  <SelectValue placeholder="Выберите танк" />
-                </SelectTrigger>
-                <SelectContent>
-                  {activeTanks.map((t: any) => (
-                    <SelectItem key={t.id} value={String(t.id)}>
-                      {t.name} — {t.currentVolumeLiters}/{t.capacityLiters} л ({t.fillPercent}%)
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              {matchingTanks.length === 0 ? (
+                <p className="text-xs text-red-500 p-3 bg-red-50 rounded-xl">
+                  Нет доступных танков для {acceptItem?.milkTypeLabel?.toLowerCase()} молока.
+                  Попросите администратора создать танк.
+                </p>
+              ) : (
+                <Select value={acceptTankId} onValueChange={setAcceptTankId}>
+                  <SelectTrigger className="h-12 rounded-xl">
+                    <SelectValue placeholder="Выберите танк" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {matchingTanks.map((t: any) => (
+                      <SelectItem key={t.id} value={String(t.id)}>
+                        {t.name} — {t.currentVolumeLiters}/{t.capacityLiters} л ({t.fillPercent}%)
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
             </div>
 
             {/* Quality params */}
@@ -576,7 +631,7 @@ export default function FarmCheesemakerArm() {
             />
           </div>
           <DialogFooter className="pt-3 gap-2">
-            <Button variant="outline" onClick={() => setAcceptSession(null)} className="rounded-xl">
+            <Button variant="outline" onClick={() => setAcceptItem(null)} className="rounded-xl">
               Отмена
             </Button>
             <Button
@@ -587,9 +642,10 @@ export default function FarmCheesemakerArm() {
                 acceptMutation.isPending
               }
               onClick={() => {
-                if (!acceptSession) return;
+                if (!acceptItem) return;
                 acceptMutation.mutate({
-                  sessionId: acceptSession.id,
+                  sessionId: acceptItem.sessionId,
+                  milkType: acceptItem.milkType,
                   acceptedVolumeMl: Math.round(parseFloat(acceptVolume) * 1000),
                   rejectedVolumeMl: Math.round(parseFloat(rejectVolume || "0") * 1000),
                   targetTankId: parseInt(acceptTankId),
@@ -614,16 +670,21 @@ export default function FarmCheesemakerArm() {
       </Dialog>
 
       {/* ── Reject Dialog ── */}
-      <Dialog open={!!rejectSession} onOpenChange={() => setRejectSession(null)}>
+      <Dialog open={!!rejectItem} onOpenChange={() => setRejectItem(null)}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
-            <DialogTitle className="text-base text-red-600">
-              Отклонить {rejectSession?.sessionCode}
+            <DialogTitle className="text-base text-red-600 flex items-center gap-2">
+              Отклонить {rejectItem?.sessionCode}
+              {rejectItem && (
+                <Badge className="rounded-full text-[10px] bg-red-100 text-red-700">
+                  {MILK_TYPE_EMOJI[rejectItem.milkType]} {rejectItem.milkTypeLabel}
+                </Badge>
+              )}
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-3 pt-2">
             <p className="text-sm text-[oklch(0.52_0.04_80)]">
-              Объём: <strong>{rejectSession?.totalVolumeLiters} л</strong> будет полностью отклонён.
+              Объём: <strong>{rejectItem?.volumeLiters} л</strong> ({rejectItem?.milkTypeLabel}) будет полностью отклонён.
             </p>
             <textarea
               placeholder="Причина отклонения (обязательно)"
@@ -637,16 +698,17 @@ export default function FarmCheesemakerArm() {
             />
           </div>
           <DialogFooter className="pt-3 gap-2">
-            <Button variant="outline" onClick={() => setRejectSession(null)} className="rounded-xl">
+            <Button variant="outline" onClick={() => setRejectItem(null)} className="rounded-xl">
               Отмена
             </Button>
             <Button
               variant="destructive"
               disabled={rejectReason.trim().length < 3 || rejectMutation.isPending}
               onClick={() => {
-                if (!rejectSession) return;
+                if (!rejectItem) return;
                 rejectMutation.mutate({
-                  sessionId: rejectSession.id,
+                  sessionId: rejectItem.sessionId,
+                  milkType: rejectItem.milkType,
                   rejectionReason: rejectReason.trim(),
                 });
               }}

@@ -2,18 +2,21 @@
  * Milk Session tRPC Router.
  *
  * Provides milker ARM endpoints:
- * - milkSession.create — start a new milking session
- * - milkSession.submit — finalize session (set to pending_confirm)
+ * - milkSession.create — start a new milking session (per-type volumes)
  * - milkSession.myToday — get today's sessions for current worker
  * - milkSession.myHistory — paginated history for current worker
  * - milkSession.getById — get session details
+ * - milkSession.listAll — list all sessions (for cheesemaker/admin)
+ *
+ * Milk is tracked SEPARATELY by animal type (goat/sheep/cow).
+ * Each type has its own volume (ml) and head count.
  */
 
 import { z } from "zod";
 import { router, publicProcedure } from "../_core/trpc";
 import { TRPCError } from "@trpc/server";
 import { verifyFarmToken, FARM_COOKIE_NAME, logMilkAudit } from "../farmAuth";
-import { milkSessions, milkSessionAnimals } from "../../drizzle/schema";
+import { milkSessions } from "../../drizzle/schema";
 import { getDb } from "../db";
 import { eq, and, desc, sql } from "drizzle-orm";
 
@@ -63,19 +66,28 @@ function formatDateISO(date: Date): string {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 }
 
+/** Per-animal-type volume+heads input schema */
+const animalTypeInput = z.object({
+  volumeMl: z.number().int().min(0).max(500_000),
+  headCount: z.number().int().min(0).max(500),
+}).refine(
+  (d) => (d.volumeMl > 0 && d.headCount > 0) || (d.volumeMl === 0 && d.headCount === 0),
+  { message: "Если указан объём, укажите и количество голов (и наоборот)" },
+);
+
 export const milkSessionRouter = router({
   /**
    * Create a new milking session.
-   * Milker fills in: shift, head counts, total volume, optional temp/density/note.
+   * Milker fills in per-type volumes: goat, sheep, cow.
+   * At least one type must have volume > 0.
    */
   create: publicProcedure
     .input(
       z.object({
         shift: z.enum(["morning", "evening"]),
-        totalVolumeMl: z.number().int().positive().max(500_000),
-        goatHeadCount: z.number().int().min(0).max(500),
-        sheepHeadCount: z.number().int().min(0).max(500),
-        cowHeadCount: z.number().int().min(0).max(200),
+        goat: animalTypeInput.default({ volumeMl: 0, headCount: 0 }),
+        sheep: animalTypeInput.default({ volumeMl: 0, headCount: 0 }),
+        cow: animalTypeInput.default({ volumeMl: 0, headCount: 0 }),
         temperatureCelsius: z.number().min(0).max(50).optional(),
         densityGCm3: z.number().min(0.9).max(1.2).optional(),
         note: z.string().max(1000).optional(),
@@ -106,11 +118,12 @@ export const milkSessionRouter = router({
         });
       }
 
-      // Validate at least one head
-      if (input.goatHeadCount + input.sheepHeadCount + input.cowHeadCount === 0) {
+      // Validate at least one type has volume
+      const totalVolume = input.goat.volumeMl + input.sheep.volumeMl + input.cow.volumeMl;
+      if (totalVolume === 0) {
         throw new TRPCError({
           code: "BAD_REQUEST",
-          message: "Укажите количество дойных голов (козы, овцы и/или коровы)",
+          message: "Укажите объём молока хотя бы для одного вида животных",
         });
       }
 
@@ -129,10 +142,12 @@ export const milkSessionRouter = router({
         workerId: worker.workerId,
         milkingDate,
         shift: input.shift,
-        totalVolumeMl: input.totalVolumeMl,
-        goatHeadCount: input.goatHeadCount,
-        sheepHeadCount: input.sheepHeadCount,
-        cowHeadCount: input.cowHeadCount,
+        goatVolumeMl: input.goat.volumeMl,
+        goatHeadCount: input.goat.headCount,
+        sheepVolumeMl: input.sheep.volumeMl,
+        sheepHeadCount: input.sheep.headCount,
+        cowVolumeMl: input.cow.volumeMl,
+        cowHeadCount: input.cow.headCount,
         temperatureTenths,
         densityThousandths,
         note: input.note ?? null,
@@ -149,10 +164,10 @@ export const milkSessionRouter = router({
         detailsJson: JSON.stringify({
           sessionCode,
           shift: input.shift,
-          totalVolumeMl: input.totalVolumeMl,
-          goatHeadCount: input.goatHeadCount,
-          sheepHeadCount: input.sheepHeadCount,
-          cowHeadCount: input.cowHeadCount,
+          goat: input.goat,
+          sheep: input.sheep,
+          cow: input.cow,
+          totalVolumeMl: totalVolume,
         }),
       });
 
@@ -299,17 +314,34 @@ export const milkSessionRouter = router({
 // ─── Format helper ──────────────────────────────────────────
 
 function formatSession(s: typeof milkSessions.$inferSelect) {
+  const totalVolumeMl = s.goatVolumeMl + s.sheepVolumeMl + s.cowVolumeMl;
   return {
     id: s.id,
     sessionCode: s.sessionCode,
     workerId: s.workerId,
     milkingDate: s.milkingDate,
     shift: s.shift,
-    totalVolumeMl: s.totalVolumeMl,
-    totalVolumeLiters: +(s.totalVolumeMl / 1000).toFixed(2),
-    goatHeadCount: s.goatHeadCount,
-    sheepHeadCount: s.sheepHeadCount,
-    cowHeadCount: s.cowHeadCount,
+    // Per-type breakdown
+    goat: {
+      volumeMl: s.goatVolumeMl,
+      volumeLiters: +(s.goatVolumeMl / 1000).toFixed(2),
+      headCount: s.goatHeadCount,
+    },
+    sheep: {
+      volumeMl: s.sheepVolumeMl,
+      volumeLiters: +(s.sheepVolumeMl / 1000).toFixed(2),
+      headCount: s.sheepHeadCount,
+    },
+    cow: {
+      volumeMl: s.cowVolumeMl,
+      volumeLiters: +(s.cowVolumeMl / 1000).toFixed(2),
+      headCount: s.cowHeadCount,
+    },
+    // Totals (computed)
+    totalVolumeMl,
+    totalVolumeLiters: +(totalVolumeMl / 1000).toFixed(2),
+    totalHeadCount: s.goatHeadCount + s.sheepHeadCount + s.cowHeadCount,
+    // Quality
     temperatureCelsius: s.temperatureTenths != null ? +(s.temperatureTenths / 10).toFixed(1) : null,
     densityGCm3: s.densityThousandths != null ? +(s.densityThousandths / 1000).toFixed(3) : null,
     note: s.note,

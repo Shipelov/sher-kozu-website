@@ -2485,4 +2485,18 @@ Module: Контроль оборота молока. Spec v2.1. Mobile-first AR
 - [x] Add cowHeadCount field to milkSessions schema + migration
 - [x] Update Milker ARM form to include cow head count (🐄 counter)
 - [x] Update server validation (milkSession, milkAdmin routers) and tests
+- [x] Deploy to VDS — commit a24bbf16, PM2 restarted, /farm 200 OK
+
+## Refactor: Separate milk tracking by animal type (goat/sheep/cow) — April 21, 2026
+
+- [x] Schema: Replace totalVolumeMl with goatVolumeMl, sheepVolumeMl, cowVolumeMl in milkSessions
+- [x] Schema: Add milkType enum (goat/sheep/cow) to milkTanks
+- [x] Schema: Add milkType to milkReceptions for per-type reception
+- [x] Server: milkSession router — accept per-type volumes, validate each independently
+- [x] Server: milkReception router — reception per milk type, accept/reject with milkType
+- [x] Server: milkAdmin router — stats split by milk type (overview, sessions, receptions, tanks)
+- [x] Frontend: Milker ARM — separate volume+heads input blocks per animal type (🐐/🐑/🐄)
+- [x] Frontend: Cheesemaker ARM — reception and tanks split by milk type
+- [x] Frontend: Admin Milk Dashboard — stats, sessions table, receptions table, tank cards per milk type
+- [x] Tests: Updated all milk module tests for new schema (2531 passing)
 - [ ] Deploy to VDS

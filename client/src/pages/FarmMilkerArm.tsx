@@ -3,9 +3,12 @@
  *
  * Mobile-first interface for recording milking sessions.
  * Touch-optimized: large buttons, minimal text input, bottom-anchored actions.
+ *
+ * Milk is tracked SEPARATELY by animal type (goat/sheep/cow).
+ * Each type has its own head count + volume input.
  */
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
@@ -26,13 +29,12 @@ import {
   Sun,
   Moon,
   Thermometer,
-  AlertCircle,
 } from "lucide-react";
 import { toast } from "sonner";
 
 const SHIFT_OPTIONS = [
-  { value: "morning" as const, label: "Утренняя", icon: Sun, emoji: "🌅" },
-  { value: "evening" as const, label: "Вечерняя", icon: Moon, emoji: "🌙" },
+  { value: "morning" as const, label: "Утренняя", emoji: "🌅" },
+  { value: "evening" as const, label: "Вечерняя", emoji: "🌙" },
 ];
 
 const STATUS_MAP: Record<string, { label: string; color: string }> = {
@@ -41,6 +43,12 @@ const STATUS_MAP: Record<string, { label: string; color: string }> = {
   confirmed: { label: "Подтверждена", color: "bg-emerald-100 text-emerald-700" },
   disputed: { label: "Оспорена", color: "bg-red-100 text-red-700" },
 };
+
+const ANIMAL_TYPES = [
+  { key: "goat" as const, emoji: "🐐", label: "Козы", labelMilk: "Козье молоко" },
+  { key: "sheep" as const, emoji: "🐑", label: "Овцы", labelMilk: "Овечье молоко" },
+  { key: "cow" as const, emoji: "🐄", label: "Коровы", labelMilk: "Коровье молоко" },
+];
 
 export default function FarmMilkerArm() {
   const [, navigate] = useLocation();
@@ -61,14 +69,18 @@ export default function FarmMilkerArm() {
     if (meQuery.data?.mustChangePassword) navigate("/farm/change-password");
   }, [meQuery.isLoading, meQuery.data, navigate]);
 
-  // ─── Form state ───
+  // ─── Form state: per-type head count + volume ───
   const [shift, setShift] = useState<"morning" | "evening">(
     new Date().getHours() < 14 ? "morning" : "evening",
   );
-  const [goatCount, setGoatCount] = useState(0);
-  const [sheepCount, setSheepCount] = useState(0);
-  const [cowCount, setCowCount] = useState(0);
-  const [volumeL, setVolumeL] = useState("");
+
+  const [goatHeads, setGoatHeads] = useState(0);
+  const [goatVolumeL, setGoatVolumeL] = useState("");
+  const [sheepHeads, setSheepHeads] = useState(0);
+  const [sheepVolumeL, setSheepVolumeL] = useState("");
+  const [cowHeads, setCowHeads] = useState(0);
+  const [cowVolumeL, setCowVolumeL] = useState("");
+
   const [temperature, setTemperature] = useState("");
   const [density, setDensity] = useState("");
   const [note, setNote] = useState("");
@@ -93,13 +105,10 @@ export default function FarmMilkerArm() {
         description: `${data.sessionCode} — ожидает подтверждения`,
       });
       // Reset form
-      setGoatCount(0);
-      setSheepCount(0);
-      setCowCount(0);
-      setVolumeL("");
-      setTemperature("");
-      setDensity("");
-      setNote("");
+      setGoatHeads(0); setGoatVolumeL("");
+      setSheepHeads(0); setSheepVolumeL("");
+      setCowHeads(0); setCowVolumeL("");
+      setTemperature(""); setDensity(""); setNote("");
       setShowExtras(false);
       void utils.milkSession.myToday.invalidate();
       void utils.milkSession.myHistory.invalidate();
@@ -108,9 +117,17 @@ export default function FarmMilkerArm() {
   });
 
   // ─── Derived ───
-  const totalHeads = goatCount + sheepCount + cowCount;
-  const volumeMl = volumeL ? Math.round(parseFloat(volumeL) * 1000) : 0;
-  const canSubmit = totalHeads > 0 && volumeMl > 0 && !createMutation.isPending;
+  const goatMl = goatVolumeL ? Math.round(parseFloat(goatVolumeL) * 1000) : 0;
+  const sheepMl = sheepVolumeL ? Math.round(parseFloat(sheepVolumeL) * 1000) : 0;
+  const cowMl = cowVolumeL ? Math.round(parseFloat(cowVolumeL) * 1000) : 0;
+  const totalMl = goatMl + sheepMl + cowMl;
+  const totalHeads = goatHeads + sheepHeads + cowHeads;
+
+  // Validate: each type with volume must have heads and vice versa
+  const goatValid = (goatMl > 0 && goatHeads > 0) || (goatMl === 0 && goatHeads === 0);
+  const sheepValid = (sheepMl > 0 && sheepHeads > 0) || (sheepMl === 0 && sheepHeads === 0);
+  const cowValid = (cowMl > 0 && cowHeads > 0) || (cowMl === 0 && cowHeads === 0);
+  const canSubmit = totalMl > 0 && goatValid && sheepValid && cowValid && !createMutation.isPending;
 
   const todaySessions = todayQuery.data ?? [];
   const hasMorning = todaySessions.some((s: any) => s.shift === "morning");
@@ -133,14 +150,102 @@ export default function FarmMilkerArm() {
     if (!canSubmit) return;
     createMutation.mutate({
       shift,
-      totalVolumeMl: volumeMl,
-      goatHeadCount: goatCount,
-      sheepHeadCount: sheepCount,
-      cowHeadCount: cowCount,
+      goat: { volumeMl: goatMl, headCount: goatHeads },
+      sheep: { volumeMl: sheepMl, headCount: sheepHeads },
+      cow: { volumeMl: cowMl, headCount: cowHeads },
       temperatureCelsius: temperature ? parseFloat(temperature) : undefined,
       densityGCm3: density ? parseFloat(density) : undefined,
       note: note.trim() || undefined,
     });
+  }
+
+  // ─── Reusable counter + volume row ───
+  function AnimalRow({
+    emoji,
+    label,
+    heads,
+    setHeads,
+    volumeL: vol,
+    setVolumeL: setVol,
+    valid,
+  }: {
+    emoji: string;
+    label: string;
+    heads: number;
+    setHeads: (n: number) => void;
+    volumeL: string;
+    setVolumeL: (s: string) => void;
+    valid: boolean;
+  }) {
+    const volMl = vol ? Math.round(parseFloat(vol) * 1000) : 0;
+    return (
+      <div className={`bg-white rounded-xl border ${valid ? "border-[oklch(0.88_0.02_90)]" : "border-red-300"} p-3 mb-3`}>
+        {/* Type label */}
+        <div className="flex items-center gap-2 mb-2">
+          <span className="text-xl">{emoji}</span>
+          <span className="text-sm font-semibold text-[oklch(0.3_0.04_60)]">{label}</span>
+          {volMl > 0 && (
+            <span className="ml-auto text-xs text-[oklch(0.52_0.04_80)]">
+              {(volMl / 1000).toFixed(1)} л
+            </span>
+          )}
+        </div>
+
+        {/* Head counter + Volume input in one row */}
+        <div className="flex items-center gap-3">
+          {/* Head counter */}
+          <div className="flex items-center gap-1.5">
+            <button
+              onClick={() => setHeads(Math.max(0, heads - 1))}
+              className="w-10 h-10 rounded-lg bg-[oklch(0.94_0.02_90)] flex items-center justify-center
+                         active:bg-[oklch(0.88_0.02_90)] touch-manipulation"
+            >
+              <Minus className="w-4 h-4 text-[oklch(0.4_0.04_80)]" />
+            </button>
+            <span className="w-8 text-center text-lg font-bold text-[oklch(0.22_0.04_60)] tabular-nums">
+              {heads}
+            </span>
+            <button
+              onClick={() => setHeads(heads + 1)}
+              className="w-10 h-10 rounded-lg bg-[oklch(0.35_0.12_150)] flex items-center justify-center
+                         active:bg-[oklch(0.30_0.12_150)] touch-manipulation"
+            >
+              <Plus className="w-4 h-4 text-white" />
+            </button>
+            <span className="text-[10px] text-[oklch(0.6_0.02_80)]">гол.</span>
+          </div>
+
+          {/* Separator */}
+          <div className="w-px h-8 bg-[oklch(0.9_0.02_90)]" />
+
+          {/* Volume input */}
+          <div className="flex-1 relative">
+            <Input
+              type="number"
+              inputMode="decimal"
+              step="0.1"
+              min="0"
+              max="500"
+              placeholder="0.0"
+              value={vol}
+              onChange={(e) => setVol(e.target.value)}
+              className="h-10 text-base font-bold text-center rounded-lg pr-8
+                         border-[oklch(0.88_0.02_90)] bg-[oklch(0.98_0.01_90)]
+                         focus:border-[oklch(0.35_0.12_150)] focus:ring-[oklch(0.35_0.12_150)]"
+            />
+            <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-[oklch(0.52_0.04_80)]">
+              л
+            </span>
+          </div>
+        </div>
+
+        {!valid && (
+          <p className="text-[10px] text-red-500 mt-1">
+            Укажите и головы, и объём (или оставьте оба пустыми)
+          </p>
+        )}
+      </div>
+    );
   }
 
   return (
@@ -225,6 +330,23 @@ export default function FarmMilkerArm() {
                   )}
                 </div>
               </div>
+              {/* Per-type breakdown for today */}
+              <div className="flex gap-3 mt-2 text-[10px] text-[oklch(0.52_0.04_80)]">
+                {todaySessions.reduce((acc: any, s: any) => {
+                  acc.goat += s.goat?.volumeLiters ?? 0;
+                  acc.sheep += s.sheep?.volumeLiters ?? 0;
+                  acc.cow += s.cow?.volumeLiters ?? 0;
+                  return acc;
+                }, { goat: 0, sheep: 0, cow: 0 }).goat > 0 && (
+                  <span>🐐 {todaySessions.reduce((a: number, s: any) => a + (s.goat?.volumeLiters ?? 0), 0).toFixed(1)}л</span>
+                )}
+                {todaySessions.reduce((acc: number, s: any) => acc + (s.sheep?.volumeLiters ?? 0), 0) > 0 && (
+                  <span>🐑 {todaySessions.reduce((a: number, s: any) => a + (s.sheep?.volumeLiters ?? 0), 0).toFixed(1)}л</span>
+                )}
+                {todaySessions.reduce((acc: number, s: any) => acc + (s.cow?.volumeLiters ?? 0), 0) > 0 && (
+                  <span>🐄 {todaySessions.reduce((a: number, s: any) => a + (s.cow?.volumeLiters ?? 0), 0).toFixed(1)}л</span>
+                )}
+              </div>
             </div>
           )}
 
@@ -260,126 +382,34 @@ export default function FarmMilkerArm() {
             </div>
           </div>
 
-          {/* ── Head counts ── */}
+          {/* ── Per-type: heads + volume ── */}
           <div className="px-4 mt-5">
             <label className="text-xs font-medium text-[oklch(0.52_0.04_80)] mb-2 block">
-              Дойные головы
+              Дойные головы и объём молока по видам
             </label>
 
-            {/* Goats */}
-            <div className="flex items-center justify-between bg-white rounded-xl border border-[oklch(0.88_0.02_90)] px-4 h-16 mb-3">
-              <div className="flex items-center gap-3">
-                <span className="text-2xl">🐐</span>
-                <span className="text-sm font-medium text-[oklch(0.3_0.04_60)]">Козы</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => setGoatCount(Math.max(0, goatCount - 1))}
-                  className="w-11 h-11 rounded-xl bg-[oklch(0.94_0.02_90)] flex items-center justify-center
-                             active:bg-[oklch(0.88_0.02_90)] touch-manipulation"
-                >
-                  <Minus className="w-5 h-5 text-[oklch(0.4_0.04_80)]" />
-                </button>
-                <span className="w-10 text-center text-xl font-bold text-[oklch(0.22_0.04_60)] tabular-nums">
-                  {goatCount}
-                </span>
-                <button
-                  onClick={() => setGoatCount(goatCount + 1)}
-                  className="w-11 h-11 rounded-xl bg-[oklch(0.35_0.12_150)] flex items-center justify-center
-                             active:bg-[oklch(0.30_0.12_150)] touch-manipulation"
-                >
-                  <Plus className="w-5 h-5 text-white" />
-                </button>
-              </div>
-            </div>
+            <AnimalRow
+              emoji="🐐" label="Козы"
+              heads={goatHeads} setHeads={setGoatHeads}
+              volumeL={goatVolumeL} setVolumeL={setGoatVolumeL}
+              valid={goatValid}
+            />
+            <AnimalRow
+              emoji="🐑" label="Овцы"
+              heads={sheepHeads} setHeads={setSheepHeads}
+              volumeL={sheepVolumeL} setVolumeL={setSheepVolumeL}
+              valid={sheepValid}
+            />
+            <AnimalRow
+              emoji="🐄" label="Коровы"
+              heads={cowHeads} setHeads={setCowHeads}
+              volumeL={cowVolumeL} setVolumeL={setCowVolumeL}
+              valid={cowValid}
+            />
 
-            {/* Sheep */}
-            <div className="flex items-center justify-between bg-white rounded-xl border border-[oklch(0.88_0.02_90)] px-4 h-16 mb-3">
-              <div className="flex items-center gap-3">
-                <span className="text-2xl">🐑</span>
-                <span className="text-sm font-medium text-[oklch(0.3_0.04_60)]">Овцы</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => setSheepCount(Math.max(0, sheepCount - 1))}
-                  className="w-11 h-11 rounded-xl bg-[oklch(0.94_0.02_90)] flex items-center justify-center
-                             active:bg-[oklch(0.88_0.02_90)] touch-manipulation"
-                >
-                  <Minus className="w-5 h-5 text-[oklch(0.4_0.04_80)]" />
-                </button>
-                <span className="w-10 text-center text-xl font-bold text-[oklch(0.22_0.04_60)] tabular-nums">
-                  {sheepCount}
-                </span>
-                <button
-                  onClick={() => setSheepCount(sheepCount + 1)}
-                  className="w-11 h-11 rounded-xl bg-[oklch(0.35_0.12_150)] flex items-center justify-center
-                             active:bg-[oklch(0.30_0.12_150)] touch-manipulation"
-                >
-                  <Plus className="w-5 h-5 text-white" />
-                </button>
-              </div>
-            </div>
-
-            {/* Cows */}
-            <div className="flex items-center justify-between bg-white rounded-xl border border-[oklch(0.88_0.02_90)] px-4 h-16">
-              <div className="flex items-center gap-3">
-                <span className="text-2xl">🐄</span>
-                <span className="text-sm font-medium text-[oklch(0.3_0.04_60)]">Коровы</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => setCowCount(Math.max(0, cowCount - 1))}
-                  className="w-11 h-11 rounded-xl bg-[oklch(0.94_0.02_90)] flex items-center justify-center
-                             active:bg-[oklch(0.88_0.02_90)] touch-manipulation"
-                >
-                  <Minus className="w-5 h-5 text-[oklch(0.4_0.04_80)]" />
-                </button>
-                <span className="w-10 text-center text-xl font-bold text-[oklch(0.22_0.04_60)] tabular-nums">
-                  {cowCount}
-                </span>
-                <button
-                  onClick={() => setCowCount(cowCount + 1)}
-                  className="w-11 h-11 rounded-xl bg-[oklch(0.35_0.12_150)] flex items-center justify-center
-                             active:bg-[oklch(0.30_0.12_150)] touch-manipulation"
-                >
-                  <Plus className="w-5 h-5 text-white" />
-                </button>
-              </div>
-            </div>
-
-            {totalHeads > 0 && (
-              <p className="text-xs text-[oklch(0.52_0.04_80)] mt-2 text-center">
-                Всего: <strong>{totalHeads}</strong> голов
-              </p>
-            )}
-          </div>
-
-          {/* ── Volume ── */}
-          <div className="px-4 mt-5">
-            <label className="text-xs font-medium text-[oklch(0.52_0.04_80)] mb-2 block">
-              Объём молока (литры)
-            </label>
-            <div className="relative">
-              <Input
-                type="number"
-                inputMode="decimal"
-                step="0.1"
-                min="0"
-                max="500"
-                placeholder="0.0"
-                value={volumeL}
-                onChange={(e) => setVolumeL(e.target.value)}
-                className="h-14 text-xl font-bold text-center rounded-xl pr-12
-                           border-[oklch(0.88_0.02_90)] bg-white
-                           focus:border-[oklch(0.35_0.12_150)] focus:ring-[oklch(0.35_0.12_150)]"
-              />
-              <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm text-[oklch(0.52_0.04_80)] font-medium">
-                л
-              </span>
-            </div>
-            {volumeMl > 0 && (
-              <p className="text-xs text-[oklch(0.52_0.04_80)] mt-1 text-center">
-                = {volumeMl.toLocaleString("ru-RU")} мл
+            {totalMl > 0 && (
+              <p className="text-xs text-[oklch(0.52_0.04_80)] text-center mt-1">
+                Итого: <strong>{(totalMl / 1000).toFixed(1)} л</strong> · {totalHeads} голов
               </p>
             )}
           </div>
@@ -396,7 +426,6 @@ export default function FarmMilkerArm() {
 
             {showExtras && (
               <div className="mt-3 space-y-3">
-                {/* Temperature */}
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-lg bg-[oklch(0.92_0.08_30)] flex items-center justify-center flex-shrink-0">
                     <Thermometer className="w-5 h-5 text-[oklch(0.5_0.15_30)]" />
@@ -411,8 +440,6 @@ export default function FarmMilkerArm() {
                     className="h-12 rounded-xl border-[oklch(0.88_0.02_90)] bg-white"
                   />
                 </div>
-
-                {/* Density */}
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-lg bg-[oklch(0.92_0.08_220)] flex items-center justify-center flex-shrink-0">
                     <Droplets className="w-5 h-5 text-[oklch(0.45_0.12_220)]" />
@@ -427,8 +454,6 @@ export default function FarmMilkerArm() {
                     className="h-12 rounded-xl border-[oklch(0.88_0.02_90)] bg-white"
                   />
                 </div>
-
-                {/* Note */}
                 <textarea
                   placeholder="Заметка (необязательно)"
                   value={note}
@@ -472,32 +497,42 @@ export default function FarmMilkerArm() {
                         {st.label}
                       </Badge>
                     </div>
-                    <div className="grid grid-cols-4 gap-2 text-xs text-[oklch(0.4_0.04_80)]">
-                      <div>
-                        <span className="text-[oklch(0.6_0.02_80)]">Объём</span>
-                        <p className="font-semibold text-sm text-[oklch(0.22_0.04_60)]">
-                          {s.totalVolumeLiters} л
-                        </p>
-                      </div>
-                      <div>
-                        <span className="text-[oklch(0.6_0.02_80)]">🐐 Козы</span>
-                        <p className="font-semibold text-sm text-[oklch(0.22_0.04_60)]">
-                          {s.goatHeadCount}
-                        </p>
-                      </div>
-                      <div>
-                        <span className="text-[oklch(0.6_0.02_80)]">🐑 Овцы</span>
-                        <p className="font-semibold text-sm text-[oklch(0.22_0.04_60)]">
-                          {s.sheepHeadCount}
-                        </p>
-                      </div>
-                      <div>
-                        <span className="text-[oklch(0.6_0.02_80)]">🐄 Коровы</span>
-                        <p className="font-semibold text-sm text-[oklch(0.22_0.04_60)]">
-                          {s.cowHeadCount}
-                        </p>
-                      </div>
+
+                    {/* Per-type breakdown */}
+                    <div className="space-y-1 mb-2">
+                      {s.goat?.volumeLiters > 0 && (
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="text-[oklch(0.5_0.04_80)]">🐐 Козье</span>
+                          <span className="font-semibold text-[oklch(0.22_0.04_60)]">
+                            {s.goat.volumeLiters} л · {s.goat.headCount} гол.
+                          </span>
+                        </div>
+                      )}
+                      {s.sheep?.volumeLiters > 0 && (
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="text-[oklch(0.5_0.04_80)]">🐑 Овечье</span>
+                          <span className="font-semibold text-[oklch(0.22_0.04_60)]">
+                            {s.sheep.volumeLiters} л · {s.sheep.headCount} гол.
+                          </span>
+                        </div>
+                      )}
+                      {s.cow?.volumeLiters > 0 && (
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="text-[oklch(0.5_0.04_80)]">🐄 Коровье</span>
+                          <span className="font-semibold text-[oklch(0.22_0.04_60)]">
+                            {s.cow.volumeLiters} л · {s.cow.headCount} гол.
+                          </span>
+                        </div>
+                      )}
                     </div>
+
+                    <div className="flex items-center justify-between text-xs border-t border-[oklch(0.94_0.01_90)] pt-1.5">
+                      <span className="text-[oklch(0.5_0.04_80)]">Итого</span>
+                      <span className="font-bold text-sm text-[oklch(0.22_0.04_60)]">
+                        {s.totalVolumeLiters} л · {s.totalHeadCount} гол.
+                      </span>
+                    </div>
+
                     {s.note && (
                       <p className="text-xs text-[oklch(0.52_0.04_80)] mt-2 italic">
                         {s.note}
@@ -549,9 +584,9 @@ export default function FarmMilkerArm() {
             )}
             Зафиксировать дойку
           </Button>
-          {!canSubmit && totalHeads === 0 && volumeMl === 0 && (
+          {!canSubmit && totalMl === 0 && (
             <p className="text-center text-[10px] text-[oklch(0.6_0.02_80)] mt-1.5">
-              Укажите голов и объём молока
+              Укажите голов и объём молока по видам
             </p>
           )}
         </div>

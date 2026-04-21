@@ -372,6 +372,13 @@
       "when": 1776794337069,
       "tag": "0053_strange_golden_guardian",
       "breakpoints": true
+    },
+    {
+      "idx": 54,
+      "version": "5",
+      "when": 1776797471960,
+      "tag": "0054_slimy_richard_fisk",
+      "breakpoints": true
     }
   ]
 }

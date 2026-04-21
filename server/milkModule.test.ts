@@ -107,9 +107,11 @@ describe("milkSession tRPC router", () => {
       await expect(
         caller.milkSession.create({
           shift: "morning",
-          totalVolumeMl: 10000,
+          goatVolumeMl: 5000,
           goatHeadCount: 5,
+          sheepVolumeMl: 3000,
           sheepHeadCount: 3,
+          cowVolumeMl: 2000,
           cowHeadCount: 2,
         }),
       ).rejects.toThrow();
@@ -122,9 +124,11 @@ describe("milkSession tRPC router", () => {
       await expect(
         caller.milkSession.create({
           shift: "midnight" as any,
-          totalVolumeMl: 10000,
+          goatVolumeMl: 5000,
           goatHeadCount: 5,
+          sheepVolumeMl: 3000,
           sheepHeadCount: 3,
+          cowVolumeMl: 2000,
           cowHeadCount: 2,
         }),
       ).rejects.toThrow();
@@ -137,25 +141,29 @@ describe("milkSession tRPC router", () => {
       await expect(
         caller.milkSession.create({
           shift: "morning",
-          totalVolumeMl: -5000,
+          goatVolumeMl: -5000,
           goatHeadCount: 5,
-          sheepHeadCount: 3,
+          sheepVolumeMl: 0,
+          sheepHeadCount: 0,
+          cowVolumeMl: 0,
           cowHeadCount: 0,
         }),
       ).rejects.toThrow();
     });
 
-    it("rejects zero head count for both types", async () => {
+    it("rejects zero total volume (all types zero)", async () => {
       const ctx = createPublicContext();
       const caller = appRouter.createCaller(ctx);
 
-      // Both goat and sheep = 0 should be rejected by our custom validation
+      // All volumes = 0 should be rejected
       await expect(
         caller.milkSession.create({
           shift: "morning",
-          totalVolumeMl: 10000,
+          goatVolumeMl: 0,
           goatHeadCount: 0,
+          sheepVolumeMl: 0,
           sheepHeadCount: 0,
+          cowVolumeMl: 0,
           cowHeadCount: 0,
         }),
       ).rejects.toThrow();
@@ -194,6 +202,7 @@ describe("milkReception tRPC router", () => {
       await expect(
         caller.milkReception.accept({
           sessionId: 1,
+          milkType: "goat",
           acceptedVolumeMl: 5000,
           rejectedVolumeMl: 0,
           targetTankId: 1,
@@ -208,6 +217,7 @@ describe("milkReception tRPC router", () => {
       await expect(
         caller.milkReception.accept({
           sessionId: 1,
+          milkType: "sheep",
           acceptedVolumeMl: -100,
           rejectedVolumeMl: 0,
           targetTankId: 1,
@@ -224,6 +234,7 @@ describe("milkReception tRPC router", () => {
       await expect(
         caller.milkReception.reject({
           sessionId: 1,
+          milkType: "goat",
           rejectionReason: "Bad quality",
         }),
       ).rejects.toThrow();
@@ -236,6 +247,7 @@ describe("milkReception tRPC router", () => {
       await expect(
         caller.milkReception.reject({
           sessionId: 1,
+          milkType: "cow",
           rejectionReason: "",
         }),
       ).rejects.toThrow();
@@ -272,7 +284,10 @@ describe("milkAdmin tRPC router", () => {
       expect(overview).toHaveProperty("receptionToday");
       expect(overview).toHaveProperty("tanks");
       expect(typeof overview.today.sessions).toBe("number");
-      expect(typeof overview.today.volumeLiters).toBe("number");
+      expect(overview.today.volume).toHaveProperty("goatLiters");
+      expect(overview.today.volume).toHaveProperty("sheepLiters");
+      expect(overview.today.volume).toHaveProperty("cowLiters");
+      expect(overview.today.volume).toHaveProperty("totalLiters");
       expect(typeof overview.today.goatHeads).toBe("number");
       expect(typeof overview.today.sheepHeads).toBe("number");
       expect(typeof overview.today.cowHeads).toBe("number");
@@ -375,6 +390,7 @@ describe("milkAdmin tRPC router", () => {
       await expect(
         caller.milkAdmin.createTank({
           name: "Test Tank",
+          milkType: "goat",
           capacityLiters: 100,
         }),
       ).rejects.toThrow();
@@ -387,6 +403,7 @@ describe("milkAdmin tRPC router", () => {
       await expect(
         caller.milkAdmin.createTank({
           name: "Test Tank",
+          milkType: "goat",
           capacityLiters: 0,
         }),
       ).rejects.toThrow();
@@ -399,6 +416,7 @@ describe("milkAdmin tRPC router", () => {
       await expect(
         caller.milkAdmin.createTank({
           name: "Test Tank",
+          milkType: "sheep",
           capacityLiters: -50,
         }),
       ).rejects.toThrow();
@@ -411,6 +429,7 @@ describe("milkAdmin tRPC router", () => {
       await expect(
         caller.milkAdmin.createTank({
           name: "",
+          milkType: "cow",
           capacityLiters: 100,
         }),
       ).rejects.toThrow();
