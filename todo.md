@@ -2450,4 +2450,23 @@ Flow: Owner configures plan → B24 task for manager → Admin confirms in panel
 - [x] Backend: When admin confirms plan in admin panel, send notification to owner (Telegram + email + in-app)
 - [x] Frontend: pending_approval state already exists in OwnerProductPlanSection
 - [x] Test: TypeScript 0 errors + all 2485 tests pass
-- [ ] Deploy to VDS (89.111.165.77) — in progress
+- [x] Deploy to VDS (89.111.165.77) — commit 3585189, PM2 online, ProductPlanCron active
+
+## Milk Turnover Control — Stage 1: Foundation — April 21, 2026
+
+Module: Контроль оборота молока. Spec v2.1. Mobile-first ARM for farm workers.
+
+- [x] DB: Add 8 milk module tables (farmWorkers, milkSessions, milkSessionAnimals, milkReceptions, milkTanks, milkTankMovements, milkProcessingBatches, milkAuditLog) + enums
+- [x] DB: Run migration (pnpm db:push) — all tables created successfully
+- [x] Server: Farm worker auth module (farmAuth.ts) — bcrypt hashing, JWT sign/verify, login, change-password, CRUD helpers
+- [x] Server: Farm worker tRPC routers (farmAuth + farmAdmin) — login, logout, me, changePassword, listWorkers, createWorker, toggleActive, resetPassword, updateWorker
+- [x] Frontend: Mobile-first /farm login page (FarmLogin.tsx) — 48px+ touch targets, large inputs, eye toggle
+- [x] Frontend: Mobile-first /farm/change-password page (FarmChangePassword.tsx) — first-login forced change, match indicator
+- [x] Frontend: Placeholder ARM pages for milker (/farm/milker) and cheesemaker (/farm/cheesemaker) with auth guard
+- [x] Routes: Register /farm, /farm/change-password, /farm/milker, /farm/cheesemaker in App.tsx
+- [x] Telegram: Add /myid command for farm workers to get their chat_id
+- [x] Tests: Vitest coverage for farmAuth utilities (hash, JWT, password validation) and tRPC router (login, logout, me, changePassword, admin CRUD)
+- [ ] Stage 2: Milker ARM — milking session recording form with animal count by type
+- [ ] Stage 2: Cheesemaker ARM — milk reception and tank management
+- [ ] Stage 2: Auto-confirmation after 72h timeout
+- [ ] Stage 2: Admin panel for milk module management

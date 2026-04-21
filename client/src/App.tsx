@@ -52,6 +52,12 @@ const AdminPerformance = lazy(() => import("./pages/AdminPerformance"));
 const AdminNutriAnalytics = lazy(() => import("./pages/AdminNutriAnalytics"));
 const ZoyaSharedView = lazy(() => import("./pages/ZoyaSharedView"));
 
+/* ─── Farm Worker ARM pages ─── */
+const FarmLogin = lazy(() => import("./pages/FarmLogin"));
+const FarmChangePassword = lazy(() => import("./pages/FarmChangePassword"));
+const FarmMilkerArm = lazy(() => import("./pages/FarmMilkerArm"));
+const FarmCheesemakerArm = lazy(() => import("./pages/FarmCheesemakerArm"));
+
 /* ─── Telegram Mini App pages ─── */
 const TgAppHome = lazy(() => import("./pages/TgAppHome"));
 const TgAppStatus = lazy(() => import("./pages/TgAppStatus"));
@@ -156,6 +162,12 @@ function Router() {
         <Route path="/tg/balance" component={TgAppBalance} />
         <Route path="/tg/events" component={TgAppEvents} />
         <Route path="/tg/zoya" component={TgAppZoya} />
+
+        {/* ─── Farm Worker ARM routes (isolated from main site auth) ─── */}
+        <Route path="/farm" component={FarmLogin} />
+        <Route path="/farm/change-password" component={FarmChangePassword} />
+        <Route path="/farm/milker" component={FarmMilkerArm} />
+        <Route path="/farm/cheesemaker" component={FarmCheesemakerArm} />
 
         <Route path="/register">{() => <Redirect to="/?register=1" />}</Route>
         <Route path="/login">{() => <Redirect to="/?login=1" />}</Route>

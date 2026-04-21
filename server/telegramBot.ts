@@ -12,6 +12,7 @@
  *   /help           — AI assistant Masha chat mode
  *   /settings       — Notification preferences
  *   /exit           — Exit chat mode, return to normal
+ *   /myid           — Show Telegram chat ID for farm worker linking
  */
 
 import { Bot, webhookCallback, InlineKeyboard } from "grammy";
@@ -435,6 +436,15 @@ function registerHandlers(bot: Bot) {
     await setSessionState(chatId, "chat_masha", JSON.stringify([]));
     await ctx.reply(
       "👩‍🌾 *Маша — управляющая фермой*\n\nЗадайте любой вопрос о ферме, животных, участии или доставках.\n\nНапишите /exit чтобы вернуться в обычный режим.",
+      { parse_mode: "Markdown" },
+    );
+  });
+
+  // /myid — show Telegram chat ID for farm worker linking
+  bot.command("myid", async (ctx) => {
+    const chatId = String(ctx.chat.id);
+    await ctx.reply(
+      `🆔 Ваш Telegram Chat ID:\n\n\`${chatId}\`\n\nСообщите этот ID администратору для привязки к вашему аккаунту сотрудника фермы.`,
       { parse_mode: "Markdown" },
     );
   });

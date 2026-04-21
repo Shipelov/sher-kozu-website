@@ -2254,3 +2254,332 @@ export const productPlanSetupRequests = mysqlTable("productPlanSetupRequests", {
 });
 export type ProductPlanSetupRequest = typeof productPlanSetupRequests.$inferSelect;
 export type InsertProductPlanSetupRequest = typeof productPlanSetupRequests.$inferInsert;
+
+
+/* ═══════════════════════════════════════════════════════════════════
+   Milk Turnover Control — АРМ Дояра / АРМ Сыродела
+   Farm worker auth, milking sessions, milk reception,
+   tank management, processing batches, audit log
+   ═══════════════════════════════════════════════════════════════════ */
+
+export const farmWorkerRoleEnum = mysqlEnum("farmWorkerRole", [
+  "milker",       // Дояр
+  "cheesemaker",  // Сыродел
+  "vet",          // Ветеринар (reserved)
+  "manager",      // Менеджер (reserved)
+]);
+
+export const milkSessionShiftEnum = mysqlEnum("milkSessionShift", ["morning", "evening"]);
+export const milkSessionStatusEnum = mysqlEnum("milkSessionStatus", [
+  "in_progress",    // Дойка идёт
+  "pending_confirm", // Ожидает подтверждения (72ч авто)
+  "confirmed",       // Подтверждена
+  "disputed",        // Оспорена
+]);
+
+export const milkReceptionStatusEnum = mysqlEnum("milkReceptionStatus", [
+  "pending",    // Ожидает приёмки
+  "accepted",   // Принято
+  "rejected",   // Отклонено (качество)
+]);
+
+export const milkTankStatusEnum = mysqlEnum("milkTankStatus", [
+  "empty",      // Пустой
+  "filling",    // Заполняется
+  "full",       // Полный
+  "processing", // В переработке
+  "cleaning",   // На мойке
+]);
+
+export const milkMovementTypeEnum = mysqlEnum("milkMovementType", [
+  "milking_in",     // Поступление от дойки
+  "transfer",       // Перелив между ёмкостями
+  "processing_out", // Отправка в переработку
+  "waste",          // Списание (утилизация)
+  "sample",         // Отбор пробы
+]);
+
+export const milkProcessingStatusEnum = mysqlEnum("milkProcessingStatus", [
+  "planned",      // Запланирована
+  "in_progress",  // В процессе
+  "completed",    // Завершена
+  "cancelled",    // Отменена
+]);
+
+export const milkAuditActionEnum = mysqlEnum("milkAuditAction", [
+  "session_created",
+  "session_confirmed",
+  "session_disputed",
+  "session_auto_confirmed",
+  "reception_accepted",
+  "reception_rejected",
+  "tank_movement",
+  "batch_started",
+  "batch_completed",
+  "worker_login",
+  "worker_password_changed",
+]);
+
+/**
+ * Farm workers — separate auth from site users.
+ * Workers log in via /farm with login + password.
+ * Each worker has a role (milker, cheesemaker, etc.) and optional Telegram chatId.
+ */
+export const farmWorkers = mysqlTable("farmWorkers", {
+  id: int("id").autoincrement().primaryKey(),
+  /** Login identifier (e.g. "ivan", "petya") */
+  login: varchar("login", { length: 64 }).notNull().unique(),
+  /** Display name */
+  name: varchar("name", { length: 160 }).notNull(),
+  /** bcrypt hash of password */
+  passwordHash: varchar("passwordHash", { length: 255 }).notNull(),
+  role: farmWorkerRoleEnum.notNull(),
+  /** Telegram chat ID for notifications (set via /myid bot command) */
+  telegramChatId: varchar("telegramChatId", { length: 20 }),
+  /** Whether the worker must change password on next login */
+  mustChangePassword: boolean("mustChangePassword").default(true).notNull(),
+  /** Whether the account is active */
+  isActive: boolean("isActive").default(true).notNull(),
+  lastLoginAt: timestamp("lastLoginAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (t) => ([
+  index("idx_farmWorkers_role").on(t.role),
+  index("idx_farmWorkers_telegramChatId").on(t.telegramChatId),
+]));
+
+/**
+ * Milking session — one per shift (morning/evening).
+ * ID format: SK-DDMMYY-S where S = M(morning) or E(evening).
+ * Contains total volume, head counts by species, and confirmation status.
+ */
+export const milkSessions = mysqlTable("milkSessions", {
+  id: int("id").autoincrement().primaryKey(),
+  /** Human-readable session code: SK-DDMMYY-M or SK-DDMMYY-E */
+  sessionCode: varchar("sessionCode", { length: 20 }).notNull().unique(),
+  /** Worker who performed the milking */
+  workerId: int("workerId").notNull(),
+  /** Date of milking (YYYY-MM-DD) */
+  milkingDate: varchar("milkingDate", { length: 10 }).notNull(),
+  shift: milkSessionShiftEnum.notNull(),
+  /** Total milk volume in milliliters */
+  totalVolumeMl: int("totalVolumeMl").notNull(),
+  /** Number of goats milked */
+  goatHeadCount: int("goatHeadCount").default(0).notNull(),
+  /** Number of sheep milked */
+  sheepHeadCount: int("sheepHeadCount").default(0).notNull(),
+  /** Temperature at milking (°C × 10, e.g. 365 = 36.5°C) */
+  temperatureTenths: int("temperatureTenths"),
+  /** Density reading (g/cm³ × 1000, e.g. 1030 = 1.030 g/cm³) */
+  densityThousandths: int("densityThousandths"),
+  /** Worker's note about the session */
+  note: text("note"),
+  status: milkSessionStatusEnum.default("in_progress").notNull(),
+  /** When auto-confirmation should trigger (created_at + 72h) */
+  autoConfirmAt: timestamp("autoConfirmAt"),
+  /** Who confirmed (admin openId or 'auto') */
+  confirmedBy: varchar("confirmedBy", { length: 64 }),
+  confirmedAt: timestamp("confirmedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (t) => ([
+  index("idx_milkSessions_workerId").on(t.workerId),
+  index("idx_milkSessions_milkingDate").on(t.milkingDate),
+  index("idx_milkSessions_status").on(t.status),
+  index("idx_milkSessions_autoConfirmAt").on(t.autoConfirmAt),
+]));
+
+/**
+ * Per-animal breakdown within a milking session.
+ * Optional — allows tracking individual animal yields.
+ */
+export const milkSessionAnimals = mysqlTable("milkSessionAnimals", {
+  id: int("id").autoincrement().primaryKey(),
+  sessionId: int("sessionId").notNull(),
+  animalId: int("animalId").notNull(),
+  /** Volume from this animal in milliliters */
+  volumeMl: int("volumeMl").notNull(),
+  /** Any note about this specific animal */
+  note: text("note"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, (t) => ([
+  index("idx_milkSessionAnimals_sessionId").on(t.sessionId),
+  index("idx_milkSessionAnimals_animalId").on(t.animalId),
+]));
+
+/**
+ * Milk reception — cheesemaker accepts/rejects milk from a session.
+ * Quality gate between milking and processing.
+ */
+export const milkReceptions = mysqlTable("milkReceptions", {
+  id: int("id").autoincrement().primaryKey(),
+  /** Reference to milking session */
+  sessionId: int("sessionId").notNull(),
+  /** Cheesemaker who performed the reception */
+  receivedByWorkerId: int("receivedByWorkerId").notNull(),
+  /** Accepted volume in milliliters (may differ from session total) */
+  acceptedVolumeMl: int("acceptedVolumeMl").notNull(),
+  /** Rejected volume in milliliters */
+  rejectedVolumeMl: int("rejectedVolumeMl").default(0).notNull(),
+  /** Temperature at reception (°C × 10) */
+  temperatureTenths: int("temperatureTenths"),
+  /** Density at reception (g/cm³ × 1000) */
+  densityThousandths: int("densityThousandths"),
+  /** Fat content (% × 10, e.g. 45 = 4.5%) */
+  fatPercentTenths: int("fatPercentTenths"),
+  /** Acidity (°T — Turner degrees) */
+  acidityTurner: int("acidityTurner"),
+  status: milkReceptionStatusEnum.default("pending").notNull(),
+  /** Rejection reason if status = rejected */
+  rejectionReason: text("rejectionReason"),
+  /** Target tank for accepted milk */
+  targetTankId: int("targetTankId"),
+  note: text("note"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (t) => ([
+  index("idx_milkReceptions_sessionId").on(t.sessionId),
+  index("idx_milkReceptions_receivedByWorkerId").on(t.receivedByWorkerId),
+  index("idx_milkReceptions_status").on(t.status),
+]));
+
+/**
+ * Milk tanks / containers — physical storage vessels.
+ * Tracks current volume, capacity, and status.
+ */
+export const milkTanks = mysqlTable("milkTanks", {
+  id: int("id").autoincrement().primaryKey(),
+  /** Human-readable name, e.g. "Танк-1", "Ведро утро" */
+  name: varchar("name", { length: 120 }).notNull(),
+  /** Capacity in milliliters */
+  capacityMl: int("capacityMl").notNull(),
+  /** Current volume in milliliters */
+  currentVolumeMl: int("currentVolumeMl").default(0).notNull(),
+  status: milkTankStatusEnum.default("empty").notNull(),
+  /** Location description, e.g. "Молочная", "Сыроварня" */
+  location: varchar("location", { length: 120 }),
+  isActive: boolean("isActive").default(true).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+/**
+ * Milk tank movements — every volume change is logged.
+ * Provides full traceability from udder to processing.
+ */
+export const milkTankMovements = mysqlTable("milkTankMovements", {
+  id: int("id").autoincrement().primaryKey(),
+  /** Tank affected */
+  tankId: int("tankId").notNull(),
+  movementType: milkMovementTypeEnum.notNull(),
+  /** Volume change in milliliters (positive = in, negative = out) */
+  volumeMl: int("volumeMl").notNull(),
+  /** Tank volume after this movement */
+  tankVolumeAfterMl: int("tankVolumeAfterMl").notNull(),
+  /** Reference to milking session (for milking_in) */
+  sessionId: int("sessionId"),
+  /** Reference to reception (for milking_in after acceptance) */
+  receptionId: int("receptionId"),
+  /** Reference to processing batch (for processing_out) */
+  batchId: int("batchId"),
+  /** Reference to target tank (for transfers) */
+  targetTankId: int("targetTankId"),
+  /** Worker who performed the movement */
+  performedByWorkerId: int("performedByWorkerId").notNull(),
+  note: text("note"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, (t) => ([
+  index("idx_milkTankMovements_tankId").on(t.tankId),
+  index("idx_milkTankMovements_sessionId").on(t.sessionId),
+  index("idx_milkTankMovements_batchId").on(t.batchId),
+]));
+
+/**
+ * Milk processing batches — cheese, yogurt, etc.
+ * Links to source tank and tracks input/output volumes.
+ */
+export const milkProcessingBatches = mysqlTable("milkProcessingBatches", {
+  id: int("id").autoincrement().primaryKey(),
+  /** Human-readable batch code, e.g. "B-210426-01" */
+  batchCode: varchar("batchCode", { length: 32 }).notNull().unique(),
+  /** Product being made */
+  productType: productTypeEnum.notNull(),
+  /** Custom product label */
+  productLabel: varchar("productLabel", { length: 160 }),
+  /** Source tank */
+  sourceTankId: int("sourceTankId").notNull(),
+  /** Milk volume used in milliliters */
+  inputVolumeMl: int("inputVolumeMl").notNull(),
+  /** Output weight in grams (for solid products) or volume in ml (for liquid) */
+  outputQuantity: int("outputQuantity"),
+  /** Output unit: "г", "кг", "мл", "л" */
+  outputUnit: varchar("outputUnit", { length: 8 }),
+  /** Worker who started the batch */
+  startedByWorkerId: int("startedByWorkerId").notNull(),
+  /** Worker who completed the batch */
+  completedByWorkerId: int("completedByWorkerId"),
+  status: milkProcessingStatusEnum.default("planned").notNull(),
+  /** Planned start time */
+  plannedAt: timestamp("plannedAt"),
+  startedAt: timestamp("startedAt"),
+  completedAt: timestamp("completedAt"),
+  note: text("note"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (t) => ([
+  index("idx_milkProcessingBatches_sourceTankId").on(t.sourceTankId),
+  index("idx_milkProcessingBatches_status").on(t.status),
+  index("idx_milkProcessingBatches_productType").on(t.productType),
+]));
+
+/**
+ * Audit log for all milk module operations.
+ * Immutable append-only trail for compliance and dispute resolution.
+ */
+export const milkAuditLog = mysqlTable("milkAuditLog", {
+  id: int("id").autoincrement().primaryKey(),
+  action: milkAuditActionEnum.notNull(),
+  /** Farm worker who performed the action */
+  workerId: int("workerId"),
+  /** Admin openId if action was performed by admin */
+  adminOpenId: varchar("adminOpenId", { length: 64 }),
+  /** Reference to the entity (session, reception, tank, batch) */
+  entityType: varchar("entityType", { length: 32 }).notNull(),
+  entityId: int("entityId").notNull(),
+  /** JSON snapshot of the change (before/after or key details) */
+  detailsJson: text("detailsJson"),
+  /** IP address of the request */
+  ipAddress: varchar("ipAddress", { length: 45 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, (t) => ([
+  index("idx_milkAuditLog_action").on(t.action),
+  index("idx_milkAuditLog_workerId").on(t.workerId),
+  index("idx_milkAuditLog_entityType").on(t.entityType),
+  index("idx_milkAuditLog_createdAt").on(t.createdAt),
+]));
+
+// ─── Type exports for Milk Turnover Control ───
+
+export type FarmWorker = typeof farmWorkers.$inferSelect;
+export type InsertFarmWorker = typeof farmWorkers.$inferInsert;
+
+export type MilkSession = typeof milkSessions.$inferSelect;
+export type InsertMilkSession = typeof milkSessions.$inferInsert;
+
+export type MilkSessionAnimal = typeof milkSessionAnimals.$inferSelect;
+export type InsertMilkSessionAnimal = typeof milkSessionAnimals.$inferInsert;
+
+export type MilkReception = typeof milkReceptions.$inferSelect;
+export type InsertMilkReception = typeof milkReceptions.$inferInsert;
+
+export type MilkTank = typeof milkTanks.$inferSelect;
+export type InsertMilkTank = typeof milkTanks.$inferInsert;
+
+export type MilkTankMovement = typeof milkTankMovements.$inferSelect;
+export type InsertMilkTankMovement = typeof milkTankMovements.$inferInsert;
+
+export type MilkProcessingBatch = typeof milkProcessingBatches.$inferSelect;
+export type InsertMilkProcessingBatch = typeof milkProcessingBatches.$inferInsert;
+
+export type MilkAuditLogEntry = typeof milkAuditLog.$inferSelect;
+export type InsertMilkAuditLogEntry = typeof milkAuditLog.$inferInsert;
