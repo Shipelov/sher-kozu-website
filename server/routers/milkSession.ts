@@ -66,13 +66,18 @@ function formatDateISO(date: Date): string {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 }
 
-/** Per-animal-type volume+heads input schema */
+/** Per-animal-type volume+heads+feeding+losses input schema */
 const animalTypeInput = z.object({
   volumeMl: z.number().int().min(0).max(500_000),
   headCount: z.number().int().min(0).max(500),
+  feedingMl: z.number().int().min(0).max(500_000).default(0),
+  lossesMl: z.number().int().min(0).max(500_000).default(0),
 }).refine(
   (d) => (d.volumeMl > 0 && d.headCount > 0) || (d.volumeMl === 0 && d.headCount === 0),
   { message: "Если указан объём, укажите и количество голов (и наоборот)" },
+).refine(
+  (d) => (d.feedingMl + d.lossesMl) <= d.volumeMl,
+  { message: "Выпойка + потери не могут превышать общий надой" },
 );
 
 export const milkSessionRouter = router({
@@ -85,9 +90,9 @@ export const milkSessionRouter = router({
     .input(
       z.object({
         shift: z.enum(["morning", "evening"]),
-        goat: animalTypeInput.default({ volumeMl: 0, headCount: 0 }),
-        sheep: animalTypeInput.default({ volumeMl: 0, headCount: 0 }),
-        cow: animalTypeInput.default({ volumeMl: 0, headCount: 0 }),
+        goat: animalTypeInput.default({ volumeMl: 0, headCount: 0, feedingMl: 0, lossesMl: 0 }),
+        sheep: animalTypeInput.default({ volumeMl: 0, headCount: 0, feedingMl: 0, lossesMl: 0 }),
+        cow: animalTypeInput.default({ volumeMl: 0, headCount: 0, feedingMl: 0, lossesMl: 0 }),
         temperatureCelsius: z.number().min(0).max(50).optional(),
         densityGCm3: z.number().min(0.9).max(1.2).optional(),
         note: z.string().max(1000).optional(),
@@ -144,10 +149,16 @@ export const milkSessionRouter = router({
         shift: input.shift,
         goatVolumeMl: input.goat.volumeMl,
         goatHeadCount: input.goat.headCount,
+        goatFeedingMl: input.goat.feedingMl,
+        goatLossesMl: input.goat.lossesMl,
         sheepVolumeMl: input.sheep.volumeMl,
         sheepHeadCount: input.sheep.headCount,
+        sheepFeedingMl: input.sheep.feedingMl,
+        sheepLossesMl: input.sheep.lossesMl,
         cowVolumeMl: input.cow.volumeMl,
         cowHeadCount: input.cow.headCount,
+        cowFeedingMl: input.cow.feedingMl,
+        cowLossesMl: input.cow.lossesMl,
         temperatureTenths,
         densityThousandths,
         note: input.note ?? null,
@@ -307,14 +318,20 @@ export const milkSessionRouter = router({
       if (input.goat) {
         updates.goatVolumeMl = input.goat.volumeMl;
         updates.goatHeadCount = input.goat.headCount;
+        updates.goatFeedingMl = input.goat.feedingMl;
+        updates.goatLossesMl = input.goat.lossesMl;
       }
       if (input.sheep) {
         updates.sheepVolumeMl = input.sheep.volumeMl;
         updates.sheepHeadCount = input.sheep.headCount;
+        updates.sheepFeedingMl = input.sheep.feedingMl;
+        updates.sheepLossesMl = input.sheep.lossesMl;
       }
       if (input.cow) {
         updates.cowVolumeMl = input.cow.volumeMl;
         updates.cowHeadCount = input.cow.headCount;
+        updates.cowFeedingMl = input.cow.feedingMl;
+        updates.cowLossesMl = input.cow.lossesMl;
       }
       if (input.note !== undefined) {
         updates.note = input.note;
@@ -461,6 +478,9 @@ export const milkSessionRouter = router({
 
 function formatSession(s: typeof milkSessions.$inferSelect) {
   const totalVolumeMl = s.goatVolumeMl + s.sheepVolumeMl + s.cowVolumeMl;
+  const totalFeedingMl = s.goatFeedingMl + s.sheepFeedingMl + s.cowFeedingMl;
+  const totalLossesMl = s.goatLossesMl + s.sheepLossesMl + s.cowLossesMl;
+  const netVolumeMl = totalVolumeMl - totalFeedingMl - totalLossesMl;
   return {
     id: s.id,
     sessionCode: s.sessionCode,
@@ -472,20 +492,44 @@ function formatSession(s: typeof milkSessions.$inferSelect) {
       volumeMl: s.goatVolumeMl,
       volumeLiters: +(s.goatVolumeMl / 1000).toFixed(2),
       headCount: s.goatHeadCount,
+      feedingMl: s.goatFeedingMl,
+      feedingLiters: +(s.goatFeedingMl / 1000).toFixed(2),
+      lossesMl: s.goatLossesMl,
+      lossesLiters: +(s.goatLossesMl / 1000).toFixed(2),
+      netMl: s.goatVolumeMl - s.goatFeedingMl - s.goatLossesMl,
+      netLiters: +((s.goatVolumeMl - s.goatFeedingMl - s.goatLossesMl) / 1000).toFixed(2),
     },
     sheep: {
       volumeMl: s.sheepVolumeMl,
       volumeLiters: +(s.sheepVolumeMl / 1000).toFixed(2),
       headCount: s.sheepHeadCount,
+      feedingMl: s.sheepFeedingMl,
+      feedingLiters: +(s.sheepFeedingMl / 1000).toFixed(2),
+      lossesMl: s.sheepLossesMl,
+      lossesLiters: +(s.sheepLossesMl / 1000).toFixed(2),
+      netMl: s.sheepVolumeMl - s.sheepFeedingMl - s.sheepLossesMl,
+      netLiters: +((s.sheepVolumeMl - s.sheepFeedingMl - s.sheepLossesMl) / 1000).toFixed(2),
     },
     cow: {
       volumeMl: s.cowVolumeMl,
       volumeLiters: +(s.cowVolumeMl / 1000).toFixed(2),
       headCount: s.cowHeadCount,
+      feedingMl: s.cowFeedingMl,
+      feedingLiters: +(s.cowFeedingMl / 1000).toFixed(2),
+      lossesMl: s.cowLossesMl,
+      lossesLiters: +(s.cowLossesMl / 1000).toFixed(2),
+      netMl: s.cowVolumeMl - s.cowFeedingMl - s.cowLossesMl,
+      netLiters: +((s.cowVolumeMl - s.cowFeedingMl - s.cowLossesMl) / 1000).toFixed(2),
     },
     // Totals (computed)
     totalVolumeMl,
     totalVolumeLiters: +(totalVolumeMl / 1000).toFixed(2),
+    totalFeedingMl,
+    totalFeedingLiters: +(totalFeedingMl / 1000).toFixed(2),
+    totalLossesMl,
+    totalLossesLiters: +(totalLossesMl / 1000).toFixed(2),
+    netVolumeMl,
+    netVolumeLiters: +(netVolumeMl / 1000).toFixed(2),
     totalHeadCount: s.goatHeadCount + s.sheepHeadCount + s.cowHeadCount,
     // Quality
     temperatureCelsius: s.temperatureTenths != null ? +(s.temperatureTenths / 10).toFixed(1) : null,

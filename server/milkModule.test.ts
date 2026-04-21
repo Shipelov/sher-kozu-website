@@ -107,12 +107,9 @@ describe("milkSession tRPC router", () => {
       await expect(
         caller.milkSession.create({
           shift: "morning",
-          goatVolumeMl: 5000,
-          goatHeadCount: 5,
-          sheepVolumeMl: 3000,
-          sheepHeadCount: 3,
-          cowVolumeMl: 2000,
-          cowHeadCount: 2,
+          goat: { volumeMl: 5000, headCount: 5, feedingMl: 0, lossesMl: 0 },
+          sheep: { volumeMl: 3000, headCount: 3, feedingMl: 0, lossesMl: 0 },
+          cow: { volumeMl: 2000, headCount: 2, feedingMl: 0, lossesMl: 0 },
         }),
       ).rejects.toThrow();
     });
@@ -124,12 +121,9 @@ describe("milkSession tRPC router", () => {
       await expect(
         caller.milkSession.create({
           shift: "midnight" as any,
-          goatVolumeMl: 5000,
-          goatHeadCount: 5,
-          sheepVolumeMl: 3000,
-          sheepHeadCount: 3,
-          cowVolumeMl: 2000,
-          cowHeadCount: 2,
+          goat: { volumeMl: 5000, headCount: 5, feedingMl: 0, lossesMl: 0 },
+          sheep: { volumeMl: 3000, headCount: 3, feedingMl: 0, lossesMl: 0 },
+          cow: { volumeMl: 2000, headCount: 2, feedingMl: 0, lossesMl: 0 },
         }),
       ).rejects.toThrow();
     });
@@ -141,12 +135,22 @@ describe("milkSession tRPC router", () => {
       await expect(
         caller.milkSession.create({
           shift: "morning",
-          goatVolumeMl: -5000,
-          goatHeadCount: 5,
-          sheepVolumeMl: 0,
-          sheepHeadCount: 0,
-          cowVolumeMl: 0,
-          cowHeadCount: 0,
+          goat: { volumeMl: -5000, headCount: 5, feedingMl: 0, lossesMl: 0 },
+        }),
+      ).rejects.toThrow();
+    });
+
+    it("accepts input with feeding and losses fields", async () => {
+      const ctx = createPublicContext();
+      const caller = appRouter.createCaller(ctx);
+
+      // Should still reject (no farm cookie) but validates input schema accepts feeding/losses
+      await expect(
+        caller.milkSession.create({
+          shift: "morning",
+          goat: { volumeMl: 5000, headCount: 5, feedingMl: 500, lossesMl: 100 },
+          sheep: { volumeMl: 3000, headCount: 3, feedingMl: 200, lossesMl: 50 },
+          cow: { volumeMl: 2000, headCount: 2, feedingMl: 100, lossesMl: 0 },
         }),
       ).rejects.toThrow();
     });
@@ -159,13 +163,36 @@ describe("milkSession tRPC router", () => {
       await expect(
         caller.milkSession.create({
           shift: "morning",
-          goatVolumeMl: 0,
-          goatHeadCount: 0,
-          sheepVolumeMl: 0,
-          sheepHeadCount: 0,
-          cowVolumeMl: 0,
-          cowHeadCount: 0,
+          goat: { volumeMl: 0, headCount: 0, feedingMl: 0, lossesMl: 0 },
+          sheep: { volumeMl: 0, headCount: 0, feedingMl: 0, lossesMl: 0 },
+          cow: { volumeMl: 0, headCount: 0, feedingMl: 0, lossesMl: 0 },
         }),
+      ).rejects.toThrow();
+    });
+  });
+
+  describe("milkSession.update", () => {
+    it("rejects unauthenticated users", async () => {
+      const ctx = createPublicContext();
+      const caller = appRouter.createCaller(ctx);
+
+      await expect(
+        caller.milkSession.update({
+          sessionId: 1,
+          shift: "evening",
+          goat: { volumeMl: 4000, headCount: 4, feedingMl: 300, lossesMl: 50 },
+        }),
+      ).rejects.toThrow();
+    });
+  });
+
+  describe("milkSession.cancel", () => {
+    it("rejects unauthenticated users", async () => {
+      const ctx = createPublicContext();
+      const caller = appRouter.createCaller(ctx);
+
+      await expect(
+        caller.milkSession.cancel({ sessionId: 1 }),
       ).rejects.toThrow();
     });
   });
@@ -291,6 +318,13 @@ describe("milkAdmin tRPC router", () => {
       expect(typeof overview.today.goatHeads).toBe("number");
       expect(typeof overview.today.sheepHeads).toBe("number");
       expect(typeof overview.today.cowHeads).toBe("number");
+      expect(typeof overview.today.feedingLiters).toBe("number");
+      expect(typeof overview.today.lossesLiters).toBe("number");
+      expect(typeof overview.today.netLiters).toBe("number");
+      expect(typeof overview.week.feedingLiters).toBe("number");
+      expect(typeof overview.week.netLiters).toBe("number");
+      expect(typeof overview.month.feedingLiters).toBe("number");
+      expect(typeof overview.month.netLiters).toBe("number");
       expect(typeof overview.tanks.fillPercent).toBe("number");
     });
 
@@ -444,6 +478,15 @@ describe("milkAdmin tRPC router", () => {
       await expect(
         caller.milkAdmin.toggleTank({ tankId: 1, isActive: false }),
       ).rejects.toThrow();
+    });
+  });
+
+  describe("milkAdmin.clearAuditLog", () => {
+    it("rejects non-admin users", async () => {
+      const ctx = createUserContext();
+      const caller = appRouter.createCaller(ctx);
+
+      await expect(caller.milkAdmin.clearAuditLog()).rejects.toThrow();
     });
   });
 

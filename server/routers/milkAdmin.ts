@@ -56,6 +56,8 @@ export const milkAdminRouter = router({
         goatHeads: sql<number>`COALESCE(SUM(${milkSessions.goatHeadCount}), 0)`,
         sheepHeads: sql<number>`COALESCE(SUM(${milkSessions.sheepHeadCount}), 0)`,
         cowHeads: sql<number>`COALESCE(SUM(${milkSessions.cowHeadCount}), 0)`,
+        feedingMl: sql<number>`COALESCE(SUM(COALESCE(${milkSessions.goatFeedingMl},0) + COALESCE(${milkSessions.sheepFeedingMl},0) + COALESCE(${milkSessions.cowFeedingMl},0)), 0)`,
+        lossesMl: sql<number>`COALESCE(SUM(COALESCE(${milkSessions.goatLossesMl},0) + COALESCE(${milkSessions.sheepLossesMl},0) + COALESCE(${milkSessions.cowLossesMl},0)), 0)`,
       })
       .from(milkSessions)
       .where(gte(milkSessions.createdAt, todayStart));
@@ -66,6 +68,8 @@ export const milkAdminRouter = router({
         goatMl: sql<number>`COALESCE(SUM(${milkSessions.goatVolumeMl}), 0)`,
         sheepMl: sql<number>`COALESCE(SUM(${milkSessions.sheepVolumeMl}), 0)`,
         cowMl: sql<number>`COALESCE(SUM(${milkSessions.cowVolumeMl}), 0)`,
+        feedingMl: sql<number>`COALESCE(SUM(COALESCE(${milkSessions.goatFeedingMl},0) + COALESCE(${milkSessions.sheepFeedingMl},0) + COALESCE(${milkSessions.cowFeedingMl},0)), 0)`,
+        lossesMl: sql<number>`COALESCE(SUM(COALESCE(${milkSessions.goatLossesMl},0) + COALESCE(${milkSessions.sheepLossesMl},0) + COALESCE(${milkSessions.cowLossesMl},0)), 0)`,
       })
       .from(milkSessions)
       .where(gte(milkSessions.createdAt, weekStart));
@@ -76,6 +80,8 @@ export const milkAdminRouter = router({
         goatMl: sql<number>`COALESCE(SUM(${milkSessions.goatVolumeMl}), 0)`,
         sheepMl: sql<number>`COALESCE(SUM(${milkSessions.sheepVolumeMl}), 0)`,
         cowMl: sql<number>`COALESCE(SUM(${milkSessions.cowVolumeMl}), 0)`,
+        feedingMl: sql<number>`COALESCE(SUM(COALESCE(${milkSessions.goatFeedingMl},0) + COALESCE(${milkSessions.sheepFeedingMl},0) + COALESCE(${milkSessions.cowFeedingMl},0)), 0)`,
+        lossesMl: sql<number>`COALESCE(SUM(COALESCE(${milkSessions.goatLossesMl},0) + COALESCE(${milkSessions.sheepLossesMl},0) + COALESCE(${milkSessions.cowLossesMl},0)), 0)`,
       })
       .from(milkSessions)
       .where(gte(milkSessions.createdAt, monthStart));
@@ -146,14 +152,23 @@ export const milkAdminRouter = router({
         goatHeads: Number(todayStats.goatHeads),
         sheepHeads: Number(todayStats.sheepHeads),
         cowHeads: Number(todayStats.cowHeads),
+        feedingLiters: +(Number(todayStats.feedingMl) / 1000).toFixed(2),
+        lossesLiters: +(Number(todayStats.lossesMl) / 1000).toFixed(2),
+        netLiters: +((Number(todayStats.goatMl) + Number(todayStats.sheepMl) + Number(todayStats.cowMl) - Number(todayStats.feedingMl) - Number(todayStats.lossesMl)) / 1000).toFixed(2),
       },
       week: {
         sessions: Number(weekStats.count),
         volume: formatPerType(weekStats.goatMl, weekStats.sheepMl, weekStats.cowMl),
+        feedingLiters: +(Number(weekStats.feedingMl) / 1000).toFixed(2),
+        lossesLiters: +(Number(weekStats.lossesMl) / 1000).toFixed(2),
+        netLiters: +((Number(weekStats.goatMl) + Number(weekStats.sheepMl) + Number(weekStats.cowMl) - Number(weekStats.feedingMl) - Number(weekStats.lossesMl)) / 1000).toFixed(2),
       },
       month: {
         sessions: Number(monthStats.count),
         volume: formatPerType(monthStats.goatMl, monthStats.sheepMl, monthStats.cowMl),
+        feedingLiters: +(Number(monthStats.feedingMl) / 1000).toFixed(2),
+        lossesLiters: +(Number(monthStats.lossesMl) / 1000).toFixed(2),
+        netLiters: +((Number(monthStats.goatMl) + Number(monthStats.sheepMl) + Number(monthStats.cowMl) - Number(monthStats.feedingMl) - Number(monthStats.lossesMl)) / 1000).toFixed(2),
       },
       pendingSessions: Number(pendingCount.count),
       receptionToday: {
@@ -213,6 +228,12 @@ export const milkAdminRouter = router({
           sheepHeadCount: milkSessions.sheepHeadCount,
           cowVolumeMl: milkSessions.cowVolumeMl,
           cowHeadCount: milkSessions.cowHeadCount,
+          goatFeedingMl: milkSessions.goatFeedingMl,
+          goatLossesMl: milkSessions.goatLossesMl,
+          sheepFeedingMl: milkSessions.sheepFeedingMl,
+          sheepLossesMl: milkSessions.sheepLossesMl,
+          cowFeedingMl: milkSessions.cowFeedingMl,
+          cowLossesMl: milkSessions.cowLossesMl,
           temperatureTenths: milkSessions.temperatureTenths,
           densityThousandths: milkSessions.densityThousandths,
           note: milkSessions.note,
@@ -238,10 +259,29 @@ export const milkAdminRouter = router({
             workerName: s.workerName ?? "—",
             milkingDate: s.milkingDate,
             shift: s.shift,
-            goat: { volumeLiters: +(s.goatVolumeMl / 1000).toFixed(2), headCount: s.goatHeadCount },
-            sheep: { volumeLiters: +(s.sheepVolumeMl / 1000).toFixed(2), headCount: s.sheepHeadCount },
-            cow: { volumeLiters: +(s.cowVolumeMl / 1000).toFixed(2), headCount: s.cowHeadCount },
+            goat: {
+              volumeLiters: +(s.goatVolumeMl / 1000).toFixed(2),
+              headCount: s.goatHeadCount,
+              feedingLiters: +((s.goatFeedingMl ?? 0) / 1000).toFixed(2),
+              lossesLiters: +((s.goatLossesMl ?? 0) / 1000).toFixed(2),
+              netLiters: +((s.goatVolumeMl - (s.goatFeedingMl ?? 0) - (s.goatLossesMl ?? 0)) / 1000).toFixed(2),
+            },
+            sheep: {
+              volumeLiters: +(s.sheepVolumeMl / 1000).toFixed(2),
+              headCount: s.sheepHeadCount,
+              feedingLiters: +((s.sheepFeedingMl ?? 0) / 1000).toFixed(2),
+              lossesLiters: +((s.sheepLossesMl ?? 0) / 1000).toFixed(2),
+              netLiters: +((s.sheepVolumeMl - (s.sheepFeedingMl ?? 0) - (s.sheepLossesMl ?? 0)) / 1000).toFixed(2),
+            },
+            cow: {
+              volumeLiters: +(s.cowVolumeMl / 1000).toFixed(2),
+              headCount: s.cowHeadCount,
+              feedingLiters: +((s.cowFeedingMl ?? 0) / 1000).toFixed(2),
+              lossesLiters: +((s.cowLossesMl ?? 0) / 1000).toFixed(2),
+              netLiters: +((s.cowVolumeMl - (s.cowFeedingMl ?? 0) - (s.cowLossesMl ?? 0)) / 1000).toFixed(2),
+            },
             totalVolumeLiters: +(totalMl / 1000).toFixed(2),
+            totalNetLiters: +((totalMl - (s.goatFeedingMl ?? 0) - (s.goatLossesMl ?? 0) - (s.sheepFeedingMl ?? 0) - (s.sheepLossesMl ?? 0) - (s.cowFeedingMl ?? 0) - (s.cowLossesMl ?? 0)) / 1000).toFixed(2),
             temperatureCelsius:
               s.temperatureTenths != null ? +(s.temperatureTenths / 10).toFixed(1) : null,
             densityGCm3:

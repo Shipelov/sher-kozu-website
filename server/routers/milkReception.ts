@@ -88,10 +88,16 @@ export const milkReceptionRouter = router({
         shift: milkSessions.shift,
         goatVolumeMl: milkSessions.goatVolumeMl,
         goatHeadCount: milkSessions.goatHeadCount,
+        goatFeedingMl: milkSessions.goatFeedingMl,
+        goatLossesMl: milkSessions.goatLossesMl,
         sheepVolumeMl: milkSessions.sheepVolumeMl,
         sheepHeadCount: milkSessions.sheepHeadCount,
+        sheepFeedingMl: milkSessions.sheepFeedingMl,
+        sheepLossesMl: milkSessions.sheepLossesMl,
         cowVolumeMl: milkSessions.cowVolumeMl,
         cowHeadCount: milkSessions.cowHeadCount,
+        cowFeedingMl: milkSessions.cowFeedingMl,
+        cowLossesMl: milkSessions.cowLossesMl,
         temperatureTenths: milkSessions.temperatureTenths,
         densityThousandths: milkSessions.densityThousandths,
         note: milkSessions.note,
@@ -132,29 +138,39 @@ export const milkReceptionRouter = router({
     // Flatten sessions into per-type items
     const items: any[] = [];
     const milkTypes = [
-      { key: "goat", volumeField: "goatVolumeMl", headField: "goatHeadCount" },
-      { key: "sheep", volumeField: "sheepVolumeMl", headField: "sheepHeadCount" },
-      { key: "cow", volumeField: "cowVolumeMl", headField: "cowHeadCount" },
+      { key: "goat", volumeField: "goatVolumeMl", headField: "goatHeadCount", feedingField: "goatFeedingMl", lossesField: "goatLossesMl" },
+      { key: "sheep", volumeField: "sheepVolumeMl", headField: "sheepHeadCount", feedingField: "sheepFeedingMl", lossesField: "sheepLossesMl" },
+      { key: "cow", volumeField: "cowVolumeMl", headField: "cowHeadCount", feedingField: "cowFeedingMl", lossesField: "cowLossesMl" },
     ] as const;
 
     for (const s of sessions) {
       for (const mt of milkTypes) {
-        const vol = (s as any)[mt.volumeField] as number;
+        const totalVol = (s as any)[mt.volumeField] as number;
         const heads = (s as any)[mt.headField] as number;
-        if (vol <= 0) continue; // No milk of this type
+        const feeding = (s as any)[mt.feedingField] as number;
+        const losses = (s as any)[mt.lossesField] as number;
+        const netVol = totalVol - feeding - losses; // Сыроделу = Надой − Выпойка − Потери
+        if (totalVol <= 0) continue; // No milk of this type
+        if (netVol <= 0) continue; // All milk used for feeding/losses
         if (acceptedSet.has(`${s.id}:${mt.key}`)) continue; // Already accepted
 
         items.push({
           sessionId: s.id,
           sessionCode: s.sessionCode,
           workerId: s.workerId,
-          workerName: s.workerName ?? "—",
+          workerName: s.workerName ?? "\u2014",
           milkingDate: s.milkingDate,
           shift: s.shift,
           milkType: mt.key,
           milkTypeLabel: MILK_TYPE_LABELS[mt.key],
-          volumeMl: vol,
-          volumeLiters: +(vol / 1000).toFixed(2),
+          totalVolumeMl: totalVol,
+          totalVolumeLiters: +(totalVol / 1000).toFixed(2),
+          feedingMl: feeding,
+          feedingLiters: +(feeding / 1000).toFixed(2),
+          lossesMl: losses,
+          lossesLiters: +(losses / 1000).toFixed(2),
+          netVolumeMl: netVol,
+          netVolumeLiters: +(netVol / 1000).toFixed(2),
           headCount: heads,
           temperatureCelsius: s.temperatureTenths != null ? +(s.temperatureTenths / 10).toFixed(1) : null,
           densityGCm3: s.densityThousandths != null ? +(s.densityThousandths / 1000).toFixed(3) : null,

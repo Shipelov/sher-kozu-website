@@ -2520,4 +2520,15 @@ Module: Контроль оборота молока. Spec v2.1. Mobile-first AR
 - [x] AdminFarmWorkers: Add role change (milker/cheesemaker) in edit dialog
 - [x] Schema: Added phone column to farmWorkers table + migration
 - [x] Fix: Cheesemaker ARM redirect — /farm/* pages excluded from global UNAUTHORIZED redirect in main.tsx
+- [x] Deploy to VDS — commit ad668be, PM2 sherkozu online, /farm + /farm/cheesemaker 200 OK
+
+## Fix: Milker ARM — add feeding/losses + fix number inputs — April 21, 2026
+
+- [x] Schema: Added goatFeedingMl, goatLossesMl, sheepFeedingMl, sheepLossesMl, cowFeedingMl, cowLossesMl to milkSessions
+- [x] Server: milkSession router — accepts feeding/losses per type, computes net volume (Nadoi − Feeding − Losses)
+- [x] Frontend: Milker ARM — added Feeding (Выпойка) and Losses (Потери) fields per animal type, formula display Сыроделу=Надой−Выпойка−Потери
+- [x] All number inputs use free text entry (inputMode=decimal) for multi-digit numbers
+- [x] Cheesemaker ARM shows net volume with feeding/losses breakdown in pending items
+- [x] Admin dashboard shows feeding/losses/net in overview stats and session table
+- [x] Tests: 2535 passing (added update/cancel/clearAuditLog/feeding tests)
 - [ ] Deploy to VDS

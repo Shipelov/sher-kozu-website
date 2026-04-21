@@ -2379,6 +2379,18 @@ export const milkSessions = mysqlTable("milkSessions", {
   cowVolumeMl: int("cowVolumeMl").default(0).notNull(),
   /** Number of cows milked */
   cowHeadCount: int("cowHeadCount").default(0).notNull(),
+  /** Goat milk used for feeding young animals (ml) */
+  goatFeedingMl: int("goatFeedingMl").default(0).notNull(),
+  /** Goat milk losses (ml) */
+  goatLossesMl: int("goatLossesMl").default(0).notNull(),
+  /** Sheep milk used for feeding young animals (ml) */
+  sheepFeedingMl: int("sheepFeedingMl").default(0).notNull(),
+  /** Sheep milk losses (ml) */
+  sheepLossesMl: int("sheepLossesMl").default(0).notNull(),
+  /** Cow milk used for feeding young animals (ml) */
+  cowFeedingMl: int("cowFeedingMl").default(0).notNull(),
+  /** Cow milk losses (ml) */
+  cowLossesMl: int("cowLossesMl").default(0).notNull(),
   /** Temperature at milking (°C × 10, e.g. 365 = 36.5°C) */
   temperatureTenths: int("temperatureTenths"),
   /** Density reading (g/cm³ × 1000, e.g. 1030 = 1.030 g/cm³) */

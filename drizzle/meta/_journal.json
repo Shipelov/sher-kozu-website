@@ -393,6 +393,13 @@
       "when": 1776804281453,
       "tag": "0056_free_mysterio",
       "breakpoints": true
+    },
+    {
+      "idx": 57,
+      "version": "5",
+      "when": 1776806759760,
+      "tag": "0057_many_juggernaut",
+      "breakpoints": true
     }
   ]
 }

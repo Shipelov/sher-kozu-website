@@ -151,7 +151,7 @@ export default function FarmCheesemakerArm() {
 
   function openAcceptDialog(item: any) {
     setAcceptItem(item);
-    setAcceptVolume(String(item.volumeLiters));
+    setAcceptVolume(String(item.netVolumeLiters));
     setRejectVolume("0");
     // Auto-select tank matching milk type if only one available
     const matchingTanks = (tanksQuery.data ?? []).filter(
@@ -294,20 +294,37 @@ export default function FarmCheesemakerArm() {
                     <span className="text-xs text-[oklch(0.52_0.04_80)]">{item.workerName}</span>
                   </div>
 
-                  {/* Volume + heads */}
-                  <div className="grid grid-cols-2 gap-2 text-xs mb-3">
+                  {/* Net volume (what goes to cheesemaker) */}
+                  <div className="grid grid-cols-3 gap-2 text-xs mb-2">
                     <div>
-                      <span className="text-[oklch(0.6_0.02_80)]">Объём</span>
-                      <p className="font-bold text-base text-[oklch(0.22_0.04_60)]">
-                        {item.volumeLiters} л
-                      </p>
-                    </div>
-                    <div>
-                      <span className="text-[oklch(0.6_0.02_80)]">Голов</span>
+                      <span className="text-[oklch(0.6_0.02_80)]">Надой</span>
                       <p className="font-semibold text-sm text-[oklch(0.22_0.04_60)]">
-                        {item.headCount}
+                        {item.totalVolumeLiters} л
                       </p>
                     </div>
+                    <div>
+                      <span className="text-[oklch(0.6_0.02_80)]">Выпойка</span>
+                      <p className="font-semibold text-sm text-amber-600">
+                        −{item.feedingLiters} л
+                      </p>
+                    </div>
+                    <div>
+                      <span className="text-[oklch(0.6_0.02_80)]">Потери</span>
+                      <p className="font-semibold text-sm text-red-500">
+                        −{item.lossesLiters} л
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between bg-[oklch(0.95_0.03_140)] rounded-lg px-3 py-2 mb-3">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-medium text-[oklch(0.35_0.08_140)]">Сыроделу:</span>
+                      <span className="text-lg font-bold text-[oklch(0.30_0.12_140)]">
+                        {item.netVolumeLiters} л
+                      </span>
+                    </div>
+                    <span className="text-xs text-[oklch(0.5_0.04_80)]">
+                      {item.headCount} гол.
+                    </span>
                   </div>
 
                   {(item.temperatureCelsius != null || item.densityGCm3 != null) && (
