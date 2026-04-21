@@ -2439,4 +2439,15 @@ Flow: Admin adds products → Owner configures plan → Changes only via manager
 - [x] Fix: OwnerProductPlanSection shows plan config UI when products exist (replaced static message with retry/loading)
 - [x] Fix: After plan is confirmed, owner can only request changes via manager (createProductPlanChangeTask in B24)
 - [x] Test: TypeScript 0 errors + all 2485 tests pass
-- [ ] Deploy to VDS (in progress)
+- [x] Deploy to VDS (commit 4f1c914, VDS 89.111.165.77, PM2 sherkozu restarted)
+
+## Plan Confirmation Workflow — April 21, 2026
+
+Flow: Owner configures plan → B24 task for manager → Admin confirms in panel → Owner notified
+
+- [x] Backend: Create B24 task when owner submits/saves plan (bitrix24.ts: createPlanConfirmationTask)
+- [x] Backend: Hook into ownerConfigurePlan procedure to trigger B24 task creation
+- [x] Backend: When admin confirms plan in admin panel, send notification to owner (Telegram + email + in-app)
+- [x] Frontend: pending_approval state already exists in OwnerProductPlanSection
+- [x] Test: TypeScript 0 errors + all 2485 tests pass
+- [ ] Deploy to VDS (89.111.165.77) — in progress

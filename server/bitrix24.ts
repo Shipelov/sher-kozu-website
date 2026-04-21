@@ -837,3 +837,82 @@ export async function createProductPlanChangeTask(
     return null;
   }
 }
+
+/**
+ * Create a B24 task for the manager to confirm an owner-configured product plan.
+ * Triggered when owner submits their plan configuration (status → pending_approval).
+ * Deadline: 1 business day from now.
+ */
+export interface PlanConfirmationTaskParams {
+  animalId: number;
+  animalName: string;
+  animalSlug: string;
+  ownerOpenId: string;
+  ownerName: string;
+  planId: number;
+  totalMilkUsed: number;
+  selections: string; // formatted text of selected products
+}
+
+export async function createPlanConfirmationTask(
+  params: PlanConfirmationTaskParams,
+): Promise<{ taskId: string } | null> {
+  if (!isBitrixConfigured()) {
+    console.warn("[B24 Task] Bitrix24 not configured, skipping plan confirmation task creation");
+    return null;
+  }
+
+  const deadline = new Date();
+  deadline.setDate(deadline.getDate() + 1);
+  deadline.setHours(18, 0, 0, 0);
+
+  const description = [
+    `✅ Запрос на подтверждение продуктового плана`,
+    ``,
+    `Владелец "${params.ownerName}" настроил продуктовый план и ожидает подтверждения.`,
+    ``,
+    `📋 Что нужно сделать:`,
+    `1. Проверить выбранные продукты и объёмы в админ-панели`,
+    `2. Убедиться, что план соответствует тарифу и возможностям фермы`,
+    `3. Подтвердить план кнопкой "Подтвердить" в админ-панели`,
+    ``,
+    `🔗 Данные:`,
+    `— Животное: ${params.animalName} (ID: ${params.animalId}, slug: ${params.animalSlug})`,
+    `— Владелец: ${params.ownerName} (openId: ${params.ownerOpenId})`,
+    `— План ID: ${params.planId}`,
+    `— Использовано молока: ${params.totalMilkUsed} л`,
+    `— Страница: koza.vip/admin → Продуктовый трекер → ${params.animalName}`,
+    ``,
+    `📊 Выбранные продукты:`,
+    `${params.selections}`,
+    ``,
+    `⚠️ После подтверждения владелец получит уведомление, и будет сформирован график доставок.`,
+  ].join("\n");
+
+  try {
+    const response = await callBitrix<{ result: { task: { id: string } } }>(
+      "tasks.task.add",
+      {
+        fields: {
+          TITLE: `Подтвердить план: ${params.ownerName} — ${params.animalName}`,
+          DESCRIPTION: description,
+          RESPONSIBLE_ID: B24_MANAGER_RESPONSIBLE_ID,
+          CREATED_BY: B24_MANAGER_RESPONSIBLE_ID,
+          PRIORITY: "2", // High
+          DEADLINE: deadline.toISOString(),
+          ALLOW_CHANGE_DEADLINE: "N",
+          TAGS: ["product-plan-confirmation", "auto-request"],
+        },
+      },
+    );
+
+    const taskId = String(response.result.task.id);
+    console.log(
+      `[B24 Task] Created plan confirmation task #${taskId} for ${params.ownerName} — ${params.animalName} (plan #${params.planId})`,
+    );
+    return { taskId };
+  } catch (error) {
+    console.error("[B24 Task] Failed to create plan confirmation task:", error);
+    return null;
+  }
+}

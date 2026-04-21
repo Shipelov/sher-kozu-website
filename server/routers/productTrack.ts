@@ -73,7 +73,7 @@ import type { ProductOption } from "../../drizzle/schema";
 import { storagePut } from "../storage";
 import { notifyOwner } from "../_core/notification";
 import { ENV } from "../_core/env";
-import { createProductPlanChangeTask } from "../bitrix24";
+import { createProductPlanChangeTask, createPlanConfirmationTask } from "../bitrix24";
 
 /* ── Zod schemas ── */
 
@@ -527,10 +527,33 @@ export const productTrackRouter = router({
         note: "Владелец настроил продуктовый план",
       });
       const animalName = await getAnimalNameById(existingPlan.animalId);
+      const animalSlug = await getAnimalSlugById(existingPlan.animalId) ?? "unknown";
       notifyOwner({
         title: `План настроен: ${ctx.user.name || "владелец"} (${animalName})`,
         content: `Владелец настроил план. Молоко: ${totalMilkUsed} л. Подтвердите в админ-панели.`,
       }).catch(() => {});
+
+      // Create B24 task for manager to confirm the plan
+      let selectionsText = "Нет данных";
+      try {
+        if (Array.isArray(enrichedSelections) && enrichedSelections.length > 0) {
+          selectionsText = enrichedSelections.map((s: { label?: string; annualUnits?: number; unit?: string }) =>
+            `— ${s.label ?? "Продукт"}: ${s.annualUnits ?? 0} ${s.unit ?? "ед."}/год`
+          ).join("\n");
+        }
+      } catch { /* ignore */ }
+
+      createPlanConfirmationTask({
+        animalId: existingPlan.animalId,
+        animalName,
+        animalSlug,
+        ownerOpenId: ctx.user.openId,
+        ownerName: ctx.user.name || "Владелец",
+        planId: input.planId,
+        totalMilkUsed,
+        selections: selectionsText,
+      }).catch((err) => console.error("[B24] Failed to create plan confirmation task:", err));
+
       return updatedPlan;
     }),
 
@@ -569,9 +592,11 @@ export const productTrackRouter = router({
         selections: enrichedSelections,
         year: currentYear,
       });
-      // Notify the owner that their plan was approved
+      // Notify the owner that their plan was approved (3 channels: in-app, Telegram, email)
       const animalName = await getAnimalNameById(existingPlan.animalId);
       const animalSlug = await getAnimalSlugById(existingPlan.animalId);
+
+      // 1. In-app notification (bell icon)
       createUserNotification({
         userOpenId: existingPlan.ownerOpenId,
         type: "productPlanUpdate",
@@ -579,6 +604,54 @@ export const productTrackRouter = router({
         body: `Ваш продуктовый план для ${animalName} подтверждён администратором. График доставок сформирован.`,
         link: `/animals/${animalSlug}`,
       }).catch(() => {});
+
+      // 2. Telegram notification
+      import("../telegramBot").then(({ sendTelegramNotification }) => {
+        sendTelegramNotification(
+          existingPlan.ownerOpenId,
+          `✅ Продуктовый план подтверждён!\n\nВаш план для ${animalName} подтверждён администратором. График доставок сформирован.\n\nПодробнее: koza.vip/animals/${animalSlug || ""}`,
+        ).catch((err) => console.warn("[Telegram Plan Approved] Failed:", err));
+      }).catch(() => {});
+
+      // 3. Email notification via Bitrix24
+      (async () => {
+        try {
+          const { getUserByOpenId } = await import("../db");
+          const { findOrCreateBitrixContact, sendBitrixEmail } = await import("../bitrix24");
+          const ownerUser = await getUserByOpenId(existingPlan.ownerOpenId);
+          if (ownerUser?.email) {
+            const contactId = await findOrCreateBitrixContact({
+              fullName: ownerUser.name || "Владелец",
+              email: ownerUser.email,
+              phone: ownerUser.phone,
+            });
+            if (contactId) {
+              await sendBitrixEmail({
+                contactId,
+                toEmail: ownerUser.email,
+                subject: `Продуктовый план подтверждён — ${animalName}`,
+                htmlBody: [
+                  `<div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px;">`,
+                  `<h2 style="color: #2d5016; margin-bottom: 16px;">✅ Продуктовый план подтверждён</h2>`,
+                  `<p style="color: #333; font-size: 15px; line-height: 1.6;">`,
+                  `Здравствуйте, ${ownerUser.name || "уважаемый владелец"}!</p>`,
+                  `<p style="color: #333; font-size: 15px; line-height: 1.6;">`,
+                  `Ваш продуктовый план для <strong>${animalName}</strong> подтверждён администратором фермы. `,
+                  `График доставок сформирован и доступен в вашем личном кабинете.</p>`,
+                  `<div style="text-align: center; margin: 24px 0;">`,
+                  `<a href="https://koza.vip/animals/${animalSlug || ""}" style="display: inline-block; background: #2d5016; color: #fff; padding: 12px 32px; border-radius: 8px; text-decoration: none; font-weight: 600;">Перейти в личный кабинет</a>`,
+                  `</div>`,
+                  `<p style="color: #888; font-size: 13px;">С уважением, команда Шерь Козу</p>`,
+                  `</div>`,
+                ].join("\n"),
+              });
+            }
+          }
+        } catch (err) {
+          console.warn("[Email Plan Approved] Failed:", err);
+        }
+      })();
+
       return approvedPlan;
     }),
 
