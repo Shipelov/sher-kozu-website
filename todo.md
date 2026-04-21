@@ -2419,4 +2419,12 @@
 - [x] Server: Add cron job to automatically run checkPendingRequests every 5 minutes (setInterval in server/_core/index.ts)
 - [x] Server: Add email notification to owner when product plan is ready via Bitrix24 CRM (alongside Telegram + in-app)
 - [x] Tests: Verify TypeScript compilation + all 2485 tests pass
-- [ ] Deploy to VDS (in progress)
+- [x] Deploy to VDS (commit 6bfa55d, verified via /api/version, ProductPlanCron scheduled)
+
+## Bug Fix: OwnerProductPlanSection shows empty state after admin configures products — April 21, 2026
+
+- [x] Investigate: Root cause = no ownerProductPlans record for Aurora (390001), despite production profile + 9 verified products + active ownerships
+- [x] Fix: Added auto-create logic in getOwnerProductPlan() — creates plan record on first access when profile + ownership exist
+- [x] Fix: Auto-detect verified products → set status to pending_owner_config (or pending_admin_setup if not verified)
+- [x] TypeScript: 0 errors, all 2485 tests pass
+- [ ] Deploy fix to VDS (in progress)

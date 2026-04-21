@@ -2866,7 +2866,57 @@ export async function getOwnerProductPlan(ownerOpenId: string, animalId: number)
     .where(and(eq(ownerProductPlans.ownerOpenId, ownerOpenId), eq(ownerProductPlans.animalId, animalId)))
     .orderBy(desc(ownerProductPlans.createdAt))
     .limit(1);
-  const plan = rows[0] ?? null;
+  let plan = rows[0] ?? null;
+
+  // Auto-create: if no plan exists but the animal has a production profile and the user has ownership,
+  // automatically create a tier-based plan. This handles the case where admin added products
+  // via the admin panel but didn't explicitly call initializeTierPlan.
+  if (!plan) {
+    try {
+      const [profileRow] = await db
+        .select({ id: animalProductionProfiles.id })
+        .from(animalProductionProfiles)
+        .where(eq(animalProductionProfiles.animalId, animalId))
+        .limit(1);
+
+      if (profileRow) {
+        const ownershipId = await resolveOwnershipId(ownerOpenId, animalId);
+        if (ownershipId) {
+          // Compute tier and create plan
+          const tierResult = await recomputeOwnerTier(ownerOpenId);
+          const tierSlug = (tierResult.tierStatus.tierSlug ?? "basic") as "basic" | "standard" | "professional";
+
+          // Check if products exist (verified or not) to determine initial status
+          const [anyProduct] = await db
+            .select({ id: productOptions.id })
+            .from(productOptions)
+            .where(eq(productOptions.animalId, animalId))
+            .limit(1);
+
+          const verifiedOptions = await getVerifiedProductOptions(animalId);
+          const initialStatus = verifiedOptions.length > 0 ? "pending_owner_config" : (anyProduct ? "pending_admin_setup" : "pending_admin_setup");
+
+          const [result] = await db.insert(ownerProductPlans).values({
+            ownerOpenId,
+            animalId,
+            ownershipId,
+            tierSlug,
+            status: initialStatus,
+            selectionsJson: "[]",
+            totalMilkUsed: 0,
+          });
+
+          const created = await db.select().from(ownerProductPlans)
+            .where(eq(ownerProductPlans.id, result.insertId))
+            .limit(1);
+          plan = created[0] ?? null;
+          console.log(`[getOwnerProductPlan] Auto-created plan #${plan?.id} for animal ${animalId}, owner ${ownerOpenId}, status: ${initialStatus}`);
+        }
+      }
+    } catch (e) {
+      console.error("[getOwnerProductPlan] auto-create error:", e);
+    }
+  }
 
   // Auto-repair: if plan is stuck in pending_admin_setup but products are verified,
   // transition to pending_owner_config
