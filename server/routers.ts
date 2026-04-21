@@ -4,6 +4,9 @@ import { COOKIE_NAME } from "../shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { farmAuthRouter, farmAdminRouter } from "./routers/farmWorker";
+import { milkSessionRouter } from "./routers/milkSession";
+import { milkReceptionRouter, milkTankRouter } from "./routers/milkReception";
+import { milkAdminRouter } from "./routers/milkAdmin";
 import { adminProcedure, protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import { invokeLLM } from "./_core/llm";
 import { catalogCache, CATALOG_CACHE_KEY, CATALOG_TTL_MS, invalidateCatalogCache } from "./cache";
@@ -2366,6 +2369,10 @@ export const appRouter = router({
   // ─── Milk Turnover Control: Farm Worker Auth ───
   farmAuth: farmAuthRouter,
   farmAdmin: farmAdminRouter,
+  milkSession: milkSessionRouter,
+  milkReception: milkReceptionRouter,
+  milkTank: milkTankRouter,
+  milkAdmin: milkAdminRouter,
 });
 
 export type AppRouter = typeof appRouter;

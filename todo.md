@@ -2466,7 +2466,16 @@ Module: Контроль оборота молока. Spec v2.1. Mobile-first AR
 - [x] Routes: Register /farm, /farm/change-password, /farm/milker, /farm/cheesemaker in App.tsx
 - [x] Telegram: Add /myid command for farm workers to get their chat_id
 - [x] Tests: Vitest coverage for farmAuth utilities (hash, JWT, password validation) and tRPC router (login, logout, me, changePassword, admin CRUD)
-- [ ] Stage 2: Milker ARM — milking session recording form with animal count by type
-- [ ] Stage 2: Cheesemaker ARM — milk reception and tank management
-- [ ] Stage 2: Auto-confirmation after 72h timeout
-- [ ] Stage 2: Admin panel for milk module management
+- [x] Deploy: VDS (89.111.165.77) — commit b31bccf, PM2 sherkozu restarted, /farm page accessible on koza.vip
+- [x] Stage 2: Milker ARM — milking session recording form with animal count by type (SK-DDMMYY format, goat/sheep head counts)
+- [x] Stage 2: Cheesemaker ARM — milk reception (accept/reject), tank management with fill bars
+- [x] Stage 2: Auto-confirmation after 72h timeout (milkAutoConfirm.ts cron every 1h)
+- [x] Stage 2: Admin milk dashboard (/admin/milk) — overview stats, sessions, receptions, tanks CRUD, audit log
+
+## Admin Panel — Farm Workers Management — April 21, 2026
+
+- [x] Create AdminFarmWorkers page with list, create, toggle active, reset password
+- [x] Register /admin/farm-workers route and add nav item in admin sidebar
+- [x] Register /admin/milk route and add nav item in admin sidebar
+- [x] Tests: 2531 tests passing (milkModule.test.ts added)
+- [ ] Deploy to VDS

@@ -445,6 +445,20 @@ async function startServer() {
       }
     })();
 
+    // Milk auto-confirmation cron — runs every hour
+    (async () => {
+      try {
+        const { runMilkAutoConfirm } = await import("../milkAutoConfirm");
+        // First run after 60s to let DB warm up
+        setTimeout(() => runMilkAutoConfirm().catch(console.error), 60_000);
+        // Then every hour
+        setInterval(() => runMilkAutoConfirm().catch(console.error), 60 * 60 * 1000);
+        console.log("[MilkAutoConfirm] Scheduled every 1 hour (72h threshold)");
+      } catch (err) {
+        console.error("[MilkAutoConfirm] Failed to schedule:", err);
+      }
+    })();
+
     // Start analytics monitoring (reports every 5 minutes)
     analyticsMonitor.startReporting();
 

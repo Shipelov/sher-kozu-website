@@ -49,6 +49,8 @@ const AdminClubComments = lazy(() => import("./pages/AdminClubComments"));
 const AdminNutriKnowledge = lazy(() => import("./pages/AdminNutriKnowledge"));
 const AdminClubRegistrations = lazy(() => import("./pages/AdminClubRegistrations"));
 const AdminPerformance = lazy(() => import("./pages/AdminPerformance"));
+const AdminFarmWorkers = lazy(() => import("./pages/AdminFarmWorkers"));
+const AdminMilkDashboard = lazy(() => import("./pages/AdminMilkDashboard"));
 const AdminNutriAnalytics = lazy(() => import("./pages/AdminNutriAnalytics"));
 const ZoyaSharedView = lazy(() => import("./pages/ZoyaSharedView"));
 
@@ -152,6 +154,8 @@ function Router() {
         <Route path="/admin/nutri-knowledge" component={AdminNutriKnowledge} />
         <Route path="/admin/nutri-analytics" component={AdminNutriAnalytics} />
         <Route path="/admin/performance" component={AdminPerformance} />
+        <Route path="/admin/farm-workers" component={AdminFarmWorkers} />
+        <Route path="/admin/milk" component={AdminMilkDashboard} />
         <Route path="/faq" component={FAQ} />
         <Route path="/nutritionist" component={Nutritionist} />
         <Route path="/zoya/share/:token" component={ZoyaSharedView} />

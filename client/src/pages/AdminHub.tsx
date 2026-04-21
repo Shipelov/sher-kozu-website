@@ -22,6 +22,7 @@ import {
   Leaf,
   KeyRound,
   Loader2,
+  Milk,
   PawPrint,
   RefreshCw,
   ShieldCheck,
@@ -105,6 +106,8 @@ export default function AdminHub() {
     { title: "База знаний Зои", path: "/admin/nutri-knowledge", icon: BookOpen },
     { title: "Аналитика нутрициологии", path: "/admin/nutri-analytics", icon: Leaf },
     { title: "Производительность", path: "/admin/performance", icon: Gauge },
+    { title: "Сотрудники фермы", path: "/admin/farm-workers", icon: Milk },
+    { title: "Контроль молока", path: "/admin/milk", icon: Leaf },
   ];
 
   // ── Loading ──
