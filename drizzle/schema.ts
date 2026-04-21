@@ -2368,6 +2368,8 @@ export const milkSessions = mysqlTable("milkSessions", {
   goatHeadCount: int("goatHeadCount").default(0).notNull(),
   /** Number of sheep milked */
   sheepHeadCount: int("sheepHeadCount").default(0).notNull(),
+  /** Number of cows milked */
+  cowHeadCount: int("cowHeadCount").default(0).notNull(),
   /** Temperature at milking (°C × 10, e.g. 365 = 36.5°C) */
   temperatureTenths: int("temperatureTenths"),
   /** Density reading (g/cm³ × 1000, e.g. 1030 = 1.030 g/cm³) */

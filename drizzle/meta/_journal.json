@@ -365,6 +365,13 @@
       "when": 1776790960795,
       "tag": "0052_concerned_darkhawk",
       "breakpoints": true
+    },
+    {
+      "idx": 53,
+      "version": "5",
+      "when": 1776794337069,
+      "tag": "0053_strange_golden_guardian",
+      "breakpoints": true
     }
   ]
 }

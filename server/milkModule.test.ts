@@ -107,9 +107,10 @@ describe("milkSession tRPC router", () => {
       await expect(
         caller.milkSession.create({
           shift: "morning",
-          totalVolumeLiters: 10,
+          totalVolumeMl: 10000,
           goatHeadCount: 5,
           sheepHeadCount: 3,
+          cowHeadCount: 2,
         }),
       ).rejects.toThrow();
     });
@@ -121,9 +122,10 @@ describe("milkSession tRPC router", () => {
       await expect(
         caller.milkSession.create({
           shift: "midnight" as any,
-          totalVolumeLiters: 10,
+          totalVolumeMl: 10000,
           goatHeadCount: 5,
           sheepHeadCount: 3,
+          cowHeadCount: 2,
         }),
       ).rejects.toThrow();
     });
@@ -135,9 +137,10 @@ describe("milkSession tRPC router", () => {
       await expect(
         caller.milkSession.create({
           shift: "morning",
-          totalVolumeLiters: -5,
+          totalVolumeMl: -5000,
           goatHeadCount: 5,
           sheepHeadCount: 3,
+          cowHeadCount: 0,
         }),
       ).rejects.toThrow();
     });
@@ -150,9 +153,10 @@ describe("milkSession tRPC router", () => {
       await expect(
         caller.milkSession.create({
           shift: "morning",
-          totalVolumeLiters: 10,
+          totalVolumeMl: 10000,
           goatHeadCount: 0,
           sheepHeadCount: 0,
+          cowHeadCount: 0,
         }),
       ).rejects.toThrow();
     });
@@ -271,6 +275,7 @@ describe("milkAdmin tRPC router", () => {
       expect(typeof overview.today.volumeLiters).toBe("number");
       expect(typeof overview.today.goatHeads).toBe("number");
       expect(typeof overview.today.sheepHeads).toBe("number");
+      expect(typeof overview.today.cowHeads).toBe("number");
       expect(typeof overview.tanks.fillPercent).toBe("number");
     });
 

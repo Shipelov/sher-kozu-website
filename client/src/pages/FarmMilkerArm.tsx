@@ -67,6 +67,7 @@ export default function FarmMilkerArm() {
   );
   const [goatCount, setGoatCount] = useState(0);
   const [sheepCount, setSheepCount] = useState(0);
+  const [cowCount, setCowCount] = useState(0);
   const [volumeL, setVolumeL] = useState("");
   const [temperature, setTemperature] = useState("");
   const [density, setDensity] = useState("");
@@ -94,6 +95,7 @@ export default function FarmMilkerArm() {
       // Reset form
       setGoatCount(0);
       setSheepCount(0);
+      setCowCount(0);
       setVolumeL("");
       setTemperature("");
       setDensity("");
@@ -106,7 +108,7 @@ export default function FarmMilkerArm() {
   });
 
   // ─── Derived ───
-  const totalHeads = goatCount + sheepCount;
+  const totalHeads = goatCount + sheepCount + cowCount;
   const volumeMl = volumeL ? Math.round(parseFloat(volumeL) * 1000) : 0;
   const canSubmit = totalHeads > 0 && volumeMl > 0 && !createMutation.isPending;
 
@@ -134,6 +136,7 @@ export default function FarmMilkerArm() {
       totalVolumeMl: volumeMl,
       goatHeadCount: goatCount,
       sheepHeadCount: sheepCount,
+      cowHeadCount: cowCount,
       temperatureCelsius: temperature ? parseFloat(temperature) : undefined,
       densityGCm3: density ? parseFloat(density) : undefined,
       note: note.trim() || undefined,
@@ -291,7 +294,7 @@ export default function FarmMilkerArm() {
             </div>
 
             {/* Sheep */}
-            <div className="flex items-center justify-between bg-white rounded-xl border border-[oklch(0.88_0.02_90)] px-4 h-16">
+            <div className="flex items-center justify-between bg-white rounded-xl border border-[oklch(0.88_0.02_90)] px-4 h-16 mb-3">
               <div className="flex items-center gap-3">
                 <span className="text-2xl">🐑</span>
                 <span className="text-sm font-medium text-[oklch(0.3_0.04_60)]">Овцы</span>
@@ -309,6 +312,33 @@ export default function FarmMilkerArm() {
                 </span>
                 <button
                   onClick={() => setSheepCount(sheepCount + 1)}
+                  className="w-11 h-11 rounded-xl bg-[oklch(0.35_0.12_150)] flex items-center justify-center
+                             active:bg-[oklch(0.30_0.12_150)] touch-manipulation"
+                >
+                  <Plus className="w-5 h-5 text-white" />
+                </button>
+              </div>
+            </div>
+
+            {/* Cows */}
+            <div className="flex items-center justify-between bg-white rounded-xl border border-[oklch(0.88_0.02_90)] px-4 h-16">
+              <div className="flex items-center gap-3">
+                <span className="text-2xl">🐄</span>
+                <span className="text-sm font-medium text-[oklch(0.3_0.04_60)]">Коровы</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setCowCount(Math.max(0, cowCount - 1))}
+                  className="w-11 h-11 rounded-xl bg-[oklch(0.94_0.02_90)] flex items-center justify-center
+                             active:bg-[oklch(0.88_0.02_90)] touch-manipulation"
+                >
+                  <Minus className="w-5 h-5 text-[oklch(0.4_0.04_80)]" />
+                </button>
+                <span className="w-10 text-center text-xl font-bold text-[oklch(0.22_0.04_60)] tabular-nums">
+                  {cowCount}
+                </span>
+                <button
+                  onClick={() => setCowCount(cowCount + 1)}
                   className="w-11 h-11 rounded-xl bg-[oklch(0.35_0.12_150)] flex items-center justify-center
                              active:bg-[oklch(0.30_0.12_150)] touch-manipulation"
                 >
@@ -442,7 +472,7 @@ export default function FarmMilkerArm() {
                         {st.label}
                       </Badge>
                     </div>
-                    <div className="grid grid-cols-3 gap-2 text-xs text-[oklch(0.4_0.04_80)]">
+                    <div className="grid grid-cols-4 gap-2 text-xs text-[oklch(0.4_0.04_80)]">
                       <div>
                         <span className="text-[oklch(0.6_0.02_80)]">Объём</span>
                         <p className="font-semibold text-sm text-[oklch(0.22_0.04_60)]">
@@ -459,6 +489,12 @@ export default function FarmMilkerArm() {
                         <span className="text-[oklch(0.6_0.02_80)]">🐑 Овцы</span>
                         <p className="font-semibold text-sm text-[oklch(0.22_0.04_60)]">
                           {s.sheepHeadCount}
+                        </p>
+                      </div>
+                      <div>
+                        <span className="text-[oklch(0.6_0.02_80)]">🐄 Коровы</span>
+                        <p className="font-semibold text-sm text-[oklch(0.22_0.04_60)]">
+                          {s.cowHeadCount}
                         </p>
                       </div>
                     </div>

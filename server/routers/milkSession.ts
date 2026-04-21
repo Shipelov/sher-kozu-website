@@ -75,6 +75,7 @@ export const milkSessionRouter = router({
         totalVolumeMl: z.number().int().positive().max(500_000),
         goatHeadCount: z.number().int().min(0).max(500),
         sheepHeadCount: z.number().int().min(0).max(500),
+        cowHeadCount: z.number().int().min(0).max(200),
         temperatureCelsius: z.number().min(0).max(50).optional(),
         densityGCm3: z.number().min(0.9).max(1.2).optional(),
         note: z.string().max(1000).optional(),
@@ -106,10 +107,10 @@ export const milkSessionRouter = router({
       }
 
       // Validate at least one head
-      if (input.goatHeadCount + input.sheepHeadCount === 0) {
+      if (input.goatHeadCount + input.sheepHeadCount + input.cowHeadCount === 0) {
         throw new TRPCError({
           code: "BAD_REQUEST",
-          message: "Укажите количество дойных голов (козы и/или овцы)",
+          message: "Укажите количество дойных голов (козы, овцы и/или коровы)",
         });
       }
 
@@ -131,6 +132,7 @@ export const milkSessionRouter = router({
         totalVolumeMl: input.totalVolumeMl,
         goatHeadCount: input.goatHeadCount,
         sheepHeadCount: input.sheepHeadCount,
+        cowHeadCount: input.cowHeadCount,
         temperatureTenths,
         densityThousandths,
         note: input.note ?? null,
@@ -150,6 +152,7 @@ export const milkSessionRouter = router({
           totalVolumeMl: input.totalVolumeMl,
           goatHeadCount: input.goatHeadCount,
           sheepHeadCount: input.sheepHeadCount,
+          cowHeadCount: input.cowHeadCount,
         }),
       });
 
@@ -306,6 +309,7 @@ function formatSession(s: typeof milkSessions.$inferSelect) {
     totalVolumeLiters: +(s.totalVolumeMl / 1000).toFixed(2),
     goatHeadCount: s.goatHeadCount,
     sheepHeadCount: s.sheepHeadCount,
+    cowHeadCount: s.cowHeadCount,
     temperatureCelsius: s.temperatureTenths != null ? +(s.temperatureTenths / 10).toFixed(1) : null,
     densityGCm3: s.densityThousandths != null ? +(s.densityThousandths / 1000).toFixed(3) : null,
     note: s.note,

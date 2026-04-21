@@ -1,0 +1,1 @@
+ALTER TABLE `milkSessions` ADD `cowHeadCount` int DEFAULT 0 NOT NULL;

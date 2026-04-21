@@ -44,6 +44,7 @@ export const milkAdminRouter = router({
         totalMl: sql<number>`COALESCE(SUM(${milkSessions.totalVolumeMl}), 0)`,
         goatHeads: sql<number>`COALESCE(SUM(${milkSessions.goatHeadCount}), 0)`,
         sheepHeads: sql<number>`COALESCE(SUM(${milkSessions.sheepHeadCount}), 0)`,
+        cowHeads: sql<number>`COALESCE(SUM(${milkSessions.cowHeadCount}), 0)`,
       })
       .from(milkSessions)
       .where(gte(milkSessions.createdAt, todayStart));
@@ -103,6 +104,7 @@ export const milkAdminRouter = router({
         volumeLiters: +(Number(todayStats.totalMl) / 1000).toFixed(2),
         goatHeads: Number(todayStats.goatHeads),
         sheepHeads: Number(todayStats.sheepHeads),
+        cowHeads: Number(todayStats.cowHeads),
       },
       week: {
         sessions: Number(weekStats.count),
@@ -171,6 +173,7 @@ export const milkAdminRouter = router({
           totalVolumeMl: milkSessions.totalVolumeMl,
           goatHeadCount: milkSessions.goatHeadCount,
           sheepHeadCount: milkSessions.sheepHeadCount,
+          cowHeadCount: milkSessions.cowHeadCount,
           temperatureTenths: milkSessions.temperatureTenths,
           densityThousandths: milkSessions.densityThousandths,
           note: milkSessions.note,
@@ -197,6 +200,7 @@ export const milkAdminRouter = router({
           totalVolumeLiters: +(s.totalVolumeMl / 1000).toFixed(2),
           goatHeadCount: s.goatHeadCount,
           sheepHeadCount: s.sheepHeadCount,
+          cowHeadCount: s.cowHeadCount,
           temperatureCelsius:
             s.temperatureTenths != null ? +(s.temperatureTenths / 10).toFixed(1) : null,
           densityGCm3:

@@ -2478,4 +2478,11 @@ Module: Контроль оборота молока. Spec v2.1. Mobile-first AR
 - [x] Register /admin/farm-workers route and add nav item in admin sidebar
 - [x] Register /admin/milk route and add nav item in admin sidebar
 - [x] Tests: 2531 tests passing (milkModule.test.ts added)
+- [x] Deploy to VDS — commit 7f0e1e7a, all pages accessible (200)
+
+## Bugfix: Add cow to Milker ARM — April 21, 2026
+
+- [x] Add cowHeadCount field to milkSessions schema + migration
+- [x] Update Milker ARM form to include cow head count (🐄 counter)
+- [x] Update server validation (milkSession, milkAdmin routers) and tests
 - [ ] Deploy to VDS
