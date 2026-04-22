@@ -290,93 +290,7 @@ export default function AdminMilkDashboard() {
               <Loader2 className="h-6 w-6 animate-spin text-[oklch(0.5_0.04_80)]" />
             </div>
           ) : overview ? (
-            <div className="space-y-6">
-              {/* Today stats */}
-              <div>
-                <h3 className="text-sm font-semibold text-[oklch(0.4_0.04_80)] mb-3 flex items-center gap-2">
-                  <Calendar className="w-4 h-4" /> Сегодня
-                </h3>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <StatCard label="Дойки" value={overview.today.sessions} />
-                  <StatCard
-                    label="Объём (всего)"
-                    value={`${overview.today.volume.totalLiters} л`}
-                    accent
-                  />
-                  <StatCard label="🐐 Козы" value={overview.today.goatHeads} sub={`${overview.today.volume.goatLiters} л`} />
-                  <StatCard label="🐑 Овцы" value={overview.today.sheepHeads} sub={`${overview.today.volume.sheepLiters} л`} />
-                  <StatCard label="🐄 Коровы" value={overview.today.cowHeads} sub={`${overview.today.volume.cowLiters} л`} />
-                  <StatCard
-                    label="Выпойка"
-                    value={`${overview.today.feedingLiters} л`}
-                  />
-                  <StatCard
-                    label="Потери"
-                    value={`${overview.today.lossesLiters} л`}
-                    warn={overview.today.lossesLiters > 0}
-                  />
-                  <StatCard
-                    label="Сыроделу (нетто)"
-                    value={`${overview.today.netLiters} л`}
-                    accent
-                  />
-                </div>
-              </div>
-
-              {/* Period stats */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <StatCard
-                  label="Неделя (дойки)"
-                  value={overview.week.sessions}
-                  sub={`Всего: ${overview.week.volume.totalLiters} л`}
-                />
-                <StatCard
-                  label="Неделя (нетто)"
-                  value={`${overview.week.netLiters} л`}
-                  sub={`Вып: ${overview.week.feedingLiters}л · Пот: ${overview.week.lossesLiters}л`}
-                  accent
-                />
-                <StatCard
-                  label="Месяц (дойки)"
-                  value={overview.month.sessions}
-                  sub={`Всего: ${overview.month.volume.totalLiters} л`}
-                />
-                <StatCard
-                  label="Месяц (нетто)"
-                  value={`${overview.month.netLiters} л`}
-                  sub={`Вып: ${overview.month.feedingLiters}л · Пот: ${overview.month.lossesLiters}л`}
-                  accent
-                />
-                <StatCard
-                  label="Ожидают подтверждения"
-                  value={overview.pendingSessions}
-                  warn={overview.pendingSessions > 0}
-                />
-                <StatCard
-                  label="Приёмок сегодня"
-                  value={overview.receptionToday.count}
-                  sub={`${overview.receptionToday.acceptedLiters} л принято`}
-                />
-              </div>
-
-              {/* Tank overview */}
-              <div>
-                <h3 className="text-sm font-semibold text-[oklch(0.4_0.04_80)] mb-3 flex items-center gap-2">
-                  <Container className="w-4 h-4" /> Танки
-                </h3>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <StatCard
-                    label="Активных / Всего"
-                    value={`${overview.tanks.active} / ${overview.tanks.total}`}
-                  />
-                  <StatCard
-                    label="Заполнение"
-                    value={`${overview.tanks.fillPercent}%`}
-                    sub={`${overview.tanks.currentLiters} / ${overview.tanks.capacityLiters} л`}
-                  />
-                </div>
-              </div>
-            </div>
+            <OverviewSection overview={overview} />
           ) : null}
         </div>
       )}
@@ -1059,8 +973,239 @@ export default function AdminMilkDashboard() {
     </div>
   );
 }
+// ─── Overview Section ───────────────────────────────────────────────────────
 
-// ─── Helpers ────────────────────────────────────────────────
+type PeriodData = {
+  sessions: number;
+  total: { volumeL: number; heads: number; feedingL: number; lossesL: number; netL: number };
+  goat: { volumeL: number; heads: number; feedingL: number; lossesL: number; netL: number };
+  sheep: { volumeL: number; heads: number; feedingL: number; lossesL: number; netL: number };
+  cow: { volumeL: number; heads: number; feedingL: number; lossesL: number; netL: number };
+};
+
+type OverviewData = {
+  today: PeriodData;
+  week: PeriodData;
+  month: PeriodData;
+  pendingSessions: number;
+  receptionToday: { count: number; acceptedLiters: number; rejectedLiters: number };
+  tanks: {
+    total: number;
+    active: number;
+    capacityLiters: number;
+    currentLiters: number;
+    fillPercent: number;
+    byType: Record<string, { capacityLiters: number; currentLiters: number; fillPercent: number; active: number; total: number }>;
+  };
+};
+
+const PERIOD_TABS = [
+  { key: "today" as const, label: "Сегодня" },
+  { key: "week" as const, label: "Неделя" },
+  { key: "month" as const, label: "Месяц" },
+];
+
+function OverviewSection({ overview }: { overview: OverviewData }) {
+  const [period, setPeriod] = useState<"today" | "week" | "month">("today");
+  const d = overview[period];
+
+  const pct = (part: number, whole: number) =>
+    whole > 0 ? `${((part / whole) * 100).toFixed(1)}%` : "—";
+
+  const avgPerHead = (vol: number, heads: number) =>
+    heads > 0 ? `${(vol / heads).toFixed(2)} л` : "—";
+
+  const columns = [
+    { key: "total" as const, label: "Всего", emoji: "" },
+    { key: "goat" as const, label: "Козы", emoji: "🐐" },
+    { key: "sheep" as const, label: "Овцы", emoji: "🐑" },
+    { key: "cow" as const, label: "Коровы", emoji: "🐄" },
+  ];
+
+  const thCls = "px-3 py-2 text-xs font-semibold text-[oklch(0.4_0.04_80)] text-right first:text-left";
+  const tdCls = "px-3 py-2 text-sm text-right first:text-left";
+  const tdBold = `${tdCls} font-semibold`;
+
+  return (
+    <div className="space-y-6">
+      {/* Period selector */}
+      <div className="flex items-center gap-4">
+        <div className="flex gap-1 bg-[oklch(0.96_0.01_90)] rounded-lg p-1">
+          {PERIOD_TABS.map((t) => (
+            <button
+              key={t.key}
+              onClick={() => setPeriod(t.key)}
+              className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                period === t.key
+                  ? "bg-white text-[oklch(0.22_0.04_60)] shadow-sm"
+                  : "text-[oklch(0.5_0.04_80)] hover:text-[oklch(0.3_0.04_80)]"
+              }`}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+        <span className="text-xs text-[oklch(0.52_0.04_80)]">
+          Доек: {d.sessions}
+        </span>
+        {overview.pendingSessions > 0 && (
+          <span className="text-xs text-amber-600 font-medium">
+            ⚠ Ожидают: {overview.pendingSessions}
+          </span>
+        )}
+      </div>
+
+      {/* Main 4-column table */}
+      <div className="border rounded-lg overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead className="bg-[oklch(0.96_0.01_90)]">
+            <tr>
+              <th className={thCls}>Показатель</th>
+              {columns.map((c) => (
+                <th key={c.key} className={thCls}>
+                  {c.emoji ? `${c.emoji} ${c.label}` : c.label}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody className="divide-y">
+            {/* Heads */}
+            <tr className="hover:bg-[oklch(0.98_0.005_90)]">
+              <td className={`${tdCls} text-[oklch(0.4_0.04_80)]`}>Голов</td>
+              {columns.map((c) => (
+                <td key={c.key} className={tdCls}>{d[c.key].heads || "—"}</td>
+              ))}
+            </tr>
+            {/* Volume */}
+            <tr className="bg-[oklch(0.97_0.02_150)] hover:bg-[oklch(0.96_0.03_150)]">
+              <td className={`${tdBold} text-[oklch(0.30_0.12_150)]`}>Надой, л</td>
+              {columns.map((c) => (
+                <td key={c.key} className={`${tdBold} text-[oklch(0.30_0.12_150)]`}>
+                  {d[c.key].volumeL}
+                </td>
+              ))}
+            </tr>
+            {/* Feeding */}
+            <tr className="hover:bg-[oklch(0.98_0.005_90)]">
+              <td className={`${tdCls} text-[oklch(0.4_0.04_80)]`}>Выпойка, л</td>
+              {columns.map((c) => (
+                <td key={c.key} className={tdCls}>{d[c.key].feedingL || "—"}</td>
+              ))}
+            </tr>
+            {/* Losses */}
+            <tr className="hover:bg-[oklch(0.98_0.005_90)]">
+              <td className={`${tdCls} text-[oklch(0.4_0.04_80)]`}>Потери, л</td>
+              {columns.map((c) => {
+                const hasLoss = d[c.key].lossesL > 0;
+                return (
+                  <td key={c.key} className={`${tdCls} ${hasLoss ? "text-amber-700 font-medium" : ""}`}>
+                    {hasLoss ? d[c.key].lossesL : "—"}
+                  </td>
+                );
+              })}
+            </tr>
+            {/* Net */}
+            <tr className="bg-[oklch(0.96_0.04_150)] hover:bg-[oklch(0.95_0.05_150)] border-t-2 border-[oklch(0.7_0.12_150)]">
+              <td className={`${tdBold} text-[oklch(0.25_0.12_150)]`}>Нетто, л</td>
+              {columns.map((c) => (
+                <td key={c.key} className={`${tdBold} text-[oklch(0.25_0.12_150)]`}>
+                  {d[c.key].netL}
+                </td>
+              ))}
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      {/* Analytics section */}
+      <div>
+        <h3 className="text-sm font-semibold text-[oklch(0.4_0.04_80)] mb-3 flex items-center gap-2">
+          <TrendingUp className="w-4 h-4" /> Аналитика
+        </h3>
+        <div className="border rounded-lg overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="bg-[oklch(0.96_0.01_90)]">
+              <tr>
+                <th className={thCls}>Метрика</th>
+                {columns.map((c) => (
+                  <th key={c.key} className={thCls}>
+                    {c.emoji ? `${c.emoji} ${c.label}` : c.label}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="divide-y">
+              {/* Feeding % */}
+              <tr className="hover:bg-[oklch(0.98_0.005_90)]">
+                <td className={`${tdCls} text-[oklch(0.4_0.04_80)]`}>% выпойки</td>
+                {columns.map((c) => (
+                  <td key={c.key} className={tdCls}>
+                    {pct(d[c.key].feedingL, d[c.key].volumeL)}
+                  </td>
+                ))}
+              </tr>
+              {/* Losses % */}
+              <tr className="hover:bg-[oklch(0.98_0.005_90)]">
+                <td className={`${tdCls} text-[oklch(0.4_0.04_80)]`}>% потерь</td>
+                {columns.map((c) => {
+                  const val = d[c.key].volumeL > 0 ? (d[c.key].lossesL / d[c.key].volumeL) * 100 : 0;
+                  return (
+                    <td key={c.key} className={`${tdCls} ${val > 5 ? "text-red-600 font-medium" : val > 2 ? "text-amber-600" : ""}`}>
+                      {pct(d[c.key].lossesL, d[c.key].volumeL)}
+                    </td>
+                  );
+                })}
+              </tr>
+              {/* Net % */}
+              <tr className="hover:bg-[oklch(0.98_0.005_90)]">
+                <td className={`${tdCls} text-[oklch(0.4_0.04_80)]`}>% нетто</td>
+                {columns.map((c) => (
+                  <td key={c.key} className={`${tdCls} text-[oklch(0.30_0.12_150)] font-medium`}>
+                    {pct(d[c.key].netL, d[c.key].volumeL)}
+                  </td>
+                ))}
+              </tr>
+              {/* Avg per head */}
+              <tr className="hover:bg-[oklch(0.98_0.005_90)]">
+                <td className={`${tdCls} text-[oklch(0.4_0.04_80)]`}>Ср. надой/гол</td>
+                {columns.map((c) => (
+                  <td key={c.key} className={tdCls}>
+                    {avgPerHead(d[c.key].volumeL, d[c.key].heads)}
+                  </td>
+                ))}
+              </tr>
+              {/* Avg net per head */}
+              <tr className="hover:bg-[oklch(0.98_0.005_90)]">
+                <td className={`${tdCls} text-[oklch(0.4_0.04_80)]`}>Ср. нетто/гол</td>
+                {columns.map((c) => (
+                  <td key={c.key} className={`${tdCls} text-[oklch(0.30_0.12_150)]`}>
+                    {avgPerHead(d[c.key].netL, d[c.key].heads)}
+                  </td>
+                ))}
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Operational cards: reception + tanks */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <StatCard
+          label="Приёмок сегодня"
+          value={overview.receptionToday.count}
+          sub={`${overview.receptionToday.acceptedLiters} л принято`}
+        />
+        <StatCard
+          label="Танки"
+          value={`${overview.tanks.active} / ${overview.tanks.total}`}
+          sub={`Заполн: ${overview.tanks.fillPercent}% (${overview.tanks.currentLiters}л)`}
+        />
+      </div>
+    </div>
+  );
+}
+
+// ─── Helpers ────────────────────────────────────────────────────────────
 
 function StatCard({
   label,

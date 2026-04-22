@@ -48,43 +48,35 @@ export const milkAdminRouter = router({
     const monthStart = new Date(todayStart);
     monthStart.setDate(monthStart.getDate() - 30);
 
-    // Sessions count & per-type volumes
+    // Full per-type stats selection (reusable)
+    const fullStatsSelect = {
+      count: sql<number>`COUNT(*)`,
+      goatMl: sql<number>`COALESCE(SUM(${milkSessions.goatVolumeMl}), 0)`,
+      sheepMl: sql<number>`COALESCE(SUM(${milkSessions.sheepVolumeMl}), 0)`,
+      cowMl: sql<number>`COALESCE(SUM(${milkSessions.cowVolumeMl}), 0)`,
+      goatHeads: sql<number>`COALESCE(SUM(${milkSessions.goatHeadCount}), 0)`,
+      sheepHeads: sql<number>`COALESCE(SUM(${milkSessions.sheepHeadCount}), 0)`,
+      cowHeads: sql<number>`COALESCE(SUM(${milkSessions.cowHeadCount}), 0)`,
+      goatFeedingMl: sql<number>`COALESCE(SUM(COALESCE(${milkSessions.goatFeedingMl},0)), 0)`,
+      sheepFeedingMl: sql<number>`COALESCE(SUM(COALESCE(${milkSessions.sheepFeedingMl},0)), 0)`,
+      cowFeedingMl: sql<number>`COALESCE(SUM(COALESCE(${milkSessions.cowFeedingMl},0)), 0)`,
+      goatLossesMl: sql<number>`COALESCE(SUM(COALESCE(${milkSessions.goatLossesMl},0)), 0)`,
+      sheepLossesMl: sql<number>`COALESCE(SUM(COALESCE(${milkSessions.sheepLossesMl},0)), 0)`,
+      cowLossesMl: sql<number>`COALESCE(SUM(COALESCE(${milkSessions.cowLossesMl},0)), 0)`,
+    };
+
     const [todayStats] = await db
-      .select({
-        count: sql<number>`COUNT(*)`,
-        goatMl: sql<number>`COALESCE(SUM(${milkSessions.goatVolumeMl}), 0)`,
-        sheepMl: sql<number>`COALESCE(SUM(${milkSessions.sheepVolumeMl}), 0)`,
-        cowMl: sql<number>`COALESCE(SUM(${milkSessions.cowVolumeMl}), 0)`,
-        goatHeads: sql<number>`COALESCE(SUM(${milkSessions.goatHeadCount}), 0)`,
-        sheepHeads: sql<number>`COALESCE(SUM(${milkSessions.sheepHeadCount}), 0)`,
-        cowHeads: sql<number>`COALESCE(SUM(${milkSessions.cowHeadCount}), 0)`,
-        feedingMl: sql<number>`COALESCE(SUM(COALESCE(${milkSessions.goatFeedingMl},0) + COALESCE(${milkSessions.sheepFeedingMl},0) + COALESCE(${milkSessions.cowFeedingMl},0)), 0)`,
-        lossesMl: sql<number>`COALESCE(SUM(COALESCE(${milkSessions.goatLossesMl},0) + COALESCE(${milkSessions.sheepLossesMl},0) + COALESCE(${milkSessions.cowLossesMl},0)), 0)`,
-      })
+      .select(fullStatsSelect)
       .from(milkSessions)
       .where(gte(milkSessions.createdAt, todayStart));
 
     const [weekStats] = await db
-      .select({
-        count: sql<number>`COUNT(*)`,
-        goatMl: sql<number>`COALESCE(SUM(${milkSessions.goatVolumeMl}), 0)`,
-        sheepMl: sql<number>`COALESCE(SUM(${milkSessions.sheepVolumeMl}), 0)`,
-        cowMl: sql<number>`COALESCE(SUM(${milkSessions.cowVolumeMl}), 0)`,
-        feedingMl: sql<number>`COALESCE(SUM(COALESCE(${milkSessions.goatFeedingMl},0) + COALESCE(${milkSessions.sheepFeedingMl},0) + COALESCE(${milkSessions.cowFeedingMl},0)), 0)`,
-        lossesMl: sql<number>`COALESCE(SUM(COALESCE(${milkSessions.goatLossesMl},0) + COALESCE(${milkSessions.sheepLossesMl},0) + COALESCE(${milkSessions.cowLossesMl},0)), 0)`,
-      })
+      .select(fullStatsSelect)
       .from(milkSessions)
       .where(gte(milkSessions.createdAt, weekStart));
 
     const [monthStats] = await db
-      .select({
-        count: sql<number>`COUNT(*)`,
-        goatMl: sql<number>`COALESCE(SUM(${milkSessions.goatVolumeMl}), 0)`,
-        sheepMl: sql<number>`COALESCE(SUM(${milkSessions.sheepVolumeMl}), 0)`,
-        cowMl: sql<number>`COALESCE(SUM(${milkSessions.cowVolumeMl}), 0)`,
-        feedingMl: sql<number>`COALESCE(SUM(COALESCE(${milkSessions.goatFeedingMl},0) + COALESCE(${milkSessions.sheepFeedingMl},0) + COALESCE(${milkSessions.cowFeedingMl},0)), 0)`,
-        lossesMl: sql<number>`COALESCE(SUM(COALESCE(${milkSessions.goatLossesMl},0) + COALESCE(${milkSessions.sheepLossesMl},0) + COALESCE(${milkSessions.cowLossesMl},0)), 0)`,
-      })
+      .select(fullStatsSelect)
       .from(milkSessions)
       .where(gte(milkSessions.createdAt, monthStart));
 
@@ -140,38 +132,59 @@ export const milkAdminRouter = router({
       totalTanks += tot;
     }
 
-    const formatPerType = (goatMl: any, sheepMl: any, cowMl: any) => ({
-      goatLiters: +(Number(goatMl) / 1000).toFixed(2),
-      sheepLiters: +(Number(sheepMl) / 1000).toFixed(2),
-      cowLiters: +(Number(cowMl) / 1000).toFixed(2),
-      totalLiters: +((Number(goatMl) + Number(sheepMl) + Number(cowMl)) / 1000).toFixed(2),
-    });
+    /** Build a full per-type breakdown from raw stats row */
+    function formatPeriod(row: typeof todayStats) {
+      const goat = Number(row.goatMl);
+      const sheep = Number(row.sheepMl);
+      const cow = Number(row.cowMl);
+      const gf = Number(row.goatFeedingMl);
+      const sf = Number(row.sheepFeedingMl);
+      const cf = Number(row.cowFeedingMl);
+      const gl = Number(row.goatLossesMl);
+      const sl = Number(row.sheepLossesMl);
+      const cl = Number(row.cowLossesMl);
+      const totalVol = goat + sheep + cow;
+      const totalFeed = gf + sf + cf;
+      const totalLoss = gl + sl + cl;
+      const ml2l = (ml: number) => +(ml / 1000).toFixed(2);
+
+      return {
+        sessions: Number(row.count),
+        total: {
+          volumeL: ml2l(totalVol),
+          heads: Number(row.goatHeads) + Number(row.sheepHeads) + Number(row.cowHeads),
+          feedingL: ml2l(totalFeed),
+          lossesL: ml2l(totalLoss),
+          netL: ml2l(totalVol - totalFeed - totalLoss),
+        },
+        goat: {
+          volumeL: ml2l(goat),
+          heads: Number(row.goatHeads),
+          feedingL: ml2l(gf),
+          lossesL: ml2l(gl),
+          netL: ml2l(goat - gf - gl),
+        },
+        sheep: {
+          volumeL: ml2l(sheep),
+          heads: Number(row.sheepHeads),
+          feedingL: ml2l(sf),
+          lossesL: ml2l(sl),
+          netL: ml2l(sheep - sf - sl),
+        },
+        cow: {
+          volumeL: ml2l(cow),
+          heads: Number(row.cowHeads),
+          feedingL: ml2l(cf),
+          lossesL: ml2l(cl),
+          netL: ml2l(cow - cf - cl),
+        },
+      };
+    }
 
     return {
-      today: {
-        sessions: Number(todayStats.count),
-        volume: formatPerType(todayStats.goatMl, todayStats.sheepMl, todayStats.cowMl),
-        goatHeads: Number(todayStats.goatHeads),
-        sheepHeads: Number(todayStats.sheepHeads),
-        cowHeads: Number(todayStats.cowHeads),
-        feedingLiters: +(Number(todayStats.feedingMl) / 1000).toFixed(2),
-        lossesLiters: +(Number(todayStats.lossesMl) / 1000).toFixed(2),
-        netLiters: +((Number(todayStats.goatMl) + Number(todayStats.sheepMl) + Number(todayStats.cowMl) - Number(todayStats.feedingMl) - Number(todayStats.lossesMl)) / 1000).toFixed(2),
-      },
-      week: {
-        sessions: Number(weekStats.count),
-        volume: formatPerType(weekStats.goatMl, weekStats.sheepMl, weekStats.cowMl),
-        feedingLiters: +(Number(weekStats.feedingMl) / 1000).toFixed(2),
-        lossesLiters: +(Number(weekStats.lossesMl) / 1000).toFixed(2),
-        netLiters: +((Number(weekStats.goatMl) + Number(weekStats.sheepMl) + Number(weekStats.cowMl) - Number(weekStats.feedingMl) - Number(weekStats.lossesMl)) / 1000).toFixed(2),
-      },
-      month: {
-        sessions: Number(monthStats.count),
-        volume: formatPerType(monthStats.goatMl, monthStats.sheepMl, monthStats.cowMl),
-        feedingLiters: +(Number(monthStats.feedingMl) / 1000).toFixed(2),
-        lossesLiters: +(Number(monthStats.lossesMl) / 1000).toFixed(2),
-        netLiters: +((Number(monthStats.goatMl) + Number(monthStats.sheepMl) + Number(monthStats.cowMl) - Number(monthStats.feedingMl) - Number(monthStats.lossesMl)) / 1000).toFixed(2),
-      },
+      today: formatPeriod(todayStats),
+      week: formatPeriod(weekStats),
+      month: formatPeriod(monthStats),
       pendingSessions: Number(pendingCount.count),
       receptionToday: {
         count: Number(receptionToday.count),
