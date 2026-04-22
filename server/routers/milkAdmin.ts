@@ -37,8 +37,16 @@ const MILK_TYPE_LABELS: Record<string, string> = {
 export const milkAdminRouter = router({
   /**
    * Dashboard overview: today / week / month stats with per-type breakdown.
+   * Optionally accepts a custom date range for the "custom" period.
    */
-  overview: adminProcedure.query(async () => {
+  overview: adminProcedure
+    .input(
+      z.object({
+        customFrom: z.string().optional(),
+        customTo: z.string().optional(),
+      }).optional(),
+    )
+    .query(async ({ input }) => {
     const db = await getDb();
 
     const now = new Date();
@@ -181,10 +189,23 @@ export const milkAdminRouter = router({
       };
     }
 
+    // Custom date range query (optional)
+    let customPeriod = null;
+    if (input?.customFrom && input?.customTo) {
+      const customStart = new Date(input.customFrom + "T00:00:00");
+      const customEnd = new Date(input.customTo + "T23:59:59");
+      const [customStats] = await db
+        .select(fullStatsSelect)
+        .from(milkSessions)
+        .where(and(gte(milkSessions.createdAt, customStart), lte(milkSessions.createdAt, customEnd)));
+      customPeriod = formatPeriod(customStats);
+    }
+
     return {
       today: formatPeriod(todayStats),
       week: formatPeriod(weekStats),
       month: formatPeriod(monthStats),
+      custom: customPeriod,
       pendingSessions: Number(pendingCount.count),
       receptionToday: {
         count: Number(receptionToday.count),

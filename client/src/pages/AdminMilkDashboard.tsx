@@ -5,7 +5,7 @@
  * With scrolling tables, edit/delete sessions, and clear data presentation.
  */
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { trpc } from "@/lib/trpc";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -28,6 +28,7 @@ import {
   ArrowLeft,
   BarChart3,
   Calendar,
+  CalendarRange,
   Check,
   ChevronLeft,
   ChevronRight,
@@ -123,7 +124,17 @@ export default function AdminMilkDashboard() {
   // ─── Delete confirm dialog ───
   const [deleteSession, setDeleteSession] = useState<any>(null);
 
-  const overviewQuery = trpc.milkAdmin.overview.useQuery(undefined, {
+  // Overview custom date range state
+  const [customFrom, setCustomFrom] = useState("");
+  const [customTo, setCustomTo] = useState("");
+  const [useCustom, setUseCustom] = useState(false);
+
+  const overviewInput = useMemo(
+    () => (useCustom && customFrom && customTo ? { customFrom, customTo } : undefined),
+    [useCustom, customFrom, customTo],
+  );
+
+  const overviewQuery = trpc.milkAdmin.overview.useQuery(overviewInput, {
     enabled: tab === "overview",
   });
 
@@ -290,7 +301,15 @@ export default function AdminMilkDashboard() {
               <Loader2 className="h-6 w-6 animate-spin text-[oklch(0.5_0.04_80)]" />
             </div>
           ) : overview ? (
-            <OverviewSection overview={overview} />
+            <OverviewSection
+              overview={overview}
+              customFrom={customFrom}
+              customTo={customTo}
+              useCustom={useCustom}
+              onCustomFromChange={setCustomFrom}
+              onCustomToChange={setCustomTo}
+              onUseCustomChange={setUseCustom}
+            />
           ) : null}
         </div>
       )}
@@ -987,6 +1006,7 @@ type OverviewData = {
   today: PeriodData;
   week: PeriodData;
   month: PeriodData;
+  custom: PeriodData | null;
   pendingSessions: number;
   receptionToday: { count: number; acceptedLiters: number; rejectedLiters: number };
   tanks: {
@@ -1003,11 +1023,36 @@ const PERIOD_TABS = [
   { key: "today" as const, label: "Сегодня" },
   { key: "week" as const, label: "Неделя" },
   { key: "month" as const, label: "Месяц" },
+  { key: "custom" as const, label: "Период" },
 ];
 
-function OverviewSection({ overview }: { overview: OverviewData }) {
-  const [period, setPeriod] = useState<"today" | "week" | "month">("today");
-  const d = overview[period];
+interface OverviewSectionProps {
+  overview: OverviewData;
+  customFrom: string;
+  customTo: string;
+  useCustom: boolean;
+  onCustomFromChange: (v: string) => void;
+  onCustomToChange: (v: string) => void;
+  onUseCustomChange: (v: boolean) => void;
+}
+
+function OverviewSection({
+  overview,
+  customFrom,
+  customTo,
+  useCustom,
+  onCustomFromChange,
+  onCustomToChange,
+  onUseCustomChange,
+}: OverviewSectionProps) {
+  const [period, setPeriod] = useState<"today" | "week" | "month" | "custom">("today");
+
+  const d: PeriodData =
+    period === "custom" && overview.custom
+      ? overview.custom
+      : period === "custom"
+        ? { sessions: 0, total: { volumeL: 0, heads: 0, feedingL: 0, lossesL: 0, netL: 0 }, goat: { volumeL: 0, heads: 0, feedingL: 0, lossesL: 0, netL: 0 }, sheep: { volumeL: 0, heads: 0, feedingL: 0, lossesL: 0, netL: 0 }, cow: { volumeL: 0, heads: 0, feedingL: 0, lossesL: 0, netL: 0 } }
+        : overview[period];
 
   const pct = (part: number, whole: number) =>
     whole > 0 ? `${((part / whole) * 100).toFixed(1)}%` : "—";
@@ -1026,25 +1071,58 @@ function OverviewSection({ overview }: { overview: OverviewData }) {
   const tdCls = "px-3 py-2 text-sm text-right first:text-left";
   const tdBold = `${tdCls} font-semibold`;
 
+  function handlePeriodChange(key: typeof period) {
+    setPeriod(key);
+    if (key === "custom") {
+      onUseCustomChange(true);
+    } else {
+      onUseCustomChange(false);
+    }
+  }
+
   return (
     <div className="space-y-6">
       {/* Period selector */}
-      <div className="flex items-center gap-4">
+      <div className="flex flex-wrap items-center gap-3">
         <div className="flex gap-1 bg-[oklch(0.96_0.01_90)] rounded-lg p-1">
           {PERIOD_TABS.map((t) => (
             <button
               key={t.key}
-              onClick={() => setPeriod(t.key)}
-              className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
+              onClick={() => handlePeriodChange(t.key)}
+              className={`flex items-center gap-1.5 px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
                 period === t.key
                   ? "bg-white text-[oklch(0.22_0.04_60)] shadow-sm"
                   : "text-[oklch(0.5_0.04_80)] hover:text-[oklch(0.3_0.04_80)]"
               }`}
             >
+              {t.key === "custom" && <CalendarRange className="w-3.5 h-3.5" />}
               {t.label}
             </button>
           ))}
         </div>
+
+        {/* Custom date range inputs */}
+        {period === "custom" && (
+          <div className="flex items-center gap-2">
+            <input
+              type="date"
+              value={customFrom}
+              onChange={(e) => onCustomFromChange(e.target.value)}
+              className="border rounded-md px-2 py-1.5 text-sm bg-white text-[oklch(0.22_0.04_60)] focus:outline-none focus:ring-2 focus:ring-[oklch(0.5_0.12_150)]"
+            />
+            <span className="text-xs text-[oklch(0.52_0.04_80)]">—</span>
+            <input
+              type="date"
+              value={customTo}
+              onChange={(e) => onCustomToChange(e.target.value)}
+              className="border rounded-md px-2 py-1.5 text-sm bg-white text-[oklch(0.22_0.04_60)] focus:outline-none focus:ring-2 focus:ring-[oklch(0.5_0.12_150)]"
+            />
+            {customFrom && customTo && !overview.custom && (
+              <span className="text-xs text-amber-600">Загрузка...</span>
+            )}
+          </div>
+        )}
+
         <span className="text-xs text-[oklch(0.52_0.04_80)]">
           Доек: {d.sessions}
         </span>
@@ -1054,6 +1132,13 @@ function OverviewSection({ overview }: { overview: OverviewData }) {
           </span>
         )}
       </div>
+
+      {/* No data hint for custom period */}
+      {period === "custom" && (!customFrom || !customTo) && (
+        <div className="text-sm text-[oklch(0.52_0.04_80)] py-4 text-center border rounded-lg bg-[oklch(0.98_0.005_90)]">
+          Укажите начальную и конечную дату для формирования отчёта
+        </div>
+      )}
 
       {/* Main 4-column table */}
       <div className="border rounded-lg overflow-x-auto">

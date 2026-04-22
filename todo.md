@@ -2545,4 +2545,5 @@ Module: Контроль оборота молока. Spec v2.1. Mobile-first AR
 - [x] Fix: navbar auth buttons disappear after login (recurs after every deploy/restart) - useAuth.ts: added 5s loading timeout, retry:2, staleTime:60s; Navbar.tsx: show guest buttons on auth error instead of blank
 - [x] Fix: АРМ Дояр milk volume input only accepts single digit at a time — allow multi-digit (2-3 digit) number input directly
 - [x] Fix: Контроль оборота молока Overview missing feeding (выпой) and losses (потери) volumes
-- [ ] Redesign AdminMilkDashboard Overview: 4-column layout (Всего / Козы / Овцы / Коровы) + analytics section with per-type percentages (losses %, feeding %, net %)
+- [x] Redesign AdminMilkDashboard Overview: 4-column layout (Всего / Козы / Овцы / Коровы) + analytics section with per-type percentages (losses %, feeding %, net %)
+- [x] Add custom date range period selector to AdminMilkDashboard Overview (presets: Сегодня/Неделя/Месяц + custom date range with start/end date pickers)
