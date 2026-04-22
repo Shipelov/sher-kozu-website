@@ -11,6 +11,12 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
+  exportExcel,
+  exportPDF,
+  periodSubtitle,
+  type ReportColumn,
+} from "@/lib/reportExport";
+import {
   Dialog,
   DialogContent,
   DialogHeader,
@@ -35,6 +41,7 @@ import {
   Clock,
   Container,
   Droplets,
+  FileSpreadsheet,
   FileText,
   Loader2,
   Milk,
@@ -1273,6 +1280,29 @@ function OverviewSection({
         </div>
       </div>
 
+      {/* Export buttons */}
+      <div className="flex items-center gap-3">
+        <span className="text-sm font-medium text-[oklch(0.4_0.04_80)]">Выгрузить:</span>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => exportOverviewExcel(d, columns, period, customFrom, customTo)}
+          className="border-[oklch(0.35_0.12_150)] text-[oklch(0.35_0.12_150)]"
+        >
+          <FileSpreadsheet className="w-4 h-4 mr-1.5" />
+          Excel
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => exportOverviewPDF(d, columns, period, customFrom, customTo)}
+          className="border-[oklch(0.35_0.12_150)] text-[oklch(0.35_0.12_150)]"
+        >
+          <FileText className="w-4 h-4 mr-1.5" />
+          PDF
+        </Button>
+      </div>
+
       {/* Operational cards: reception + tanks */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <StatCard
@@ -1367,4 +1397,91 @@ function Pagination({
       </div>
     </div>
   );
+}
+
+// ─── Overview Export Helpers ────────────────────────────────────
+
+const PERIOD_LABELS: Record<string, string> = {
+  today: "Сегодня",
+  week: "Неделя",
+  month: "Месяц",
+  custom: "Период",
+};
+
+const OVERVIEW_COLUMNS: ReportColumn[] = [
+  { header: "Показатель", key: "metric", width: 20 },
+  { header: "Всего", key: "total", width: 14 },
+  { header: "Козы 🐐", key: "goat", width: 14 },
+  { header: "Овцы 🐑", key: "sheep", width: 14 },
+  { header: "Коровы 🐄", key: "cow", width: 14 },
+];
+
+function buildOverviewRows(d: PeriodData) {
+  const pct = (part: number, whole: number) =>
+    whole > 0 ? `${((part / whole) * 100).toFixed(1)}%` : "—";
+  const avg = (vol: number, heads: number) =>
+    heads > 0 ? `${(vol / heads).toFixed(2)} л` : "—";
+
+  const keys = ["total", "goat", "sheep", "cow"] as const;
+  const row = (metric: string, fn: (k: typeof keys[number]) => string | number) => {
+    const r: Record<string, any> = { metric };
+    keys.forEach((k) => (r[k] = fn(k)));
+    return r;
+  };
+
+  return [
+    row("Голов", (k) => d[k].heads || "—"),
+    row("Надой, л", (k) => d[k].volumeL),
+    row("Выпойка, л", (k) => d[k].feedingL || "—"),
+    row("Потери, л", (k) => d[k].lossesL || "—"),
+    row("Нетто, л", (k) => d[k].netL),
+    row("% выпойки", (k) => pct(d[k].feedingL, d[k].volumeL)),
+    row("% потерь", (k) => pct(d[k].lossesL, d[k].volumeL)),
+    row("% нетто", (k) => pct(d[k].netL, d[k].volumeL)),
+    row("Ср. надой/гол", (k) => avg(d[k].volumeL, d[k].heads)),
+    row("Ср. нетто/гол", (k) => avg(d[k].netL, d[k].heads)),
+  ];
+}
+
+function getOverviewSubtitle(
+  period: string,
+  customFrom: string,
+  customTo: string,
+): string {
+  if (period === "custom" && customFrom && customTo) {
+    return periodSubtitle(customFrom, customTo);
+  }
+  return `Период: ${PERIOD_LABELS[period] ?? period}`;
+}
+
+function exportOverviewExcel(
+  d: PeriodData,
+  _columns: any[],
+  period: string,
+  customFrom: string,
+  customTo: string,
+) {
+  exportExcel({
+    title: "Обзор молочного оборота — Шерь Козу",
+    subtitle: getOverviewSubtitle(period, customFrom, customTo) + ` | Доек: ${d.sessions}`,
+    columns: OVERVIEW_COLUMNS,
+    rows: buildOverviewRows(d),
+    filename: `Обзор_${period === "custom" ? `${customFrom}_${customTo}` : period}`,
+  });
+}
+
+function exportOverviewPDF(
+  d: PeriodData,
+  _columns: any[],
+  period: string,
+  customFrom: string,
+  customTo: string,
+) {
+  exportPDF({
+    title: "Обзор молочного оборота — Шерь Козу",
+    subtitle: getOverviewSubtitle(period, customFrom, customTo) + ` | Доек: ${d.sessions}`,
+    columns: OVERVIEW_COLUMNS,
+    rows: buildOverviewRows(d),
+    filename: `Обзор_${period === "custom" ? `${customFrom}_${customTo}` : period}`,
+  });
 }

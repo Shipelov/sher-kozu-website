@@ -539,6 +539,107 @@ export const milkReceptionRouter = router({
         pageSize: input.pageSize,
       };
     }),
+
+  /**
+   * Export data: all receptions in a date range (no pagination, max 5000).
+   * Used by client-side Excel/PDF export.
+   */
+  reportData: publicProcedure
+    .input(
+      z.object({
+        dateFrom: z.string(),
+        dateTo: z.string(),
+      }),
+    )
+    .query(async ({ input, ctx }) => {
+      requireCheesemaker(ctx.req);
+      const db = await getDb();
+
+      const fromDate = new Date(input.dateFrom + "T00:00:00");
+      const toDate = new Date(input.dateTo + "T23:59:59");
+
+      const receptions = await db
+        .select({
+          id: milkReceptions.id,
+          sessionId: milkReceptions.sessionId,
+          milkType: milkReceptions.milkType,
+          acceptedVolumeMl: milkReceptions.acceptedVolumeMl,
+          rejectedVolumeMl: milkReceptions.rejectedVolumeMl,
+          status: milkReceptions.status,
+          rejectionReason: milkReceptions.rejectionReason,
+          note: milkReceptions.note,
+          createdAt: milkReceptions.createdAt,
+          sessionCode: milkSessions.sessionCode,
+          milkingDate: milkSessions.milkingDate,
+          shift: milkSessions.shift,
+        })
+        .from(milkReceptions)
+        .leftJoin(milkSessions, eq(milkReceptions.sessionId, milkSessions.id))
+        .where(
+          and(
+            sql`${milkReceptions.createdAt} >= ${fromDate}`,
+            sql`${milkReceptions.createdAt} <= ${toDate}`,
+          ),
+        )
+        .orderBy(desc(milkReceptions.createdAt))
+        .limit(5000);
+
+      // Tank movements in the same period
+      const movements = await db
+        .select({
+          id: milkTankMovements.id,
+          tankId: milkTankMovements.tankId,
+          movementType: milkTankMovements.movementType,
+          volumeMl: milkTankMovements.volumeMl,
+          tankVolumeAfterMl: milkTankMovements.tankVolumeAfterMl,
+          note: milkTankMovements.note,
+          createdAt: milkTankMovements.createdAt,
+          tankName: milkTanks.name,
+          milkType: milkTanks.milkType,
+        })
+        .from(milkTankMovements)
+        .leftJoin(milkTanks, eq(milkTankMovements.tankId, milkTanks.id))
+        .where(
+          and(
+            sql`${milkTankMovements.createdAt} >= ${fromDate}`,
+            sql`${milkTankMovements.createdAt} <= ${toDate}`,
+          ),
+        )
+        .orderBy(desc(milkTankMovements.createdAt))
+        .limit(5000);
+
+      return {
+        receptions: receptions.map((r: any) => ({
+          id: r.id,
+          sessionCode: r.sessionCode ?? "—",
+          milkingDate: r.milkingDate ?? "—",
+          shift: r.shift ?? "morning",
+          milkType: r.milkType,
+          milkTypeLabel: MILK_TYPE_LABELS[r.milkType] ?? r.milkType,
+          acceptedVolumeMl: r.acceptedVolumeMl,
+          acceptedVolumeLiters: +(r.acceptedVolumeMl / 1000).toFixed(2),
+          rejectedVolumeMl: r.rejectedVolumeMl,
+          rejectedVolumeLiters: +(r.rejectedVolumeMl / 1000).toFixed(2),
+          status: r.status,
+          rejectionReason: r.rejectionReason,
+          note: r.note,
+          createdAt: r.createdAt.toISOString(),
+        })),
+        movements: movements.map((m: any) => ({
+          id: m.id,
+          tankName: m.tankName ?? `Танк #${m.tankId}`,
+          milkType: m.milkType ?? "unknown",
+          milkTypeLabel: MILK_TYPE_LABELS[m.milkType] ?? m.milkType,
+          movementType: m.movementType,
+          volumeMl: m.volumeMl,
+          volumeLiters: +(m.volumeMl / 1000).toFixed(2),
+          tankVolumeAfterMl: m.tankVolumeAfterMl,
+          tankVolumeAfterLiters: +(m.tankVolumeAfterMl / 1000).toFixed(2),
+          note: m.note,
+          createdAt: m.createdAt.toISOString(),
+        })),
+      };
+    }),
 });
 
 // ─── Milk Tank Router ───────────────────────────────────────

@@ -7,7 +7,7 @@
  * - Viewing reception history with milkType labels
  */
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
@@ -28,9 +28,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
+  CalendarRange,
   Check,
   Clock,
   Container,
+  Download,
+  FileSpreadsheet,
+  FileText,
   History,
   Loader2,
   LogOut,
@@ -40,6 +44,16 @@ import {
   X,
 } from "lucide-react";
 import { toast } from "sonner";
+import {
+  exportExcel,
+  exportPDF,
+  fmtDate,
+  fmtShift,
+  fmtStatus,
+  periodSubtitle,
+  getPresetDates,
+  type ReportColumn,
+} from "@/lib/reportExport";
 
 const MILK_TYPE_EMOJI: Record<string, string> = {
   goat: "🐐",
@@ -64,7 +78,22 @@ const TANK_STATUS_MAP: Record<string, { label: string; color: string }> = {
 
 export default function FarmCheesemakerArm() {
   const [, navigate] = useLocation();
-  const [view, setView] = useState<"reception" | "tanks" | "history">("reception");
+  const [view, setView] = useState<"reception" | "tanks" | "history" | "report">("reception");
+
+  // ─── Report state ───
+  const [reportPreset, setReportPreset] = useState<"today" | "week" | "month" | "custom">("week");
+  const [reportFrom, setReportFrom] = useState("");
+  const [reportTo, setReportTo] = useState("");
+
+  const reportDates = useMemo(() => {
+    if (reportPreset === "custom") return { from: reportFrom, to: reportTo };
+    return getPresetDates(reportPreset);
+  }, [reportPreset, reportFrom, reportTo]);
+
+  const reportQuery = trpc.milkReception.reportData.useQuery(
+    { dateFrom: reportDates.from, dateTo: reportDates.to },
+    { enabled: view === "report" && !!reportDates.from && !!reportDates.to },
+  );
 
   // ─── Auth ───
   const meQuery = trpc.farmAuth.me.useQuery(undefined, {
@@ -255,6 +284,14 @@ export default function FarmCheesemakerArm() {
         >
           <History className="w-4 h-4 inline-block mr-1 -mt-0.5" />
           История
+        </button>
+        <button
+          onClick={() => setView("report")}
+          className={`flex-1 py-3 text-xs font-medium text-center touch-manipulation transition-colors
+            ${view === "report" ? "text-[oklch(0.40_0.12_80)] border-b-2 border-[oklch(0.40_0.12_80)]" : "text-[oklch(0.52_0.04_80)]"}`}
+        >
+          <Download className="w-4 h-4 inline-block mr-1 -mt-0.5" />
+          Отчёт
         </button>
       </div>
 
@@ -503,6 +540,166 @@ export default function FarmCheesemakerArm() {
         )}
       </div>
 
+      {/* ── Report view ── */}
+      {view === "report" && (
+        <div className="p-4 space-y-4">
+          <h2 className="text-base font-semibold text-[oklch(0.22_0.04_60)]">
+            Отчёт сыродела
+          </h2>
+
+          {/* Period selector */}
+          <div className="space-y-3">
+            <div className="flex gap-1 bg-[oklch(0.96_0.01_90)] rounded-lg p-1">
+              {(["today", "week", "month", "custom"] as const).map((p) => (
+                <button
+                  key={p}
+                  onClick={() => setReportPreset(p)}
+                  className={`flex-1 flex items-center justify-center gap-1 px-2 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                    reportPreset === p
+                      ? "bg-white text-[oklch(0.22_0.04_60)] shadow-sm"
+                      : "text-[oklch(0.5_0.04_80)]"
+                  }`}
+                >
+                  {p === "custom" && <CalendarRange className="w-3 h-3" />}
+                  {p === "today" ? "Сегодня" : p === "week" ? "Неделя" : p === "month" ? "Месяц" : "Период"}
+                </button>
+              ))}
+            </div>
+
+            {reportPreset === "custom" && (
+              <div className="flex items-center gap-2">
+                <input
+                  type="date"
+                  value={reportFrom}
+                  onChange={(e) => setReportFrom(e.target.value)}
+                  className="flex-1 border rounded-md px-2 py-1.5 text-sm bg-white"
+                />
+                <span className="text-xs text-[oklch(0.52_0.04_80)]">—</span>
+                <input
+                  type="date"
+                  value={reportTo}
+                  onChange={(e) => setReportTo(e.target.value)}
+                  className="flex-1 border rounded-md px-2 py-1.5 text-sm bg-white"
+                />
+              </div>
+            )}
+          </div>
+
+          {/* Status */}
+          {reportQuery.isLoading && (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-5 w-5 animate-spin text-[oklch(0.5_0.04_80)]" />
+              <span className="ml-2 text-sm text-[oklch(0.52_0.04_80)]">Загрузка данных...</span>
+            </div>
+          )}
+
+          {reportQuery.data && (
+            <div className="space-y-4">
+              <p className="text-sm text-[oklch(0.52_0.04_80)]">
+                Приёмок: <span className="font-semibold text-[oklch(0.22_0.04_60)]">{reportQuery.data.receptions.length}</span>,{" "}
+                движений по танкам: <span className="font-semibold text-[oklch(0.22_0.04_60)]">{reportQuery.data.movements.length}</span>
+              </p>
+
+              {/* Download buttons */}
+              <div className="flex gap-3">
+                <Button
+                  onClick={() => exportCheesemakerExcel(reportQuery.data!, reportDates.from, reportDates.to)}
+                  variant="outline"
+                  className="flex-1 h-12 rounded-xl border-[oklch(0.40_0.12_80)] text-[oklch(0.40_0.12_80)]"
+                >
+                  <FileSpreadsheet className="w-4 h-4 mr-2" />
+                  Excel
+                </Button>
+                <Button
+                  onClick={() => exportCheesemakerPDF(reportQuery.data!, reportDates.from, reportDates.to)}
+                  variant="outline"
+                  className="flex-1 h-12 rounded-xl border-[oklch(0.40_0.12_80)] text-[oklch(0.40_0.12_80)]"
+                >
+                  <FileText className="w-4 h-4 mr-2" />
+                  PDF
+                </Button>
+              </div>
+
+              {/* Receptions preview */}
+              {reportQuery.data.receptions.length > 0 && (
+                <div>
+                  <h3 className="text-sm font-semibold text-[oklch(0.22_0.04_60)] mb-2">Приёмка молока</h3>
+                  <div className="border rounded-lg overflow-x-auto">
+                    <table className="w-full text-xs">
+                      <thead className="bg-[oklch(0.96_0.01_90)]">
+                        <tr>
+                          <th className="px-2 py-1.5 text-left font-semibold">Дата</th>
+                          <th className="px-2 py-1.5 text-left font-semibold">Тип</th>
+                          <th className="px-2 py-1.5 text-right font-semibold">Принято, л</th>
+                          <th className="px-2 py-1.5 text-left font-semibold">Статус</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y">
+                        {reportQuery.data.receptions.slice(0, 15).map((r: any) => (
+                          <tr key={r.id} className="hover:bg-[oklch(0.98_0.005_90)]">
+                            <td className="px-2 py-1.5">{fmtDate(r.createdAt)}</td>
+                            <td className="px-2 py-1.5">{MILK_TYPE_EMOJI[r.milkType]} {r.milkTypeLabel}</td>
+                            <td className="px-2 py-1.5 text-right font-medium text-emerald-700">{r.acceptedVolumeLiters}</td>
+                            <td className="px-2 py-1.5">{fmtStatus(r.status)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                    {reportQuery.data.receptions.length > 15 && (
+                      <p className="text-center text-[10px] text-[oklch(0.6_0.02_80)] py-1">
+                        Показано 15 из {reportQuery.data.receptions.length}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Movements preview */}
+              {reportQuery.data.movements.length > 0 && (
+                <div>
+                  <h3 className="text-sm font-semibold text-[oklch(0.22_0.04_60)] mb-2">Движения по танкам</h3>
+                  <div className="border rounded-lg overflow-x-auto">
+                    <table className="w-full text-xs">
+                      <thead className="bg-[oklch(0.96_0.01_90)]">
+                        <tr>
+                          <th className="px-2 py-1.5 text-left font-semibold">Дата</th>
+                          <th className="px-2 py-1.5 text-left font-semibold">Танк</th>
+                          <th className="px-2 py-1.5 text-left font-semibold">Тип</th>
+                          <th className="px-2 py-1.5 text-right font-semibold">Объём, л</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y">
+                        {reportQuery.data.movements.slice(0, 15).map((m: any) => (
+                          <tr key={m.id} className="hover:bg-[oklch(0.98_0.005_90)]">
+                            <td className="px-2 py-1.5">{fmtDate(m.createdAt)}</td>
+                            <td className="px-2 py-1.5">{m.tankName}</td>
+                            <td className="px-2 py-1.5">{MILK_TYPE_EMOJI[m.milkType]} {fmtMovementType(m.movementType)}</td>
+                            <td className={`px-2 py-1.5 text-right font-medium ${m.volumeMl >= 0 ? "text-emerald-700" : "text-red-600"}`}>
+                              {m.volumeLiters > 0 ? "+" : ""}{m.volumeLiters}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                    {reportQuery.data.movements.length > 15 && (
+                      <p className="text-center text-[10px] text-[oklch(0.6_0.02_80)] py-1">
+                        Показано 15 из {reportQuery.data.movements.length}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {reportPreset === "custom" && (!reportFrom || !reportTo) && (
+            <p className="text-sm text-center text-[oklch(0.52_0.04_80)] py-4">
+              Укажите начальную и конечную дату
+            </p>
+          )}
+        </div>
+      )}
+
       {/* ── Accept Dialog ── */}
       <Dialog open={!!acceptItem} onOpenChange={() => setAcceptItem(null)}>
         <DialogContent className="max-w-md max-h-[90dvh] overflow-y-auto">
@@ -743,4 +940,133 @@ export default function FarmCheesemakerArm() {
       </Dialog>
     </div>
   );
+}
+
+
+// ─── Report export helpers ──────────────────────────────────
+
+const MOVEMENT_TYPE_LABELS: Record<string, string> = {
+  milking_in: "Приёмка",
+  processing_out: "В переработку",
+  waste: "Списание",
+  sample: "Проба",
+  transfer: "Перелив",
+};
+
+function fmtMovementType(type: string): string {
+  return MOVEMENT_TYPE_LABELS[type] ?? type;
+}
+
+const RECEPTION_COLUMNS: ReportColumn[] = [
+  { header: "Дата", key: "date", width: 14 },
+  { header: "Код дойки", key: "sessionCode", width: 14 },
+  { header: "Дата дойки", key: "milkingDate", width: 12 },
+  { header: "Смена", key: "shift", width: 12 },
+  { header: "Тип молока", key: "milkType", width: 14 },
+  { header: "Принято (л)", key: "accepted", width: 12 },
+  { header: "Отклонено (л)", key: "rejected", width: 12 },
+  { header: "Статус", key: "status", width: 14 },
+  { header: "Причина отказа", key: "reason", width: 20 },
+  { header: "Примечание", key: "note", width: 20 },
+];
+
+const MOVEMENT_COLUMNS: ReportColumn[] = [
+  { header: "Дата", key: "date", width: 14 },
+  { header: "Танк", key: "tankName", width: 16 },
+  { header: "Тип молока", key: "milkType", width: 14 },
+  { header: "Операция", key: "movementType", width: 16 },
+  { header: "Объём (л)", key: "volume", width: 12 },
+  { header: "Остаток (л)", key: "tankAfter", width: 12 },
+  { header: "Примечание", key: "note", width: 20 },
+];
+
+function mapReceptionRow(r: any) {
+  return {
+    date: fmtDate(r.createdAt),
+    sessionCode: r.sessionCode,
+    milkingDate: fmtDate(r.milkingDate),
+    shift: fmtShift(r.shift),
+    milkType: r.milkTypeLabel,
+    accepted: r.acceptedVolumeLiters,
+    rejected: r.rejectedVolumeLiters ?? 0,
+    status: fmtStatus(r.status),
+    reason: r.rejectionReason ?? "",
+    note: r.note ?? "",
+  };
+}
+
+function mapMovementRow(m: any) {
+  return {
+    date: fmtDate(m.createdAt),
+    tankName: m.tankName,
+    milkType: m.milkTypeLabel,
+    movementType: fmtMovementType(m.movementType),
+    volume: m.volumeLiters,
+    tankAfter: m.tankVolumeAfterLiters,
+    note: m.note ?? "",
+  };
+}
+
+function exportCheesemakerExcel(
+  data: { receptions: any[]; movements: any[] },
+  from: string,
+  to: string,
+) {
+  // Export receptions sheet
+  const receptionRows = data.receptions.map(mapReceptionRow);
+  const totalAccepted = receptionRows.reduce((a, r) => a + (Number(r.accepted) || 0), 0);
+  const totalRejected = receptionRows.reduce((a, r) => a + (Number(r.rejected) || 0), 0);
+
+  exportExcel({
+    title: "Отчёт сыродела — Приёмка — Шерь Козу",
+    subtitle: periodSubtitle(from, to),
+    columns: RECEPTION_COLUMNS,
+    rows: receptionRows,
+    summaryRows: [{
+      date: "ИТОГО",
+      sessionCode: `${data.receptions.length} приёмок`,
+      milkingDate: "", shift: "", milkType: "",
+      accepted: +totalAccepted.toFixed(2),
+      rejected: +totalRejected.toFixed(2),
+      status: "", reason: "", note: "",
+    }],
+    filename: `Приёмка_${from}_${to}`,
+  });
+
+  // Also export movements if any
+  if (data.movements.length > 0) {
+    exportExcel({
+      title: "Отчёт сыродела — Движения по танкам — Шерь Козу",
+      subtitle: periodSubtitle(from, to),
+      columns: MOVEMENT_COLUMNS,
+      rows: data.movements.map(mapMovementRow),
+      filename: `Танки_${from}_${to}`,
+    });
+  }
+}
+
+function exportCheesemakerPDF(
+  data: { receptions: any[]; movements: any[] },
+  from: string,
+  to: string,
+) {
+  const receptionRows = data.receptions.map(mapReceptionRow);
+  const totalAccepted = receptionRows.reduce((a, r) => a + (Number(r.accepted) || 0), 0);
+  const totalRejected = receptionRows.reduce((a, r) => a + (Number(r.rejected) || 0), 0);
+
+  exportPDF({
+    title: "Отчёт сыродела — Приёмка — Шерь Козу",
+    subtitle: periodSubtitle(from, to),
+    columns: RECEPTION_COLUMNS,
+    rows: receptionRows,
+    summaryRows: [{
+      date: "ИТОГО",
+      sessionCode: `${data.receptions.length} приёмок`,
+      milkingDate: "", shift: "", milkType: "",
+      accepted: +totalAccepted.toFixed(2),
+      rejected: +totalRejected.toFixed(2),
+      status: "", reason: "", note: "",
+    }],
+    filename: `Приёмка_${from}_${to}`,
+  });
 }

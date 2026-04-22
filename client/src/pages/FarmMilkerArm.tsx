@@ -12,15 +12,19 @@
  * Pending sessions can be edited or cancelled from history.
  */
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
+  CalendarRange,
   Check,
   Clock,
+  Download,
   Droplets,
+  FileSpreadsheet,
+  FileText,
   History,
   Loader2,
   LogOut,
@@ -33,6 +37,16 @@ import {
   X,
 } from "lucide-react";
 import { toast } from "sonner";
+import {
+  exportExcel,
+  exportPDF,
+  fmtDate,
+  fmtShift,
+  fmtStatus,
+  periodSubtitle,
+  getPresetDates,
+  type ReportColumn,
+} from "@/lib/reportExport";
 
 const SHIFT_OPTIONS = [
   { value: "morning" as const, label: "Утренняя", emoji: "🌅" },
@@ -344,7 +358,22 @@ function EditAnimalBlock({
 
 export default function FarmMilkerArm() {
   const [, navigate] = useLocation();
-  const [view, setView] = useState<"form" | "history">("form");
+  const [view, setView] = useState<"form" | "history" | "report">("form");
+
+  // ─── Report state ───
+  const [reportPreset, setReportPreset] = useState<"today" | "week" | "month" | "custom">("week");
+  const [reportFrom, setReportFrom] = useState("");
+  const [reportTo, setReportTo] = useState("");
+
+  const reportDates = useMemo(() => {
+    if (reportPreset === "custom") return { from: reportFrom, to: reportTo };
+    return getPresetDates(reportPreset);
+  }, [reportPreset, reportFrom, reportTo]);
+
+  const reportQuery = trpc.milkSession.reportData.useQuery(
+    { dateFrom: reportDates.from, dateTo: reportDates.to },
+    { enabled: view === "report" && !!reportDates.from && !!reportDates.to },
+  );
 
   // ─── Auth ───
   const meQuery = trpc.farmAuth.me.useQuery(undefined, {
@@ -621,6 +650,14 @@ export default function FarmMilkerArm() {
         >
           <History className="w-4 h-4 inline-block mr-1.5 -mt-0.5" />
           История
+        </button>
+        <button
+          onClick={() => setView("report")}
+          className={`flex-1 py-3 text-sm font-medium text-center touch-manipulation transition-colors
+            ${view === "report" ? "text-[oklch(0.35_0.12_150)] border-b-2 border-[oklch(0.35_0.12_150)]" : "text-[oklch(0.52_0.04_80)]"}`}
+        >
+          <Download className="w-4 h-4 inline-block mr-1.5 -mt-0.5" />
+          Отчёт
         </button>
       </div>
 
@@ -997,6 +1034,129 @@ export default function FarmMilkerArm() {
         </div>
       )}
 
+      {/* ── Report view ── */}
+      {view === "report" && (
+        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+          <h2 className="text-base font-semibold text-[oklch(0.22_0.04_60)]">
+            Отчёт по дойкам
+          </h2>
+
+          {/* Period selector */}
+          <div className="space-y-3">
+            <div className="flex gap-1 bg-[oklch(0.96_0.01_90)] rounded-lg p-1">
+              {(["today", "week", "month", "custom"] as const).map((p) => (
+                <button
+                  key={p}
+                  onClick={() => setReportPreset(p)}
+                  className={`flex-1 flex items-center justify-center gap-1 px-2 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                    reportPreset === p
+                      ? "bg-white text-[oklch(0.22_0.04_60)] shadow-sm"
+                      : "text-[oklch(0.5_0.04_80)]"
+                  }`}
+                >
+                  {p === "custom" && <CalendarRange className="w-3 h-3" />}
+                  {p === "today" ? "Сегодня" : p === "week" ? "Неделя" : p === "month" ? "Месяц" : "Период"}
+                </button>
+              ))}
+            </div>
+
+            {reportPreset === "custom" && (
+              <div className="flex items-center gap-2">
+                <input
+                  type="date"
+                  value={reportFrom}
+                  onChange={(e) => setReportFrom(e.target.value)}
+                  className="flex-1 border rounded-md px-2 py-1.5 text-sm bg-white"
+                />
+                <span className="text-xs text-[oklch(0.52_0.04_80)]">—</span>
+                <input
+                  type="date"
+                  value={reportTo}
+                  onChange={(e) => setReportTo(e.target.value)}
+                  className="flex-1 border rounded-md px-2 py-1.5 text-sm bg-white"
+                />
+              </div>
+            )}
+          </div>
+
+          {/* Status */}
+          {reportQuery.isLoading && (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-5 w-5 animate-spin text-[oklch(0.5_0.04_80)]" />
+              <span className="ml-2 text-sm text-[oklch(0.52_0.04_80)]">Загрузка данных...</span>
+            </div>
+          )}
+
+          {reportQuery.data && (
+            <div className="space-y-3">
+              <p className="text-sm text-[oklch(0.52_0.04_80)]">
+                Найдено доек: <span className="font-semibold text-[oklch(0.22_0.04_60)]">{reportQuery.data.sessions.length}</span>
+                {" "}за {periodSubtitle(reportDates.from, reportDates.to).replace("Период: ", "")}
+              </p>
+
+              {/* Download buttons */}
+              <div className="flex gap-3">
+                <Button
+                  onClick={() => exportMilkerExcel(reportQuery.data!.sessions, reportDates.from, reportDates.to)}
+                  variant="outline"
+                  className="flex-1 h-12 rounded-xl border-[oklch(0.35_0.12_150)] text-[oklch(0.35_0.12_150)]"
+                >
+                  <FileSpreadsheet className="w-4 h-4 mr-2" />
+                  Excel
+                </Button>
+                <Button
+                  onClick={() => exportMilkerPDF(reportQuery.data!.sessions, reportDates.from, reportDates.to)}
+                  variant="outline"
+                  className="flex-1 h-12 rounded-xl border-[oklch(0.35_0.12_150)] text-[oklch(0.35_0.12_150)]"
+                >
+                  <FileText className="w-4 h-4 mr-2" />
+                  PDF
+                </Button>
+              </div>
+
+              {/* Preview table */}
+              {reportQuery.data.sessions.length > 0 && (
+                <div className="border rounded-lg overflow-x-auto">
+                  <table className="w-full text-xs">
+                    <thead className="bg-[oklch(0.96_0.01_90)]">
+                      <tr>
+                        <th className="px-2 py-1.5 text-left font-semibold">Дата</th>
+                        <th className="px-2 py-1.5 text-left font-semibold">Смена</th>
+                        <th className="px-2 py-1.5 text-right font-semibold">Надой, л</th>
+                        <th className="px-2 py-1.5 text-right font-semibold">Нетто, л</th>
+                        <th className="px-2 py-1.5 text-left font-semibold">Статус</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y">
+                      {reportQuery.data.sessions.slice(0, 20).map((s: any) => (
+                        <tr key={s.id} className="hover:bg-[oklch(0.98_0.005_90)]">
+                          <td className="px-2 py-1.5">{fmtDate(s.milkingDate)}</td>
+                          <td className="px-2 py-1.5">{fmtShift(s.shift)}</td>
+                          <td className="px-2 py-1.5 text-right font-medium">{s.totalVolumeLiters}</td>
+                          <td className="px-2 py-1.5 text-right font-medium text-[oklch(0.30_0.12_150)]">{s.netVolumeLiters}</td>
+                          <td className="px-2 py-1.5">{fmtStatus(s.status)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  {reportQuery.data.sessions.length > 20 && (
+                    <p className="text-center text-[10px] text-[oklch(0.6_0.02_80)] py-1">
+                      Показано 20 из {reportQuery.data.sessions.length} — скачайте файл для полного отчёта
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
+          {reportPreset === "custom" && (!reportFrom || !reportTo) && (
+            <p className="text-sm text-center text-[oklch(0.52_0.04_80)] py-4">
+              Укажите начальную и конечную дату
+            </p>
+          )}
+        </div>
+      )}
+
       {/* ── Bottom submit button (only on form view) ── */}
       {view === "form" && (
         <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-[oklch(0.9_0.02_90)] px-4 py-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
@@ -1024,4 +1184,106 @@ export default function FarmMilkerArm() {
       )}
     </div>
   );
+}
+
+// ─── Report export helpers ──────────────────────────────────
+
+const MILKER_COLUMNS: ReportColumn[] = [
+  { header: "Дата", key: "date", width: 12 },
+  { header: "Смена", key: "shift", width: 12 },
+  { header: "Дояр", key: "worker", width: 16 },
+  { header: "Козы (гол)", key: "goatHeads", width: 10 },
+  { header: "Козы (л)", key: "goatVolume", width: 10 },
+  { header: "Козы выпойка", key: "goatFeeding", width: 12 },
+  { header: "Козы потери", key: "goatLosses", width: 12 },
+  { header: "Козы нетто", key: "goatNet", width: 10 },
+  { header: "Овцы (гол)", key: "sheepHeads", width: 10 },
+  { header: "Овцы (л)", key: "sheepVolume", width: 10 },
+  { header: "Овцы выпойка", key: "sheepFeeding", width: 12 },
+  { header: "Овцы потери", key: "sheepLosses", width: 12 },
+  { header: "Овцы нетто", key: "sheepNet", width: 10 },
+  { header: "Коровы (гол)", key: "cowHeads", width: 10 },
+  { header: "Коровы (л)", key: "cowVolume", width: 10 },
+  { header: "Коровы выпойка", key: "cowFeeding", width: 14 },
+  { header: "Коровы потери", key: "cowLosses", width: 12 },
+  { header: "Коровы нетто", key: "cowNet", width: 10 },
+  { header: "Всего (л)", key: "totalVolume", width: 10 },
+  { header: "Нетто (л)", key: "netVolume", width: 10 },
+  { header: "Статус", key: "status", width: 14 },
+];
+
+function mapSessionRow(s: any) {
+  return {
+    date: fmtDate(s.milkingDate),
+    shift: fmtShift(s.shift),
+    worker: s.workerName ?? "—",
+    goatHeads: s.goat?.headCount ?? 0,
+    goatVolume: s.goat?.volumeLiters ?? 0,
+    goatFeeding: s.goat?.feedingLiters ?? 0,
+    goatLosses: s.goat?.lossesLiters ?? 0,
+    goatNet: s.goat?.netLiters ?? 0,
+    sheepHeads: s.sheep?.headCount ?? 0,
+    sheepVolume: s.sheep?.volumeLiters ?? 0,
+    sheepFeeding: s.sheep?.feedingLiters ?? 0,
+    sheepLosses: s.sheep?.lossesLiters ?? 0,
+    sheepNet: s.sheep?.netLiters ?? 0,
+    cowHeads: s.cow?.headCount ?? 0,
+    cowVolume: s.cow?.volumeLiters ?? 0,
+    cowFeeding: s.cow?.feedingLiters ?? 0,
+    cowLosses: s.cow?.lossesLiters ?? 0,
+    cowNet: s.cow?.netLiters ?? 0,
+    totalVolume: s.totalVolumeLiters ?? 0,
+    netVolume: s.netVolumeLiters ?? 0,
+    status: fmtStatus(s.status),
+  };
+}
+
+function computeSummary(sessions: any[]) {
+  const rows = sessions.map(mapSessionRow) as Record<string, any>[];
+  const sum = (key: string) => rows.reduce((a, r) => a + (Number(r[key]) || 0), 0);
+  return {
+    date: "ИТОГО",
+    shift: "",
+    worker: `${sessions.length} доек`,
+    goatHeads: "",
+    goatVolume: +sum("goatVolume").toFixed(2),
+    goatFeeding: +sum("goatFeeding").toFixed(2),
+    goatLosses: +sum("goatLosses").toFixed(2),
+    goatNet: +sum("goatNet").toFixed(2),
+    sheepHeads: "",
+    sheepVolume: +sum("sheepVolume").toFixed(2),
+    sheepFeeding: +sum("sheepFeeding").toFixed(2),
+    sheepLosses: +sum("sheepLosses").toFixed(2),
+    sheepNet: +sum("sheepNet").toFixed(2),
+    cowHeads: "",
+    cowVolume: +sum("cowVolume").toFixed(2),
+    cowFeeding: +sum("cowFeeding").toFixed(2),
+    cowLosses: +sum("cowLosses").toFixed(2),
+    cowNet: +sum("cowNet").toFixed(2),
+    totalVolume: +sum("totalVolume").toFixed(2),
+    netVolume: +sum("netVolume").toFixed(2),
+    status: "",
+  };
+}
+
+function exportMilkerExcel(sessions: any[], from: string, to: string) {
+  exportExcel({
+    title: "Отчёт по дойкам — Шерь Козу",
+    subtitle: periodSubtitle(from, to),
+    columns: MILKER_COLUMNS,
+    rows: sessions.map(mapSessionRow),
+    summaryRows: [computeSummary(sessions)],
+    filename: `Дойки_${from}_${to}`,
+  });
+}
+
+function exportMilkerPDF(sessions: any[], from: string, to: string) {
+  exportPDF({
+    title: "Отчёт по дойкам — Шерь Козу",
+    subtitle: periodSubtitle(from, to),
+    columns: MILKER_COLUMNS,
+    rows: sessions.map(mapSessionRow),
+    summaryRows: [computeSummary(sessions)],
+    filename: `Дойки_${from}_${to}`,
+  });
 }

@@ -16,9 +16,9 @@ import { z } from "zod";
 import { router, publicProcedure } from "../_core/trpc";
 import { TRPCError } from "@trpc/server";
 import { verifyFarmToken, FARM_COOKIE_NAME, logMilkAudit } from "../farmAuth";
-import { milkSessions } from "../../drizzle/schema";
+import { milkSessions, farmWorkers } from "../../drizzle/schema";
 import { getDb } from "../db";
-import { eq, and, desc, sql } from "drizzle-orm";
+import { eq, and, desc, sql, inArray } from "drizzle-orm";
 
 // ─── Helper: extract farm worker from request cookie ─────────
 
@@ -470,6 +470,52 @@ export const milkSessionRouter = router({
         total: Number(countResult.count),
         page: input.page,
         pageSize: input.pageSize,
+      };
+    }),
+
+  /**
+   * Export data: all sessions in a date range (no pagination, max 5000).
+   * Used by client-side Excel/PDF export.
+   */
+  reportData: publicProcedure
+    .input(
+      z.object({
+        dateFrom: z.string(),
+        dateTo: z.string(),
+      }),
+    )
+    .query(async ({ input, ctx }) => {
+      requireFarmWorker(ctx.req);
+      const db = await getDb();
+
+      const sessions = await db
+        .select()
+        .from(milkSessions)
+        .where(
+          and(
+            sql`${milkSessions.milkingDate} >= ${input.dateFrom}`,
+            sql`${milkSessions.milkingDate} <= ${input.dateTo}`,
+          ),
+        )
+        .orderBy(desc(milkSessions.createdAt))
+        .limit(5000);
+
+      // Also fetch worker names for display
+      const workerIds: number[] = Array.from(new Set(sessions.map((s: any) => s.workerId as number).filter(Boolean)));
+      let workerMap: Record<number, string> = {};
+      if (workerIds.length > 0) {
+        const workers = await db
+          .select({ id: farmWorkers.id, name: farmWorkers.name })
+          .from(farmWorkers)
+          .where(inArray(farmWorkers.id, workerIds));
+        workerMap = Object.fromEntries(workers.map((w: any) => [w.id, w.name]));
+      }
+
+      return {
+        sessions: sessions.map((s: any) => ({
+          ...formatSession(s),
+          workerName: workerMap[s.workerId] ?? `Дояр #${s.workerId}`,
+        })),
       };
     }),
 });
