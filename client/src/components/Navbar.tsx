@@ -47,7 +47,7 @@ export default function Navbar() {
   const touchStartY = useRef<number | null>(null);
   const [showScrollHint, setShowScrollHint] = useState(false);
   const animalsQuery = trpc.animals.listPublic.useQuery();
-  const { user, isAuthenticated, loading: authLoading, logout } = useAuth();
+  const { user, isAuthenticated, loading: authLoading, isError: authError, logout } = useAuth();
 
   // Auth modal state
   const [authModalOpen, setAuthModalOpen] = useState(false);
@@ -285,8 +285,8 @@ export default function Navbar() {
               </div>
             )}
 
-            {/* Auth section */}
-            {authLoading ? (
+            {/* Auth section — always shows either skeleton, avatar, or guest buttons; NEVER blank */}
+            {authLoading && !authError ? (
               <div className="hidden h-9 w-24 animate-pulse rounded-full bg-muted sm:block" />
             ) : isAuthenticated && user ? (
               /* Authenticated: avatar + dropdown */
