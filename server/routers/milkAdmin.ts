@@ -630,6 +630,9 @@ export const milkAdminRouter = router({
               movementType: "waste",
               volumeMl: -r.acceptedVolumeMl,
               tankVolumeAfterMl: newVol,
+              performedByWorkerId: r.receivedByWorkerId ?? 0,
+              sessionId: input.sessionId,
+              receptionId: r.id,
               note: `Отмена приёмки (админ): ${session.sessionCode}`,
             });
           }

@@ -2541,3 +2541,4 @@ Module: Контроль оборота молока. Spec v2.1. Mobile-first AR
 - [x] Set up GitHub SSH deploy key on VDS for automatic git pull
 - [x] Add /api/health endpoint for DB monitoring
 - [x] Configure PM2 daily cron-restart as memory leak safeguard
+- [x] Fix: delete session error in Admin Milk Dashboard - Дойки tab (missing performedByWorkerId in milkTankMovements insert)
