@@ -157,6 +157,54 @@ async function startServer() {
     });
   });
 
+  // ── Health-check endpoint for monitoring ──
+  app.get("/api/health", async (_req, res) => {
+    const start = Date.now();
+    const status: {
+      status: string;
+      uptime: number;
+      timestamp: string;
+      db: { status: string; latencyMs?: number; error?: string };
+      memory: { rss: string; heapUsed: string; heapTotal: string };
+    } = {
+      status: "ok",
+      uptime: Math.floor(process.uptime()),
+      timestamp: new Date().toISOString(),
+      db: { status: "unknown" },
+      memory: {
+        rss: `${Math.round(process.memoryUsage().rss / 1024 / 1024)} MB`,
+        heapUsed: `${Math.round(process.memoryUsage().heapUsed / 1024 / 1024)} MB`,
+        heapTotal: `${Math.round(process.memoryUsage().heapTotal / 1024 / 1024)} MB`,
+      },
+    };
+
+    try {
+      const { getDb } = await import("../db");
+      const db = await getDb();
+      if (db) {
+        const dbStart = Date.now();
+        await db.execute(/* sql */ `SELECT 1`);
+        status.db = {
+          status: "connected",
+          latencyMs: Date.now() - dbStart,
+        };
+      } else {
+        status.db = { status: "unavailable", error: "No DATABASE_URL configured" };
+        status.status = "degraded";
+      }
+    } catch (err: any) {
+      status.db = {
+        status: "error",
+        latencyMs: Date.now() - start,
+        error: err?.code || err?.message || "Unknown DB error",
+      };
+      status.status = "degraded";
+    }
+
+    const httpCode = status.status === "ok" ? 200 : 503;
+    res.status(httpCode).json(status);
+  });
+
   // Analytics beacon endpoint (for sendBeacon on page unload)
   app.post("/api/analytics/time", async (req, res) => {
     try {

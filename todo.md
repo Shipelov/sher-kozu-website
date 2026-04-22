@@ -2538,3 +2538,6 @@ Module: Контроль оборота молока. Spec v2.1. Mobile-first AR
 - [x] Fix: useAuth.ts — replaced stub logoutMutation with real trpc.auth.logout.useMutation(), added retry for auth.me
 - [x] Fix: context.ts — added withRetry for authenticateRequest to handle transient DB timeouts
 - [x] Full site audit: identified root cause as stale DB pool connections causing 500 errors on all API calls
+- [x] Set up GitHub SSH deploy key on VDS for automatic git pull
+- [x] Add /api/health endpoint for DB monitoring
+- [x] Configure PM2 daily cron-restart as memory leak safeguard
