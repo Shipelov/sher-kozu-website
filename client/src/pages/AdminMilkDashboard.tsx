@@ -306,6 +306,20 @@ export default function AdminMilkDashboard() {
                   <StatCard label="🐐 Козы" value={overview.today.goatHeads} sub={`${overview.today.volume.goatLiters} л`} />
                   <StatCard label="🐑 Овцы" value={overview.today.sheepHeads} sub={`${overview.today.volume.sheepLiters} л`} />
                   <StatCard label="🐄 Коровы" value={overview.today.cowHeads} sub={`${overview.today.volume.cowLiters} л`} />
+                  <StatCard
+                    label="Выпойка"
+                    value={`${overview.today.feedingLiters} л`}
+                  />
+                  <StatCard
+                    label="Потери"
+                    value={`${overview.today.lossesLiters} л`}
+                    warn={overview.today.lossesLiters > 0}
+                  />
+                  <StatCard
+                    label="Сыроделу (нетто)"
+                    value={`${overview.today.netLiters} л`}
+                    accent
+                  />
                 </div>
               </div>
 
@@ -317,9 +331,21 @@ export default function AdminMilkDashboard() {
                   sub={`Всего: ${overview.week.volume.totalLiters} л`}
                 />
                 <StatCard
+                  label="Неделя (нетто)"
+                  value={`${overview.week.netLiters} л`}
+                  sub={`Вып: ${overview.week.feedingLiters}л · Пот: ${overview.week.lossesLiters}л`}
+                  accent
+                />
+                <StatCard
                   label="Месяц (дойки)"
                   value={overview.month.sessions}
                   sub={`Всего: ${overview.month.volume.totalLiters} л`}
+                />
+                <StatCard
+                  label="Месяц (нетто)"
+                  value={`${overview.month.netLiters} л`}
+                  sub={`Вып: ${overview.month.feedingLiters}л · Пот: ${overview.month.lossesLiters}л`}
+                  accent
                 />
                 <StatCard
                   label="Ожидают подтверждения"

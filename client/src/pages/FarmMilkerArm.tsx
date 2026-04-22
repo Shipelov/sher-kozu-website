@@ -12,7 +12,7 @@
  * Pending sessions can be edited or cancelled from history.
  */
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
@@ -52,11 +52,294 @@ function parseMl(s: string): number {
   return isNaN(n) || n < 0 ? 0 : Math.round(n * 1000);
 }
 
-/** Validate volume input: allow digits, one dot/comma, up to 2 decimals */
-function sanitizeVolume(raw: string): string | null {
-  const cleaned = raw.replace(",", ".");
-  if (cleaned === "" || /^\d{0,4}\.?\d{0,2}$/.test(cleaned)) return cleaned;
-  return null;
+/**
+ * Sanitize volume input: strip non-numeric chars except dot/comma.
+ * Permissive during typing — allows intermediate states.
+ * Final validation happens on blur / submit via parseMl().
+ */
+function sanitizeVolume(raw: string): string {
+  // Replace comma with dot, strip anything that isn't digit or dot
+  let cleaned = raw.replace(/,/g, ".").replace(/[^\d.]/g, "");
+  // Keep only the first dot
+  const dotIdx = cleaned.indexOf(".");
+  if (dotIdx !== -1) {
+    cleaned = cleaned.slice(0, dotIdx + 1) + cleaned.slice(dotIdx + 1).replace(/\./g, "");
+  }
+  // Limit to 4 digits before dot, 2 after
+  const parts = cleaned.split(".");
+  if (parts[0] && parts[0].length > 4) parts[0] = parts[0].slice(0, 4);
+  if (parts[1] !== undefined && parts[1].length > 2) parts[1] = parts[1].slice(0, 2);
+  return parts.join(".");
+}
+
+// ─── Extracted components (outside main component to prevent re-mount on re-render) ───
+
+function VolumeInput({
+  value,
+  onChange,
+  placeholder,
+  label,
+}: {
+  value: string;
+  onChange: (s: string) => void;
+  placeholder?: string;
+  label?: string;
+}) {
+  return (
+    <div className="relative flex-1">
+      {label && (
+        <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[10px] text-[oklch(0.55_0.04_80)]">
+          {label}
+        </span>
+      )}
+      <input
+        type="text"
+        inputMode="decimal"
+        autoComplete="off"
+        autoCorrect="off"
+        spellCheck={false}
+        placeholder={placeholder ?? "0"}
+        value={value}
+        onChange={(e) => onChange(sanitizeVolume(e.target.value))}
+        className={`w-full h-10 text-base font-bold text-center rounded-lg pr-7 ${label ? "pl-14" : "pl-3"}
+                   border border-[oklch(0.88_0.02_90)] bg-[oklch(0.98_0.01_90)]
+                   focus:border-[oklch(0.35_0.12_150)] focus:ring-1 focus:ring-[oklch(0.35_0.12_150)]
+                   focus:outline-none`}
+      />
+      <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-[oklch(0.52_0.04_80)]">
+        л
+      </span>
+    </div>
+  );
+}
+
+function AnimalBlock({
+  emoji,
+  label,
+  heads,
+  setHeads,
+  volumeL,
+  setVolumeL,
+  feedingL,
+  setFeedingL,
+  lossesL,
+  setLossesL,
+  valid,
+}: {
+  emoji: string;
+  label: string;
+  heads: number;
+  setHeads: (n: number) => void;
+  volumeL: string;
+  setVolumeL: (s: string) => void;
+  feedingL: string;
+  setFeedingL: (s: string) => void;
+  lossesL: string;
+  setLossesL: (s: string) => void;
+  valid: boolean;
+}) {
+  const volMl = parseMl(volumeL);
+  const feedMl = parseMl(feedingL);
+  const lossMl = parseMl(lossesL);
+  const netMl = volMl - feedMl - lossMl;
+  const overLimit = netMl < 0;
+
+  return (
+    <div className={`bg-white rounded-xl border ${!valid || overLimit ? "border-red-300" : "border-[oklch(0.88_0.02_90)]"} p-3 mb-3`}>
+      {/* Type label */}
+      <div className="flex items-center gap-2 mb-2">
+        <span className="text-xl">{emoji}</span>
+        <span className="text-sm font-semibold text-[oklch(0.3_0.04_60)]">{label}</span>
+        {volMl > 0 && (
+          <span className="ml-auto text-xs font-bold text-[oklch(0.35_0.12_150)]">
+            → Сыроделу: {(netMl / 1000).toFixed(1)} л
+          </span>
+        )}
+      </div>
+
+      {/* Row 1: Head counter + Total volume */}
+      <div className="flex items-center gap-3 mb-2">
+        {/* Head counter */}
+        <div className="flex items-center gap-1.5">
+          <button
+            onClick={() => setHeads(Math.max(0, heads - 1))}
+            className="w-10 h-10 rounded-lg bg-[oklch(0.94_0.02_90)] flex items-center justify-center
+                       active:bg-[oklch(0.88_0.02_90)] touch-manipulation"
+          >
+            <Minus className="w-4 h-4 text-[oklch(0.4_0.04_80)]" />
+          </button>
+          <span className="w-8 text-center text-lg font-bold text-[oklch(0.22_0.04_60)] tabular-nums">
+            {heads}
+          </span>
+          <button
+            onClick={() => setHeads(heads + 1)}
+            className="w-10 h-10 rounded-lg bg-[oklch(0.35_0.12_150)] flex items-center justify-center
+                       active:bg-[oklch(0.30_0.12_150)] touch-manipulation"
+          >
+            <Plus className="w-4 h-4 text-white" />
+          </button>
+          <span className="text-[10px] text-[oklch(0.6_0.02_80)]">гол.</span>
+        </div>
+
+        {/* Separator */}
+        <div className="w-px h-8 bg-[oklch(0.9_0.02_90)]" />
+
+        {/* Total volume */}
+        <VolumeInput value={volumeL} onChange={setVolumeL} placeholder="Надой" />
+      </div>
+
+      {/* Row 2: Feeding + Losses (only show if volume > 0) */}
+      {volMl > 0 && (
+        <div className="flex items-center gap-2">
+          <div className="flex-1 relative">
+            <input
+              type="text"
+              inputMode="decimal"
+              autoComplete="off"
+              autoCorrect="off"
+              spellCheck={false}
+              placeholder="0"
+              value={feedingL}
+              onChange={(e) => setFeedingL(sanitizeVolume(e.target.value))}
+              className="w-full h-9 text-sm font-medium text-center rounded-lg pr-6 pl-16
+                         border border-[oklch(0.88_0.02_90)] bg-[oklch(0.99_0.005_90)]
+                         focus:border-[oklch(0.35_0.12_150)] focus:ring-1 focus:ring-[oklch(0.35_0.12_150)]
+                         focus:outline-none"
+            />
+            <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[10px] text-[oklch(0.55_0.04_80)]">
+              Выпойка
+            </span>
+            <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-[oklch(0.52_0.04_80)]">
+              л
+            </span>
+          </div>
+          <div className="flex-1 relative">
+            <input
+              type="text"
+              inputMode="decimal"
+              autoComplete="off"
+              autoCorrect="off"
+              spellCheck={false}
+              placeholder="0"
+              value={lossesL}
+              onChange={(e) => setLossesL(sanitizeVolume(e.target.value))}
+              className="w-full h-9 text-sm font-medium text-center rounded-lg pr-6 pl-14
+                         border border-[oklch(0.88_0.02_90)] bg-[oklch(0.99_0.005_90)]
+                         focus:border-[oklch(0.35_0.12_150)] focus:ring-1 focus:ring-[oklch(0.35_0.12_150)]
+                         focus:outline-none"
+            />
+            <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[10px] text-[oklch(0.55_0.04_80)]">
+              Потери
+            </span>
+            <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-[oklch(0.52_0.04_80)]">
+              л
+            </span>
+          </div>
+        </div>
+      )}
+
+      {!valid && (
+        <p className="text-[10px] text-red-500 mt-1">
+          Укажите и головы, и объём (или оставьте оба пустыми)
+        </p>
+      )}
+      {overLimit && (
+        <p className="text-[10px] text-red-500 mt-1">
+          Выпойка + потери не могут превышать общий надой
+        </p>
+      )}
+    </div>
+  );
+}
+
+function EditAnimalBlock({
+  emoji,
+  label,
+  heads,
+  setHeads,
+  volumeL,
+  setVolumeL,
+  feedingL,
+  setFeedingL,
+  lossesL,
+  setLossesL,
+}: {
+  emoji: string;
+  label: string;
+  heads: number;
+  setHeads: (n: number) => void;
+  volumeL: string;
+  setVolumeL: (s: string) => void;
+  feedingL: string;
+  setFeedingL: (s: string) => void;
+  lossesL: string;
+  setLossesL: (s: string) => void;
+}) {
+  return (
+    <div className="py-1.5">
+      <div className="flex items-center gap-2 mb-1">
+        <span className="text-base">{emoji}</span>
+        <span className="text-xs text-[oklch(0.4_0.04_80)] font-medium">{label}</span>
+      </div>
+      <div className="flex items-center gap-1.5">
+        {/* Heads */}
+        <div className="flex items-center gap-1">
+          <button
+            onClick={() => setHeads(Math.max(0, heads - 1))}
+            className="w-8 h-8 rounded-md bg-[oklch(0.94_0.02_90)] flex items-center justify-center active:bg-[oklch(0.88_0.02_90)] touch-manipulation"
+          >
+            <Minus className="w-3 h-3" />
+          </button>
+          <span className="w-6 text-center text-sm font-bold tabular-nums">{heads}</span>
+          <button
+            onClick={() => setHeads(heads + 1)}
+            className="w-8 h-8 rounded-md bg-[oklch(0.35_0.12_150)] flex items-center justify-center active:bg-[oklch(0.30_0.12_150)] touch-manipulation"
+          >
+            <Plus className="w-3 h-3 text-white" />
+          </button>
+        </div>
+        {/* Volume */}
+        <div className="flex-1 relative">
+          <input
+            type="text" inputMode="decimal" placeholder="Надой"
+            autoComplete="off" autoCorrect="off" spellCheck={false}
+            value={volumeL}
+            onChange={(e) => setVolumeL(sanitizeVolume(e.target.value))}
+            className="w-full h-8 text-sm font-bold text-center rounded-md pr-5 pl-2
+                       border border-[oklch(0.88_0.02_90)] bg-white
+                       focus:border-[oklch(0.35_0.12_150)] focus:ring-1 focus:ring-[oklch(0.35_0.12_150)] focus:outline-none"
+          />
+          <span className="absolute right-1.5 top-1/2 -translate-y-1/2 text-[10px] text-[oklch(0.52_0.04_80)]">л</span>
+        </div>
+        {/* Feeding */}
+        <div className="w-16 relative">
+          <input
+            type="text" inputMode="decimal" placeholder="Вып."
+            autoComplete="off" autoCorrect="off" spellCheck={false}
+            value={feedingL}
+            onChange={(e) => setFeedingL(sanitizeVolume(e.target.value))}
+            className="w-full h-8 text-xs font-medium text-center rounded-md pr-4 pl-1
+                       border border-[oklch(0.88_0.02_90)] bg-white
+                       focus:border-[oklch(0.35_0.12_150)] focus:ring-1 focus:ring-[oklch(0.35_0.12_150)] focus:outline-none"
+          />
+          <span className="absolute right-1 top-1/2 -translate-y-1/2 text-[8px] text-[oklch(0.52_0.04_80)]">л</span>
+        </div>
+        {/* Losses */}
+        <div className="w-16 relative">
+          <input
+            type="text" inputMode="decimal" placeholder="Пот."
+            autoComplete="off" autoCorrect="off" spellCheck={false}
+            value={lossesL}
+            onChange={(e) => setLossesL(sanitizeVolume(e.target.value))}
+            className="w-full h-8 text-xs font-medium text-center rounded-md pr-4 pl-1
+                       border border-[oklch(0.88_0.02_90)] bg-white
+                       focus:border-[oklch(0.35_0.12_150)] focus:ring-1 focus:ring-[oklch(0.35_0.12_150)] focus:outline-none"
+          />
+          <span className="absolute right-1 top-1/2 -translate-y-1/2 text-[8px] text-[oklch(0.52_0.04_80)]">л</span>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 export default function FarmMilkerArm() {
@@ -283,274 +566,6 @@ export default function FarmMilkerArm() {
       cow: { volumeMl: cowMl, headCount: cowHeads, feedingMl: cowFeedMl, lossesMl: cowLossMl },
       note: note.trim() || undefined,
     });
-  }
-
-  // ─── Reusable volume input ───
-  function VolumeInput({
-    value,
-    onChange,
-    placeholder,
-    label,
-  }: {
-    value: string;
-    onChange: (s: string) => void;
-    placeholder?: string;
-    label?: string;
-  }) {
-    return (
-      <div className="relative flex-1">
-        {label && (
-          <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[10px] text-[oklch(0.55_0.04_80)]">
-            {label}
-          </span>
-        )}
-        <input
-          type="text"
-          inputMode="decimal"
-          placeholder={placeholder ?? "0"}
-          value={value}
-          onChange={(e) => {
-            const v = sanitizeVolume(e.target.value);
-            if (v !== null) onChange(v);
-          }}
-          className={`w-full h-10 text-base font-bold text-center rounded-lg pr-7 ${label ? "pl-14" : "pl-3"}
-                     border border-[oklch(0.88_0.02_90)] bg-[oklch(0.98_0.01_90)]
-                     focus:border-[oklch(0.35_0.12_150)] focus:ring-1 focus:ring-[oklch(0.35_0.12_150)]
-                     focus:outline-none`}
-        />
-        <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-[oklch(0.52_0.04_80)]">
-          л
-        </span>
-      </div>
-    );
-  }
-
-  // ─── Animal block with heads + volume + feeding + losses ───
-  function AnimalBlock({
-    emoji,
-    label,
-    heads,
-    setHeads,
-    volumeL,
-    setVolumeL,
-    feedingL,
-    setFeedingL,
-    lossesL,
-    setLossesL,
-    valid,
-  }: {
-    emoji: string;
-    label: string;
-    heads: number;
-    setHeads: (n: number) => void;
-    volumeL: string;
-    setVolumeL: (s: string) => void;
-    feedingL: string;
-    setFeedingL: (s: string) => void;
-    lossesL: string;
-    setLossesL: (s: string) => void;
-    valid: boolean;
-  }) {
-    const volMl = parseMl(volumeL);
-    const feedMl = parseMl(feedingL);
-    const lossMl = parseMl(lossesL);
-    const netMl = volMl - feedMl - lossMl;
-    const overLimit = netMl < 0;
-
-    return (
-      <div className={`bg-white rounded-xl border ${!valid || overLimit ? "border-red-300" : "border-[oklch(0.88_0.02_90)]"} p-3 mb-3`}>
-        {/* Type label */}
-        <div className="flex items-center gap-2 mb-2">
-          <span className="text-xl">{emoji}</span>
-          <span className="text-sm font-semibold text-[oklch(0.3_0.04_60)]">{label}</span>
-          {volMl > 0 && (
-            <span className="ml-auto text-xs font-bold text-[oklch(0.35_0.12_150)]">
-              → Сыроделу: {(netMl / 1000).toFixed(1)} л
-            </span>
-          )}
-        </div>
-
-        {/* Row 1: Head counter + Total volume */}
-        <div className="flex items-center gap-3 mb-2">
-          {/* Head counter */}
-          <div className="flex items-center gap-1.5">
-            <button
-              onClick={() => setHeads(Math.max(0, heads - 1))}
-              className="w-10 h-10 rounded-lg bg-[oklch(0.94_0.02_90)] flex items-center justify-center
-                         active:bg-[oklch(0.88_0.02_90)] touch-manipulation"
-            >
-              <Minus className="w-4 h-4 text-[oklch(0.4_0.04_80)]" />
-            </button>
-            <span className="w-8 text-center text-lg font-bold text-[oklch(0.22_0.04_60)] tabular-nums">
-              {heads}
-            </span>
-            <button
-              onClick={() => setHeads(heads + 1)}
-              className="w-10 h-10 rounded-lg bg-[oklch(0.35_0.12_150)] flex items-center justify-center
-                         active:bg-[oklch(0.30_0.12_150)] touch-manipulation"
-            >
-              <Plus className="w-4 h-4 text-white" />
-            </button>
-            <span className="text-[10px] text-[oklch(0.6_0.02_80)]">гол.</span>
-          </div>
-
-          {/* Separator */}
-          <div className="w-px h-8 bg-[oklch(0.9_0.02_90)]" />
-
-          {/* Total volume */}
-          <VolumeInput value={volumeL} onChange={setVolumeL} placeholder="Надой" />
-        </div>
-
-        {/* Row 2: Feeding + Losses (only show if volume > 0) */}
-        {volMl > 0 && (
-          <div className="flex items-center gap-2">
-            <div className="flex-1 relative">
-              <input
-                type="text"
-                inputMode="decimal"
-                placeholder="0"
-                value={feedingL}
-                onChange={(e) => {
-                  const v = sanitizeVolume(e.target.value);
-                  if (v !== null) setFeedingL(v);
-                }}
-                className="w-full h-9 text-sm font-medium text-center rounded-lg pr-6 pl-16
-                           border border-[oklch(0.88_0.02_90)] bg-[oklch(0.99_0.005_90)]
-                           focus:border-[oklch(0.35_0.12_150)] focus:ring-1 focus:ring-[oklch(0.35_0.12_150)]
-                           focus:outline-none"
-              />
-              <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[10px] text-[oklch(0.55_0.04_80)]">
-                Выпойка
-              </span>
-              <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-[oklch(0.52_0.04_80)]">
-                л
-              </span>
-            </div>
-            <div className="flex-1 relative">
-              <input
-                type="text"
-                inputMode="decimal"
-                placeholder="0"
-                value={lossesL}
-                onChange={(e) => {
-                  const v = sanitizeVolume(e.target.value);
-                  if (v !== null) setLossesL(v);
-                }}
-                className="w-full h-9 text-sm font-medium text-center rounded-lg pr-6 pl-14
-                           border border-[oklch(0.88_0.02_90)] bg-[oklch(0.99_0.005_90)]
-                           focus:border-[oklch(0.35_0.12_150)] focus:ring-1 focus:ring-[oklch(0.35_0.12_150)]
-                           focus:outline-none"
-              />
-              <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[10px] text-[oklch(0.55_0.04_80)]">
-                Потери
-              </span>
-              <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-[oklch(0.52_0.04_80)]">
-                л
-              </span>
-            </div>
-          </div>
-        )}
-
-        {!valid && (
-          <p className="text-[10px] text-red-500 mt-1">
-            Укажите и головы, и объём (или оставьте оба пустыми)
-          </p>
-        )}
-        {overLimit && (
-          <p className="text-[10px] text-red-500 mt-1">
-            Выпойка + потери не могут превышать общий надой
-          </p>
-        )}
-      </div>
-    );
-  }
-
-  // ─── Compact edit row for inline editing in history ───
-  function EditAnimalBlock({
-    emoji,
-    label,
-    heads,
-    setHeads,
-    volumeL,
-    setVolumeL,
-    feedingL,
-    setFeedingL,
-    lossesL,
-    setLossesL,
-  }: {
-    emoji: string;
-    label: string;
-    heads: number;
-    setHeads: (n: number) => void;
-    volumeL: string;
-    setVolumeL: (s: string) => void;
-    feedingL: string;
-    setFeedingL: (s: string) => void;
-    lossesL: string;
-    setLossesL: (s: string) => void;
-  }) {
-    return (
-      <div className="py-1.5">
-        <div className="flex items-center gap-2 mb-1">
-          <span className="text-base">{emoji}</span>
-          <span className="text-xs text-[oklch(0.4_0.04_80)] font-medium">{label}</span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          {/* Heads */}
-          <div className="flex items-center gap-1">
-            <button
-              onClick={() => setHeads(Math.max(0, heads - 1))}
-              className="w-8 h-8 rounded-md bg-[oklch(0.94_0.02_90)] flex items-center justify-center active:bg-[oklch(0.88_0.02_90)] touch-manipulation"
-            >
-              <Minus className="w-3 h-3" />
-            </button>
-            <span className="w-6 text-center text-sm font-bold tabular-nums">{heads}</span>
-            <button
-              onClick={() => setHeads(heads + 1)}
-              className="w-8 h-8 rounded-md bg-[oklch(0.35_0.12_150)] flex items-center justify-center active:bg-[oklch(0.30_0.12_150)] touch-manipulation"
-            >
-              <Plus className="w-3 h-3 text-white" />
-            </button>
-          </div>
-          {/* Volume */}
-          <div className="flex-1 relative">
-            <input
-              type="text" inputMode="decimal" placeholder="Надой"
-              value={volumeL}
-              onChange={(e) => { const v = sanitizeVolume(e.target.value); if (v !== null) setVolumeL(v); }}
-              className="w-full h-8 text-sm font-bold text-center rounded-md pr-5 pl-2
-                         border border-[oklch(0.88_0.02_90)] bg-white
-                         focus:border-[oklch(0.35_0.12_150)] focus:ring-1 focus:ring-[oklch(0.35_0.12_150)] focus:outline-none"
-            />
-            <span className="absolute right-1.5 top-1/2 -translate-y-1/2 text-[10px] text-[oklch(0.52_0.04_80)]">л</span>
-          </div>
-          {/* Feeding */}
-          <div className="w-16 relative">
-            <input
-              type="text" inputMode="decimal" placeholder="Вып."
-              value={feedingL}
-              onChange={(e) => { const v = sanitizeVolume(e.target.value); if (v !== null) setFeedingL(v); }}
-              className="w-full h-8 text-xs font-medium text-center rounded-md pr-4 pl-1
-                         border border-[oklch(0.88_0.02_90)] bg-white
-                         focus:border-[oklch(0.35_0.12_150)] focus:ring-1 focus:ring-[oklch(0.35_0.12_150)] focus:outline-none"
-            />
-            <span className="absolute right-1 top-1/2 -translate-y-1/2 text-[8px] text-[oklch(0.52_0.04_80)]">л</span>
-          </div>
-          {/* Losses */}
-          <div className="w-16 relative">
-            <input
-              type="text" inputMode="decimal" placeholder="Пот."
-              value={lossesL}
-              onChange={(e) => { const v = sanitizeVolume(e.target.value); if (v !== null) setLossesL(v); }}
-              className="w-full h-8 text-xs font-medium text-center rounded-md pr-4 pl-1
-                         border border-[oklch(0.88_0.02_90)] bg-white
-                         focus:border-[oklch(0.35_0.12_150)] focus:ring-1 focus:ring-[oklch(0.35_0.12_150)] focus:outline-none"
-            />
-            <span className="absolute right-1 top-1/2 -translate-y-1/2 text-[8px] text-[oklch(0.52_0.04_80)]">л</span>
-          </div>
-        </div>
-      </div>
-    );
   }
 
   return (

@@ -2543,3 +2543,5 @@ Module: Контроль оборота молока. Spec v2.1. Mobile-first AR
 - [x] Configure PM2 daily cron-restart as memory leak safeguard
 - [x] Fix: delete session error in Admin Milk Dashboard - Дойки tab (missing performedByWorkerId in milkTankMovements insert)
 - [x] Fix: navbar auth buttons disappear after login (recurs after every deploy/restart) - useAuth.ts: added 5s loading timeout, retry:2, staleTime:60s; Navbar.tsx: show guest buttons on auth error instead of blank
+- [ ] Fix: АРМ Дояр milk volume input only accepts single digit at a time — allow multi-digit (2-3 digit) number input directly
+- [ ] Fix: Контроль оборота молока Overview missing feeding (выпой) and losses (потери) volumes
