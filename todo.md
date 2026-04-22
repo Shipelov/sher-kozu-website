@@ -2524,6 +2524,7 @@ Module: Контроль оборота молока. Spec v2.1. Mobile-first AR
 
 ## Fix: Milker ARM — add feeding/losses + fix number inputs — April 21, 2026
 
+<<<<<<< Updated upstream
 - [x] Schema: Added goatFeedingMl, goatLossesMl, sheepFeedingMl, sheepLossesMl, cowFeedingMl, cowLossesMl to milkSessions
 - [x] Server: milkSession router — accepts feeding/losses per type, computes net volume (Nadoi − Feeding − Losses)
 - [x] Frontend: Milker ARM — a- [x] Added feeding (Выпойка) and losses (Потери) per animal type
@@ -2533,4 +2534,7 @@ Module: Контроль оборота молока. Spec v2.1. Mobile-first AR
 - [x] Cheesemaker ARM shows net volume with feeding/losses breakdown in pending items
 - [x] Admin dashboard shows feeding/losses/net in overview stats and session table
 - [x] Tests: 2535 passing (added update/cancel/clearAuditLog/feeding tests)
-- [ ] Deploy to VDS
+- [x] Fix: DB connection pool ETIMEDOUT — added auto-recovery resetPool(), reduced idle timeout, pool error handler
+- [x] Fix: useAuth.ts — replaced stub logoutMutation with real trpc.auth.logout.useMutation(), added retry for auth.me
+- [x] Fix: context.ts — added withRetry for authenticateRequest to handle transient DB timeouts
+- [x] Full site audit: identified root cause as stale DB pool connections causing 500 errors on all API calls

@@ -390,6 +390,19 @@ async function ensureOwnerExperienceSeed(ownerOpenId: string) {
   seededOwners.add(ownerOpenId);
 }
 
+/**
+ * Reset the pool & drizzle instance so the next getDb() call creates fresh ones.
+ * This is called automatically when the pool emits a fatal error.
+ */
+function resetPool() {
+  console.warn("[Database] Resetting connection pool…");
+  if (_pool) {
+    _pool.end().catch(() => {});
+  }
+  _pool = null;
+  _db = null;
+}
+
 export async function getDb() {
   if (_db) return _db;
 
@@ -405,16 +418,27 @@ export async function getDb() {
       queueLimit: 0,                    // 0 = unlimited queue (prevents Queue limit reached errors)
       namedPlaceholders: true,
       enableKeepAlive: true,
-      keepAliveInitialDelay: 10000,   // Send keep-alive probe after 10s idle
+      keepAliveInitialDelay: 5000,    // Send keep-alive probe after 5s idle (was 10s)
       connectTimeout: 5000,           // 5s connect timeout
-      idleTimeout: 60000,             // Close idle connections after 60s to avoid stale sockets
-      maxIdle: 5,                     // Keep at most 5 idle connections
+      idleTimeout: 30000,             // Close idle connections after 30s (was 60s) — TiDB serverless drops idle faster
+      maxIdle: 3,                     // Keep at most 3 idle connections (was 5)
       timezone: "Z",
       ssl: {
         minVersion: "TLSv1.2",
         rejectUnauthorized: false,
       },
     });
+
+    // Auto-recover from pool-level errors (e.g. ETIMEDOUT, ECONNRESET)
+    // The underlying pool from mysql2 is accessible via .pool on the promise wrapper
+    const rawPool = (_pool as any).pool;
+    if (rawPool && typeof rawPool.on === "function") {
+      rawPool.on("error", (err: any) => {
+        console.error("[Database] Pool error, will reset:", err?.code || err?.message);
+        resetPool();
+      });
+    }
+
     _db = drizzle(_pool);
     return _db;
   } catch (error) {

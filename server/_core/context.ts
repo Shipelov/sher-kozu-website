@@ -8,6 +8,31 @@ export type TrpcContext = {
   user: User | null;
 };
 
+/**
+ * Retry a function up to `maxRetries` times with a delay between attempts.
+ * Only retries on ETIMEDOUT / ECONNRESET errors (transient DB issues).
+ */
+async function withRetry<T>(
+  fn: () => Promise<T>,
+  maxRetries = 1,
+  delayMs = 500
+): Promise<T> {
+  let lastError: unknown;
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      return await fn();
+    } catch (err: any) {
+      lastError = err;
+      const code = err?.code || err?.cause?.code || "";
+      const isTransient = code === "ETIMEDOUT" || code === "ECONNRESET" || code === "ECONNREFUSED";
+      if (!isTransient || attempt >= maxRetries) throw err;
+      console.warn(`[Context] Transient DB error (${code}), retrying in ${delayMs}ms… (attempt ${attempt + 1}/${maxRetries})`);
+      await new Promise((r) => setTimeout(r, delayMs));
+    }
+  }
+  throw lastError;
+}
+
 export async function createContext(
   opts: CreateExpressContextOptions
 ): Promise<TrpcContext> {
@@ -26,10 +51,10 @@ export async function createContext(
     }
   }
 
-  // 2. Fall back to standard Manus OAuth cookie
+  // 2. Fall back to standard Manus OAuth cookie (with retry for transient DB errors)
   if (!user) {
     try {
-      user = await sdk.authenticateRequest(opts.req);
+      user = await withRetry(() => sdk.authenticateRequest(opts.req));
       // Block access for soft-deleted users (in trash)
       if (user && user.deletedAt) {
         user = null;

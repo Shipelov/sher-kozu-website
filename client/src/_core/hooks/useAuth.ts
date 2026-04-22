@@ -14,15 +14,13 @@ export function useAuth(options?: UseAuthOptions) {
   const utils = trpc.useUtils();
 
   const meQuery = trpc.auth.me.useQuery(undefined, {
-    retry: false,
+    retry: 2,                       // Retry up to 2 times (handles transient DB timeouts)
+    retryDelay: 1000,               // Wait 1s between retries
     refetchOnWindowFocus: false,
+    staleTime: 30_000,              // Consider data fresh for 30s
   });
 
-  const logoutMutation = {
-    mutateAsync: async () => undefined,
-    isPending: false,
-    error: null as Error | null,
-  };
+  const logoutMutation = trpc.auth.logout.useMutation();
 
   const logout = useCallback(async () => {
     try {
@@ -54,26 +52,13 @@ export function useAuth(options?: UseAuthOptions) {
   ]);
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
-
-    try {
-      window.localStorage.setItem(
-        "app-user-info",
-        JSON.stringify(null)
-      );
-    } catch (error) {
-      console.warn("[Auth] Failed to persist runtime user info", error);
-    }
-  }, []);
-
-  useEffect(() => {
     if (!redirectOnUnauthenticated) return;
     if (meQuery.isLoading || logoutMutation.isPending) return;
     if (state.user) return;
     if (typeof window === "undefined") return;
     if (window.location.pathname === redirectPath) return;
 
-    window.location.href = redirectPath
+    window.location.href = redirectPath;
   }, [
     redirectOnUnauthenticated,
     redirectPath,

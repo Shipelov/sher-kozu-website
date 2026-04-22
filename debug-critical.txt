@@ -1,0 +1,14 @@
+CRITICAL FINDING:
+1. User logged in via the modal (they confirmed)
+2. auth.me returns { user: null, isAuthenticated: false }
+3. document.cookie only shows sk_vid and sk_sid (analytics cookies)
+4. app_session_id cookie is NOT being set or NOT being sent
+5. Multiple 500 errors in console
+
+The login mutation likely FAILS silently or the cookie is not being set properly.
+The AuthModal catches the error and does window.location.reload() anyway.
+
+Need to check:
+- Does localAuth.login return 500?
+- Is the cookie being set with correct domain/path?
+- Is there a server-side error during login?
