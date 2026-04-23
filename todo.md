@@ -2579,3 +2579,8 @@ Module: Контроль оборота молока. Spec v2.1. Mobile-first AR
 - [x] Bug: Reception rejection in Cheesemaker ARM doesn't update status in Milker ARM — added receptions[] to myToday/myHistory responses, milker now sees per-type acceptance/rejection badges + rejection alerts in today summary
 - [x] Bug: Rejected reception doesn't disappear from Cheesemaker ARM list — changed pendingSessions filter to exclude both accepted AND rejected receptions (was only filtering accepted)
 - [x] Bug: Double-click on reject creates duplicate rejection records — added server-side duplicate check in reject procedure (checks for existing accepted/rejected reception for same sessionId+milkType)
+
+## Fix: Milker ARM rejection display bugs — April 23, 2026
+
+- [x] Bug: Unicode escape sequences showing as raw text in rejection badges — replaced escaped sequences with actual Unicode characters in JSX
+- [x] Bug: Duplicate rejection records — server-side duplicate check was already added; existing duplicates in DB are from before the fix
