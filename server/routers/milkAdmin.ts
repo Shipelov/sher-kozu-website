@@ -88,6 +88,20 @@ export const milkAdminRouter = router({
       .from(milkSessions)
       .where(gte(milkSessions.createdAt, monthStart));
 
+    // Per-period reception aggregates (accepted/rejected by milk type)
+    const receptionStatsSelect = {
+      goatAcceptedMl: sql<number>`COALESCE(SUM(CASE WHEN ${milkReceptions.milkType} = 'goat' AND ${milkReceptions.status} = 'accepted' THEN ${milkReceptions.acceptedVolumeMl} ELSE 0 END), 0)`,
+      sheepAcceptedMl: sql<number>`COALESCE(SUM(CASE WHEN ${milkReceptions.milkType} = 'sheep' AND ${milkReceptions.status} = 'accepted' THEN ${milkReceptions.acceptedVolumeMl} ELSE 0 END), 0)`,
+      cowAcceptedMl: sql<number>`COALESCE(SUM(CASE WHEN ${milkReceptions.milkType} = 'cow' AND ${milkReceptions.status} = 'accepted' THEN ${milkReceptions.acceptedVolumeMl} ELSE 0 END), 0)`,
+      goatRejectedMl: sql<number>`COALESCE(SUM(CASE WHEN ${milkReceptions.milkType} = 'goat' AND ${milkReceptions.status} = 'rejected' THEN ${milkReceptions.rejectedVolumeMl} ELSE 0 END), 0)`,
+      sheepRejectedMl: sql<number>`COALESCE(SUM(CASE WHEN ${milkReceptions.milkType} = 'sheep' AND ${milkReceptions.status} = 'rejected' THEN ${milkReceptions.rejectedVolumeMl} ELSE 0 END), 0)`,
+      cowRejectedMl: sql<number>`COALESCE(SUM(CASE WHEN ${milkReceptions.milkType} = 'cow' AND ${milkReceptions.status} = 'rejected' THEN ${milkReceptions.rejectedVolumeMl} ELSE 0 END), 0)`,
+    };
+
+    const [todayRec] = await db.select(receptionStatsSelect).from(milkReceptions).where(gte(milkReceptions.createdAt, todayStart));
+    const [weekRec] = await db.select(receptionStatsSelect).from(milkReceptions).where(gte(milkReceptions.createdAt, weekStart));
+    const [monthRec] = await db.select(receptionStatsSelect).from(milkReceptions).where(gte(milkReceptions.createdAt, monthStart));
+
     // Pending sessions
     const [pendingCount] = await db
       .select({ count: sql<number>`COUNT(*)` })
@@ -140,8 +154,8 @@ export const milkAdminRouter = router({
       totalTanks += tot;
     }
 
-    /** Build a full per-type breakdown from raw stats row */
-    function formatPeriod(row: typeof todayStats) {
+    /** Build a full per-type breakdown from raw stats row + reception data */
+    function formatPeriod(row: typeof todayStats, rec: typeof todayRec) {
       const goat = Number(row.goatMl);
       const sheep = Number(row.sheepMl);
       const cow = Number(row.cowMl);
@@ -156,6 +170,14 @@ export const milkAdminRouter = router({
       const totalLoss = gl + sl + cl;
       const ml2l = (ml: number) => +(ml / 1000).toFixed(2);
 
+      // Reception aggregates
+      const ga = Number(rec.goatAcceptedMl);
+      const sa = Number(rec.sheepAcceptedMl);
+      const ca = Number(rec.cowAcceptedMl);
+      const gr = Number(rec.goatRejectedMl);
+      const sr = Number(rec.sheepRejectedMl);
+      const cr = Number(rec.cowRejectedMl);
+
       return {
         sessions: Number(row.count),
         total: {
@@ -164,6 +186,8 @@ export const milkAdminRouter = router({
           feedingL: ml2l(totalFeed),
           lossesL: ml2l(totalLoss),
           netL: ml2l(totalVol - totalFeed - totalLoss),
+          acceptedL: ml2l(ga + sa + ca),
+          rejectedL: ml2l(gr + sr + cr),
         },
         goat: {
           volumeL: ml2l(goat),
@@ -171,6 +195,8 @@ export const milkAdminRouter = router({
           feedingL: ml2l(gf),
           lossesL: ml2l(gl),
           netL: ml2l(goat - gf - gl),
+          acceptedL: ml2l(ga),
+          rejectedL: ml2l(gr),
         },
         sheep: {
           volumeL: ml2l(sheep),
@@ -178,6 +204,8 @@ export const milkAdminRouter = router({
           feedingL: ml2l(sf),
           lossesL: ml2l(sl),
           netL: ml2l(sheep - sf - sl),
+          acceptedL: ml2l(sa),
+          rejectedL: ml2l(sr),
         },
         cow: {
           volumeL: ml2l(cow),
@@ -185,6 +213,8 @@ export const milkAdminRouter = router({
           feedingL: ml2l(cf),
           lossesL: ml2l(cl),
           netL: ml2l(cow - cf - cl),
+          acceptedL: ml2l(ca),
+          rejectedL: ml2l(cr),
         },
       };
     }
@@ -198,13 +228,15 @@ export const milkAdminRouter = router({
         .select(fullStatsSelect)
         .from(milkSessions)
         .where(and(gte(milkSessions.createdAt, customStart), lte(milkSessions.createdAt, customEnd)));
-      customPeriod = formatPeriod(customStats);
+      const [customRec] = await db.select(receptionStatsSelect).from(milkReceptions)
+        .where(and(gte(milkReceptions.createdAt, customStart), lte(milkReceptions.createdAt, customEnd)));
+      customPeriod = formatPeriod(customStats, customRec);
     }
 
     return {
-      today: formatPeriod(todayStats),
-      week: formatPeriod(weekStats),
-      month: formatPeriod(monthStats),
+      today: formatPeriod(todayStats, todayRec),
+      week: formatPeriod(weekStats, weekRec),
+      month: formatPeriod(monthStats, monthRec),
       custom: customPeriod,
       pendingSessions: Number(pendingCount.count),
       receptionToday: {

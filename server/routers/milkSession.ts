@@ -567,11 +567,43 @@ export const milkSessionRouter = router({
         workerMap = Object.fromEntries(workers.map((w: any) => [w.id, w.name]));
       }
 
+      // Fetch reception data for all sessions to show accepted/rejected per type
+      const sessionIds = sessions.map((s: any) => s.id as number);
+      let receptionMap: Record<number, Record<string, { status: string; acceptedMl: number; rejectedMl: number }>> = {};
+      if (sessionIds.length > 0) {
+        const receptions = await db
+          .select({
+            sessionId: milkReceptions.sessionId,
+            milkType: milkReceptions.milkType,
+            status: milkReceptions.status,
+            acceptedVolumeMl: milkReceptions.acceptedVolumeMl,
+            rejectedVolumeMl: milkReceptions.rejectedVolumeMl,
+          })
+          .from(milkReceptions)
+          .where(inArray(milkReceptions.sessionId, sessionIds));
+        for (const r of receptions) {
+          if (!receptionMap[r.sessionId]) receptionMap[r.sessionId] = {};
+          receptionMap[r.sessionId][r.milkType] = {
+            status: r.status,
+            acceptedMl: r.acceptedVolumeMl,
+            rejectedMl: r.rejectedVolumeMl,
+          };
+        }
+      }
+
       return {
-        sessions: sessions.map((s: any) => ({
-          ...formatSession(s),
-          workerName: workerMap[s.workerId] ?? `Дояр #${s.workerId}`,
-        })),
+        sessions: sessions.map((s: any) => {
+          const rec = receptionMap[s.id] ?? {};
+          const totalAcceptedMl = (rec.goat?.acceptedMl ?? 0) + (rec.sheep?.acceptedMl ?? 0) + (rec.cow?.acceptedMl ?? 0);
+          const totalRejectedMl = (rec.goat?.rejectedMl ?? 0) + (rec.sheep?.rejectedMl ?? 0) + (rec.cow?.rejectedMl ?? 0);
+          return {
+            ...formatSession(s),
+            workerName: workerMap[s.workerId] ?? `Дояр #${s.workerId}`,
+            receptionByType: rec,
+            totalAcceptedLiters: +(totalAcceptedMl / 1000).toFixed(2),
+            totalRejectedLiters: +(totalRejectedMl / 1000).toFixed(2),
+          };
+        }),
       };
     }),
 });

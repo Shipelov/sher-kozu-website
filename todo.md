@@ -2590,3 +2590,13 @@ Module: Контроль оборота молока. Spec v2.1. Mobile-first AR
 - [x] Bug: 'pending' reception status — filtered out pending receptions from milker view (only show accepted/rejected in server query)
 - [x] Bug: Duplicate rejection records — cleaned DB: deleted duplicate goat rejection (id=17) and stale pending cow (id=15)
 - [x] Improvement: Server queries now filter receptions to only return accepted/rejected status
+
+## Audit: Rejected milk volumes counted as accepted — April 23, 2026
+
+- [x] Audit: Tank volume calculations — CONFIRMED: rejected milk is NOT added to tanks (only accepted receptions create tank movements)
+- [x] Audit: Excel/PDF report generation — FIXED: added Принято/Отклонено rows to admin overview export + Принято/Отклонено columns to milker report export
+- [x] Audit: Admin dashboard stats — FIXED: added per-period reception aggregates (accepted/rejected by milk type) to overview endpoint and UI table
+- [x] Audit: Cheesemaker ARM pending sessions — CONFIRMED: volume calculations are correct (net = volume - feeding - losses)
+- [x] Audit: Milker ARM summary — CONFIRMED: "→ Сыроделу" shows net volume correctly; now also shows accepted/rejected badges per type
+- [x] Audit: milkReception accept/reject flow — CONFIRMED: reject does NOT create tank movements; accept creates milking_in movement
+- [x] Fix: Added acceptedL/rejectedL to overview formatPeriod, added % принято от нетто metric, added Принято/Отклонено columns to milker report

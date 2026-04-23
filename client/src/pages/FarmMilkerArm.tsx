@@ -1270,6 +1270,8 @@ const MILKER_COLUMNS: ReportColumn[] = [
   { header: "Коровы нетто", key: "cowNet", width: 10 },
   { header: "Всего (л)", key: "totalVolume", width: 10 },
   { header: "Нетто (л)", key: "netVolume", width: 10 },
+  { header: "Принято (л)", key: "accepted", width: 12 },
+  { header: "Отклонено (л)", key: "rejected", width: 12 },
   { header: "Статус", key: "status", width: 14 },
 ];
 
@@ -1296,6 +1298,8 @@ function mapSessionRow(s: any) {
     cowNet: s.cow?.netLiters ?? 0,
     totalVolume: s.totalVolumeLiters ?? 0,
     netVolume: s.netVolumeLiters ?? 0,
+    accepted: s.totalAcceptedLiters ?? "—",
+    rejected: s.totalRejectedLiters > 0 ? s.totalRejectedLiters : "—",
     status: fmtStatus(s.status),
   };
 }
@@ -1325,6 +1329,8 @@ function computeSummary(sessions: any[]) {
     cowNet: +sum("cowNet").toFixed(2),
     totalVolume: +sum("totalVolume").toFixed(2),
     netVolume: +sum("netVolume").toFixed(2),
+    accepted: +sum("accepted").toFixed(2),
+    rejected: +sum("rejected").toFixed(2) || "—",
     status: "",
   };
 }

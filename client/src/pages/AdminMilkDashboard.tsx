@@ -1204,12 +1204,13 @@ export default function AdminMilkDashboard() {
 }
 // ─── Overview Section ───────────────────────────────────────────────────────
 
+type TypeStats = { volumeL: number; heads: number; feedingL: number; lossesL: number; netL: number; acceptedL: number; rejectedL: number };
 type PeriodData = {
   sessions: number;
-  total: { volumeL: number; heads: number; feedingL: number; lossesL: number; netL: number };
-  goat: { volumeL: number; heads: number; feedingL: number; lossesL: number; netL: number };
-  sheep: { volumeL: number; heads: number; feedingL: number; lossesL: number; netL: number };
-  cow: { volumeL: number; heads: number; feedingL: number; lossesL: number; netL: number };
+  total: TypeStats;
+  goat: TypeStats;
+  sheep: TypeStats;
+  cow: TypeStats;
 };
 
 type OverviewData = {
@@ -1261,7 +1262,7 @@ function OverviewSection({
     period === "custom" && overview.custom
       ? overview.custom
       : period === "custom"
-        ? { sessions: 0, total: { volumeL: 0, heads: 0, feedingL: 0, lossesL: 0, netL: 0 }, goat: { volumeL: 0, heads: 0, feedingL: 0, lossesL: 0, netL: 0 }, sheep: { volumeL: 0, heads: 0, feedingL: 0, lossesL: 0, netL: 0 }, cow: { volumeL: 0, heads: 0, feedingL: 0, lossesL: 0, netL: 0 } }
+        ? { sessions: 0, total: { volumeL: 0, heads: 0, feedingL: 0, lossesL: 0, netL: 0, acceptedL: 0, rejectedL: 0 }, goat: { volumeL: 0, heads: 0, feedingL: 0, lossesL: 0, netL: 0, acceptedL: 0, rejectedL: 0 }, sheep: { volumeL: 0, heads: 0, feedingL: 0, lossesL: 0, netL: 0, acceptedL: 0, rejectedL: 0 }, cow: { volumeL: 0, heads: 0, feedingL: 0, lossesL: 0, netL: 0, acceptedL: 0, rejectedL: 0 } }
         : overview[period];
 
   const pct = (part: number, whole: number) =>
@@ -1401,13 +1402,33 @@ function OverviewSection({
             </tr>
             {/* Net */}
             <tr className="bg-[oklch(0.96_0.04_150)] hover:bg-[oklch(0.95_0.05_150)] border-t-2 border-[oklch(0.7_0.12_150)]">
-              <td className={`${tdBold} text-[oklch(0.25_0.12_150)]`}>Нетто, л</td>
+              <td className={`${tdBold} text-[oklch(0.25_0.12_150)]`}>Нетто (→ сыроделу), л</td>
               {columns.map((c) => (
                 <td key={c.key} className={`${tdBold} text-[oklch(0.25_0.12_150)]`}>
                   {d[c.key].netL}
                 </td>
               ))}
             </tr>
+            {/* Accepted */}
+            <tr className="bg-emerald-50 hover:bg-emerald-100">
+              <td className={`${tdBold} text-emerald-700`}>✔ Принято, л</td>
+              {columns.map((c) => (
+                <td key={c.key} className={`${tdBold} text-emerald-700`}>
+                  {d[c.key].acceptedL || "—"}
+                </td>
+              ))}
+            </tr>
+            {/* Rejected */}
+            {(d.total.rejectedL > 0) && (
+            <tr className="bg-red-50 hover:bg-red-100">
+              <td className={`${tdBold} text-red-600`}>✖ Отклонено, л</td>
+              {columns.map((c) => (
+                <td key={c.key} className={`${tdBold} text-red-600`}>
+                  {d[c.key].rejectedL || "—"}
+                </td>
+              ))}
+            </tr>
+            )}
           </tbody>
         </table>
       </div>
@@ -1511,7 +1532,7 @@ function OverviewSection({
         <StatCard
           label="Приёмок сегодня"
           value={overview.receptionToday.count}
-          sub={`${overview.receptionToday.acceptedLiters} л принято`}
+          sub={`✔ ${overview.receptionToday.acceptedLiters}л${overview.receptionToday.rejectedLiters > 0 ? ` / ✖ ${overview.receptionToday.rejectedLiters}л` : ""}`}
         />
         <StatCard
           label="Танки"
@@ -1632,18 +1653,26 @@ function buildOverviewRows(d: PeriodData) {
     return r;
   };
 
-  return [
+  const rows = [
     row("Голов", (k) => d[k].heads || "—"),
     row("Надой, л", (k) => d[k].volumeL),
     row("Выпойка, л", (k) => d[k].feedingL || "—"),
     row("Потери, л", (k) => d[k].lossesL || "—"),
-    row("Нетто, л", (k) => d[k].netL),
+    row("Нетто (→ сыроделу), л", (k) => d[k].netL),
+    row("✔ Принято, л", (k) => d[k].acceptedL || "—"),
+  ];
+  if (d.total.rejectedL > 0) {
+    rows.push(row("✖ Отклонено, л", (k) => d[k].rejectedL || "—"));
+  }
+  rows.push(
     row("% выпойки", (k) => pct(d[k].feedingL, d[k].volumeL)),
     row("% потерь", (k) => pct(d[k].lossesL, d[k].volumeL)),
     row("% нетто", (k) => pct(d[k].netL, d[k].volumeL)),
+    row("% принято от нетто", (k) => pct(d[k].acceptedL, d[k].netL)),
     row("Ср. надой/гол", (k) => avg(d[k].volumeL, d[k].heads)),
     row("Ср. нетто/гол", (k) => avg(d[k].netL, d[k].heads)),
-  ];
+  );
+  return rows;
 }
 
 function getOverviewSubtitle(
