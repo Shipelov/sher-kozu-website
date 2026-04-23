@@ -665,13 +665,13 @@ export const milkAdminRouter = router({
         throw new TRPCError({ code: "NOT_FOUND", message: "Сессия не найдена" });
       }
 
-      // Find related accepted receptions to reverse tank volumes
+      // Find related receptions
       const receptions = await db
         .select()
         .from(milkReceptions)
         .where(eq(milkReceptions.sessionId, input.sessionId));
 
-      // Reverse tank volumes for accepted receptions
+      // Reverse tank volumes for accepted receptions (without creating reversal movements)
       for (const r of receptions) {
         if (r.status === "accepted" && r.targetTankId && r.acceptedVolumeMl > 0) {
           const [tank] = await db
@@ -689,20 +689,17 @@ export const milkAdminRouter = router({
                 status: newVol === 0 ? "empty" : "filling",
               })
               .where(eq(milkTanks.id, r.targetTankId));
-
-            // Log reversal movement
-            await db.insert(milkTankMovements).values({
-              tankId: r.targetTankId,
-              movementType: "waste",
-              volumeMl: -r.acceptedVolumeMl,
-              tankVolumeAfterMl: newVol,
-              performedByWorkerId: r.receivedByWorkerId ?? 0,
-              sessionId: input.sessionId,
-              receptionId: r.id,
-              note: `Отмена приёмки (админ): ${session.sessionCode}`,
-            });
           }
         }
+      }
+
+      // Delete ALL tank movements linked to this session
+      await db.delete(milkTankMovements).where(eq(milkTankMovements.sessionId, input.sessionId));
+
+      // Delete tank movements linked to this session's receptions (covers movements with null sessionId)
+      if (receptions.length > 0) {
+        const receptionIds = receptions.map(r => r.id);
+        await db.delete(milkTankMovements).where(inArray(milkTankMovements.receptionId, receptionIds));
       }
 
       // Delete receptions
@@ -906,7 +903,7 @@ export const milkAdminRouter = router({
         .delete(milkTankMovements)
         .where(eq(milkTankMovements.receptionId, input.receptionId));
 
-      // 2. Reverse tank volume if reception was accepted
+      // 2. Reverse tank volume if reception was accepted (no orphan movements created)
       if (reception.status === "accepted" && reception.targetTankId && reception.acceptedVolumeMl > 0) {
         const [tank] = await db
           .select()
@@ -918,18 +915,11 @@ export const milkAdminRouter = router({
           const newTankVol = Math.max(0, tank.currentVolumeMl - reception.acceptedVolumeMl);
           await db
             .update(milkTanks)
-            .set({ currentVolumeMl: newTankVol })
+            .set({
+              currentVolumeMl: newTankVol,
+              status: newTankVol === 0 ? "empty" : "filling",
+            })
             .where(eq(milkTanks.id, tank.id));
-
-          // This adjustment movement is NOT linked to receptionId (already deleted above)
-          await db.insert(milkTankMovements).values({
-            tankId: tank.id,
-            movementType: "adjustment",
-            volumeMl: -reception.acceptedVolumeMl,
-            tankVolumeAfterMl: newTankVol,
-            performedByWorkerId: reception.receivedByWorkerId,
-            note: `Удаление приёмки #${reception.id} админом`,
-          });
         }
       }
 

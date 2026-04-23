@@ -2607,3 +2607,10 @@ Module: Контроль оборота молока. Spec v2.1. Mobile-first AR
 - [x] Feature: Add per-milk-type reception detail — added Принято/Отклонено per type (goat/sheep/cow) in reportData endpoint and FarmMilkerArm export columns
 - [x] Feature: Add tank reconciliation check — new milkAdmin.tankReconciliation endpoint + reconciliation table in Tanks tab with expected vs actual volumes and discrepancy status
 - [x] Feature: Add accepted/rejected charts — horizontal stacked bar chart per milk type showing accepted/rejected/pending % in admin overview
+
+## Fix: Tank reconciliation negative values after session deletion — April 23, 2026
+
+- [x] Fix: Cleaned 39 orphaned tank movements and 81 audit log entries from production DB (all sessions/receptions were deleted by user)
+- [x] Fix: deleteSession now cascade-deletes ALL related tank movements (by sessionId + receptionIds) without creating orphan reversal movements
+- [x] Fix: deleteReception no longer creates orphan adjustment movements — just reverses tank volume directly and deletes related movements
+- [x] Deployed to VDS, PM2 online, koza.vip 200 OK
