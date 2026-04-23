@@ -2573,3 +2573,9 @@ Module: Контроль оборота молока. Spec v2.1. Mobile-first AR
 - [x] Fix: updateReception same bug — 'pending_reception' → 'pending_confirm' in session status revert
 - [x] Verified all enum values in production DB match schema (milkMovementType, milkAuditAction, milkSessionStatus)
 - [x] Deploy to VDS — rsync + pm2 restart, koza.vip 200 OK
+
+## Fix: Cheesemaker ARM rejection bugs — April 23, 2026
+
+- [x] Bug: Reception rejection in Cheesemaker ARM doesn't update status in Milker ARM — added receptions[] to myToday/myHistory responses, milker now sees per-type acceptance/rejection badges + rejection alerts in today summary
+- [x] Bug: Rejected reception doesn't disappear from Cheesemaker ARM list — changed pendingSessions filter to exclude both accepted AND rejected receptions (was only filtering accepted)
+- [x] Bug: Double-click on reject creates duplicate rejection records — added server-side duplicate check in reject procedure (checks for existing accepted/rejected reception for same sessionId+milkType)

@@ -715,6 +715,27 @@ export default function FarmMilkerArm() {
                   );
                 })()}
               </div>
+              {/* Show rejection alerts for today's sessions */}
+              {todaySessions.some((s: any) => s.receptions?.some((r: any) => r.status === "rejected")) && (
+                <div className="mt-2 space-y-1">
+                  {todaySessions.flatMap((s: any) =>
+                    (s.receptions ?? []).filter((r: any) => r.status === "rejected").map((r: any) => {
+                      const MILK_EMOJI: Record<string, string> = { goat: "\ud83d\udc10", sheep: "\ud83d\udc11", cow: "\ud83d\udc04" };
+                      const MILK_LABELS: Record<string, string> = { goat: "\u041a\u043e\u0437\u044c\u0435", sheep: "\u041e\u0432\u0435\u0447\u044c\u0435", cow: "\u041a\u043e\u0440\u043e\u0432\u044c\u0435" };
+                      return (
+                        <div key={`${s.id}-${r.milkType}`} className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs bg-red-50 border border-red-200">
+                          <span className="text-red-500 font-semibold">\u26a0</span>
+                          <span>{MILK_EMOJI[r.milkType]} {MILK_LABELS[r.milkType]}</span>
+                          <span className="text-red-600 font-medium">\u041e\u0442\u043a\u043b\u043e\u043d\u0435\u043d\u043e</span>
+                          <span className="text-red-500 text-[10px] truncate max-w-[140px]" title={r.rejectionReason ?? ""}>
+                            {s.sessionCode}: {r.rejectionReason ?? ""}
+                          </span>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              )}
             </div>
           )}
 
@@ -1006,6 +1027,43 @@ export default function FarmMilkerArm() {
                             {s.totalVolumeLiters}л → <span className="text-[oklch(0.25_0.12_150)]">{s.netVolumeLiters}л</span>
                           </span>
                         </div>
+
+                        {/* Reception status per milk type */}
+                        {s.receptions && s.receptions.length > 0 && (
+                          <div className="mt-2 space-y-1">
+                            {s.receptions.map((rec: any) => {
+                              const MILK_EMOJI: Record<string, string> = { goat: "\ud83d\udc10", sheep: "\ud83d\udc11", cow: "\ud83d\udc04" };
+                              const MILK_LABELS: Record<string, string> = { goat: "\u041a\u043e\u0437\u044c\u0435", sheep: "\u041e\u0432\u0435\u0447\u044c\u0435", cow: "\u041a\u043e\u0440\u043e\u0432\u044c\u0435" };
+                              const isRejected = rec.status === "rejected";
+                              const isAccepted = rec.status === "accepted";
+                              return (
+                                <div
+                                  key={rec.milkType}
+                                  className={`flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs ${
+                                    isRejected
+                                      ? "bg-red-50 border border-red-200"
+                                      : isAccepted
+                                        ? "bg-emerald-50 border border-emerald-200"
+                                        : "bg-gray-50 border border-gray-200"
+                                  }`}
+                                >
+                                  <span>{MILK_EMOJI[rec.milkType] ?? ""}</span>
+                                  <span className="font-medium">{MILK_LABELS[rec.milkType] ?? rec.milkType}</span>
+                                  <span className={`ml-auto font-semibold ${
+                                    isRejected ? "text-red-600" : isAccepted ? "text-emerald-600" : "text-gray-500"
+                                  }`}>
+                                    {isRejected ? "\u2716 \u041e\u0442\u043a\u043b\u043e\u043d\u0435\u043d\u043e" : isAccepted ? "\u2714 \u041f\u0440\u0438\u043d\u044f\u0442\u043e" : rec.status}
+                                  </span>
+                                  {isRejected && rec.rejectionReason && (
+                                    <span className="text-red-500 truncate max-w-[120px]" title={rec.rejectionReason}>
+                                      ({rec.rejectionReason})
+                                    </span>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
 
                         {s.note && (
                           <p className="text-xs text-[oklch(0.52_0.04_80)] mt-2 italic">

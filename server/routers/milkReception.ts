@@ -184,12 +184,12 @@ export const milkReceptionRouter = router({
       .orderBy(desc(milkSessions.createdAt))
       .limit(50);
 
-    // Get existing accepted receptions to exclude already-received milk types
+    // Get existing receptions (accepted OR rejected) to exclude already-processed milk types
     const sessionIds = sessions.map((s: any) => s.id);
-    let acceptedReceptions: Array<{ sessionId: number; milkType: string }> = [];
+    let processedReceptions: Array<{ sessionId: number; milkType: string }> = [];
 
     if (sessionIds.length > 0) {
-      acceptedReceptions = await db
+      processedReceptions = await db
         .select({
           sessionId: milkReceptions.sessionId,
           milkType: milkReceptions.milkType,
@@ -198,14 +198,14 @@ export const milkReceptionRouter = router({
         .where(
           and(
             inArray(milkReceptions.sessionId, sessionIds),
-            eq(milkReceptions.status, "accepted"),
+            inArray(milkReceptions.status, ["accepted", "rejected"]),
           ),
         );
     }
 
-    // Build a set of "sessionId:milkType" that are already accepted
-    const acceptedSet = new Set(
-      acceptedReceptions.map((r: any) => `${r.sessionId}:${r.milkType}`),
+    // Build a set of "sessionId:milkType" that are already processed (accepted or rejected)
+    const processedSet = new Set(
+      processedReceptions.map((r: any) => `${r.sessionId}:${r.milkType}`),
     );
 
     // Flatten sessions into per-type items
@@ -225,7 +225,7 @@ export const milkReceptionRouter = router({
         const netVol = totalVol - feeding - losses; // Сыроделу = Надой − Выпойка − Потери
         if (totalVol <= 0) continue; // No milk of this type
         if (netVol <= 0) continue; // All milk used for feeding/losses
-        if (acceptedSet.has(`${s.id}:${mt.key}`)) continue; // Already accepted
+        if (processedSet.has(`${s.id}:${mt.key}`)) continue; // Already processed (accepted or rejected)
 
         items.push({
           sessionId: s.id,
@@ -435,6 +435,26 @@ export const milkReceptionRouter = router({
 
       if (!session) {
         throw new TRPCError({ code: "NOT_FOUND", message: "Сессия дойки не найдена" });
+      }
+
+      // Check for existing rejection for this session + milkType (prevent duplicates)
+      const [existingRejection] = await db
+        .select({ id: milkReceptions.id })
+        .from(milkReceptions)
+        .where(
+          and(
+            eq(milkReceptions.sessionId, input.sessionId),
+            eq(milkReceptions.milkType, input.milkType),
+            inArray(milkReceptions.status, ["accepted", "rejected"]),
+          ),
+        )
+        .limit(1);
+
+      if (existingRejection) {
+        throw new TRPCError({
+          code: "CONFLICT",
+          message: `${MILK_TYPE_LABELS[input.milkType]} молоко из этой дойки уже обработано`,
+        });
       }
 
       // Get the volume for this milk type

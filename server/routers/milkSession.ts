@@ -16,7 +16,7 @@ import { z } from "zod";
 import { router, publicProcedure } from "../_core/trpc";
 import { TRPCError } from "@trpc/server";
 import { verifyFarmToken, FARM_COOKIE_NAME, logMilkAudit } from "../farmAuth";
-import { milkSessions, farmWorkers } from "../../drizzle/schema";
+import { milkSessions, milkReceptions, farmWorkers } from "../../drizzle/schema";
 import { getDb } from "../db";
 import { eq, and, desc, sql, inArray } from "drizzle-orm";
 
@@ -214,7 +214,30 @@ export const milkSessionRouter = router({
       )
       .orderBy(desc(milkSessions.createdAt));
 
-    return sessions.map(formatSession);
+    // Enrich with reception status per milk type
+    const sessionIds = sessions.map(s => s.id);
+    const receptions = sessionIds.length > 0
+      ? await db
+          .select({
+            sessionId: milkReceptions.sessionId,
+            milkType: milkReceptions.milkType,
+            status: milkReceptions.status,
+            rejectionReason: milkReceptions.rejectionReason,
+          })
+          .from(milkReceptions)
+          .where(inArray(milkReceptions.sessionId, sessionIds))
+      : [];
+
+    const receptionMap = new Map<number, Array<{ milkType: string; status: string; rejectionReason: string | null }>>();
+    for (const r of receptions) {
+      if (!receptionMap.has(r.sessionId)) receptionMap.set(r.sessionId, []);
+      receptionMap.get(r.sessionId)!.push({ milkType: r.milkType, status: r.status, rejectionReason: r.rejectionReason });
+    }
+
+    return sessions.map(s => ({
+      ...formatSession(s),
+      receptions: receptionMap.get(s.id) ?? [],
+    }));
   }),
 
   /**
@@ -246,8 +269,31 @@ export const milkSessionRouter = router({
         .limit(input.pageSize)
         .offset(offset);
 
+      // Enrich with reception status per milk type
+      const sessionIds = sessions.map(s => s.id);
+      const receptions = sessionIds.length > 0
+        ? await db
+            .select({
+              sessionId: milkReceptions.sessionId,
+              milkType: milkReceptions.milkType,
+              status: milkReceptions.status,
+              rejectionReason: milkReceptions.rejectionReason,
+            })
+            .from(milkReceptions)
+            .where(inArray(milkReceptions.sessionId, sessionIds))
+        : [];
+
+      const receptionMap = new Map<number, Array<{ milkType: string; status: string; rejectionReason: string | null }>>();
+      for (const r of receptions) {
+        if (!receptionMap.has(r.sessionId)) receptionMap.set(r.sessionId, []);
+        receptionMap.get(r.sessionId)!.push({ milkType: r.milkType, status: r.status, rejectionReason: r.rejectionReason });
+      }
+
       return {
-        sessions: sessions.map(formatSession),
+        sessions: sessions.map(s => ({
+          ...formatSession(s),
+          receptions: receptionMap.get(s.id) ?? [],
+        })),
         total: Number(countResult.count),
         page: input.page,
         pageSize: input.pageSize,
