@@ -2584,3 +2584,9 @@ Module: Контроль оборота молока. Spec v2.1. Mobile-first AR
 
 - [x] Bug: Unicode escape sequences showing as raw text in rejection badges — replaced escaped sequences with actual Unicode characters in JSX
 - [x] Bug: Duplicate rejection records — server-side duplicate check was already added; existing duplicates in DB are from before the fix
+
+## Fix: Milker ARM history reception display — April 23, 2026
+
+- [x] Bug: 'pending' reception status — filtered out pending receptions from milker view (only show accepted/rejected in server query)
+- [x] Bug: Duplicate rejection records — cleaned DB: deleted duplicate goat rejection (id=17) and stale pending cow (id=15)
+- [x] Improvement: Server queries now filter receptions to only return accepted/rejected status

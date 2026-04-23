@@ -225,7 +225,12 @@ export const milkSessionRouter = router({
             rejectionReason: milkReceptions.rejectionReason,
           })
           .from(milkReceptions)
-          .where(inArray(milkReceptions.sessionId, sessionIds))
+          .where(
+            and(
+              inArray(milkReceptions.sessionId, sessionIds),
+              inArray(milkReceptions.status, ["accepted", "rejected"]),
+            ),
+          )
       : [];
 
     const receptionMap = new Map<number, Array<{ milkType: string; status: string; rejectionReason: string | null }>>();
@@ -280,7 +285,12 @@ export const milkSessionRouter = router({
               rejectionReason: milkReceptions.rejectionReason,
             })
             .from(milkReceptions)
-            .where(inArray(milkReceptions.sessionId, sessionIds))
+            .where(
+              and(
+                inArray(milkReceptions.sessionId, sessionIds),
+                inArray(milkReceptions.status, ["accepted", "rejected"]),
+              ),
+            )
         : [];
 
       const receptionMap = new Map<number, Array<{ milkType: string; status: string; rejectionReason: string | null }>>();
