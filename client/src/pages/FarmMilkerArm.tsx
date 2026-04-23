@@ -661,7 +661,7 @@ export default function FarmMilkerArm() {
         </button>
       </div>
 
-      {view === "form" ? (
+      {view === "form" && (
         <div className="flex-1 overflow-y-auto pb-32">
           {/* ── Today summary ── */}
           {todaySessions.length > 0 && (
@@ -815,7 +815,9 @@ export default function FarmMilkerArm() {
             />
           </div>
         </div>
-      ) : (
+      )}
+
+      {view === "history" && (
         /* ── History view ── */
         <div className="flex-1 overflow-y-auto pb-6">
           {historyQuery.isLoading ? (

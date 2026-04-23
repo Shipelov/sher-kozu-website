@@ -2553,3 +2553,5 @@ Module: Контроль оборота молока. Spec v2.1. Mobile-first AR
 - [x] Fix PDF reports: add Cyrillic font support (unreadable text)
 - [x] Fix PDF Milker report: add multi-page pagination (content overflows single page)
 - [x] Fix PDF Milker report: add session code (Код Дойки) column
+- [x] Fix: АРМ Дояр tab switching bug (Report→History→Report doesn't switch, data stays on History)
+- [x] Check and fix same tab switching bug in АРМ Сыродел (no bug found - already uses correct && pattern)
