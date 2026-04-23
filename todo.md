@@ -2524,7 +2524,6 @@ Module: Контроль оборота молока. Spec v2.1. Mobile-first AR
 
 ## Fix: Milker ARM — add feeding/losses + fix number inputs — April 21, 2026
 
-<<<<<<< Updated upstream
 - [x] Schema: Added goatFeedingMl, goatLossesMl, sheepFeedingMl, sheepLossesMl, cowFeedingMl, cowLossesMl to milkSessions
 - [x] Server: milkSession router — accepts feeding/losses per type, computes net volume (Nadoi − Feeding − Losses)
 - [x] Frontend: Milker ARM — a- [x] Added feeding (Выпойка) and losses (Потери) per animal type
@@ -2559,3 +2558,6 @@ Module: Контроль оборота молока. Spec v2.1. Mobile-first AR
 - [x] Add Шерь Козу logo to all PDF reports
 - [x] Fix double password prompt on new employee registration
 - [x] Add "remember me" checkbox to login/gate page
+- [x] Fix: Admin delete reception SQL error - milkMovementType enum missing 'adjustment' value
+- [x] Fix: Admin edit reception doesn't propagate status changes to related records (tanks, movements)
+- [x] Deploy to VDS — rsync dist/ to /var/www/sherkozu/current/dist/, PM2 sherkozu online, koza.vip 200 OK

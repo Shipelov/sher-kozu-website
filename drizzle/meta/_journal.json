@@ -407,6 +407,13 @@
       "when": 1776934813822,
       "tag": "0058_sweet_beast",
       "breakpoints": true
+    },
+    {
+      "idx": 59,
+      "version": "5",
+      "when": 1776936494716,
+      "tag": "0059_pretty_lockheed",
+      "breakpoints": true
     }
   ]
 }

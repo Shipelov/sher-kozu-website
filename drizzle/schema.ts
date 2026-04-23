@@ -2298,6 +2298,7 @@ export const milkMovementTypeEnum = mysqlEnum("milkMovementType", [
   "processing_out", // Отправка в переработку
   "waste",          // Списание (утилизация)
   "sample",         // Отбор пробы
+  "adjustment",     // Корректировка админом
 ]);
 
 export const milkProcessingStatusEnum = mysqlEnum("milkProcessingStatus", [

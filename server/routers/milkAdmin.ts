@@ -725,34 +725,63 @@ export const milkAdminRouter = router({
         throw new TRPCError({ code: "NOT_FOUND", message: "Приёмка не найдена" });
       }
 
+      const oldStatus = reception.status;
+      const newStatus = input.status ?? oldStatus;
       const oldAcceptedMl = reception.acceptedVolumeMl;
       const newAcceptedMl = input.acceptedVolumeMl ?? oldAcceptedMl;
-      const volumeDiffMl = newAcceptedMl - oldAcceptedMl;
 
-      // If reception was accepted and has a tank, adjust tank volume
-      if (reception.status === "accepted" && reception.targetTankId && volumeDiffMl !== 0) {
-        const [tank] = await db
-          .select()
-          .from(milkTanks)
-          .where(eq(milkTanks.id, reception.targetTankId))
-          .limit(1);
-
+      // --- Tank volume adjustments ---
+      // Case 1: Was accepted, stays accepted — adjust by volume diff
+      if (oldStatus === "accepted" && newStatus === "accepted" && reception.targetTankId) {
+        const volumeDiffMl = newAcceptedMl - oldAcceptedMl;
+        if (volumeDiffMl !== 0) {
+          const [tank] = await db.select().from(milkTanks).where(eq(milkTanks.id, reception.targetTankId)).limit(1);
+          if (tank) {
+            const newTankVol = Math.max(0, tank.currentVolumeMl + volumeDiffMl);
+            await db.update(milkTanks).set({ currentVolumeMl: newTankVol }).where(eq(milkTanks.id, tank.id));
+            await db.insert(milkTankMovements).values({
+              tankId: tank.id,
+              movementType: "adjustment",
+              volumeMl: volumeDiffMl,
+              tankVolumeAfterMl: newTankVol,
+              receptionId: reception.id,
+              performedByWorkerId: reception.receivedByWorkerId,
+              note: `Корректировка админом: ${(volumeDiffMl / 1000).toFixed(2)} л`,
+            });
+          }
+        }
+      }
+      // Case 2: Was accepted, now rejected/pending — remove volume from tank
+      else if (oldStatus === "accepted" && newStatus !== "accepted" && reception.targetTankId && oldAcceptedMl > 0) {
+        const [tank] = await db.select().from(milkTanks).where(eq(milkTanks.id, reception.targetTankId)).limit(1);
         if (tank) {
-          const newTankVol = Math.max(0, tank.currentVolumeMl + volumeDiffMl);
-          await db
-            .update(milkTanks)
-            .set({ currentVolumeMl: newTankVol })
-            .where(eq(milkTanks.id, tank.id));
-
-          // Log tank movement for the adjustment
+          const newTankVol = Math.max(0, tank.currentVolumeMl - oldAcceptedMl);
+          await db.update(milkTanks).set({ currentVolumeMl: newTankVol }).where(eq(milkTanks.id, tank.id));
           await db.insert(milkTankMovements).values({
             tankId: tank.id,
             movementType: "adjustment",
-            volumeMl: volumeDiffMl,
+            volumeMl: -oldAcceptedMl,
             tankVolumeAfterMl: newTankVol,
             receptionId: reception.id,
             performedByWorkerId: reception.receivedByWorkerId,
-            note: `Корректировка админом: ${(volumeDiffMl / 1000).toFixed(2)} л`,
+            note: `Откат приёмки админом (статус: ${newStatus})`,
+          });
+        }
+      }
+      // Case 3: Was not accepted, now accepted — add volume to tank
+      else if (oldStatus !== "accepted" && newStatus === "accepted" && reception.targetTankId && newAcceptedMl > 0) {
+        const [tank] = await db.select().from(milkTanks).where(eq(milkTanks.id, reception.targetTankId)).limit(1);
+        if (tank) {
+          const newTankVol = tank.currentVolumeMl + newAcceptedMl;
+          await db.update(milkTanks).set({ currentVolumeMl: newTankVol }).where(eq(milkTanks.id, tank.id));
+          await db.insert(milkTankMovements).values({
+            tankId: tank.id,
+            movementType: "adjustment",
+            volumeMl: newAcceptedMl,
+            tankVolumeAfterMl: newTankVol,
+            receptionId: reception.id,
+            performedByWorkerId: reception.receivedByWorkerId,
+            note: `Принятие приёмки админом`,
           });
         }
       }
@@ -772,19 +801,58 @@ export const milkAdminRouter = router({
           .where(eq(milkReceptions.id, input.receptionId));
       }
 
+      // --- Re-evaluate session status ---
+      // If status changed, the session's confirmed status may need to be recalculated
+      if (input.status !== undefined && input.status !== oldStatus && reception.sessionId) {
+        const [session] = await db.select().from(milkSessions).where(eq(milkSessions.id, reception.sessionId)).limit(1);
+        if (session) {
+          // Determine which milk types have net volume > 0
+          const milkTypesWithVolume: string[] = [];
+          const types = [
+            { key: "goat", vol: session.goatVolumeMl, feed: (session as any).goatFeedingMl ?? 0, loss: (session as any).goatLossesMl ?? 0 },
+            { key: "sheep", vol: session.sheepVolumeMl, feed: (session as any).sheepFeedingMl ?? 0, loss: (session as any).sheepLossesMl ?? 0 },
+            { key: "cow", vol: session.cowVolumeMl, feed: (session as any).cowFeedingMl ?? 0, loss: (session as any).cowLossesMl ?? 0 },
+          ];
+          for (const t of types) {
+            const net = t.vol - t.feed - t.loss;
+            if (t.vol > 0 && net > 0) milkTypesWithVolume.push(t.key);
+          }
+
+          if (milkTypesWithVolume.length > 0) {
+            const allReceptions = await db
+              .select({ milkType: milkReceptions.milkType, status: milkReceptions.status })
+              .from(milkReceptions)
+              .where(and(
+                eq(milkReceptions.sessionId, reception.sessionId),
+                inArray(milkReceptions.status, ["accepted", "rejected"]),
+              ));
+            const processedTypes = new Set(allReceptions.map((r: any) => r.milkType));
+            const allProcessed = milkTypesWithVolume.every((t) => processedTypes.has(t));
+
+            if (allProcessed && session.status !== "confirmed") {
+              await db.update(milkSessions).set({ status: "confirmed", confirmedAt: new Date() }).where(eq(milkSessions.id, session.id));
+            } else if (!allProcessed && session.status === "confirmed") {
+              // Revert session to pending_reception if not all types are processed anymore
+              await db.update(milkSessions).set({ status: "pending_reception", confirmedAt: null }).where(eq(milkSessions.id, session.id));
+            }
+          }
+        }
+      }
+
       await logMilkAudit({
         action: "admin_edit",
         adminOpenId: ctx.user?.openId ?? null,
         entityType: "reception",
         entityId: input.receptionId,
-        detailsJson: JSON.stringify({ updates }),
+        detailsJson: JSON.stringify({ oldStatus, newStatus, updates }),
       });
 
       return { success: true };
     }),
 
   /**
-   * Delete reception — reverses tank volume if accepted, removes reception.
+   * Delete reception — reverses tank volume if accepted, removes reception,
+   * and re-evaluates session status.
    */
   deleteReception: adminProcedure
     .input(z.object({ receptionId: z.number().int() }))
@@ -801,7 +869,12 @@ export const milkAdminRouter = router({
         throw new TRPCError({ code: "NOT_FOUND", message: "Приёмка не найдена" });
       }
 
-      // Reverse tank volume if reception was accepted
+      // 1. Delete related tank movements FIRST (before inserting adjustment)
+      await db
+        .delete(milkTankMovements)
+        .where(eq(milkTankMovements.receptionId, input.receptionId));
+
+      // 2. Reverse tank volume if reception was accepted
       if (reception.status === "accepted" && reception.targetTankId && reception.acceptedVolumeMl > 0) {
         const [tank] = await db
           .select()
@@ -816,27 +889,55 @@ export const milkAdminRouter = router({
             .set({ currentVolumeMl: newTankVol })
             .where(eq(milkTanks.id, tank.id));
 
+          // This adjustment movement is NOT linked to receptionId (already deleted above)
           await db.insert(milkTankMovements).values({
             tankId: tank.id,
             movementType: "adjustment",
             volumeMl: -reception.acceptedVolumeMl,
             tankVolumeAfterMl: newTankVol,
-            receptionId: reception.id,
             performedByWorkerId: reception.receivedByWorkerId,
-            note: `Удаление приёмки админом`,
+            note: `Удаление приёмки #${reception.id} админом`,
           });
         }
       }
 
-      // Delete related tank movements
-      await db
-        .delete(milkTankMovements)
-        .where(eq(milkTankMovements.receptionId, input.receptionId));
-
-      // Delete the reception
+      // 3. Delete the reception
       await db
         .delete(milkReceptions)
         .where(eq(milkReceptions.id, input.receptionId));
+
+      // 4. Re-evaluate session status — may need to revert from "confirmed" to "pending_reception"
+      if (reception.sessionId) {
+        const [session] = await db.select().from(milkSessions).where(eq(milkSessions.id, reception.sessionId)).limit(1);
+        if (session && session.status === "confirmed") {
+          const milkTypesWithVolume: string[] = [];
+          const types = [
+            { key: "goat", vol: session.goatVolumeMl, feed: (session as any).goatFeedingMl ?? 0, loss: (session as any).goatLossesMl ?? 0 },
+            { key: "sheep", vol: session.sheepVolumeMl, feed: (session as any).sheepFeedingMl ?? 0, loss: (session as any).sheepLossesMl ?? 0 },
+            { key: "cow", vol: session.cowVolumeMl, feed: (session as any).cowFeedingMl ?? 0, loss: (session as any).cowLossesMl ?? 0 },
+          ];
+          for (const t of types) {
+            const net = t.vol - t.feed - t.loss;
+            if (t.vol > 0 && net > 0) milkTypesWithVolume.push(t.key);
+          }
+
+          if (milkTypesWithVolume.length > 0) {
+            const remainingReceptions = await db
+              .select({ milkType: milkReceptions.milkType, status: milkReceptions.status })
+              .from(milkReceptions)
+              .where(and(
+                eq(milkReceptions.sessionId, reception.sessionId),
+                inArray(milkReceptions.status, ["accepted", "rejected"]),
+              ));
+            const processedTypes = new Set(remainingReceptions.map((r: any) => r.milkType));
+            const allProcessed = milkTypesWithVolume.every((t) => processedTypes.has(t));
+
+            if (!allProcessed) {
+              await db.update(milkSessions).set({ status: "pending_reception", confirmedAt: null }).where(eq(milkSessions.id, session.id));
+            }
+          }
+        }
+      }
 
       await logMilkAudit({
         action: "admin_delete",
