@@ -696,4 +696,160 @@ export const milkAdminRouter = router({
 
       return { success: true, message: `Дойка ${session.sessionCode} удалена` };
     }),
+
+  /**
+   * Update reception — admin can edit accepted/rejected volumes, status, note.
+   * If volumes change and reception was accepted, adjusts tank volume accordingly.
+   */
+  updateReception: adminProcedure
+    .input(
+      z.object({
+        receptionId: z.number().int(),
+        acceptedVolumeMl: z.number().int().min(0).optional(),
+        rejectedVolumeMl: z.number().int().min(0).optional(),
+        status: z.enum(["pending", "accepted", "rejected"]).optional(),
+        rejectionReason: z.string().nullable().optional(),
+        note: z.string().nullable().optional(),
+      }),
+    )
+    .mutation(async ({ input, ctx }) => {
+      const db = await getDb();
+
+      const [reception] = await db
+        .select()
+        .from(milkReceptions)
+        .where(eq(milkReceptions.id, input.receptionId))
+        .limit(1);
+
+      if (!reception) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Приёмка не найдена" });
+      }
+
+      const oldAcceptedMl = reception.acceptedVolumeMl;
+      const newAcceptedMl = input.acceptedVolumeMl ?? oldAcceptedMl;
+      const volumeDiffMl = newAcceptedMl - oldAcceptedMl;
+
+      // If reception was accepted and has a tank, adjust tank volume
+      if (reception.status === "accepted" && reception.targetTankId && volumeDiffMl !== 0) {
+        const [tank] = await db
+          .select()
+          .from(milkTanks)
+          .where(eq(milkTanks.id, reception.targetTankId))
+          .limit(1);
+
+        if (tank) {
+          const newTankVol = Math.max(0, tank.currentVolumeMl + volumeDiffMl);
+          await db
+            .update(milkTanks)
+            .set({ currentVolumeMl: newTankVol })
+            .where(eq(milkTanks.id, tank.id));
+
+          // Log tank movement for the adjustment
+          await db.insert(milkTankMovements).values({
+            tankId: tank.id,
+            movementType: "adjustment",
+            volumeMl: volumeDiffMl,
+            tankVolumeAfterMl: newTankVol,
+            receptionId: reception.id,
+            performedByWorkerId: reception.receivedByWorkerId,
+            note: `Корректировка админом: ${(volumeDiffMl / 1000).toFixed(2)} л`,
+          });
+        }
+      }
+
+      // Build update object
+      const updates: Record<string, any> = {};
+      if (input.acceptedVolumeMl !== undefined) updates.acceptedVolumeMl = input.acceptedVolumeMl;
+      if (input.rejectedVolumeMl !== undefined) updates.rejectedVolumeMl = input.rejectedVolumeMl;
+      if (input.status !== undefined) updates.status = input.status;
+      if (input.rejectionReason !== undefined) updates.rejectionReason = input.rejectionReason;
+      if (input.note !== undefined) updates.note = input.note;
+
+      if (Object.keys(updates).length > 0) {
+        await db
+          .update(milkReceptions)
+          .set(updates)
+          .where(eq(milkReceptions.id, input.receptionId));
+      }
+
+      await logMilkAudit({
+        action: "admin_edit",
+        adminOpenId: ctx.user?.openId ?? null,
+        entityType: "reception",
+        entityId: input.receptionId,
+        detailsJson: JSON.stringify({ updates }),
+      });
+
+      return { success: true };
+    }),
+
+  /**
+   * Delete reception — reverses tank volume if accepted, removes reception.
+   */
+  deleteReception: adminProcedure
+    .input(z.object({ receptionId: z.number().int() }))
+    .mutation(async ({ input, ctx }) => {
+      const db = await getDb();
+
+      const [reception] = await db
+        .select()
+        .from(milkReceptions)
+        .where(eq(milkReceptions.id, input.receptionId))
+        .limit(1);
+
+      if (!reception) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Приёмка не найдена" });
+      }
+
+      // Reverse tank volume if reception was accepted
+      if (reception.status === "accepted" && reception.targetTankId && reception.acceptedVolumeMl > 0) {
+        const [tank] = await db
+          .select()
+          .from(milkTanks)
+          .where(eq(milkTanks.id, reception.targetTankId))
+          .limit(1);
+
+        if (tank) {
+          const newTankVol = Math.max(0, tank.currentVolumeMl - reception.acceptedVolumeMl);
+          await db
+            .update(milkTanks)
+            .set({ currentVolumeMl: newTankVol })
+            .where(eq(milkTanks.id, tank.id));
+
+          await db.insert(milkTankMovements).values({
+            tankId: tank.id,
+            movementType: "adjustment",
+            volumeMl: -reception.acceptedVolumeMl,
+            tankVolumeAfterMl: newTankVol,
+            receptionId: reception.id,
+            performedByWorkerId: reception.receivedByWorkerId,
+            note: `Удаление приёмки админом`,
+          });
+        }
+      }
+
+      // Delete related tank movements
+      await db
+        .delete(milkTankMovements)
+        .where(eq(milkTankMovements.receptionId, input.receptionId));
+
+      // Delete the reception
+      await db
+        .delete(milkReceptions)
+        .where(eq(milkReceptions.id, input.receptionId));
+
+      await logMilkAudit({
+        action: "admin_delete",
+        adminOpenId: ctx.user?.openId ?? null,
+        entityType: "reception",
+        entityId: input.receptionId,
+        detailsJson: JSON.stringify({
+          sessionId: reception.sessionId,
+          acceptedMl: reception.acceptedVolumeMl,
+          rejectedMl: reception.rejectedVolumeMl,
+        }),
+      });
+
+      return { success: true, message: "Приёмка удалена" };
+    }),
 });

@@ -42,9 +42,13 @@ export default function FarmChangePassword() {
     }
   }, [meQuery.isLoading, meQuery.data, navigate]);
 
+  const trpcUtils = trpc.useUtils();
+
   const changeMutation = trpc.farmAuth.changePassword.useMutation({
     onSuccess: () => {
       setSuccess(true);
+      // Invalidate the me query cache so FarmLogin won't see stale mustChangePassword=true
+      trpcUtils.farmAuth.me.invalidate();
       // After 2 seconds, redirect to the appropriate ARM
       setTimeout(() => {
         const role = meQuery.data?.role;

@@ -400,6 +400,13 @@
       "when": 1776806759760,
       "tag": "0057_many_juggernaut",
       "breakpoints": true
+    },
+    {
+      "idx": 58,
+      "version": "5",
+      "when": 1776934813822,
+      "tag": "0058_sweet_beast",
+      "breakpoints": true
     }
   ]
 }

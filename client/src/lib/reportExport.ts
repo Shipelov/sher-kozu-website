@@ -99,6 +99,25 @@ export function exportExcel(config: ReportConfig) {
 
 // ─── PDF ────────────────────────────────────────────────────────
 
+function drawLogo(doc: jsPDF) {
+  const pageW = doc.internal.pageSize.getWidth();
+  // Draw brand name at top-right
+  doc.setFont("Roboto", "bold");
+  doc.setFontSize(11);
+  doc.setTextColor(56, 102, 65); // brand green
+  doc.text("Шерь Козу", pageW - 14, 9, { align: "right" });
+  doc.setFont("Roboto", "normal");
+  doc.setFontSize(6);
+  doc.setTextColor(128);
+  doc.text("Семейная ферма \u2022 koza.vip", pageW - 14, 13, { align: "right" });
+  // Thin green line under header
+  doc.setDrawColor(56, 102, 65);
+  doc.setLineWidth(0.3);
+  doc.line(10, 16, pageW - 10, 16);
+  doc.setTextColor(0);
+  doc.setDrawColor(0);
+}
+
 export function exportPDF(config: ReportConfig) {
   const { title, subtitle, columns, rows, summaryRows, filename } = config;
 
@@ -107,18 +126,21 @@ export function exportPDF(config: ReportConfig) {
   // Register Cyrillic fonts
   registerCyrillicFonts(doc);
 
+  // Logo
+  drawLogo(doc);
+
   // Title
   doc.setFont("Roboto", "bold");
   doc.setFontSize(14);
-  doc.text(title, 14, 15);
+  doc.text(title, 14, 23);
 
   if (subtitle) {
     doc.setFont("Roboto", "normal");
     doc.setFontSize(9);
-    doc.text(subtitle, 14, 21);
+    doc.text(subtitle, 14, 29);
   }
 
-  const startY = subtitle ? 26 : 20;
+  const startY = subtitle ? 34 : 28;
 
   // Combine data + summary rows
   const allRows = [...rows];
@@ -172,16 +194,17 @@ export function exportPDF(config: ReportConfig) {
         doc.internal.pageSize.getHeight() - 7,
         { align: "right" }
       );
-      // Add title on continuation pages
+      // Add logo and title on continuation pages
       if (data.pageNumber > 1) {
+        drawLogo(doc);
         doc.setFont("Roboto", "normal");
         doc.setFontSize(8);
         doc.setTextColor(100);
-        doc.text(`${title} (продолжение)`, 14, 10);
+        doc.text(`${title} (продолжение)`, 14, 21);
         doc.setTextColor(0);
       }
     },
-    margin: { top: 14, bottom: 14, left: 10, right: 10 },
+    margin: { top: 24, bottom: 14, left: 10, right: 10 },
     // Bold summary rows
     didParseCell: (data: any) => {
       // Ensure Cyrillic font is used for all cells

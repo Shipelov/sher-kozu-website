@@ -2321,6 +2321,8 @@ export const milkAuditActionEnum = mysqlEnum("milkAuditAction", [
   "batch_completed",
   "worker_login",
   "worker_password_changed",
+  "admin_edit",
+  "admin_delete",
 ]);
 
 /**

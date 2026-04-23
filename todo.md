@@ -2555,3 +2555,7 @@ Module: Контроль оборота молока. Spec v2.1. Mobile-first AR
 - [x] Fix PDF Milker report: add session code (Код Дойки) column
 - [x] Fix: АРМ Дояр tab switching bug (Report→History→Report doesn't switch, data stays on History)
 - [x] Check and fix same tab switching bug in АРМ Сыродел (no bug found - already uses correct && pattern)
+- [x] Add admin edit/delete for receptions in AdminMilkDashboard Приёмки tab (like Дойки tab)
+- [x] Add Шерь Козу logo to all PDF reports
+- [x] Fix double password prompt on new employee registration
+- [x] Add "remember me" checkbox to login/gate page

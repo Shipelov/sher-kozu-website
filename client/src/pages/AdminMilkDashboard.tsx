@@ -131,6 +131,15 @@ export default function AdminMilkDashboard() {
   // ─── Delete confirm dialog ───
   const [deleteSession, setDeleteSession] = useState<any>(null);
 
+  // ─── Reception edit/delete state ───
+  const [editReception, setEditReception] = useState<any>(null);
+  const [editRecAccepted, setEditRecAccepted] = useState("");
+  const [editRecRejected, setEditRecRejected] = useState("");
+  const [editRecStatus, setEditRecStatus] = useState("");
+  const [editRecReason, setEditRecReason] = useState("");
+  const [editRecNote, setEditRecNote] = useState("");
+  const [deleteReception, setDeleteReception] = useState<any>(null);
+
   // Overview custom date range state
   const [customFrom, setCustomFrom] = useState("");
   const [customTo, setCustomTo] = useState("");
@@ -212,6 +221,49 @@ export default function AdminMilkDashboard() {
     },
     onError: (err: any) => toast.error("Ошибка", { description: err.message }),
   });
+
+  const updateReceptionMutation = trpc.milkAdmin.updateReception.useMutation({
+    onSuccess: () => {
+      toast.success("Приёмка обновлена");
+      setEditReception(null);
+      void utils.milkAdmin.receptions.invalidate();
+      void utils.milkAdmin.overview.invalidate();
+      void utils.milkAdmin.tanks.invalidate();
+    },
+    onError: (err: any) => toast.error("Ошибка", { description: err.message }),
+  });
+
+  const deleteReceptionMutation = trpc.milkAdmin.deleteReception.useMutation({
+    onSuccess: (data: any) => {
+      toast.success(data.message);
+      setDeleteReception(null);
+      void utils.milkAdmin.receptions.invalidate();
+      void utils.milkAdmin.overview.invalidate();
+      void utils.milkAdmin.tanks.invalidate();
+    },
+    onError: (err: any) => toast.error("Ошибка", { description: err.message }),
+  });
+
+  function openEditReceptionDialog(r: any) {
+    setEditReception(r);
+    setEditRecAccepted(String(r.acceptedVolumeLiters));
+    setEditRecRejected(String(r.rejectedVolumeLiters));
+    setEditRecStatus(r.status);
+    setEditRecReason(r.rejectionReason ?? "");
+    setEditRecNote(r.note ?? "");
+  }
+
+  function handleSaveReception() {
+    if (!editReception) return;
+    updateReceptionMutation.mutate({
+      receptionId: editReception.id,
+      acceptedVolumeMl: Math.round(parseFloat(editRecAccepted || "0") * 1000),
+      rejectedVolumeMl: Math.round(parseFloat(editRecRejected || "0") * 1000),
+      status: editRecStatus as any,
+      rejectionReason: editRecReason || null,
+      note: editRecNote || null,
+    });
+  }
 
   const clearAuditMutation = trpc.milkAdmin.clearAuditLog.useMutation({
     onSuccess: (data: any) => {
@@ -462,6 +514,7 @@ export default function AdminMilkDashboard() {
                       <th className="text-right px-3 py-2 font-medium">Отклонено</th>
                       <th className="text-left px-3 py-2 font-medium">Статус</th>
                       <th className="text-left px-3 py-2 font-medium">Дата</th>
+                      <th className="text-center px-3 py-2 font-medium">Действия</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y">
@@ -496,6 +549,24 @@ export default function AdminMilkDashboard() {
                               hour: "2-digit",
                               minute: "2-digit",
                             })}
+                          </td>
+                          <td className="px-3 py-2">
+                            <div className="flex items-center justify-center gap-1">
+                              <button
+                                onClick={() => openEditReceptionDialog(r)}
+                                className="w-8 h-8 rounded-lg bg-[oklch(0.94_0.02_90)] flex items-center justify-center hover:bg-[oklch(0.88_0.04_220)] transition-colors"
+                                title="Редактировать"
+                              >
+                                <Pencil className="w-3.5 h-3.5 text-[oklch(0.45_0.08_220)]" />
+                              </button>
+                              <button
+                                onClick={() => setDeleteReception(r)}
+                                className="w-8 h-8 rounded-lg bg-red-50 flex items-center justify-center hover:bg-red-100 transition-colors"
+                                title="Удалить"
+                              >
+                                <Trash2 className="w-3.5 h-3.5 text-red-500" />
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       );
@@ -987,6 +1058,138 @@ export default function AdminMilkDashboard() {
               }}
             >
               {deleteSessionMutation.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : (
+                <Trash2 className="h-4 w-4 mr-2" />
+              )}
+              Удалить
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Edit Reception Dialog ── */}
+      <Dialog open={!!editReception} onOpenChange={(open) => !open && setEditReception(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Редактировать приёмку</DialogTitle>
+          </DialogHeader>
+          {editReception && (
+            <div className="space-y-4 py-2">
+              <div className="text-xs text-[oklch(0.52_0.04_80)] space-y-1">
+                <p>Дойка: <strong className="font-mono">{editReception.sessionCode}</strong></p>
+                <p>Тип: <strong>{editReception.milkTypeLabel}</strong></p>
+                <p>Сыродел: <strong>{editReception.receiverName}</strong></p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-medium text-[oklch(0.35_0.04_60)] mb-1 block">Принято (л)</label>
+                  <Input
+                    inputMode="decimal"
+                    value={editRecAccepted}
+                    onChange={(e) => setEditRecAccepted(e.target.value)}
+                    className="h-10"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-[oklch(0.35_0.04_60)] mb-1 block">Отклонено (л)</label>
+                  <Input
+                    inputMode="decimal"
+                    value={editRecRejected}
+                    onChange={(e) => setEditRecRejected(e.target.value)}
+                    className="h-10"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="text-xs font-medium text-[oklch(0.35_0.04_60)] mb-1 block">Статус</label>
+                <Select value={editRecStatus} onValueChange={setEditRecStatus}>
+                  <SelectTrigger className="h-10">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="pending">Ожидает</SelectItem>
+                    <SelectItem value="accepted">Принята</SelectItem>
+                    <SelectItem value="rejected">Отклонена</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {editRecStatus === "rejected" && (
+                <div>
+                  <label className="text-xs font-medium text-[oklch(0.35_0.04_60)] mb-1 block">Причина отклонения</label>
+                  <Input
+                    value={editRecReason}
+                    onChange={(e) => setEditRecReason(e.target.value)}
+                    placeholder="Причина..."
+                    className="h-10"
+                  />
+                </div>
+              )}
+
+              <div>
+                <label className="text-xs font-medium text-[oklch(0.35_0.04_60)] mb-1 block">Примечание</label>
+                <Input
+                  value={editRecNote}
+                  onChange={(e) => setEditRecNote(e.target.value)}
+                  placeholder="Примечание..."
+                  className="h-10"
+                />
+              </div>
+            </div>
+          )}
+          <DialogFooter className="pt-3">
+            <Button variant="outline" onClick={() => setEditReception(null)}>
+              Отмена
+            </Button>
+            <Button
+              disabled={updateReceptionMutation.isPending}
+              onClick={handleSaveReception}
+              className="bg-[oklch(0.35_0.12_150)] hover:bg-[oklch(0.30_0.12_150)]"
+            >
+              {updateReceptionMutation.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : (
+                <Check className="h-4 w-4 mr-2" />
+              )}
+              Сохранить
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Delete Reception Confirm Dialog ── */}
+      <Dialog open={!!deleteReception} onOpenChange={(open) => !open && setDeleteReception(null)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="text-red-600">Удалить приёмку?</DialogTitle>
+          </DialogHeader>
+          <div className="py-2 text-sm text-[oklch(0.4_0.04_80)]">
+            <p>
+              Вы уверены, что хотите удалить приёмку{" "}
+              <strong>{deleteReception?.milkTypeLabel}</strong> из дойки{" "}
+              <strong className="font-mono">{deleteReception?.sessionCode}</strong>?
+            </p>
+            <p className="mt-2 text-xs text-red-500">
+              Объём в танке будет откорректирован. Это действие необратимо.
+            </p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteReception(null)}>
+              Отмена
+            </Button>
+            <Button
+              variant="destructive"
+              disabled={deleteReceptionMutation.isPending}
+              onClick={() => {
+                if (deleteReception) {
+                  deleteReceptionMutation.mutate({ receptionId: deleteReception.id });
+                }
+              }}
+            >
+              {deleteReceptionMutation.isPending ? (
                 <Loader2 className="h-4 w-4 animate-spin mr-2" />
               ) : (
                 <Trash2 className="h-4 w-4 mr-2" />

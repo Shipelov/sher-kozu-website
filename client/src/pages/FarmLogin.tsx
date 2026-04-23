@@ -16,9 +16,14 @@ import { Loader2, Milk, Eye, EyeOff, AlertCircle } from "lucide-react";
 
 export default function FarmLogin() {
   const [, navigate] = useLocation();
-  const [login, setLogin] = useState("");
+  const [login, setLogin] = useState(() => {
+    try { return localStorage.getItem("farm_saved_login") ?? ""; } catch { return ""; }
+  });
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(() => {
+    try { return localStorage.getItem("farm_remember_me") === "1"; } catch { return false; }
+  });
   const [error, setError] = useState("");
 
   // Check if already logged in
@@ -47,6 +52,17 @@ export default function FarmLogin() {
 
   const loginMutation = trpc.farmAuth.login.useMutation({
     onSuccess: (data) => {
+      // Save or clear login for "remember me"
+      try {
+        if (rememberMe) {
+          localStorage.setItem("farm_saved_login", login.trim());
+          localStorage.setItem("farm_remember_me", "1");
+        } else {
+          localStorage.removeItem("farm_saved_login");
+          localStorage.removeItem("farm_remember_me");
+        }
+      } catch { /* ignore */ }
+
       if (data.mustChangePassword) {
         navigate("/farm/change-password");
       } else {
@@ -173,6 +189,19 @@ export default function FarmLogin() {
               </button>
             </div>
           </div>
+
+          {/* Remember me checkbox */}
+          <label className="flex items-center gap-3 cursor-pointer touch-manipulation select-none">
+            <input
+              type="checkbox"
+              checked={rememberMe}
+              onChange={(e) => setRememberMe(e.target.checked)}
+              className="w-5 h-5 rounded border-[oklch(0.85_0.02_90)] text-[oklch(0.35_0.12_150)]
+                         focus:ring-[oklch(0.35_0.12_150)] accent-[oklch(0.35_0.12_150)]"
+              disabled={isLoading}
+            />
+            <span className="text-sm text-[oklch(0.45_0.04_60)]">Запомнить меня</span>
+          </label>
 
           {/* Submit button — large touch target */}
           <Button
