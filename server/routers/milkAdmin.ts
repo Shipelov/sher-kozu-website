@@ -832,8 +832,8 @@ export const milkAdminRouter = router({
             if (allProcessed && session.status !== "confirmed") {
               await db.update(milkSessions).set({ status: "confirmed", confirmedAt: new Date() }).where(eq(milkSessions.id, session.id));
             } else if (!allProcessed && session.status === "confirmed") {
-              // Revert session to pending_reception if not all types are processed anymore
-              await db.update(milkSessions).set({ status: "pending_reception", confirmedAt: null }).where(eq(milkSessions.id, session.id));
+              // Revert session to pending_confirm if not all types are processed anymore
+              await db.update(milkSessions).set({ status: "pending_confirm", confirmedAt: sql`NULL` }).where(eq(milkSessions.id, session.id));
             }
           }
         }
@@ -906,7 +906,7 @@ export const milkAdminRouter = router({
         .delete(milkReceptions)
         .where(eq(milkReceptions.id, input.receptionId));
 
-      // 4. Re-evaluate session status — may need to revert from "confirmed" to "pending_reception"
+      // 4. Re-evaluate session status — may need to revert from "confirmed" to "pending_confirm"
       if (reception.sessionId) {
         const [session] = await db.select().from(milkSessions).where(eq(milkSessions.id, reception.sessionId)).limit(1);
         if (session && session.status === "confirmed") {
@@ -933,7 +933,7 @@ export const milkAdminRouter = router({
             const allProcessed = milkTypesWithVolume.every((t) => processedTypes.has(t));
 
             if (!allProcessed) {
-              await db.update(milkSessions).set({ status: "pending_reception", confirmedAt: null }).where(eq(milkSessions.id, session.id));
+              await db.update(milkSessions).set({ status: "pending_confirm", confirmedAt: sql`NULL` }).where(eq(milkSessions.id, session.id));
             }
           }
         }

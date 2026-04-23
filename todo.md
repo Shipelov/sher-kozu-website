@@ -2561,3 +2561,15 @@ Module: Контроль оборота молока. Spec v2.1. Mobile-first AR
 - [x] Fix: Admin delete reception SQL error - milkMovementType enum missing 'adjustment' value
 - [x] Fix: Admin edit reception doesn't propagate status changes to related records (tanks, movements)
 - [x] Deploy to VDS — rsync dist/ to /var/www/sherkozu/current/dist/, PM2 sherkozu online, koza.vip 200 OK
+
+## Fix: Admin reception edit/delete bugs (round 2) — April 23, 2026
+
+- [x] Fix: 'adjustment' enum value not in production DB milkMovementType column — applied ALTER TABLE directly to production DB
+- [x] Fix: 'admin_edit'/'admin_delete' enum values not in production DB milkAuditAction column — applied ALTER TABLE directly to production DB
+
+## Fix: Admin reception edit/delete bugs (round 3) — April 23, 2026
+
+- [x] Fix: deleteReception SQL error — code used non-existent 'pending_reception' status (correct: 'pending_confirm'), and confirmedAt: null replaced with sql`NULL`
+- [x] Fix: updateReception same bug — 'pending_reception' → 'pending_confirm' in session status revert
+- [x] Verified all enum values in production DB match schema (milkMovementType, milkAuditAction, milkSessionStatus)
+- [x] Deploy to VDS — rsync + pm2 restart, koza.vip 200 OK
