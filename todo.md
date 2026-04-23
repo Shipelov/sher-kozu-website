@@ -2600,3 +2600,10 @@ Module: Контроль оборота молока. Spec v2.1. Mobile-first AR
 - [x] Audit: Milker ARM summary — CONFIRMED: "→ Сыроделу" shows net volume correctly; now also shows accepted/rejected badges per type
 - [x] Audit: milkReception accept/reject flow — CONFIRMED: reject does NOT create tank movements; accept creates milking_in movement
 - [x] Fix: Added acceptedL/rejectedL to overview formatPeriod, added % принято от нетто metric, added Принято/Отклонено columns to milker report
+
+## Tank 2 empty + milker report detail + reconciliation + charts — April 23, 2026
+
+- [x] Diagnose: Tank 2 empty — FIXED: corrected volume to 51000ml (was 0 due to old deletion bug), also fixed Tank 3 from 68000→59000ml. Added correction movements to audit trail
+- [x] Feature: Add per-milk-type reception detail — added Принято/Отклонено per type (goat/sheep/cow) in reportData endpoint and FarmMilkerArm export columns
+- [x] Feature: Add tank reconciliation check — new milkAdmin.tankReconciliation endpoint + reconciliation table in Tanks tab with expected vs actual volumes and discrepancy status
+- [x] Feature: Add accepted/rejected charts — horizontal stacked bar chart per milk type showing accepted/rejected/pending % in admin overview

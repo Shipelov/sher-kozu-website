@@ -985,4 +985,66 @@ export const milkAdminRouter = router({
 
       return { success: true, message: "Приёмка удалена" };
     }),
+
+  /**
+   * Tank reconciliation: compare tank currentVolumeMl with sum of accepted reception volumes.
+   * Returns per-tank expected vs actual volumes and discrepancy.
+   */
+  tankReconciliation: adminProcedure.query(async () => {
+    const db = await getDb();
+
+    // Get all tanks
+    const tanks = await db.select().from(milkTanks).orderBy(milkTanks.id);
+
+    // Sum accepted reception volumes per tank
+    const acceptedByTank = await db
+      .select({
+        targetTankId: milkReceptions.targetTankId,
+        totalAcceptedMl: sql<number>`COALESCE(SUM(${milkReceptions.acceptedVolumeMl}), 0)`,
+      })
+      .from(milkReceptions)
+      .where(eq(milkReceptions.status, "accepted"))
+      .groupBy(milkReceptions.targetTankId);
+
+    const acceptedMap: Record<number, number> = {};
+    for (const row of acceptedByTank) {
+      if (row.targetTankId != null) {
+        acceptedMap[row.targetTankId] = Number(row.totalAcceptedMl);
+      }
+    }
+
+    // Sum waste/batch_out movements per tank (these reduce the tank)
+    const outflowByTank = await db
+      .select({
+        tankId: milkTankMovements.tankId,
+        totalOutMl: sql<number>`COALESCE(SUM(CASE WHEN ${milkTankMovements.volumeMl} < 0 AND ${milkTankMovements.movementType} IN ('waste', 'batch_out', 'transfer_out') THEN ABS(${milkTankMovements.volumeMl}) ELSE 0 END), 0)`,
+      })
+      .from(milkTankMovements)
+      .groupBy(milkTankMovements.tankId);
+
+    const outflowMap: Record<number, number> = {};
+    for (const row of outflowByTank) {
+      outflowMap[row.tankId] = Number(row.totalOutMl);
+    }
+
+    return tanks.map((t: any) => {
+      const acceptedMl = acceptedMap[t.id] ?? 0;
+      const outflowMl = outflowMap[t.id] ?? 0;
+      const expectedMl = acceptedMl - outflowMl;
+      const actualMl = t.currentVolumeMl;
+      const discrepancyMl = actualMl - expectedMl;
+      return {
+        id: t.id,
+        name: t.name,
+        milkType: t.milkType,
+        milkTypeLabel: MILK_TYPE_LABELS[t.milkType] ?? t.milkType,
+        acceptedLiters: +(acceptedMl / 1000).toFixed(2),
+        outflowLiters: +(outflowMl / 1000).toFixed(2),
+        expectedLiters: +(expectedMl / 1000).toFixed(2),
+        actualLiters: +(actualMl / 1000).toFixed(2),
+        discrepancyLiters: +(discrepancyMl / 1000).toFixed(2),
+        isOk: Math.abs(discrepancyMl) < 100, // <0.1L tolerance
+      };
+    });
+  }),
 });

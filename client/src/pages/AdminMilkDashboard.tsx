@@ -174,6 +174,10 @@ export default function AdminMilkDashboard() {
     enabled: tab === "tanks",
   });
 
+  const reconciliationQuery = trpc.milkAdmin.tankReconciliation.useQuery(undefined, {
+    enabled: tab === "tanks",
+  });
+
   const auditQuery = trpc.milkAdmin.auditLog.useQuery(
     { page: auditPage, pageSize: 20 },
     { enabled: tab === "audit" },
@@ -670,6 +674,53 @@ export default function AdminMilkDashboard() {
                   </div>
                 );
               })}
+            </div>
+          )}
+
+          {/* ── Tank Reconciliation ── */}
+          {reconciliationQuery.data && (
+            <div className="mt-6">
+              <h3 className="text-sm font-semibold text-[oklch(0.4_0.04_80)] mb-3 flex items-center gap-2">
+                <Check className="w-4 h-4" /> Сверка объёмов танков
+              </h3>
+              <div className="border rounded-lg overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-[oklch(0.96_0.01_90)]">
+                    <tr>
+                      <th className="text-left px-3 py-2 font-medium text-xs">Танк</th>
+                      <th className="text-left px-3 py-2 font-medium text-xs">Тип</th>
+                      <th className="text-right px-3 py-2 font-medium text-xs">Принято, л</th>
+                      <th className="text-right px-3 py-2 font-medium text-xs">Расход, л</th>
+                      <th className="text-right px-3 py-2 font-medium text-xs">Ожидаемо, л</th>
+                      <th className="text-right px-3 py-2 font-medium text-xs">Факт, л</th>
+                      <th className="text-right px-3 py-2 font-medium text-xs">Расхождение</th>
+                      <th className="text-center px-3 py-2 font-medium text-xs">Статус</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y">
+                    {reconciliationQuery.data.map((r: any) => (
+                      <tr key={r.id} className={r.isOk ? "hover:bg-[oklch(0.98_0.005_90)]" : "bg-red-50 hover:bg-red-100"}>
+                        <td className="px-3 py-2 font-medium">{r.name}</td>
+                        <td className="px-3 py-2 text-[oklch(0.52_0.04_80)]">{r.milkTypeLabel}</td>
+                        <td className="px-3 py-2 text-right">{r.acceptedLiters}</td>
+                        <td className="px-3 py-2 text-right">{r.outflowLiters}</td>
+                        <td className="px-3 py-2 text-right font-medium">{r.expectedLiters}</td>
+                        <td className="px-3 py-2 text-right font-medium">{r.actualLiters}</td>
+                        <td className={`px-3 py-2 text-right font-bold ${r.isOk ? "text-emerald-600" : "text-red-600"}`}>
+                          {r.discrepancyLiters > 0 ? "+" : ""}{r.discrepancyLiters} л
+                        </td>
+                        <td className="px-3 py-2 text-center">
+                          {r.isOk ? (
+                            <Badge className="bg-emerald-100 text-emerald-700 rounded-full text-[10px]">✔ OK</Badge>
+                          ) : (
+                            <Badge className="bg-red-100 text-red-700 rounded-full text-[10px]">⚠ Расхождение</Badge>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           )}
 
@@ -1526,6 +1577,66 @@ function OverviewSection({
           PDF
         </Button>
       </div>
+
+      {/* ── Accepted / Rejected Visual Chart ── */}
+      {(d.total.acceptedL > 0 || d.total.rejectedL > 0) && (
+        <div>
+          <h3 className="text-sm font-semibold text-[oklch(0.4_0.04_80)] mb-3 flex items-center gap-2">
+            <BarChart3 className="w-4 h-4" /> Принято / Отклонено по типу молока
+          </h3>
+          <div className="space-y-3">
+            {(["goat", "sheep", "cow"] as const).map((type) => {
+              const label = type === "goat" ? "🐐 Козье" : type === "sheep" ? "🐑 Овечье" : "🐄 Коровье";
+              const acc = d[type].acceptedL;
+              const rej = d[type].rejectedL;
+              const net = d[type].netL;
+              const total = acc + rej;
+              if (net <= 0 && total <= 0) return null;
+              const accPct = net > 0 ? Math.round((acc / net) * 100) : 0;
+              const rejPct = net > 0 ? Math.round((rej / net) * 100) : 0;
+              const pendingPct = Math.max(0, 100 - accPct - rejPct);
+              return (
+                <div key={type} className="flex items-center gap-3">
+                  <span className="text-sm w-28 shrink-0">{label}</span>
+                  <div className="flex-1">
+                    <div className="h-6 rounded-full overflow-hidden flex bg-[oklch(0.94_0.02_90)]">
+                      {accPct > 0 && (
+                        <div
+                          className="h-full bg-emerald-400 flex items-center justify-center text-[10px] font-bold text-white"
+                          style={{ width: `${accPct}%` }}
+                        >
+                          {accPct > 10 ? `${acc}л` : ""}
+                        </div>
+                      )}
+                      {rejPct > 0 && (
+                        <div
+                          className="h-full bg-red-400 flex items-center justify-center text-[10px] font-bold text-white"
+                          style={{ width: `${rejPct}%` }}
+                        >
+                          {rejPct > 10 ? `${rej}л` : ""}
+                        </div>
+                      )}
+                      {pendingPct > 0 && (
+                        <div
+                          className="h-full bg-[oklch(0.88_0.04_80)] flex items-center justify-center text-[10px] font-medium text-[oklch(0.4_0.04_80)]"
+                          style={{ width: `${pendingPct}%` }}
+                        >
+                          {pendingPct > 15 ? "Ожидает" : ""}
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex justify-between text-[10px] text-[oklch(0.52_0.04_80)] mt-0.5">
+                      <span>✔ {acc}л ({accPct}%)</span>
+                      {rej > 0 && <span className="text-red-500">✖ {rej}л ({rejPct}%)</span>}
+                      <span>Нетто: {net}л</span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Operational cards: reception + tanks */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
