@@ -2547,6 +2547,9 @@ Module: Контроль оборота молока. Spec v2.1. Mobile-first AR
 - [x] Fix: Контроль оборота молока Overview missing feeding (выпой) and losses (потери) volumes
 - [x] Redesign AdminMilkDashboard Overview: 4-column layout (Всего / Козы / Овцы / Коровы) + analytics section with per-type percentages (losses %, feeding %, net %)
 - [x] Add custom date range period selector to AdminMilkDashboard Overview (presets: Сегодня/Неделя/Месяц + custom date range with start/end date pickers)
-- [ ] Add Excel/PDF report export to АРМ Дояр (milking sessions with all fields, period selector)
-- [ ] Add Excel/PDF report export to АРМ Сыродел (receptions + tank turnover, period selector)
-- [ ] Add Excel/PDF report download to Admin Overview (summary stats, already has period selector)
+- [x] Add Excel/PDF report export to АРМ Дояр (milking sessions with all fields, period selector)
+- [x] Add Excel/PDF report export to АРМ Сыродел (receptions + tank turnover, period selector)
+- [x] Add Excel/PDF report download to Admin Overview (summary stats, already has period selector)
+- [x] Fix PDF reports: add Cyrillic font support (unreadable text)
+- [x] Fix PDF Milker report: add multi-page pagination (content overflows single page)
+- [x] Fix PDF Milker report: add session code (Код Дойки) column

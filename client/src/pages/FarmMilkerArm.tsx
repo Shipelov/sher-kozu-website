@@ -1189,6 +1189,7 @@ export default function FarmMilkerArm() {
 // ─── Report export helpers ──────────────────────────────────
 
 const MILKER_COLUMNS: ReportColumn[] = [
+  { header: "Код дойки", key: "code", width: 14 },
   { header: "Дата", key: "date", width: 12 },
   { header: "Смена", key: "shift", width: 12 },
   { header: "Дояр", key: "worker", width: 16 },
@@ -1214,6 +1215,7 @@ const MILKER_COLUMNS: ReportColumn[] = [
 
 function mapSessionRow(s: any) {
   return {
+    code: s.sessionCode ?? "—",
     date: fmtDate(s.milkingDate),
     shift: fmtShift(s.shift),
     worker: s.workerName ?? "—",
@@ -1242,6 +1244,7 @@ function computeSummary(sessions: any[]) {
   const rows = sessions.map(mapSessionRow) as Record<string, any>[];
   const sum = (key: string) => rows.reduce((a, r) => a + (Number(r[key]) || 0), 0);
   return {
+    code: "",
     date: "ИТОГО",
     shift: "",
     worker: `${sessions.length} доек`,
