@@ -2634,3 +2634,10 @@ Module: Контроль оборота молока. Spec v2.1. Mobile-first AR
 - [x] Guide user to add GitHub secrets (VDS_SSH_KEY, VDS_HOST, VDS_USER, GATE_ENABLED, GATE_LOGIN, GATE_PASSWORD)
 - [x] Verify workflow triggers correctly on push to main
 - [x] Save checkpoint with CI/CD pipeline
+
+## Env Migration to GitHub Secrets + Fail2ban — April 24, 2026
+
+- [x] Move all .env variables to GitHub Secrets
+- [x] Update deploy.yml to write .env from secrets on each deploy
+- [x] Configure fail2ban whitelist for GitHub Actions IPs on VDS
+- [x] Verify full deployment pipeline works end-to-end
