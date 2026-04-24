@@ -2614,3 +2614,9 @@ Module: Контроль оборота молока. Spec v2.1. Mobile-first AR
 - [x] Fix: deleteSession now cascade-deletes ALL related tank movements (by sessionId + receptionIds) without creating orphan reversal movements
 - [x] Fix: deleteReception no longer creates orphan adjustment movements — just reverses tank volume directly and deletes related movements
 - [x] Deployed to VDS, PM2 online, koza.vip 200 OK
+
+## Remove AI assistants from ARM and admin — April 24, 2026
+
+- [x] Remove AI chat assistant from FarmMilkerArm — AIFloatingHub now returns null on /farm/* routes
+- [x] Remove AI chat assistant from FarmCheesemakerArm — AIFloatingHub now returns null on /farm/* routes
+- [x] Remove AI chat assistants from all admin panel sections — AIFloatingHub now returns null on /admin/* routes

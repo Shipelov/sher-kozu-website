@@ -272,8 +272,16 @@ export default function AIFloatingHub() {
     setAuthModalOpen(true);
   }, []);
 
-  /* ─── Visibility: hide on pages with embedded chats ─── */
-  const isHiddenPage = location === "/faq" || location === "/nutritionist";
+  /* ─── Visibility: hide on ARM pages, admin panel, and pages with embedded chats ─── */
+  const isHiddenPage = location === "/faq" || location === "/nutritionist" || location.startsWith("/farm") || location.startsWith("/admin");
+
+  // Close any open panel when navigating to a hidden page
+  useEffect(() => {
+    if (isHiddenPage && activePanel) setActivePanel(null);
+  }, [isHiddenPage, activePanel]);
+
+  // Don't render anything on hidden pages
+  if (isHiddenPage) return null;
 
   /* ─── Determine which avatar to show on the floating button ─── */
   // Show Zoya avatar on nutrition-related pages, Masha everywhere else
