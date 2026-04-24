@@ -2629,8 +2629,8 @@ Module: Контроль оборота молока. Spec v2.1. Mobile-first AR
 
 ## GitHub CI/CD Pipeline — April 24, 2026
 
-- [ ] Create .github/workflows/deploy.yml with build + rsync + PM2 restart
-- [ ] Fix port 3000 conflict on VDS (kill stale process, ensure PM2 uses correct port)
-- [ ] Guide user to add GitHub secrets (VDS_SSH_KEY, VDS_HOST, VDS_DEPLOY_PATH)
-- [ ] Verify workflow triggers correctly on push to main
-- [ ] Save checkpoint with CI/CD pipeline
+- [x] Create .github/workflows/deploy.yml with build + rsync + PM2 restart
+- [x] Fix port 3000 conflict on VDS (kill stale process, ensure PM2 uses correct port)
+- [x] Guide user to add GitHub secrets (VDS_SSH_KEY, VDS_HOST, VDS_USER, GATE_ENABLED, GATE_LOGIN, GATE_PASSWORD)
+- [x] Verify workflow triggers correctly on push to main
+- [x] Save checkpoint with CI/CD pipeline
