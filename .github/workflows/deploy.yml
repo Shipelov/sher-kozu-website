@@ -1,0 +1,98 @@
+name: Deploy to VDS
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  NODE_VERSION: "22"
+  PNPM_VERSION: "10.4.1"
+  DEPLOY_PATH: /var/www/sherkozu/current
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build project
+        run: pnpm build
+
+      - name: Verify build
+        run: |
+          if [ ! -f dist/index.js ]; then
+            echo "❌ Build failed: dist/index.js not found"
+            exit 1
+          fi
+          echo "✅ Build successful"
+          ls -lh dist/
+          du -sh dist/
+
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.VDS_SSH_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H ${{ secrets.VDS_HOST }} >> ~/.ssh/known_hosts 2>/dev/null
+
+      - name: Deploy to VDS
+        run: |
+          rsync -avz --delete \
+            -e "ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no" \
+            dist/ \
+            ${{ secrets.VDS_USER }}@${{ secrets.VDS_HOST }}:${{ env.DEPLOY_PATH }}/dist/
+
+      - name: Restart application
+        run: |
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no \
+            ${{ secrets.VDS_USER }}@${{ secrets.VDS_HOST }} << 'DEPLOY_SCRIPT'
+          set -e
+
+          echo "── Freeing port 3000 if occupied ──"
+          fuser -k 3000/tcp 2>/dev/null || echo "Port 3000 was free"
+          sleep 1
+
+          echo "── Restarting PM2 process ──"
+          cd /var/www/sherkozu/current
+          pm2 restart sherkozu --update-env 2>/dev/null || pm2 start ecosystem.config.cjs
+          pm2 save
+
+          echo "── Waiting for server to start ──"
+          sleep 5
+
+          echo "── Checking server health ──"
+          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:3000/ --max-time 10 || echo "000" )
+          if [ "$HTTP_CODE" = "200" ] || [ "$HTTP_CODE" = "302" ]; then
+            echo "✅ Server is healthy (HTTP $HTTP_CODE)"
+          else
+            echo "⚠️ Server returned HTTP $HTTP_CODE — checking PM2 status..."
+            pm2 status
+            pm2 logs sherkozu --lines 20 --nostream
+            exit 1
+          fi
+
+          echo "── Deploy complete ──"
+          pm2 status
+          DEPLOY_SCRIPT
+
+      - name: Cleanup
+        if: always()
+        run: rm -f ~/.ssh/deploy_key
