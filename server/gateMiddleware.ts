@@ -53,6 +53,8 @@ const BYPASS_PREFIXES = [
   "/uploads/",
   "/tg/",
   "/tg",
+  "/farm/",
+  "/farm",
 ];
 
 const BYPASS_EXACT = ["/favicon.ico", "/robots.txt", "/manifest.json"];

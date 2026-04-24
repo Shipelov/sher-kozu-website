@@ -2620,3 +2620,17 @@ Module: Контроль оборота молока. Spec v2.1. Mobile-first AR
 - [x] Remove AI chat assistant from FarmMilkerArm — AIFloatingHub now returns null on /farm/* routes
 - [x] Remove AI chat assistant from FarmCheesemakerArm — AIFloatingHub now returns null on /farm/* routes
 - [x] Remove AI chat assistants from all admin panel sections — AIFloatingHub now returns null on /admin/* routes
+
+## Enable coming soon gate + /farm bypass — April 24, 2026
+
+- [ ] Add /farm/ and /farm to gate bypass list in gateMiddleware.ts
+- [ ] Enable GATE_ENABLED=true on VDS
+- [ ] Verify gate works and /farm/* is accessible without password
+
+## GitHub CI/CD Pipeline — April 24, 2026
+
+- [ ] Create .github/workflows/deploy.yml with build + rsync + PM2 restart
+- [ ] Fix port 3000 conflict on VDS (kill stale process, ensure PM2 uses correct port)
+- [ ] Guide user to add GitHub secrets (VDS_SSH_KEY, VDS_HOST, VDS_DEPLOY_PATH)
+- [ ] Verify workflow triggers correctly on push to main
+- [ ] Save checkpoint with CI/CD pipeline
