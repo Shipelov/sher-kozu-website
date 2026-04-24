@@ -57,19 +57,23 @@ jobs:
             dist/ \
             ${{ secrets.VDS_USER }}@${{ secrets.VDS_HOST }}:${{ env.DEPLOY_PATH }}/dist/
 
-      - name: Restart application
+           - name: Restart application
         run: |
           ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no \
             ${{ secrets.VDS_USER }}@${{ secrets.VDS_HOST }} << 'DEPLOY_SCRIPT'
           set -e
 
-          echo "── Freeing port 3000 if occupied ──"
-          fuser -k 3000/tcp 2>/dev/null || echo "Port 3000 was free"
-          sleep 1
-
-          echo "── Restarting PM2 process ──"
+          echo "── Stopping current process ──"
           cd /var/www/sherkozu/current
-          pm2 restart sherkozu --update-env 2>/dev/null || pm2 start ecosystem.config.cjs
+          pm2 stop sherkozu 2>/dev/null || true
+          pm2 delete sherkozu 2>/dev/null || true
+
+          echo "── Freeing port 3000 ──"
+          fuser -k 3000/tcp 2>/dev/null || echo "Port 3000 was free"
+          sleep 2
+
+          echo "── Starting fresh PM2 process ──"
+          pm2 start ecosystem.config.cjs
           pm2 save
 
           echo "── Waiting for server to start ──"
@@ -85,6 +89,10 @@ jobs:
             pm2 logs sherkozu --lines 20 --nostream
             exit 1
           fi
+
+          echo "── Deploy complete ──"
+          pm2 status
+          DEPLOY_SCRIPT
 
           echo "── Deploy complete ──"
           pm2 status
