@@ -7,7 +7,6 @@ on:
 
 env:
   NODE_VERSION: "22"
-  PNPM_VERSION: "10.4.1"
   DEPLOY_PATH: /var/www/sherkozu/current
 
 jobs:
@@ -16,43 +15,34 @@ jobs:
     timeout-minutes: 15
 
     steps:
-      # ── 1. Checkout ──
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # ── 2. Setup pnpm ──
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
-        with:
-          version: ${{ env.PNPM_VERSION }}
 
-      # ── 3. Setup Node.js with pnpm cache ──
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: pnpm
 
-      # ── 4. Install dependencies ──
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      # ── 5. Build ──
       - name: Build project
         run: pnpm build
 
-      # ── 6. Verify build output ──
       - name: Verify build
         run: |
           if [ ! -f dist/index.js ]; then
-            echo "❌ Build failed: dist/index.js not found"
+            echo "Build failed: dist/index.js not found"
             exit 1
           fi
-          echo "✅ Build successful"
+          echo "Build successful"
           ls -lh dist/
           du -sh dist/
 
-      # ── 7. Setup SSH key ──
       - name: Setup SSH
         run: |
           mkdir -p ~/.ssh
@@ -60,7 +50,6 @@ jobs:
           chmod 600 ~/.ssh/deploy_key
           ssh-keyscan -H ${{ secrets.VDS_HOST }} >> ~/.ssh/known_hosts 2>/dev/null
 
-      # ── 8. Deploy via rsync ──
       - name: Deploy to VDS
         run: |
           rsync -avz --delete \
@@ -68,41 +57,65 @@ jobs:
             dist/ \
             ${{ secrets.VDS_USER }}@${{ secrets.VDS_HOST }}:${{ env.DEPLOY_PATH }}/dist/
 
-      # ── 9. Restart PM2 (kill stale port + restart) ──
-      - name: Restart application
+      - name: Update config and restart
+        env:
+          GATE_ENABLED: ${{ secrets.GATE_ENABLED }}
+          GATE_LOGIN: ${{ secrets.GATE_LOGIN }}
+          GATE_PASSWORD: ${{ secrets.GATE_PASSWORD }}
         run: |
           ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no \
-            ${{ secrets.VDS_USER }}@${{ secrets.VDS_HOST }} << 'DEPLOY_SCRIPT'
-          set -e
-
-          echo "── Freeing port 3000 if occupied ──"
-          fuser -k 3000/tcp 2>/dev/null || echo "Port 3000 was free"
-          sleep 1
-
-          echo "── Restarting PM2 process ──"
+            ${{ secrets.VDS_USER }}@${{ secrets.VDS_HOST }} 'bash -s' << DEPLOY_SCRIPT
           cd /var/www/sherkozu/current
-          pm2 restart sherkozu --update-env 2>/dev/null || pm2 start ecosystem.config.cjs
-          pm2 save
 
-          echo "── Waiting for server to start ──"
+          # Write ecosystem.config.cjs with current secrets
+          cat > ecosystem.config.cjs << 'ECOEOF'
+          module.exports = {
+            apps: [{
+              name: "sherkozu",
+              script: "dist/index.js",
+              cwd: "/var/www/sherkozu/current",
+              instances: 1,
+              exec_mode: "fork",
+              env: {
+                GATE_ENABLED: "${GATE_ENABLED}",
+                GATE_LOGIN: "${GATE_LOGIN}",
+                GATE_PASSWORD: "${GATE_PASSWORD}",
+                NODE_ENV: "production",
+                PORT: 3000,
+                BITRIX24_OUTBOUND_WEBHOOK_TOKEN: "v1o6pwyb478h4cn8d0ov2ln5b2pxia8f"
+              },
+              max_memory_restart: "512M",
+              log_date_format: "YYYY-MM-DD HH:mm:ss Z",
+              error_file: "/var/www/sherkozu/shared/logs/pm2-error.log",
+              out_file: "/var/www/sherkozu/shared/logs/pm2-out.log",
+              merge_logs: true,
+              restart_delay: 3000,
+              max_restarts: 10,
+              min_uptime: "10s"
+            }]
+          };
+          ECOEOF
+
+          pm2 stop sherkozu 2>/dev/null || true
+          pm2 delete sherkozu 2>/dev/null || true
+          fuser -k 3000/tcp 2>/dev/null || true
+          sleep 2
+          pm2 start ecosystem.config.cjs
+          pm2 save
           sleep 5
 
-          echo "── Checking server health ──"
-          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:3000/ --max-time 10 || echo "000")
-          if [ "$HTTP_CODE" = "200" ] || [ "$HTTP_CODE" = "302" ]; then
-            echo "✅ Server is healthy (HTTP $HTTP_CODE)"
+          HTTP_CODE=\$(curl -s -o /dev/null -w "%{http_code}" http://localhost:3000/ --max-time 10 || echo "000" )
+          if [ "\$HTTP_CODE" = "200" ] || [ "\$HTTP_CODE" = "302" ]; then
+            echo "Server is healthy (HTTP \$HTTP_CODE)"
           else
-            echo "⚠️ Server returned HTTP $HTTP_CODE — checking PM2 status..."
+            echo "Server returned HTTP \$HTTP_CODE"
             pm2 status
             pm2 logs sherkozu --lines 20 --nostream
             exit 1
           fi
-
-          echo "── Deploy complete ──"
           pm2 status
           DEPLOY_SCRIPT
 
-      # ── 10. Cleanup SSH key ──
       - name: Cleanup
         if: always()
         run: rm -f ~/.ssh/deploy_key
