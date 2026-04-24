@@ -57,19 +57,45 @@ jobs:
             dist/ \
             ${{ secrets.VDS_USER }}@${{ secrets.VDS_HOST }}:${{ env.DEPLOY_PATH }}/dist/
 
-      - name: Update env and restart
+      - name: Update config and restart
+        env:
+          GATE_ENABLED: ${{ secrets.GATE_ENABLED }}
+          GATE_LOGIN: ${{ secrets.GATE_LOGIN }}
+          GATE_PASSWORD: ${{ secrets.GATE_PASSWORD }}
         run: |
           ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no \
-            ${{ secrets.VDS_USER }}@${{ secrets.VDS_HOST }} 'bash -s' << 'DEPLOY_SCRIPT'
+            ${{ secrets.VDS_USER }}@${{ secrets.VDS_HOST }} 'bash -s' << DEPLOY_SCRIPT
           cd /var/www/sherkozu/current
 
-          # Update gate variables in .env
-          sed -i '/^GATE_ENABLED=/d; /^GATE_LOGIN=/d; /^GATE_PASSWORD=/d' .env 2>/dev/null || true
-          echo 'GATE_ENABLED=${{ secrets.GATE_ENABLED }}' >> .env
-          echo 'GATE_LOGIN=${{ secrets.GATE_LOGIN }}' >> .env
-          echo 'GATE_PASSWORD=${{ secrets.GATE_PASSWORD }}' >> .env
+          # Write ecosystem.config.cjs with current secrets
+          cat > ecosystem.config.cjs << 'ECOEOF'
+          module.exports = {
+            apps: [{
+              name: "sherkozu",
+              script: "dist/index.js",
+              cwd: "/var/www/sherkozu/current",
+              instances: 1,
+              exec_mode: "fork",
+              env: {
+                GATE_ENABLED: "${GATE_ENABLED}",
+                GATE_LOGIN: "${GATE_LOGIN}",
+                GATE_PASSWORD: "${GATE_PASSWORD}",
+                NODE_ENV: "production",
+                PORT: 3000,
+                BITRIX24_OUTBOUND_WEBHOOK_TOKEN: "v1o6pwyb478h4cn8d0ov2ln5b2pxia8f"
+              },
+              max_memory_restart: "512M",
+              log_date_format: "YYYY-MM-DD HH:mm:ss Z",
+              error_file: "/var/www/sherkozu/shared/logs/pm2-error.log",
+              out_file: "/var/www/sherkozu/shared/logs/pm2-out.log",
+              merge_logs: true,
+              restart_delay: 3000,
+              max_restarts: 10,
+              min_uptime: "10s"
+            }]
+          };
+          ECOEOF
 
-          # Restart PM2
           pm2 stop sherkozu 2>/dev/null || true
           pm2 delete sherkozu 2>/dev/null || true
           fuser -k 3000/tcp 2>/dev/null || true
@@ -78,12 +104,11 @@ jobs:
           pm2 save
           sleep 5
 
-          # Health check
-          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:3000/ --max-time 10 || echo "000" )
-          if [ "$HTTP_CODE" = "200" ] || [ "$HTTP_CODE" = "302" ]; then
-            echo "Server is healthy (HTTP $HTTP_CODE)"
+          HTTP_CODE=\$(curl -s -o /dev/null -w "%{http_code}" http://localhost:3000/ --max-time 10 || echo "000" )
+          if [ "\$HTTP_CODE" = "200" ] || [ "\$HTTP_CODE" = "302" ]; then
+            echo "Server is healthy (HTTP \$HTTP_CODE)"
           else
-            echo "Server returned HTTP $HTTP_CODE"
+            echo "Server returned HTTP \$HTTP_CODE"
             pm2 status
             pm2 logs sherkozu --lines 20 --nostream
             exit 1
