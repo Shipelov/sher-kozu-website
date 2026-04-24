@@ -2641,3 +2641,9 @@ Module: Контроль оборота молока. Spec v2.1. Mobile-first AR
 - [x] Update deploy.yml to write .env from secrets on each deploy
 - [x] Configure fail2ban whitelist for GitHub Actions IPs on VDS
 - [x] Verify full deployment pipeline works end-to-end
+
+## Rollback Mechanism — April 24, 2026
+
+- [ ] Create rollback.yml workflow with workflow_dispatch and commit SHA input
+- [ ] Add version tracking to deploy workflow (write commit SHA to VDS)
+- [ ] Verify rollback mechanism works
