@@ -2644,6 +2644,26 @@ Module: Контроль оборота молока. Spec v2.1. Mobile-first AR
 
 ## Rollback Mechanism — April 24, 2026
 
-- [ ] Create rollback.yml workflow with workflow_dispatch and commit SHA input
-- [ ] Add version tracking to deploy workflow (write commit SHA to VDS)
-- [ ] Verify rollback mechanism works
+- [x] Create rollback.yml workflow with workflow_dispatch and commit SHA input
+- [x] Add version tracking to deploy workflow (write commit SHA to VDS)
+- [ ] Verify rollback mechanism works (pending: push to GitHub requires manual paste due to workflows permission)
+- [x] Fix deploy.yml truncation bug (was cut at line 96, missing GATE vars, ecosystem.config.cjs, PM2 restart, health check)
+- [x] Add env: block pattern to deploy.yml for safe secret passing into heredoc
+- [x] Add ecosystem.config.cjs write step to deploy.yml
+- [x] Add PM2 restart + health check to deploy.yml
+- [ ] Push deploy.yml and rollback.yml to GitHub (requires manual paste — Manus token lacks workflows permission)
+
+## АРМ Контролёра — April 25, 2026
+
+- [x] Add "controller" to farmWorkerRoleEnum in schema.ts + db:push
+- [x] Create milkController tRPC router (read-only procedures with farm worker auth)
+- [x] Add discrepancy detection logic (net vs accepted > 5%)
+- [x] Create FarmControllerArm.tsx page with 5 tabs (Overview, Sessions, Receptions, Tanks, Audit)
+- [x] Add shift summary card in header
+- [x] Add discrepancy indicator highlighting
+- [x] Add filter by worker (milker/cheesemaker) in Sessions and Receptions tabs
+- [x] Add Excel/PDF export on all tabs
+- [x] Add /farm/controller route in App.tsx
+- [x] Update FarmLogin redirect logic for controller role
+- [x] Update farmAdmin.createWorker to accept "controller" role
+- [ ] Telegram notifications for anomalies (losses > 5%, large discrepancies, rejected milk) — deferred to next iteration

@@ -2265,6 +2265,7 @@ export type InsertProductPlanSetupRequest = typeof productPlanSetupRequests.$inf
 export const farmWorkerRoleEnum = mysqlEnum("farmWorkerRole", [
   "milker",       // Дояр
   "cheesemaker",  // Сыродел
+  "controller",   // Контролёр
   "vet",          // Ветеринар (reserved)
   "manager",      // Менеджер (reserved)
 ]);
