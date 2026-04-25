@@ -2667,3 +2667,4 @@ Module: Контроль оборота молока. Spec v2.1. Mobile-first AR
 - [x] Update FarmLogin redirect logic for controller role
 - [x] Update farmAdmin.createWorker to accept "controller" role
 - [ ] Telegram notifications for anomalies (losses > 5%, large discrepancies, rejected milk) — deferred to next iteration
+- [x] Fix: controller role not appearing in admin farm worker edit dialog dropdown
