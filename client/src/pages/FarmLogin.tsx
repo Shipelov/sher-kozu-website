@@ -43,6 +43,8 @@ export default function FarmLogin() {
           navigate("/farm/milker");
         } else if (role === "cheesemaker") {
           navigate("/farm/cheesemaker");
+        } else if (role === "controller") {
+          navigate("/farm/controller");
         } else {
           navigate("/farm/milker");
         }
@@ -71,6 +73,8 @@ export default function FarmLogin() {
           navigate("/farm/milker");
         } else if (role === "cheesemaker") {
           navigate("/farm/cheesemaker");
+        } else if (role === "controller") {
+          navigate("/farm/controller");
         } else {
           navigate("/farm/milker");
         }

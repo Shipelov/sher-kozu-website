@@ -132,7 +132,7 @@ export async function createFarmWorker(data: {
   login: string;
   name: string;
   password: string;
-  role: "milker" | "cheesemaker" | "vet" | "manager";
+  role: "milker" | "cheesemaker" | "controller" | "vet" | "manager";
 }): Promise<FarmWorker> {
   const db = await getDb();
   const passwordHash = await hashFarmPassword(data.password);

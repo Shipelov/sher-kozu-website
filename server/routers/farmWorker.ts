@@ -197,7 +197,7 @@ export const farmAdminRouter = router({
         login: z.string().min(2).max(64),
         name: z.string().min(1).max(160),
         password: z.string().min(6).max(128),
-        role: z.enum(["milker", "cheesemaker", "vet", "manager"]),
+        role: z.enum(["milker", "cheesemaker", "controller", "vet", "manager"]),
       }),
     )
     .mutation(async ({ input }) => {
@@ -272,7 +272,7 @@ export const farmAdminRouter = router({
       z.object({
         workerId: z.number().int().positive(),
         name: z.string().min(1).max(160).optional(),
-        role: z.enum(["milker", "cheesemaker", "vet", "manager"]).optional(),
+        role: z.enum(["milker", "cheesemaker", "controller", "vet", "manager"]).optional(),
         phone: z.string().max(32).optional().nullable(),
         telegramChatId: z.string().max(64).optional().nullable(),
       }),

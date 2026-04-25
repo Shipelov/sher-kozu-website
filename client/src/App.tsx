@@ -59,6 +59,7 @@ const FarmLogin = lazy(() => import("./pages/FarmLogin"));
 const FarmChangePassword = lazy(() => import("./pages/FarmChangePassword"));
 const FarmMilkerArm = lazy(() => import("./pages/FarmMilkerArm"));
 const FarmCheesemakerArm = lazy(() => import("./pages/FarmCheesemakerArm"));
+const FarmControllerArm = lazy(() => import("./pages/FarmControllerArm"));
 
 /* ─── Telegram Mini App pages ─── */
 const TgAppHome = lazy(() => import("./pages/TgAppHome"));
@@ -172,6 +173,7 @@ function Router() {
         <Route path="/farm/change-password" component={FarmChangePassword} />
         <Route path="/farm/milker" component={FarmMilkerArm} />
         <Route path="/farm/cheesemaker" component={FarmCheesemakerArm} />
+        <Route path="/farm/controller" component={FarmControllerArm} />
 
         <Route path="/register">{() => <Redirect to="/?register=1" />}</Route>
         <Route path="/login">{() => <Redirect to="/?login=1" />}</Route>
