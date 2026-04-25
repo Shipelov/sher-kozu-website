@@ -51,6 +51,7 @@ const BYPASS_PREFIXES = [
   "/api/tg-auth/",
   "/api/gate-auth",
   "/uploads/",
+  "/assets/",
   "/tg/",
   "/tg",
   "/farm/",
