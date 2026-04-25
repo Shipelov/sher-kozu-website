@@ -32,6 +32,11 @@ jobs:
 
       - name: Build project
         run: pnpm build
+      - name: Run database migrations
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: pnpm db:push
+
 
       - name: Verify build
         run: |
