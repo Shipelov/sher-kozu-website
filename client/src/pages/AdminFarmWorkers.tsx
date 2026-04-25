@@ -560,6 +560,7 @@ export default function AdminFarmWorkers() {
                   <SelectContent>
                     <SelectItem value="milker">Дояр</SelectItem>
                     <SelectItem value="cheesemaker">Сыродел</SelectItem>
+                    <SelectItem value="controller">Контролёр</SelectItem>
                     <SelectItem value="vet">Ветеринар</SelectItem>
                     <SelectItem value="manager">Менеджер</SelectItem>
                   </SelectContent>
