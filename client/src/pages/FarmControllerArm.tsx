@@ -52,6 +52,7 @@ import {
 } from "@/lib/reportExport";
 
 type Tab = "overview" | "sessions" | "receptions" | "tanks" | "processing" | "audit";
+type Tab = "overview" | "sessions" | "receptions" | "tanks" | "audit";
 
 const TABS: { key: Tab; label: string; icon: any; shortLabel: string }[] = [
   { key: "overview", label: "Обзор", shortLabel: "Обзор", icon: BarChart3 },
