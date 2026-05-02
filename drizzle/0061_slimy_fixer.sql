@@ -1,4 +1,4 @@
-CREATE TABLE `processingInputs` (
+CREATE TABLE IF NOT EXISTS `processingInputs` (
 	`id` int AUTO_INCREMENT NOT NULL,
 	`sessionId` int NOT NULL,
 	`tankId` int NOT NULL,
@@ -9,7 +9,7 @@ CREATE TABLE `processingInputs` (
 	CONSTRAINT `processingInputs_id` PRIMARY KEY(`id`)
 );
 --> statement-breakpoint
-CREATE TABLE `processingOutputs` (
+CREATE TABLE IF NOT EXISTS `processingOutputs` (
 	`id` int AUTO_INCREMENT NOT NULL,
 	`sessionId` int NOT NULL,
 	`catalogItemId` int NOT NULL,
@@ -25,7 +25,7 @@ CREATE TABLE `processingOutputs` (
 	CONSTRAINT `processingOutputs_id` PRIMARY KEY(`id`)
 );
 --> statement-breakpoint
-CREATE TABLE `processingSessions` (
+CREATE TABLE IF NOT EXISTS `processingSessions` (
 	`id` int AUTO_INCREMENT NOT NULL,
 	`sessionCode` varchar(32) NOT NULL,
 	`shiftDate` varchar(10) NOT NULL,
@@ -40,7 +40,7 @@ CREATE TABLE `processingSessions` (
 	CONSTRAINT `processingSessions_sessionCode_unique` UNIQUE(`sessionCode`)
 );
 --> statement-breakpoint
-CREATE TABLE `warehouseInventory` (
+CREATE TABLE IF NOT EXISTS `warehouseInventory` (
 	`id` int AUTO_INCREMENT NOT NULL,
 	`warehouseId` int NOT NULL,
 	`catalogItemId` int NOT NULL,
@@ -51,7 +51,7 @@ CREATE TABLE `warehouseInventory` (
 	CONSTRAINT `warehouseInventory_id` PRIMARY KEY(`id`)
 );
 --> statement-breakpoint
-CREATE TABLE `warehouseMovements` (
+CREATE TABLE IF NOT EXISTS `warehouseMovements` (
 	`id` int AUTO_INCREMENT NOT NULL,
 	`warehouseId` int NOT NULL,
 	`warehouseMovementType` enum('in','out','writeoff','adjustment') NOT NULL,
@@ -66,7 +66,7 @@ CREATE TABLE `warehouseMovements` (
 	CONSTRAINT `warehouseMovements_id` PRIMARY KEY(`id`)
 );
 --> statement-breakpoint
-CREATE TABLE `warehouses` (
+CREATE TABLE IF NOT EXISTS `warehouses` (
 	`id` int AUTO_INCREMENT NOT NULL,
 	`name` varchar(160) NOT NULL,
 	`description` text,

@@ -1,1 +1,1 @@
-ALTER TABLE `farmWorkers` ADD `phone` varchar(32);
+SELECT 1;

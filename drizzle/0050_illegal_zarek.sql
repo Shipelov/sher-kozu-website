@@ -1,1 +1,1 @@
-ALTER TABLE `animalOwnerships` MODIFY COLUMN `ownershipStatus` enum('pending_payment','active','expired','cancelled','frozen') NOT NULL DEFAULT 'pending_payment';
+SELECT 1;

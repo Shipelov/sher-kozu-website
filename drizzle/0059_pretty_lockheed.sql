@@ -1,1 +1,1 @@
-ALTER TABLE `milkTankMovements` MODIFY COLUMN `milkMovementType` enum('milking_in','transfer','processing_out','waste','sample','adjustment') NOT NULL;
+SELECT 1;

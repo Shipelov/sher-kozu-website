@@ -1,1 +1,1 @@
-ALTER TABLE `farmWorkers` MODIFY COLUMN `farmWorkerRole` enum('milker','cheesemaker','controller','vet','manager') NOT NULL;
+SELECT 1;

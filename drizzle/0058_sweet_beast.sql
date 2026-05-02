@@ -1,1 +1,1 @@
-ALTER TABLE `milkAuditLog` MODIFY COLUMN `milkAuditAction` enum('session_created','session_updated','session_cancelled','session_confirmed','session_disputed','session_auto_confirmed','reception_accepted','reception_rejected','tank_movement','batch_started','batch_completed','worker_login','worker_password_changed','admin_edit','admin_delete') NOT NULL;
+SELECT 1;
