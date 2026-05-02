@@ -51,13 +51,14 @@ import {
   type ReportColumn,
 } from "@/lib/reportExport";
 
-type Tab = "overview" | "sessions" | "receptions" | "tanks" | "audit";
+type Tab = "overview" | "sessions" | "receptions" | "tanks" | "processing" | "audit";
 
 const TABS: { key: Tab; label: string; icon: any; shortLabel: string }[] = [
   { key: "overview", label: "Обзор", shortLabel: "Обзор", icon: BarChart3 },
   { key: "sessions", label: "Дойки", shortLabel: "Дойки", icon: Droplets },
   { key: "receptions", label: "Приёмки", shortLabel: "Приёмки", icon: ClipboardList },
   { key: "tanks", label: "Ёмкости", shortLabel: "Ёмкости", icon: Container },
+  { key: "processing", label: "Переработка", shortLabel: "Перер.", icon: TrendingDown },
   { key: "audit", label: "Аудит", shortLabel: "Аудит", icon: ShieldAlert },
 ];
 
@@ -136,6 +137,7 @@ export default function FarmControllerArm() {
         {tab === "sessions" && <SessionsTab />}
         {tab === "receptions" && <ReceptionsTab />}
         {tab === "tanks" && <TanksTab />}
+        {tab === "processing" && <ControllerProcessingTab />}
         {tab === "audit" && <AuditTab />}
       </main>
 
@@ -1068,6 +1070,254 @@ function AuditTab() {
             <ChevronRight className="w-4 h-4" />
           </Button>
         </div>
+      )}
+    </div>
+  );
+}
+
+
+// ═══════════════════════════════════════════════════════════════════
+// Processing Tab — Controller read-only view with conversion analytics
+// ═══════════════════════════════════════════════════════════════════
+
+function ControllerProcessingTab() {
+  const [preset, setPreset] = useState<"today" | "week" | "month" | "custom">("week");
+  const [customFrom, setCustomFrom] = useState("");
+  const [customTo, setCustomTo] = useState("");
+
+  const dates = useMemo(() => {
+    if (preset === "custom") return { from: customFrom, to: customTo };
+    return getPresetDates(preset);
+  }, [preset, customFrom, customTo]);
+
+  const sessionsQuery = trpc.milkController.processingSessions.useQuery(
+    { dateFrom: dates.from, dateTo: dates.to },
+    { enabled: !!dates.from && !!dates.to },
+  );
+
+  const conversionQuery = trpc.milkController.conversionAnalytics.useQuery(
+    { dateFrom: dates.from, dateTo: dates.to, deviationThreshold: 15 },
+    { enabled: !!dates.from && !!dates.to },
+  );
+
+  const sessions = sessionsQuery.data?.sessions ?? [];
+  const alerts = conversionQuery.data?.alerts ?? [];
+  const convSessions = conversionQuery.data?.sessions ?? [];
+
+  const PROC_STATUS: Record<string, { label: string; color: string }> = {
+    draft: { label: "Черновик", color: "bg-gray-100 text-gray-700" },
+    in_progress: { label: "В процессе", color: "bg-blue-100 text-blue-700" },
+    completed: { label: "Завершена", color: "bg-emerald-100 text-emerald-700" },
+    cancelled: { label: "Отменена", color: "bg-red-100 text-red-700" },
+  };
+
+  const PROC_COLUMNS: ReportColumn[] = [
+    { header: "Дата", key: "date", width: 12 },
+    { header: "Код сессии", key: "sessionCode", width: 18 },
+    { header: "Сыродел", key: "worker", width: 16 },
+    { header: "Вход (л)", key: "inputLiters", width: 10 },
+    { header: "Статус", key: "status", width: 12 },
+  ];
+
+  const CONV_COLUMNS: ReportColumn[] = [
+    { header: "Дата", key: "date", width: 12 },
+    { header: "Сессия", key: "sessionCode", width: 18 },
+    { header: "Продукт", key: "product", width: 20 },
+    { header: "Факт (л/ед)", key: "actual", width: 12 },
+    { header: "Норма (л/ед)", key: "base", width: 12 },
+    { header: "Отклонение %", key: "deviation", width: 12 },
+  ];
+
+  function exportSessions(format: "excel" | "pdf") {
+    const rows = sessions.map((s: any) => ({
+      date: s.shiftDate,
+      sessionCode: s.sessionCode,
+      worker: s.workerName ?? "—",
+      inputLiters: (s.totalInputMl / 1000).toFixed(1),
+      status: PROC_STATUS[s.status]?.label ?? s.status,
+    }));
+    const totalL = sessions.reduce((sum: number, s: any) => sum + s.totalInputMl, 0) / 1000;
+    const config = {
+      title: "Контроль переработки — Шерь Козу",
+      subtitle: periodSubtitle(dates.from, dates.to),
+      columns: PROC_COLUMNS,
+      rows,
+      summaryRows: [{ date: "ИТОГО", sessionCode: `${sessions.length} сессий`, worker: "", inputLiters: totalL.toFixed(1), status: "" }],
+      filename: `Контроль_переработки_${dates.from}_${dates.to}`,
+    };
+    format === "excel" ? exportExcel(config) : exportPDF(config);
+  }
+
+  function exportConversion(format: "excel" | "pdf") {
+    const rows: any[] = [];
+    for (const s of convSessions) {
+      for (const out of (s as any).outputs ?? []) {
+        rows.push({
+          date: (s as any).shiftDate,
+          sessionCode: (s as any).sessionCode,
+          product: out.productLabel,
+          actual: out.actualConversionRatio?.toFixed(2) ?? "—",
+          base: out.baseConversionRatio?.toFixed(2) ?? "—",
+          deviation: out.deviationPercent != null ? `${out.deviationPercent > 0 ? "+" : ""}${out.deviationPercent.toFixed(1)}%` : "—",
+        });
+      }
+    }
+    const config = {
+      title: "Коэффициенты конверсии — Шерь Козу",
+      subtitle: periodSubtitle(dates.from, dates.to) + (alerts.length > 0 ? ` | ⚠ ${alerts.length} отклонений` : ""),
+      columns: CONV_COLUMNS,
+      rows,
+      filename: `Конверсия_${dates.from}_${dates.to}`,
+    };
+    format === "excel" ? exportExcel(config) : exportPDF(config);
+  }
+
+  return (
+    <div className="space-y-4 pb-20">
+      {/* Period selector */}
+      <div className="flex gap-1 bg-gray-100 rounded-lg p-1">
+        {(["today", "week", "month", "custom"] as const).map((p) => (
+          <button
+            key={p}
+            onClick={() => setPreset(p)}
+            className={`flex-1 flex items-center justify-center gap-1 px-2 py-1.5 rounded-md text-xs font-medium transition-colors ${
+              preset === p ? "bg-white text-gray-900 shadow-sm" : "text-gray-500"
+            }`}
+          >
+            {p === "custom" && <CalendarRange className="w-3 h-3" />}
+            {p === "today" ? "Сегодня" : p === "week" ? "Неделя" : p === "month" ? "Месяц" : "Период"}
+          </button>
+        ))}
+      </div>
+
+      {preset === "custom" && (
+        <div className="flex items-center gap-2">
+          <input type="date" value={customFrom} onChange={(e) => setCustomFrom(e.target.value)} className="flex-1 border rounded-md px-2 py-1.5 text-sm bg-white" />
+          <span className="text-xs text-gray-400">—</span>
+          <input type="date" value={customTo} onChange={(e) => setCustomTo(e.target.value)} className="flex-1 border rounded-md px-2 py-1.5 text-sm bg-white" />
+        </div>
+      )}
+
+      {/* Alerts */}
+      {alerts.length > 0 && (
+        <div className="bg-red-50 border border-red-200 rounded-xl p-3">
+          <div className="flex items-center gap-2 text-red-700 font-semibold text-sm mb-2">
+            <AlertTriangle className="w-4 h-4" /> Отклонения конверсии ({alerts.length})
+          </div>
+          <div className="max-h-28 overflow-y-auto space-y-1.5">
+            {alerts.map((a: any, i: number) => (
+              <div key={i} className="text-xs text-red-600 flex flex-wrap items-center gap-1.5 bg-white/60 rounded-lg px-2 py-1">
+                <span className="font-mono font-medium">{a.sessionCode}</span>
+                <span className="text-red-500">•</span>
+                <span>{a.productLabel}</span>
+                <Badge className="rounded-full text-[9px] bg-red-100 text-red-700 ml-auto">
+                  {a.deviationPercent > 0 ? "+" : ""}{a.deviationPercent.toFixed(1)}%
+                </Badge>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Export buttons */}
+      <div className="flex gap-2 flex-wrap">
+        <Button size="sm" variant="outline" onClick={() => exportSessions("excel")} className="text-xs h-8 rounded-lg">
+          <FileSpreadsheet className="w-3.5 h-3.5 mr-1" /> Сессии Excel
+        </Button>
+        <Button size="sm" variant="outline" onClick={() => exportSessions("pdf")} className="text-xs h-8 rounded-lg">
+          <FileText className="w-3.5 h-3.5 mr-1" /> Сессии PDF
+        </Button>
+        <Button size="sm" variant="outline" onClick={() => exportConversion("excel")} className="text-xs h-8 rounded-lg">
+          <FileSpreadsheet className="w-3.5 h-3.5 mr-1" /> Конверсия Excel
+        </Button>
+        <Button size="sm" variant="outline" onClick={() => exportConversion("pdf")} className="text-xs h-8 rounded-lg">
+          <FileText className="w-3.5 h-3.5 mr-1" /> Конверсия PDF
+        </Button>
+      </div>
+
+      {/* Sessions table */}
+      {sessionsQuery.isLoading ? (
+        <div className="flex items-center justify-center py-8">
+          <Loader2 className="h-5 w-5 animate-spin text-gray-400" />
+        </div>
+      ) : sessions.length === 0 ? (
+        <p className="text-sm text-center text-gray-400 py-6">Нет сессий за период</p>
+      ) : (
+        <>
+          <h3 className="text-sm font-semibold text-gray-700">Сессии переработки ({sessions.length})</h3>
+          <div className="border rounded-xl overflow-x-auto max-h-[250px] overflow-y-auto">
+            <table className="w-full text-xs">
+              <thead className="bg-gray-50 sticky top-0">
+                <tr>
+                  <th className="px-2 py-1.5 text-left font-semibold">Код</th>
+                  <th className="px-2 py-1.5 text-left font-semibold">Дата</th>
+                  <th className="px-2 py-1.5 text-right font-semibold">Вход (л)</th>
+                  <th className="px-2 py-1.5 text-left font-semibold">Статус</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y">
+                {sessions.map((s: any) => {
+                  const st = PROC_STATUS[s.status] ?? { label: s.status, color: "" };
+                  return (
+                    <tr key={s.id} className="hover:bg-gray-50/50">
+                      <td className="px-2 py-1.5 font-mono">{s.sessionCode}</td>
+                      <td className="px-2 py-1.5">{s.shiftDate}</td>
+                      <td className="px-2 py-1.5 text-right font-medium text-emerald-700">{(s.totalInputMl / 1000).toFixed(1)}</td>
+                      <td className="px-2 py-1.5">
+                        <Badge className={`rounded-full text-[9px] ${st.color}`}>{st.label}</Badge>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
+
+      {/* Conversion analytics */}
+      {conversionQuery.isLoading ? null : convSessions.length > 0 && (
+        <>
+          <h3 className="text-sm font-semibold text-gray-700 pt-2">Коэффициенты конверсии</h3>
+          <div className="space-y-2">
+            {convSessions.map((s: any) => (
+              <div key={s.sessionId} className="bg-white border rounded-xl p-3">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-xs font-mono font-medium text-gray-700">{s.sessionCode}</span>
+                  <span className="text-[10px] text-gray-400">{s.shiftDate}</span>
+                  <span className="text-[10px] text-gray-400">• {(s.totalInputMl / 1000).toFixed(1)} л</span>
+                </div>
+                {(s.outputs ?? []).length === 0 ? (
+                  <p className="text-[10px] text-gray-400">Нет выходных данных</p>
+                ) : (
+                  <div className="space-y-1">
+                    {(s.outputs ?? []).map((out: any, i: number) => {
+                      const dev = out.deviationPercent;
+                      const isAlert = dev !== null && Math.abs(dev) > 15;
+                      const isWarn = dev !== null && Math.abs(dev) > 5 && !isAlert;
+                      return (
+                        <div key={i} className={`flex items-center justify-between text-xs px-2 py-1 rounded-lg ${isAlert ? "bg-red-50" : isWarn ? "bg-amber-50" : "bg-gray-50"}`}>
+                          <span className="font-medium text-gray-700">{out.productLabel}</span>
+                          <div className="flex items-center gap-2">
+                            <span className="text-gray-500">
+                              {out.actualConversionRatio?.toFixed(2) ?? "—"} / {out.baseConversionRatio?.toFixed(2) ?? "—"}
+                            </span>
+                            {dev !== null && (
+                              <Badge className={`rounded-full text-[9px] ${isAlert ? "bg-red-100 text-red-700" : isWarn ? "bg-amber-100 text-amber-700" : "bg-emerald-100 text-emerald-700"}`}>
+                                {dev > 0 ? "+" : ""}{dev.toFixed(1)}%
+                              </Badge>
+                            )}
+                            {isAlert && <AlertTriangle className="w-3 h-3 text-red-500" />}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </>
       )}
     </div>
   );

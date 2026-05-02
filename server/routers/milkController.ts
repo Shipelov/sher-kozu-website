@@ -21,6 +21,10 @@ import {
   milkTankMovements,
   milkAuditLog,
   farmWorkers,
+  processingSessions,
+  processingInputs,
+  processingOutputs,
+  tierProductCatalog,
 } from "../../drizzle/schema";
 import { getDb } from "../db";
 import { verifyFarmToken, FARM_COOKIE_NAME } from "../farmAuth";
@@ -723,4 +727,161 @@ export const milkControllerRouter = router({
 
     return workers;
   }),
+
+  // ─── Processing Sessions (read-only) ─────────────────────────
+  processingSessions: controllerProcedure
+    .input(
+      z.object({
+        dateFrom: z.string().optional(),
+        dateTo: z.string().optional(),
+      }).optional(),
+    )
+    .query(async ({ input }) => {
+      const db = getDb();
+      const conditions: any[] = [];
+      if (input?.dateFrom) conditions.push(gte(processingSessions.shiftDate, input.dateFrom));
+      if (input?.dateTo) conditions.push(lte(processingSessions.shiftDate, input.dateTo));
+
+      const rows = await db
+        .select({
+          id: processingSessions.id,
+          sessionCode: processingSessions.sessionCode,
+          shiftDate: processingSessions.shiftDate,
+          status: processingSessions.status,
+          workerId: processingSessions.workerId,
+          totalInputMl: processingSessions.totalInputMl,
+          note: processingSessions.note,
+          createdAt: processingSessions.createdAt,
+        })
+        .from(processingSessions)
+        .where(conditions.length > 0 ? and(...conditions) : undefined)
+        .orderBy(desc(processingSessions.shiftDate))
+        .limit(100);
+
+      // Enrich with worker names
+      const workerIds = [...new Set(rows.filter((r) => r.workerId).map((r) => r.workerId!))];
+      let workerMap: Record<number, string> = {};
+      if (workerIds.length > 0) {
+        const workers = await db
+          .select({ id: farmWorkers.id, name: farmWorkers.name })
+          .from(farmWorkers)
+          .where(inArray(farmWorkers.id, workerIds));
+        workerMap = Object.fromEntries(workers.map((w) => [w.id, w.name]));
+      }
+
+      return {
+        sessions: rows.map((r) => ({
+          ...r,
+          workerName: r.workerId ? workerMap[r.workerId] ?? null : null,
+        })),
+        total: rows.length,
+      };
+    }),
+
+  // ─── Conversion Analytics (read-only) ────────────────────────
+  conversionAnalytics: controllerProcedure
+    .input(
+      z.object({
+        dateFrom: z.string().optional(),
+        dateTo: z.string().optional(),
+        deviationThreshold: z.number().default(15),
+      }).optional(),
+    )
+    .query(async ({ input }) => {
+      const db = getDb();
+      const threshold = input?.deviationThreshold ?? 15;
+      const conditions: any[] = [eq(processingSessions.status, "completed")];
+      if (input?.dateFrom) conditions.push(gte(processingSessions.shiftDate, input.dateFrom));
+      if (input?.dateTo) conditions.push(lte(processingSessions.shiftDate, input.dateTo));
+
+      const sessions = await db
+        .select({
+          id: processingSessions.id,
+          sessionCode: processingSessions.sessionCode,
+          shiftDate: processingSessions.shiftDate,
+          totalInputMl: processingSessions.totalInputMl,
+        })
+        .from(processingSessions)
+        .where(and(...conditions))
+        .orderBy(desc(processingSessions.shiftDate))
+        .limit(50);
+
+      if (sessions.length === 0) return { sessions: [], alerts: [] };
+
+      const sessionIds = sessions.map((s) => s.id);
+      const outputs = await db
+        .select({
+          id: processingOutputs.id,
+          sessionId: processingOutputs.sessionId,
+          catalogItemId: processingOutputs.catalogItemId,
+          quantity: processingOutputs.quantity,
+          actualConversionRatio: processingOutputs.actualConversionRatio,
+        })
+        .from(processingOutputs)
+        .where(inArray(processingOutputs.sessionId, sessionIds));
+
+      // Get base ratios from catalog
+      const catalogIds = [...new Set(outputs.map((o) => o.catalogItemId))];
+      let catalogMap: Record<number, { label: string; baseRatio: number | null }> = {};
+      if (catalogIds.length > 0) {
+        const items = await db
+          .select({
+            id: tierProductCatalog.id,
+            label: tierProductCatalog.label,
+            conversionRatioLitersPerUnit: tierProductCatalog.conversionRatioLitersPerUnit,
+          })
+          .from(tierProductCatalog)
+          .where(inArray(tierProductCatalog.id, catalogIds));
+        catalogMap = Object.fromEntries(
+          items.map((i) => [
+            i.id,
+            {
+              label: i.label,
+              baseRatio: i.conversionRatioLitersPerUnit ? parseFloat(i.conversionRatioLitersPerUnit) : null,
+            },
+          ]),
+        );
+      }
+
+      const alerts: any[] = [];
+      const enrichedSessions = sessions.map((s) => {
+        const sessionOutputs = outputs.filter((o) => o.sessionId === s.id);
+        const enrichedOutputs = sessionOutputs.map((o) => {
+          const catalog = catalogMap[o.catalogItemId];
+          const actualRatio = o.actualConversionRatio ? parseFloat(o.actualConversionRatio) : null;
+          const baseRatio = catalog?.baseRatio ?? null;
+          let deviationPercent: number | null = null;
+          if (actualRatio !== null && baseRatio !== null && baseRatio > 0) {
+            deviationPercent = ((actualRatio - baseRatio) / baseRatio) * 100;
+            if (Math.abs(deviationPercent) > threshold) {
+              alerts.push({
+                sessionId: s.id,
+                sessionCode: s.sessionCode,
+                shiftDate: s.shiftDate,
+                productLabel: catalog?.label ?? "Неизвестно",
+                actualRatio,
+                baseRatio,
+                deviationPercent,
+              });
+            }
+          }
+          return {
+            productLabel: catalog?.label ?? "Неизвестно",
+            quantity: o.quantity,
+            actualConversionRatio: actualRatio,
+            baseConversionRatio: baseRatio,
+            deviationPercent,
+          };
+        });
+        return {
+          sessionId: s.id,
+          sessionCode: s.sessionCode,
+          shiftDate: s.shiftDate,
+          totalInputMl: s.totalInputMl,
+          outputs: enrichedOutputs,
+        };
+      });
+
+      return { sessions: enrichedSessions, alerts };
+    }),
 });

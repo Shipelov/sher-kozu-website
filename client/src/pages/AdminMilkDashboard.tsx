@@ -45,6 +45,7 @@ import {
   FileText,
   Loader2,
   Milk,
+  Package,
   Pencil,
   Plus,
   Power,
@@ -96,7 +97,7 @@ function parseMl(s: string): number {
 }
 
 export default function AdminMilkDashboard() {
-  const [tab, setTab] = useState<"overview" | "sessions" | "receptions" | "tanks" | "audit">(
+  const [tab, setTab] = useState<"overview" | "sessions" | "receptions" | "tanks" | "processing" | "warehouses" | "audit">(
     "overview",
   );
   const [sessionPage, setSessionPage] = useState(1);
@@ -284,6 +285,8 @@ export default function AdminMilkDashboard() {
     { key: "sessions" as const, label: "Дойки", icon: Milk },
     { key: "receptions" as const, label: "Приёмки", icon: Droplets },
     { key: "tanks" as const, label: "Танки", icon: Container },
+    { key: "processing" as const, label: "Переработка", icon: TrendingUp },
+    { key: "warehouses" as const, label: "Склады", icon: Package },
     { key: "audit" as const, label: "Аудит", icon: ScrollText },
   ];
 
@@ -808,6 +811,12 @@ export default function AdminMilkDashboard() {
           </Dialog>
         </div>
       )}
+
+      {/* ── Processing Sessions ── */}
+      {tab === "processing" && <AdminProcessingTab />}
+
+      {/* ── Warehouses ── */}
+      {tab === "warehouses" && <AdminWarehousesTab />}
 
       {/* ── Audit Log ── */}
       {tab === "audit" && (
@@ -1827,4 +1836,419 @@ function exportOverviewPDF(
     rows: buildOverviewRows(d),
     filename: `Обзор_${period === "custom" ? `${customFrom}_${customTo}` : period}`,
   });
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// Processing Sessions Admin Tab
+// ═══════════════════════════════════════════════════════════════════
+
+function AdminProcessingTab() {
+  const [page, setPage] = useState(1);
+  const [statusFilter, setStatusFilter] = useState<string>("");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+
+  const sessionsQuery = trpc.warehouseAdmin.processingSessions.useQuery({
+    limit: 15,
+    offset: (page - 1) * 15,
+    status: statusFilter ? (statusFilter as any) : undefined,
+    dateFrom: dateFrom || undefined,
+    dateTo: dateTo || undefined,
+  });
+
+  const conversionQuery = trpc.warehouseAdmin.conversionAnalytics.useQuery({
+    dateFrom: dateFrom || undefined,
+    dateTo: dateTo || undefined,
+    deviationThreshold: 15,
+  });
+
+  const sessions = sessionsQuery.data?.sessions ?? [];
+  const total = sessionsQuery.data?.total ?? 0;
+  const alerts = conversionQuery.data?.alerts ?? [];
+
+  const PROC_STATUS: Record<string, { label: string; color: string }> = {
+    draft: { label: "Черновик", color: "bg-gray-100 text-gray-700" },
+    in_progress: { label: "В процессе", color: "bg-blue-100 text-blue-700" },
+    completed: { label: "Завершена", color: "bg-emerald-100 text-emerald-700" },
+    cancelled: { label: "Отменена", color: "bg-red-100 text-red-700" },
+  };
+
+  const PROC_COLUMNS: ReportColumn[] = [
+    { header: "Дата", key: "date", width: 12 },
+    { header: "Код сессии", key: "sessionCode", width: 18 },
+    { header: "Сыродел", key: "worker", width: 16 },
+    { header: "Вход (л)", key: "inputLiters", width: 10 },
+    { header: "Статус", key: "status", width: 12 },
+  ];
+
+  function exportData(format: "excel" | "pdf") {
+    const rows = sessions.map((s: any) => ({
+      date: s.shiftDate,
+      sessionCode: s.sessionCode,
+      worker: s.workerName ?? "—",
+      inputLiters: (s.totalInputMl / 1000).toFixed(1),
+      status: PROC_STATUS[s.status]?.label ?? s.status,
+    }));
+    const totalL = sessions.reduce((sum: number, s: any) => sum + s.totalInputMl, 0) / 1000;
+    const config = {
+      title: "Отчёт переработки — Шерь Козу",
+      subtitle: periodSubtitle(dateFrom || "—", dateTo || "—"),
+      columns: PROC_COLUMNS,
+      rows,
+      summaryRows: [{ date: "ИТОГО", sessionCode: `${sessions.length} сессий`, worker: "", inputLiters: totalL.toFixed(1), status: "" }],
+      filename: `Переработка_${dateFrom || "all"}_${dateTo || "all"}`,
+    };
+    format === "excel" ? exportExcel(config) : exportPDF(config);
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* Alerts banner */}
+      {alerts.length > 0 && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+          <div className="flex items-center gap-2 text-red-700 font-semibold text-sm mb-2">
+            <TrendingUp className="w-4 h-4" /> Отклонения коэффициентов конверсии ({alerts.length})
+          </div>
+          <div className="max-h-32 overflow-y-auto space-y-1">
+            {alerts.map((a: any, i: number) => (
+              <div key={i} className="text-xs text-red-600 flex items-center gap-2">
+                <span className="font-mono">{a.sessionCode}</span>
+                <span>{a.productLabel}</span>
+                <Badge className="rounded-full text-[9px] bg-red-100 text-red-700">
+                  {a.deviationPercent > 0 ? "+" : ""}{a.deviationPercent.toFixed(1)}%
+                </Badge>
+                <span className="text-red-400">факт: {a.actualRatio.toFixed(2)} / норма: {a.baseRatio.toFixed(2)}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Filters */}
+      <div className="flex flex-wrap gap-2 items-center">
+        <Select value={statusFilter} onValueChange={setStatusFilter}>
+          <SelectTrigger className="w-40 h-9 text-xs">
+            <SelectValue placeholder="Все статусы" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all_statuses">Все статусы</SelectItem>
+            <SelectItem value="draft">Черновик</SelectItem>
+            <SelectItem value="in_progress">В процессе</SelectItem>
+            <SelectItem value="completed">Завершена</SelectItem>
+            <SelectItem value="cancelled">Отменена</SelectItem>
+          </SelectContent>
+        </Select>
+        <input
+          type="date"
+          value={dateFrom}
+          onChange={(e) => setDateFrom(e.target.value)}
+          className="border rounded-md px-2 py-1.5 text-xs bg-white h-9"
+        />
+        <span className="text-xs text-[oklch(0.52_0.04_80)]">—</span>
+        <input
+          type="date"
+          value={dateTo}
+          onChange={(e) => setDateTo(e.target.value)}
+          className="border rounded-md px-2 py-1.5 text-xs bg-white h-9"
+        />
+        <Button size="sm" variant="outline" onClick={() => exportData("excel")} className="h-9 text-xs">
+          <FileSpreadsheet className="w-3.5 h-3.5 mr-1" /> Excel
+        </Button>
+        <Button size="sm" variant="outline" onClick={() => exportData("pdf")} className="h-9 text-xs">
+          <FileText className="w-3.5 h-3.5 mr-1" /> PDF
+        </Button>
+      </div>
+
+      {/* Table */}
+      {sessionsQuery.isLoading ? (
+        <div className="flex items-center justify-center py-8">
+          <Loader2 className="h-5 w-5 animate-spin" />
+        </div>
+      ) : (
+        <div className="border rounded-lg overflow-x-auto max-h-[400px] overflow-y-auto">
+          <table className="w-full text-xs">
+            <thead className="bg-[oklch(0.96_0.01_90)] sticky top-0">
+              <tr>
+                <th className="px-3 py-2 text-left font-semibold">Код</th>
+                <th className="px-3 py-2 text-left font-semibold">Дата</th>
+                <th className="px-3 py-2 text-left font-semibold">Сыродел</th>
+                <th className="px-3 py-2 text-right font-semibold">Вход (л)</th>
+                <th className="px-3 py-2 text-left font-semibold">Статус</th>
+                <th className="px-3 py-2 text-left font-semibold">Создана</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y">
+              {sessions.map((s: any) => {
+                const st = PROC_STATUS[s.status] ?? { label: s.status, color: "" };
+                return (
+                  <tr key={s.id} className="hover:bg-[oklch(0.98_0.005_90)]">
+                    <td className="px-3 py-2 font-mono font-medium">{s.sessionCode}</td>
+                    <td className="px-3 py-2">{s.shiftDate}</td>
+                    <td className="px-3 py-2">{s.workerName ?? "—"}</td>
+                    <td className="px-3 py-2 text-right font-medium text-emerald-700">{(s.totalInputMl / 1000).toFixed(1)}</td>
+                    <td className="px-3 py-2">
+                      <Badge className={`rounded-full text-[9px] ${st.color}`}>{st.label}</Badge>
+                    </td>
+                    <td className="px-3 py-2 text-[oklch(0.5_0.04_80)]">
+                      {new Date(s.createdAt).toLocaleDateString("ru-RU")}
+                    </td>
+                  </tr>
+                );
+              })}
+              {sessions.length === 0 && (
+                <tr>
+                  <td colSpan={6} className="px-3 py-6 text-center text-[oklch(0.5_0.04_80)]">
+                    Нет сессий переработки
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* Pagination */}
+      {total > 15 && (
+        <div className="flex items-center justify-between">
+          <span className="text-xs text-[oklch(0.52_0.04_80)]">
+            Стр. {page} из {Math.ceil(total / 15)}
+          </span>
+          <div className="flex gap-1">
+            <Button size="sm" variant="outline" disabled={page <= 1} onClick={() => setPage(page - 1)}>
+              <ChevronLeft className="w-3.5 h-3.5" />
+            </Button>
+            <Button size="sm" variant="outline" disabled={page * 15 >= total} onClick={() => setPage(page + 1)}>
+              <ChevronRight className="w-3.5 h-3.5" />
+            </Button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// Warehouses Admin Tab
+// ═══════════════════════════════════════════════════════════════════
+
+function AdminWarehousesTab() {
+  const [showCreate, setShowCreate] = useState(false);
+  const [newName, setNewName] = useState("");
+  const [newDesc, setNewDesc] = useState("");
+  const [selectedWh, setSelectedWh] = useState<number | null>(null);
+
+  const whQuery = trpc.warehouseAdmin.list.useQuery();
+  const inventoryQuery = trpc.warehouseAdmin.inventory.useQuery(
+    { warehouseId: selectedWh! },
+    { enabled: !!selectedWh },
+  );
+  const movementsQuery = trpc.warehouseAdmin.movements.useQuery(
+    { warehouseId: selectedWh!, limit: 20, offset: 0 },
+    { enabled: !!selectedWh },
+  );
+
+  const utils = trpc.useUtils();
+
+  const createMutation = trpc.warehouseAdmin.create.useMutation({
+    onSuccess: () => {
+      toast.success("Склад создан");
+      setShowCreate(false);
+      setNewName("");
+      setNewDesc("");
+      void utils.warehouseAdmin.list.invalidate();
+    },
+    onError: (err: any) => toast.error("Ошибка", { description: err.message }),
+  });
+
+  const updateMutation = trpc.warehouseAdmin.update.useMutation({
+    onSuccess: () => {
+      toast.success("Склад обновлён");
+      void utils.warehouseAdmin.list.invalidate();
+    },
+    onError: (err: any) => toast.error("Ошибка", { description: err.message }),
+  });
+
+  const warehouses = whQuery.data ?? [];
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <p className="text-sm text-[oklch(0.52_0.04_80)]">
+          Всего складов: <strong>{warehouses.length}</strong>
+        </p>
+        <Button size="sm" onClick={() => setShowCreate(true)} className="text-xs">
+          <Plus className="w-3.5 h-3.5 mr-1" /> Новый склад
+        </Button>
+      </div>
+
+      {/* Warehouse list */}
+      {whQuery.isLoading ? (
+        <div className="flex items-center justify-center py-8">
+          <Loader2 className="h-5 w-5 animate-spin" />
+        </div>
+      ) : (
+        <div className="grid gap-3 sm:grid-cols-2">
+          {warehouses.map((wh: any) => (
+            <div
+              key={wh.id}
+              className={`border rounded-lg p-4 cursor-pointer transition-colors ${
+                selectedWh === wh.id ? "border-[oklch(0.40_0.12_80)] bg-[oklch(0.97_0.02_90)]" : "hover:bg-[oklch(0.98_0.005_90)]"
+              }`}
+              onClick={() => setSelectedWh(selectedWh === wh.id ? null : wh.id)}
+            >
+              <div className="flex items-center justify-between">
+                <div>
+                  <h4 className="text-sm font-semibold text-[oklch(0.22_0.04_60)]">{wh.name}</h4>
+                  {wh.description && (
+                    <p className="text-xs text-[oklch(0.52_0.04_80)] mt-0.5">{wh.description}</p>
+                  )}
+                </div>
+                <div className="flex items-center gap-2">
+                  <Badge className={`rounded-full text-[9px] ${wh.isActive ? "bg-emerald-100 text-emerald-700" : "bg-gray-100 text-gray-600"}`}>
+                    {wh.isActive ? "Активен" : "Неактивен"}
+                  </Badge>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-7 w-7 p-0"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      updateMutation.mutate({ id: wh.id, isActive: !wh.isActive });
+                    }}
+                  >
+                    {wh.isActive ? <PowerOff className="w-3.5 h-3.5 text-red-400" /> : <Power className="w-3.5 h-3.5 text-emerald-500" />}
+                  </Button>
+                </div>
+              </div>
+              <div className="flex gap-4 mt-2 text-xs text-[oklch(0.5_0.04_80)]">
+                <span>Позиций: {wh.itemCount}</span>
+                <span>Единиц: {wh.totalItems}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Inventory for selected warehouse */}
+      {selectedWh && (
+        <div className="border-t pt-4 space-y-3">
+          <h3 className="text-sm font-semibold text-[oklch(0.22_0.04_60)]">
+            Остатки на складе
+          </h3>
+          {inventoryQuery.isLoading ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (inventoryQuery.data ?? []).length === 0 ? (
+            <p className="text-xs text-[oklch(0.6_0.02_80)]">Пусто</p>
+          ) : (
+            <div className="border rounded-lg overflow-x-auto max-h-[200px] overflow-y-auto">
+              <table className="w-full text-xs">
+                <thead className="bg-[oklch(0.96_0.01_90)] sticky top-0">
+                  <tr>
+                    <th className="px-3 py-1.5 text-left font-semibold">Продукт</th>
+                    <th className="px-3 py-1.5 text-right font-semibold">Кол-во</th>
+                    <th className="px-3 py-1.5 text-left font-semibold">Ед.</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y">
+                  {(inventoryQuery.data ?? []).map((item: any) => (
+                    <tr key={item.id}>
+                      <td className="px-3 py-1.5">{item.productLabel}</td>
+                      <td className="px-3 py-1.5 text-right font-medium">{item.quantity}</td>
+                      <td className="px-3 py-1.5">{item.unit}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {/* Recent movements */}
+          <h3 className="text-sm font-semibold text-[oklch(0.22_0.04_60)]">
+            Последние движения
+          </h3>
+          {movementsQuery.isLoading ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (movementsQuery.data?.movements ?? []).length === 0 ? (
+            <p className="text-xs text-[oklch(0.6_0.02_80)]">Нет движений</p>
+          ) : (
+            <div className="border rounded-lg overflow-x-auto max-h-[200px] overflow-y-auto">
+              <table className="w-full text-xs">
+                <thead className="bg-[oklch(0.96_0.01_90)] sticky top-0">
+                  <tr>
+                    <th className="px-3 py-1.5 text-left font-semibold">Дата</th>
+                    <th className="px-3 py-1.5 text-left font-semibold">Тип</th>
+                    <th className="px-3 py-1.5 text-left font-semibold">Продукт</th>
+                    <th className="px-3 py-1.5 text-right font-semibold">Кол-во</th>
+                    <th className="px-3 py-1.5 text-left font-semibold">Сессия</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y">
+                  {(movementsQuery.data?.movements ?? []).map((m: any) => (
+                    <tr key={m.id}>
+                      <td className="px-3 py-1.5">{new Date(m.createdAt).toLocaleDateString("ru-RU")}</td>
+                      <td className="px-3 py-1.5">
+                        <Badge className={`rounded-full text-[9px] ${
+                          m.movementType === "in" ? "bg-emerald-100 text-emerald-700" :
+                          m.movementType === "out" ? "bg-blue-100 text-blue-700" :
+                          m.movementType === "writeoff" ? "bg-red-100 text-red-700" :
+                          "bg-amber-100 text-amber-700"
+                        }`}>
+                          {m.movementType === "in" ? "Приход" : m.movementType === "out" ? "Расход" : m.movementType === "writeoff" ? "Списание" : "Корректировка"}
+                        </Badge>
+                      </td>
+                      <td className="px-3 py-1.5">{m.productLabel}</td>
+                      <td className={`px-3 py-1.5 text-right font-medium ${m.quantity >= 0 ? "text-emerald-700" : "text-red-600"}`}>
+                        {m.quantity > 0 ? "+" : ""}{m.quantity} {m.unit}
+                      </td>
+                      <td className="px-3 py-1.5 font-mono text-[oklch(0.5_0.04_80)]">{m.sessionCode ?? "—"}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Create warehouse dialog */}
+      <Dialog open={showCreate} onOpenChange={setShowCreate}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Новый склад</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 pt-2">
+            <div>
+              <label className="text-xs font-medium text-[oklch(0.52_0.04_80)] mb-1 block">Название</label>
+              <Input
+                value={newName}
+                onChange={(e) => setNewName(e.target.value)}
+                placeholder="Холодильник №1"
+                className="h-10"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-[oklch(0.52_0.04_80)] mb-1 block">Описание (необязательно)</label>
+              <textarea
+                value={newDesc}
+                onChange={(e) => setNewDesc(e.target.value)}
+                placeholder="Описание склада..."
+                rows={2}
+                className="w-full border rounded-md px-3 py-2 text-sm resize-none"
+              />
+            </div>
+          </div>
+          <DialogFooter className="pt-3">
+            <Button variant="outline" onClick={() => setShowCreate(false)}>Отмена</Button>
+            <Button
+              onClick={() => createMutation.mutate({ name: newName, description: newDesc || null })}
+              disabled={newName.trim().length < 2 || createMutation.isPending}
+            >
+              {createMutation.isPending && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+              Создать
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
 }

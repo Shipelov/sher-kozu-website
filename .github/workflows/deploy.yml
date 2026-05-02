@@ -48,12 +48,22 @@ jobs:
           chmod 600 ~/.ssh/deploy_key
           ssh-keyscan -H ${{ secrets.VDS_HOST }} >> ~/.ssh/known_hosts 2>/dev/null
 
-      - name: Deploy dist to VDS
+      - name: Deploy to VDS
         run: |
           rsync -avz --delete \
             -e "ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no" \
             dist/ \
             ${{ secrets.VDS_USER }}@${{ secrets.VDS_HOST }}:${{ env.DEPLOY_PATH }}/dist/
+
+          rsync -avz \
+            -e "ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no" \
+            drizzle/ \
+            ${{ secrets.VDS_USER }}@${{ secrets.VDS_HOST }}:${{ env.DEPLOY_PATH }}/drizzle/
+
+          rsync -avz \
+            -e "ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no" \
+            package.json pnpm-lock.yaml drizzle.config.ts \
+            ${{ secrets.VDS_USER }}@${{ secrets.VDS_HOST }}:${{ env.DEPLOY_PATH }}/
 
       - name: Write env and restart
         env:
@@ -147,6 +157,13 @@ jobs:
           sed -i 's/^          //' ecosystem.config.cjs
 
           echo "${COMMIT_SHA}" > .deploy_version
+
+          echo "--- Running database migrations ---"
+          npm install -g pnpm 2>/dev/null || true
+          pnpm install --frozen-lockfile 2>/dev/null || npm install drizzle-kit drizzle-orm mysql2 2>/dev/null || true
+          npx drizzle-kit generate 2>&1 || true
+          npx drizzle-kit migrate 2>&1
+          echo "--- Migrations complete ---"
 
           pm2 stop sherkozu 2>/dev/null || true
           pm2 delete sherkozu 2>/dev/null || true

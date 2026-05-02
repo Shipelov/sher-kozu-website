@@ -421,6 +421,13 @@
       "when": 1777106032515,
       "tag": "0060_jazzy_wolfsbane",
       "breakpoints": true
+    },
+    {
+      "idx": 61,
+      "version": "5",
+      "when": 1777738263484,
+      "tag": "0061_slimy_fixer",
+      "breakpoints": true
     }
   ]
 }

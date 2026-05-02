@@ -39,6 +39,7 @@ import {
   Loader2,
   LogOut,
   Milk,
+  Package,
   ThumbsDown,
   ThumbsUp,
   X,
@@ -54,6 +55,7 @@ import {
   getPresetDates,
   type ReportColumn,
 } from "@/lib/reportExport";
+import FarmProcessingTab from "@/pages/FarmProcessingTab";
 
 const MILK_TYPE_EMOJI: Record<string, string> = {
   goat: "🐐",
@@ -78,7 +80,7 @@ const TANK_STATUS_MAP: Record<string, { label: string; color: string }> = {
 
 export default function FarmCheesemakerArm() {
   const [, navigate] = useLocation();
-  const [view, setView] = useState<"reception" | "tanks" | "history" | "report">("reception");
+  const [view, setView] = useState<"reception" | "tanks" | "history" | "report" | "processing">("reception");
 
   // ─── Report state ───
   const [reportPreset, setReportPreset] = useState<"today" | "week" | "month" | "custom">("week");
@@ -284,6 +286,14 @@ export default function FarmCheesemakerArm() {
         >
           <History className="w-4 h-4 inline-block mr-1 -mt-0.5" />
           История
+        </button>
+        <button
+          onClick={() => setView("processing")}
+          className={`flex-1 py-3 text-xs font-medium text-center touch-manipulation transition-colors
+            ${view === "processing" ? "text-[oklch(0.40_0.12_80)] border-b-2 border-[oklch(0.40_0.12_80)]" : "text-[oklch(0.52_0.04_80)]"}`}
+        >
+          <Package className="w-4 h-4 inline-block mr-1 -mt-0.5" />
+          Переработка
         </button>
         <button
           onClick={() => setView("report")}
@@ -539,6 +549,11 @@ export default function FarmCheesemakerArm() {
           </div>
         )}
       </div>
+
+      {/* ── Processing tab ── */}
+      {view === "processing" && (
+        <FarmProcessingTab isActive={view === "processing"} />
+      )}
 
       {/* ── Report view ── */}
       {view === "report" && (

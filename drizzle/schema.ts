@@ -2325,6 +2325,14 @@ export const milkAuditActionEnum = mysqlEnum("milkAuditAction", [
   "worker_password_changed",
   "admin_edit",
   "admin_delete",
+  "processing_session_created",
+  "processing_session_updated",
+  "processing_session_completed",
+  "processing_session_cancelled",
+  "processing_session_corrected",
+  "warehouse_created",
+  "warehouse_updated",
+  "warehouse_movement",
 ]);
 
 /**
@@ -2591,6 +2599,162 @@ export const milkAuditLog = mysqlTable("milkAuditLog", {
   index("idx_milkAuditLog_createdAt").on(t.createdAt),
 ]));
 
+/* ─── Processing System (Переработка) ─── */
+
+export const processingSessionStatusEnum = mysqlEnum("processingSessionStatus", [
+  "draft",         // Черновик — можно свободно редактировать
+  "in_progress",   // В процессе
+  "completed",     // Завершена — танки списаны, склад пополнен
+  "cancelled",     // Отменена
+]);
+
+export const warehouseMovementTypeEnum = mysqlEnum("warehouseMovementType", [
+  "in",           // Поступление (из переработки)
+  "out",          // Выдача / отгрузка
+  "writeoff",     // Списание
+  "adjustment",   // Корректировка
+]);
+
+/**
+ * Warehouses — admin-managed storage locations for finished products.
+ * E.g. "Сыроварня — холодильник", "Склад готовой продукции".
+ */
+export const warehouses = mysqlTable("warehouses", {
+  id: int("id").autoincrement().primaryKey(),
+  name: varchar("name", { length: 160 }).notNull(),
+  description: text("description"),
+  isActive: boolean("isActive").default(true).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+/**
+ * Processing sessions — one session per cheesemaker shift.
+ * Session code format: CH-дд.мм.гггг (with -02 suffix for multiple per day).
+ * Multi-tank input, multi-product output.
+ */
+export const processingSessions = mysqlTable("processingSessions", {
+  id: int("id").autoincrement().primaryKey(),
+  /** Human-readable session code: CH-01.05.2026, CH-01.05.2026-02, etc. */
+  sessionCode: varchar("sessionCode", { length: 32 }).notNull().unique(),
+  /** Date of processing (YYYY-MM-DD) — can be set retroactively */
+  shiftDate: varchar("shiftDate", { length: 10 }).notNull(),
+  status: processingSessionStatusEnum.default("draft").notNull(),
+  /** Cheesemaker who started the session */
+  startedByWorkerId: int("startedByWorkerId").notNull(),
+  /** Total input volume in ml (sum of all processingInputs) */
+  totalInputMl: int("totalInputMl").default(0).notNull(),
+  note: text("note"),
+  completedAt: timestamp("completedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (t) => ([
+  index("idx_processingSessions_shiftDate").on(t.shiftDate),
+  index("idx_processingSessions_status").on(t.status),
+  index("idx_processingSessions_startedByWorkerId").on(t.startedByWorkerId),
+]));
+
+/**
+ * Processing inputs — milk taken from tanks for a processing session.
+ * Junction table: one session can draw from multiple tanks.
+ */
+export const processingInputs = mysqlTable("processingInputs", {
+  id: int("id").autoincrement().primaryKey(),
+  sessionId: int("sessionId").notNull(),
+  tankId: int("tankId").notNull(),
+  /** Volume taken from this tank in milliliters */
+  volumeMl: int("volumeMl").notNull(),
+  /** Type of milk from this tank */
+  milkType: milkTypeEnum.notNull(),
+  note: text("note"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, (t) => ([
+  index("idx_processingInputs_sessionId").on(t.sessionId),
+  index("idx_processingInputs_tankId").on(t.tankId),
+]));
+
+/**
+ * Processing outputs — products created in a processing session.
+ * One session can produce multiple products.
+ * Tracks actual conversion ratio vs base from tierProductCatalog.
+ */
+export const processingOutputs = mysqlTable("processingOutputs", {
+  id: int("id").autoincrement().primaryKey(),
+  sessionId: int("sessionId").notNull(),
+  /** Reference to tierProductCatalog item */
+  catalogItemId: int("catalogItemId").notNull(),
+  /** Human-readable product label (snapshot from catalog at time of creation) */
+  productLabel: varchar("productLabel", { length: 160 }).notNull(),
+  /** Quantity produced */
+  quantity: double("quantity").notNull(),
+  /** Unit of measurement: "л", "кг", "шт" */
+  unit: varchar("unit", { length: 16 }).notNull(),
+  /** Target warehouse for this product */
+  warehouseId: int("warehouseId").notNull(),
+  /** Actual conversion ratio: input_ml / (quantity * 1000) for this product */
+  actualConversionRatio: double("actualConversionRatio"),
+  /** Base conversion ratio from tierProductCatalog at time of session */
+  baseConversionRatio: double("baseConversionRatio"),
+  /** Deviation percentage: ((actual - base) / base) * 100 */
+  deviationPercent: double("deviationPercent"),
+  note: text("note"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, (t) => ([
+  index("idx_processingOutputs_sessionId").on(t.sessionId),
+  index("idx_processingOutputs_catalogItemId").on(t.catalogItemId),
+  index("idx_processingOutputs_warehouseId").on(t.warehouseId),
+]));
+
+/**
+ * Warehouse inventory — current stock levels per product per warehouse.
+ * Updated on every warehouse movement.
+ */
+export const warehouseInventory = mysqlTable("warehouseInventory", {
+  id: int("id").autoincrement().primaryKey(),
+  warehouseId: int("warehouseId").notNull(),
+  /** Reference to tierProductCatalog item */
+  catalogItemId: int("catalogItemId").notNull(),
+  /** Human-readable product label */
+  productLabel: varchar("productLabel", { length: 160 }).notNull(),
+  /** Current quantity in stock */
+  quantity: double("quantity").default(0).notNull(),
+  /** Unit of measurement */
+  unit: varchar("unit", { length: 16 }).notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (t) => ([
+  index("idx_warehouseInventory_warehouseId").on(t.warehouseId),
+  index("idx_warehouseInventory_catalogItemId").on(t.catalogItemId),
+]));
+
+/**
+ * Warehouse movements — journal of all inventory changes.
+ * Full audit trail for warehouse operations.
+ */
+export const warehouseMovements = mysqlTable("warehouseMovements", {
+  id: int("id").autoincrement().primaryKey(),
+  warehouseId: int("warehouseId").notNull(),
+  movementType: warehouseMovementTypeEnum.notNull(),
+  /** Reference to tierProductCatalog item */
+  catalogItemId: int("catalogItemId").notNull(),
+  /** Human-readable product label */
+  productLabel: varchar("productLabel", { length: 160 }).notNull(),
+  /** Quantity moved (positive for in, negative for out/writeoff) */
+  quantity: double("quantity").notNull(),
+  /** Unit of measurement */
+  unit: varchar("unit", { length: 16 }).notNull(),
+  /** Reference to processing session (for 'in' movements from processing) */
+  processingSessionId: int("processingSessionId"),
+  /** Worker who performed the movement */
+  performedByWorkerId: int("performedByWorkerId").notNull(),
+  note: text("note"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, (t) => ([
+  index("idx_warehouseMovements_warehouseId").on(t.warehouseId),
+  index("idx_warehouseMovements_catalogItemId").on(t.catalogItemId),
+  index("idx_warehouseMovements_processingSessionId").on(t.processingSessionId),
+  index("idx_warehouseMovements_performedByWorkerId").on(t.performedByWorkerId),
+]));
+
 // ─── Type exports for Milk Turnover Control ───
 
 export type FarmWorker = typeof farmWorkers.$inferSelect;
@@ -2616,3 +2780,23 @@ export type InsertMilkProcessingBatch = typeof milkProcessingBatches.$inferInser
 
 export type MilkAuditLogEntry = typeof milkAuditLog.$inferSelect;
 export type InsertMilkAuditLogEntry = typeof milkAuditLog.$inferInsert;
+
+// ─── Type exports for Processing System ───
+
+export type Warehouse = typeof warehouses.$inferSelect;
+export type InsertWarehouse = typeof warehouses.$inferInsert;
+
+export type ProcessingSession = typeof processingSessions.$inferSelect;
+export type InsertProcessingSession = typeof processingSessions.$inferInsert;
+
+export type ProcessingInput = typeof processingInputs.$inferSelect;
+export type InsertProcessingInput = typeof processingInputs.$inferInsert;
+
+export type ProcessingOutput = typeof processingOutputs.$inferSelect;
+export type InsertProcessingOutput = typeof processingOutputs.$inferInsert;
+
+export type WarehouseInventoryItem = typeof warehouseInventory.$inferSelect;
+export type InsertWarehouseInventoryItem = typeof warehouseInventory.$inferInsert;
+
+export type WarehouseMovement = typeof warehouseMovements.$inferSelect;
+export type InsertWarehouseMovement = typeof warehouseMovements.$inferInsert;

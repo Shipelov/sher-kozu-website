@@ -8,6 +8,8 @@ import { milkSessionRouter } from "./routers/milkSession";
 import { milkReceptionRouter, milkTankRouter } from "./routers/milkReception";
 import { milkAdminRouter } from "./routers/milkAdmin";
 import { milkControllerRouter } from "./routers/milkController";
+import { milkProcessingRouter } from "./routers/milkProcessing";
+import { warehouseAdminRouter } from "./routers/warehouseAdmin";
 import { adminProcedure, protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import { invokeLLM } from "./_core/llm";
 import { catalogCache, CATALOG_CACHE_KEY, CATALOG_TTL_MS, invalidateCatalogCache } from "./cache";
@@ -2375,6 +2377,8 @@ export const appRouter = router({
   milkTank: milkTankRouter,
   milkAdmin: milkAdminRouter,
   milkController: milkControllerRouter,
+  milkProcessing: milkProcessingRouter,
+  warehouseAdmin: warehouseAdminRouter,
 });
 
 export type AppRouter = typeof appRouter;

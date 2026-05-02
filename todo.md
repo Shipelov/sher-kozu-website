@@ -2669,3 +2669,24 @@ Module: Контроль оборота молока. Spec v2.1. Mobile-first AR
 - [ ] Telegram notifications for anomalies (losses > 5%, large discrepancies, rejected milk) — deferred to next iteration
 - [x] Fix: controller role not appearing in admin farm worker edit dialog dropdown
 - [x] Fix: white screen on /farm page for new devices — GATE blocked /assets/ JS/CSS bundles
+- [x] Fix: farmWorkerRole enum missing 'controller' value in production VDS database (manual ALTER TABLE)
+- [ ] Add PDF and Excel export to Controller ARM (matching Milker/Cheesemaker ARM patterns)
+
+## Система переработки молока (Переработка) — May 2026
+- [x] DB: Create warehouses table (admin-managed: name, description, isActive)
+- [x] DB: Create processingSessions table (shift code CH-dd.mm.yyyy, date, status, worker, note)
+- [x] DB: Create processingInputs table (session → tank, volumeMl, milkType)
+- [x] DB: Create processingOutputs table (session → catalogItem, quantity, unit, warehouse, actualConversionRatio)
+- [x] DB: Create warehouseInventory table (warehouse + product → current quantity)
+- [x] DB: Create warehouseMovements table (journal: in/out/writeoff/adjustment)
+- [x] DB: Run pnpm db:push for all new tables
+- [x] Backend: Processing router — create/edit/complete session, tank deduction, warehouse sync
+- [x] Backend: Warehouse admin CRUD router
+- [x] Backend: Conversion coefficient calculation (actual vs base from tierProductCatalog)
+- [x] Backend: Controller alert when conversion ratio deviates >15%
+- [x] Frontend: Cheesemaker ARM — new "Переработка" tab with full workflow
+- [x] Frontend: Processing tab — Excel/PDF export
+- [x] Frontend: Admin panel — Warehouses section in Milk Control
+- [x] Frontend: Admin panel — Processing sessions report
+- [x] Frontend: Controller ARM — Processing view with conversion analytics
+- [x] Frontend: Controller ARM — Conversion deviation alerts + Excel/PDF export
