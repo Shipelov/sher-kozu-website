@@ -38,7 +38,7 @@ import {
   farmWorkers,
 } from "../../drizzle/schema";
 import { getDb } from "../db";
-import { eq, and, desc, sql, like, asc, inArray } from "drizzle-orm";
+import { eq, and, desc, sql, asc, inArray } from "drizzle-orm";
 
 // ─── Auth helpers ────────────────────────────────────────────
 
@@ -86,7 +86,7 @@ async function generateSessionCode(shiftDate: string): Promise<string> {
   const existing = await db
     .select({ sessionCode: processingSessions.sessionCode })
     .from(processingSessions)
-    .where(like(processingSessions.sessionCode, `${baseCode}%`));
+    .where(sql`${processingSessions.sessionCode} LIKE ${baseCode + '%'}`);
 
   if (existing.length === 0) return baseCode;
 
