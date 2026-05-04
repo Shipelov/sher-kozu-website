@@ -149,6 +149,16 @@ export default function FarmProcessingTab({ isActive }: ProcessingTabProps) {
     onError: (err: any) => toast.error("Ошибка", { description: err.message }),
   });
 
+  const deleteMutation = trpc.milkProcessing.deleteSession.useMutation({
+    onSuccess: () => {
+      toast.success("Сессия удалена");
+      setSelectedSessionId(null);
+      setSubView("list");
+      void utils.milkProcessing.listSessions.invalidate();
+    },
+    onError: (err: any) => toast.error("Ошибка", { description: err.message }),
+  });
+
   const correctMutation = trpc.milkProcessing.correctSession.useMutation({
     onSuccess: () => {
       toast.success("Сессия откатана для исправления");
@@ -708,6 +718,22 @@ export default function FarmProcessingTab({ isActive }: ProcessingTabProps) {
             >
               {correctMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <RotateCcw className="h-4 w-4 mr-2" />}
               Исправить (откатить)
+            </Button>
+          )}
+
+          {session.status === "cancelled" && (
+            <Button
+              onClick={() => {
+                if (window.confirm("Удалить отменённую сессию безвозвратно?")) {
+                  deleteMutation.mutate({ sessionId: selectedSessionId! });
+                }
+              }}
+              disabled={deleteMutation.isPending}
+              variant="ghost"
+              className="w-full h-11 rounded-xl text-red-600 hover:text-red-800 hover:bg-red-50"
+            >
+              {deleteMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Trash2 className="h-4 w-4 mr-2" />}
+              Удалить сессию
             </Button>
           )}
         </div>

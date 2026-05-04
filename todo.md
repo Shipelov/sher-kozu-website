@@ -2695,3 +2695,4 @@ Module: Контроль оборота молока. Spec v2.1. Mobile-first AR
 - [x] Feature: Admin Milk Dashboard Overview — add processing data and analytics
 - [x] Fix: Admin Overview processing stats — exclude cancelled sessions from all queries
 - [x] Feature: Admin Overview processing stats — add product output breakdown by product type
+- [x] Feature: Allow deleting cancelled processing sessions (backend + frontend)

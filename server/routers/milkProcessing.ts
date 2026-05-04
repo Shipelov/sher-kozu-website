@@ -595,6 +595,45 @@ export const milkProcessingRouter = router({
     }),
 
   /**
+   * Delete a cancelled session permanently.
+   * Only sessions with status "cancelled" can be deleted.
+   * Removes the session and all related inputs/outputs.
+   */
+  deleteSession: cheesemakerProcedure
+    .input(z.object({ sessionId: z.number().int().positive() }))
+    .mutation(async ({ input, ctx }) => {
+      const db = await getDb();
+      const worker = ctx.farmWorker;
+
+      const [session] = await db
+        .select()
+        .from(processingSessions)
+        .where(eq(processingSessions.id, input.sessionId))
+        .limit(1);
+
+      if (!session) throw new TRPCError({ code: "NOT_FOUND", message: "Сессия не найдена" });
+      if (session.status !== "cancelled") {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Удалить можно только отменённые сессии" });
+      }
+
+      // Delete related outputs and inputs first
+      await db.delete(processingOutputs).where(eq(processingOutputs.sessionId, input.sessionId));
+      await db.delete(processingInputs).where(eq(processingInputs.sessionId, input.sessionId));
+      // Delete the session itself
+      await db.delete(processingSessions).where(eq(processingSessions.id, input.sessionId));
+
+      await logMilkAudit({
+        action: "processing_session_cancelled",
+        workerId: worker.workerId,
+        entityType: "processing_session",
+        entityId: input.sessionId,
+        details: "Session permanently deleted",
+      });
+
+      return { success: true };
+    }),
+
+  /**
    * Correct a completed session:
    * 1. Reverse tank deductions (add milk back)
    * 2. Reverse warehouse credits (subtract products)
