@@ -2690,3 +2690,4 @@ Module: Контроль оборота молока. Spec v2.1. Mobile-first AR
 - [x] Frontend: Admin panel — Processing sessions report
 - [x] Frontend: Controller ARM — Processing view with conversion analytics
 - [x] Frontend: Controller ARM — Conversion deviation alerts + Excel/PDF export
+- [x] Fix: Mobile tab layout in Cheesemaker ARM — arrange 5 tabs in two rows (grid-cols-3 on mobile, grid-cols-5 on sm+)

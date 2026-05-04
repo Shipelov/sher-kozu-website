@@ -257,10 +257,10 @@ export default function FarmCheesemakerArm() {
       </header>
 
       {/* ── Tab switcher ── */}
-      <div className="flex bg-white border-b border-[oklch(0.9_0.02_90)]">
+      <div className="grid grid-cols-3 sm:grid-cols-5 bg-white border-b border-[oklch(0.9_0.02_90)]">
         <button
           onClick={() => setView("reception")}
-          className={`flex-1 py-3 text-xs font-medium text-center touch-manipulation transition-colors
+          className={`py-3 text-xs font-medium text-center touch-manipulation transition-colors
             ${view === "reception" ? "text-[oklch(0.40_0.12_80)] border-b-2 border-[oklch(0.40_0.12_80)]" : "text-[oklch(0.52_0.04_80)]"}`}
         >
           <Milk className="w-4 h-4 inline-block mr-1 -mt-0.5" />
@@ -273,7 +273,7 @@ export default function FarmCheesemakerArm() {
         </button>
         <button
           onClick={() => setView("tanks")}
-          className={`flex-1 py-3 text-xs font-medium text-center touch-manipulation transition-colors
+          className={`py-3 text-xs font-medium text-center touch-manipulation transition-colors
             ${view === "tanks" ? "text-[oklch(0.40_0.12_80)] border-b-2 border-[oklch(0.40_0.12_80)]" : "text-[oklch(0.52_0.04_80)]"}`}
         >
           <Container className="w-4 h-4 inline-block mr-1 -mt-0.5" />
@@ -281,7 +281,7 @@ export default function FarmCheesemakerArm() {
         </button>
         <button
           onClick={() => setView("history")}
-          className={`flex-1 py-3 text-xs font-medium text-center touch-manipulation transition-colors
+          className={`py-3 text-xs font-medium text-center touch-manipulation transition-colors
             ${view === "history" ? "text-[oklch(0.40_0.12_80)] border-b-2 border-[oklch(0.40_0.12_80)]" : "text-[oklch(0.52_0.04_80)]"}`}
         >
           <History className="w-4 h-4 inline-block mr-1 -mt-0.5" />
@@ -289,7 +289,7 @@ export default function FarmCheesemakerArm() {
         </button>
         <button
           onClick={() => setView("processing")}
-          className={`flex-1 py-3 text-xs font-medium text-center touch-manipulation transition-colors
+          className={`py-3 text-xs font-medium text-center touch-manipulation transition-colors
             ${view === "processing" ? "text-[oklch(0.40_0.12_80)] border-b-2 border-[oklch(0.40_0.12_80)]" : "text-[oklch(0.52_0.04_80)]"}`}
         >
           <Package className="w-4 h-4 inline-block mr-1 -mt-0.5" />
@@ -297,7 +297,7 @@ export default function FarmCheesemakerArm() {
         </button>
         <button
           onClick={() => setView("report")}
-          className={`flex-1 py-3 text-xs font-medium text-center touch-manipulation transition-colors
+          className={`py-3 text-xs font-medium text-center touch-manipulation transition-colors
             ${view === "report" ? "text-[oklch(0.40_0.12_80)] border-b-2 border-[oklch(0.40_0.12_80)]" : "text-[oklch(0.52_0.04_80)]"}`}
         >
           <Download className="w-4 h-4 inline-block mr-1 -mt-0.5" />
