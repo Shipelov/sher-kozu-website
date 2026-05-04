@@ -2693,3 +2693,5 @@ Module: Контроль оборота молока. Spec v2.1. Mobile-first AR
 - [x] Fix: Mobile tab layout in Cheesemaker ARM — arrange 5 tabs in two rows (grid-cols-3 on mobile, grid-cols-5 on sm+)
 - [x] Fix: Admin Milk Dashboard Overview — fix table column symmetry
 - [x] Feature: Admin Milk Dashboard Overview — add processing data and analytics
+- [x] Fix: Admin Overview processing stats — exclude cancelled sessions from all queries
+- [x] Feature: Admin Overview processing stats — add product output breakdown by product type

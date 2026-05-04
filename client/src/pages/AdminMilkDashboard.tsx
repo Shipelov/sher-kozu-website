@@ -1730,6 +1730,52 @@ function OverviewSection({
               </tbody>
             </table>
           </div>
+
+          {/* Product breakdown by type */}
+          {overview.processing.productBreakdown && overview.processing.productBreakdown.length > 0 && (
+            <div className="mt-4">
+              <h4 className="text-xs font-semibold text-[oklch(0.45_0.04_80)] mb-2 uppercase tracking-wide">
+                Произведённая продукция за месяц
+              </h4>
+              <div className="border rounded-lg overflow-x-auto max-h-[240px] overflow-y-auto">
+                <table className="w-full text-sm table-fixed">
+                  <colgroup>
+                    <col className="w-[50%]" />
+                    <col className="w-[20%]" />
+                    <col className="w-[15%]" />
+                    <col className="w-[15%]" />
+                  </colgroup>
+                  <thead className="bg-[oklch(0.96_0.01_90)] sticky top-0">
+                    <tr>
+                      <th className={thCls}>Продукт</th>
+                      <th className={thCls}>Количество</th>
+                      <th className={thCls}>Ед.</th>
+                      <th className={thCls}>Сессий</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y">
+                    {overview.processing.productBreakdown.map((p: { productLabel: string; unit: string; totalQuantity: number; sessionsCount: number }, idx: number) => (
+                      <tr key={idx} className="hover:bg-[oklch(0.98_0.005_90)]">
+                        <td className={`${tdCls} text-[oklch(0.4_0.04_80)] font-medium`}>{p.productLabel}</td>
+                        <td className={`${tdBold} text-[oklch(0.30_0.10_150)]`}>{p.totalQuantity}</td>
+                        <td className={tdCls}>{p.unit}</td>
+                        <td className={tdCls}>{p.sessionsCount}</td>
+                      </tr>
+                    ))}
+                    {/* Total row */}
+                    <tr className="bg-[oklch(0.94_0.03_90)] font-semibold">
+                      <td className={`${tdBold} text-[oklch(0.3_0.08_80)]`}>ИТОГО</td>
+                      <td className={`${tdBold} text-[oklch(0.3_0.08_80)]`}>
+                        {overview.processing.productBreakdown.reduce((sum: number, p: { totalQuantity: number }) => sum + p.totalQuantity, 0).toFixed(2)}
+                      </td>
+                      <td className={tdCls}>—</td>
+                      <td className={tdCls}>—</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>

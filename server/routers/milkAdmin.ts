@@ -29,7 +29,7 @@ import {
 } from "../../drizzle/schema";
 import { getDb } from "../db";
 import { logMilkAudit } from "../farmAuth";
-import { eq, and, gte, lte, desc, sql, like, inArray } from "drizzle-orm";
+import { eq, ne, and, gte, lte, desc, sql, like, inArray } from "drizzle-orm";
 
 const MILK_TYPE_LABELS: Record<string, string> = {
   goat: "Козье",
@@ -237,58 +237,60 @@ export const milkAdminRouter = router({
     }
 
     // Processing stats
+    const notCancelled = ne(processingSessions.status, "cancelled");
+
     const [procTodayCount] = await db
       .select({ count: sql<number>`COUNT(*)` })
       .from(processingSessions)
-      .where(gte(processingSessions.createdAt, todayStart));
+      .where(and(gte(processingSessions.createdAt, todayStart), notCancelled));
 
     const [procWeekCount] = await db
       .select({ count: sql<number>`COUNT(*)` })
       .from(processingSessions)
-      .where(gte(processingSessions.createdAt, weekStart));
+      .where(and(gte(processingSessions.createdAt, weekStart), notCancelled));
 
     const [procMonthCount] = await db
       .select({ count: sql<number>`COUNT(*)` })
       .from(processingSessions)
-      .where(gte(processingSessions.createdAt, monthStart));
+      .where(and(gte(processingSessions.createdAt, monthStart), notCancelled));
 
-    // Processing input volumes (milk used in processing)
+    // Processing input volumes (milk used in processing) — exclude cancelled
     const [procTodayInput] = await db
       .select({ totalMl: sql<number>`COALESCE(SUM(${processingInputs.volumeMl}), 0)` })
       .from(processingInputs)
       .innerJoin(processingSessions, eq(processingInputs.sessionId, processingSessions.id))
-      .where(gte(processingSessions.createdAt, todayStart));
+      .where(and(gte(processingSessions.createdAt, todayStart), notCancelled));
 
     const [procWeekInput] = await db
       .select({ totalMl: sql<number>`COALESCE(SUM(${processingInputs.volumeMl}), 0)` })
       .from(processingInputs)
       .innerJoin(processingSessions, eq(processingInputs.sessionId, processingSessions.id))
-      .where(gte(processingSessions.createdAt, weekStart));
+      .where(and(gte(processingSessions.createdAt, weekStart), notCancelled));
 
     const [procMonthInput] = await db
       .select({ totalMl: sql<number>`COALESCE(SUM(${processingInputs.volumeMl}), 0)` })
       .from(processingInputs)
       .innerJoin(processingSessions, eq(processingInputs.sessionId, processingSessions.id))
-      .where(gte(processingSessions.createdAt, monthStart));
+      .where(and(gte(processingSessions.createdAt, monthStart), notCancelled));
 
-    // Processing output count
+    // Processing output count — exclude cancelled
     const [procTodayOutput] = await db
       .select({ count: sql<number>`COALESCE(SUM(${processingOutputs.quantity}), 0)` })
       .from(processingOutputs)
       .innerJoin(processingSessions, eq(processingOutputs.sessionId, processingSessions.id))
-      .where(gte(processingSessions.createdAt, todayStart));
+      .where(and(gte(processingSessions.createdAt, todayStart), notCancelled));
 
     const [procWeekOutput] = await db
       .select({ count: sql<number>`COALESCE(SUM(${processingOutputs.quantity}), 0)` })
       .from(processingOutputs)
       .innerJoin(processingSessions, eq(processingOutputs.sessionId, processingSessions.id))
-      .where(gte(processingSessions.createdAt, weekStart));
+      .where(and(gte(processingSessions.createdAt, weekStart), notCancelled));
 
     const [procMonthOutput] = await db
       .select({ count: sql<number>`COALESCE(SUM(${processingOutputs.quantity}), 0)` })
       .from(processingOutputs)
       .innerJoin(processingSessions, eq(processingOutputs.sessionId, processingSessions.id))
-      .where(gte(processingSessions.createdAt, monthStart));
+      .where(and(gte(processingSessions.createdAt, monthStart), notCancelled));
 
     // Average conversion ratio for completed sessions this month
     const [avgConversion] = await db
@@ -301,6 +303,23 @@ export const milkAdminRouter = router({
         gte(processingSessions.createdAt, monthStart),
         eq(processingSessions.status, "completed"),
       ));
+
+    // Product output breakdown by product label (only completed sessions, this month)
+    const productBreakdown = await db
+      .select({
+        productLabel: processingOutputs.productLabel,
+        unit: processingOutputs.unit,
+        totalQuantity: sql<number>`COALESCE(SUM(${processingOutputs.quantity}), 0)`,
+        sessionsCount: sql<number>`COUNT(DISTINCT ${processingOutputs.sessionId})`,
+      })
+      .from(processingOutputs)
+      .innerJoin(processingSessions, eq(processingOutputs.sessionId, processingSessions.id))
+      .where(and(
+        gte(processingSessions.createdAt, monthStart),
+        eq(processingSessions.status, "completed"),
+      ))
+      .groupBy(processingOutputs.productLabel, processingOutputs.unit)
+      .orderBy(sql`SUM(${processingOutputs.quantity}) DESC`);
 
     return {
       today: formatPeriod(todayStats, todayRec),
@@ -338,6 +357,12 @@ export const milkAdminRouter = router({
           outputUnits: Number(procMonthOutput.count),
         },
         avgConversionRatio: +(Number(avgConversion.avgRatio)).toFixed(4),
+        productBreakdown: productBreakdown.map(p => ({
+          productLabel: p.productLabel,
+          unit: p.unit,
+          totalQuantity: +Number(p.totalQuantity).toFixed(2),
+          sessionsCount: Number(p.sessionsCount),
+        })),
       },
     };
   }),
