@@ -2696,3 +2696,4 @@ Module: Контроль оборота молока. Spec v2.1. Mobile-first AR
 - [x] Fix: Admin Overview processing stats — exclude cancelled sessions from all queries
 - [x] Feature: Admin Overview processing stats — add product output breakdown by product type
 - [x] Feature: Allow deleting cancelled processing sessions (backend + frontend)
+- [x] Feature: Admin panel — delete cancelled processing sessions from Processing tab

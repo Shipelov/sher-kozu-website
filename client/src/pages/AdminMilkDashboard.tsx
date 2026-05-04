@@ -1965,6 +1965,15 @@ function AdminProcessingTab() {
   const [statusFilter, setStatusFilter] = useState<string>("");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
+  const utils = trpc.useUtils();
+
+  const deleteMutation = trpc.warehouseAdmin.deleteProcessingSession.useMutation({
+    onSuccess: () => {
+      toast.success("Сессия удалена");
+      void utils.warehouseAdmin.processingSessions.invalidate();
+    },
+    onError: (err: any) => toast.error("Ошибка", { description: err.message }),
+  });
 
   const sessionsQuery = trpc.warehouseAdmin.processingSessions.useQuery({
     limit: 15,
@@ -2093,6 +2102,7 @@ function AdminProcessingTab() {
                 <th className="px-3 py-2 text-right font-semibold">Вход (л)</th>
                 <th className="px-3 py-2 text-left font-semibold">Статус</th>
                 <th className="px-3 py-2 text-left font-semibold">Создана</th>
+                <th className="px-3 py-2 text-center font-semibold w-16"></th>
               </tr>
             </thead>
             <tbody className="divide-y">
@@ -2110,12 +2120,30 @@ function AdminProcessingTab() {
                     <td className="px-3 py-2 text-[oklch(0.5_0.04_80)]">
                       {new Date(s.createdAt).toLocaleDateString("ru-RU")}
                     </td>
+                    <td className="px-3 py-2 text-center">
+                      {s.status === "cancelled" && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-7 w-7 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
+                          onClick={() => {
+                            if (window.confirm(`Удалить сессию ${s.sessionCode} безвозвратно?`)) {
+                              deleteMutation.mutate({ sessionId: s.id });
+                            }
+                          }}
+                          disabled={deleteMutation.isPending}
+                          title="Удалить"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </Button>
+                      )}
+                    </td>
                   </tr>
                 );
               })}
               {sessions.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="px-3 py-6 text-center text-[oklch(0.5_0.04_80)]">
+                  <td colSpan={7} className="px-3 py-6 text-center text-[oklch(0.5_0.04_80)]">
                     Нет сессий переработки
                   </td>
                 </tr>

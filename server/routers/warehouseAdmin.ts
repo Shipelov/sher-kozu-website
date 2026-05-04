@@ -23,6 +23,7 @@ import {
   warehouseInventory,
   warehouseMovements,
   processingSessions,
+  processingInputs,
   processingOutputs,
   farmWorkers,
 } from "../../drizzle/schema";
@@ -488,5 +489,41 @@ export const warehouseAdminRouter = router({
       });
 
       return { sessions: enrichedSessions, alerts };
+    }),
+
+  /**
+   * Delete a cancelled processing session permanently (admin only).
+   */
+  deleteProcessingSession: adminProcedure
+    .input(z.object({ sessionId: z.number().int().positive() }))
+    .mutation(async ({ input, ctx }) => {
+      const db = await getDb();
+
+      const [session] = await db
+        .select()
+        .from(processingSessions)
+        .where(eq(processingSessions.id, input.sessionId))
+        .limit(1);
+
+      if (!session) throw new TRPCError({ code: "NOT_FOUND", message: "Сессия не найдена" });
+      if (session.status !== "cancelled") {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Удалить можно только отменённые сессии" });
+      }
+
+      // Delete related outputs and inputs first
+      await db.delete(processingOutputs).where(eq(processingOutputs.sessionId, input.sessionId));
+      await db.delete(processingInputs).where(eq(processingInputs.sessionId, input.sessionId));
+      // Delete the session itself
+      await db.delete(processingSessions).where(eq(processingSessions.id, input.sessionId));
+
+      await logMilkAudit({
+        action: "processing_session_cancelled",
+        workerId: ctx.user.openId,
+        entityType: "processing_session",
+        entityId: input.sessionId,
+        details: "Admin permanently deleted cancelled session",
+      });
+
+      return { success: true };
     }),
 });
