@@ -23,6 +23,9 @@ import {
   milkTankMovements,
   milkAuditLog,
   farmWorkers,
+  processingSessions,
+  processingInputs,
+  processingOutputs,
 } from "../../drizzle/schema";
 import { getDb } from "../db";
 import { logMilkAudit } from "../farmAuth";
@@ -233,6 +236,72 @@ export const milkAdminRouter = router({
       customPeriod = formatPeriod(customStats, customRec);
     }
 
+    // Processing stats
+    const [procTodayCount] = await db
+      .select({ count: sql<number>`COUNT(*)` })
+      .from(processingSessions)
+      .where(gte(processingSessions.createdAt, todayStart));
+
+    const [procWeekCount] = await db
+      .select({ count: sql<number>`COUNT(*)` })
+      .from(processingSessions)
+      .where(gte(processingSessions.createdAt, weekStart));
+
+    const [procMonthCount] = await db
+      .select({ count: sql<number>`COUNT(*)` })
+      .from(processingSessions)
+      .where(gte(processingSessions.createdAt, monthStart));
+
+    // Processing input volumes (milk used in processing)
+    const [procTodayInput] = await db
+      .select({ totalMl: sql<number>`COALESCE(SUM(${processingInputs.volumeMl}), 0)` })
+      .from(processingInputs)
+      .innerJoin(processingSessions, eq(processingInputs.sessionId, processingSessions.id))
+      .where(gte(processingSessions.createdAt, todayStart));
+
+    const [procWeekInput] = await db
+      .select({ totalMl: sql<number>`COALESCE(SUM(${processingInputs.volumeMl}), 0)` })
+      .from(processingInputs)
+      .innerJoin(processingSessions, eq(processingInputs.sessionId, processingSessions.id))
+      .where(gte(processingSessions.createdAt, weekStart));
+
+    const [procMonthInput] = await db
+      .select({ totalMl: sql<number>`COALESCE(SUM(${processingInputs.volumeMl}), 0)` })
+      .from(processingInputs)
+      .innerJoin(processingSessions, eq(processingInputs.sessionId, processingSessions.id))
+      .where(gte(processingSessions.createdAt, monthStart));
+
+    // Processing output count
+    const [procTodayOutput] = await db
+      .select({ count: sql<number>`COALESCE(SUM(${processingOutputs.quantity}), 0)` })
+      .from(processingOutputs)
+      .innerJoin(processingSessions, eq(processingOutputs.sessionId, processingSessions.id))
+      .where(gte(processingSessions.createdAt, todayStart));
+
+    const [procWeekOutput] = await db
+      .select({ count: sql<number>`COALESCE(SUM(${processingOutputs.quantity}), 0)` })
+      .from(processingOutputs)
+      .innerJoin(processingSessions, eq(processingOutputs.sessionId, processingSessions.id))
+      .where(gte(processingSessions.createdAt, weekStart));
+
+    const [procMonthOutput] = await db
+      .select({ count: sql<number>`COALESCE(SUM(${processingOutputs.quantity}), 0)` })
+      .from(processingOutputs)
+      .innerJoin(processingSessions, eq(processingOutputs.sessionId, processingSessions.id))
+      .where(gte(processingSessions.createdAt, monthStart));
+
+    // Average conversion ratio for completed sessions this month
+    const [avgConversion] = await db
+      .select({
+        avgRatio: sql<number>`COALESCE(AVG(${processingOutputs.actualConversionRatio}), 0)`,
+      })
+      .from(processingOutputs)
+      .innerJoin(processingSessions, eq(processingOutputs.sessionId, processingSessions.id))
+      .where(and(
+        gte(processingSessions.createdAt, monthStart),
+        eq(processingSessions.status, "completed"),
+      ));
+
     return {
       today: formatPeriod(todayStats, todayRec),
       week: formatPeriod(weekStats, weekRec),
@@ -251,6 +320,24 @@ export const milkAdminRouter = router({
         currentLiters: +(totalCurrent / 1000).toFixed(2),
         fillPercent: totalCapacity > 0 ? Math.round((totalCurrent / totalCapacity) * 100) : 0,
         byType: tankSummary,
+      },
+      processing: {
+        today: {
+          sessions: Number(procTodayCount.count),
+          inputLiters: +(Number(procTodayInput.totalMl) / 1000).toFixed(2),
+          outputUnits: Number(procTodayOutput.count),
+        },
+        week: {
+          sessions: Number(procWeekCount.count),
+          inputLiters: +(Number(procWeekInput.totalMl) / 1000).toFixed(2),
+          outputUnits: Number(procWeekOutput.count),
+        },
+        month: {
+          sessions: Number(procMonthCount.count),
+          inputLiters: +(Number(procMonthInput.totalMl) / 1000).toFixed(2),
+          outputUnits: Number(procMonthOutput.count),
+        },
+        avgConversionRatio: +(Number(avgConversion.avgRatio)).toFixed(4),
       },
     };
   }),

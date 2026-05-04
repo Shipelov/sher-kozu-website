@@ -1338,7 +1338,7 @@ function OverviewSection({
     { key: "cow" as const, label: "Коровы", emoji: "🐄" },
   ];
 
-  const thCls = "px-3 py-2 text-xs font-semibold text-[oklch(0.4_0.04_80)] text-right first:text-left";
+  const thCls = "px-3 py-2 text-xs font-semibold text-[oklch(0.4_0.04_80)] text-right first:text-left whitespace-nowrap";
   const tdCls = "px-3 py-2 text-sm text-right first:text-left";
   const tdBold = `${tdCls} font-semibold`;
 
@@ -1413,7 +1413,14 @@ function OverviewSection({
 
       {/* Main 4-column table */}
       <div className="border rounded-lg overflow-x-auto">
-        <table className="w-full text-sm">
+        <table className="w-full text-sm table-fixed">
+          <colgroup>
+            <col className="w-[36%]" />
+            <col className="w-[16%]" />
+            <col className="w-[16%]" />
+            <col className="w-[16%]" />
+            <col className="w-[16%]" />
+          </colgroup>
           <thead className="bg-[oklch(0.96_0.01_90)]">
             <tr>
               <th className={thCls}>Показатель</th>
@@ -1499,7 +1506,14 @@ function OverviewSection({
           <TrendingUp className="w-4 h-4" /> Аналитика
         </h3>
         <div className="border rounded-lg overflow-x-auto">
-          <table className="w-full text-sm">
+          <table className="w-full text-sm table-fixed">
+            <colgroup>
+              <col className="w-[36%]" />
+              <col className="w-[16%]" />
+              <col className="w-[16%]" />
+              <col className="w-[16%]" />
+              <col className="w-[16%]" />
+            </colgroup>
             <thead className="bg-[oklch(0.96_0.01_90)]">
               <tr>
                 <th className={thCls}>Метрика</th>
@@ -1647,7 +1661,7 @@ function OverviewSection({
         </div>
       )}
 
-      {/* Operational cards: reception + tanks */}
+      {/* Operational cards: reception + tanks + processing */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <StatCard
           label="Приёмок сегодня"
@@ -1659,7 +1673,65 @@ function OverviewSection({
           value={`${overview.tanks.active} / ${overview.tanks.total}`}
           sub={`Заполн: ${overview.tanks.fillPercent}% (${overview.tanks.currentLiters}л)`}
         />
+        <StatCard
+          label="Переработка сегодня"
+          value={overview.processing?.today?.sessions ?? 0}
+          sub={`Вход: ${overview.processing?.today?.inputLiters ?? 0}л → ${overview.processing?.today?.outputUnits ?? 0} ед.`}
+          accent
+        />
+        <StatCard
+          label="Ср. коэфф. конверсии"
+          value={overview.processing?.avgConversionRatio ? `${(overview.processing.avgConversionRatio * 100).toFixed(1)}%` : "—"}
+          sub={`За месяц: ${overview.processing?.month?.sessions ?? 0} сессий`}
+        />
       </div>
+
+      {/* Processing analytics section */}
+      {overview.processing && (
+        <div>
+          <h3 className="text-sm font-semibold text-[oklch(0.4_0.04_80)] mb-3 flex items-center gap-2">
+            <Package className="w-4 h-4" /> Переработка
+          </h3>
+          <div className="border rounded-lg overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-[oklch(0.96_0.01_90)]">
+                <tr>
+                  <th className={thCls}>Показатель</th>
+                  <th className={thCls}>Сегодня</th>
+                  <th className={thCls}>Неделя</th>
+                  <th className={thCls}>Месяц</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y">
+                <tr className="hover:bg-[oklch(0.98_0.005_90)]">
+                  <td className={`${tdCls} text-[oklch(0.4_0.04_80)]`}>Сессий переработки</td>
+                  <td className={tdCls}>{overview.processing.today.sessions}</td>
+                  <td className={tdCls}>{overview.processing.week.sessions}</td>
+                  <td className={tdCls}>{overview.processing.month.sessions}</td>
+                </tr>
+                <tr className="bg-[oklch(0.97_0.02_270)] hover:bg-[oklch(0.96_0.03_270)]">
+                  <td className={`${tdBold} text-[oklch(0.30_0.10_270)]`}>Молока в переработку, л</td>
+                  <td className={`${tdBold} text-[oklch(0.30_0.10_270)]`}>{overview.processing.today.inputLiters}</td>
+                  <td className={`${tdBold} text-[oklch(0.30_0.10_270)]`}>{overview.processing.week.inputLiters}</td>
+                  <td className={`${tdBold} text-[oklch(0.30_0.10_270)]`}>{overview.processing.month.inputLiters}</td>
+                </tr>
+                <tr className="hover:bg-[oklch(0.98_0.005_90)]">
+                  <td className={`${tdCls} text-[oklch(0.4_0.04_80)]`}>Произведено единиц</td>
+                  <td className={tdCls}>{overview.processing.today.outputUnits}</td>
+                  <td className={tdCls}>{overview.processing.week.outputUnits}</td>
+                  <td className={tdCls}>{overview.processing.month.outputUnits}</td>
+                </tr>
+                <tr className="bg-[oklch(0.96_0.04_150)] hover:bg-[oklch(0.95_0.05_150)]">
+                  <td className={`${tdBold} text-[oklch(0.25_0.12_150)]`}>Ср. коэфф. конверсии (мес)</td>
+                  <td className={`${tdBold} text-[oklch(0.25_0.12_150)]`} colSpan={3}>
+                    {overview.processing.avgConversionRatio ? `${(overview.processing.avgConversionRatio * 100).toFixed(2)}%` : "Нет данных"}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
