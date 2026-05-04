@@ -2697,3 +2697,9 @@ Module: Контроль оборота молока. Spec v2.1. Mobile-first AR
 - [x] Feature: Admin Overview processing stats — add product output breakdown by product type
 - [x] Feature: Allow deleting cancelled processing sessions (backend + frontend)
 - [x] Feature: Admin panel — delete cancelled processing sessions from Processing tab
+- [x] Feature: Excel export for tier product catalog — download current catalog as .xlsx with instruction sheet
+- [x] Feature: Excel import for tier product catalog — upload .xlsx, validate, preview, and bulk upsert products
+- [x] Backend: importTierCatalog tRPC procedure with validation and batch upsert
+- [x] Frontend: Export/Import buttons in TierCatalogManager header with preview dialog
+- [x] Tests: Vitest coverage for importTierCatalog input validation and header mapping
+- [x] Fix: milkController.ts — corrected reference to conversionRatioLitersPerUnit → conversionRatio

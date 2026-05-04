@@ -386,6 +386,75 @@ export const productTrackRouter = router({
       return deleteTierCatalogItem(input.id);
     }),
 
+  /** Admin: bulk import tier catalog items from Excel (parsed on frontend) */
+  importTierCatalog: protectedProcedure
+    .input(
+      z.object({
+        items: z.array(
+          z.object({
+            id: z.number().int().positive().optional().nullable(),
+            minTier: tierSlugSchema,
+            productType: productTypeSchema,
+            label: z.string().min(1).max(160),
+            species: z.enum(["goat", "sheep", "both"]).default("both"),
+            conversionRatio: z.number().min(0.01).max(1000),
+            unit: z.string().min(1).max(16).default("л"),
+            description: z.string().max(500).optional().nullable(),
+            isEnabled: z.boolean().default(true),
+            sortOrder: z.number().int().min(0).max(9999).default(0),
+          }),
+        ).min(1).max(500),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      if (ctx.user.role !== "admin") {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Только администратор." });
+      }
+      let created = 0;
+      let updated = 0;
+      const errors: string[] = [];
+
+      for (let i = 0; i < input.items.length; i++) {
+        const row = input.items[i];
+        try {
+          if (row.id) {
+            // Try to update existing item
+            await upsertTierCatalogItem({
+              id: row.id,
+              minTier: row.minTier as any,
+              productType: row.productType,
+              label: row.label,
+              species: row.species as any,
+              conversionRatio: row.conversionRatio,
+              unit: row.unit,
+              description: row.description ?? null,
+              isEnabled: row.isEnabled,
+              sortOrder: row.sortOrder,
+            });
+            updated++;
+          } else {
+            // Create new item
+            await upsertTierCatalogItem({
+              minTier: row.minTier as any,
+              productType: row.productType,
+              label: row.label,
+              species: row.species as any,
+              conversionRatio: row.conversionRatio,
+              unit: row.unit,
+              description: row.description ?? null,
+              isEnabled: row.isEnabled,
+              sortOrder: row.sortOrder,
+            });
+            created++;
+          }
+        } catch (err: any) {
+          errors.push(`Строка ${i + 2}: ${err.message ?? "Неизвестная ошибка"}`);
+        }
+      }
+
+      return { created, updated, errors };
+    }),
+
   // ═══════════════════════════════════════════════════════════
   //  TIER-BASED PRODUCT PLAN WORKFLOW
   // ═══════════════════════════════════════════════════════════

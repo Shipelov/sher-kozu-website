@@ -48,11 +48,14 @@ import {
   Save,
   Download,
   FileSpreadsheet,
+  Upload,
 } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import OwnerAdminChat from "@/components/OwnerAdminChat";
 import { toast } from "sonner";
 import { Link, useLocation, useParams } from "wouter";
+import * as XLSX from "xlsx";
+import { exportExcel } from "@/lib/reportExport";
 
 /* ── Types ── */
 
@@ -1876,6 +1879,25 @@ const ALL_TIERS = ["basic", "standard", "professional"];
 const ALL_SPECIES = ["goat", "sheep", "both"];
 const SPECIES_LABELS: Record<string, string> = { goat: "Козы", sheep: "Овцы", both: "Все" };
 
+/** Valid values for Excel validation */
+const VALID_PRODUCT_TYPES = new Set(ALL_PRODUCT_TYPES);
+const VALID_TIERS = new Set(ALL_TIERS);
+const VALID_SPECIES = new Set(ALL_SPECIES);
+
+/** Column mapping for Excel export/import */
+const EXCEL_COLUMNS = [
+  { header: "ID", key: "id", width: 8 },
+  { header: "Название", key: "label", width: 28 },
+  { header: "Тип продукта", key: "productType", width: 22 },
+  { header: "Мин. тариф", key: "minTier", width: 16 },
+  { header: "Вид животного", key: "species", width: 14 },
+  { header: "Конверсия (л→1 ед.)", key: "conversionRatio", width: 20 },
+  { header: "Единица", key: "unit", width: 10 },
+  { header: "Описание", key: "description", width: 32 },
+  { header: "Активен (1/0)", key: "isEnabled", width: 14 },
+  { header: "Порядок", key: "sortOrder", width: 10 },
+];
+
 function TierCatalogManager() {
   const utils = trpc.useUtils();
   const catalogQuery = trpc.productTrack.listAllTierCatalog.useQuery();
@@ -1894,9 +1916,27 @@ function TierCatalogManager() {
     },
     onError: (err) => toast.error(err.message),
   });
+  const importCatalog = trpc.productTrack.importTierCatalog.useMutation({
+    onSuccess: (data) => {
+      utils.productTrack.listAllTierCatalog.invalidate();
+      setImportPreview(null);
+      const parts: string[] = [];
+      if (data.created > 0) parts.push(`создано: ${data.created}`);
+      if (data.updated > 0) parts.push(`обновлено: ${data.updated}`);
+      if (data.errors.length > 0) parts.push(`ошибок: ${data.errors.length}`);
+      toast.success(`Импорт завершён — ${parts.join(", ")}`);
+      if (data.errors.length > 0) {
+        toast.error(data.errors.slice(0, 5).join("\n"), { duration: 10000 });
+      }
+    },
+    onError: (err) => toast.error(err.message),
+  });
 
   const [editing, setEditing] = useState<Partial<TierCatalogItem> | null>(null);
   const [filterTier, setFilterTier] = useState<string>("all");
+  const [importPreview, setImportPreview] = useState<Array<Record<string, any>> | null>(null);
+  const [importErrors, setImportErrors] = useState<string[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const catalog = (catalogQuery.data ?? []) as TierCatalogItem[];
 
@@ -1942,6 +1982,220 @@ function TierCatalogManager() {
     });
   };
 
+  /* ── Excel Export ── */
+  const handleExport = () => {
+    if (catalog.length === 0) {
+      toast.error("Каталог пуст — нечего экспортировать");
+      return;
+    }
+    const rows = catalog.map((item) => ({
+      id: item.id,
+      label: item.label,
+      productType: item.productType,
+      minTier: item.minTier,
+      species: item.species,
+      conversionRatio: item.conversionRatio,
+      unit: item.unit,
+      description: (item as any).description ?? "",
+      isEnabled: item.isEnabled,
+      sortOrder: item.sortOrder,
+    }));
+
+    // Build workbook with instruction sheet + data sheet
+    const wb = XLSX.utils.book_new();
+
+    // Data sheet
+    const wsData: any[][] = [];
+    wsData.push(EXCEL_COLUMNS.map(c => c.header));
+    for (const row of rows) {
+      wsData.push(EXCEL_COLUMNS.map(c => row[c.key as keyof typeof row] ?? ""));
+    }
+    const ws = XLSX.utils.aoa_to_sheet(wsData);
+    ws["!cols"] = EXCEL_COLUMNS.map(c => ({ wch: c.width }));
+    XLSX.utils.book_append_sheet(wb, ws, "Каталог");
+
+    // Instruction sheet
+    const instrData = [
+      ["Инструкция по заполнению тарифного каталога продукции"],
+      [""],
+      ["Лист «Каталог» содержит текущие продукты. Вы можете:"],
+      ["  1. Редактировать существующие строки (не меняйте ID)"],
+      ["  2. Добавлять новые строки (оставьте колонку ID пустой)"],
+      ["  3. После редактирования сохраните файл и импортируйте обратно"],
+      [""],
+      ["Допустимые значения:"],
+      [`  Тип продукта: ${ALL_PRODUCT_TYPES.join(", ")}`],
+      [`  Мин. тариф: ${ALL_TIERS.join(", ")}`],
+      [`  Вид животного: ${ALL_SPECIES.join(", ")}`],
+      ["  Конверсия: число от 0.01 до 1000 (литров молока на 1 единицу продукта)"],
+      ["  Единица: л, кг, шт"],
+      ["  Активен: 1 (да) или 0 (нет)"],
+      ["  Порядок: целое число от 0 до 9999"],
+      [""],
+      ["Важно: строки с пустым названием будут пропущены при импорте."],
+    ];
+    const wsInstr = XLSX.utils.aoa_to_sheet(instrData);
+    wsInstr["!cols"] = [{ wch: 80 }];
+    XLSX.utils.book_append_sheet(wb, wsInstr, "Инструкция");
+
+    XLSX.writeFile(wb, `Тарифный_каталог_${new Date().toISOString().slice(0, 10)}.xlsx`);
+    toast.success("Каталог экспортирован в Excel");
+  };
+
+  /* ── Excel Import — parse file ── */
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    // Reset input so the same file can be re-selected
+    e.target.value = "";
+
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      try {
+        const data = new Uint8Array(evt.target?.result as ArrayBuffer);
+        const workbook = XLSX.read(data, { type: "array" });
+
+        // Find the data sheet (try "Каталог" first, then first sheet)
+        let sheetName = workbook.SheetNames.find(n => n === "Каталог") ?? workbook.SheetNames[0];
+        const sheet = workbook.Sheets[sheetName];
+        if (!sheet) {
+          toast.error("Не удалось прочитать лист Excel");
+          return;
+        }
+
+        const jsonRows = XLSX.utils.sheet_to_json<Record<string, any>>(sheet);
+        if (jsonRows.length === 0) {
+          toast.error("Файл пуст — нет строк для импорта");
+          return;
+        }
+
+        // Map headers (support both Russian and English keys)
+        const headerMap: Record<string, string> = {
+          "ID": "id",
+          "Название": "label",
+          "Тип продукта": "productType",
+          "Мин. тариф": "minTier",
+          "Вид животного": "species",
+          "Конверсия (л→1 ед.)": "conversionRatio",
+          "Единица": "unit",
+          "Описание": "description",
+          "Активен (1/0)": "isEnabled",
+          "Порядок": "sortOrder",
+          // English fallbacks
+          "id": "id",
+          "label": "label",
+          "productType": "productType",
+          "minTier": "minTier",
+          "species": "species",
+          "conversionRatio": "conversionRatio",
+          "unit": "unit",
+          "description": "description",
+          "isEnabled": "isEnabled",
+          "sortOrder": "sortOrder",
+        };
+
+        const errors: string[] = [];
+        const parsed: Array<Record<string, any>> = [];
+
+        for (let i = 0; i < jsonRows.length; i++) {
+          const raw = jsonRows[i];
+          const row: Record<string, any> = {};
+
+          // Normalize keys
+          for (const [rawKey, value] of Object.entries(raw)) {
+            const mappedKey = headerMap[rawKey.trim()];
+            if (mappedKey) row[mappedKey] = value;
+          }
+
+          // Skip empty rows
+          const label = String(row.label ?? "").trim();
+          if (!label) continue;
+
+          const rowNum = i + 2; // Excel row number (1-indexed + header)
+          const rowErrors: string[] = [];
+
+          // Validate productType
+          const productType = String(row.productType ?? "custom").trim();
+          if (!VALID_PRODUCT_TYPES.has(productType)) {
+            rowErrors.push(`неизвестный тип «${productType}»`);
+          }
+
+          // Validate minTier
+          const minTier = String(row.minTier ?? "basic").trim();
+          if (!VALID_TIERS.has(minTier)) {
+            rowErrors.push(`неизвестный тариф «${minTier}»`);
+          }
+
+          // Validate species
+          const species = String(row.species ?? "both").trim();
+          if (!VALID_SPECIES.has(species)) {
+            rowErrors.push(`неизвестный вид «${species}»`);
+          }
+
+          // Validate conversionRatio
+          const conversionRatio = parseFloat(String(row.conversionRatio ?? "1"));
+          if (isNaN(conversionRatio) || conversionRatio < 0.01 || conversionRatio > 1000) {
+            rowErrors.push(`конверсия должна быть от 0.01 до 1000`);
+          }
+
+          // Validate sortOrder
+          const sortOrder = parseInt(String(row.sortOrder ?? "0"), 10);
+          if (isNaN(sortOrder) || sortOrder < 0 || sortOrder > 9999) {
+            rowErrors.push(`порядок должен быть от 0 до 9999`);
+          }
+
+          if (rowErrors.length > 0) {
+            errors.push(`Строка ${rowNum} (${label}): ${rowErrors.join("; ")}`);
+            continue;
+          }
+
+          parsed.push({
+            id: row.id ? parseInt(String(row.id), 10) : null,
+            label,
+            productType,
+            minTier,
+            species,
+            conversionRatio,
+            unit: String(row.unit ?? "л").trim() || "л",
+            description: String(row.description ?? "").trim() || null,
+            isEnabled: row.isEnabled === 0 || row.isEnabled === "0" || row.isEnabled === false ? false : true,
+            sortOrder,
+          });
+        }
+
+        if (parsed.length === 0 && errors.length === 0) {
+          toast.error("Файл не содержит данных для импорта");
+          return;
+        }
+
+        setImportErrors(errors);
+        setImportPreview(parsed);
+      } catch (err: any) {
+        toast.error(`Ошибка чтения файла: ${err.message ?? "неизвестная ошибка"}`);
+      }
+    };
+    reader.readAsArrayBuffer(file);
+  };
+
+  /* ── Excel Import — confirm ── */
+  const handleImportConfirm = () => {
+    if (!importPreview || importPreview.length === 0) return;
+    importCatalog.mutate({
+      items: importPreview.map(row => ({
+        id: row.id && !isNaN(row.id) ? row.id : undefined,
+        minTier: row.minTier as any,
+        productType: row.productType as any,
+        label: row.label,
+        species: row.species as any,
+        conversionRatio: row.conversionRatio,
+        unit: row.unit,
+        description: row.description,
+        isEnabled: row.isEnabled,
+        sortOrder: row.sortOrder,
+      })),
+    });
+  };
+
   return (
     <Card className="rounded-[2rem] border-border/70 shadow-sm">
       <CardHeader>
@@ -1955,9 +2209,24 @@ function TierCatalogManager() {
               Глобальный каталог продуктов по тарифам. Владельцы видят только продукты своего тарифа и ниже.
             </CardDescription>
           </div>
-          <Button onClick={openNew} size="sm" className="rounded-full">
-            <Plus className="mr-1 h-4 w-4" /> Добавить
-          </Button>
+          <div className="flex gap-2 flex-wrap">
+            <Button onClick={handleExport} size="sm" variant="outline" className="rounded-full" disabled={catalog.length === 0}>
+              <Download className="mr-1 h-4 w-4" /> Экспорт Excel
+            </Button>
+            <Button onClick={() => fileInputRef.current?.click()} size="sm" variant="outline" className="rounded-full">
+              <Upload className="mr-1 h-4 w-4" /> Импорт Excel
+            </Button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".xlsx,.xls,.csv"
+              className="hidden"
+              onChange={handleFileSelect}
+            />
+            <Button onClick={openNew} size="sm" className="rounded-full">
+              <Plus className="mr-1 h-4 w-4" /> Добавить
+            </Button>
+          </div>
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -2194,6 +2463,83 @@ function TierCatalogManager() {
                   {editing?.id ? "Сохранить" : "Добавить"}
                 </Button>
               </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Import Preview Dialog */}
+        <Dialog open={importPreview !== null} onOpenChange={(open) => { if (!open) { setImportPreview(null); setImportErrors([]); } }}>
+          <DialogContent className="sm:max-w-2xl rounded-[2rem] max-h-[80vh] overflow-hidden flex flex-col">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <FileSpreadsheet className="h-5 w-5 text-primary" />
+                Предпросмотр импорта
+              </DialogTitle>
+              <DialogDescription>
+                {importPreview?.length ?? 0} продуктов готово к импорту. Строки с ID будут обновлены, без ID — созданы как новые.
+              </DialogDescription>
+            </DialogHeader>
+
+            {importErrors.length > 0 && (
+              <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-sm space-y-1">
+                <p className="font-medium text-destructive">Пропущено строк с ошибками: {importErrors.length}</p>
+                <div className="max-h-24 overflow-y-auto space-y-0.5">
+                  {importErrors.map((err, i) => (
+                    <p key={i} className="text-xs text-destructive/80">{err}</p>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="flex-1 overflow-auto min-h-0">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="text-xs w-12">ID</TableHead>
+                    <TableHead className="text-xs">Название</TableHead>
+                    <TableHead className="text-xs">Тип</TableHead>
+                    <TableHead className="text-xs">Тариф</TableHead>
+                    <TableHead className="text-xs">Вид</TableHead>
+                    <TableHead className="text-xs">Конверсия</TableHead>
+                    <TableHead className="text-xs">Ед.</TableHead>
+                    <TableHead className="text-xs">Статус</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {(importPreview ?? []).map((row, i) => (
+                    <TableRow key={i} className="text-xs">
+                      <TableCell className="font-mono text-muted-foreground">{row.id ?? "новый"}</TableCell>
+                      <TableCell className="font-medium">{row.label}</TableCell>
+                      <TableCell>{PRODUCT_TYPE_LABELS[row.productType] ?? row.productType}</TableCell>
+                      <TableCell>{TIER_LABELS[row.minTier] ?? row.minTier}</TableCell>
+                      <TableCell>{SPECIES_LABELS[row.species] ?? row.species}</TableCell>
+                      <TableCell>{row.conversionRatio}</TableCell>
+                      <TableCell>{row.unit}</TableCell>
+                      <TableCell>
+                        <Badge variant="secondary" className={`rounded-full text-[10px] ${
+                          row.id ? "border-blue-200 bg-blue-50 text-blue-700" : "border-emerald-200 bg-emerald-50 text-emerald-700"
+                        }`}>
+                          {row.id ? "обновление" : "новый"}
+                        </Badge>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2 border-t">
+              <Button variant="outline" className="rounded-full" onClick={() => { setImportPreview(null); setImportErrors([]); }}>
+                Отмена
+              </Button>
+              <Button
+                className="rounded-full"
+                onClick={handleImportConfirm}
+                disabled={importCatalog.isPending || !importPreview?.length}
+              >
+                {importCatalog.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle2 className="mr-2 h-4 w-4" />}
+                Импортировать {importPreview?.length ?? 0} продуктов
+              </Button>
             </div>
           </DialogContent>
         </Dialog>

@@ -828,7 +828,7 @@ export const milkControllerRouter = router({
           .select({
             id: tierProductCatalog.id,
             label: tierProductCatalog.label,
-            conversionRatioLitersPerUnit: tierProductCatalog.conversionRatioLitersPerUnit,
+            conversionRatio: tierProductCatalog.conversionRatio,
           })
           .from(tierProductCatalog)
           .where(inArray(tierProductCatalog.id, catalogIds));
@@ -837,7 +837,7 @@ export const milkControllerRouter = router({
             i.id,
             {
               label: i.label,
-              baseRatio: i.conversionRatioLitersPerUnit ? parseFloat(i.conversionRatioLitersPerUnit) : null,
+              baseRatio: i.conversionRatio ? parseFloat(String(i.conversionRatio)) : null,
             },
           ]),
         );
