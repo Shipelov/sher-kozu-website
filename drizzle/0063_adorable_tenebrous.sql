@@ -1,0 +1,2 @@
+ALTER TABLE `tierProductCatalog` MODIFY COLUMN `minTier` enum('none','basic','standard','professional') NOT NULL;--> statement-breakpoint
+ALTER TABLE `tierProductCatalog` MODIFY COLUMN `tpc_species` enum('goat','sheep','both','cow') NOT NULL DEFAULT 'both';

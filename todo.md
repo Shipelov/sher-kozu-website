@@ -2707,3 +2707,10 @@ Module: Контроль оборота молока. Spec v2.1. Mobile-first AR
 - [x] Feature: Import history with rollback — store snapshots of catalog before each import, allow admin to revert
 - [x] Feature: Excel export/import for owner product plans — download/upload owner plan configurations
 - [x] Tests: Vitest coverage for delete-via-import, import history rollback, and owner plan import/export (31 tests)
+- [x] Feature: Extend tpc_species enum with 'cow' value in schema
+- [x] Feature: Extend minTier enum with 'none' value in schema
+- [x] Feature: Add backend filtering to exclude cow/none products from owner plans
+- [x] Feature: Update TierCatalogManager UI for cow species and none tier
+- [x] Feature: Update Excel export/import mappings for new enum values
+- [x] Feature: Visually distinguish farm-only products in catalog UI
+- [x] Tests: Vitest coverage for cow product filtering and catalog behavior (32 tests)

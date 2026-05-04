@@ -5519,6 +5519,10 @@ export async function getTierCatalogForOwner(tierSlug: TierSlug, species?: "goat
   const conditions = [
     eq(tierProductCatalog.isEnabled, 1),
     inArray(tierProductCatalog.minTier, allowedTiers),
+    // Exclude cow products — they are farm-only and never part of owner plans
+    ne(tierProductCatalog.species, "cow"),
+    // Exclude farm-only products (minTier = "none")
+    ne(tierProductCatalog.minTier, "none"),
   ];
 
   if (species && species !== "both") {
@@ -5545,10 +5549,10 @@ export async function listAllTierCatalogItems() {
 /** Admin: upsert a tier catalog item */
 export async function upsertTierCatalogItem(input: {
   id?: number;
-  minTier: TierSlug;
+  minTier: TierSlug | "none";
   productType: string;
   label: string;
-  species?: "goat" | "sheep" | "both";
+  species?: "goat" | "sheep" | "both" | "cow";
   conversionRatio: number;
   unit?: string;
   description?: string | null;

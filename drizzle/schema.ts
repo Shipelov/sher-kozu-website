@@ -478,7 +478,7 @@ export const planChangeActionEnum = mysqlEnum("planChangeAction", [
   "tier_changed", "admin_verified", "owner_configured"
 ]);
 export const ownerTierSlugEnum = mysqlEnum("ownerTierSlug", ["basic", "standard", "professional"]);
-export const minTierEnum = mysqlEnum("minTier", ["basic", "standard", "professional"]);
+export const minTierEnum = mysqlEnum("minTier", ["none", "basic", "standard", "professional"]);
 export const deliveryStatusEnum = mysqlEnum("deliveryStatus", ["planned", "ready", "delivered"]);
 export const chatMessageSenderEnum = mysqlEnum("chatMessageSender", ["owner", "admin"]);
 
@@ -564,7 +564,7 @@ export const tierProductCatalog = mysqlTable("tierProductCatalog", {
   /** Human-readable label, e.g. "Козья сметана", "Брынза из козьего молока" */
   label: varchar("label", { length: 160 }).notNull(),
   /** Animal species this product applies to */
-  species: mysqlEnum("tpc_species", ["goat", "sheep", "both"]).default("both").notNull(),
+  species: mysqlEnum("tpc_species", ["goat", "sheep", "both", "cow"]).default("both").notNull(),
   /** Liters of milk needed to produce 1 unit */
   conversionRatio: double("conversionRatio").notNull(),
   /** Unit of measurement: л or кг */

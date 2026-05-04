@@ -52,6 +52,7 @@ import {
   Upload,
   RotateCcw,
   AlertTriangle,
+  Leaf,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import OwnerAdminChat from "@/components/OwnerAdminChat";
@@ -725,18 +726,21 @@ type TierCatalogItem = {
 };
 
 const TIER_LABELS: Record<string, string> = {
+  none: "Фермерский",
   basic: "Базовый",
   standard: "Стандартный",
   professional: "Профессиональный",
 };
 
 const TIER_COLORS: Record<string, string> = {
+  none: "border-emerald-200 bg-emerald-50 text-emerald-700",
   basic: "border-stone-200 bg-stone-50 text-stone-700",
   standard: "border-blue-200 bg-blue-50 text-blue-700",
   professional: "border-amber-200 bg-amber-50 text-amber-700",
 };
 
 const TIER_ICONS: Record<string, typeof Crown> = {
+  none: Leaf,
   basic: ShieldCheck,
   standard: Sparkles,
   professional: Crown,
@@ -2163,14 +2167,18 @@ const ALL_PRODUCT_TYPES = [
   "butter", "condensed_milk", "fermented_drink", "custom",
 ];
 
-const ALL_TIERS = ["basic", "standard", "professional"];
-const ALL_SPECIES = ["goat", "sheep", "both"];
-const SPECIES_LABELS: Record<string, string> = { goat: "Козы", sheep: "Овцы", both: "Все" };
+const ALL_TIERS = ["none", "basic", "standard", "professional"];
+const ALL_SPECIES = ["goat", "sheep", "both", "cow"];
+const SPECIES_LABELS: Record<string, string> = { goat: "Козы", sheep: "Овцы", both: "Все", cow: "Коровы" };
 
 /** Valid values for Excel validation */
 const VALID_PRODUCT_TYPES = new Set(ALL_PRODUCT_TYPES);
 const VALID_TIERS = new Set(ALL_TIERS);
 const VALID_SPECIES = new Set(ALL_SPECIES);
+
+/** Check if a catalog item is a farm-only product (cow + none tier) */
+const isFarmOnlyProduct = (item: { species: string; minTier: string }) =>
+  item.species === "cow" || item.minTier === "none";
 
 /** Column mapping for Excel export/import */
 const EXCEL_COLUMNS = [
@@ -2341,6 +2349,10 @@ function TierCatalogManager() {
       ["  Активен: 1 (да) или 0 (нет)"],
       ["  Порядок: целое число от 0 до 9999"],
       ["  Удалить: 1 (удалить) или 0 (оставить). Работает только для строк с ID."],
+      [""],
+      ["Фермерская продукция (коровье молоко):"],
+      ["  Для продуктов из коровьего молока укажите: Вид животного = cow, Мин. тариф = none"],
+      ["  Такие продукты не попадают в планы владельцев — они проходят цепочку Сыродел → Склад и реализуются отдельно."],
       [""],
       ["Важно: строки с пустым названием будут пропущены при импорте."],
       ["Все изменения сохраняются в истории импортов и могут быть откачены."],
@@ -2593,7 +2605,7 @@ function TierCatalogManager() {
                   key={item.id}
                   className={`flex items-center justify-between rounded-2xl border p-4 transition-shadow hover:shadow-sm ${
                     item.isEnabled ? "border-border/60 bg-white/80" : "border-border/40 bg-stone-50 opacity-60"
-                  }`}
+                  } ${isFarmOnlyProduct(item) ? "border-l-4 border-l-emerald-400" : ""}`}
                 >
                   <div className="flex items-center gap-3 flex-1 min-w-0">
                     <div className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
@@ -2609,6 +2621,11 @@ function TierCatalogManager() {
                         <Badge variant="secondary" className="rounded-full text-[10px]">
                           {SPECIES_LABELS[item.species] ?? item.species}
                         </Badge>
+                        {isFarmOnlyProduct(item) && (
+                          <Badge className="rounded-full border-emerald-300 bg-emerald-50 text-emerald-700 text-[10px]">
+                            Фермерская
+                          </Badge>
+                        )}
                         {!item.isEnabled && (
                           <Badge className="rounded-full border-stone-200 bg-stone-100 text-stone-500 text-[10px]">
                             Отключен
@@ -2763,6 +2780,13 @@ function TierCatalogManager() {
                 </div>
               </div>
 
+              {isFarmOnlyProduct({ species: editing?.species ?? "both", minTier: editing?.minTier ?? "basic" }) && (
+                <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-xs text-emerald-700 flex items-center gap-2">
+                  <Leaf className="h-4 w-4 flex-shrink-0" />
+                  <span><strong>Фермерская продукция</strong> — этот продукт не будет включён в планы владельцев. Он пройдёт цепочку Сыродел → Склад и реализуется отдельно.</span>
+                </div>
+              )}
+
               <div className="flex items-center gap-3">
                 <Switch
                   checked={Boolean(editing?.isEnabled)}
@@ -2827,7 +2851,7 @@ function TierCatalogManager() {
                 </TableHeader>
                 <TableBody>
                   {(importPreview ?? []).map((row, i) => (
-                    <TableRow key={i} className={`text-xs ${row.deleteFlag ? "bg-destructive/5" : ""}`}>
+                    <TableRow key={i} className={`text-xs ${row.deleteFlag ? "bg-destructive/5" : isFarmOnlyProduct(row) ? "bg-emerald-50/50" : ""}`}>
                       <TableCell className="font-mono text-muted-foreground">{row.id ?? "новый"}</TableCell>
                       <TableCell className={`font-medium ${row.deleteFlag ? "line-through text-muted-foreground" : ""}`}>{row.label}</TableCell>
                       <TableCell>{PRODUCT_TYPE_LABELS[row.productType] ?? row.productType}</TableCell>

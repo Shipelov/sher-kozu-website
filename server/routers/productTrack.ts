@@ -87,6 +87,10 @@ const productTypeSchema = z.enum([
 ]);
 
 const tierSlugSchema = z.enum(["basic", "standard", "professional"]);
+/** Extended tier schema that includes 'none' for farm-only products (cow milk) */
+const catalogTierSchema = z.enum(["none", "basic", "standard", "professional"]);
+/** Extended species schema that includes 'cow' for farm-only products */
+const catalogSpeciesSchema = z.enum(["goat", "sheep", "both", "cow"]);
 
 const productionProfileInput = z.object({
   animalId: z.number().int().positive(),
@@ -361,10 +365,10 @@ export const productTrackRouter = router({
   upsertTierCatalogItem: protectedProcedure
     .input(z.object({
       id: z.number().int().positive().optional(),
-      minTier: tierSlugSchema,
+      minTier: catalogTierSchema,
       productType: productTypeSchema,
       label: z.string().min(1).max(160),
-      species: z.enum(["goat", "sheep", "both"]).default("both"),
+      species: catalogSpeciesSchema.default("both"),
       conversionRatio: z.number().min(0.1).max(100),
       unit: z.string().min(1).max(16).default("л"),
       description: z.string().max(500).optional().nullable(),
@@ -395,10 +399,10 @@ export const productTrackRouter = router({
         items: z.array(
           z.object({
             id: z.number().int().positive().optional().nullable(),
-            minTier: tierSlugSchema,
+            minTier: catalogTierSchema,
             productType: productTypeSchema,
             label: z.string().min(1).max(160),
-            species: z.enum(["goat", "sheep", "both"]).default("both"),
+            species: catalogSpeciesSchema.default("both"),
             conversionRatio: z.number().min(0.01).max(1000),
             unit: z.string().min(1).max(16).default("л"),
             description: z.string().max(500).optional().nullable(),
