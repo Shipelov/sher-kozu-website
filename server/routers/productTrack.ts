@@ -69,7 +69,9 @@ import {
   getOwnerDeliveryTimeline,
   getDeliveryExportData,
 } from "../db";
+import { catalogImportHistory } from "../../drizzle/schema";
 import type { ProductOption } from "../../drizzle/schema";
+import { getDb } from "../db";
 import { storagePut } from "../storage";
 import { notifyOwner } from "../_core/notification";
 import { ENV } from "../_core/env";
@@ -402,6 +404,7 @@ export const productTrackRouter = router({
             description: z.string().max(500).optional().nullable(),
             isEnabled: z.boolean().default(true),
             sortOrder: z.number().int().min(0).max(9999).default(0),
+            deleteFlag: z.boolean().default(false),
           }),
         ).min(1).max(500),
       }),
@@ -410,15 +413,27 @@ export const productTrackRouter = router({
       if (ctx.user.role !== "admin") {
         throw new TRPCError({ code: "FORBIDDEN", message: "Только администратор." });
       }
+
+      // 1. Take a snapshot of the current catalog before applying changes
+      const currentCatalog = await listAllTierCatalogItems();
+      const db = await getDb();
+
       let created = 0;
       let updated = 0;
+      let deleted = 0;
       const errors: string[] = [];
 
       for (let i = 0; i < input.items.length; i++) {
         const row = input.items[i];
         try {
+          // Handle delete flag
+          if (row.deleteFlag && row.id) {
+            await deleteTierCatalogItem(row.id);
+            deleted++;
+            continue;
+          }
+
           if (row.id) {
-            // Try to update existing item
             await upsertTierCatalogItem({
               id: row.id,
               minTier: row.minTier as any,
@@ -433,7 +448,6 @@ export const productTrackRouter = router({
             });
             updated++;
           } else {
-            // Create new item
             await upsertTierCatalogItem({
               minTier: row.minTier as any,
               productType: row.productType,
@@ -452,7 +466,101 @@ export const productTrackRouter = router({
         }
       }
 
-      return { created, updated, errors };
+      // 2. Save import history record with snapshot
+      if (db && (created > 0 || updated > 0 || deleted > 0)) {
+        try {
+          await db.insert(catalogImportHistory).values({
+            adminOpenId: ctx.user.openId,
+            adminName: ctx.user.name ?? null,
+            snapshotJson: JSON.stringify(currentCatalog),
+            itemsCreated: created,
+            itemsUpdated: updated,
+            itemsDeleted: deleted,
+            totalItems: input.items.length,
+          });
+        } catch (histErr: any) {
+          // Non-critical: log but don't fail the import
+          console.error("[importTierCatalog] Failed to save history:", histErr.message);
+        }
+      }
+
+      return { created, updated, deleted, errors };
+    }),
+
+  /** Admin: list import history */
+  listCatalogImportHistory: protectedProcedure
+    .input(z.object({ limit: z.number().int().min(1).max(50).default(20) }))
+    .query(async ({ ctx, input }) => {
+      if (ctx.user.role !== "admin") {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Только администратор." });
+      }
+      const db = await getDb();
+      if (!db) return [];
+      const { desc } = await import("drizzle-orm");
+      return db.select().from(catalogImportHistory).orderBy(desc(catalogImportHistory.createdAt)).limit(input.limit);
+    }),
+
+  /** Admin: rollback catalog to a previous import snapshot */
+  rollbackCatalogImport: protectedProcedure
+    .input(z.object({ historyId: z.number().int().positive() }))
+    .mutation(async ({ ctx, input }) => {
+      if (ctx.user.role !== "admin") {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Только администратор." });
+      }
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "База недоступна" });
+
+      const { eq, desc } = await import("drizzle-orm");
+      const [record] = await db.select().from(catalogImportHistory).where(eq(catalogImportHistory.id, input.historyId)).limit(1);
+      if (!record) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Запись истории не найдена" });
+      }
+
+      let snapshot: any[];
+      try {
+        snapshot = JSON.parse(record.snapshotJson);
+      } catch {
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Не удалось распарсить снэпшот" });
+      }
+
+      // Save current state as a new snapshot before rollback
+      const currentCatalog = await listAllTierCatalogItems();
+      await db.insert(catalogImportHistory).values({
+        adminOpenId: ctx.user.openId,
+        adminName: ctx.user.name ?? null,
+        snapshotJson: JSON.stringify(currentCatalog),
+        itemsCreated: 0,
+        itemsUpdated: 0,
+        itemsDeleted: 0,
+        totalItems: 0,
+        note: `Откат к версии #${record.id} от ${new Date(record.createdAt).toLocaleString("ru-RU")}`,
+      });
+
+      // Delete all current items and re-insert from snapshot
+      const { tierProductCatalog: tpc } = await import("../../drizzle/schema");
+      await db.delete(tpc);
+
+      let restored = 0;
+      for (const item of snapshot) {
+        try {
+          await upsertTierCatalogItem({
+            minTier: item.minTier,
+            productType: item.productType,
+            label: item.label,
+            species: item.species ?? "both",
+            conversionRatio: item.conversionRatio,
+            unit: item.unit ?? "л",
+            description: item.description ?? null,
+            isEnabled: item.isEnabled === 1 || item.isEnabled === true,
+            sortOrder: item.sortOrder ?? 0,
+          });
+          restored++;
+        } catch (err: any) {
+          console.error(`[rollback] Failed to restore item ${item.label}:`, err.message);
+        }
+      }
+
+      return { restored, total: snapshot.length };
     }),
 
   // ═══════════════════════════════════════════════════════════
@@ -1454,5 +1562,98 @@ export const productTrackRouter = router({
         throw new TRPCError({ code: "FORBIDDEN", message: "Только администратор." });
       }
       return getDeliveryExportData(input.animalId, input.year);
+    }),
+
+  /** Admin: import owner plans from Excel — update selections and recalculate milk */
+  importOwnerPlans: protectedProcedure
+    .input(z.object({
+      animalId: z.number().int().positive(),
+      plans: z.array(z.object({
+        planId: z.number().int().positive(),
+        selections: z.array(z.object({
+          label: z.string().min(1),
+          annualUnits: z.number().int().min(0),
+          unit: z.string().min(1).default("\u043b"),
+        })).min(1),
+        adminNotes: z.string().max(2000).optional().nullable(),
+      })).min(1).max(100),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      if (ctx.user.role !== "admin") {
+        throw new TRPCError({ code: "FORBIDDEN", message: "\u0422\u043e\u043b\u044c\u043a\u043e \u0430\u0434\u043c\u0438\u043d\u0438\u0441\u0442\u0440\u0430\u0442\u043e\u0440." });
+      }
+
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "\u0411\u0430\u0437\u0430 \u043d\u0435\u0434\u043e\u0441\u0442\u0443\u043f\u043d\u0430" });
+
+      // Get the tier catalog for milk calculation
+      const allCatalog = await listAllTierCatalogItems();
+      const catalogByLabel = new Map<string, typeof allCatalog[0]>();
+      for (const item of allCatalog) {
+        catalogByLabel.set(item.label.toLowerCase().trim(), item);
+      }
+
+      let updated = 0;
+      const errors: string[] = [];
+
+      for (const planData of input.plans) {
+        try {
+          const existingPlan = await getOwnerProductPlanById(planData.planId);
+          if (!existingPlan) {
+            errors.push(`\u041f\u043b\u0430\u043d #${planData.planId}: \u043d\u0435 \u043d\u0430\u0439\u0434\u0435\u043d`);
+            continue;
+          }
+          if (existingPlan.animalId !== input.animalId) {
+            errors.push(`\u041f\u043b\u0430\u043d #${planData.planId}: \u043f\u0440\u0438\u043d\u0430\u0434\u043b\u0435\u0436\u0438\u0442 \u0434\u0440\u0443\u0433\u043e\u043c\u0443 \u0436\u0438\u0432\u043e\u0442\u043d\u043e\u043c\u0443`);
+            continue;
+          }
+
+          // Build enriched selections with milk calculation
+          const enrichedSelections = planData.selections.map(sel => {
+            const catalogItem = catalogByLabel.get(sel.label.toLowerCase().trim());
+            const conversionRatio = catalogItem?.conversionRatio ?? 1;
+            const milkUsed = Math.round(sel.annualUnits * conversionRatio * 100) / 100;
+            return {
+              catalogItemId: catalogItem?.id ?? null,
+              productType: catalogItem?.productType ?? "other",
+              label: sel.label,
+              annualUnits: sel.annualUnits,
+              unit: sel.unit,
+              milkUsed,
+            };
+          });
+
+          const totalMilkUsed = Math.floor(enrichedSelections.reduce((sum, s) => sum + s.milkUsed, 0));
+
+          // Update the plan
+          const { ownerProductPlans: opp } = await import("../../drizzle/schema");
+          const { eq } = await import("drizzle-orm");
+          await db.update(opp).set({
+            selectionsJson: JSON.stringify(enrichedSelections),
+            totalMilkUsed,
+            adminNotes: planData.adminNotes !== undefined ? (planData.adminNotes ?? existingPlan.adminNotes) : existingPlan.adminNotes,
+            status: "modified_by_admin",
+          }).where(eq(opp.id, planData.planId));
+
+          // Log the change
+          await logPlanChange({
+            planId: planData.planId,
+            animalId: input.animalId,
+            ownerOpenId: existingPlan.ownerOpenId,
+            actorId: "admin",
+            action: "modified",
+            previousStatus: existingPlan.status,
+            newStatus: "modified_by_admin",
+            selectionsSnapshot: JSON.stringify(enrichedSelections),
+            note: `\u0418\u043c\u043f\u043e\u0440\u0442 \u0438\u0437 Excel. \u041c\u043e\u043b\u043e\u043a\u043e: ${totalMilkUsed} \u043b.`,
+          });
+
+          updated++;
+        } catch (err: any) {
+          errors.push(`\u041f\u043b\u0430\u043d #${planData.planId}: ${err.message ?? "\u041d\u0435\u0438\u0437\u0432\u0435\u0441\u0442\u043d\u0430\u044f \u043e\u0448\u0438\u0431\u043a\u0430"}`);
+        }
+      }
+
+      return { updated, errors };
     }),
 });

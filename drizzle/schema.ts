@@ -2800,3 +2800,30 @@ export type InsertWarehouseInventoryItem = typeof warehouseInventory.$inferInser
 
 export type WarehouseMovement = typeof warehouseMovements.$inferSelect;
 export type InsertWarehouseMovement = typeof warehouseMovements.$inferInsert;
+
+// ─── Catalog Import History ───
+
+/**
+ * Stores snapshots of the tier product catalog before each import operation.
+ * Allows admin to review past imports and rollback to a previous state.
+ */
+export const catalogImportHistory = mysqlTable("catalogImportHistory", {
+  id: int("id").autoincrement().primaryKey(),
+  /** Who performed the import */
+  adminOpenId: varchar("adminOpenId", { length: 64 }).notNull(),
+  adminName: varchar("adminName", { length: 160 }),
+  /** JSON snapshot of the entire catalog BEFORE the import was applied */
+  snapshotJson: text("snapshotJson").notNull(),
+  /** Summary of what was imported */
+  itemsCreated: int("itemsCreated").default(0).notNull(),
+  itemsUpdated: int("itemsUpdated").default(0).notNull(),
+  itemsDeleted: int("itemsDeleted").default(0).notNull(),
+  /** Total items in the import batch */
+  totalItems: int("totalItems").default(0).notNull(),
+  /** Optional note from admin */
+  note: text("note"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type CatalogImportHistory = typeof catalogImportHistory.$inferSelect;
+export type InsertCatalogImportHistory = typeof catalogImportHistory.$inferInsert;

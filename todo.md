@@ -2703,3 +2703,7 @@ Module: Контроль оборота молока. Spec v2.1. Mobile-first AR
 - [x] Frontend: Export/Import buttons in TierCatalogManager header with preview dialog
 - [x] Tests: Vitest coverage for importTierCatalog input validation and header mapping
 - [x] Fix: milkController.ts — corrected reference to conversionRatioLitersPerUnit → conversionRatio
+- [x] Feature: Add "Delete" column in catalog Excel import — mark rows for deletion during import
+- [x] Feature: Import history with rollback — store snapshots of catalog before each import, allow admin to revert
+- [x] Feature: Excel export/import for owner product plans — download/upload owner plan configurations
+- [x] Tests: Vitest coverage for delete-via-import, import history rollback, and owner plan import/export (31 tests)

@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -49,6 +50,8 @@ import {
   Download,
   FileSpreadsheet,
   Upload,
+  RotateCcw,
+  AlertTriangle,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import OwnerAdminChat from "@/components/OwnerAdminChat";
@@ -764,6 +767,201 @@ function OwnerPlansOverview({ animalId }: { animalId: number }) {
   const [editingPlan, setEditingPlan] = useState<OwnerPlanRecord | null>(null);
   const [editSelections, setEditSelections] = useState<Map<number, number>>(new Map());
   const [adminNotes, setAdminNotes] = useState("");
+  const [planImportPreview, setPlanImportPreview] = useState<Array<Record<string, any>> | null>(null);
+  const [planImportErrors, setPlanImportErrors] = useState<string[]>([]);
+  const planFileInputRef = useRef<HTMLInputElement>(null);
+
+  /* ── Owner Plans: Excel Export ── */
+  const handleExportPlans = () => {
+    if (ownerPlans.length === 0) {
+      toast.error("Нет планов для экспорта");
+      return;
+    }
+    const rows: any[][] = [];
+    rows.push(["ИД плана", "Владелец", "Семья", "Доля %", "Статус", "Продукт", "Кол-во/год", "Ед.", "Молоко (л)", "Итого молоко", "Заметка админа"]);
+    for (const plan of ownerPlans) {
+      let selections: SelectionEntry[] = [];
+      try { selections = JSON.parse(plan.selectionsJson); } catch {}
+      if (selections.length === 0) {
+        rows.push([plan.id, plan.ownerName, plan.familyName, plan.sharePercent, PLAN_STATUS_LABELS[plan.status] ?? plan.status, "—", 0, "", 0, plan.totalMilkUsed, plan.adminNotes ?? ""]);
+      } else {
+        for (let i = 0; i < selections.length; i++) {
+          const sel = selections[i];
+          rows.push([
+            i === 0 ? plan.id : "",
+            i === 0 ? plan.ownerName : "",
+            i === 0 ? plan.familyName : "",
+            i === 0 ? plan.sharePercent : "",
+            i === 0 ? (PLAN_STATUS_LABELS[plan.status] ?? plan.status) : "",
+            sel.label,
+            sel.annualUnits,
+            sel.unit,
+            sel.milkUsed,
+            i === 0 ? plan.totalMilkUsed : "",
+            i === 0 ? (plan.adminNotes ?? "") : "",
+          ]);
+        }
+      }
+    }
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.aoa_to_sheet(rows);
+    ws["!cols"] = [
+      { wch: 10 }, { wch: 22 }, { wch: 18 }, { wch: 8 }, { wch: 22 },
+      { wch: 24 }, { wch: 12 }, { wch: 8 }, { wch: 12 }, { wch: 14 }, { wch: 28 },
+    ];
+    XLSX.utils.book_append_sheet(wb, ws, "Планы");
+
+    // Instruction sheet
+    const instrData = [
+      ["Инструкция по редактированию продуктовых планов"],
+      [""],
+      ["Лист «Планы» содержит продуктовые планы владельцев для данного животного."],
+      ["Вы можете изменить колонку «Кол-во/год» для корректировки количества продуктов."],
+      ["Не меняйте ИД плана и имя владельца — они используются для идентификации."],
+      ["После редактирования сохраните файл и импортируйте обратно."],
+    ];
+    const wsInstr = XLSX.utils.aoa_to_sheet(instrData);
+    wsInstr["!cols"] = [{ wch: 80 }];
+    XLSX.utils.book_append_sheet(wb, wsInstr, "Инструкция");
+
+    XLSX.writeFile(wb, `Продуктовые_планы_${new Date().toISOString().slice(0, 10)}.xlsx`);
+    toast.success("Планы экспортированы в Excel");
+  };
+
+  /* ── Owner Plans: Excel Import — parse file ── */
+  const handlePlanFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = "";
+
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      try {
+        const data = new Uint8Array(evt.target?.result as ArrayBuffer);
+        const workbook = XLSX.read(data, { type: "array" });
+        const sheetName = workbook.SheetNames.find(n => n === "Планы") ?? workbook.SheetNames[0];
+        const sheet = workbook.Sheets[sheetName];
+        if (!sheet) {
+          toast.error("Не удалось прочитать лист Excel");
+          return;
+        }
+
+        const jsonRows = XLSX.utils.sheet_to_json<Record<string, any>>(sheet);
+        if (jsonRows.length === 0) {
+          toast.error("Файл пуст");
+          return;
+        }
+
+        const headerMap: Record<string, string> = {
+          "ИД плана": "planId",
+          "Владелец": "ownerName",
+          "Продукт": "label",
+          "Кол-во/год": "annualUnits",
+          "Ед.": "unit",
+          "Заметка админа": "adminNotes",
+          "planId": "planId",
+          "ownerName": "ownerName",
+          "label": "label",
+          "annualUnits": "annualUnits",
+          "unit": "unit",
+          "adminNotes": "adminNotes",
+        };
+
+        const errors: string[] = [];
+        // Group rows by planId — fill down planId for merged rows
+        const parsed: Array<{ planId: number; ownerName: string; label: string; annualUnits: number; unit: string; adminNotes: string | null }> = [];
+        let currentPlanId: number | null = null;
+        let currentOwnerName = "";
+        let currentAdminNotes: string | null = null;
+
+        for (let i = 0; i < jsonRows.length; i++) {
+          const raw = jsonRows[i];
+          const row: Record<string, any> = {};
+          for (const [rawKey, value] of Object.entries(raw)) {
+            const mappedKey = headerMap[rawKey.trim()];
+            if (mappedKey) row[mappedKey] = value;
+          }
+
+          const rowNum = i + 2;
+          // Update current plan context if planId is present
+          if (row.planId && !isNaN(parseInt(String(row.planId)))) {
+            currentPlanId = parseInt(String(row.planId));
+            currentOwnerName = String(row.ownerName ?? "").trim();
+            currentAdminNotes = row.adminNotes ? String(row.adminNotes).trim() : null;
+          }
+
+          const label = String(row.label ?? "").trim();
+          if (!label || label === "—") continue;
+
+          if (!currentPlanId) {
+            errors.push(`Строка ${rowNum}: не указан ИД плана`);
+            continue;
+          }
+
+          const annualUnits = parseInt(String(row.annualUnits ?? "0"), 10);
+          if (isNaN(annualUnits) || annualUnits < 0) {
+            errors.push(`Строка ${rowNum} (${label}): некорректное количество`);
+            continue;
+          }
+
+          parsed.push({
+            planId: currentPlanId,
+            ownerName: currentOwnerName,
+            label,
+            annualUnits,
+            unit: String(row.unit ?? "").trim() || "л",
+            adminNotes: currentAdminNotes,
+          });
+        }
+
+        if (parsed.length === 0 && errors.length === 0) {
+          toast.error("Файл не содержит данных для импорта");
+          return;
+        }
+
+        setPlanImportErrors(errors);
+        setPlanImportPreview(parsed);
+      } catch (err: any) {
+        toast.error(`Ошибка чтения файла: ${err.message ?? "неизвестная ошибка"}`);
+      }
+    };
+    reader.readAsArrayBuffer(file);
+  };
+
+  const importOwnerPlansMutation = trpc.productTrack.importOwnerPlans.useMutation({
+    onSuccess: (data) => {
+      trackData.refetch();
+      setPlanImportPreview(null);
+      const parts: string[] = [];
+      if (data.updated > 0) parts.push(`обновлено планов: ${data.updated}`);
+      if (data.errors.length > 0) parts.push(`ошибок: ${data.errors.length}`);
+      toast.success(`Импорт планов завершён — ${parts.join(", ")}`);
+      if (data.errors.length > 0) {
+        toast.error(data.errors.slice(0, 5).join("\n"), { duration: 10000 });
+      }
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
+  const handlePlanImportConfirm = () => {
+    if (!planImportPreview || planImportPreview.length === 0) return;
+    // Group by planId
+    const planMap = new Map<number, { planId: number; selections: Array<{ label: string; annualUnits: number; unit: string }>; adminNotes: string | null }>();
+    for (const row of planImportPreview) {
+      if (!planMap.has(row.planId)) {
+        planMap.set(row.planId, { planId: row.planId, selections: [], adminNotes: row.adminNotes });
+      }
+      planMap.get(row.planId)!.selections.push({
+        label: row.label,
+        annualUnits: row.annualUnits,
+        unit: row.unit,
+      });
+    }
+    importOwnerPlansMutation.mutate({
+      animalId,
+      plans: Array.from(planMap.values()),
+    });
+  };
 
   const adminUpdatePlan = trpc.productTrack.adminVerifyPlan.useMutation({
     onSuccess: () => {
@@ -835,11 +1033,27 @@ function OwnerPlansOverview({ animalId }: { animalId: number }) {
     <>
       <Card className="rounded-[2rem] border-border/70 shadow-sm">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <BarChart3 className="h-5 w-5 text-primary" />
-            Продуктовые планы владельцев
-          </CardTitle>
-
+          <div className="flex items-center justify-between">
+            <CardTitle className="flex items-center gap-2">
+              <BarChart3 className="h-5 w-5 text-primary" />
+              Продуктовые планы владельцев
+            </CardTitle>
+            <div className="flex gap-2 flex-wrap">
+              <Button onClick={handleExportPlans} size="sm" variant="outline" className="rounded-full" disabled={ownerPlans.length === 0}>
+                <Download className="mr-1 h-4 w-4" /> Экспорт Excel
+              </Button>
+              <Button onClick={() => planFileInputRef.current?.click()} size="sm" variant="outline" className="rounded-full">
+                <Upload className="mr-1 h-4 w-4" /> Импорт Excel
+              </Button>
+              <input
+                ref={planFileInputRef}
+                type="file"
+                accept=".xlsx,.xls,.csv"
+                className="hidden"
+                onChange={handlePlanFileSelect}
+              />
+            </div>
+          </div>
         </CardHeader>
         <CardContent>
           {trackData.isLoading ? (
@@ -1061,6 +1275,80 @@ function OwnerPlansOverview({ animalId }: { animalId: number }) {
                 Сохранить изменения
               </Button>
             </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Plan Import Preview Dialog */}
+      <Dialog open={!!planImportPreview} onOpenChange={(open) => { if (!open) { setPlanImportPreview(null); setPlanImportErrors([]); } }}>
+        <DialogContent className="max-w-2xl rounded-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Upload className="h-5 w-5 text-primary" />
+              Предпросмотр импорта планов
+            </DialogTitle>
+            <DialogDescription>
+              {planImportPreview ? (() => {
+                const planIds = new Set(planImportPreview.map(r => r.planId));
+                return `${planIds.size} план(ов), ${planImportPreview.length} строк(и) продуктов`;
+              })() : ""}
+            </DialogDescription>
+          </DialogHeader>
+
+          {planImportErrors.length > 0 && (
+            <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm">
+              <p className="font-medium text-amber-800 mb-1 flex items-center gap-1">
+                <AlertTriangle className="h-4 w-4" /> Предупреждения ({planImportErrors.length})
+              </p>
+              <ul className="list-disc pl-5 text-amber-700 space-y-0.5">
+                {planImportErrors.slice(0, 10).map((e, i) => <li key={i}>{e}</li>)}
+                {planImportErrors.length > 10 && <li>…и ещё {planImportErrors.length - 10}</li>}
+              </ul>
+            </div>
+          )}
+
+          {planImportPreview && planImportPreview.length > 0 && (
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs border-collapse">
+                <thead>
+                  <tr className="bg-secondary/50">
+                    <th className="p-2 text-left">ИД плана</th>
+                    <th className="p-2 text-left">Владелец</th>
+                    <th className="p-2 text-left">Продукт</th>
+                    <th className="p-2 text-right">Кол-во/год</th>
+                    <th className="p-2 text-left">Ед.</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {planImportPreview.map((row, i) => {
+                    const showPlanId = i === 0 || planImportPreview[i - 1].planId !== row.planId;
+                    return (
+                      <tr key={i} className={`border-t border-border/30 ${showPlanId ? "bg-secondary/20" : ""}`}>
+                        <td className="p-2 font-mono">{showPlanId ? row.planId : ""}</td>
+                        <td className="p-2">{showPlanId ? row.ownerName : ""}</td>
+                        <td className="p-2">{row.label}</td>
+                        <td className="p-2 text-right font-semibold">{row.annualUnits}</td>
+                        <td className="p-2">{row.unit}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="outline" className="rounded-full" onClick={() => { setPlanImportPreview(null); setPlanImportErrors([]); }}>
+              Отмена
+            </Button>
+            <Button
+              className="rounded-full"
+              onClick={handlePlanImportConfirm}
+              disabled={!planImportPreview || planImportPreview.length === 0 || importOwnerPlansMutation.isPending}
+            >
+              {importOwnerPlansMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}
+              Импортировать
+            </Button>
           </div>
         </DialogContent>
       </Dialog>
@@ -1896,6 +2184,7 @@ const EXCEL_COLUMNS = [
   { header: "Описание", key: "description", width: 32 },
   { header: "Активен (1/0)", key: "isEnabled", width: 14 },
   { header: "Порядок", key: "sortOrder", width: 10 },
+  { header: "Удалить (1/0)", key: "deleteFlag", width: 14 },
 ];
 
 function TierCatalogManager() {
@@ -1919,10 +2208,12 @@ function TierCatalogManager() {
   const importCatalog = trpc.productTrack.importTierCatalog.useMutation({
     onSuccess: (data) => {
       utils.productTrack.listAllTierCatalog.invalidate();
+      utils.productTrack.listCatalogImportHistory.invalidate();
       setImportPreview(null);
       const parts: string[] = [];
       if (data.created > 0) parts.push(`создано: ${data.created}`);
       if (data.updated > 0) parts.push(`обновлено: ${data.updated}`);
+      if (data.deleted > 0) parts.push(`удалено: ${data.deleted}`);
       if (data.errors.length > 0) parts.push(`ошибок: ${data.errors.length}`);
       toast.success(`Импорт завершён — ${parts.join(", ")}`);
       if (data.errors.length > 0) {
@@ -1936,7 +2227,23 @@ function TierCatalogManager() {
   const [filterTier, setFilterTier] = useState<string>("all");
   const [importPreview, setImportPreview] = useState<Array<Record<string, any>> | null>(null);
   const [importErrors, setImportErrors] = useState<string[]>([]);
+  const [showHistory, setShowHistory] = useState(false);
+  const [rollbackId, setRollbackId] = useState<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const importHistoryQuery = trpc.productTrack.listCatalogImportHistory.useQuery(
+    { limit: 20 },
+    { enabled: showHistory },
+  );
+  const rollbackMutation = trpc.productTrack.rollbackCatalogImport.useMutation({
+    onSuccess: (data) => {
+      utils.productTrack.listAllTierCatalog.invalidate();
+      utils.productTrack.listCatalogImportHistory.invalidate();
+      setRollbackId(null);
+      toast.success(`Откат выполнен: восстановлено ${data.restored} из ${data.total} продуктов`);
+    },
+    onError: (err) => toast.error(err.message),
+  });
 
   const catalog = (catalogQuery.data ?? []) as TierCatalogItem[];
 
@@ -1999,6 +2306,7 @@ function TierCatalogManager() {
       description: (item as any).description ?? "",
       isEnabled: item.isEnabled,
       sortOrder: item.sortOrder,
+      deleteFlag: 0,
     }));
 
     // Build workbook with instruction sheet + data sheet
@@ -2021,7 +2329,8 @@ function TierCatalogManager() {
       ["Лист «Каталог» содержит текущие продукты. Вы можете:"],
       ["  1. Редактировать существующие строки (не меняйте ID)"],
       ["  2. Добавлять новые строки (оставьте колонку ID пустой)"],
-      ["  3. После редактирования сохраните файл и импортируйте обратно"],
+      ["  3. Удалять продукты: укажите 1 в колонке «Удалить (1/0)» для строк с ID"],
+      ["  4. После редактирования сохраните файл и импортируйте обратно"],
       [""],
       ["Допустимые значения:"],
       [`  Тип продукта: ${ALL_PRODUCT_TYPES.join(", ")}`],
@@ -2031,8 +2340,10 @@ function TierCatalogManager() {
       ["  Единица: л, кг, шт"],
       ["  Активен: 1 (да) или 0 (нет)"],
       ["  Порядок: целое число от 0 до 9999"],
+      ["  Удалить: 1 (удалить) или 0 (оставить). Работает только для строк с ID."],
       [""],
       ["Важно: строки с пустым названием будут пропущены при импорте."],
+      ["Все изменения сохраняются в истории импортов и могут быть откачены."],
     ];
     const wsInstr = XLSX.utils.aoa_to_sheet(instrData);
     wsInstr["!cols"] = [{ wch: 80 }];
@@ -2081,6 +2392,7 @@ function TierCatalogManager() {
           "Описание": "description",
           "Активен (1/0)": "isEnabled",
           "Порядок": "sortOrder",
+          "Удалить (1/0)": "deleteFlag",
           // English fallbacks
           "id": "id",
           "label": "label",
@@ -2092,6 +2404,7 @@ function TierCatalogManager() {
           "description": "description",
           "isEnabled": "isEnabled",
           "sortOrder": "sortOrder",
+          "deleteFlag": "deleteFlag",
         };
 
         const errors: string[] = [];
@@ -2149,6 +2462,8 @@ function TierCatalogManager() {
             continue;
           }
 
+          const deleteFlag = row.deleteFlag === 1 || row.deleteFlag === "1" || row.deleteFlag === true;
+
           parsed.push({
             id: row.id ? parseInt(String(row.id), 10) : null,
             label,
@@ -2160,6 +2475,7 @@ function TierCatalogManager() {
             description: String(row.description ?? "").trim() || null,
             isEnabled: row.isEnabled === 0 || row.isEnabled === "0" || row.isEnabled === false ? false : true,
             sortOrder,
+            deleteFlag,
           });
         }
 
@@ -2192,6 +2508,7 @@ function TierCatalogManager() {
         description: row.description,
         isEnabled: row.isEnabled,
         sortOrder: row.sortOrder,
+        deleteFlag: row.deleteFlag ?? false,
       })),
     });
   };
@@ -2477,6 +2794,9 @@ function TierCatalogManager() {
               </DialogTitle>
               <DialogDescription>
                 {importPreview?.length ?? 0} продуктов готово к импорту. Строки с ID будут обновлены, без ID — созданы как новые.
+                {(importPreview ?? []).some(r => r.deleteFlag) && (
+                  <span className="text-destructive font-medium"> Внимание: {(importPreview ?? []).filter(r => r.deleteFlag).length} продуктов отмечено на удаление.</span>
+                )}
               </DialogDescription>
             </DialogHeader>
 
@@ -2502,25 +2822,31 @@ function TierCatalogManager() {
                     <TableHead className="text-xs">Вид</TableHead>
                     <TableHead className="text-xs">Конверсия</TableHead>
                     <TableHead className="text-xs">Ед.</TableHead>
-                    <TableHead className="text-xs">Статус</TableHead>
+                    <TableHead className="text-xs">Действие</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {(importPreview ?? []).map((row, i) => (
-                    <TableRow key={i} className="text-xs">
+                    <TableRow key={i} className={`text-xs ${row.deleteFlag ? "bg-destructive/5" : ""}`}>
                       <TableCell className="font-mono text-muted-foreground">{row.id ?? "новый"}</TableCell>
-                      <TableCell className="font-medium">{row.label}</TableCell>
+                      <TableCell className={`font-medium ${row.deleteFlag ? "line-through text-muted-foreground" : ""}`}>{row.label}</TableCell>
                       <TableCell>{PRODUCT_TYPE_LABELS[row.productType] ?? row.productType}</TableCell>
                       <TableCell>{TIER_LABELS[row.minTier] ?? row.minTier}</TableCell>
                       <TableCell>{SPECIES_LABELS[row.species] ?? row.species}</TableCell>
                       <TableCell>{row.conversionRatio}</TableCell>
                       <TableCell>{row.unit}</TableCell>
                       <TableCell>
-                        <Badge variant="secondary" className={`rounded-full text-[10px] ${
-                          row.id ? "border-blue-200 bg-blue-50 text-blue-700" : "border-emerald-200 bg-emerald-50 text-emerald-700"
-                        }`}>
-                          {row.id ? "обновление" : "новый"}
-                        </Badge>
+                        {row.deleteFlag ? (
+                          <Badge variant="secondary" className="rounded-full text-[10px] border-red-200 bg-red-50 text-red-700">
+                            <Trash2 className="mr-0.5 h-2.5 w-2.5" /> удаление
+                          </Badge>
+                        ) : (
+                          <Badge variant="secondary" className={`rounded-full text-[10px] ${
+                            row.id ? "border-blue-200 bg-blue-50 text-blue-700" : "border-emerald-200 bg-emerald-50 text-emerald-700"
+                          }`}>
+                            {row.id ? "обновление" : "новый"}
+                          </Badge>
+                        )}
                       </TableCell>
                     </TableRow>
                   ))}
@@ -2543,6 +2869,106 @@ function TierCatalogManager() {
             </div>
           </DialogContent>
         </Dialog>
+
+        {/* Import History Section */}
+        <div className="border-t pt-4 mt-4">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="rounded-full text-xs gap-1.5"
+            onClick={() => setShowHistory(!showHistory)}
+          >
+            <History className="h-3.5 w-3.5" />
+            История импортов
+            {showHistory ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+          </Button>
+
+          {showHistory && (
+            <div className="mt-3 space-y-2">
+              {importHistoryQuery.isLoading ? (
+                <div className="flex items-center gap-2 text-sm text-muted-foreground py-4 justify-center">
+                  <Loader2 className="h-4 w-4 animate-spin" /> Загрузка истории...
+                </div>
+              ) : !importHistoryQuery.data?.length ? (
+                <p className="text-sm text-muted-foreground py-4 text-center">История импортов пуста</p>
+              ) : (
+                <ScrollRemaining maxH="max-h-64">
+                  {(importHistoryQuery.data ?? []).map((entry: any) => (
+                    <div
+                      key={entry.id}
+                      className="flex items-center justify-between gap-3 rounded-xl border border-border/50 p-3 hover:bg-muted/30"
+                    >
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-xs font-medium">
+                            {new Date(entry.createdAt).toLocaleString("ru-RU", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })}
+                          </span>
+                          <span className="text-xs text-muted-foreground">{entry.adminName ?? "Админ"}</span>
+                        </div>
+                        <div className="flex items-center gap-2 mt-1 flex-wrap">
+                          {entry.itemsCreated > 0 && (
+                            <Badge variant="secondary" className="rounded-full text-[10px] border-emerald-200 bg-emerald-50 text-emerald-700">
+                              +{entry.itemsCreated} новых
+                            </Badge>
+                          )}
+                          {entry.itemsUpdated > 0 && (
+                            <Badge variant="secondary" className="rounded-full text-[10px] border-blue-200 bg-blue-50 text-blue-700">
+                              ↑{entry.itemsUpdated} обновлено
+                            </Badge>
+                          )}
+                          {entry.itemsDeleted > 0 && (
+                            <Badge variant="secondary" className="rounded-full text-[10px] border-red-200 bg-red-50 text-red-700">
+                              -{entry.itemsDeleted} удалено
+                            </Badge>
+                          )}
+                          {entry.note && (
+                            <span className="text-[10px] text-muted-foreground italic">{entry.note}</span>
+                          )}
+                        </div>
+                      </div>
+                      <AlertDialog open={rollbackId === entry.id} onOpenChange={(open) => !open && setRollbackId(null)}>
+                        <AlertDialogTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="rounded-full text-xs gap-1 shrink-0"
+                            onClick={() => setRollbackId(entry.id)}
+                          >
+                            <RotateCcw className="h-3.5 w-3.5" /> Откат
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent className="rounded-[2rem]">
+                          <AlertDialogHeader>
+                            <AlertDialogTitle className="flex items-center gap-2">
+                              <AlertTriangle className="h-5 w-5 text-amber-500" />
+                              Откат каталога
+                            </AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Весь текущий каталог будет заменён снэпшотом от{" "}
+                              {new Date(entry.createdAt).toLocaleString("ru-RU")}.
+                              Текущее состояние будет сохранено в истории на случай повторного отката.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel className="rounded-full">Отмена</AlertDialogCancel>
+                            <AlertDialogAction
+                              className="rounded-full bg-amber-600 hover:bg-amber-700"
+                              onClick={() => rollbackMutation.mutate({ historyId: entry.id })}
+                              disabled={rollbackMutation.isPending}
+                            >
+                              {rollbackMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RotateCcw className="mr-2 h-4 w-4" />}
+                              Подтвердить откат
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </div>
+                  ))}
+                </ScrollRemaining>
+              )}
+            </div>
+          )}
+        </div>
       </CardContent>
     </Card>
   );
