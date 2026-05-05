@@ -690,11 +690,30 @@ export default function FarmProcessingTab({ isActive }: ProcessingTabProps) {
               </Button>
 
               <Button
-                onClick={() => completeMutation.mutate({ sessionId: selectedSessionId! })}
-                disabled={!canComplete || completeMutation.isPending}
+                onClick={async () => {
+                  // First save inputs/outputs to DB, then complete
+                  const validInputs = editInputs.filter((i) => i.tankId > 0 && i.volumeMl > 0).map((i) => ({
+                    tankId: i.tankId,
+                    volumeMl: i.volumeMl,
+                    milkType: i.milkType as "goat" | "sheep" | "cow",
+                  }));
+                  const validOutputs = editOutputs.filter((o) => o.catalogItemId > 0 && o.quantity > 0 && o.warehouseId > 0);
+                  try {
+                    await updateMutation.mutateAsync({
+                      sessionId: selectedSessionId!,
+                      note: editNote || null,
+                      inputs: validInputs,
+                      outputs: validOutputs,
+                    });
+                    completeMutation.mutate({ sessionId: selectedSessionId! });
+                  } catch (e) {
+                    // updateMutation error is already handled by onError
+                  }
+                }}
+                disabled={!canComplete || completeMutation.isPending || updateMutation.isPending}
                 className="w-full h-11 rounded-xl bg-emerald-600 hover:bg-emerald-700"
               >
-                {completeMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Check className="h-4 w-4 mr-2" />}
+                {(completeMutation.isPending || updateMutation.isPending) ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Check className="h-4 w-4 mr-2" />}
                 Завершить сессию
               </Button>
 

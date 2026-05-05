@@ -2714,3 +2714,4 @@ Module: Контроль оборота молока. Spec v2.1. Mobile-first AR
 - [x] Feature: Update Excel export/import mappings for new enum values
 - [x] Feature: Visually distinguish farm-only products in catalog UI
 - [x] Tests: Vitest coverage for cow product filtering and catalog behavior (32 tests)
+- [x] Bugfix: Fix "Нет входных данных молоко из танков" error — auto-save inputs/outputs before completing session
