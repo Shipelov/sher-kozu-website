@@ -2720,3 +2720,4 @@ Module: Контроль оборота молока. Spec v2.1. Mobile-first AR
 - [x] Feature: Toast shows "молоко возвращено в танки" when milk is returned on cancel
 - [x] Tests: 16 vitest tests for cancelSession milk return logic
 - [x] Feature: Add milk movement journal/log to Cheesemaker ARM — table of all tank operations with dates and reasons (17 tests)
+- [x] Data correction: Recalculate tank volumes from reception records — Tank №1 (goat) restored from 0 to 48,000 ml, Tanks №2 and №3 confirmed correct (57,000 / 69,000 ml). Adjustment movement record added.
