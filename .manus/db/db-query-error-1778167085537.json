@@ -1,0 +1,12 @@
+{
+  "query": "SELECT id, name, milkType, currentVolumeMl, capacityMl FROM milkTanks ORDER BY id; SELECT id, sessionStatus, totalInputMl, createdAt FROM processingSessions ORDER BY createdAt DESC LIMIT 10; SELECT tankId, milkMovementType, volumeMl, tankVolumeAfterMl, createdAt FROM milkTankMovements WHERE volumeMl < 0 ORDER BY createdAt DESC LIMIT 10",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3J2fXRHx8d1YjF6.root --database mLhmg5VmBsEBpZiYqdnhMQ --execute SELECT id, name, milkType, currentVolumeMl, capacityMl FROM milkTanks ORDER BY id; SELECT id, sessionStatus, totalInputMl, createdAt FROM processingSessions ORDER BY createdAt DESC LIMIT 10; SELECT tankId, milkMovementType, volumeMl, tankVolumeAfterMl, createdAt FROM milkTankMovements WHERE volumeMl < 0 ORDER BY createdAt DESC LIMIT 10",
+  "returncode": 1,
+  "logs": [
+    "id\tname\tmilkType\tcurrentVolumeMl\tcapacityMl",
+    "1\tТанк №1\tgoat\t48000\t1000000",
+    "2\tТанк №2\tsheep\t57000\t1000000",
+    "3\tТанк №3\tcow\t69000\t1000000",
+    "ERROR 1054 (42S22) at line 1: Unknown column 'sessionstatus' in 'field list'"
+  ]
+}

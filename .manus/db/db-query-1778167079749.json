@@ -1,0 +1,25 @@
+{
+  "query": "SELECT targetTankId, SUM(acceptedVolumeMl) as totalAcceptedMl, COUNT(*) as receptionCount FROM milkReceptions WHERE milkReceptionStatus = 'accepted' GROUP BY targetTankId ORDER BY targetTankId",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3J2fXRHx8d1YjF6.root --database mLhmg5VmBsEBpZiYqdnhMQ --execute SELECT targetTankId, SUM(acceptedVolumeMl) as totalAcceptedMl, COUNT(*) as receptionCount FROM milkReceptions WHERE milkReceptionStatus = 'accepted' GROUP BY targetTankId ORDER BY targetTankId",
+  "rows": [
+    {
+      "targetTankId": "1",
+      "totalAcceptedMl": "48000",
+      "receptionCount": "2"
+    },
+    {
+      "targetTankId": "2",
+      "totalAcceptedMl": "57000",
+      "receptionCount": "2"
+    },
+    {
+      "targetTankId": "3",
+      "totalAcceptedMl": "69000",
+      "receptionCount": "2"
+    }
+  ],
+  "messages": [],
+  "stdout": "targetTankId\ttotalAcceptedMl\treceptionCount\n1\t48000\t2\n2\t57000\t2\n3\t69000\t2\n",
+  "stderr": "",
+  "execution_time_ms": 63
+}

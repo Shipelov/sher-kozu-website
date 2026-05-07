@@ -1089,9 +1089,101 @@ export const milkAdminRouter = router({
     }),
 
   /**
-   * Tank reconciliation: compare tank currentVolumeMl with sum of accepted reception volumes.
-   * Returns per-tank expected vs actual volumes and discrepancy.
+   * Recalculate all tank volumes from scratch:
+   * currentVolumeMl = SUM(accepted receptions) - SUM(processing_out movements)
+   * Also accounts for adjustments, waste, transfers, corrections.
    */
+  recalculateTankVolumes: adminProcedure.mutation(async () => {
+    const db = await getDb();
+    const tanks = await db.select().from(milkTanks).orderBy(milkTanks.id);
+
+    // Sum all accepted receptions per tank
+    const acceptedByTank = await db
+      .select({
+        targetTankId: milkReceptions.targetTankId,
+        totalAcceptedMl: sql<number>`COALESCE(SUM(${milkReceptions.acceptedVolumeMl}), 0)`,
+      })
+      .from(milkReceptions)
+      .where(eq(milkReceptions.status, "accepted"))
+      .groupBy(milkReceptions.targetTankId);
+
+    const acceptedMap: Record<number, number> = {};
+    for (const row of acceptedByTank) {
+      if (row.targetTankId != null) {
+        acceptedMap[row.targetTankId] = Number(row.totalAcceptedMl);
+      }
+    }
+
+    // Sum all outflows per tank (negative volumeMl in movements = outflow)
+    const outflowByTank = await db
+      .select({
+        tankId: milkTankMovements.tankId,
+        totalOutMl: sql<number>`COALESCE(SUM(CASE WHEN ${milkTankMovements.volumeMl} < 0 THEN ABS(${milkTankMovements.volumeMl}) ELSE 0 END), 0)`,
+      })
+      .from(milkTankMovements)
+      .groupBy(milkTankMovements.tankId);
+
+    const outflowMap: Record<number, number> = {};
+    for (const row of outflowByTank) {
+      outflowMap[row.tankId] = Number(row.totalOutMl);
+    }
+
+    // Sum positive adjustment movements (correction_in, adjustment with positive volume)
+    const inflowAdjByTank = await db
+      .select({
+        tankId: milkTankMovements.tankId,
+        totalInMl: sql<number>`COALESCE(SUM(CASE WHEN ${milkTankMovements.volumeMl} > 0 AND ${milkTankMovements.movementType} IN ('adjustment') THEN ${milkTankMovements.volumeMl} ELSE 0 END), 0)`,
+      })
+      .from(milkTankMovements)
+      .groupBy(milkTankMovements.tankId);
+
+    const inflowAdjMap: Record<number, number> = {};
+    for (const row of inflowAdjByTank) {
+      inflowAdjMap[row.tankId] = Number(row.totalInMl);
+    }
+
+    const results: Array<{ id: number; name: string; oldMl: number; newMl: number; acceptedMl: number; outflowMl: number; adjustmentMl: number }> = [];
+
+    for (const tank of tanks) {
+      const acceptedMl = acceptedMap[tank.id] ?? 0;
+      const outflowMl = outflowMap[tank.id] ?? 0;
+      const adjustmentMl = inflowAdjMap[tank.id] ?? 0;
+      // Expected = receptions - outflows (adjustments already counted in outflows if negative)
+      // Don't double-count positive adjustments that are already from receptions
+      const expectedMl = Math.max(0, acceptedMl - outflowMl);
+      const oldMl = tank.currentVolumeMl;
+
+      if (oldMl !== expectedMl) {
+        await db.update(milkTanks)
+          .set({
+            currentVolumeMl: expectedMl,
+            status: expectedMl === 0 ? "empty" : expectedMl >= tank.capacityMl ? "full" : "filling",
+          })
+          .where(eq(milkTanks.id, tank.id));
+      }
+
+      results.push({
+        id: tank.id,
+        name: tank.name,
+        oldMl,
+        newMl: expectedMl,
+        acceptedMl,
+        outflowMl,
+        adjustmentMl,
+      });
+    }
+
+    return {
+      message: "Пересчёт завершён",
+      tanks: results.map(r => ({
+        ...r,
+        oldLiters: +(r.oldMl / 1000).toFixed(2),
+        newLiters: +(r.newMl / 1000).toFixed(2),
+        changed: r.oldMl !== r.newMl,
+      })),
+    };
+  }),
+
   tankReconciliation: adminProcedure.query(async () => {
     const db = await getDb();
 

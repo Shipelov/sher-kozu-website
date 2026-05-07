@@ -50,6 +50,7 @@ import {
   Plus,
   Power,
   PowerOff,
+  RefreshCw,
   ScrollText,
   Trash2,
   TrendingUp,
@@ -205,6 +206,8 @@ export default function AdminMilkDashboard() {
     },
     onError: (err: any) => toast.error("Ошибка", { description: err.message }),
   });
+
+  const recalculateTanks = trpc.milkAdmin.recalculateTankVolumes.useMutation();
 
   const updateSessionMutation = trpc.milkAdmin.updateSession.useMutation({
     onSuccess: () => {
@@ -595,7 +598,30 @@ export default function AdminMilkDashboard() {
       {/* ── Tanks ── */}
       {tab === "tanks" && (
         <div>
-          <div className="flex justify-end mb-4">
+          <div className="flex justify-end gap-2 mb-4">
+            <Button
+              variant="outline"
+              onClick={() => {
+                if (!confirm("Пересчитать объёмы всех танков по данным приёмок и списаний?")) return;
+                recalculateTanks.mutate(undefined, {
+                  onSuccess: (data: any) => {
+                    const changed = data.tanks.filter((t: any) => t.changed);
+                    if (changed.length === 0) {
+                      toast.success("Все танки корректны, изменений не требуется");
+                    } else {
+                      toast.success(`Пересчёт завершён: ${changed.map((t: any) => `${t.name}: ${t.oldLiters}→${t.newLiters} л`).join(", ")}`);
+                    }
+                    void utils.milkAdmin.tanks.invalidate();
+                    void utils.milkAdmin.tankReconciliation.invalidate();
+                  },
+                  onError: (err: any) => toast.error(err.message),
+                });
+              }}
+              disabled={recalculateTanks.isPending}
+            >
+              {recalculateTanks.isPending ? <Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> : <RefreshCw className="w-4 h-4 mr-1.5" />}
+              Пересчитать объёмы
+            </Button>
             <Button
               onClick={() => setShowTankDialog(true)}
               className="bg-[oklch(0.35_0.12_150)] hover:bg-[oklch(0.30_0.12_150)]"
