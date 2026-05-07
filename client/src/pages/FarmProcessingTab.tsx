@@ -141,10 +141,15 @@ export default function FarmProcessingTab({ isActive }: ProcessingTabProps) {
   });
 
   const cancelMutation = trpc.milkProcessing.cancelSession.useMutation({
-    onSuccess: () => {
-      toast.success("Сессия отменена");
+    onSuccess: (data) => {
+      if (data.milkReturned) {
+        toast.success("Сессия отменена, молоко возвращено в танки");
+      } else {
+        toast.success("Сессия отменена");
+      }
       void utils.milkProcessing.getSession.invalidate();
       void utils.milkProcessing.listSessions.invalidate();
+      void utils.milkProcessing.activeTanks.invalidate();
     },
     onError: (err: any) => toast.error("Ошибка", { description: err.message }),
   });
@@ -729,15 +734,30 @@ export default function FarmProcessingTab({ isActive }: ProcessingTabProps) {
           )}
 
           {session.status === "completed" && (
-            <Button
-              onClick={() => correctMutation.mutate({ sessionId: selectedSessionId! })}
-              disabled={correctMutation.isPending}
-              variant="outline"
-              className="w-full h-11 rounded-xl border-amber-300 text-amber-700 hover:bg-amber-50"
-            >
-              {correctMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <RotateCcw className="h-4 w-4 mr-2" />}
-              Исправить (откатить)
-            </Button>
+            <>
+              <Button
+                onClick={() => correctMutation.mutate({ sessionId: selectedSessionId! })}
+                disabled={correctMutation.isPending}
+                variant="outline"
+                className="w-full h-11 rounded-xl border-amber-300 text-amber-700 hover:bg-amber-50"
+              >
+                {correctMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <RotateCcw className="h-4 w-4 mr-2" />}
+                Исправить (откатить)
+              </Button>
+              <Button
+                onClick={() => {
+                  if (window.confirm("Отменить завершённую сессию? Молоко будет возвращено в танки, продукция снята со склада.")) {
+                    cancelMutation.mutate({ sessionId: selectedSessionId! });
+                  }
+                }}
+                disabled={cancelMutation.isPending}
+                variant="ghost"
+                className="w-full h-9 rounded-xl text-red-500 hover:text-red-700"
+              >
+                {cancelMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <X className="h-4 w-4 mr-1" />}
+                Отменить сессию (вернуть молоко)
+              </Button>
+            </>
           )}
 
           {session.status === "cancelled" && (

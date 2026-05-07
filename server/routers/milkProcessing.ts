@@ -560,8 +560,9 @@ export const milkProcessingRouter = router({
     }),
 
   /**
-   * Cancel a draft or in_progress session.
-   * No rollback needed since tanks/warehouses haven't been touched.
+   * Cancel a session (draft, in_progress, or completed).
+   * If the session was completed (milk deducted, warehouse credited),
+   * reverses all movements before cancelling.
    */
   cancelSession: cheesemakerProcedure
     .input(z.object({ sessionId: z.number().int().positive() }))
@@ -576,12 +577,74 @@ export const milkProcessingRouter = router({
         .limit(1);
 
       if (!session) throw new TRPCError({ code: "NOT_FOUND", message: "Сессия не найдена" });
+      if (session.status === "cancelled") {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Сессия уже отменена" });
+      }
+
+      // If session was completed, reverse tank deductions and warehouse credits
       if (session.status === "completed") {
-        throw new TRPCError({ code: "BAD_REQUEST", message: "Нельзя отменить завершённую сессию. Используйте 'Исправить'." });
+        const inputs = await db
+          .select()
+          .from(processingInputs)
+          .where(eq(processingInputs.sessionId, input.sessionId));
+
+        const outputs = await db
+          .select()
+          .from(processingOutputs)
+          .where(eq(processingOutputs.sessionId, input.sessionId));
+
+        // 1. Return milk to tanks
+        for (const inp of inputs) {
+          const [tank] = await db.select().from(milkTanks).where(eq(milkTanks.id, inp.tankId)).limit(1);
+          if (tank) {
+            const newVolume = tank.currentVolumeMl + inp.volumeMl;
+            await db.update(milkTanks)
+              .set({
+                currentVolumeMl: newVolume,
+                status: newVolume > 0 ? "filling" : "empty",
+              })
+              .where(eq(milkTanks.id, inp.tankId));
+
+            // Create reversal tank movement
+            await db.insert(milkTankMovements).values({
+              tankId: inp.tankId,
+              movementType: "adjustment",
+              volumeMl: inp.volumeMl,
+              tankVolumeAfterMl: newVolume,
+              performedByWorkerId: worker.workerId,
+              note: `Отмена переработки: сессия ${session.sessionCode}`,
+            });
+          }
+        }
+
+        // 2. Reverse warehouse credits
+        for (const out of outputs) {
+          const [inv] = await db
+            .select()
+            .from(warehouseInventory)
+            .where(
+              and(
+                eq(warehouseInventory.warehouseId, out.warehouseId),
+                eq(warehouseInventory.catalogItemId, out.catalogItemId),
+              ),
+            )
+            .limit(1);
+
+          if (inv) {
+            const newQty = Math.max(0, inv.quantity - out.quantity);
+            await db.update(warehouseInventory)
+              .set({ quantity: newQty })
+              .where(eq(warehouseInventory.id, inv.id));
+          }
+        }
+
+        // 3. Delete warehouse movements for this session
+        await db.delete(warehouseMovements)
+          .where(eq(warehouseMovements.processingSessionId, input.sessionId));
       }
 
       await db.update(processingSessions)
-        .set({ status: "cancelled" })
+        .set({ status: "cancelled", completedAt: null })
         .where(eq(processingSessions.id, input.sessionId));
 
       await logMilkAudit({
@@ -589,9 +652,14 @@ export const milkProcessingRouter = router({
         workerId: worker.workerId,
         entityType: "processing_session",
         entityId: input.sessionId,
+        detailsJson: JSON.stringify({
+          previousStatus: session.status,
+          milkReturned: session.status === "completed",
+          sessionCode: session.sessionCode,
+        }),
       });
 
-      return { success: true };
+      return { success: true, milkReturned: session.status === "completed" };
     }),
 
   /**

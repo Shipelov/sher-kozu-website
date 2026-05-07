@@ -2715,3 +2715,7 @@ Module: Контроль оборота молока. Spec v2.1. Mobile-first AR
 - [x] Feature: Visually distinguish farm-only products in catalog UI
 - [x] Tests: Vitest coverage for cow product filtering and catalog behavior (32 tests)
 - [x] Bugfix: Fix "Нет входных данных молоко из танков" error — auto-save inputs/outputs before completing session
+- [x] Bugfix: cancelSession now returns milk to tanks when cancelling a completed session (reverses tank deductions + warehouse credits)
+- [x] Feature: Cancel button added for completed sessions with confirmation dialog
+- [x] Feature: Toast shows "молоко возвращено в танки" when milk is returned on cancel
+- [x] Tests: 16 vitest tests for cancelSession milk return logic
