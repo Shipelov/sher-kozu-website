@@ -848,6 +848,74 @@ export const milkProcessingRouter = router({
   }),
 
   /**
+   * Milk movement journal — all tank operations with dates, types, volumes, and reasons.
+   * Used by cheesemaker to track full history of milk flow.
+   */
+  listTankMovements: cheesemakerProcedure
+    .input(z.object({
+      tankId: z.number().int().optional(),
+      movementType: z.enum(["milking_in", "transfer", "processing_out", "waste", "sample", "adjustment"]).optional(),
+      dateFrom: z.string().optional(),
+      dateTo: z.string().optional(),
+      limit: z.number().int().min(1).max(200).default(50),
+      offset: z.number().int().min(0).default(0),
+    }))
+    .query(async ({ input }) => {
+      const db = await getDb();
+      const conditions: any[] = [];
+
+      if (input.tankId) {
+        conditions.push(eq(milkTankMovements.tankId, input.tankId));
+      }
+      if (input.movementType) {
+        conditions.push(eq(milkTankMovements.movementType, input.movementType));
+      }
+      if (input.dateFrom) {
+        conditions.push(sql`${milkTankMovements.createdAt} >= ${input.dateFrom}`);
+      }
+      if (input.dateTo) {
+        conditions.push(sql`${milkTankMovements.createdAt} <= ${input.dateTo} + INTERVAL 1 DAY`);
+      }
+
+      const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+
+      const [movements, countResult] = await Promise.all([
+        db
+          .select({
+            id: milkTankMovements.id,
+            tankId: milkTankMovements.tankId,
+            tankName: milkTanks.name,
+            milkType: milkTanks.milkType,
+            movementType: milkTankMovements.movementType,
+            volumeMl: milkTankMovements.volumeMl,
+            tankVolumeAfterMl: milkTankMovements.tankVolumeAfterMl,
+            sessionId: milkTankMovements.sessionId,
+            batchId: milkTankMovements.batchId,
+            note: milkTankMovements.note,
+            performedByWorkerId: milkTankMovements.performedByWorkerId,
+            workerName: farmWorkers.name,
+            createdAt: milkTankMovements.createdAt,
+          })
+          .from(milkTankMovements)
+          .leftJoin(milkTanks, eq(milkTankMovements.tankId, milkTanks.id))
+          .leftJoin(farmWorkers, eq(milkTankMovements.performedByWorkerId, farmWorkers.id))
+          .where(whereClause)
+          .orderBy(desc(milkTankMovements.createdAt))
+          .limit(input.limit)
+          .offset(input.offset),
+        db
+          .select({ count: sql<number>`count(*)` })
+          .from(milkTankMovements)
+          .where(whereClause),
+      ]);
+
+      return {
+        movements,
+        total: countResult[0]?.count ?? 0,
+      };
+    }),
+
+  /**
    * List active tanks with current volume for input selection.
    */
   activeTanks: cheesemakerProcedure.query(async () => {

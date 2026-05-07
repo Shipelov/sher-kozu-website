@@ -2719,3 +2719,4 @@ Module: Контроль оборота молока. Spec v2.1. Mobile-first AR
 - [x] Feature: Cancel button added for completed sessions with confirmation dialog
 - [x] Feature: Toast shows "молоко возвращено в танки" when milk is returned on cancel
 - [x] Tests: 16 vitest tests for cancelSession milk return logic
+- [x] Feature: Add milk movement journal/log to Cheesemaker ARM — table of all tank operations with dates and reasons (17 tests)

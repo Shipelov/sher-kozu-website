@@ -31,6 +31,7 @@ import {
 } from "@/components/ui/select";
 import {
   AlertTriangle,
+  ArrowDownUp,
   CalendarRange,
   Check,
   ChevronDown,
@@ -38,6 +39,7 @@ import {
   Download,
   FileSpreadsheet,
   FileText,
+  Filter,
   Loader2,
   Package,
   Plus,
@@ -79,7 +81,7 @@ interface ProcessingTabProps {
 }
 
 export default function FarmProcessingTab({ isActive }: ProcessingTabProps) {
-  const [subView, setSubView] = useState<"list" | "create" | "detail" | "report">("list");
+  const [subView, setSubView] = useState<"list" | "create" | "detail" | "report" | "journal">("list");
   const [selectedSessionId, setSelectedSessionId] = useState<number | null>(null);
   const [expandedId, setExpandedId] = useState<number | null>(null);
 
@@ -229,6 +231,14 @@ export default function FarmProcessingTab({ isActive }: ProcessingTabProps) {
         <div className="flex items-center justify-between">
           <h2 className="text-base font-semibold text-[oklch(0.22_0.04_60)]">Переработка</h2>
           <div className="flex gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setSubView("journal")}
+              className="rounded-xl text-xs"
+            >
+              <ArrowDownUp className="w-3.5 h-3.5 mr-1" /> Журнал
+            </Button>
             <Button
               size="sm"
               variant="outline"
@@ -780,6 +790,11 @@ export default function FarmProcessingTab({ isActive }: ProcessingTabProps) {
     );
   }
 
+  // JOURNAL VIEW — Milk Movement Log
+  if (subView === "journal") {
+    return <MilkMovementJournal isActive={isActive} tanks={tanks} onBack={() => setSubView("list")} />;
+  }
+
   // REPORT VIEW
   if (subView === "report") {
     return (
@@ -973,6 +988,255 @@ function ProcessingReport({ dateFrom, dateTo }: { dateFrom: string; dateTo: stri
           </p>
         )}
       </div>
+    </div>
+  );
+}
+
+// ─── Milk Movement Journal Component ─────────────────────────────────────────
+
+const MOVEMENT_TYPE_MAP: Record<string, { label: string; color: string; sign: string }> = {
+  milking_in: { label: "Поступление (дойка)", color: "bg-emerald-100 text-emerald-700", sign: "+" },
+  transfer: { label: "Перелив", color: "bg-blue-100 text-blue-700", sign: "↔" },
+  processing_out: { label: "Переработка", color: "bg-amber-100 text-amber-700", sign: "−" },
+  waste: { label: "Списание", color: "bg-red-100 text-red-700", sign: "−" },
+  sample: { label: "Проба", color: "bg-purple-100 text-purple-700", sign: "−" },
+  adjustment: { label: "Корректировка", color: "bg-gray-100 text-gray-700", sign: "±" },
+};
+
+interface MilkMovementJournalProps {
+  isActive: boolean;
+  tanks: Array<{ id: number; name: string; milkType: string }>;
+  onBack: () => void;
+}
+
+function MilkMovementJournal({ isActive, tanks, onBack }: MilkMovementJournalProps) {
+  const [filterTankId, setFilterTankId] = useState<number | undefined>(undefined);
+  const [filterType, setFilterType] = useState<string | undefined>(undefined);
+  const [filterDateFrom, setFilterDateFrom] = useState("");
+  const [filterDateTo, setFilterDateTo] = useState("");
+  const [page, setPage] = useState(0);
+  const [showFilters, setShowFilters] = useState(false);
+  const PAGE_SIZE = 20;
+
+  const queryInput = useMemo(() => ({
+    tankId: filterTankId,
+    movementType: filterType as any,
+    dateFrom: filterDateFrom || undefined,
+    dateTo: filterDateTo || undefined,
+    limit: PAGE_SIZE,
+    offset: page * PAGE_SIZE,
+  }), [filterTankId, filterType, filterDateFrom, filterDateTo, page]);
+
+  const movementsQuery = trpc.milkProcessing.listTankMovements.useQuery(queryInput, {
+    enabled: isActive,
+  });
+
+  const movements = movementsQuery.data?.movements ?? [];
+  const total = movementsQuery.data?.total ?? 0;
+  const totalPages = Math.ceil(total / PAGE_SIZE);
+
+  const hasFilters = filterTankId || filterType || filterDateFrom || filterDateTo;
+
+  const clearFilters = () => {
+    setFilterTankId(undefined);
+    setFilterType(undefined);
+    setFilterDateFrom("");
+    setFilterDateTo("");
+    setPage(0);
+  };
+
+  return (
+    <div className="px-4 mt-4 space-y-3">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Button variant="ghost" size="sm" onClick={onBack} className="rounded-xl">
+            ← Назад
+          </Button>
+          <h2 className="text-base font-semibold text-[oklch(0.22_0.04_60)]">Журнал движения молока</h2>
+        </div>
+        <Button
+          size="sm"
+          variant={showFilters ? "default" : "outline"}
+          onClick={() => setShowFilters(!showFilters)}
+          className="rounded-xl text-xs"
+        >
+          <Filter className="w-3.5 h-3.5 mr-1" />
+          Фильтры
+          {hasFilters && <span className="ml-1 w-2 h-2 rounded-full bg-amber-400 inline-block" />}
+        </Button>
+      </div>
+
+      {/* Filters panel */}
+      {showFilters && (
+        <div className="bg-[oklch(0.97_0.01_90)] rounded-xl p-3 space-y-2 border border-[oklch(0.92_0.02_90)]">
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="text-[10px] font-medium text-[oklch(0.4_0.04_80)] uppercase tracking-wide">Танк</label>
+              <Select
+                value={filterTankId?.toString() ?? "all"}
+                onValueChange={(v) => { setFilterTankId(v === "all" ? undefined : Number(v)); setPage(0); }}
+              >
+                <SelectTrigger className="h-8 text-xs rounded-lg mt-0.5">
+                  <SelectValue placeholder="Все танки" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Все танки</SelectItem>
+                  {tanks.map((t) => (
+                    <SelectItem key={t.id} value={t.id.toString()}>
+                      {MILK_TYPE_EMOJI[t.milkType] ?? ""} {t.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <label className="text-[10px] font-medium text-[oklch(0.4_0.04_80)] uppercase tracking-wide">Тип операции</label>
+              <Select
+                value={filterType ?? "all"}
+                onValueChange={(v) => { setFilterType(v === "all" ? undefined : v); setPage(0); }}
+              >
+                <SelectTrigger className="h-8 text-xs rounded-lg mt-0.5">
+                  <SelectValue placeholder="Все типы" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Все типы</SelectItem>
+                  {Object.entries(MOVEMENT_TYPE_MAP).map(([key, val]) => (
+                    <SelectItem key={key} value={key}>{val.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="text-[10px] font-medium text-[oklch(0.4_0.04_80)] uppercase tracking-wide">С даты</label>
+              <input
+                type="date"
+                value={filterDateFrom}
+                onChange={(e) => { setFilterDateFrom(e.target.value); setPage(0); }}
+                className="w-full border rounded-lg px-2 py-1.5 text-xs bg-white mt-0.5"
+              />
+            </div>
+            <div>
+              <label className="text-[10px] font-medium text-[oklch(0.4_0.04_80)] uppercase tracking-wide">По дату</label>
+              <input
+                type="date"
+                value={filterDateTo}
+                onChange={(e) => { setFilterDateTo(e.target.value); setPage(0); }}
+                className="w-full border rounded-lg px-2 py-1.5 text-xs bg-white mt-0.5"
+              />
+            </div>
+          </div>
+          {hasFilters && (
+            <Button size="sm" variant="ghost" onClick={clearFilters} className="text-xs text-red-600 hover:text-red-800">
+              <X className="w-3 h-3 mr-1" /> Сбросить фильтры
+            </Button>
+          )}
+        </div>
+      )}
+
+      {/* Stats summary */}
+      <div className="flex items-center justify-between text-xs text-[oklch(0.5_0.04_80)]">
+        <span>Всего записей: <strong className="text-[oklch(0.3_0.04_60)]">{total}</strong></span>
+        {totalPages > 1 && (
+          <span>Стр. {page + 1} из {totalPages}</span>
+        )}
+      </div>
+
+      {/* Movements list */}
+      {movementsQuery.isLoading ? (
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="h-5 w-5 animate-spin text-[oklch(0.5_0.04_80)]" />
+        </div>
+      ) : movements.length === 0 ? (
+        <div className="text-center py-12">
+          <ArrowDownUp className="w-12 h-12 mx-auto mb-3 text-[oklch(0.7_0.04_80)]" />
+          <p className="text-sm font-medium text-[oklch(0.3_0.04_60)]">Нет записей</p>
+          <p className="text-xs text-[oklch(0.52_0.04_80)] mt-1">
+            {hasFilters ? "Попробуйте изменить фильтры" : "Движения молока пока не зафиксированы"}
+          </p>
+        </div>
+      ) : (
+        <div className="space-y-2 max-h-[60vh] overflow-y-auto">
+          {movements.map((m: any) => {
+            const typeInfo = MOVEMENT_TYPE_MAP[m.movementType] ?? { label: m.movementType, color: "bg-gray-100 text-gray-700", sign: "?" };
+            const volumeL = Math.abs(m.volumeMl) / 1000;
+            const isPositive = m.volumeMl > 0;
+            const afterL = (m.tankVolumeAfterMl / 1000).toFixed(1);
+            const dateStr = m.createdAt ? new Date(m.createdAt).toLocaleString("ru-RU", {
+              day: "2-digit", month: "2-digit", year: "2-digit",
+              hour: "2-digit", minute: "2-digit",
+            }) : "—";
+
+            return (
+              <div
+                key={m.id}
+                className="bg-white rounded-xl border border-[oklch(0.92_0.02_90)] p-3"
+              >
+                <div className="flex items-start justify-between">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <Badge className={`rounded-full text-[10px] ${typeInfo.color}`}>
+                        {typeInfo.label}
+                      </Badge>
+                      <span className="text-[10px] text-[oklch(0.5_0.04_80)]">
+                        {MILK_TYPE_EMOJI[m.milkType] ?? ""} {m.tankName ?? `Танк #${m.tankId}`}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-3 mt-1.5">
+                      <span className={`text-sm font-bold ${isPositive ? "text-emerald-600" : "text-red-600"}`}>
+                        {isPositive ? "+" : "−"}{volumeL.toFixed(2)} л
+                      </span>
+                      <span className="text-[10px] text-[oklch(0.5_0.04_80)]">
+                        → Остаток: {afterL} л
+                      </span>
+                    </div>
+                    {m.note && (
+                      <p className="text-[11px] text-[oklch(0.4_0.04_80)] mt-1 italic">
+                        {m.note}
+                      </p>
+                    )}
+                  </div>
+                  <div className="text-right shrink-0 ml-2">
+                    <p className="text-[10px] text-[oklch(0.5_0.04_80)]">{dateStr}</p>
+                    {m.workerName && (
+                      <p className="text-[10px] text-[oklch(0.5_0.04_80)] mt-0.5">{m.workerName}</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-center gap-2 pt-2">
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={page === 0}
+            onClick={() => setPage(p => Math.max(0, p - 1))}
+            className="rounded-xl text-xs h-8"
+          >
+            ← Назад
+          </Button>
+          <span className="text-xs text-[oklch(0.5_0.04_80)]">
+            {page + 1} / {totalPages}
+          </span>
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={page >= totalPages - 1}
+            onClick={() => setPage(p => p + 1)}
+            className="rounded-xl text-xs h-8"
+          >
+            Вперёд →
+          </Button>
+        </div>
+      )}
     </div>
   );
 }
