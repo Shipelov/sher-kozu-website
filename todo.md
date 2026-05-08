@@ -2725,5 +2725,15 @@ Module: Контроль оборота молока. Spec v2.1. Mobile-first AR
 - [x] Overview tab: break down processing stats by milk type (goat/sheep/cow) like milking sessions
 - [x] Add per-milk-type breakdown to processing StatCard in Overview tab
 - [x] Add per-milk-type breakdown to Processing tab (Переработка) in admin Milk Control
-- [ ] Processing tab: add summary/totals row with per-type sums for selected period
-- [ ] Processing tab: add milk type filter (goat/sheep/cow) to filter sessions
+- [x] Processing tab: add summary/totals row with per-type sums for selected period
+- [x] Processing tab: add milk type filter (goat/sheep/cow) to filter sessions
+- [x] Remove tank reconciliation block ("Сверка объёмов танков") — replace with analytics
+- [x] Backend: tankMovements endpoint — paginated journal of all movements for a specific tank with filters
+- [x] Backend: tankTurnover endpoint — aggregated turnover stats by period (today/week/month) per operation type
+- [x] Backend: tankVolumeHistory endpoint — daily volume snapshots for chart (last 30 days)
+- [x] Backend: tankMetrics endpoint — avg daily consumption, days-until-empty forecast, turnover rate
+- [x] Frontend: Tank detail panel (expandable or modal) with movement journal table
+- [x] Frontend: Turnover summary cards per tank (inflow/outflow/adjustments by period)
+- [x] Frontend: Volume dynamics line chart (Chart.js) per tank over 30 days
+- [x] Frontend: Predictive metrics display (avg daily usage, days remaining, turnover rate)
+- [x] Tests: Vitest coverage for tank analytics backend procedures (11 tests)

@@ -1317,61 +1317,319 @@ export const milkAdminRouter = router({
       };
     }),
 
-  tankReconciliation: adminProcedure.query(async () => {
-    const db = await getDb();
+  /**
+   * Tank movement journal — paginated list of all movements for a specific tank.
+   * Supports filtering by movement type and date range.
+   */
+  tankMovements: adminProcedure
+    .input(z.object({
+      tankId: z.number().int(),
+      movementType: z.enum(["milking_in", "transfer", "processing_out", "waste", "sample", "adjustment"]).optional(),
+      dateFrom: z.string().optional(),
+      dateTo: z.string().optional(),
+      page: z.number().int().min(1).default(1),
+      pageSize: z.number().int().min(5).max(100).default(20),
+    }))
+    .query(async ({ input }) => {
+      const db = await getDb();
+      const conditions: any[] = [eq(milkTankMovements.tankId, input.tankId)];
 
-    // Get all tanks
-    const tanks = await db.select().from(milkTanks).orderBy(milkTanks.id);
-
-    // Sum accepted reception volumes per tank
-    const acceptedByTank = await db
-      .select({
-        targetTankId: milkReceptions.targetTankId,
-        totalAcceptedMl: sql<number>`COALESCE(SUM(${milkReceptions.acceptedVolumeMl}), 0)`,
-      })
-      .from(milkReceptions)
-      .where(eq(milkReceptions.status, "accepted"))
-      .groupBy(milkReceptions.targetTankId);
-
-    const acceptedMap: Record<number, number> = {};
-    for (const row of acceptedByTank) {
-      if (row.targetTankId != null) {
-        acceptedMap[row.targetTankId] = Number(row.totalAcceptedMl);
+      if (input.movementType) {
+        conditions.push(eq(milkTankMovements.movementType, input.movementType));
       }
-    }
+      if (input.dateFrom) {
+        conditions.push(sql`${milkTankMovements.createdAt} >= ${input.dateFrom}`);
+      }
+      if (input.dateTo) {
+        conditions.push(sql`${milkTankMovements.createdAt} <= ${input.dateTo} + INTERVAL 1 DAY`);
+      }
 
-    // Sum waste/batch_out movements per tank (these reduce the tank)
-    const outflowByTank = await db
-      .select({
-        tankId: milkTankMovements.tankId,
-        totalOutMl: sql<number>`COALESCE(SUM(CASE WHEN ${milkTankMovements.volumeMl} < 0 AND ${milkTankMovements.movementType} IN ('waste', 'batch_out', 'transfer_out') THEN ABS(${milkTankMovements.volumeMl}) ELSE 0 END), 0)`,
-      })
-      .from(milkTankMovements)
-      .groupBy(milkTankMovements.tankId);
+      const whereClause = and(...conditions);
 
-    const outflowMap: Record<number, number> = {};
-    for (const row of outflowByTank) {
-      outflowMap[row.tankId] = Number(row.totalOutMl);
-    }
+      const [movements, countResult] = await Promise.all([
+        db
+          .select({
+            id: milkTankMovements.id,
+            tankId: milkTankMovements.tankId,
+            movementType: milkTankMovements.movementType,
+            volumeMl: milkTankMovements.volumeMl,
+            tankVolumeAfterMl: milkTankMovements.tankVolumeAfterMl,
+            sessionId: milkTankMovements.sessionId,
+            receptionId: milkTankMovements.receptionId,
+            batchId: milkTankMovements.batchId,
+            note: milkTankMovements.note,
+            performedByWorkerId: milkTankMovements.performedByWorkerId,
+            workerName: farmWorkers.name,
+            createdAt: milkTankMovements.createdAt,
+          })
+          .from(milkTankMovements)
+          .leftJoin(farmWorkers, eq(milkTankMovements.performedByWorkerId, farmWorkers.id))
+          .where(whereClause)
+          .orderBy(desc(milkTankMovements.createdAt))
+          .limit(input.pageSize)
+          .offset((input.page - 1) * input.pageSize),
+        db
+          .select({ count: sql<number>`count(*)` })
+          .from(milkTankMovements)
+          .where(whereClause),
+      ]);
 
-    return tanks.map((t: any) => {
-      const acceptedMl = acceptedMap[t.id] ?? 0;
-      const outflowMl = outflowMap[t.id] ?? 0;
-      const expectedMl = acceptedMl - outflowMl;
-      const actualMl = t.currentVolumeMl;
-      const discrepancyMl = actualMl - expectedMl;
       return {
-        id: t.id,
-        name: t.name,
-        milkType: t.milkType,
-        milkTypeLabel: MILK_TYPE_LABELS[t.milkType] ?? t.milkType,
-        acceptedLiters: +(acceptedMl / 1000).toFixed(2),
-        outflowLiters: +(outflowMl / 1000).toFixed(2),
-        expectedLiters: +(expectedMl / 1000).toFixed(2),
-        actualLiters: +(actualMl / 1000).toFixed(2),
-        discrepancyLiters: +(discrepancyMl / 1000).toFixed(2),
-        isOk: Math.abs(discrepancyMl) < 100, // <0.1L tolerance
+        movements: movements.map((m: any) => ({
+          id: m.id,
+          movementType: m.movementType,
+          volumeMl: m.volumeMl,
+          volumeLiters: +(m.volumeMl / 1000).toFixed(2),
+          tankVolumeAfterMl: m.tankVolumeAfterMl,
+          tankVolumeAfterLiters: +(m.tankVolumeAfterMl / 1000).toFixed(2),
+          sessionId: m.sessionId,
+          receptionId: m.receptionId,
+          batchId: m.batchId,
+          note: m.note,
+          workerName: m.workerName ?? "—",
+          createdAt: m.createdAt.toISOString(),
+        })),
+        total: Number(countResult[0]?.count ?? 0),
+        page: input.page,
+        pageSize: input.pageSize,
       };
-    });
-  }),
+    }),
+
+  /**
+   * Tank turnover — aggregated stats by operation type for today/week/month.
+   */
+  tankTurnover: adminProcedure
+    .input(z.object({ tankId: z.number().int() }))
+    .query(async ({ input }) => {
+      const db = await getDb();
+      const now = new Date();
+      const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const weekStart = new Date(todayStart);
+      weekStart.setDate(weekStart.getDate() - 7);
+      const monthStart = new Date(todayStart);
+      monthStart.setDate(monthStart.getDate() - 30);
+
+      const buildTurnover = async (from: Date) => {
+        const rows = await db
+          .select({
+            movementType: milkTankMovements.movementType,
+            totalMl: sql<number>`COALESCE(SUM(${milkTankMovements.volumeMl}), 0)`,
+            count: sql<number>`COUNT(*)`,
+          })
+          .from(milkTankMovements)
+          .where(and(
+            eq(milkTankMovements.tankId, input.tankId),
+            gte(milkTankMovements.createdAt, from),
+          ))
+          .groupBy(milkTankMovements.movementType);
+
+        let inflowMl = 0;
+        let outflowMl = 0;
+        let adjustmentMl = 0;
+        const byType: Record<string, { totalMl: number; count: number }> = {};
+
+        for (const row of rows) {
+          const vol = Number(row.totalMl);
+          const cnt = Number(row.count);
+          byType[row.movementType] = { totalMl: vol, count: cnt };
+          if (row.movementType === "milking_in" || (row.movementType === "transfer" && vol > 0)) {
+            inflowMl += vol;
+          } else if (row.movementType === "processing_out" || row.movementType === "waste" || row.movementType === "sample") {
+            outflowMl += Math.abs(vol);
+          } else if (row.movementType === "adjustment") {
+            adjustmentMl += vol;
+          }
+        }
+
+        return {
+          inflowLiters: +(inflowMl / 1000).toFixed(2),
+          outflowLiters: +(outflowMl / 1000).toFixed(2),
+          adjustmentLiters: +(adjustmentMl / 1000).toFixed(2),
+          netChangeLiters: +((inflowMl - outflowMl + adjustmentMl) / 1000).toFixed(2),
+          byType: Object.fromEntries(
+            Object.entries(byType).map(([k, v]) => [k, { liters: +(v.totalMl / 1000).toFixed(2), count: v.count }])
+          ),
+        };
+      };
+
+      const [today, week, month] = await Promise.all([
+        buildTurnover(todayStart),
+        buildTurnover(weekStart),
+        buildTurnover(monthStart),
+      ]);
+
+      return { today, week, month };
+    }),
+
+  /**
+   * Tank volume history — daily volume snapshots for the last N days.
+   * Reconstructs daily end-of-day volume from movements.
+   */
+  tankVolumeHistory: adminProcedure
+    .input(z.object({
+      tankId: z.number().int(),
+      days: z.number().int().min(7).max(90).default(30),
+    }))
+    .query(async ({ input }) => {
+      const db = await getDb();
+
+      // Get current tank volume
+      const [tank] = await db.select().from(milkTanks).where(eq(milkTanks.id, input.tankId));
+      if (!tank) return { history: [], currentVolumeMl: 0 };
+
+      // Get all movements for this tank in the period, ordered by date ASC
+      const startDate = new Date();
+      startDate.setDate(startDate.getDate() - input.days);
+
+      const movements = await db
+        .select({
+          volumeMl: milkTankMovements.volumeMl,
+          tankVolumeAfterMl: milkTankMovements.tankVolumeAfterMl,
+          createdAt: milkTankMovements.createdAt,
+        })
+        .from(milkTankMovements)
+        .where(and(
+          eq(milkTankMovements.tankId, input.tankId),
+          gte(milkTankMovements.createdAt, startDate),
+        ))
+        .orderBy(milkTankMovements.createdAt);
+
+      // Build daily snapshots: for each day, find the last movement's tankVolumeAfterMl
+      // If no movement on a day, carry forward from previous day
+      const history: Array<{ date: string; volumeLiters: number }> = [];
+      const today = new Date();
+      let currentVol = tank.currentVolumeMl;
+
+      // Create a map of day -> last tankVolumeAfterMl
+      const dayMap: Record<string, number> = {};
+      for (const m of movements) {
+        const dayKey = m.createdAt.toISOString().slice(0, 10);
+        dayMap[dayKey] = m.tankVolumeAfterMl; // last one wins (ordered ASC)
+      }
+
+      // Walk backwards from today to reconstruct
+      // Actually, let's walk forward: find the volume at startDate, then apply daily
+      // Simpler approach: for each day, use the last known tankVolumeAfterMl
+      const allDays: string[] = [];
+      for (let d = new Date(startDate); d <= today; d.setDate(d.getDate() + 1)) {
+        allDays.push(d.toISOString().slice(0, 10));
+      }
+
+      // Find the volume just before the start date (last movement before startDate)
+      const [beforeStart] = await db
+        .select({ tankVolumeAfterMl: milkTankMovements.tankVolumeAfterMl })
+        .from(milkTankMovements)
+        .where(and(
+          eq(milkTankMovements.tankId, input.tankId),
+          sql`${milkTankMovements.createdAt} < ${startDate}`,
+        ))
+        .orderBy(desc(milkTankMovements.createdAt))
+        .limit(1);
+
+      let lastKnownVol = beforeStart?.tankVolumeAfterMl ?? 0;
+
+      for (const day of allDays) {
+        if (dayMap[day] !== undefined) {
+          lastKnownVol = dayMap[day];
+        }
+        history.push({
+          date: day,
+          volumeLiters: +(lastKnownVol / 1000).toFixed(2),
+        });
+      }
+
+      return {
+        history,
+        currentVolumeMl: tank.currentVolumeMl,
+        currentVolumeLiters: +(tank.currentVolumeMl / 1000).toFixed(2),
+        capacityLiters: +(tank.capacityMl / 1000).toFixed(2),
+      };
+    }),
+
+  /**
+   * Tank metrics — predictive analytics.
+   * Average daily consumption, days until empty, turnover rate.
+   */
+  tankMetrics: adminProcedure
+    .input(z.object({ tankId: z.number().int() }))
+    .query(async ({ input }) => {
+      const db = await getDb();
+
+      const [tank] = await db.select().from(milkTanks).where(eq(milkTanks.id, input.tankId));
+      if (!tank) return null;
+
+      // Calculate metrics over the last 30 days
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+      // Total outflow in last 30 days
+      const [outflowStats] = await db
+        .select({
+          totalOutMl: sql<number>`COALESCE(SUM(CASE WHEN ${milkTankMovements.volumeMl} < 0 THEN ABS(${milkTankMovements.volumeMl}) ELSE 0 END), 0)`,
+          outDays: sql<number>`COUNT(DISTINCT DATE(${milkTankMovements.createdAt}))`,
+        })
+        .from(milkTankMovements)
+        .where(and(
+          eq(milkTankMovements.tankId, input.tankId),
+          gte(milkTankMovements.createdAt, thirtyDaysAgo),
+          sql`${milkTankMovements.volumeMl} < 0`,
+        ));
+
+      // Total inflow in last 30 days
+      const [inflowStats] = await db
+        .select({
+          totalInMl: sql<number>`COALESCE(SUM(${milkTankMovements.volumeMl}), 0)`,
+          inDays: sql<number>`COUNT(DISTINCT DATE(${milkTankMovements.createdAt}))`,
+        })
+        .from(milkTankMovements)
+        .where(and(
+          eq(milkTankMovements.tankId, input.tankId),
+          gte(milkTankMovements.createdAt, thirtyDaysAgo),
+          sql`${milkTankMovements.volumeMl} > 0`,
+        ));
+
+      const totalOutMl = Number(outflowStats.totalOutMl);
+      const totalInMl = Number(inflowStats.totalInMl);
+      const activeDaysOut = Number(outflowStats.outDays) || 1;
+
+      // Average daily consumption (outflow)
+      const avgDailyConsumptionMl = totalOutMl / 30;
+      // Average daily inflow
+      const avgDailyInflowMl = totalInMl / 30;
+
+      // Days until empty (at current consumption rate, ignoring future inflow)
+      const daysUntilEmpty = avgDailyConsumptionMl > 0
+        ? Math.round(tank.currentVolumeMl / avgDailyConsumptionMl)
+        : null;
+
+      // Turnover rate: how many times the tank volume was "turned over" in 30 days
+      const turnoverRate = tank.capacityMl > 0
+        ? +(totalOutMl / tank.capacityMl).toFixed(2)
+        : 0;
+
+      // Peak load: max volume reached in last 30 days
+      const [peakResult] = await db
+        .select({
+          peakMl: sql<number>`COALESCE(MAX(${milkTankMovements.tankVolumeAfterMl}), 0)`,
+        })
+        .from(milkTankMovements)
+        .where(and(
+          eq(milkTankMovements.tankId, input.tankId),
+          gte(milkTankMovements.createdAt, thirtyDaysAgo),
+        ));
+
+      return {
+        tankName: tank.name,
+        milkType: tank.milkType,
+        currentVolumeLiters: +(tank.currentVolumeMl / 1000).toFixed(2),
+        capacityLiters: +(tank.capacityMl / 1000).toFixed(2),
+        fillPercent: tank.capacityMl > 0 ? Math.round((tank.currentVolumeMl / tank.capacityMl) * 100) : 0,
+        avgDailyConsumptionLiters: +(avgDailyConsumptionMl / 1000).toFixed(2),
+        avgDailyInflowLiters: +(avgDailyInflowMl / 1000).toFixed(2),
+        daysUntilEmpty,
+        turnoverRate,
+        peakVolumeLiters: +(Number(peakResult.peakMl) / 1000).toFixed(2),
+        peakFillPercent: tank.capacityMl > 0 ? Math.round((Number(peakResult.peakMl) / tank.capacityMl) * 100) : 0,
+      };
+    }),
 });

@@ -57,6 +57,7 @@ import {
 } from "lucide-react";
 import { Link } from "wouter";
 import { toast } from "sonner";
+import TankAnalyticsPanel from "@/components/TankAnalyticsPanel";
 
 const SESSION_STATUS: Record<string, { label: string; color: string }> = {
   in_progress: { label: "В процессе", color: "bg-blue-100 text-blue-700" },
@@ -176,9 +177,10 @@ export default function AdminMilkDashboard() {
     enabled: tab === "tanks",
   });
 
-  const reconciliationQuery = trpc.milkAdmin.tankReconciliation.useQuery(undefined, {
-    enabled: tab === "tanks",
-  });
+  // ─── Tank analytics state ───
+  const [selectedTankId, setSelectedTankId] = useState<number | null>(null);
+  const [tankMovementPage, setTankMovementPage] = useState(1);
+  const [tankMovementFilter, setTankMovementFilter] = useState<string>("");
 
   const auditQuery = trpc.milkAdmin.auditLog.useQuery(
     { page: auditPage, pageSize: 20 },
@@ -224,7 +226,6 @@ export default function AdminMilkDashboard() {
       setAdjustValue("");
       setAdjustReason("");
       void utils.milkAdmin.tanks.invalidate();
-      void utils.milkAdmin.tankReconciliation.invalidate();
       void utils.milkAdmin.overview.invalidate();
     },
     onError: (err: any) => toast.error("Ошибка корректировки", { description: err.message }),
@@ -651,7 +652,7 @@ export default function AdminMilkDashboard() {
                       toast.success(`Пересчёт завершён: ${changed.map((t: any) => `${t.name}: ${t.oldLiters}→${t.newLiters} л`).join(", ")}`);
                     }
                     void utils.milkAdmin.tanks.invalidate();
-                    void utils.milkAdmin.tankReconciliation.invalidate();
+
                   },
                   onError: (err: any) => toast.error(err.message),
                 });
@@ -722,11 +723,21 @@ export default function AdminMilkDashboard() {
                       <Button
                         variant="outline"
                         size="sm"
+                        onClick={() => { setSelectedTankId(t.id); setTankMovementPage(1); setTankMovementFilter(""); }}
+                        className="flex-1 text-xs"
+                      >
+                        <BarChart3 className="w-3 h-3 mr-1" /> Аналитика
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
                         onClick={() => openAdjustDialog(t.id)}
                         className="flex-1 text-xs"
                       >
                         <Pencil className="w-3 h-3 mr-1" /> Корректировка
                       </Button>
+                    </div>
+                    <div className="flex gap-2 mt-2">
                       <Button
                         variant="outline"
                         size="sm"
@@ -755,52 +766,15 @@ export default function AdminMilkDashboard() {
             </div>
           )}
 
-          {/* ── Tank Reconciliation ── */}
-          {reconciliationQuery.data && (
-            <div className="mt-6">
-              <h3 className="text-sm font-semibold text-[oklch(0.4_0.04_80)] mb-3 flex items-center gap-2">
-                <Check className="w-4 h-4" /> Сверка объёмов танков
-              </h3>
-              <div className="border rounded-lg overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead className="bg-[oklch(0.96_0.01_90)]">
-                    <tr>
-                      <th className="text-left px-3 py-2 font-medium text-xs">Танк</th>
-                      <th className="text-left px-3 py-2 font-medium text-xs">Тип</th>
-                      <th className="text-right px-3 py-2 font-medium text-xs">Принято, л</th>
-                      <th className="text-right px-3 py-2 font-medium text-xs">Расход, л</th>
-                      <th className="text-right px-3 py-2 font-medium text-xs">Ожидаемо, л</th>
-                      <th className="text-right px-3 py-2 font-medium text-xs">Факт, л</th>
-                      <th className="text-right px-3 py-2 font-medium text-xs">Расхождение</th>
-                      <th className="text-center px-3 py-2 font-medium text-xs">Статус</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y">
-                    {reconciliationQuery.data.map((r: any) => (
-                      <tr key={r.id} className={r.isOk ? "hover:bg-[oklch(0.98_0.005_90)]" : "bg-red-50 hover:bg-red-100"}>
-                        <td className="px-3 py-2 font-medium">{r.name}</td>
-                        <td className="px-3 py-2 text-[oklch(0.52_0.04_80)]">{r.milkTypeLabel}</td>
-                        <td className="px-3 py-2 text-right">{r.acceptedLiters}</td>
-                        <td className="px-3 py-2 text-right">{r.outflowLiters}</td>
-                        <td className="px-3 py-2 text-right font-medium">{r.expectedLiters}</td>
-                        <td className="px-3 py-2 text-right font-medium">{r.actualLiters}</td>
-                        <td className={`px-3 py-2 text-right font-bold ${r.isOk ? "text-emerald-600" : "text-red-600"}`}>
-                          {r.discrepancyLiters > 0 ? "+" : ""}{r.discrepancyLiters} л
-                        </td>
-                        <td className="px-3 py-2 text-center">
-                          {r.isOk ? (
-                            <Badge className="bg-emerald-100 text-emerald-700 rounded-full text-[10px]">✔ OK</Badge>
-                          ) : (
-                            <Badge className="bg-red-100 text-red-700 rounded-full text-[10px]">⚠ Расхождение</Badge>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
+          {/* ── Tank Analytics ── */}
+          {selectedTankId && <TankAnalyticsPanel
+            tankId={selectedTankId}
+            onClose={() => setSelectedTankId(null)}
+            movementPage={tankMovementPage}
+            onMovementPageChange={setTankMovementPage}
+            movementFilter={tankMovementFilter}
+            onMovementFilterChange={(f) => { setTankMovementFilter(f); setTankMovementPage(1); }}
+          />}
 
           {/* Create tank dialog */}
           <Dialog open={showTankDialog} onOpenChange={setShowTankDialog}>

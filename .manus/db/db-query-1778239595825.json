@@ -1,0 +1,28 @@
+{
+  "query": "SELECT id, name, milkType, currentVolumeMl FROM milkTanks ORDER BY id;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3J2fXRHx8d1YjF6.root --database mLhmg5VmBsEBpZiYqdnhMQ --execute SELECT id, name, milkType, currentVolumeMl FROM milkTanks ORDER BY id;",
+  "rows": [
+    {
+      "id": "1",
+      "name": "Танк №1",
+      "milkType": "goat",
+      "currentVolumeMl": "48000"
+    },
+    {
+      "id": "2",
+      "name": "Танк №2",
+      "milkType": "sheep",
+      "currentVolumeMl": "57000"
+    },
+    {
+      "id": "3",
+      "name": "Танк №3",
+      "milkType": "cow",
+      "currentVolumeMl": "69000"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tname\tmilkType\tcurrentVolumeMl\n1\tТанк №1\tgoat\t48000\n2\tТанк №2\tsheep\t57000\n3\tТанк №3\tcow\t69000\n",
+  "stderr": "",
+  "execution_time_ms": 416
+}

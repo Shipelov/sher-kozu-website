@@ -1,0 +1,28 @@
+{
+  "query": "SELECT targetTankId, milkReceptionStatus, SUM(acceptedVolumeMl) as totalMl, COUNT(*) as cnt FROM milkReceptions GROUP BY targetTankId, milkReceptionStatus ORDER BY targetTankId, milkReceptionStatus;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3J2fXRHx8d1YjF6.root --database mLhmg5VmBsEBpZiYqdnhMQ --execute SELECT targetTankId, milkReceptionStatus, SUM(acceptedVolumeMl) as totalMl, COUNT(*) as cnt FROM milkReceptions GROUP BY targetTankId, milkReceptionStatus ORDER BY targetTankId, milkReceptionStatus;",
+  "rows": [
+    {
+      "targetTankId": "1",
+      "milkReceptionStatus": "accepted",
+      "totalMl": "48000",
+      "cnt": "2"
+    },
+    {
+      "targetTankId": "2",
+      "milkReceptionStatus": "accepted",
+      "totalMl": "57000",
+      "cnt": "2"
+    },
+    {
+      "targetTankId": "3",
+      "milkReceptionStatus": "accepted",
+      "totalMl": "69000",
+      "cnt": "2"
+    }
+  ],
+  "messages": [],
+  "stdout": "targetTankId\tmilkReceptionStatus\ttotalMl\tcnt\n1\taccepted\t48000\t2\n2\taccepted\t57000\t2\n3\taccepted\t69000\t2\n",
+  "stderr": "",
+  "execution_time_ms": 268
+}
