@@ -231,6 +231,8 @@ export default function AdminMilkDashboard() {
   });
 
   function openAdjustDialog(tankId: number) {
+    console.log("openAdjustDialog called with tankId:", tankId);
+    alert(`Открываю корректировку для танка ID=${tankId}`);
     setAdjustTankId(tankId);
     setAdjustMode("absolute");
     setAdjustValue("");
