@@ -2725,3 +2725,5 @@ Module: Контроль оборота молока. Spec v2.1. Mobile-first AR
 - [x] Overview tab: break down processing stats by milk type (goat/sheep/cow) like milking sessions
 - [x] Add per-milk-type breakdown to processing StatCard in Overview tab
 - [x] Add per-milk-type breakdown to Processing tab (Переработка) in admin Milk Control
+- [ ] Processing tab: add summary/totals row with per-type sums for selected period
+- [ ] Processing tab: add milk type filter (goat/sheep/cow) to filter sessions

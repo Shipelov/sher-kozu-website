@@ -2140,6 +2140,7 @@ function exportOverviewPDF(
 function AdminProcessingTab() {
   const [page, setPage] = useState(1);
   const [statusFilter, setStatusFilter] = useState<string>("");
+  const [milkTypeFilter, setMilkTypeFilter] = useState<string>("");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const utils = trpc.useUtils();
@@ -2155,9 +2156,10 @@ function AdminProcessingTab() {
   const sessionsQuery = trpc.warehouseAdmin.processingSessions.useQuery({
     limit: 15,
     offset: (page - 1) * 15,
-    status: statusFilter ? (statusFilter as any) : undefined,
+    status: statusFilter && statusFilter !== "all_statuses" ? (statusFilter as any) : undefined,
     dateFrom: dateFrom || undefined,
     dateTo: dateTo || undefined,
+    milkType: milkTypeFilter && milkTypeFilter !== "all_types" ? (milkTypeFilter as any) : undefined,
   });
 
   const conversionQuery = trpc.warehouseAdmin.conversionAnalytics.useQuery({
@@ -2240,6 +2242,17 @@ function AdminProcessingTab() {
             <SelectItem value="in_progress">В процессе</SelectItem>
             <SelectItem value="completed">Завершена</SelectItem>
             <SelectItem value="cancelled">Отменена</SelectItem>
+          </SelectContent>
+        </Select>
+        <Select value={milkTypeFilter} onValueChange={(v) => { setMilkTypeFilter(v); setPage(1); }}>
+          <SelectTrigger className="w-40 h-9 text-xs">
+            <SelectValue placeholder="Все типы молока" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all_types">Все типы молока</SelectItem>
+            <SelectItem value="goat">🐐 Козье</SelectItem>
+            <SelectItem value="sheep">🐑 Овечье</SelectItem>
+            <SelectItem value="cow">🐄 Коровье</SelectItem>
           </SelectContent>
         </Select>
         <input
@@ -2349,6 +2362,49 @@ function AdminProcessingTab() {
                 </tr>
               )}
             </tbody>
+            {/* Summary/totals row */}
+            {sessions.length > 0 && (
+              <tfoot className="bg-[oklch(0.94_0.01_90)] border-t-2 border-[oklch(0.85_0.02_90)]">
+                <tr className="font-semibold text-xs">
+                  <td className="px-3 py-2" colSpan={3}>ИТОГО ({sessions.length} сессий)</td>
+                  <td className="px-3 py-2 text-right text-emerald-700">
+                    {(sessions.reduce((sum: number, s: any) => sum + s.totalInputMl, 0) / 1000).toFixed(1)} л
+                  </td>
+                  <td className="px-3 py-2">
+                    <div className="flex flex-wrap gap-1">
+                      {(() => {
+                        const totals = sessions.reduce((acc: any, s: any) => {
+                          acc.goat += s.byType?.goat ?? 0;
+                          acc.sheep += s.byType?.sheep ?? 0;
+                          acc.cow += s.byType?.cow ?? 0;
+                          return acc;
+                        }, { goat: 0, sheep: 0, cow: 0 });
+                        return (
+                          <>
+                            {totals.goat > 0 && (
+                              <span className="inline-flex items-center text-[9px] bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded-full font-bold">
+                                🐐 {totals.goat.toFixed(1)}л
+                              </span>
+                            )}
+                            {totals.sheep > 0 && (
+                              <span className="inline-flex items-center text-[9px] bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded-full font-bold">
+                                🐑 {totals.sheep.toFixed(1)}л
+                              </span>
+                            )}
+                            {totals.cow > 0 && (
+                              <span className="inline-flex items-center text-[9px] bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded-full font-bold">
+                                🐄 {totals.cow.toFixed(1)}л
+                              </span>
+                            )}
+                          </>
+                        );
+                      })()}
+                    </div>
+                  </td>
+                  <td className="px-3 py-2" colSpan={3}></td>
+                </tr>
+              </tfoot>
+            )}
           </table>
         </div>
       )}

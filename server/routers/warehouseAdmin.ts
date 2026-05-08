@@ -362,6 +362,7 @@ export const warehouseAdminRouter = router({
         status: z.enum(["draft", "in_progress", "completed", "cancelled"]).optional(),
         dateFrom: z.string().optional(),
         dateTo: z.string().optional(),
+        milkType: z.enum(["goat", "sheep", "cow"]).optional(),
       }).optional(),
     )
     .query(async ({ input }) => {
@@ -369,10 +370,28 @@ export const warehouseAdminRouter = router({
       const limit = input?.limit ?? 20;
       const offset = input?.offset ?? 0;
 
+      // If milkType filter is set, first find session IDs that have that milk type
+      let milkTypeSessionIds: number[] | null = null;
+      if (input?.milkType) {
+        const matchingSessions = await db
+          .select({ sessionId: processingInputs.sessionId })
+          .from(processingInputs)
+          .where(eq(processingInputs.milkType, input.milkType))
+          .groupBy(processingInputs.sessionId);
+        milkTypeSessionIds = matchingSessions.map(r => r.sessionId);
+      }
+
       const conditions: any[] = [];
       if (input?.status) conditions.push(eq(processingSessions.status, input.status));
       if (input?.dateFrom) conditions.push(sql`${processingSessions.shiftDate} >= ${input.dateFrom}`);
       if (input?.dateTo) conditions.push(sql`${processingSessions.shiftDate} <= ${input.dateTo}`);
+      if (milkTypeSessionIds !== null) {
+        if (milkTypeSessionIds.length === 0) {
+          // No sessions match this milk type — return empty
+          return { sessions: [], total: 0 };
+        }
+        conditions.push(sql`${processingSessions.id} IN (${sql.join(milkTypeSessionIds.map(id => sql`${id}`), sql`, `)})`);
+      }
 
       const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
 
