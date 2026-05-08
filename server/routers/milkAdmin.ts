@@ -304,6 +304,44 @@ export const milkAdminRouter = router({
         eq(processingSessions.status, "completed"),
       ));
 
+    // Processing input volumes broken down by milk type (today / week / month)
+    const procByTypeToday = await db
+      .select({
+        milkType: processingInputs.milkType,
+        totalMl: sql<number>`COALESCE(SUM(${processingInputs.volumeMl}), 0)`,
+      })
+      .from(processingInputs)
+      .innerJoin(processingSessions, eq(processingInputs.sessionId, processingSessions.id))
+      .where(and(gte(processingSessions.createdAt, todayStart), notCancelled))
+      .groupBy(processingInputs.milkType);
+
+    const procByTypeWeek = await db
+      .select({
+        milkType: processingInputs.milkType,
+        totalMl: sql<number>`COALESCE(SUM(${processingInputs.volumeMl}), 0)`,
+      })
+      .from(processingInputs)
+      .innerJoin(processingSessions, eq(processingInputs.sessionId, processingSessions.id))
+      .where(and(gte(processingSessions.createdAt, weekStart), notCancelled))
+      .groupBy(processingInputs.milkType);
+
+    const procByTypeMonth = await db
+      .select({
+        milkType: processingInputs.milkType,
+        totalMl: sql<number>`COALESCE(SUM(${processingInputs.volumeMl}), 0)`,
+      })
+      .from(processingInputs)
+      .innerJoin(processingSessions, eq(processingInputs.sessionId, processingSessions.id))
+      .where(and(gte(processingSessions.createdAt, monthStart), notCancelled))
+      .groupBy(processingInputs.milkType);
+
+    // Helper to convert per-type array to object
+    const toTypeMap = (rows: { milkType: string; totalMl: number }[]) => {
+      const m: Record<string, number> = { goat: 0, sheep: 0, cow: 0 };
+      for (const r of rows) m[r.milkType] = +(Number(r.totalMl) / 1000).toFixed(2);
+      return m;
+    };
+
     // Product output breakdown by product label (only completed sessions, this month)
     const productBreakdown = await db
       .select({
@@ -345,16 +383,19 @@ export const milkAdminRouter = router({
           sessions: Number(procTodayCount.count),
           inputLiters: +(Number(procTodayInput.totalMl) / 1000).toFixed(2),
           outputUnits: Number(procTodayOutput.count),
+          byType: toTypeMap(procByTypeToday),
         },
         week: {
           sessions: Number(procWeekCount.count),
           inputLiters: +(Number(procWeekInput.totalMl) / 1000).toFixed(2),
           outputUnits: Number(procWeekOutput.count),
+          byType: toTypeMap(procByTypeWeek),
         },
         month: {
           sessions: Number(procMonthCount.count),
           inputLiters: +(Number(procMonthInput.totalMl) / 1000).toFixed(2),
           outputUnits: Number(procMonthOutput.count),
+          byType: toTypeMap(procByTypeMonth),
         },
         avgConversionRatio: +(Number(avgConversion.avgRatio)).toFixed(4),
         productBreakdown: productBreakdown.map(p => ({

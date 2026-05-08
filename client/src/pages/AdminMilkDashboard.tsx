@@ -1850,11 +1850,26 @@ function OverviewSection({
                   <td className={tdCls}>{overview.processing.month.sessions}</td>
                 </tr>
                 <tr className="bg-[oklch(0.97_0.02_270)] hover:bg-[oklch(0.96_0.03_270)]">
-                  <td className={`${tdBold} text-[oklch(0.30_0.10_270)]`}>Молока в переработку, л</td>
+                  <td className={`${tdBold} text-[oklch(0.30_0.10_270)]`}>Молока в переработку, л (всего)</td>
                   <td className={`${tdBold} text-[oklch(0.30_0.10_270)]`}>{overview.processing.today.inputLiters}</td>
                   <td className={`${tdBold} text-[oklch(0.30_0.10_270)]`}>{overview.processing.week.inputLiters}</td>
                   <td className={`${tdBold} text-[oklch(0.30_0.10_270)]`}>{overview.processing.month.inputLiters}</td>
                 </tr>
+                {(["goat", "sheep", "cow"] as const).map((type) => {
+                  const label = type === "goat" ? "  🐐 Козье" : type === "sheep" ? "  🐑 Овечье" : "  🐄 Коровье";
+                  const todayVal = (overview.processing.today as any).byType?.[type] ?? 0;
+                  const weekVal = (overview.processing.week as any).byType?.[type] ?? 0;
+                  const monthVal = (overview.processing.month as any).byType?.[type] ?? 0;
+                  if (todayVal === 0 && weekVal === 0 && monthVal === 0) return null;
+                  return (
+                    <tr key={type} className="hover:bg-[oklch(0.98_0.005_90)]">
+                      <td className={`${tdCls} text-[oklch(0.4_0.04_80)] pl-6`}>{label}</td>
+                      <td className={tdCls}>{todayVal > 0 ? `${todayVal}` : "—"}</td>
+                      <td className={tdCls}>{weekVal > 0 ? `${weekVal}` : "—"}</td>
+                      <td className={tdCls}>{monthVal > 0 ? `${monthVal}` : "—"}</td>
+                    </tr>
+                  );
+                })}
                 <tr className="hover:bg-[oklch(0.98_0.005_90)]">
                   <td className={`${tdCls} text-[oklch(0.4_0.04_80)]`}>Произведено единиц</td>
                   <td className={tdCls}>{overview.processing.today.outputUnits}</td>
