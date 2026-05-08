@@ -1,0 +1,34 @@
+{
+  "query": "SELECT tankId, milkMovementType, COUNT(*) as cnt, SUM(volumeMl) as totalMl FROM milkTankMovements GROUP BY tankId, milkMovementType ORDER BY tankId, milkMovementType;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3J2fXRHx8d1YjF6.root --database mLhmg5VmBsEBpZiYqdnhMQ --execute SELECT tankId, milkMovementType, COUNT(*) as cnt, SUM(volumeMl) as totalMl FROM milkTankMovements GROUP BY tankId, milkMovementType ORDER BY tankId, milkMovementType;",
+  "rows": [
+    {
+      "tankId": "1",
+      "milkMovementType": "milking_in",
+      "cnt": "2",
+      "totalMl": "48000"
+    },
+    {
+      "tankId": "1",
+      "milkMovementType": "adjustment",
+      "cnt": "1",
+      "totalMl": "48000"
+    },
+    {
+      "tankId": "2",
+      "milkMovementType": "milking_in",
+      "cnt": "2",
+      "totalMl": "57000"
+    },
+    {
+      "tankId": "3",
+      "milkMovementType": "milking_in",
+      "cnt": "2",
+      "totalMl": "69000"
+    }
+  ],
+  "messages": [],
+  "stdout": "tankId\tmilkMovementType\tcnt\ttotalMl\n1\tmilking_in\t2\t48000\n1\tadjustment\t1\t48000\n2\tmilking_in\t2\t57000\n3\tmilking_in\t2\t69000\n",
+  "stderr": "",
+  "execution_time_ms": 72
+}

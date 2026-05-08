@@ -1184,6 +1184,98 @@ export const milkAdminRouter = router({
     };
   }),
 
+  /**
+   * Manual tank volume adjustment.
+   * Two modes:
+   * - "absolute": set tank volume to exact value (liters)
+   * - "delta": add or subtract volume (liters, negative = subtract)
+   * Requires a mandatory reason/note.
+   */
+  adjustTankVolume: adminProcedure
+    .input(z.object({
+      tankId: z.number(),
+      mode: z.enum(["absolute", "delta"]),
+      valueLiters: z.number(), // liters; for absolute = new volume, for delta = +/- change
+      reason: z.string().min(3, "Укажите причину корректировки (минимум 3 символа)"),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      const db = await getDb();
+
+      // Get current tank
+      const [tank] = await db.select().from(milkTanks).where(eq(milkTanks.id, input.tankId));
+      if (!tank) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Танк не найден" });
+      }
+
+      const oldVolumeMl = tank.currentVolumeMl;
+      let newVolumeMl: number;
+
+      if (input.mode === "absolute") {
+        newVolumeMl = Math.round(input.valueLiters * 1000);
+      } else {
+        // delta mode
+        newVolumeMl = oldVolumeMl + Math.round(input.valueLiters * 1000);
+      }
+
+      // Validate bounds
+      if (newVolumeMl < 0) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Объём не может быть отрицательным" });
+      }
+      if (newVolumeMl > tank.capacityMl) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: `Объём превышает ёмкость танка (${(tank.capacityMl / 1000).toFixed(1)} л)` });
+      }
+
+      const deltaMl = newVolumeMl - oldVolumeMl;
+
+      // Find first active worker to record as performer (or use ID 1 as system)
+      const [worker] = await db.select().from(farmWorkers).where(eq(farmWorkers.isActive, true)).limit(1);
+      const performerWorkerId = worker?.id ?? 1;
+
+      // Update tank volume
+      await db.update(milkTanks)
+        .set({
+          currentVolumeMl: newVolumeMl,
+          status: newVolumeMl === 0 ? "empty" : newVolumeMl >= tank.capacityMl ? "full" : "filling",
+        })
+        .where(eq(milkTanks.id, input.tankId));
+
+      // Record movement
+      await db.insert(milkTankMovements).values({
+        tankId: input.tankId,
+        movementType: "adjustment",
+        volumeMl: deltaMl,
+        tankVolumeAfterMl: newVolumeMl,
+        performedByWorkerId: performerWorkerId,
+        note: `[Ручная корректировка] ${input.reason} (${input.mode === "absolute" ? "установлено" : "дельта"}: ${input.mode === "absolute" ? input.valueLiters + " л" : (input.valueLiters >= 0 ? "+" : "") + input.valueLiters + " л"})`,
+      });
+
+      // Audit log
+      await logMilkAudit({
+        action: "tank_movement",
+        adminOpenId: ctx.user?.openId ?? "admin",
+        entityType: "tank",
+        entityId: input.tankId,
+        detailsJson: JSON.stringify({
+          type: "manual_adjustment",
+          mode: input.mode,
+          valueLiters: input.valueLiters,
+          reason: input.reason,
+          oldVolumeMl,
+          newVolumeMl,
+          deltaMl,
+        }),
+      });
+
+      return {
+        tankId: input.tankId,
+        tankName: tank.name,
+        oldLiters: +(oldVolumeMl / 1000).toFixed(2),
+        newLiters: +(newVolumeMl / 1000).toFixed(2),
+        deltaLiters: +(deltaMl / 1000).toFixed(2),
+        reason: input.reason,
+      };
+    }),
+
   tankReconciliation: adminProcedure.query(async () => {
     const db = await getDb();
 

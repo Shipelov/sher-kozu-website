@@ -1,0 +1,64 @@
+{
+  "query": "SELECT id, sessionId, milkReceptionStatus, acceptedVolumeMl, targetTankId, milkType, createdAt FROM milkReceptions ORDER BY createdAt;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3J2fXRHx8d1YjF6.root --database mLhmg5VmBsEBpZiYqdnhMQ --execute SELECT id, sessionId, milkReceptionStatus, acceptedVolumeMl, targetTankId, milkType, createdAt FROM milkReceptions ORDER BY createdAt;",
+  "rows": [
+    {
+      "id": "1",
+      "sessionId": "2",
+      "milkReceptionStatus": "accepted",
+      "acceptedVolumeMl": "30000",
+      "targetTankId": "1",
+      "milkType": "goat",
+      "createdAt": "2026-04-21 21:11:07"
+    },
+    {
+      "id": "2",
+      "sessionId": "2",
+      "milkReceptionStatus": "accepted",
+      "acceptedVolumeMl": "30000",
+      "targetTankId": "2",
+      "milkType": "sheep",
+      "createdAt": "2026-04-21 21:11:12"
+    },
+    {
+      "id": "3",
+      "sessionId": "2",
+      "milkReceptionStatus": "accepted",
+      "acceptedVolumeMl": "40000",
+      "targetTankId": "3",
+      "milkType": "cow",
+      "createdAt": "2026-04-21 21:11:19"
+    },
+    {
+      "id": "4",
+      "sessionId": "3",
+      "milkReceptionStatus": "accepted",
+      "acceptedVolumeMl": "18000",
+      "targetTankId": "1",
+      "milkType": "goat",
+      "createdAt": "2026-04-21 22:07:20"
+    },
+    {
+      "id": "5",
+      "sessionId": "3",
+      "milkReceptionStatus": "accepted",
+      "acceptedVolumeMl": "27000",
+      "targetTankId": "2",
+      "milkType": "sheep",
+      "createdAt": "2026-04-21 22:07:26"
+    },
+    {
+      "id": "6",
+      "sessionId": "3",
+      "milkReceptionStatus": "accepted",
+      "acceptedVolumeMl": "29000",
+      "targetTankId": "3",
+      "milkType": "cow",
+      "createdAt": "2026-04-21 22:07:32"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tsessionId\tmilkReceptionStatus\tacceptedVolumeMl\ttargetTankId\tmilkType\tcreatedAt\n1\t2\taccepted\t30000\t1\tgoat\t2026-04-21 21:11:07\n2\t2\taccepted\t30000\t2\tsheep\t2026-04-21 21:11:12\n3\t2\taccepted\t40000\t3\tcow\t2026-04-21 21:11:19\n4\t3\taccepted\t18000\t1\tgoat\t2026-04-21 22:07:20\n5\t3\taccepted\t27000\t2\tsheep\t2026-04-21 22:07:26\n6\t3\taccepted\t29000\t3\tcow\t2026-04-21 22:07:32\n",
+  "stderr": "",
+  "execution_time_ms": 62
+}

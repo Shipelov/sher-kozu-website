@@ -209,6 +209,45 @@ export default function AdminMilkDashboard() {
 
   const recalculateTanks = trpc.milkAdmin.recalculateTankVolumes.useMutation();
 
+  // ─── Tank adjustment dialog state ───
+  const [showAdjustDialog, setShowAdjustDialog] = useState(false);
+  const [adjustTankId, setAdjustTankId] = useState<number | null>(null);
+  const [adjustMode, setAdjustMode] = useState<"absolute" | "delta">("absolute");
+  const [adjustValue, setAdjustValue] = useState("");
+  const [adjustReason, setAdjustReason] = useState("");
+
+  const adjustTankMutation = trpc.milkAdmin.adjustTankVolume.useMutation({
+    onSuccess: (data: any) => {
+      toast.success(`${data.tankName}: ${data.oldLiters} л → ${data.newLiters} л (${data.deltaLiters >= 0 ? "+" : ""}${data.deltaLiters} л)`);
+      setShowAdjustDialog(false);
+      setAdjustTankId(null);
+      setAdjustValue("");
+      setAdjustReason("");
+      void utils.milkAdmin.tanks.invalidate();
+      void utils.milkAdmin.tankReconciliation.invalidate();
+      void utils.milkAdmin.overview.invalidate();
+    },
+    onError: (err: any) => toast.error("Ошибка корректировки", { description: err.message }),
+  });
+
+  function openAdjustDialog(tankId: number) {
+    setAdjustTankId(tankId);
+    setAdjustMode("absolute");
+    setAdjustValue("");
+    setAdjustReason("");
+    setShowAdjustDialog(true);
+  }
+
+  function handleAdjustSubmit() {
+    if (!adjustTankId || !adjustValue || !adjustReason) return;
+    adjustTankMutation.mutate({
+      tankId: adjustTankId,
+      mode: adjustMode,
+      valueLiters: parseFloat(adjustValue),
+      reason: adjustReason,
+    });
+  }
+
   const updateSessionMutation = trpc.milkAdmin.updateSession.useMutation({
     onSuccess: () => {
       toast.success("Дойка обновлена");
@@ -679,27 +718,37 @@ export default function AdminMilkDashboard() {
                         {t.fillPercent}%
                       </p>
                     </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() =>
-                        toggleTankMutation.mutate({
-                          tankId: t.id,
-                          isActive: !t.isActive,
-                        })
-                      }
-                      className="w-full text-xs"
-                    >
-                      {t.isActive ? (
-                        <>
-                          <PowerOff className="w-3 h-3 mr-1" /> Деактивировать
-                        </>
-                      ) : (
-                        <>
-                          <Power className="w-3 h-3 mr-1" /> Активировать
-                        </>
-                      )}
-                    </Button>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => openAdjustDialog(t.id)}
+                        className="flex-1 text-xs"
+                      >
+                        <Pencil className="w-3 h-3 mr-1" /> Корректировка
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() =>
+                          toggleTankMutation.mutate({
+                            tankId: t.id,
+                            isActive: !t.isActive,
+                          })
+                        }
+                        className="flex-1 text-xs"
+                      >
+                        {t.isActive ? (
+                          <>
+                            <PowerOff className="w-3 h-3 mr-1" /> Деактивировать
+                          </>
+                        ) : (
+                          <>
+                            <Power className="w-3 h-3 mr-1" /> Активировать
+                          </>
+                        )}
+                      </Button>
+                    </div>
                   </div>
                 );
               })}
@@ -2417,6 +2466,73 @@ function AdminWarehousesTab() {
             >
               {createMutation.isPending && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
               Создать
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Tank Adjustment Dialog ── */}
+      <Dialog open={showAdjustDialog} onOpenChange={(open) => !open && setShowAdjustDialog(false)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Корректировка объёма танка</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            {/* Mode selector */}
+            <div>
+              <label className="text-sm font-medium text-[oklch(0.35_0.04_60)] mb-1 block">Режим</label>
+              <div className="flex gap-2">
+                <Button
+                  variant={adjustMode === "absolute" ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setAdjustMode("absolute")}
+                  className="flex-1"
+                >
+                  Установить объём
+                </Button>
+                <Button
+                  variant={adjustMode === "delta" ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setAdjustMode("delta")}
+                  className="flex-1"
+                >
+                  Добавить / Списать
+                </Button>
+              </div>
+            </div>
+
+            {/* Value input */}
+            <div>
+              <label className="text-sm font-medium text-[oklch(0.35_0.04_60)] mb-1 block">
+                {adjustMode === "absolute" ? "Новый объём (литры)" : "Изменение (литры, минус = списание)"}
+              </label>
+              <Input
+                type="number"
+                step="0.01"
+                placeholder={adjustMode === "absolute" ? "Напр. 150.5" : "Напр. -20 или +30"}
+                value={adjustValue}
+                onChange={(e) => setAdjustValue(e.target.value)}
+              />
+            </div>
+
+            {/* Reason input */}
+            <div>
+              <label className="text-sm font-medium text-[oklch(0.35_0.04_60)] mb-1 block">Причина корректировки *</label>
+              <Input
+                placeholder="Напр. Инвентаризация, пролив, погрешность измерения"
+                value={adjustReason}
+                onChange={(e) => setAdjustReason(e.target.value)}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowAdjustDialog(false)}>Отмена</Button>
+            <Button
+              onClick={handleAdjustSubmit}
+              disabled={!adjustValue || !adjustReason || adjustReason.length < 3 || adjustTankMutation.isPending}
+            >
+              {adjustTankMutation.isPending && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+              Применить
             </Button>
           </DialogFooter>
         </DialogContent>
