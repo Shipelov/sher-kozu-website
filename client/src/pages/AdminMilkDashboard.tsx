@@ -1818,6 +1818,7 @@ function OverviewSection({
           value={overview.processing?.today?.sessions ?? 0}
           sub={`Вход: ${overview.processing?.today?.inputLiters ?? 0}л → ${overview.processing?.today?.outputUnits ?? 0} ед.`}
           accent
+          byType={(overview.processing?.today as any)?.byType}
         />
         <StatCard
           label="Ср. коэфф. конверсии"
@@ -1945,12 +1946,14 @@ function StatCard({
   sub,
   accent,
   warn,
+  byType,
 }: {
   label: string;
   value: string | number;
   sub?: string;
   accent?: boolean;
   warn?: boolean;
+  byType?: { goat: number; sheep: number; cow: number };
 }) {
   return (
     <div
@@ -1971,6 +1974,25 @@ function StatCard({
         {value}
       </p>
       {sub && <p className="text-xs text-[oklch(0.52_0.04_80)] mt-0.5">{sub}</p>}
+      {byType && (byType.goat > 0 || byType.sheep > 0 || byType.cow > 0) && (
+        <div className="mt-2 pt-2 border-t border-dashed border-[oklch(0.85_0.03_80)] space-y-0.5">
+          {byType.goat > 0 && (
+            <p className="text-[10px] text-[oklch(0.45_0.04_80)] flex justify-between">
+              <span>🐐 Козье</span><span className="font-medium">{byType.goat}л</span>
+            </p>
+          )}
+          {byType.sheep > 0 && (
+            <p className="text-[10px] text-[oklch(0.45_0.04_80)] flex justify-between">
+              <span>🐑 Овечье</span><span className="font-medium">{byType.sheep}л</span>
+            </p>
+          )}
+          {byType.cow > 0 && (
+            <p className="text-[10px] text-[oklch(0.45_0.04_80)] flex justify-between">
+              <span>🐄 Коровье</span><span className="font-medium">{byType.cow}л</span>
+            </p>
+          )}
+        </div>
+      )}
     </div>
   );
 }

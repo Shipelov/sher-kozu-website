@@ -2723,3 +2723,4 @@ Module: Контроль оборота молока. Spec v2.1. Mobile-first AR
 - [x] Data correction: Recalculate tank volumes from reception records — Tank №1 (goat) restored from 0 to 48,000 ml, Tanks №2 and №3 confirmed correct (57,000 / 69,000 ml). Adjustment movement record added.
 - [x] Manual tank volume adjustment: admin can set absolute volume or add/subtract delta with mandatory reason field
 - [x] Overview tab: break down processing stats by milk type (goat/sheep/cow) like milking sessions
+- [x] Add per-milk-type breakdown to processing StatCard in Overview tab
