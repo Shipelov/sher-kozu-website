@@ -231,8 +231,6 @@ export default function AdminMilkDashboard() {
   });
 
   function openAdjustDialog(tankId: number) {
-    console.log("openAdjustDialog called with tankId:", tankId);
-    alert(`Открываю корректировку для танка ID=${tankId}`);
     setAdjustTankId(tankId);
     setAdjustMode("absolute");
     setAdjustValue("");
@@ -1332,6 +1330,71 @@ export default function AdminMilkDashboard() {
                 <Trash2 className="h-4 w-4 mr-2" />
               )}
               Удалить
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Tank Adjustment Dialog ── */}
+      <Dialog open={showAdjustDialog} onOpenChange={(open) => { if (!open) setShowAdjustDialog(false); }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Корректировка объёма танка</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            {/* Mode selector */}
+            <div>
+              <label className="text-sm font-medium text-[oklch(0.35_0.04_60)] mb-1 block">Режим</label>
+              <div className="flex gap-2">
+                <Button
+                  variant={adjustMode === "absolute" ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setAdjustMode("absolute")}
+                  className="flex-1"
+                >
+                  Установить объём
+                </Button>
+                <Button
+                  variant={adjustMode === "delta" ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setAdjustMode("delta")}
+                  className="flex-1"
+                >
+                  Добавить / Списать
+                </Button>
+              </div>
+            </div>
+            {/* Value input */}
+            <div>
+              <label className="text-sm font-medium text-[oklch(0.35_0.04_60)] mb-1 block">
+                {adjustMode === "absolute" ? "Новый объём (литры)" : "Изменение (литры, минус = списание)"}
+              </label>
+              <Input
+                type="number"
+                step="0.01"
+                placeholder={adjustMode === "absolute" ? "Напр. 150.5" : "Напр. -20 или +30"}
+                value={adjustValue}
+                onChange={(e) => setAdjustValue(e.target.value)}
+              />
+            </div>
+            {/* Reason input */}
+            <div>
+              <label className="text-sm font-medium text-[oklch(0.35_0.04_60)] mb-1 block">Причина корректировки *</label>
+              <Input
+                placeholder="Напр. Инвентаризация, пролив, погрешность измерения"
+                value={adjustReason}
+                onChange={(e) => setAdjustReason(e.target.value)}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowAdjustDialog(false)}>Отмена</Button>
+            <Button
+              onClick={handleAdjustSubmit}
+              disabled={!adjustValue || !adjustReason || adjustReason.length < 3 || adjustTankMutation.isPending}
+            >
+              {adjustTankMutation.isPending && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+              Применить
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -2473,72 +2536,6 @@ function AdminWarehousesTab() {
         </DialogContent>
       </Dialog>
 
-      {/* ── Tank Adjustment Dialog ── */}
-      <Dialog open={showAdjustDialog} onOpenChange={(open) => !open && setShowAdjustDialog(false)}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Корректировка объёма танка</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 py-2">
-            {/* Mode selector */}
-            <div>
-              <label className="text-sm font-medium text-[oklch(0.35_0.04_60)] mb-1 block">Режим</label>
-              <div className="flex gap-2">
-                <Button
-                  variant={adjustMode === "absolute" ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setAdjustMode("absolute")}
-                  className="flex-1"
-                >
-                  Установить объём
-                </Button>
-                <Button
-                  variant={adjustMode === "delta" ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setAdjustMode("delta")}
-                  className="flex-1"
-                >
-                  Добавить / Списать
-                </Button>
-              </div>
-            </div>
-
-            {/* Value input */}
-            <div>
-              <label className="text-sm font-medium text-[oklch(0.35_0.04_60)] mb-1 block">
-                {adjustMode === "absolute" ? "Новый объём (литры)" : "Изменение (литры, минус = списание)"}
-              </label>
-              <Input
-                type="number"
-                step="0.01"
-                placeholder={adjustMode === "absolute" ? "Напр. 150.5" : "Напр. -20 или +30"}
-                value={adjustValue}
-                onChange={(e) => setAdjustValue(e.target.value)}
-              />
-            </div>
-
-            {/* Reason input */}
-            <div>
-              <label className="text-sm font-medium text-[oklch(0.35_0.04_60)] mb-1 block">Причина корректировки *</label>
-              <Input
-                placeholder="Напр. Инвентаризация, пролив, погрешность измерения"
-                value={adjustReason}
-                onChange={(e) => setAdjustReason(e.target.value)}
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowAdjustDialog(false)}>Отмена</Button>
-            <Button
-              onClick={handleAdjustSubmit}
-              disabled={!adjustValue || !adjustReason || adjustReason.length < 3 || adjustTankMutation.isPending}
-            >
-              {adjustTankMutation.isPending && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-              Применить
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
