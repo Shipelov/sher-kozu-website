@@ -311,20 +311,22 @@ describe("milkAdmin tRPC router", () => {
       expect(overview).toHaveProperty("receptionToday");
       expect(overview).toHaveProperty("tanks");
       expect(typeof overview.today.sessions).toBe("number");
-      expect(overview.today.volume).toHaveProperty("goatLiters");
-      expect(overview.today.volume).toHaveProperty("sheepLiters");
-      expect(overview.today.volume).toHaveProperty("cowLiters");
-      expect(overview.today.volume).toHaveProperty("totalLiters");
-      expect(typeof overview.today.goatHeads).toBe("number");
-      expect(typeof overview.today.sheepHeads).toBe("number");
-      expect(typeof overview.today.cowHeads).toBe("number");
-      expect(typeof overview.today.feedingLiters).toBe("number");
-      expect(typeof overview.today.lossesLiters).toBe("number");
-      expect(typeof overview.today.netLiters).toBe("number");
-      expect(typeof overview.week.feedingLiters).toBe("number");
-      expect(typeof overview.week.netLiters).toBe("number");
-      expect(typeof overview.month.feedingLiters).toBe("number");
-      expect(typeof overview.month.netLiters).toBe("number");
+      // New format: today.total.volumeL, today.goat.volumeL, etc.
+      expect(overview.today).toHaveProperty("total");
+      expect(typeof overview.today.total.volumeL).toBe("number");
+      expect(typeof overview.today.total.feedingL).toBe("number");
+      expect(typeof overview.today.total.lossesL).toBe("number");
+      expect(typeof overview.today.total.netL).toBe("number");
+      expect(typeof overview.today.total.heads).toBe("number");
+      expect(overview.today).toHaveProperty("goat");
+      expect(typeof overview.today.goat.volumeL).toBe("number");
+      expect(typeof overview.today.goat.heads).toBe("number");
+      expect(overview.today).toHaveProperty("sheep");
+      expect(overview.today).toHaveProperty("cow");
+      expect(typeof overview.week.total.feedingL).toBe("number");
+      expect(typeof overview.week.total.netL).toBe("number");
+      expect(typeof overview.month.total.feedingL).toBe("number");
+      expect(typeof overview.month.total.netL).toBe("number");
       expect(typeof overview.tanks.fillPercent).toBe("number");
     });
 

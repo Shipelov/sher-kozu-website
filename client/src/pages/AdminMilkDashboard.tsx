@@ -2277,6 +2277,7 @@ function AdminProcessingTab() {
                 <th className="px-3 py-2 text-left font-semibold">Дата</th>
                 <th className="px-3 py-2 text-left font-semibold">Сыродел</th>
                 <th className="px-3 py-2 text-right font-semibold">Вход (л)</th>
+                <th className="px-3 py-2 text-left font-semibold">По типам</th>
                 <th className="px-3 py-2 text-left font-semibold">Статус</th>
                 <th className="px-3 py-2 text-left font-semibold">Создана</th>
                 <th className="px-3 py-2 text-center font-semibold w-16"></th>
@@ -2291,6 +2292,28 @@ function AdminProcessingTab() {
                     <td className="px-3 py-2">{s.shiftDate}</td>
                     <td className="px-3 py-2">{s.workerName ?? "—"}</td>
                     <td className="px-3 py-2 text-right font-medium text-emerald-700">{(s.totalInputMl / 1000).toFixed(1)}</td>
+                    <td className="px-3 py-2">
+                      <div className="flex flex-wrap gap-1">
+                        {s.byType?.goat > 0 && (
+                          <span className="inline-flex items-center text-[9px] bg-amber-50 text-amber-700 px-1.5 py-0.5 rounded-full">
+                            🐐 {s.byType.goat.toFixed(1)}л
+                          </span>
+                        )}
+                        {s.byType?.sheep > 0 && (
+                          <span className="inline-flex items-center text-[9px] bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded-full">
+                            🐑 {s.byType.sheep.toFixed(1)}л
+                          </span>
+                        )}
+                        {s.byType?.cow > 0 && (
+                          <span className="inline-flex items-center text-[9px] bg-emerald-50 text-emerald-700 px-1.5 py-0.5 rounded-full">
+                            🐄 {s.byType.cow.toFixed(1)}л
+                          </span>
+                        )}
+                        {(!s.byType || (s.byType.goat === 0 && s.byType.sheep === 0 && s.byType.cow === 0)) && (
+                          <span className="text-[9px] text-gray-400">—</span>
+                        )}
+                      </div>
+                    </td>
                     <td className="px-3 py-2">
                       <Badge className={`rounded-full text-[9px] ${st.color}`}>{st.label}</Badge>
                     </td>
@@ -2320,7 +2343,7 @@ function AdminProcessingTab() {
               })}
               {sessions.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="px-3 py-6 text-center text-[oklch(0.5_0.04_80)]">
+                  <td colSpan={8} className="px-3 py-6 text-center text-[oklch(0.5_0.04_80)]">
                     Нет сессий переработки
                   </td>
                 </tr>

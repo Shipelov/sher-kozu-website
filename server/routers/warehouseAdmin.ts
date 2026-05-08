@@ -401,7 +401,36 @@ export const warehouseAdminRouter = router({
           .where(whereClause),
       ]);
 
-      return { sessions, total: Number(countResult?.count ?? 0) };
+      // Fetch per-milk-type breakdown for each session
+      const sessionIds = sessions.map(s => s.id);
+      let inputsBySession: Record<number, { goat: number; sheep: number; cow: number }> = {};
+      if (sessionIds.length > 0) {
+        const inputs = await db
+          .select({
+            sessionId: processingInputs.sessionId,
+            milkType: processingInputs.milkType,
+            volumeMl: processingInputs.volumeMl,
+          })
+          .from(processingInputs)
+          .where(sql`${processingInputs.sessionId} IN (${sql.join(sessionIds.map(id => sql`${id}`), sql`, `)})`);
+
+        for (const inp of inputs) {
+          if (!inputsBySession[inp.sessionId]) {
+            inputsBySession[inp.sessionId] = { goat: 0, sheep: 0, cow: 0 };
+          }
+          const liters = inp.volumeMl / 1000;
+          if (inp.milkType === "goat") inputsBySession[inp.sessionId].goat += liters;
+          else if (inp.milkType === "sheep") inputsBySession[inp.sessionId].sheep += liters;
+          else if (inp.milkType === "cow") inputsBySession[inp.sessionId].cow += liters;
+        }
+      }
+
+      const sessionsWithTypes = sessions.map(s => ({
+        ...s,
+        byType: inputsBySession[s.id] ?? { goat: 0, sheep: 0, cow: 0 },
+      }));
+
+      return { sessions: sessionsWithTypes, total: Number(countResult?.count ?? 0) };
     }),
 
   /**
