@@ -2498,6 +2498,10 @@ export const milkTanks = mysqlTable("milkTanks", {
   /** Location description, e.g. "Молочная", "Сыроварня" */
   location: varchar("location", { length: 120 }),
   isActive: boolean("isActive").default(true).notNull(),
+  /** Timestamp when analytics was last reset — data before this date is excluded from analytics */
+  analyticsResetAt: timestamp("analyticsResetAt"),
+  /** Volume at the moment of analytics reset (starting baseline) */
+  analyticsResetVolumeMl: int("analyticsResetVolumeMl"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 }, (t) => ([
@@ -2525,8 +2529,10 @@ export const milkTankMovements = mysqlTable("milkTankMovements", {
   batchId: int("batchId"),
   /** Reference to target tank (for transfers) */
   targetTankId: int("targetTankId"),
-  /** Worker who performed the movement */
-  performedByWorkerId: int("performedByWorkerId").notNull(),
+  /** Worker who performed the movement (nullable for admin-initiated) */
+  performedByWorkerId: int("performedByWorkerId"),
+  /** Admin openId who performed the movement (for admin-initiated adjustments) */
+  performedByAdminOpenId: varchar("performedByAdminOpenId", { length: 128 }),
   note: text("note"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 }, (t) => ([

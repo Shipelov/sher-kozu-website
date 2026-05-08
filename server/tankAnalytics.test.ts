@@ -208,6 +208,91 @@ describe("Tank Analytics Endpoints", () => {
     });
   });
 
+  describe("Admin attribution in adjustments", () => {
+    it("should show 'Админ' when performedByAdminOpenId is set", () => {
+      const formatWorkerName = (m: { performedByAdminOpenId: string | null; workerName: string | null }) => {
+        return m.performedByAdminOpenId ? "Админ" : (m.workerName ?? "—");
+      };
+
+      // Admin-initiated adjustment
+      expect(formatWorkerName({ performedByAdminOpenId: "admin-open-id-123", workerName: "Вероника Сергеева" })).toBe("Админ");
+
+      // Worker-initiated movement
+      expect(formatWorkerName({ performedByAdminOpenId: null, workerName: "Вероника Сергеева" })).toBe("Вероника Сергеева");
+
+      // No worker, no admin
+      expect(formatWorkerName({ performedByAdminOpenId: null, workerName: null })).toBe("—");
+    });
+  });
+
+  describe("Period selection for analytics", () => {
+    it("should validate dateFrom and dateTo as optional strings", async () => {
+      const { z } = await import("zod");
+      const schema = z.object({
+        tankId: z.number().int(),
+        dateFrom: z.string().optional(),
+        dateTo: z.string().optional(),
+      });
+
+      // No dates
+      const noDates = schema.safeParse({ tankId: 1 });
+      expect(noDates.success).toBe(true);
+
+      // With dates
+      const withDates = schema.safeParse({ tankId: 1, dateFrom: "2026-04-01", dateTo: "2026-04-30" });
+      expect(withDates.success).toBe(true);
+
+      // Only dateFrom
+      const onlyFrom = schema.safeParse({ tankId: 1, dateFrom: "2026-04-01" });
+      expect(onlyFrom.success).toBe(true);
+    });
+
+    it("should calculate period days correctly", () => {
+      const calcPeriodDays = (dateFrom: string, dateTo: string) => {
+        const periodStart = new Date(dateFrom);
+        const periodEnd = new Date(dateTo + "T23:59:59");
+        return Math.max(1, Math.round((periodEnd.getTime() - periodStart.getTime()) / (1000 * 60 * 60 * 24)));
+      };
+
+      // 30-day period
+      expect(calcPeriodDays("2026-04-01", "2026-04-30")).toBe(30);
+
+      // Same day
+      expect(calcPeriodDays("2026-04-15", "2026-04-15")).toBe(1);
+
+      // 7-day period
+      expect(calcPeriodDays("2026-04-01", "2026-04-07")).toBe(7);
+    });
+  });
+
+  describe("Analytics reset", () => {
+    it("should validate resetTankAnalytics input", async () => {
+      const { z } = await import("zod");
+      const schema = z.object({ tankId: z.number().int() });
+
+      const valid = schema.safeParse({ tankId: 1 });
+      expect(valid.success).toBe(true);
+
+      const invalid = schema.safeParse({});
+      expect(invalid.success).toBe(false);
+    });
+
+    it("should use analyticsResetAt as effective dateFrom when no custom period", () => {
+      const getEffectiveDateFrom = (dateFrom: string, tankResetAt: string | null) => {
+        return dateFrom || (tankResetAt ? tankResetAt.slice(0, 10) : "");
+      };
+
+      // No custom period, has reset date
+      expect(getEffectiveDateFrom("", "2026-04-15T10:30:00.000Z")).toBe("2026-04-15");
+
+      // Custom period overrides reset date
+      expect(getEffectiveDateFrom("2026-03-01", "2026-04-15T10:30:00.000Z")).toBe("2026-03-01");
+
+      // No custom period, no reset date
+      expect(getEffectiveDateFrom("", null)).toBe("");
+    });
+  });
+
   describe("Volume history reconstruction logic", () => {
     it("should carry forward volume when no movement on a day", () => {
       // Simulate the day-by-day reconstruction

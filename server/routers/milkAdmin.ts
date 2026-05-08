@@ -601,6 +601,8 @@ export const milkAdminRouter = router({
       status: t.status,
       location: t.location,
       isActive: t.isActive,
+      analyticsResetAt: t.analyticsResetAt?.toISOString() ?? null,
+      analyticsResetVolumeMl: t.analyticsResetVolumeMl,
       createdAt: t.createdAt.toISOString(),
     }));
   }),
@@ -1268,10 +1270,6 @@ export const milkAdminRouter = router({
 
       const deltaMl = newVolumeMl - oldVolumeMl;
 
-      // Find first active worker to record as performer (or use ID 1 as system)
-      const [worker] = await db.select().from(farmWorkers).where(eq(farmWorkers.isActive, true)).limit(1);
-      const performerWorkerId = worker?.id ?? 1;
-
       // Update tank volume
       await db.update(milkTanks)
         .set({
@@ -1280,13 +1278,14 @@ export const milkAdminRouter = router({
         })
         .where(eq(milkTanks.id, input.tankId));
 
-      // Record movement
+      // Record movement — admin-initiated, so store admin openId instead of worker
       await db.insert(milkTankMovements).values({
         tankId: input.tankId,
         movementType: "adjustment",
         volumeMl: deltaMl,
         tankVolumeAfterMl: newVolumeMl,
-        performedByWorkerId: performerWorkerId,
+        performedByWorkerId: null,
+        performedByAdminOpenId: ctx.user?.openId ?? "admin",
         note: `[Ручная корректировка] ${input.reason} (${input.mode === "absolute" ? "установлено" : "дельта"}: ${input.mode === "absolute" ? input.valueLiters + " л" : (input.valueLiters >= 0 ? "+" : "") + input.valueLiters + " л"})`,
       });
 
@@ -1359,6 +1358,7 @@ export const milkAdminRouter = router({
             batchId: milkTankMovements.batchId,
             note: milkTankMovements.note,
             performedByWorkerId: milkTankMovements.performedByWorkerId,
+            performedByAdminOpenId: milkTankMovements.performedByAdminOpenId,
             workerName: farmWorkers.name,
             createdAt: milkTankMovements.createdAt,
           })
@@ -1386,7 +1386,7 @@ export const milkAdminRouter = router({
           receptionId: m.receptionId,
           batchId: m.batchId,
           note: m.note,
-          workerName: m.workerName ?? "—",
+          workerName: m.performedByAdminOpenId ? "Админ" : (m.workerName ?? "—"),
           createdAt: m.createdAt.toISOString(),
         })),
         total: Number(countResult[0]?.count ?? 0),
@@ -1399,7 +1399,11 @@ export const milkAdminRouter = router({
    * Tank turnover — aggregated stats by operation type for today/week/month.
    */
   tankTurnover: adminProcedure
-    .input(z.object({ tankId: z.number().int() }))
+    .input(z.object({
+      tankId: z.number().int(),
+      dateFrom: z.string().optional(),
+      dateTo: z.string().optional(),
+    }))
     .query(async ({ input }) => {
       const db = await getDb();
       const now = new Date();
@@ -1409,7 +1413,19 @@ export const milkAdminRouter = router({
       const monthStart = new Date(todayStart);
       monthStart.setDate(monthStart.getDate() - 30);
 
-      const buildTurnover = async (from: Date) => {
+      // If custom period is specified, override the default periods
+      const customFrom = input.dateFrom ? new Date(input.dateFrom) : null;
+      const customTo = input.dateTo ? new Date(input.dateTo + "T23:59:59") : null;
+
+      const buildTurnover = async (from: Date, to?: Date | null) => {
+        const conditions: any[] = [
+          eq(milkTankMovements.tankId, input.tankId),
+          gte(milkTankMovements.createdAt, from),
+        ];
+        if (to) {
+          conditions.push(sql`${milkTankMovements.createdAt} <= ${to}`);
+        }
+
         const rows = await db
           .select({
             movementType: milkTankMovements.movementType,
@@ -1417,10 +1433,7 @@ export const milkAdminRouter = router({
             count: sql<number>`COUNT(*)`,
           })
           .from(milkTankMovements)
-          .where(and(
-            eq(milkTankMovements.tankId, input.tankId),
-            gte(milkTankMovements.createdAt, from),
-          ))
+          .where(and(...conditions))
           .groupBy(milkTankMovements.movementType);
 
         let inflowMl = 0;
@@ -1452,13 +1465,19 @@ export const milkAdminRouter = router({
         };
       };
 
+      // If custom period, return only "custom" key
+      if (customFrom) {
+        const custom = await buildTurnover(customFrom, customTo);
+        return { today: custom, week: custom, month: custom, custom, isCustomPeriod: true };
+      }
+
       const [today, week, month] = await Promise.all([
         buildTurnover(todayStart),
         buildTurnover(weekStart),
         buildTurnover(monthStart),
       ]);
 
-      return { today, week, month };
+      return { today, week, month, isCustomPeriod: false };
     }),
 
   /**
@@ -1469,6 +1488,8 @@ export const milkAdminRouter = router({
     .input(z.object({
       tankId: z.number().int(),
       days: z.number().int().min(7).max(90).default(30),
+      dateFrom: z.string().optional(),
+      dateTo: z.string().optional(),
     }))
     .query(async ({ input }) => {
       const db = await getDb();
@@ -1478,8 +1499,24 @@ export const milkAdminRouter = router({
       if (!tank) return { history: [], currentVolumeMl: 0 };
 
       // Get all movements for this tank in the period, ordered by date ASC
-      const startDate = new Date();
-      startDate.setDate(startDate.getDate() - input.days);
+      let startDate: Date;
+      let endDate: Date;
+      if (input.dateFrom) {
+        startDate = new Date(input.dateFrom);
+        endDate = input.dateTo ? new Date(input.dateTo + "T23:59:59") : new Date();
+      } else {
+        startDate = new Date();
+        startDate.setDate(startDate.getDate() - input.days);
+        endDate = new Date();
+      }
+
+      const movementConditions: any[] = [
+        eq(milkTankMovements.tankId, input.tankId),
+        gte(milkTankMovements.createdAt, startDate),
+      ];
+      if (input.dateFrom && input.dateTo) {
+        movementConditions.push(sql`${milkTankMovements.createdAt} <= ${endDate}`);
+      }
 
       const movements = await db
         .select({
@@ -1488,10 +1525,7 @@ export const milkAdminRouter = router({
           createdAt: milkTankMovements.createdAt,
         })
         .from(milkTankMovements)
-        .where(and(
-          eq(milkTankMovements.tankId, input.tankId),
-          gte(milkTankMovements.createdAt, startDate),
-        ))
+        .where(and(...movementConditions))
         .orderBy(milkTankMovements.createdAt);
 
       // Build daily snapshots: for each day, find the last movement's tankVolumeAfterMl
@@ -1511,7 +1545,7 @@ export const milkAdminRouter = router({
       // Actually, let's walk forward: find the volume at startDate, then apply daily
       // Simpler approach: for each day, use the last known tankVolumeAfterMl
       const allDays: string[] = [];
-      for (let d = new Date(startDate); d <= today; d.setDate(d.getDate() + 1)) {
+      for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
         allDays.push(d.toISOString().slice(0, 10));
       }
 
@@ -1551,18 +1585,37 @@ export const milkAdminRouter = router({
    * Average daily consumption, days until empty, turnover rate.
    */
   tankMetrics: adminProcedure
-    .input(z.object({ tankId: z.number().int() }))
+    .input(z.object({
+      tankId: z.number().int(),
+      dateFrom: z.string().optional(),
+      dateTo: z.string().optional(),
+    }))
     .query(async ({ input }) => {
       const db = await getDb();
 
       const [tank] = await db.select().from(milkTanks).where(eq(milkTanks.id, input.tankId));
       if (!tank) return null;
 
-      // Calculate metrics over the last 30 days
-      const thirtyDaysAgo = new Date();
-      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+      // Calculate metrics over the specified or default 30-day period
+      let periodStart: Date;
+      let periodEnd: Date;
+      if (input.dateFrom) {
+        periodStart = new Date(input.dateFrom);
+        periodEnd = input.dateTo ? new Date(input.dateTo + "T23:59:59") : new Date();
+      } else {
+        periodStart = new Date();
+        periodStart.setDate(periodStart.getDate() - 30);
+        periodEnd = new Date();
+      }
+      const periodDays = Math.max(1, Math.round((periodEnd.getTime() - periodStart.getTime()) / (1000 * 60 * 60 * 24)));
 
-      // Total outflow in last 30 days
+      // Total outflow in period
+      const metricConditions = [
+        eq(milkTankMovements.tankId, input.tankId),
+        gte(milkTankMovements.createdAt, periodStart),
+        ...(input.dateTo ? [sql`${milkTankMovements.createdAt} <= ${periodEnd}`] : []),
+      ];
+
       const [outflowStats] = await db
         .select({
           totalOutMl: sql<number>`COALESCE(SUM(CASE WHEN ${milkTankMovements.volumeMl} < 0 THEN ABS(${milkTankMovements.volumeMl}) ELSE 0 END), 0)`,
@@ -1570,12 +1623,11 @@ export const milkAdminRouter = router({
         })
         .from(milkTankMovements)
         .where(and(
-          eq(milkTankMovements.tankId, input.tankId),
-          gte(milkTankMovements.createdAt, thirtyDaysAgo),
+          ...metricConditions,
           sql`${milkTankMovements.volumeMl} < 0`,
         ));
 
-      // Total inflow in last 30 days
+      // Total inflow in period
       const [inflowStats] = await db
         .select({
           totalInMl: sql<number>`COALESCE(SUM(${milkTankMovements.volumeMl}), 0)`,
@@ -1583,8 +1635,7 @@ export const milkAdminRouter = router({
         })
         .from(milkTankMovements)
         .where(and(
-          eq(milkTankMovements.tankId, input.tankId),
-          gte(milkTankMovements.createdAt, thirtyDaysAgo),
+          ...metricConditions,
           sql`${milkTankMovements.volumeMl} > 0`,
         ));
 
@@ -1593,9 +1644,9 @@ export const milkAdminRouter = router({
       const activeDaysOut = Number(outflowStats.outDays) || 1;
 
       // Average daily consumption (outflow)
-      const avgDailyConsumptionMl = totalOutMl / 30;
+      const avgDailyConsumptionMl = totalOutMl / periodDays;
       // Average daily inflow
-      const avgDailyInflowMl = totalInMl / 30;
+      const avgDailyInflowMl = totalInMl / periodDays;
 
       // Days until empty (at current consumption rate, ignoring future inflow)
       const daysUntilEmpty = avgDailyConsumptionMl > 0
@@ -1607,16 +1658,13 @@ export const milkAdminRouter = router({
         ? +(totalOutMl / tank.capacityMl).toFixed(2)
         : 0;
 
-      // Peak load: max volume reached in last 30 days
+      // Peak load: max volume reached in period
       const [peakResult] = await db
         .select({
           peakMl: sql<number>`COALESCE(MAX(${milkTankMovements.tankVolumeAfterMl}), 0)`,
         })
         .from(milkTankMovements)
-        .where(and(
-          eq(milkTankMovements.tankId, input.tankId),
-          gte(milkTankMovements.createdAt, thirtyDaysAgo),
-        ));
+        .where(and(...metricConditions));
 
       return {
         tankName: tank.name,
@@ -1630,6 +1678,50 @@ export const milkAdminRouter = router({
         turnoverRate,
         peakVolumeLiters: +(Number(peakResult.peakMl) / 1000).toFixed(2),
         peakFillPercent: tank.capacityMl > 0 ? Math.round((Number(peakResult.peakMl) / tank.capacityMl) * 100) : 0,
+      };
+    }),
+
+  /**
+   * Reset tank analytics — sets the current moment as the new baseline.
+   * After reset, analytics only shows data from this point forward.
+   */
+  resetTankAnalytics: adminProcedure
+    .input(z.object({ tankId: z.number().int() }))
+    .mutation(async ({ input, ctx }) => {
+      const db = await getDb();
+
+      const [tank] = await db.select().from(milkTanks).where(eq(milkTanks.id, input.tankId));
+      if (!tank) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Танк не найден" });
+      }
+
+      const now = new Date();
+
+      await db.update(milkTanks)
+        .set({
+          analyticsResetAt: now,
+          analyticsResetVolumeMl: tank.currentVolumeMl,
+        })
+        .where(eq(milkTanks.id, input.tankId));
+
+      // Audit log
+      await logMilkAudit({
+        action: "tank_movement",
+        adminOpenId: ctx.user?.openId ?? "admin",
+        entityType: "tank",
+        entityId: input.tankId,
+        detailsJson: JSON.stringify({
+          type: "analytics_reset",
+          resetAt: now.toISOString(),
+          baselineVolumeMl: tank.currentVolumeMl,
+        }),
+      });
+
+      return {
+        tankId: input.tankId,
+        tankName: tank.name,
+        resetAt: now.toISOString(),
+        baselineVolumeLiters: +(tank.currentVolumeMl / 1000).toFixed(2),
       };
     }),
 });

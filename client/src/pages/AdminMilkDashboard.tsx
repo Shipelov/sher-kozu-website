@@ -769,6 +769,7 @@ export default function AdminMilkDashboard() {
           {/* ── Tank Analytics ── */}
           {selectedTankId && <TankAnalyticsPanel
             tankId={selectedTankId}
+            tankResetAt={tanksQuery.data?.find((t: any) => t.id === selectedTankId)?.analyticsResetAt ?? null}
             onClose={() => setSelectedTankId(null)}
             movementPage={tankMovementPage}
             onMovementPageChange={setTankMovementPage}

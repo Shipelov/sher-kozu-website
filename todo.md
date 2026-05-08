@@ -2737,3 +2737,6 @@ Module: Контроль оборота молока. Spec v2.1. Mobile-first AR
 - [x] Frontend: Volume dynamics line chart (Chart.js) per tank over 30 days
 - [x] Frontend: Predictive metrics display (avg daily usage, days remaining, turnover rate)
 - [x] Tests: Vitest coverage for tank analytics backend procedures (11 tests)
+- [x] Bugfix: Admin tank adjustments record worker name instead of admin — fix to show "Админ" or actual admin user
+- [x] Feature: Tank analytics period selector — allow choosing custom date range for turnover, chart, and journal
+- [x] Feature: Tank analytics reset — button to reset analytics baseline, storing current volume as starting point from reset date

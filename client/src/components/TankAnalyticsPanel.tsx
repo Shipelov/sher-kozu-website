@@ -1,11 +1,14 @@
 /**
  * TankAnalyticsPanel — expandable analytics panel for a single tank.
  * Shows: turnover summary, volume dynamics chart, movement journal, predictive metrics.
+ * Supports custom period selection and analytics reset.
  */
 
+import { useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -23,6 +26,7 @@ import {
   Clock,
   Droplets,
   Loader2,
+  RotateCcw,
   TrendingDown,
   TrendingUp,
   X,
@@ -39,6 +43,7 @@ import {
   Legend,
 } from "chart.js";
 import { Line } from "react-chartjs-2";
+import { toast } from "sonner";
 
 ChartJS.register(
   CategoryScale,
@@ -62,6 +67,7 @@ const MOVEMENT_LABELS: Record<string, { label: string; color: string; icon: stri
 
 interface TankAnalyticsPanelProps {
   tankId: number;
+  tankResetAt: string | null;
   onClose: () => void;
   movementPage: number;
   onMovementPageChange: (p: number) => void;
@@ -71,15 +77,38 @@ interface TankAnalyticsPanelProps {
 
 export default function TankAnalyticsPanel({
   tankId,
+  tankResetAt,
   onClose,
   movementPage,
   onMovementPageChange,
   movementFilter,
   onMovementFilterChange,
 }: TankAnalyticsPanelProps) {
-  const turnoverQuery = trpc.milkAdmin.tankTurnover.useQuery({ tankId });
-  const historyQuery = trpc.milkAdmin.tankVolumeHistory.useQuery({ tankId, days: 30 });
-  const metricsQuery = trpc.milkAdmin.tankMetrics.useQuery({ tankId });
+  // Period selection state
+  const [dateFrom, setDateFrom] = useState<string>("");
+  const [dateTo, setDateTo] = useState<string>("");
+  const isCustomPeriod = !!dateFrom;
+
+  // Effective dateFrom: if analytics was reset and no custom period, use reset date
+  const effectiveDateFrom = dateFrom || (tankResetAt ? tankResetAt.slice(0, 10) : "");
+  const effectiveDateTo = dateTo || "";
+
+  const turnoverQuery = trpc.milkAdmin.tankTurnover.useQuery({
+    tankId,
+    dateFrom: effectiveDateFrom || undefined,
+    dateTo: effectiveDateTo || undefined,
+  });
+  const historyQuery = trpc.milkAdmin.tankVolumeHistory.useQuery({
+    tankId,
+    days: 30,
+    dateFrom: effectiveDateFrom || undefined,
+    dateTo: effectiveDateTo || undefined,
+  });
+  const metricsQuery = trpc.milkAdmin.tankMetrics.useQuery({
+    tankId,
+    dateFrom: effectiveDateFrom || undefined,
+    dateTo: effectiveDateTo || undefined,
+  });
   const movementsQuery = trpc.milkAdmin.tankMovements.useQuery({
     tankId,
     page: movementPage,
@@ -87,6 +116,23 @@ export default function TankAnalyticsPanel({
     movementType: movementFilter
       ? (movementFilter as "milking_in" | "transfer" | "processing_out" | "waste" | "sample" | "adjustment")
       : undefined,
+    dateFrom: effectiveDateFrom || undefined,
+    dateTo: effectiveDateTo || undefined,
+  });
+
+  const utils = trpc.useUtils();
+  const resetMutation = trpc.milkAdmin.resetTankAnalytics.useMutation({
+    onSuccess: (data) => {
+      toast.success(`Аналитика сброшена для ${data.tankName}`, {
+        description: `Базовый объём: ${data.baselineVolumeLiters} л. Новые данные начнутся с ${new Date(data.resetAt).toLocaleDateString("ru-RU")}`,
+      });
+      void utils.milkAdmin.tanks.invalidate();
+      void utils.milkAdmin.tankTurnover.invalidate();
+      void utils.milkAdmin.tankVolumeHistory.invalidate();
+      void utils.milkAdmin.tankMetrics.invalidate();
+      void utils.milkAdmin.tankMovements.invalidate();
+    },
+    onError: (err) => toast.error("Ошибка сброса аналитики", { description: err.message }),
   });
 
   const metrics = metricsQuery.data;
@@ -114,7 +160,6 @@ export default function TankAnalyticsPanel({
             pointRadius: 2,
             pointHoverRadius: 5,
           },
-          // Capacity line
           {
             label: "Ёмкость (л)",
             data: history.history.map(() => history.capacityLiters),
@@ -159,9 +204,60 @@ export default function TankAnalyticsPanel({
           <BarChart3 className="w-5 h-5 text-[oklch(0.4_0.12_150)]" />
           Аналитика танка{metrics ? `: ${metrics.tankName}` : ""}
         </h3>
-        <Button variant="ghost" size="sm" onClick={onClose}>
-          <X className="w-4 h-4" />
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            className="text-red-600 border-red-200 hover:bg-red-50 text-xs"
+            disabled={resetMutation.isPending}
+            onClick={() => {
+              if (confirm("Сбросить аналитику? Текущий остаток станет начальной точкой. Данные до этого момента будут исключены из отчётов.")) {
+                resetMutation.mutate({ tankId });
+              }
+            }}
+          >
+            {resetMutation.isPending ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <RotateCcw className="w-3 h-3 mr-1" />}
+            Сбросить
+          </Button>
+          <Button variant="ghost" size="sm" onClick={onClose}>
+            <X className="w-4 h-4" />
+          </Button>
+        </div>
+      </div>
+
+      {/* Period selector */}
+      <div className="flex flex-wrap items-center gap-3 mb-4 p-3 bg-[oklch(0.97_0.01_90)] rounded-lg border">
+        <span className="text-xs font-medium text-[oklch(0.4_0.04_80)]">Период:</span>
+        <Input
+          type="date"
+          value={dateFrom}
+          onChange={(e) => { setDateFrom(e.target.value); onMovementPageChange(1); }}
+          className="w-[140px] h-8 text-xs"
+          placeholder="От"
+        />
+        <span className="text-xs text-[oklch(0.5_0.04_80)]">—</span>
+        <Input
+          type="date"
+          value={dateTo}
+          onChange={(e) => { setDateTo(e.target.value); onMovementPageChange(1); }}
+          className="w-[140px] h-8 text-xs"
+          placeholder="До"
+        />
+        {isCustomPeriod && (
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-8 text-xs"
+            onClick={() => { setDateFrom(""); setDateTo(""); onMovementPageChange(1); }}
+          >
+            Сбросить период
+          </Button>
+        )}
+        {tankResetAt && !isCustomPeriod && (
+          <span className="text-[10px] text-[oklch(0.55_0.04_80)] ml-auto">
+            Аналитика с {new Date(tankResetAt).toLocaleDateString("ru-RU")}
+          </span>
+        )}
       </div>
 
       {isLoading ? (
@@ -192,7 +288,7 @@ export default function TankAnalyticsPanel({
               <MetricCard
                 label="Оборачиваемость"
                 value={`${metrics.turnoverRate}×`}
-                subtitle="за 30 дней"
+                subtitle={isCustomPeriod ? "за период" : "за 30 дней"}
                 icon={<Droplets className="w-4 h-4 text-blue-500" />}
               />
             </div>
@@ -201,7 +297,9 @@ export default function TankAnalyticsPanel({
           {/* ── Turnover Summary ── */}
           {turnover && (
             <div>
-              <h4 className="text-sm font-semibold text-[oklch(0.4_0.04_80)] mb-2">Оборот по периодам</h4>
+              <h4 className="text-sm font-semibold text-[oklch(0.4_0.04_80)] mb-2">
+                Оборот {turnover.isCustomPeriod ? "за выбранный период" : "по периодам"}
+              </h4>
               <div className="border rounded-lg overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead className="bg-[oklch(0.96_0.01_90)]">
@@ -222,9 +320,15 @@ export default function TankAnalyticsPanel({
                     </tr>
                   </thead>
                   <tbody className="divide-y">
-                    <TurnoverRow label="Сегодня" data={turnover.today} />
-                    <TurnoverRow label="7 дней" data={turnover.week} />
-                    <TurnoverRow label="30 дней" data={turnover.month} />
+                    {turnover.isCustomPeriod ? (
+                      <TurnoverRow label="Выбранный период" data={turnover.custom!} />
+                    ) : (
+                      <>
+                        <TurnoverRow label="Сегодня" data={turnover.today} />
+                        <TurnoverRow label="7 дней" data={turnover.week} />
+                        <TurnoverRow label="30 дней" data={turnover.month} />
+                      </>
+                    )}
                   </tbody>
                 </table>
               </div>
@@ -232,9 +336,11 @@ export default function TankAnalyticsPanel({
           )}
 
           {/* ── Volume Dynamics Chart ── */}
-          {chartData && (
+          {chartData && chartData.labels.length > 0 && (
             <div>
-              <h4 className="text-sm font-semibold text-[oklch(0.4_0.04_80)] mb-2">Динамика объёма (30 дней)</h4>
+              <h4 className="text-sm font-semibold text-[oklch(0.4_0.04_80)] mb-2">
+                Динамика объёма {isCustomPeriod ? "(выбранный период)" : "(30 дней)"}
+              </h4>
               <div className="border rounded-lg p-3 bg-white" style={{ height: 240 }}>
                 <Line data={chartData} options={chartOptions} />
               </div>
@@ -345,7 +451,7 @@ export default function TankAnalyticsPanel({
                 )}
               </>
             ) : (
-              <p className="text-sm text-[oklch(0.6_0.04_80)] py-4 text-center">Нет записей</p>
+              <p className="text-sm text-[oklch(0.6_0.04_80)] py-4 text-center">Нет записей за выбранный период</p>
             )}
           </div>
 
