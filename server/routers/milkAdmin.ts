@@ -398,7 +398,7 @@ export const milkAdminRouter = router({
           byType: toTypeMap(procByTypeMonth),
         },
         avgConversionRatio: +(Number(avgConversion.avgRatio)).toFixed(4),
-        productBreakdown: productBreakdown.map(p => ({
+        productBreakdown: productBreakdown.map((p: any) => ({
           productLabel: p.productLabel,
           unit: p.unit,
           totalQuantity: +Number(p.totalQuantity).toFixed(2),
@@ -853,7 +853,7 @@ export const milkAdminRouter = router({
 
       // Delete tank movements linked to this session's receptions (covers movements with null sessionId)
       if (receptions.length > 0) {
-        const receptionIds = receptions.map(r => r.id);
+        const receptionIds = receptions.map((r: any) => r.id);
         await db.delete(milkTankMovements).where(inArray(milkTankMovements.receptionId, receptionIds));
       }
 

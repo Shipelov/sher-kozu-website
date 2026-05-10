@@ -52,7 +52,6 @@ import {
 } from "@/lib/reportExport";
 
 type Tab = "overview" | "sessions" | "receptions" | "tanks" | "processing" | "audit";
-type Tab = "overview" | "sessions" | "receptions" | "tanks" | "audit";
 
 const TABS: { key: Tab; label: string; icon: any; shortLabel: string }[] = [
   { key: "overview", label: "Обзор", shortLabel: "Обзор", icon: BarChart3 },
@@ -785,10 +784,40 @@ function ReceptionsTab() {
 
 function TanksTab() {
   const tanksQuery = trpc.milkController.tanks.useQuery(undefined, { refetchInterval: 30_000 });
-  const reconciliationQuery = trpc.milkController.tankReconciliation.useQuery(undefined, { refetchInterval: 60_000 });
+  const [selectedTankId, setSelectedTankId] = useState<number | null>(null);
+  const [movementPage, setMovementPage] = useState(1);
+  const [movementFilter, setMovementFilter] = useState<string>("");
 
   const tanks = tanksQuery.data ?? [];
-  const reconciliation = reconciliationQuery.data ?? [];
+
+  const metricsQuery = trpc.milkController.tankMetrics.useQuery(
+    { tankId: selectedTankId! },
+    { enabled: !!selectedTankId }
+  );
+
+  const turnoverQuery = trpc.milkController.tankTurnover.useQuery(
+    { tankId: selectedTankId! },
+    { enabled: !!selectedTankId }
+  );
+
+  const movementsQuery = trpc.milkController.tankMovements.useQuery(
+    {
+      tankId: selectedTankId!,
+      page: movementPage,
+      pageSize: 10,
+      ...(movementFilter ? { movementType: movementFilter as any } : {}),
+    },
+    { enabled: !!selectedTankId }
+  );
+
+  const MOVEMENT_LABELS: Record<string, string> = {
+    milking_in: "\u{1F7E2} Пополнение",
+    processing_out: "\u{1F534} Производство",
+    adjustment: "\u{1F7E1} Корректировка",
+    waste: "\u26AB Списание",
+    transfer: "\u{1F535} Перелив",
+    sample: "\u{1F7E3} Проба",
+  };
 
   return (
     <div className="space-y-4">
@@ -803,7 +832,16 @@ function TanksTab() {
       ) : (
         <div className="space-y-3">
           {tanks.map((t: any) => (
-            <div key={t.id} className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
+            <div
+              key={t.id}
+              className={`bg-white rounded-xl p-4 shadow-sm border cursor-pointer transition-all ${
+                selectedTankId === t.id ? "border-[oklch(0.35_0.12_150)] ring-1 ring-[oklch(0.35_0.12_150)]" : "border-gray-100 hover:border-gray-300"
+              }`}
+              onClick={() => {
+                setSelectedTankId(selectedTankId === t.id ? null : t.id);
+                setMovementPage(1);
+              }}
+            >
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2">
                   <Container className="w-4 h-4 text-gray-400" />
@@ -834,56 +872,134 @@ function TanksTab() {
         </div>
       )}
 
-      {/* Reconciliation */}
-      <h2 className="text-sm font-bold text-gray-800 mt-4">Сверка ёмкостей</h2>
-      {reconciliationQuery.isLoading ? (
-        <div className="flex justify-center py-4">
-          <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
-        </div>
-      ) : reconciliation.length === 0 ? (
-        <div className="text-center py-4 text-gray-400 text-sm">Нет данных для сверки</div>
-      ) : (
-        <div className="space-y-3">
-          {reconciliation.map((t: any) => (
-            <div
-              key={t.id}
-              className={`bg-white rounded-xl p-4 shadow-sm border ${
-                t.isOk ? "border-gray-100" : "border-red-200 bg-red-50/30"
-              }`}
-            >
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium text-gray-800">{t.name}</span>
-                  <Badge variant="outline" className="text-[10px]">{t.milkTypeLabel}</Badge>
-                </div>
-                {t.isOk ? (
-                  <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-                ) : (
-                  <AlertTriangle className="w-4 h-4 text-red-500" />
-                )}
+      {/* Tank Analytics Detail */}
+      {selectedTankId && (
+        <div className="space-y-4 pt-2">
+          {/* Metrics */}
+          <h2 className="text-sm font-bold text-gray-800">Аналитика</h2>
+          {metricsQuery.isLoading ? (
+            <div className="flex justify-center py-4">
+              <Loader2 className="w-5 h-5 animate-spin text-gray-400" />
+            </div>
+          ) : metricsQuery.data ? (
+            <div className="grid grid-cols-2 gap-2">
+              <div className="bg-white rounded-lg p-3 border border-gray-100">
+                <p className="text-[10px] text-gray-500">Ср. расход/день</p>
+                <p className="text-sm font-bold text-gray-800">{metricsQuery.data.avgDailyConsumptionLiters} л</p>
               </div>
-              <div className="grid grid-cols-2 gap-2 text-xs">
+              <div className="bg-white rounded-lg p-3 border border-gray-100">
+                <p className="text-[10px] text-gray-500">Ср. приход/день</p>
+                <p className="text-sm font-bold text-gray-800">{metricsQuery.data.avgDailyInflowLiters} л</p>
+              </div>
+              <div className="bg-white rounded-lg p-3 border border-gray-100">
+                <p className="text-[10px] text-gray-500">Хватит на</p>
+                <p className="text-sm font-bold text-gray-800">
+                  {metricsQuery.data.daysUntilEmpty !== null ? `${metricsQuery.data.daysUntilEmpty} дн.` : "\u221E"}
+                </p>
+              </div>
+              <div className="bg-white rounded-lg p-3 border border-gray-100">
+                <p className="text-[10px] text-gray-500">Оборачиваемость (30д)</p>
+                <p className="text-sm font-bold text-gray-800">{metricsQuery.data.turnoverRate}x</p>
+              </div>
+              <div className="bg-white rounded-lg p-3 border border-gray-100 col-span-2">
+                <p className="text-[10px] text-gray-500">Пик загрузки (30д)</p>
+                <p className="text-sm font-bold text-gray-800">
+                  {metricsQuery.data.peakVolumeLiters} л ({metricsQuery.data.peakFillPercent}%)
+                </p>
+              </div>
+            </div>
+          ) : null}
+
+          {/* Turnover */}
+          {turnoverQuery.data && (
+            <div className="bg-white rounded-xl p-3 border border-gray-100">
+              <h3 className="text-xs font-semibold text-gray-700 mb-2">Оборот за 30 дней</h3>
+              <div className="grid grid-cols-3 gap-2 text-center text-xs">
                 <div>
-                  <p className="text-gray-500">Ожидаемый</p>
-                  <p className="font-semibold text-gray-800">{t.expectedLiters} л</p>
+                  <p className="text-gray-500">Приход</p>
+                  <p className="font-bold text-emerald-600">+{turnoverQuery.data.month.inflowLiters} л</p>
                 </div>
                 <div>
-                  <p className="text-gray-500">Фактический</p>
-                  <p className="font-semibold text-gray-800">{t.actualLiters} л</p>
+                  <p className="text-gray-500">Расход</p>
+                  <p className="font-bold text-red-600">-{turnoverQuery.data.month.outflowLiters} л</p>
                 </div>
                 <div>
-                  <p className="text-gray-500">Принято всего</p>
-                  <p className="text-gray-600">{t.acceptedLiters} л</p>
-                </div>
-                <div>
-                  <p className="text-gray-500">Расхождение</p>
-                  <p className={`font-bold ${t.isOk ? "text-emerald-600" : "text-red-600"}`}>
-                    {t.discrepancyLiters > 0 ? "+" : ""}{t.discrepancyLiters} л
-                  </p>
+                  <p className="text-gray-500">Коррект.</p>
+                  <p className="font-bold text-amber-600">{turnoverQuery.data.month.adjustmentLiters} л</p>
                 </div>
               </div>
             </div>
-          ))}
+          )}
+
+          {/* Movement Journal */}
+          <div className="bg-white rounded-xl p-3 border border-gray-100">
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-xs font-semibold text-gray-700">Журнал движений</h3>
+              <select
+                className="text-[10px] border rounded px-1 py-0.5"
+                value={movementFilter}
+                onChange={(e) => { setMovementFilter(e.target.value); setMovementPage(1); }}
+              >
+                <option value="">Все</option>
+                <option value="milking_in">Пополнение</option>
+                <option value="processing_out">Производство</option>
+                <option value="adjustment">Корректировка</option>
+                <option value="waste">Списание</option>
+                <option value="transfer">Перелив</option>
+                <option value="sample">Проба</option>
+              </select>
+            </div>
+            {movementsQuery.isLoading ? (
+              <div className="flex justify-center py-4">
+                <Loader2 className="w-5 h-5 animate-spin text-gray-400" />
+              </div>
+            ) : (movementsQuery.data?.movements ?? []).length === 0 ? (
+              <p className="text-center text-gray-400 text-xs py-4">Нет движений</p>
+            ) : (
+              <div className="space-y-1">
+                {(movementsQuery.data?.movements ?? []).map((m: any) => (
+                  <div key={m.id} className="flex items-center justify-between py-1.5 border-b border-gray-50 last:border-0">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[11px] font-medium text-gray-800 truncate">
+                        {MOVEMENT_LABELS[m.movementType] ?? m.movementType}
+                      </p>
+                      <p className="text-[9px] text-gray-500">
+                        {new Date(m.createdAt).toLocaleDateString("ru")} · {m.workerName}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className={`text-xs font-bold ${m.volumeLiters >= 0 ? "text-emerald-600" : "text-red-600"}`}>
+                        {m.volumeLiters >= 0 ? "+" : ""}{m.volumeLiters} л
+                      </p>
+                      <p className="text-[9px] text-gray-400">→ {m.tankVolumeAfterLiters} л</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+            {/* Pagination */}
+            {(movementsQuery.data?.total ?? 0) > 10 && (
+              <div className="flex items-center justify-between pt-2 mt-2 border-t border-gray-100">
+                <button
+                  className="text-[10px] text-gray-500 disabled:opacity-30"
+                  disabled={movementPage <= 1}
+                  onClick={() => setMovementPage((p) => p - 1)}
+                >
+                  ← Назад
+                </button>
+                <span className="text-[10px] text-gray-400">
+                  {movementPage} / {Math.ceil((movementsQuery.data?.total ?? 0) / 10)}
+                </span>
+                <button
+                  className="text-[10px] text-gray-500 disabled:opacity-30"
+                  disabled={movementPage >= Math.ceil((movementsQuery.data?.total ?? 0) / 10)}
+                  onClick={() => setMovementPage((p) => p + 1)}
+                >
+                  Вперёд →
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>

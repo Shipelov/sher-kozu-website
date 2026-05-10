@@ -1388,6 +1388,13 @@ type PeriodData = {
   cow: TypeStats;
 };
 
+type ProcessingPeriodData = {
+  sessions: number;
+  inputLiters: number;
+  outputUnits: number;
+  byType?: Record<string, number>;
+};
+
 type OverviewData = {
   today: PeriodData;
   week: PeriodData;
@@ -1402,6 +1409,13 @@ type OverviewData = {
     currentLiters: number;
     fillPercent: number;
     byType: Record<string, { capacityLiters: number; currentLiters: number; fillPercent: number; active: number; total: number }>;
+  };
+  processing?: {
+    today: ProcessingPeriodData;
+    week: ProcessingPeriodData;
+    month: ProcessingPeriodData;
+    avgConversionRatio: number | null;
+    productBreakdown?: Array<{ productLabel: string; unit: string; totalQuantity: number; sessionsCount: number }>;
   };
 };
 
@@ -1833,9 +1847,9 @@ function OverviewSection({
                 </tr>
                 {(["goat", "sheep", "cow"] as const).map((type) => {
                   const label = type === "goat" ? "  🐐 Козье" : type === "sheep" ? "  🐑 Овечье" : "  🐄 Коровье";
-                  const todayVal = (overview.processing.today as any).byType?.[type] ?? 0;
-                  const weekVal = (overview.processing.week as any).byType?.[type] ?? 0;
-                  const monthVal = (overview.processing.month as any).byType?.[type] ?? 0;
+                  const todayVal = (overview.processing?.today as any)?.byType?.[type] ?? 0;
+                  const weekVal = (overview.processing?.week as any)?.byType?.[type] ?? 0;
+                  const monthVal = (overview.processing?.month as any)?.byType?.[type] ?? 0;
                   if (todayVal === 0 && weekVal === 0 && monthVal === 0) return null;
                   return (
                     <tr key={type} className="hover:bg-[oklch(0.98_0.005_90)]">
