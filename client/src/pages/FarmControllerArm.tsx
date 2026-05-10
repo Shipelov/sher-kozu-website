@@ -787,17 +787,25 @@ function TanksTab() {
   const [selectedTankId, setSelectedTankId] = useState<number | null>(null);
   const [movementPage, setMovementPage] = useState(1);
   const [movementFilter, setMovementFilter] = useState<string>("");
+  const [preset, setPreset] = useState<"today" | "week" | "month" | "custom">("month");
+  const [customFrom, setCustomFrom] = useState("");
+  const [customTo, setCustomTo] = useState("");
+
+  const dates = useMemo(() => {
+    if (preset === "custom") return { from: customFrom, to: customTo };
+    return getPresetDates(preset);
+  }, [preset, customFrom, customTo]);
 
   const tanks = tanksQuery.data ?? [];
 
   const metricsQuery = trpc.milkController.tankMetrics.useQuery(
-    { tankId: selectedTankId! },
-    { enabled: !!selectedTankId }
+    { tankId: selectedTankId!, dateFrom: dates.from, dateTo: dates.to },
+    { enabled: !!selectedTankId && !!dates.from && !!dates.to }
   );
 
   const turnoverQuery = trpc.milkController.tankTurnover.useQuery(
-    { tankId: selectedTankId! },
-    { enabled: !!selectedTankId }
+    { tankId: selectedTankId!, dateFrom: dates.from, dateTo: dates.to },
+    { enabled: !!selectedTankId && !!dates.from && !!dates.to }
   );
 
   const movementsQuery = trpc.milkController.tankMovements.useQuery(
@@ -805,9 +813,11 @@ function TanksTab() {
       tankId: selectedTankId!,
       page: movementPage,
       pageSize: 10,
+      dateFrom: dates.from,
+      dateTo: dates.to,
       ...(movementFilter ? { movementType: movementFilter as any } : {}),
     },
-    { enabled: !!selectedTankId }
+    { enabled: !!selectedTankId && !!dates.from && !!dates.to }
   );
 
   const MOVEMENT_LABELS: Record<string, string> = {
@@ -821,6 +831,30 @@ function TanksTab() {
 
   return (
     <div className="space-y-4">
+      {/* Period selector */}
+      <div className="flex gap-1 bg-gray-100 rounded-lg p-1">
+        {(["today", "week", "month", "custom"] as const).map((p) => (
+          <button
+            key={p}
+            onClick={() => { setPreset(p); setMovementPage(1); }}
+            className={`flex-1 flex items-center justify-center gap-1 px-2 py-1.5 rounded-md text-xs font-medium transition-colors ${
+              preset === p ? "bg-white text-gray-900 shadow-sm" : "text-gray-500"
+            }`}
+          >
+            {p === "custom" && <CalendarRange className="w-3 h-3" />}
+            {p === "today" ? "Сегодня" : p === "week" ? "Неделя" : p === "month" ? "Месяц" : "Период"}
+          </button>
+        ))}
+      </div>
+
+      {preset === "custom" && (
+        <div className="flex items-center gap-2">
+          <input type="date" value={customFrom} onChange={(e) => { setCustomFrom(e.target.value); setMovementPage(1); }} className="flex-1 border rounded-md px-2 py-1.5 text-sm bg-white" />
+          <span className="text-xs text-gray-400">—</span>
+          <input type="date" value={customTo} onChange={(e) => { setCustomTo(e.target.value); setMovementPage(1); }} className="flex-1 border rounded-md px-2 py-1.5 text-sm bg-white" />
+        </div>
+      )}
+
       {/* Tank Status */}
       <h2 className="text-sm font-bold text-gray-800">Текущее состояние</h2>
       {tanksQuery.isLoading ? (
@@ -898,11 +932,11 @@ function TanksTab() {
                 </p>
               </div>
               <div className="bg-white rounded-lg p-3 border border-gray-100">
-                <p className="text-[10px] text-gray-500">Оборачиваемость (30д)</p>
+                <p className="text-[10px] text-gray-500">Оборачиваемость</p>
                 <p className="text-sm font-bold text-gray-800">{metricsQuery.data.turnoverRate}x</p>
               </div>
               <div className="bg-white rounded-lg p-3 border border-gray-100 col-span-2">
-                <p className="text-[10px] text-gray-500">Пик загрузки (30д)</p>
+                <p className="text-[10px] text-gray-500">Пик загрузки</p>
                 <p className="text-sm font-bold text-gray-800">
                   {metricsQuery.data.peakVolumeLiters} л ({metricsQuery.data.peakFillPercent}%)
                 </p>
@@ -913,20 +947,27 @@ function TanksTab() {
           {/* Turnover */}
           {turnoverQuery.data && (
             <div className="bg-white rounded-xl p-3 border border-gray-100">
-              <h3 className="text-xs font-semibold text-gray-700 mb-2">Оборот за 30 дней</h3>
+              <h3 className="text-xs font-semibold text-gray-700 mb-2">Оборот за {preset === "today" ? "сегодня" : preset === "week" ? "7 дней" : preset === "month" ? "30 дней" : `${dates.from} — ${dates.to}`}</h3>
               <div className="grid grid-cols-3 gap-2 text-center text-xs">
-                <div>
-                  <p className="text-gray-500">Приход</p>
-                  <p className="font-bold text-emerald-600">+{turnoverQuery.data.month.inflowLiters} л</p>
-                </div>
-                <div>
-                  <p className="text-gray-500">Расход</p>
-                  <p className="font-bold text-red-600">-{turnoverQuery.data.month.outflowLiters} л</p>
-                </div>
-                <div>
-                  <p className="text-gray-500">Коррект.</p>
-                  <p className="font-bold text-amber-600">{turnoverQuery.data.month.adjustmentLiters} л</p>
-                </div>
+                {(() => {
+                  const t = turnoverQuery.data.custom ?? turnoverQuery.data.month;
+                  return (
+                    <>
+                      <div>
+                        <p className="text-gray-500">Приход</p>
+                        <p className="font-bold text-emerald-600">+{t.inflowLiters} л</p>
+                      </div>
+                      <div>
+                        <p className="text-gray-500">Расход</p>
+                        <p className="font-bold text-red-600">-{t.outflowLiters} л</p>
+                      </div>
+                      <div>
+                        <p className="text-gray-500">Коррект.</p>
+                        <p className="font-bold text-amber-600">{t.adjustmentLiters} л</p>
+                      </div>
+                    </>
+                  );
+                })()}
               </div>
             </div>
           )}
@@ -964,10 +1005,10 @@ function TanksTab() {
                         });
                         exportExcel({
                           title: `Журнал движений — ${selectedTank?.name || "Танк"}`,
-                          subtitle: `Все данные`,
+                          subtitle: periodSubtitle(dates.from, dates.to),
                           columns: cols,
                           rows,
-                          filename: `journal_tank_${selectedTankId}_${new Date().toISOString().slice(0, 10)}`,
+                          filename: `journal_tank_${selectedTankId}_${dates.from}_${dates.to}`,
                         });
                         toast.success("Excel-файл скачан");
                       }}
@@ -1000,10 +1041,10 @@ function TanksTab() {
                         });
                         exportPDF({
                           title: `Журнал движений — ${selectedTank?.name || "Танк"}`,
-                          subtitle: `Все данные`,
+                          subtitle: periodSubtitle(dates.from, dates.to),
                           columns: cols,
                           rows,
-                          filename: `journal_tank_${selectedTankId}_${new Date().toISOString().slice(0, 10)}`,
+                          filename: `journal_tank_${selectedTankId}_${dates.from}_${dates.to}`,
                         });
                         toast.success("PDF-файл скачан");
                       }}
