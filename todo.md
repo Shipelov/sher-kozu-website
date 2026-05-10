@@ -2740,3 +2740,4 @@ Module: Контроль оборота молока. Spec v2.1. Mobile-first AR
 - [x] Bugfix: Admin tank adjustments record worker name instead of admin — fix to show "Админ" or actual admin user
 - [x] Feature: Tank analytics period selector — allow choosing custom date range for turnover, chart, and journal
 - [x] Feature: Tank analytics reset — button to reset analytics baseline, storing current volume as starting point from reset date
+- [x] Feature: Excel export of tank movement journal for accounting (Admin + Controller ARM)

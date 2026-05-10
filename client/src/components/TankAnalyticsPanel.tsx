@@ -24,6 +24,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Clock,
+  Download,
   Droplets,
   Loader2,
   RotateCcw,
@@ -44,6 +45,7 @@ import {
 } from "chart.js";
 import { Line } from "react-chartjs-2";
 import { toast } from "sonner";
+import { exportExcel, exportPDF, type ReportColumn, periodSubtitle } from "@/lib/reportExport";
 
 ChartJS.register(
   CategoryScale,
@@ -350,9 +352,95 @@ export default function TankAnalyticsPanel({
           {/* ── Movement Journal ── */}
           <div>
             <div className="flex items-center justify-between mb-2">
-              <h4 className="text-sm font-semibold text-[oklch(0.4_0.04_80)]">
-                Журнал движений {movements ? `(${movements.total})` : ""}
-              </h4>
+              <div className="flex items-center gap-2">
+                <h4 className="text-sm font-semibold text-[oklch(0.4_0.04_80)]">
+                  Журнал движений {movements ? `(${movements.total})` : ""}
+                </h4>
+                {movements && movements.movements.length > 0 && (
+                  <div className="flex gap-1">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-7 text-[10px] gap-1"
+                      onClick={() => {
+                        const cols: ReportColumn[] = [
+                          { header: "Дата", key: "date", width: 18 },
+                          { header: "Тип операции", key: "type", width: 18 },
+                          { header: "Объём, л", key: "volume", width: 12 },
+                          { header: "Остаток, л", key: "balance", width: 12 },
+                          { header: "Сотрудник", key: "worker", width: 22 },
+                          { header: "Примечание", key: "note", width: 30 },
+                        ];
+                        const rows = movements.movements.map((m: any) => {
+                          const mt = MOVEMENT_LABELS[m.movementType] ?? { label: m.movementType };
+                          const d = new Date(m.createdAt);
+                          return {
+                            date: d.toLocaleDateString("ru-RU") + " " + d.toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" }),
+                            type: mt.label,
+                            volume: m.volumeLiters,
+                            balance: m.tankVolumeAfterLiters,
+                            worker: m.workerName || "—",
+                            note: m.note || "—",
+                          };
+                        });
+                        const sub = effectiveDateFrom || effectiveDateTo
+                          ? periodSubtitle(effectiveDateFrom || "...", effectiveDateTo || new Date().toISOString().slice(0, 10))
+                          : "Все данные";
+                        exportExcel({
+                          title: `Журнал движений — ${metrics?.tankName || "Танк"}`,
+                          subtitle: sub,
+                          columns: cols,
+                          rows,
+                          filename: `journal_tank_${tankId}_${new Date().toISOString().slice(0, 10)}`,
+                        });
+                        toast.success("Excel-файл скачан");
+                      }}
+                    >
+                      <Download className="w-3 h-3" /> Excel
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-7 text-[10px] gap-1"
+                      onClick={() => {
+                        const cols: ReportColumn[] = [
+                          { header: "Дата", key: "date", width: 18, pdfWidth: 35 },
+                          { header: "Тип операции", key: "type", width: 18, pdfWidth: 30 },
+                          { header: "Объём, л", key: "volume", width: 12, pdfWidth: 20 },
+                          { header: "Остаток, л", key: "balance", width: 12, pdfWidth: 20 },
+                          { header: "Сотрудник", key: "worker", width: 22, pdfWidth: 40 },
+                          { header: "Примечание", key: "note", width: 30, pdfWidth: 50 },
+                        ];
+                        const rows = movements.movements.map((m: any) => {
+                          const mt = MOVEMENT_LABELS[m.movementType] ?? { label: m.movementType };
+                          const d = new Date(m.createdAt);
+                          return {
+                            date: d.toLocaleDateString("ru-RU") + " " + d.toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" }),
+                            type: mt.label,
+                            volume: m.volumeLiters,
+                            balance: m.tankVolumeAfterLiters,
+                            worker: m.workerName || "—",
+                            note: m.note || "—",
+                          };
+                        });
+                        const sub = effectiveDateFrom || effectiveDateTo
+                          ? periodSubtitle(effectiveDateFrom || "...", effectiveDateTo || new Date().toISOString().slice(0, 10))
+                          : "Все данные";
+                        exportPDF({
+                          title: `Журнал движений — ${metrics?.tankName || "Танк"}`,
+                          subtitle: sub,
+                          columns: cols,
+                          rows,
+                          filename: `journal_tank_${tankId}_${new Date().toISOString().slice(0, 10)}`,
+                        });
+                        toast.success("PDF-файл скачан");
+                      }}
+                    >
+                      <Download className="w-3 h-3" /> PDF
+                    </Button>
+                  </div>
+                )}
+              </div>
               <Select value={movementFilter || "all"} onValueChange={(v) => onMovementFilterChange(v === "all" ? "" : v)}>
                 <SelectTrigger className="w-[180px] h-8 text-xs">
                   <SelectValue placeholder="Все типы" />

@@ -934,7 +934,85 @@ function TanksTab() {
           {/* Movement Journal */}
           <div className="bg-white rounded-xl p-3 border border-gray-100">
             <div className="flex items-center justify-between mb-2">
-              <h3 className="text-xs font-semibold text-gray-700">Журнал движений</h3>
+              <div className="flex items-center gap-2">
+                <h3 className="text-xs font-semibold text-gray-700">Журнал движений</h3>
+                {(movementsQuery.data?.movements ?? []).length > 0 && (
+                  <div className="flex gap-1">
+                    <button
+                      className="flex items-center gap-0.5 text-[9px] text-gray-500 border rounded px-1.5 py-0.5 hover:bg-gray-50"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        const selectedTank = tanks.find((t: any) => t.id === selectedTankId);
+                        const cols: ReportColumn[] = [
+                          { header: "Дата", key: "date", width: 18 },
+                          { header: "Тип операции", key: "type", width: 18 },
+                          { header: "Объём, л", key: "volume", width: 12 },
+                          { header: "Остаток, л", key: "balance", width: 12 },
+                          { header: "Сотрудник", key: "worker", width: 22 },
+                          { header: "Примечание", key: "note", width: 30 },
+                        ];
+                        const rows = (movementsQuery.data?.movements ?? []).map((m: any) => {
+                          const d = new Date(m.createdAt);
+                          return {
+                            date: d.toLocaleDateString("ru-RU") + " " + d.toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" }),
+                            type: MOVEMENT_LABELS[m.movementType] ?? m.movementType,
+                            volume: m.volumeLiters,
+                            balance: m.tankVolumeAfterLiters,
+                            worker: m.workerName || "—",
+                            note: m.note || "—",
+                          };
+                        });
+                        exportExcel({
+                          title: `Журнал движений — ${selectedTank?.name || "Танк"}`,
+                          subtitle: `Все данные`,
+                          columns: cols,
+                          rows,
+                          filename: `journal_tank_${selectedTankId}_${new Date().toISOString().slice(0, 10)}`,
+                        });
+                        toast.success("Excel-файл скачан");
+                      }}
+                    >
+                      <FileSpreadsheet className="w-3 h-3" /> Excel
+                    </button>
+                    <button
+                      className="flex items-center gap-0.5 text-[9px] text-gray-500 border rounded px-1.5 py-0.5 hover:bg-gray-50"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        const selectedTank = tanks.find((t: any) => t.id === selectedTankId);
+                        const cols: ReportColumn[] = [
+                          { header: "Дата", key: "date", width: 18, pdfWidth: 35 },
+                          { header: "Тип операции", key: "type", width: 18, pdfWidth: 30 },
+                          { header: "Объём, л", key: "volume", width: 12, pdfWidth: 20 },
+                          { header: "Остаток, л", key: "balance", width: 12, pdfWidth: 20 },
+                          { header: "Сотрудник", key: "worker", width: 22, pdfWidth: 40 },
+                          { header: "Примечание", key: "note", width: 30, pdfWidth: 50 },
+                        ];
+                        const rows = (movementsQuery.data?.movements ?? []).map((m: any) => {
+                          const d = new Date(m.createdAt);
+                          return {
+                            date: d.toLocaleDateString("ru-RU") + " " + d.toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" }),
+                            type: MOVEMENT_LABELS[m.movementType] ?? m.movementType,
+                            volume: m.volumeLiters,
+                            balance: m.tankVolumeAfterLiters,
+                            worker: m.workerName || "—",
+                            note: m.note || "—",
+                          };
+                        });
+                        exportPDF({
+                          title: `Журнал движений — ${selectedTank?.name || "Танк"}`,
+                          subtitle: `Все данные`,
+                          columns: cols,
+                          rows,
+                          filename: `journal_tank_${selectedTankId}_${new Date().toISOString().slice(0, 10)}`,
+                        });
+                        toast.success("PDF-файл скачан");
+                      }}
+                    >
+                      <FileText className="w-3 h-3" /> PDF
+                    </button>
+                  </div>
+                )}
+              </div>
               <select
                 className="text-[10px] border rounded px-1 py-0.5"
                 value={movementFilter}
