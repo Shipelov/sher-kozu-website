@@ -11,6 +11,7 @@
  */
 
 import { useEffect, useMemo, useState } from "react";
+import { fmtNum } from "@/lib/utils";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -290,7 +291,7 @@ export default function FarmProcessingTab({ isActive }: ProcessingTabProps) {
                       <Badge className={`rounded-full text-[10px] ${st.color}`}>{st.label}</Badge>
                     </div>
                     <p className="text-xs text-[oklch(0.52_0.04_80)] mt-0.5">
-                      {fmtDate(s.shiftDate + "T00:00:00")} • {s.workerName} • {(s.totalInputMl / 1000).toFixed(1)} л
+                      {fmtDate(s.shiftDate + "T00:00:00")} • {s.workerName} • {fmtNum(s.totalInputMl / 1000)} л
                     </p>
                   </div>
                   {isExpanded ? (
@@ -471,7 +472,7 @@ export default function FarmProcessingTab({ isActive }: ProcessingTabProps) {
                             <SelectContent>
                               {tanks.filter((t: any) => t.currentVolumeMl > 0).map((t: any) => (
                                 <SelectItem key={t.id} value={String(t.id)}>
-                                  {MILK_TYPE_EMOJI[t.milkType]} {t.name} — {(t.currentVolumeMl / 1000).toFixed(1)} л
+                                  {MILK_TYPE_EMOJI[t.milkType]} {t.name} — {fmtNum(t.currentVolumeMl / 1000)} л
                                 </SelectItem>
                               ))}
                             </SelectContent>
@@ -493,7 +494,7 @@ export default function FarmProcessingTab({ isActive }: ProcessingTabProps) {
                       ) : (
                         <div className="text-xs">
                           <span className="font-medium">{MILK_TYPE_EMOJI[inp.milkType]} {tank?.name ?? `Танк #${inp.tankId}`}</span>
-                          <span className="ml-2 text-[oklch(0.5_0.04_80)]">{(inp.volumeMl / 1000).toFixed(1)} л</span>
+                          <span className="ml-2 text-[oklch(0.5_0.04_80)]">{fmtNum(inp.volumeMl / 1000)} л</span>
                         </div>
                       )}
                     </div>
@@ -511,7 +512,7 @@ export default function FarmProcessingTab({ isActive }: ProcessingTabProps) {
                 );
               })}
               <p className="text-xs text-[oklch(0.5_0.04_80)] pt-1">
-                Итого: <strong>{(editInputs.reduce((s, i) => s + i.volumeMl, 0) / 1000).toFixed(1)} л</strong>
+                Итого: <strong>{fmtNum(editInputs.reduce((s, i) => s + i.volumeMl, 0) / 1000)} л</strong>
               </p>
             </div>
           )}
@@ -642,15 +643,15 @@ export default function FarmProcessingTab({ isActive }: ProcessingTabProps) {
                       <span className="font-medium">{out.productLabel}</span>
                       <div className="flex items-center gap-2">
                         <span className="text-[oklch(0.5_0.04_80)]">
-                          Факт: {out.actualConversionRatio?.toFixed(2) ?? "—"} л/ед
+                          Факт: {out.actualConversionRatio != null ? fmtNum(out.actualConversionRatio) : "—"} л/ед
                         </span>
                         <span className="text-[oklch(0.6_0.02_80)]">|</span>
                         <span className="text-[oklch(0.5_0.04_80)]">
-                          Норма: {out.baseConversionRatio?.toFixed(2) ?? "—"}
+                          Норма: {out.baseConversionRatio != null ? fmtNum(out.baseConversionRatio) : "—"}
                         </span>
                         {deviation !== null && (
                           <Badge className={`rounded-full text-[9px] ${isAlert ? "bg-red-100 text-red-700" : Math.abs(deviation) > 5 ? "bg-amber-100 text-amber-700" : "bg-emerald-100 text-emerald-700"}`}>
-                            {deviation > 0 ? "+" : ""}{deviation.toFixed(1)}%
+                            {deviation > 0 ? "+" : ""}{fmtNum(deviation)}%
                           </Badge>
                         )}
                         {isAlert && <AlertTriangle className="w-3.5 h-3.5 text-red-500" />}
@@ -891,7 +892,7 @@ function ProcessingReport({ dateFrom, dateTo }: { dateFrom: string; dateTo: stri
     date: fmtDate(s.shiftDate + "T00:00:00"),
     sessionCode: s.sessionCode,
     worker: s.workerName ?? "—",
-    inputLiters: (s.totalInputMl / 1000).toFixed(1),
+    inputLiters: fmtNum(s.totalInputMl / 1000),
     status: STATUS_MAP[s.status]?.label ?? s.status,
   }));
 
@@ -901,7 +902,7 @@ function ProcessingReport({ dateFrom, dateTo }: { dateFrom: string; dateTo: stri
     <div className="space-y-4">
       <p className="text-sm text-[oklch(0.52_0.04_80)]">
         Сессий: <span className="font-semibold text-[oklch(0.22_0.04_60)]">{sessions.length}</span>,{" "}
-        молока переработано: <span className="font-semibold text-[oklch(0.22_0.04_60)]">{totalInputL.toFixed(1)} л</span>
+        молока переработано: <span className="font-semibold text-[oklch(0.22_0.04_60)]">{fmtNum(totalInputL)} л</span>
       </p>
 
       {/* Download buttons */}
@@ -917,7 +918,7 @@ function ProcessingReport({ dateFrom, dateTo }: { dateFrom: string; dateTo: stri
                 date: "ИТОГО",
                 sessionCode: `${sessions.length} сессий`,
                 worker: "",
-                inputLiters: totalInputL.toFixed(1),
+                inputLiters: fmtNum(totalInputL),
                 status: "",
               }],
               filename: `Переработка_${dateFrom}_${dateTo}`,
@@ -940,7 +941,7 @@ function ProcessingReport({ dateFrom, dateTo }: { dateFrom: string; dateTo: stri
                 date: "ИТОГО",
                 sessionCode: `${sessions.length} сессий`,
                 worker: "",
-                inputLiters: totalInputL.toFixed(1),
+                inputLiters: fmtNum(totalInputL),
                 status: "",
               }],
               filename: `Переработка_${dateFrom}_${dateTo}`,
@@ -971,7 +972,7 @@ function ProcessingReport({ dateFrom, dateTo }: { dateFrom: string; dateTo: stri
                 <td className="px-2 py-1.5">{fmtDate(s.shiftDate + "T00:00:00")}</td>
                 <td className="px-2 py-1.5 font-mono">{s.sessionCode}</td>
                 <td className="px-2 py-1.5 text-right font-medium text-emerald-700">
-                  {(s.totalInputMl / 1000).toFixed(1)}
+                  {fmtNum(s.totalInputMl / 1000)}
                 </td>
                 <td className="px-2 py-1.5">
                   <Badge className={`rounded-full text-[9px] ${STATUS_MAP[s.status]?.color ?? ""}`}>
@@ -1163,7 +1164,7 @@ function MilkMovementJournal({ isActive, tanks, onBack }: MilkMovementJournalPro
             const typeInfo = MOVEMENT_TYPE_MAP[m.movementType] ?? { label: m.movementType, color: "bg-gray-100 text-gray-700", sign: "?" };
             const volumeL = Math.abs(m.volumeMl) / 1000;
             const isPositive = m.volumeMl > 0;
-            const afterL = (m.tankVolumeAfterMl / 1000).toFixed(1);
+            const afterL = fmtNum(m.tankVolumeAfterMl / 1000);
             const dateStr = m.createdAt ? new Date(m.createdAt).toLocaleString("ru-RU", {
               day: "2-digit", month: "2-digit", year: "2-digit",
               hour: "2-digit", minute: "2-digit",
@@ -1186,7 +1187,7 @@ function MilkMovementJournal({ isActive, tanks, onBack }: MilkMovementJournalPro
                     </div>
                     <div className="flex items-center gap-3 mt-1.5">
                       <span className={`text-sm font-bold ${isPositive ? "text-emerald-600" : "text-red-600"}`}>
-                        {isPositive ? "+" : "−"}{volumeL.toFixed(2)} л
+                        {isPositive ? "+" : "−"}{fmtNum(volumeL)} л
                       </span>
                       <span className="text-[10px] text-[oklch(0.5_0.04_80)]">
                         → Остаток: {afterL} л

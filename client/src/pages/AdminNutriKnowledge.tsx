@@ -7,6 +7,7 @@
  */
 
 import { useAuth } from "@/_core/hooks/useAuth";
+import { fmtNum } from "@/lib/utils";
 import DashboardLayout from "@/components/DashboardLayout";
 import { DashboardLayoutSkeleton } from "@/components/DashboardLayoutSkeleton";
 import { Button } from "@/components/ui/button";
@@ -980,7 +981,7 @@ function FileUploadDialog({
                   <FileText className="h-6 w-6 text-primary" />
                   <span className="text-sm font-medium">{file.name}</span>
                   <span className="text-xs text-muted-foreground">
-                    ({(file.size / 1024).toFixed(0)} KB)
+                    ({fmtNum(file.size / 1024)} KB)
                   </span>
                 </div>
               ) : (

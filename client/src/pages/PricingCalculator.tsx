@@ -5,6 +5,7 @@
 */
 
 import { motion } from "framer-motion";
+import { fmtNum } from "@/lib/utils";
 import { Link } from "wouter";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
@@ -343,7 +344,7 @@ export default function PricingCalculator() {
                           <tr key={p.productSlug} className="border-b border-border/50">
                             <td className="py-2 text-foreground">{p.productName}</td>
                             <td className="py-2 text-right text-foreground">
-                              {p.outputQuantity.toFixed(1)} {p.unit}
+                              {fmtNum(p.outputQuantity)} {p.unit}
                             </td>
                             <td className="py-2 text-right text-muted-foreground">
                               {/* show per-unit market price */}
@@ -490,7 +491,7 @@ export default function PricingCalculator() {
                         annualPayment: annualPayment ? "annual" : "monthly",
                         products: (result?.products ?? []).map((p) => ({
                           name: p.productName,
-                          volume: p.outputQuantity.toFixed(1),
+                          volume: fmtNum(p.outputQuantity),
                           unit: p.unit,
                           marketPrice: 0,
                           value: p.marketValueRub,

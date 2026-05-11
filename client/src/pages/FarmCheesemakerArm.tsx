@@ -8,6 +8,7 @@
  */
 
 import { useEffect, useMemo, useState } from "react";
+import { fmtNum } from "@/lib/utils";
 import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
@@ -523,7 +524,7 @@ export default function FarmCheesemakerArm() {
                         <div>
                           <span className="text-[oklch(0.6_0.02_80)]">Отклонено</span>
                           <p className="font-semibold text-sm text-red-600">
-                            {(r.rejectedVolumeMl / 1000).toFixed(2)} л
+                            {fmtNum(r.rejectedVolumeMl / 1000)} л
                           </p>
                         </div>
                       )}
@@ -1041,8 +1042,8 @@ function exportCheesemakerExcel(
       date: "ИТОГО",
       sessionCode: `${data.receptions.length} приёмок`,
       milkingDate: "", shift: "", milkType: "",
-      accepted: +totalAccepted.toFixed(2),
-      rejected: +totalRejected.toFixed(2),
+      accepted: +fmtNum(totalAccepted),
+      rejected: +fmtNum(totalRejected),
       status: "", reason: "", note: "",
     }],
     filename: `Приёмка_${from}_${to}`,
@@ -1078,8 +1079,8 @@ function exportCheesemakerPDF(
       date: "ИТОГО",
       sessionCode: `${data.receptions.length} приёмок`,
       milkingDate: "", shift: "", milkType: "",
-      accepted: +totalAccepted.toFixed(2),
-      rejected: +totalRejected.toFixed(2),
+      accepted: +fmtNum(totalAccepted),
+      rejected: +fmtNum(totalRejected),
       status: "", reason: "", note: "",
     }],
     filename: `Приёмка_${from}_${to}`,

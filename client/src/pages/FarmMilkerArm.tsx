@@ -13,6 +13,7 @@
  */
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { fmtNum } from "@/lib/utils";
 import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
@@ -166,7 +167,7 @@ function AnimalBlock({
         <span className="text-sm font-semibold text-[oklch(0.3_0.04_60)]">{label}</span>
         {volMl > 0 && (
           <span className="ml-auto text-xs font-bold text-[oklch(0.35_0.12_150)]">
-            → Сыроделу: {(netMl / 1000).toFixed(1)} л
+            → Сыроделу: {fmtNum(netMl / 1000)} л
           </span>
         )}
       </div>
@@ -672,11 +673,11 @@ export default function FarmMilkerArm() {
                   <div className="flex items-center gap-2">
                     <Droplets className="w-4 h-4 text-[oklch(0.45_0.12_220)]" />
                     <span className="text-lg font-bold text-[oklch(0.22_0.04_60)]">
-                      {todayTotalL.toFixed(1)} л
+                      {fmtNum(todayTotalL)} л
                     </span>
                   </div>
                   <p className="text-[10px] text-[oklch(0.52_0.04_80)] mt-0.5">
-                    → Сыроделу: <strong>{todayNetL.toFixed(1)} л</strong>
+                    → Сыроделу: <strong>{fmtNum(todayNetL)} л</strong>
                   </p>
                 </div>
                 <div className="flex gap-1.5 ml-auto">
@@ -708,9 +709,9 @@ export default function FarmMilkerArm() {
                   );
                   return (
                     <>
-                      {totals.goat > 0 && <span>🐐 {totals.goat.toFixed(1)}л → {totals.goatNet.toFixed(1)}л</span>}
-                      {totals.sheep > 0 && <span>🐑 {totals.sheep.toFixed(1)}л → {totals.sheepNet.toFixed(1)}л</span>}
-                      {totals.cow > 0 && <span>🐄 {totals.cow.toFixed(1)}л → {totals.cowNet.toFixed(1)}л</span>}
+                      {totals.goat > 0 && <span>🐐 {fmtNum(totals.goat)}л → {fmtNum(totals.goatNet)}л</span>}
+                      {totals.sheep > 0 && <span>🐑 {fmtNum(totals.sheep)}л → {fmtNum(totals.sheepNet)}л</span>}
+                      {totals.cow > 0 && <span>🐄 {fmtNum(totals.cow)}л → {fmtNum(totals.cowNet)}л</span>}
                     </>
                   );
                 })()}
@@ -809,14 +810,14 @@ export default function FarmMilkerArm() {
               <div className="bg-[oklch(0.92_0.04_150)] rounded-xl p-3 mt-2">
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-[oklch(0.3_0.08_150)]">Общий надой</span>
-                  <span className="font-bold text-[oklch(0.22_0.04_60)]">{(totalMl / 1000).toFixed(1)} л</span>
+                  <span className="font-bold text-[oklch(0.22_0.04_60)]">{fmtNum(totalMl / 1000)} л</span>
                 </div>
                 <div className="flex items-center justify-between text-sm mt-1">
                   <span className="font-semibold text-[oklch(0.25_0.12_150)]">→ Сыроделу</span>
-                  <span className="font-bold text-lg text-[oklch(0.25_0.12_150)]">{(totalNetMl / 1000).toFixed(1)} л</span>
+                  <span className="font-bold text-lg text-[oklch(0.25_0.12_150)]">{fmtNum(totalNetMl / 1000)} л</span>
                 </div>
                 <p className="text-[10px] text-[oklch(0.45_0.06_150)] mt-1">
-                  {totalHeads} голов · Выпойка: {((parseMl(goatFeedingL) + parseMl(sheepFeedingL) + parseMl(cowFeedingL)) / 1000).toFixed(1)}л · Потери: {((parseMl(goatLossesL) + parseMl(sheepLossesL) + parseMl(cowLossesL)) / 1000).toFixed(1)}л
+                  {totalHeads} голов · Выпойка: {fmtNum((parseMl(goatFeedingL) + parseMl(sheepFeedingL) + parseMl(cowFeedingL)) / 1000)}л · Потери: {fmtNum((parseMl(goatLossesL) + parseMl(sheepLossesL) + parseMl(cowLossesL)) / 1000)}л
                 </p>
               </div>
             )}
@@ -1304,12 +1305,12 @@ function mapSessionRow(s: any) {
     cowNet: s.cow?.netLiters ?? 0,
     totalVolume: s.totalVolumeLiters ?? 0,
     netVolume: s.netVolumeLiters ?? 0,
-    goatAccepted: s.receptionByType?.goat?.acceptedMl != null ? +(s.receptionByType.goat.acceptedMl / 1000).toFixed(2) : "—",
-    goatRejected: s.receptionByType?.goat?.rejectedMl ? +(s.receptionByType.goat.rejectedMl / 1000).toFixed(2) : "—",
-    sheepAccepted: s.receptionByType?.sheep?.acceptedMl != null ? +(s.receptionByType.sheep.acceptedMl / 1000).toFixed(2) : "—",
-    sheepRejected: s.receptionByType?.sheep?.rejectedMl ? +(s.receptionByType.sheep.rejectedMl / 1000).toFixed(2) : "—",
-    cowAccepted: s.receptionByType?.cow?.acceptedMl != null ? +(s.receptionByType.cow.acceptedMl / 1000).toFixed(2) : "—",
-    cowRejected: s.receptionByType?.cow?.rejectedMl ? +(s.receptionByType.cow.rejectedMl / 1000).toFixed(2) : "—",
+    goatAccepted: s.receptionByType?.goat?.acceptedMl != null ? +fmtNum(s.receptionByType.goat.acceptedMl / 1000) : "—",
+    goatRejected: s.receptionByType?.goat?.rejectedMl ? +fmtNum(s.receptionByType.goat.rejectedMl / 1000) : "—",
+    sheepAccepted: s.receptionByType?.sheep?.acceptedMl != null ? +fmtNum(s.receptionByType.sheep.acceptedMl / 1000) : "—",
+    sheepRejected: s.receptionByType?.sheep?.rejectedMl ? +fmtNum(s.receptionByType.sheep.rejectedMl / 1000) : "—",
+    cowAccepted: s.receptionByType?.cow?.acceptedMl != null ? +fmtNum(s.receptionByType.cow.acceptedMl / 1000) : "—",
+    cowRejected: s.receptionByType?.cow?.rejectedMl ? +fmtNum(s.receptionByType.cow.rejectedMl / 1000) : "—",
     accepted: s.totalAcceptedLiters ?? "—",
     rejected: s.totalRejectedLiters > 0 ? s.totalRejectedLiters : "—",
     status: fmtStatus(s.status),
@@ -1325,30 +1326,30 @@ function computeSummary(sessions: any[]) {
     shift: "",
     worker: `${sessions.length} доек`,
     goatHeads: "",
-    goatVolume: +sum("goatVolume").toFixed(2),
-    goatFeeding: +sum("goatFeeding").toFixed(2),
-    goatLosses: +sum("goatLosses").toFixed(2),
-    goatNet: +sum("goatNet").toFixed(2),
+    goatVolume: +fmtNum(sum("goatVolume")),
+    goatFeeding: +fmtNum(sum("goatFeeding")),
+    goatLosses: +fmtNum(sum("goatLosses")),
+    goatNet: +fmtNum(sum("goatNet")),
     sheepHeads: "",
-    sheepVolume: +sum("sheepVolume").toFixed(2),
-    sheepFeeding: +sum("sheepFeeding").toFixed(2),
-    sheepLosses: +sum("sheepLosses").toFixed(2),
-    sheepNet: +sum("sheepNet").toFixed(2),
+    sheepVolume: +fmtNum(sum("sheepVolume")),
+    sheepFeeding: +fmtNum(sum("sheepFeeding")),
+    sheepLosses: +fmtNum(sum("sheepLosses")),
+    sheepNet: +fmtNum(sum("sheepNet")),
     cowHeads: "",
-    cowVolume: +sum("cowVolume").toFixed(2),
-    cowFeeding: +sum("cowFeeding").toFixed(2),
-    cowLosses: +sum("cowLosses").toFixed(2),
-    cowNet: +sum("cowNet").toFixed(2),
-    totalVolume: +sum("totalVolume").toFixed(2),
-    netVolume: +sum("netVolume").toFixed(2),
-    goatAccepted: +sum("goatAccepted").toFixed(2) || "—",
-    goatRejected: +sum("goatRejected").toFixed(2) || "—",
-    sheepAccepted: +sum("sheepAccepted").toFixed(2) || "—",
-    sheepRejected: +sum("sheepRejected").toFixed(2) || "—",
-    cowAccepted: +sum("cowAccepted").toFixed(2) || "—",
-    cowRejected: +sum("cowRejected").toFixed(2) || "—",
-    accepted: +sum("accepted").toFixed(2),
-    rejected: +sum("rejected").toFixed(2) || "—",
+    cowVolume: +fmtNum(sum("cowVolume")),
+    cowFeeding: +fmtNum(sum("cowFeeding")),
+    cowLosses: +fmtNum(sum("cowLosses")),
+    cowNet: +fmtNum(sum("cowNet")),
+    totalVolume: +fmtNum(sum("totalVolume")),
+    netVolume: +fmtNum(sum("netVolume")),
+    goatAccepted: +fmtNum(sum("goatAccepted")) || "—",
+    goatRejected: +fmtNum(sum("goatRejected")) || "—",
+    sheepAccepted: +fmtNum(sum("sheepAccepted")) || "—",
+    sheepRejected: +fmtNum(sum("sheepRejected")) || "—",
+    cowAccepted: +fmtNum(sum("cowAccepted")) || "—",
+    cowRejected: +fmtNum(sum("cowRejected")) || "—",
+    accepted: +fmtNum(sum("accepted")),
+    rejected: +fmtNum(sum("rejected")) || "—",
     status: "",
   };
 }

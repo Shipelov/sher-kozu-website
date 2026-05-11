@@ -13,6 +13,7 @@
  */
 
 import { useEffect, useMemo, useState } from "react";
+import { fmtNum } from "@/lib/utils";
 import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
@@ -376,20 +377,20 @@ function OverviewTab() {
               <AnalyticChip
                 label="% выпойки"
                 value={periodData.total.volumeL > 0
-                  ? `${((periodData.total.feedingL / periodData.total.volumeL) * 100).toFixed(1)}%`
+                  ? `${fmtNum((periodData.total.feedingL / periodData.total.volumeL) * 100)}%`
                   : "—"}
               />
               <AnalyticChip
                 label="% потерь"
                 value={periodData.total.volumeL > 0
-                  ? `${((periodData.total.lossesL / periodData.total.volumeL) * 100).toFixed(1)}%`
+                  ? `${fmtNum((periodData.total.lossesL / periodData.total.volumeL) * 100)}%`
                   : "—"}
                 warn={periodData.total.volumeL > 0 && (periodData.total.lossesL / periodData.total.volumeL) > 0.05}
               />
               <AnalyticChip
                 label="Ср. на голову"
                 value={periodData.total.heads > 0
-                  ? `${(periodData.total.volumeL / periodData.total.heads).toFixed(2)} л`
+                  ? `${fmtNum(periodData.total.volumeL / periodData.total.heads)} л`
                   : "—"}
               />
             </div>
@@ -1369,7 +1370,7 @@ function ControllerProcessingTab() {
       date: s.shiftDate,
       sessionCode: s.sessionCode,
       worker: s.workerName ?? "—",
-      inputLiters: (s.totalInputMl / 1000).toFixed(1),
+      inputLiters: fmtNum(s.totalInputMl / 1000),
       status: PROC_STATUS[s.status]?.label ?? s.status,
     }));
     const totalL = sessions.reduce((sum: number, s: any) => sum + s.totalInputMl, 0) / 1000;
@@ -1378,7 +1379,7 @@ function ControllerProcessingTab() {
       subtitle: periodSubtitle(dates.from, dates.to),
       columns: PROC_COLUMNS,
       rows,
-      summaryRows: [{ date: "ИТОГО", sessionCode: `${sessions.length} сессий`, worker: "", inputLiters: totalL.toFixed(1), status: "" }],
+      summaryRows: [{ date: "ИТОГО", sessionCode: `${sessions.length} сессий`, worker: "", inputLiters: fmtNum(totalL), status: "" }],
       filename: `Контроль_переработки_${dates.from}_${dates.to}`,
     };
     format === "excel" ? exportExcel(config) : exportPDF(config);
@@ -1392,9 +1393,9 @@ function ControllerProcessingTab() {
           date: (s as any).shiftDate,
           sessionCode: (s as any).sessionCode,
           product: out.productLabel,
-          actual: out.actualConversionRatio?.toFixed(2) ?? "—",
-          base: out.baseConversionRatio?.toFixed(2) ?? "—",
-          deviation: out.deviationPercent != null ? `${out.deviationPercent > 0 ? "+" : ""}${out.deviationPercent.toFixed(1)}%` : "—",
+          actual: out.actualConversionRatio != null ? fmtNum(out.actualConversionRatio) : "—",
+          base: out.baseConversionRatio != null ? fmtNum(out.baseConversionRatio) : "—",
+          deviation: out.deviationPercent != null ? `${out.deviationPercent > 0 ? "+" : ""}${fmtNum(out.deviationPercent)}%` : "—",
         });
       }
     }
@@ -1447,7 +1448,7 @@ function ControllerProcessingTab() {
                 <span className="text-red-500">•</span>
                 <span>{a.productLabel}</span>
                 <Badge className="rounded-full text-[9px] bg-red-100 text-red-700 ml-auto">
-                  {a.deviationPercent > 0 ? "+" : ""}{a.deviationPercent.toFixed(1)}%
+                  {a.deviationPercent > 0 ? "+" : ""}{fmtNum(a.deviationPercent)}%
                 </Badge>
               </div>
             ))}
@@ -1498,7 +1499,7 @@ function ControllerProcessingTab() {
                     <tr key={s.id} className="hover:bg-gray-50/50">
                       <td className="px-2 py-1.5 font-mono">{s.sessionCode}</td>
                       <td className="px-2 py-1.5">{s.shiftDate}</td>
-                      <td className="px-2 py-1.5 text-right font-medium text-emerald-700">{(s.totalInputMl / 1000).toFixed(1)}</td>
+                      <td className="px-2 py-1.5 text-right font-medium text-emerald-700">{fmtNum(s.totalInputMl / 1000)}</td>
                       <td className="px-2 py-1.5">
                         <Badge className={`rounded-full text-[9px] ${st.color}`}>{st.label}</Badge>
                       </td>
@@ -1521,7 +1522,7 @@ function ControllerProcessingTab() {
                 <div className="flex items-center gap-2 mb-2">
                   <span className="text-xs font-mono font-medium text-gray-700">{s.sessionCode}</span>
                   <span className="text-[10px] text-gray-400">{s.shiftDate}</span>
-                  <span className="text-[10px] text-gray-400">• {(s.totalInputMl / 1000).toFixed(1)} л</span>
+                  <span className="text-[10px] text-gray-400">• {fmtNum(s.totalInputMl / 1000)} л</span>
                 </div>
                 {(s.outputs ?? []).length === 0 ? (
                   <p className="text-[10px] text-gray-400">Нет выходных данных</p>
@@ -1536,11 +1537,11 @@ function ControllerProcessingTab() {
                           <span className="font-medium text-gray-700">{out.productLabel}</span>
                           <div className="flex items-center gap-2">
                             <span className="text-gray-500">
-                              {out.actualConversionRatio?.toFixed(2) ?? "—"} / {out.baseConversionRatio?.toFixed(2) ?? "—"}
+                              {out.actualConversionRatio != null ? fmtNum(out.actualConversionRatio) : "—"} / {out.baseConversionRatio != null ? fmtNum(out.baseConversionRatio) : "—"}
                             </span>
                             {dev !== null && (
                               <Badge className={`rounded-full text-[9px] ${isAlert ? "bg-red-100 text-red-700" : isWarn ? "bg-amber-100 text-amber-700" : "bg-emerald-100 text-emerald-700"}`}>
-                                {dev > 0 ? "+" : ""}{dev.toFixed(1)}%
+                                {dev > 0 ? "+" : ""}{fmtNum(dev)}%
                               </Badge>
                             )}
                             {isAlert && <AlertTriangle className="w-3 h-3 text-red-500" />}

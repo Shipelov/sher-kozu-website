@@ -1,4 +1,5 @@
 import { useAuth } from "@/_core/hooks/useAuth";
+import { fmtNum } from "@/lib/utils";
 import { getLoginUrl } from "@/const";
 import DashboardLayout from "@/components/DashboardLayout";
 import PageBreadcrumbs from "@/components/PageBreadcrumbs";
@@ -3767,7 +3768,7 @@ function MonthlyMetricsManager({ animalId }: { animalId: number }) {
                       <span className="font-medium text-foreground">{item.monthLabel}</span>
                       <Badge variant="secondary" className="rounded-full text-xs">{item.milkVolumeLiters} л</Badge>
                       <span className="text-xs text-muted-foreground">
-                        Белок {(item.proteinPercentTenth / 10).toFixed(1)}% · Жир {(item.fatPercentTenth / 10).toFixed(1)}%
+                        Белок {fmtNum(item.proteinPercentTenth / 10)}% · Жир {fmtNum(item.fatPercentTenth / 10)}%
                       </span>
                     </div>
                   </div>

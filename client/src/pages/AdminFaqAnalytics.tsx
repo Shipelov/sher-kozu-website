@@ -6,6 +6,7 @@
  */
 
 import { useAuth } from "@/_core/hooks/useAuth";
+import { fmtNum } from "@/lib/utils";
 import DashboardLayout from "@/components/DashboardLayout";
 import PageBreadcrumbs from "@/components/PageBreadcrumbs";
 import { getLoginUrl } from "@/const";
@@ -584,7 +585,7 @@ export default function AdminFaqAnalytics() {
                 <CardContent>
                   <p className="text-3xl font-bold text-foreground">
                     {stats?.periodCount && stats?.days
-                      ? (stats.periodCount / Math.min(stats.days, 7)).toFixed(1)
+                      ? fmtNum(stats.periodCount / Math.min(stats.days, 7))
                       : "0"}
                   </p>
                   <p className="text-xs text-muted-foreground mt-1">

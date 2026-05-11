@@ -1,4 +1,5 @@
 import { useAuth } from "@/_core/hooks/useAuth";
+import { fmtNum } from "@/lib/utils";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -354,7 +355,7 @@ export default function AdminAnalyticsAlerts() {
                         <div className="flex gap-4 mt-1 text-xs text-muted-foreground">
                           <span>Текущее: {alert.currentValue}</span>
                           {alert.previousValue !== null && <span>Предыдущее: {alert.previousValue}</span>}
-                          {alert.changePct !== null && <span>Изменение: {alert.changePct.toFixed(1)}%</span>}
+                          {alert.changePct !== null && <span>Изменение: {fmtNum(alert.changePct)}%</span>}
                         </div>
                       </div>
                       <div className="text-xs text-muted-foreground flex items-center gap-1">

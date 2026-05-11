@@ -2742,3 +2742,4 @@ Module: Контроль оборота молока. Spec v2.1. Mobile-first AR
 - [x] Feature: Tank analytics reset — button to reset analytics baseline, storing current volume as starting point from reset date
 - [x] Feature: Excel export of tank movement journal for accounting (Admin + Controller ARM)
 - [x] Feature: Add period selector to Controller ARM TanksTab journal (analogous to other tabs), export respects selected period
+- [x] Feature: Standardize number formatting to 2 decimal places across all dashboards (Admin, Controller ARM, Cheesemaker ARM)

@@ -6,6 +6,7 @@
  */
 
 import { useState, useMemo } from "react";
+import { fmtNum } from "@/lib/utils";
 import { trpc } from "@/lib/trpc";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -482,19 +483,19 @@ export default function AdminMilkDashboard() {
                             {s.shift === "morning" ? "🌅 Утро" : "🌙 Вечер"}
                           </td>
                           <td className="px-3 py-2 text-right">
-                            {s.goat.volumeLiters > 0 ? `${s.goat.volumeLiters}` : "—"}
+                            {s.goat.volumeLiters > 0 ? `${fmtNum(s.goat.volumeLiters)}` : "—"}
                             {s.goat.headCount > 0 && <span className="text-[10px] text-[oklch(0.6_0.02_80)] ml-0.5">({s.goat.headCount})</span>}
                           </td>
                           <td className="px-3 py-2 text-right">
-                            {s.sheep.volumeLiters > 0 ? `${s.sheep.volumeLiters}` : "—"}
+                            {s.sheep.volumeLiters > 0 ? `${fmtNum(s.sheep.volumeLiters)}` : "—"}
                             {s.sheep.headCount > 0 && <span className="text-[10px] text-[oklch(0.6_0.02_80)] ml-0.5">({s.sheep.headCount})</span>}
                           </td>
                           <td className="px-3 py-2 text-right">
-                            {s.cow.volumeLiters > 0 ? `${s.cow.volumeLiters}` : "—"}
+                            {s.cow.volumeLiters > 0 ? `${fmtNum(s.cow.volumeLiters)}` : "—"}
                             {s.cow.headCount > 0 && <span className="text-[10px] text-[oklch(0.6_0.02_80)] ml-0.5">({s.cow.headCount})</span>}
                           </td>
                           <td className="px-3 py-2 text-right font-semibold">
-                            {s.totalVolumeLiters} л
+                            {fmtNum(s.totalVolumeLiters)} л
                           </td>
                           <td className="px-3 py-2">
                             <Badge className={`rounded-full text-[10px] ${st.color}`}>
@@ -582,10 +583,10 @@ export default function AdminMilkDashboard() {
                           </td>
                           <td className="px-3 py-2">{r.receiverName}</td>
                           <td className="px-3 py-2 text-right font-semibold text-emerald-700">
-                            {r.acceptedVolumeLiters} л
+                            {fmtNum(r.acceptedVolumeLiters)} л
                           </td>
                           <td className="px-3 py-2 text-right text-red-600">
-                            {r.rejectedVolumeLiters > 0 ? `${r.rejectedVolumeLiters} л` : "—"}
+                            {r.rejectedVolumeLiters > 0 ? `${fmtNum(r.rejectedVolumeLiters)} л` : "—"}
                           </td>
                           <td className="px-3 py-2">
                             <Badge className={`rounded-full text-[10px] ${st.color}`}>
@@ -700,8 +701,8 @@ export default function AdminMilkDashboard() {
                     )}
                     <div className="mb-2">
                       <div className="flex justify-between text-xs text-[oklch(0.52_0.04_80)] mb-1">
-                        <span>{t.currentVolumeLiters} л</span>
-                        <span>{t.capacityLiters} л</span>
+                        <span>{fmtNum(t.currentVolumeLiters)} л</span>
+                        <span>{fmtNum(t.capacityLiters)} л</span>
                       </div>
                       <div className="h-2.5 bg-[oklch(0.94_0.02_90)] rounded-full overflow-hidden">
                         <div
@@ -1455,10 +1456,10 @@ function OverviewSection({
         : overview[period];
 
   const pct = (part: number, whole: number) =>
-    whole > 0 ? `${((part / whole) * 100).toFixed(1)}%` : "—";
+    whole > 0 ? `${fmtNum((part / whole) * 100)}%` : "—";
 
   const avgPerHead = (vol: number, heads: number) =>
-    heads > 0 ? `${(vol / heads).toFixed(2)} л` : "—";
+    heads > 0 ? `${fmtNum(vol / heads)} л` : "—";
 
   const columns = [
     { key: "total" as const, label: "Всего", emoji: "" },
@@ -1795,23 +1796,23 @@ function OverviewSection({
         <StatCard
           label="Приёмок сегодня"
           value={overview.receptionToday.count}
-          sub={`✔ ${overview.receptionToday.acceptedLiters}л${overview.receptionToday.rejectedLiters > 0 ? ` / ✖ ${overview.receptionToday.rejectedLiters}л` : ""}`}
+          sub={`✔ ${fmtNum(overview.receptionToday.acceptedLiters)}л${overview.receptionToday.rejectedLiters > 0 ? ` / ✖ ${fmtNum(overview.receptionToday.rejectedLiters)}л` : ""}`}
         />
         <StatCard
           label="Танки"
           value={`${overview.tanks.active} / ${overview.tanks.total}`}
-          sub={`Заполн: ${overview.tanks.fillPercent}% (${overview.tanks.currentLiters}л)`}
+          sub={`Заполн: ${fmtNum(overview.tanks.fillPercent)}% (${fmtNum(overview.tanks.currentLiters)}л)`}
         />
         <StatCard
           label="Переработка сегодня"
           value={overview.processing?.today?.sessions ?? 0}
-          sub={`Вход: ${overview.processing?.today?.inputLiters ?? 0}л → ${overview.processing?.today?.outputUnits ?? 0} ед.`}
+          sub={`Вход: ${fmtNum(overview.processing?.today?.inputLiters ?? 0)}л → ${overview.processing?.today?.outputUnits ?? 0} ед.`}
           accent
           byType={(overview.processing?.today as any)?.byType}
         />
         <StatCard
           label="Ср. коэфф. конверсии"
-          value={overview.processing?.avgConversionRatio ? `${(overview.processing.avgConversionRatio * 100).toFixed(1)}%` : "—"}
+          value={overview.processing?.avgConversionRatio ? `${fmtNum(overview.processing.avgConversionRatio * 100)}%` : "—"}
           sub={`За месяц: ${overview.processing?.month?.sessions ?? 0} сессий`}
         />
       </div>
@@ -1841,9 +1842,9 @@ function OverviewSection({
                 </tr>
                 <tr className="bg-[oklch(0.97_0.02_270)] hover:bg-[oklch(0.96_0.03_270)]">
                   <td className={`${tdBold} text-[oklch(0.30_0.10_270)]`}>Молока в переработку, л (всего)</td>
-                  <td className={`${tdBold} text-[oklch(0.30_0.10_270)]`}>{overview.processing.today.inputLiters}</td>
-                  <td className={`${tdBold} text-[oklch(0.30_0.10_270)]`}>{overview.processing.week.inputLiters}</td>
-                  <td className={`${tdBold} text-[oklch(0.30_0.10_270)]`}>{overview.processing.month.inputLiters}</td>
+                  <td className={`${tdBold} text-[oklch(0.30_0.10_270)]`}>{fmtNum(overview.processing.today.inputLiters)}</td>
+                  <td className={`${tdBold} text-[oklch(0.30_0.10_270)]`}>{fmtNum(overview.processing.week.inputLiters)}</td>
+                  <td className={`${tdBold} text-[oklch(0.30_0.10_270)]`}>{fmtNum(overview.processing.month.inputLiters)}</td>
                 </tr>
                 {(["goat", "sheep", "cow"] as const).map((type) => {
                   const label = type === "goat" ? "  🐐 Козье" : type === "sheep" ? "  🐑 Овечье" : "  🐄 Коровье";
@@ -1854,9 +1855,9 @@ function OverviewSection({
                   return (
                     <tr key={type} className="hover:bg-[oklch(0.98_0.005_90)]">
                       <td className={`${tdCls} text-[oklch(0.4_0.04_80)] pl-6`}>{label}</td>
-                      <td className={tdCls}>{todayVal > 0 ? `${todayVal}` : "—"}</td>
-                      <td className={tdCls}>{weekVal > 0 ? `${weekVal}` : "—"}</td>
-                      <td className={tdCls}>{monthVal > 0 ? `${monthVal}` : "—"}</td>
+                      <td className={tdCls}>{todayVal > 0 ? `${fmtNum(todayVal)}` : "—"}</td>
+                      <td className={tdCls}>{weekVal > 0 ? `${fmtNum(weekVal)}` : "—"}</td>
+                      <td className={tdCls}>{monthVal > 0 ? `${fmtNum(monthVal)}` : "—"}</td>
                     </tr>
                   );
                 })}
@@ -1869,7 +1870,7 @@ function OverviewSection({
                 <tr className="bg-[oklch(0.96_0.04_150)] hover:bg-[oklch(0.95_0.05_150)]">
                   <td className={`${tdBold} text-[oklch(0.25_0.12_150)]`}>Ср. коэфф. конверсии (мес)</td>
                   <td className={`${tdBold} text-[oklch(0.25_0.12_150)]`} colSpan={3}>
-                    {overview.processing.avgConversionRatio ? `${(overview.processing.avgConversionRatio * 100).toFixed(2)}%` : "Нет данных"}
+                    {overview.processing.avgConversionRatio ? `${fmtNum(overview.processing.avgConversionRatio * 100)}%` : "Нет данных"}
                   </td>
                 </tr>
               </tbody>
@@ -1911,7 +1912,7 @@ function OverviewSection({
                     <tr className="bg-[oklch(0.94_0.03_90)] font-semibold">
                       <td className={`${tdBold} text-[oklch(0.3_0.08_80)]`}>ИТОГО</td>
                       <td className={`${tdBold} text-[oklch(0.3_0.08_80)]`}>
-                        {overview.processing.productBreakdown.reduce((sum: number, p: { totalQuantity: number }) => sum + p.totalQuantity, 0).toFixed(2)}
+                        {fmtNum(overview.processing.productBreakdown.reduce((sum: number, p: { totalQuantity: number }) => sum + p.totalQuantity, 0))}
                       </td>
                       <td className={tdCls}>—</td>
                       <td className={tdCls}>—</td>
@@ -2046,9 +2047,9 @@ const OVERVIEW_COLUMNS: ReportColumn[] = [
 
 function buildOverviewRows(d: PeriodData) {
   const pct = (part: number, whole: number) =>
-    whole > 0 ? `${((part / whole) * 100).toFixed(1)}%` : "—";
+    whole > 0 ? `${fmtNum((part / whole) * 100)}%` : "—";
   const avg = (vol: number, heads: number) =>
-    heads > 0 ? `${(vol / heads).toFixed(2)} л` : "—";
+    heads > 0 ? `${fmtNum(vol / heads)} л` : "—";
 
   const keys = ["total", "goat", "sheep", "cow"] as const;
   const row = (metric: string, fn: (k: typeof keys[number]) => string | number) => {
@@ -2181,7 +2182,7 @@ function AdminProcessingTab() {
       date: s.shiftDate,
       sessionCode: s.sessionCode,
       worker: s.workerName ?? "—",
-      inputLiters: (s.totalInputMl / 1000).toFixed(1),
+      inputLiters: fmtNum(s.totalInputMl / 1000),
       status: PROC_STATUS[s.status]?.label ?? s.status,
     }));
     const totalL = sessions.reduce((sum: number, s: any) => sum + s.totalInputMl, 0) / 1000;
@@ -2190,7 +2191,7 @@ function AdminProcessingTab() {
       subtitle: periodSubtitle(dateFrom || "—", dateTo || "—"),
       columns: PROC_COLUMNS,
       rows,
-      summaryRows: [{ date: "ИТОГО", sessionCode: `${sessions.length} сессий`, worker: "", inputLiters: totalL.toFixed(1), status: "" }],
+      summaryRows: [{ date: "ИТОГО", sessionCode: `${sessions.length} сессий`, worker: "", inputLiters: fmtNum(totalL), status: "" }],
       filename: `Переработка_${dateFrom || "all"}_${dateTo || "all"}`,
     };
     format === "excel" ? exportExcel(config) : exportPDF(config);
@@ -2210,9 +2211,9 @@ function AdminProcessingTab() {
                 <span className="font-mono">{a.sessionCode}</span>
                 <span>{a.productLabel}</span>
                 <Badge className="rounded-full text-[9px] bg-red-100 text-red-700">
-                  {a.deviationPercent > 0 ? "+" : ""}{a.deviationPercent.toFixed(1)}%
+                  {a.deviationPercent > 0 ? "+" : ""}{fmtNum(a.deviationPercent)}%
                 </Badge>
-                <span className="text-red-400">факт: {a.actualRatio.toFixed(2)} / норма: {a.baseRatio.toFixed(2)}</span>
+                <span className="text-red-400">факт: {fmtNum(a.actualRatio)} / норма: {fmtNum(a.baseRatio)}</span>
               </div>
             ))}
           </div>
@@ -2293,22 +2294,22 @@ function AdminProcessingTab() {
                     <td className="px-3 py-2 font-mono font-medium">{s.sessionCode}</td>
                     <td className="px-3 py-2">{s.shiftDate}</td>
                     <td className="px-3 py-2">{s.workerName ?? "—"}</td>
-                    <td className="px-3 py-2 text-right font-medium text-emerald-700">{(s.totalInputMl / 1000).toFixed(1)}</td>
+                    <td className="px-3 py-2 text-right font-medium text-emerald-700">{fmtNum(s.totalInputMl / 1000)}</td>
                     <td className="px-3 py-2">
                       <div className="flex flex-wrap gap-1">
                         {s.byType?.goat > 0 && (
                           <span className="inline-flex items-center text-[9px] bg-amber-50 text-amber-700 px-1.5 py-0.5 rounded-full">
-                            🐐 {s.byType.goat.toFixed(1)}л
+                            🐐 {fmtNum(s.byType.goat)}л
                           </span>
                         )}
                         {s.byType?.sheep > 0 && (
                           <span className="inline-flex items-center text-[9px] bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded-full">
-                            🐑 {s.byType.sheep.toFixed(1)}л
+                            🐑 {fmtNum(s.byType.sheep)}л
                           </span>
                         )}
                         {s.byType?.cow > 0 && (
                           <span className="inline-flex items-center text-[9px] bg-emerald-50 text-emerald-700 px-1.5 py-0.5 rounded-full">
-                            🐄 {s.byType.cow.toFixed(1)}л
+                            🐄 {fmtNum(s.byType.cow)}л
                           </span>
                         )}
                         {(!s.byType || (s.byType.goat === 0 && s.byType.sheep === 0 && s.byType.cow === 0)) && (
@@ -2357,7 +2358,7 @@ function AdminProcessingTab() {
                 <tr className="font-semibold text-xs">
                   <td className="px-3 py-2" colSpan={3}>ИТОГО ({sessions.length} сессий)</td>
                   <td className="px-3 py-2 text-right text-emerald-700">
-                    {(sessions.reduce((sum: number, s: any) => sum + s.totalInputMl, 0) / 1000).toFixed(1)} л
+                    {fmtNum(sessions.reduce((sum: number, s: any) => sum + s.totalInputMl, 0) / 1000)} л
                   </td>
                   <td className="px-3 py-2">
                     <div className="flex flex-wrap gap-1">
@@ -2372,17 +2373,17 @@ function AdminProcessingTab() {
                           <>
                             {totals.goat > 0 && (
                               <span className="inline-flex items-center text-[9px] bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded-full font-bold">
-                                🐐 {totals.goat.toFixed(1)}л
+                                🐐 {fmtNum(totals.goat)}л
                               </span>
                             )}
                             {totals.sheep > 0 && (
                               <span className="inline-flex items-center text-[9px] bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded-full font-bold">
-                                🐑 {totals.sheep.toFixed(1)}л
+                                🐑 {fmtNum(totals.sheep)}л
                               </span>
                             )}
                             {totals.cow > 0 && (
                               <span className="inline-flex items-center text-[9px] bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded-full font-bold">
-                                🐄 {totals.cow.toFixed(1)}л
+                                🐄 {fmtNum(totals.cow)}л
                               </span>
                             )}
                           </>

@@ -10,6 +10,7 @@
  */
 
 import { useAuth } from "@/_core/hooks/useAuth";
+import { fmtNum } from "@/lib/utils";
 import DashboardLayout from "@/components/DashboardLayout";
 import PageBreadcrumbs from "@/components/PageBreadcrumbs";
 import { Button } from "@/components/ui/button";
@@ -446,7 +447,7 @@ export default function AdminNutriAnalytics() {
                               paddingAngle={3}
                               dataKey="value"
                               label={({ name, percent }: { name: string; percent: number }) =>
-                                `${name} ${(percent * 100).toFixed(0)}%`
+                                `${name} ${fmtNum(percent * 100)}%`
                               }
                             >
                               {userTypePieData.map((entry: { fill: string }, i: number) => (
@@ -509,11 +510,11 @@ export default function AdminNutriAnalytics() {
                             <Sparkles className="h-3 w-3 inline mr-1" />
                             Конверсия гость → регистрация:{" "}
                             <strong>
-                              {(
+                              {fmtNum(
                                 ((Number(data.registeredSessions) + Number(data.ownerSessions)) /
                                   Number(data.sessions)) *
                                 100
-                              ).toFixed(1)}
+                              )}
                               %
                             </strong>{" "}
                             сессий от авторизованных пользователей
@@ -631,7 +632,7 @@ export default function AdminNutriAnalytics() {
                     title="Ср. просмотров/ссылку"
                     value={
                       Number(data.sharesCreated) > 0
-                        ? (Number(data.totalShareViews) / Number(data.sharesCreated)).toFixed(1)
+                        ? fmtNum(Number(data.totalShareViews) / Number(data.sharesCreated))
                         : "0"
                     }
                     icon={<TrendingUp className="h-4 w-4" />}

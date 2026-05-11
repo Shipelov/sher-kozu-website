@@ -1,4 +1,5 @@
 import { useAuth } from "@/_core/hooks/useAuth";
+import { fmtNum } from "@/lib/utils";
 import DashboardLayout from "@/components/DashboardLayout";
 import PageBreadcrumbs from "@/components/PageBreadcrumbs";
 import { Button } from "@/components/ui/button";
@@ -423,7 +424,7 @@ export default function AdminSiteAnalytics() {
                                 cy="50%"
                                 outerRadius={80}
                                 label={({ referrer, percent }) =>
-                                  `${(referrer as string).length > 15 ? (referrer as string).slice(0, 12) + "..." : referrer} ${(percent * 100).toFixed(0)}%`
+                                  `${(referrer as string).length > 15 ? (referrer as string).slice(0, 12) + "..." : referrer} ${fmtNum(percent * 100)}%`
                                 }
                                 labelLine={false}
                               >
@@ -741,7 +742,7 @@ function GeoMapSection({ locations, isLoading }: { locations: GeoLocation[]; isL
     // Aggregate by city to avoid too many markers
     const cityMap = new Map<string, { lat: number; lng: number; city: string; count: number }>();
     for (const loc of locs) {
-      const key = `${loc.lat.toFixed(2)},${loc.lng.toFixed(2)}`;
+      const key = `${fmtNum(loc.lat)},${fmtNum(loc.lng)}`;
       const existing = cityMap.get(key);
       if (existing) {
         existing.count++;

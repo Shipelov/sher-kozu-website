@@ -46,6 +46,7 @@ import {
 import { Line } from "react-chartjs-2";
 import { toast } from "sonner";
 import { exportExcel, exportPDF, type ReportColumn, periodSubtitle } from "@/lib/reportExport";
+import { fmtNum } from "@/lib/utils";
 
 ChartJS.register(
   CategoryScale,
@@ -126,7 +127,7 @@ export default function TankAnalyticsPanel({
   const resetMutation = trpc.milkAdmin.resetTankAnalytics.useMutation({
     onSuccess: (data) => {
       toast.success(`Аналитика сброшена для ${data.tankName}`, {
-        description: `Базовый объём: ${data.baselineVolumeLiters} л. Новые данные начнутся с ${new Date(data.resetAt).toLocaleDateString("ru-RU")}`,
+        description: `Базовый объём: ${fmtNum(data.baselineVolumeLiters)} л. Новые данные начнутся с ${new Date(data.resetAt).toLocaleDateString("ru-RU")}`,
       });
       void utils.milkAdmin.tanks.invalidate();
       void utils.milkAdmin.tankTurnover.invalidate();
@@ -273,12 +274,12 @@ export default function TankAnalyticsPanel({
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               <MetricCard
                 label="Ср. расход/день"
-                value={`${metrics.avgDailyConsumptionLiters} л`}
+                value={`${fmtNum(metrics.avgDailyConsumptionLiters)} л`}
                 icon={<TrendingDown className="w-4 h-4 text-red-500" />}
               />
               <MetricCard
                 label="Ср. приход/день"
-                value={`${metrics.avgDailyInflowLiters} л`}
+                value={`${fmtNum(metrics.avgDailyInflowLiters)} л`}
                 icon={<TrendingUp className="w-4 h-4 text-emerald-500" />}
               />
               <MetricCard
@@ -289,7 +290,7 @@ export default function TankAnalyticsPanel({
               />
               <MetricCard
                 label="Оборачиваемость"
-                value={`${metrics.turnoverRate}×`}
+                value={`${fmtNum(metrics.turnoverRate)}×`}
                 subtitle={isCustomPeriod ? "за период" : "за 30 дней"}
                 icon={<Droplets className="w-4 h-4 text-blue-500" />}
               />
@@ -493,10 +494,10 @@ export default function TankAnalyticsPanel({
                               </Badge>
                             </td>
                             <td className={`px-3 py-2 text-right font-medium ${m.volumeLiters > 0 ? "text-emerald-600" : "text-red-600"}`}>
-                              {m.volumeLiters > 0 ? "+" : ""}{m.volumeLiters} л
+                              {m.volumeLiters > 0 ? "+" : ""}{fmtNum(m.volumeLiters)} л
                             </td>
                             <td className="px-3 py-2 text-right text-[oklch(0.5_0.04_80)]">
-                              {m.tankVolumeAfterLiters} л
+                              {fmtNum(m.tankVolumeAfterLiters)} л
                             </td>
                             <td className="px-3 py-2 text-xs text-[oklch(0.5_0.04_80)]">
                               {m.workerName}
@@ -548,10 +549,10 @@ export default function TankAnalyticsPanel({
             <div className="flex items-center gap-4 text-xs text-[oklch(0.5_0.04_80)] border-t pt-3">
               <span>
                 <Calendar className="w-3 h-3 inline mr-1" />
-                Пиковая загрузка: <strong>{metrics.peakVolumeLiters} л</strong> ({metrics.peakFillPercent}%)
+                Пиковая загрузка: <strong>{fmtNum(metrics.peakVolumeLiters)} л</strong> ({fmtNum(metrics.peakFillPercent)}%)
               </span>
               <span>
-                Текущий: <strong>{metrics.currentVolumeLiters} / {metrics.capacityLiters} л</strong> ({metrics.fillPercent}%)
+                Текущий: <strong>{fmtNum(metrics.currentVolumeLiters)} / {fmtNum(metrics.capacityLiters)} л</strong> ({fmtNum(metrics.fillPercent)}%)
               </span>
             </div>
           )}
@@ -594,13 +595,13 @@ function TurnoverRow({ label, data }: { label: string; data: any }) {
   return (
     <tr className="hover:bg-[oklch(0.98_0.005_90)]">
       <td className="px-3 py-2 font-medium">{label}</td>
-      <td className="px-3 py-2 text-right text-emerald-600">+{data.inflowLiters}</td>
-      <td className="px-3 py-2 text-right text-red-600">−{data.outflowLiters}</td>
+      <td className="px-3 py-2 text-right text-emerald-600">+{fmtNum(data.inflowLiters)}</td>
+      <td className="px-3 py-2 text-right text-red-600">−{fmtNum(data.outflowLiters)}</td>
       <td className="px-3 py-2 text-right text-amber-600">
-        {data.adjustmentLiters >= 0 ? "+" : ""}{data.adjustmentLiters}
+        {data.adjustmentLiters >= 0 ? "+" : ""}{fmtNum(data.adjustmentLiters)}
       </td>
       <td className={`px-3 py-2 text-right font-bold ${data.netChangeLiters >= 0 ? "text-emerald-700" : "text-red-700"}`}>
-        {data.netChangeLiters >= 0 ? "+" : ""}{data.netChangeLiters}
+        {data.netChangeLiters >= 0 ? "+" : ""}{fmtNum(data.netChangeLiters)}
       </td>
     </tr>
   );

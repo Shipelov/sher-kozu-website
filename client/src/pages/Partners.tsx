@@ -13,6 +13,7 @@
 */
 
 import { trpc } from "@/lib/trpc";
+import { fmtNum } from "@/lib/utils";
 import ScrollRemaining from "@/components/ScrollRemaining";
 import { motion } from "framer-motion";
 import { Link } from "wouter";
@@ -154,8 +155,8 @@ function getPartnerAttachmentBadge(kind: PartnerAttachmentKind) {
 
 function formatAttachmentSize(bytes: number) {
   if (bytes < 1024) return `${bytes} Б`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} КБ`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} МБ`;
+  if (bytes < 1024 * 1024) return `${fmtNum(bytes / 1024)} КБ`;
+  return `${fmtNum(bytes / (1024 * 1024))} МБ`;
 }
 
 const partnerAttachmentRecommendations: Record<PartnerLeadFormState["interestType"], { title: string; items: string[] }> = {

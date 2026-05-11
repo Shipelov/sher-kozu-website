@@ -4,6 +4,7 @@
  */
 
 import DashboardLayout from "@/components/DashboardLayout";
+import { fmtNum } from "@/lib/utils";
 import PageBreadcrumbs from "@/components/PageBreadcrumbs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -91,7 +92,7 @@ const DEVICE_ICONS: Record<string, React.ReactNode> = {
 function formatMs(ms: number | null | undefined): string {
   if (ms == null) return "—";
   if (ms < 1000) return `${ms}ms`;
-  return `${(ms / 1000).toFixed(2)}s`;
+  return `${fmtNum(ms / 1000)}s`;
 }
 
 function getLoadBadge(ms: number | null | undefined) {
@@ -104,7 +105,7 @@ function getLoadBadge(ms: number | null | undefined) {
 function hitRatePercent(hits: number, misses: number): string {
   const total = hits + misses;
   if (total === 0) return "0%";
-  return `${((hits / total) * 100).toFixed(1)}%`;
+  return `${fmtNum((hits / total) * 100)}%`;
 }
 
 /* ─── Main Component ─── */
