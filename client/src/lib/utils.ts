@@ -6,16 +6,16 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 /**
- * Format a number to a fixed number of decimal places.
- * Removes trailing zeros for cleaner display (e.g. 134.00 → 134, 134.50 → 134.5).
+ * Format a number to an exact number of decimal places.
+ * Keeps trailing zeros for consistent dashboard display (e.g. 134 → 134.00).
  * @param value - The number to format
  * @param decimals - Number of decimal places (default: 2)
  */
 export function fmtNum(value: number | string | null | undefined, decimals = 2): string {
-  if (value === null || value === undefined || value === "") return "0";
+  if (value === null || value === undefined || value === "") return (0).toFixed(decimals);
   const num = typeof value === "string" ? parseFloat(value) : value;
-  if (isNaN(num)) return "0";
-  return num.toFixed(decimals).replace(/\.?0+$/, "") || "0";
+  if (!Number.isFinite(num)) return (0).toFixed(decimals);
+  return num.toFixed(decimals);
 }
 
 /**
@@ -24,8 +24,5 @@ export function fmtNum(value: number | string | null | undefined, decimals = 2):
  * @param value - The number to format
  */
 export function fmtFixed(value: number | string | null | undefined, decimals = 2): string {
-  if (value === null || value === undefined || value === "") return (0).toFixed(decimals);
-  const num = typeof value === "string" ? parseFloat(value) : value;
-  if (isNaN(num)) return (0).toFixed(decimals);
-  return num.toFixed(decimals);
+  return fmtNum(value, decimals);
 }

@@ -2753,3 +2753,9 @@ Module: Контроль оборота молока. Spec v2.1. Mobile-first AR
 - [x] Post-publish: Confirm koza.vip serves the newly published JavaScript bundle
 - [x] Post-publish: Verify koza.vip health endpoint, robots.txt, HTTPS redirect, and key routes
 - [x] Post-publish: Verify unauthenticated `/farm/controller` redirects to `/farm` instead of a blank screen
+
+- [x] Production admin smoke: Sign in with an authorized administrator account and verify the test administrator exists with admin role
+- [x] Production admin smoke: Verify admin hub, milk dashboard, tanks analytics, processing, warehouse, users, and product tracking pages
+- [x] Production admin smoke: Check browser console and failed network requests during authenticated navigation
+- [x] Bugfix: Ensure all dashboard numeric displays use exactly two decimal places and eliminate floating-point artifacts
+- [x] Audit/Bugfix: Correct per-product conversion analytics for processing sessions with multiple outputs and eliminate false extreme deviations

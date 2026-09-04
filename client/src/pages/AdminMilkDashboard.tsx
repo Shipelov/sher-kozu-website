@@ -1806,7 +1806,7 @@ function OverviewSection({
         <StatCard
           label="Переработка сегодня"
           value={overview.processing?.today?.sessions ?? 0}
-          sub={`Вход: ${fmtNum(overview.processing?.today?.inputLiters ?? 0)}л → ${overview.processing?.today?.outputUnits ?? 0} ед.`}
+          sub={`Вход: ${fmtNum(overview.processing?.today?.inputLiters ?? 0)}л → ${fmtNum(overview.processing?.today?.outputUnits ?? 0)} ед.`}
           accent
           byType={(overview.processing?.today as any)?.byType}
         />
@@ -1863,9 +1863,9 @@ function OverviewSection({
                 })}
                 <tr className="hover:bg-[oklch(0.98_0.005_90)]">
                   <td className={`${tdCls} text-[oklch(0.4_0.04_80)]`}>Произведено единиц</td>
-                  <td className={tdCls}>{overview.processing.today.outputUnits}</td>
-                  <td className={tdCls}>{overview.processing.week.outputUnits}</td>
-                  <td className={tdCls}>{overview.processing.month.outputUnits}</td>
+                  <td className={tdCls}>{fmtNum(overview.processing.today.outputUnits)}</td>
+                  <td className={tdCls}>{fmtNum(overview.processing.week.outputUnits)}</td>
+                  <td className={tdCls}>{fmtNum(overview.processing.month.outputUnits)}</td>
                 </tr>
                 <tr className="bg-[oklch(0.96_0.04_150)] hover:bg-[oklch(0.95_0.05_150)]">
                   <td className={`${tdBold} text-[oklch(0.25_0.12_150)]`}>Ср. коэфф. конверсии (мес)</td>
@@ -1903,7 +1903,7 @@ function OverviewSection({
                     {overview.processing.productBreakdown.map((p: { productLabel: string; unit: string; totalQuantity: number; sessionsCount: number }, idx: number) => (
                       <tr key={idx} className="hover:bg-[oklch(0.98_0.005_90)]">
                         <td className={`${tdCls} text-[oklch(0.4_0.04_80)] font-medium`}>{p.productLabel}</td>
-                        <td className={`${tdBold} text-[oklch(0.30_0.10_150)]`}>{p.totalQuantity}</td>
+                        <td className={`${tdBold} text-[oklch(0.30_0.10_150)]`}>{fmtNum(p.totalQuantity)}</td>
                         <td className={tdCls}>{p.unit}</td>
                         <td className={tdCls}>{p.sessionsCount}</td>
                       </tr>
@@ -2514,7 +2514,7 @@ function AdminWarehousesTab() {
               </div>
               <div className="flex gap-4 mt-2 text-xs text-[oklch(0.5_0.04_80)]">
                 <span>Позиций: {wh.itemCount}</span>
-                <span>Единиц: {wh.totalItems}</span>
+                <span>Единиц: {fmtNum(wh.totalItems)}</span>
               </div>
             </div>
           ))}

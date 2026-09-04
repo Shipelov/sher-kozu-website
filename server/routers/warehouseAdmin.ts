@@ -30,6 +30,7 @@ import {
 import { getDb } from "../db";
 import { eq, and, desc, sql, asc, inArray } from "drizzle-orm";
 import { logMilkAudit } from "../farmAuth";
+import { supportsPerProductConversion } from "../milkConversion";
 
 export const warehouseAdminRouter = router({
   /**
@@ -523,7 +524,17 @@ export const warehouseAdminRouter = router({
 
       const enrichedSessions = sessions.map((s: any) => {
         const outs = outputsBySession.get(s.sessionId) ?? [];
-        for (const out of outs) {
+        const canCalculateConversion = supportsPerProductConversion(outs.length);
+        const safeOutputs = outs.map((out: (typeof outputs)[number]) =>
+          canCalculateConversion
+            ? out
+            : {
+                ...out,
+                actualConversionRatio: null,
+                deviationPercent: null,
+              },
+        );
+        for (const out of safeOutputs) {
           if (out.deviationPercent !== null && Math.abs(out.deviationPercent) > threshold) {
             alerts.push({
               sessionCode: s.sessionCode,
@@ -535,7 +546,7 @@ export const warehouseAdminRouter = router({
             });
           }
         }
-        return { ...s, outputs: outs };
+        return { ...s, outputs: safeOutputs };
       });
 
       return { sessions: enrichedSessions, alerts };

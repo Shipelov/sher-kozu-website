@@ -39,6 +39,7 @@ import {
 } from "../../drizzle/schema";
 import { getDb } from "../db";
 import { eq, and, desc, sql, asc, inArray } from "drizzle-orm";
+import { calculateOutputConversion } from "../milkConversion";
 
 // ─── Auth helpers ────────────────────────────────────────────
 
@@ -477,18 +478,12 @@ export const milkProcessingRouter = router({
 
         const baseRatio = catalogItem?.conversionRatio ?? null;
 
-        // Actual ratio: how many liters of milk per 1 unit of product
-        // totalInputMl is shared across all outputs proportionally
-        // For simplicity, use total input / total output quantity
-        // But per-product: actualRatio = (totalInputMl / 1000) / quantity
-        // This is the actual liters-per-unit for this product
-        const actualRatio = out.quantity > 0 ? totalInputMl / 1000 / out.quantity : null;
-
-        // Deviation: ((actual - base) / base) * 100
-        let deviation: number | null = null;
-        if (actualRatio !== null && baseRatio !== null && baseRatio > 0) {
-          deviation = ((actualRatio - baseRatio) / baseRatio) * 100;
-        }
+        const { actualRatio, deviationPercent: deviation } = calculateOutputConversion({
+          totalInputMl,
+          outputQuantity: out.quantity,
+          baseRatio,
+          outputCount: outputs.length,
+        });
 
         await db.update(processingOutputs)
           .set({

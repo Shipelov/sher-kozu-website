@@ -29,6 +29,7 @@ import {
 import { getDb } from "../db";
 import { verifyFarmToken, FARM_COOKIE_NAME } from "../farmAuth";
 import { eq, and, gte, lte, desc, sql, inArray } from "drizzle-orm";
+import { supportsPerProductConversion } from "../milkConversion";
 
 const MILK_TYPE_LABELS: Record<string, string> = {
   goat: "Козье",
@@ -1112,9 +1113,12 @@ export const milkControllerRouter = router({
       const alerts: any[] = [];
       const enrichedSessions = sessions.map((s: any) => {
         const sessionOutputs = outputs.filter((o: any) => o.sessionId === s.id);
+        const canCalculateConversion = supportsPerProductConversion(sessionOutputs.length);
         const enrichedOutputs = sessionOutputs.map((o: any) => {
           const catalog = catalogMap[o.catalogItemId];
-          const actualRatio = o.actualConversionRatio ? parseFloat(o.actualConversionRatio) : null;
+          const actualRatio = canCalculateConversion && o.actualConversionRatio
+            ? parseFloat(o.actualConversionRatio)
+            : null;
           const baseRatio = catalog?.baseRatio ?? null;
           let deviationPercent: number | null = null;
           if (actualRatio !== null && baseRatio !== null && baseRatio > 0) {
