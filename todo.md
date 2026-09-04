@@ -2807,3 +2807,8 @@ Module: Контроль оборота молока. Spec v2.1. Mobile-first AR
 - [x] Post-prompt-optimization: Verify real Masha and Zoya responses on koza.vip
 - [x] Cloudflare Worker: Prepare complete replacement source preserving health, alerts, OpenAI, Telegram API, SDK, and webhook routes
 - [x] Cloudflare Worker: Validate complete replacement source syntax before delivery
+- [x] Masha video: Identify the exact production media URL and component/CMS source
+- [x] Masha video: Verify HTTP status, Content-Type, Content-Length, Accept-Ranges, and browser codec compatibility
+- [x] Masha video: Fix broken media source or player handling without storing media in the web project
+- [x] Tests: Add regression coverage for Masha video source and player fallback
+- [ ] Post-publish: Verify Masha video loads metadata and plays on koza.vip

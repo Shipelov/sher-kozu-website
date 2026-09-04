@@ -172,6 +172,7 @@ export default function Home() {
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [authModalView, setAuthModalView] = useState<"login" | "register">("register");
   const [mashaVideoOpen, setMashaVideoOpen] = useState(false);
+  const [mashaVideoError, setMashaVideoError] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const [mapVisible, setMapVisible] = useState(false);
   const mapSentinelRef = useRef<HTMLDivElement>(null);
@@ -313,7 +314,10 @@ export default function Home() {
                 {/* Row 2: Masha button — w-full stretches to match the row above */}
                 <button
                   type="button"
-                  onClick={() => setMashaVideoOpen(true)}
+                  onClick={() => {
+                    setMashaVideoError(false);
+                    setMashaVideoOpen(true);
+                  }}
                   className="group w-full inline-flex items-center gap-3 rounded-full border border-primary/20 bg-white/90 py-2.5 pl-2.5 pr-8 shadow-md backdrop-blur transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5 hover:border-primary/40 cursor-pointer"
                 >
                   <div className="relative flex-shrink-0">
@@ -954,15 +958,38 @@ export default function Home() {
                 </div>
 
                 {/* Video */}
-                <video
-                  ref={videoRef}
-                  src="https://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/masha-intro-video-compressed_ee7518ad.mp4"
-                  controls
-                  autoPlay
-                  preload="metadata"
-                  className="w-full aspect-video bg-black"
-                  playsInline
-                />
+                {mashaVideoError ? (
+                  <div className="flex aspect-video flex-col items-center justify-center gap-4 bg-neutral-950 px-6 text-center text-white">
+                    <p className="text-base font-medium">Не удалось загрузить видео Маши</p>
+                    <p className="max-w-md text-sm text-white/70">
+                      Проверьте подключение к интернету и попробуйте загрузить видео ещё раз.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => setMashaVideoError(false)}
+                      className="rounded-full border border-white/30 px-5 py-2 text-sm font-medium transition-colors hover:bg-white/10"
+                    >
+                      Повторить
+                    </button>
+                  </div>
+                ) : (
+                  <video
+                    ref={videoRef}
+                    controls
+                    autoPlay
+                    preload="metadata"
+                    className="w-full aspect-video bg-black"
+                    playsInline
+                    onLoadedMetadata={() => setMashaVideoError(false)}
+                    onError={() => setMashaVideoError(true)}
+                  >
+                    <source
+                      src="/api/media/masha-intro.mp4"
+                      type="video/mp4"
+                    />
+                    Ваш браузер не поддерживает воспроизведение видео.
+                  </video>
+                )}
               </div>
             </motion.div>
           </motion.div>

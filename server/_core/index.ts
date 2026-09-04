@@ -12,6 +12,7 @@ import { withRetry, isTransientDbError } from "../retryUtils";
 import { analyticsMonitor } from "../analyticsMonitor";
 import { sdk } from "./sdk";
 import { registerGate } from "../gateMiddleware";
+import { registerMashaVideoProxy } from "../mashaVideoProxy";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -134,6 +135,7 @@ async function startServer() {
           "font-src 'self' https://fonts.gstatic.com",
           "img-src 'self' data: blob: https://*.cloudfront.net https://*.amazonaws.com https://*.googleapis.com https://maps.gstatic.com https://maps.google.com https://koza.vip https://*.yandex.ru https://*.yandex.net https://api-maps.yandex.ru https://*.yastatic.net https://yastatic.net",
           "connect-src 'self' ws: wss: https://*.cloudfront.net https://*.amazonaws.com https://api.openai.com https://api.telegram.org https://*.workers.dev https://maps.googleapis.com https://*.storage.yandexcloud.net https://api-maps.yandex.ru https://*.yandex.ru https://*.yandex.net https://*.yastatic.net https://yastatic.net",
+          "media-src 'self' blob: https://*.cloudfront.net https://*.amazonaws.com",
           "frame-ancestors 'self' https://koza.vip https://*.koza.vip https://web.telegram.org https://*.telegram.org",
         ].join("; ")
       );
@@ -428,6 +430,7 @@ async function startServer() {
   }
 
   // OAuth callback under /api/oauth/callback
+  registerMashaVideoProxy(app);
   registerOAuthRoutes(app);
   // tRPC API
   app.use(
