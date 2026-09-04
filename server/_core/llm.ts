@@ -65,12 +65,15 @@ export type ToolChoice =
   | ToolChoiceExplicit;
 
 export type InvokeParams = {
+  model?: string;
   messages: Message[];
   tools?: Tool[];
   toolChoice?: ToolChoice;
   tool_choice?: ToolChoice;
   maxTokens?: number;
   max_tokens?: number;
+  maxCompletionTokens?: number;
+  max_completion_tokens?: number;
   outputSchema?: OutputSchema;
   output_schema?: OutputSchema;
   responseFormat?: ResponseFormat;
@@ -175,30 +178,55 @@ const normalizeToolChoice = (
   return toolChoice;
 };
 
-/**
- * Resolve the LLM API URL.
- * Priority: OPENAI_API_URL > BUILT_IN_FORGE_API_URL > https://api.openai.com
- */
-const resolveApiUrl = (): string => {
-  if (ENV.openaiApiUrl && ENV.openaiApiUrl.trim().length > 0) {
-    return `${ENV.openaiApiUrl.replace(/\/$/, "")}/v1/chat/completions`;
-  }
-  if (ENV.forgeApiUrl && ENV.forgeApiUrl.trim().length > 0) {
-    return `${ENV.forgeApiUrl.replace(/\/$/, "")}/v1/chat/completions`;
-  }
-  return "https://api.openai.com/v1/chat/completions";
+type LlmConnection = {
+  apiUrl: string;
+  apiKey: string;
+  source: "custom-openai" | "forge" | "openai";
 };
 
 /**
- * Resolve the API key.
- * Priority: OPENAI_API_KEY > BUILT_IN_FORGE_API_KEY
+ * Resolve URL and API key as an inseparable pair.
+ *
+ * A stale OPENAI_API_KEY must never be sent to the Forge endpoint. This was the
+ * cause of production 401 responses for both Masha and Zoya: URL selection and
+ * key selection previously used different priority chains.
  */
-const resolveApiKey = (): string => {
-  const key = ENV.openaiApiKey; // already falls back to forgeApiKey in env.ts
-  if (!key) {
-    throw new Error("LLM API key is not configured. Set OPENAI_API_KEY or BUILT_IN_FORGE_API_KEY.");
+const resolveConnection = (): LlmConnection => {
+  const openaiUrl = ENV.openaiApiUrl.trim();
+  const directOpenaiKey = ENV.openaiApiKeyDirect.trim();
+  const forgeUrl = ENV.forgeApiUrl.trim();
+  const forgeKey = ENV.forgeApiKey.trim();
+
+  if (openaiUrl) {
+    if (!directOpenaiKey) {
+      throw new Error("OPENAI_API_URL is configured but OPENAI_API_KEY is missing.");
+    }
+    return {
+      apiUrl: `${openaiUrl.replace(/\/$/, "")}/v1/chat/completions`,
+      apiKey: directOpenaiKey,
+      source: "custom-openai",
+    };
   }
-  return key;
+
+  if (forgeUrl && forgeKey) {
+    return {
+      apiUrl: `${forgeUrl.replace(/\/$/, "")}/v1/chat/completions`,
+      apiKey: forgeKey,
+      source: "forge",
+    };
+  }
+
+  if (directOpenaiKey) {
+    return {
+      apiUrl: "https://api.openai.com/v1/chat/completions",
+      apiKey: directOpenaiKey,
+      source: "openai",
+    };
+  }
+
+  throw new Error(
+    "LLM API is not configured. Set BUILT_IN_FORGE_API_URL and BUILT_IN_FORGE_API_KEY, or configure OPENAI_API_KEY."
+  );
 };
 
 const normalizeResponseFormat = ({
@@ -245,7 +273,7 @@ const normalizeResponseFormat = ({
 };
 
 export async function invokeLLM(params: InvokeParams): Promise<InvokeResult> {
-  const apiKey = resolveApiKey();
+  const connection = resolveConnection();
 
   const {
     messages,
@@ -259,7 +287,9 @@ export async function invokeLLM(params: InvokeParams): Promise<InvokeResult> {
   } = params;
 
   const payload: Record<string, unknown> = {
-    model: "gpt-4o-mini",
+    model:
+      params.model ||
+      (connection.source === "forge" ? "gemini-3-flash-preview" : "gpt-4o-mini"),
     messages: messages.map(normalizeMessage),
   };
 
@@ -275,7 +305,16 @@ export async function invokeLLM(params: InvokeParams): Promise<InvokeResult> {
     payload.tool_choice = normalizedToolChoice;
   }
 
-  payload.max_tokens = params.maxTokens ?? params.max_tokens ?? 16384;
+  const model = String(payload.model);
+  const maxTokens = params.maxTokens ?? params.max_tokens ?? 16384;
+  const maxCompletionTokens =
+    params.maxCompletionTokens ?? params.max_completion_tokens;
+
+  if (model.startsWith("gpt-5")) {
+    payload.max_completion_tokens = maxCompletionTokens ?? maxTokens;
+  } else {
+    payload.max_tokens = maxTokens;
+  }
 
   const normalizedResponseFormat = normalizeResponseFormat({
     responseFormat,
@@ -288,11 +327,11 @@ export async function invokeLLM(params: InvokeParams): Promise<InvokeResult> {
     payload.response_format = normalizedResponseFormat;
   }
 
-  const response = await fetch(resolveApiUrl(), {
+  const response = await fetch(connection.apiUrl, {
     method: "POST",
     headers: {
       "content-type": "application/json",
-      authorization: `Bearer ${apiKey}`,
+      authorization: `Bearer ${connection.apiKey}`,
     },
     body: JSON.stringify(payload),
   });

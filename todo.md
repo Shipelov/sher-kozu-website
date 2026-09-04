@@ -2765,3 +2765,9 @@ Module: Контроль оборота молока. Spec v2.1. Mobile-first AR
 - [x] Post-publish 7c60230f: Verify admin routes, health endpoint, browser console, and network responses remain stable
 - [x] Post-publish 0bf9caeb: Confirm top milk overview table and exports use exactly two decimal places on koza.vip
 - [x] Post-publish 0bf9caeb: Confirm production health, console, and network remain clean
+- [x] Bugfix: Reproduce and diagnose non-working AI assistant Masha on koza.vip
+- [x] Bugfix: Reproduce and diagnose non-working AI nutritionist Zoya on koza.vip
+- [x] Backend: Restore valid built-in LLM authentication/configuration for both assistants
+- [x] Frontend: Ensure Masha and Zoya display actionable errors without hanging or silently failing
+- [x] Tests: Cover successful AI responses and upstream authorization/error handling for both assistants
+- [ ] Post-publish: Verify Masha and Zoya answer real test messages on koza.vip

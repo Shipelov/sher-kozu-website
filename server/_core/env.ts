@@ -10,6 +10,7 @@ export const ENV = {
   oAuthServerUrl: process.env.OAUTH_SERVER_URL ?? "",
 
   // ─── LLM (OpenAI-compatible) ───
+  openaiApiKeyDirect: process.env.OPENAI_API_KEY ?? "",
   openaiApiKey: process.env.OPENAI_API_KEY ?? process.env.BUILT_IN_FORGE_API_KEY ?? "",
   openaiApiUrl: process.env.OPENAI_API_URL ?? "",
 
