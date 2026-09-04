@@ -2812,3 +2812,9 @@ Module: Контроль оборота молока. Spec v2.1. Mobile-first AR
 - [x] Masha video: Fix broken media source or player handling without storing media in the web project
 - [x] Tests: Add regression coverage for Masha video source and player fallback
 - [x] Post-publish: Verify Masha video loads metadata and plays on koza.vip
+- [x] Masha accuracy: Reproduce and eliminate fabricated ownership plan names, benefits, and unsupported animal recommendations
+- [x] Masha grounding: Build current ownership-plan context from live tariff catalog and eligible animals
+- [x] Masha guidance: Use family size and preferred products to compare only real available plans with explicit quantities
+- [x] Masha safety: Require clarification or link to pricing/catalog when live data is insufficient
+- [x] Tests: Cover the 4-person sheep-cheese recommendation and reject invented `Овечья семья` claims
+- [ ] Post-publish: Verify grounded Masha ownership recommendation on koza.vip

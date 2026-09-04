@@ -15,6 +15,7 @@ import { desc, sql, eq, gte, lt, and } from "drizzle-orm";
 import { faqQuestions, greetingVariants, abTestSessions, uncertainAnswers } from "../../drizzle/schema";
 import { getDb } from "../db";
 import { notifyOwner } from "../_core/notification";
+import { getGroundedOwnershipRecommendation } from "../mashaOwnershipAdvisor";
 
 /* ─── Uncertainty detection ─── */
 const UNCERTAIN_PHRASES = [
@@ -539,6 +540,27 @@ export const faqChatRouter = router({
       const lastUserMessage = [...input.messages]
         .reverse()
         .find((m) => m.role === "user");
+
+      if (lastUserMessage) {
+        const groundedReply = await getGroundedOwnershipRecommendation(
+          input.messages
+            .slice(-8)
+            .map((message) => `${message.role}: ${message.content}`)
+            .join("\n"),
+        );
+        if (groundedReply) {
+          if (input.sessionId) {
+            trackQuestion(
+              lastUserMessage.content,
+              groundedReply,
+              input.sessionId,
+              input.source || "faq",
+              ctx.user?.openId,
+            );
+          }
+          return { reply: groundedReply, uncertain: false, grounded: true };
+        }
+      }
 
       // Build personalized system prompt
       let systemPrompt = buildMashaSystemPrompt(lastUserMessage?.content ?? "");
