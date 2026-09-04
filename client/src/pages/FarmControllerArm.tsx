@@ -90,10 +90,10 @@ export default function FarmControllerArm() {
   });
 
   useEffect(() => {
-    if (meQuery.error) navigate("/farm");
+    if (!meQuery.isLoading && !meQuery.data) navigate("/farm");
     if (meQuery.data && meQuery.data.role !== "controller") navigate("/farm");
     if (meQuery.data?.mustChangePassword) navigate("/farm/change-password");
-  }, [meQuery.data, meQuery.error, navigate]);
+  }, [meQuery.isLoading, meQuery.data, navigate]);
 
   const logoutMutation = trpc.farmAuth.logout.useMutation({
     onSuccess: () => navigate("/farm"),

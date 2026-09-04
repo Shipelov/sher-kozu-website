@@ -2743,3 +2743,9 @@ Module: Контроль оборота молока. Spec v2.1. Mobile-first AR
 - [x] Feature: Excel export of tank movement journal for accounting (Admin + Controller ARM)
 - [x] Feature: Add period selector to Controller ARM TanksTab journal (analogous to other tabs), export respects selected period
 - [x] Feature: Standardize number formatting to 2 decimal places across all dashboards (Admin, Controller ARM, Cheesemaker ARM)
+
+- [x] Audit: Verify local development server, dependencies, TypeScript, production build, and automated tests
+- [x] Audit: Inspect local runtime, browser console, and network logs for current failures
+- [x] Audit: Verify koza.vip availability, TLS/redirect behavior, public pages, and protected application routes
+- [x] Audit: Fix critical regressions found during system verification and add/update Vitest coverage
+- [x] Audit: Re-run verification, document residual risks, and save a stable checkpoint

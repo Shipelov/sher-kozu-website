@@ -60,8 +60,23 @@ const BYPASS_PREFIXES = [
 
 const BYPASS_EXACT = ["/favicon.ico", "/robots.txt", "/manifest.json"];
 
+const DEV_ASSET_PREFIXES = [
+  "/src/",
+  "/@fs/",
+  "/@id/",
+  "/@vite/",
+  "/@react-refresh",
+  "/node_modules/.vite/",
+];
+
 function shouldBypass(path: string): boolean {
   if (BYPASS_EXACT.includes(path)) return true;
+  if (
+    process.env.NODE_ENV !== "production" &&
+    DEV_ASSET_PREFIXES.some((prefix) => path.startsWith(prefix))
+  ) {
+    return true;
+  }
   return BYPASS_PREFIXES.some((prefix) => path.startsWith(prefix));
 }
 

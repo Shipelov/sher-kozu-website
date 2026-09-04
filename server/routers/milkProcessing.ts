@@ -432,7 +432,10 @@ export const milkProcessingRouter = router({
       }
 
       // 1. Deduct milk from tanks
-      const totalInputMl = inputs.reduce((sum, inp) => sum + inp.volumeMl, 0);
+      const totalInputMl = inputs.reduce(
+        (sum: number, inp: (typeof inputs)[number]) => sum + inp.volumeMl,
+        0,
+      );
 
       for (const inp of inputs) {
         const [tank] = await db.select().from(milkTanks).where(eq(milkTanks.id, inp.tankId)).limit(1);
@@ -695,7 +698,7 @@ export const milkProcessingRouter = router({
         workerId: worker.workerId,
         entityType: "processing_session",
         entityId: input.sessionId,
-        details: "Session permanently deleted",
+        detailsJson: JSON.stringify({ permanentlyDeleted: true }),
       });
 
       return { success: true };

@@ -378,7 +378,9 @@ export const warehouseAdminRouter = router({
           .from(processingInputs)
           .where(eq(processingInputs.milkType, input.milkType))
           .groupBy(processingInputs.sessionId);
-        milkTypeSessionIds = matchingSessions.map(r => r.sessionId);
+        milkTypeSessionIds = matchingSessions.map(
+          (r: (typeof matchingSessions)[number]) => r.sessionId,
+        );
       }
 
       const conditions: any[] = [];
@@ -421,7 +423,7 @@ export const warehouseAdminRouter = router({
       ]);
 
       // Fetch per-milk-type breakdown for each session
-      const sessionIds = sessions.map(s => s.id);
+      const sessionIds = sessions.map((s: (typeof sessions)[number]) => s.id);
       let inputsBySession: Record<number, { goat: number; sheep: number; cow: number }> = {};
       if (sessionIds.length > 0) {
         const inputs = await db
@@ -431,7 +433,7 @@ export const warehouseAdminRouter = router({
             volumeMl: processingInputs.volumeMl,
           })
           .from(processingInputs)
-          .where(sql`${processingInputs.sessionId} IN (${sql.join(sessionIds.map(id => sql`${id}`), sql`, `)})`);
+          .where(inArray(processingInputs.sessionId, sessionIds));
 
         for (const inp of inputs) {
           if (!inputsBySession[inp.sessionId]) {
@@ -444,7 +446,7 @@ export const warehouseAdminRouter = router({
         }
       }
 
-      const sessionsWithTypes = sessions.map(s => ({
+      const sessionsWithTypes = sessions.map((s: (typeof sessions)[number]) => ({
         ...s,
         byType: inputsBySession[s.id] ?? { goat: 0, sheep: 0, cow: 0 },
       }));
@@ -566,10 +568,10 @@ export const warehouseAdminRouter = router({
 
       await logMilkAudit({
         action: "processing_session_cancelled",
-        workerId: ctx.user.openId,
+        adminOpenId: ctx.user.openId,
         entityType: "processing_session",
         entityId: input.sessionId,
-        details: "Admin permanently deleted cancelled session",
+        detailsJson: JSON.stringify({ permanentlyDeletedByAdmin: true }),
       });
 
       return { success: true };

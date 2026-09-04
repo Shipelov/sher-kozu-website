@@ -215,7 +215,7 @@ export const milkSessionRouter = router({
       .orderBy(desc(milkSessions.createdAt));
 
     // Enrich with reception status per milk type
-    const sessionIds = sessions.map(s => s.id);
+    const sessionIds = sessions.map((s: (typeof sessions)[number]) => s.id);
     const receptions = sessionIds.length > 0
       ? await db
           .select({
@@ -239,7 +239,7 @@ export const milkSessionRouter = router({
       receptionMap.get(r.sessionId)!.push({ milkType: r.milkType, status: r.status, rejectionReason: r.rejectionReason });
     }
 
-    return sessions.map(s => ({
+    return sessions.map((s: (typeof sessions)[number]) => ({
       ...formatSession(s),
       receptions: receptionMap.get(s.id) ?? [],
     }));
@@ -275,7 +275,7 @@ export const milkSessionRouter = router({
         .offset(offset);
 
       // Enrich with reception status per milk type
-      const sessionIds = sessions.map(s => s.id);
+      const sessionIds = sessions.map((s: (typeof sessions)[number]) => s.id);
       const receptions = sessionIds.length > 0
         ? await db
             .select({
@@ -300,7 +300,7 @@ export const milkSessionRouter = router({
       }
 
       return {
-        sessions: sessions.map(s => ({
+        sessions: sessions.map((s: (typeof sessions)[number]) => ({
           ...formatSession(s),
           receptions: receptionMap.get(s.id) ?? [],
         })),

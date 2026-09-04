@@ -2852,7 +2852,19 @@ function TierCatalogManager() {
                 </TableHeader>
                 <TableBody>
                   {(importPreview ?? []).map((row, i) => (
-                    <TableRow key={i} className={`text-xs ${row.deleteFlag ? "bg-destructive/5" : isFarmOnlyProduct(row) ? "bg-emerald-50/50" : ""}`}>
+                    <TableRow
+                      key={i}
+                      className={`text-xs ${
+                        row.deleteFlag
+                          ? "bg-destructive/5"
+                          : isFarmOnlyProduct({
+                              species: String(row.species ?? ""),
+                              minTier: String(row.minTier ?? ""),
+                            })
+                            ? "bg-emerald-50/50"
+                            : ""
+                      }`}
+                    >
                       <TableCell className="font-mono text-muted-foreground">{row.id ?? "новый"}</TableCell>
                       <TableCell className={`font-medium ${row.deleteFlag ? "line-through text-muted-foreground" : ""}`}>{row.label}</TableCell>
                       <TableCell>{PRODUCT_TYPE_LABELS[row.productType] ?? row.productType}</TableCell>
@@ -2917,7 +2929,10 @@ function TierCatalogManager() {
               ) : !importHistoryQuery.data?.length ? (
                 <p className="text-sm text-muted-foreground py-4 text-center">История импортов пуста</p>
               ) : (
-                <ScrollRemaining maxH="max-h-64">
+                <ScrollRemaining
+                  totalItems={importHistoryQuery.data.length}
+                  className="max-h-64"
+                >
                   {(importHistoryQuery.data ?? []).map((entry: any) => (
                     <div
                       key={entry.id}
