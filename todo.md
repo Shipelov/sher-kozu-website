@@ -2771,3 +2771,5 @@ Module: Контроль оборота молока. Spec v2.1. Mobile-first AR
 - [x] Frontend: Ensure Masha and Zoya display actionable errors without hanging or silently failing
 - [x] Tests: Cover successful AI responses and upstream authorization/error handling for both assistants
 - [ ] Post-publish: Verify Masha and Zoya answer real test messages on koza.vip
+- [x] Bugfix: First AI checkpoint still falls back on production; force built-in Forge connection ahead of legacy OpenAI environment variables
+- [x] Diagnostics: Log safe LLM upstream source and HTTP status without exposing credentials

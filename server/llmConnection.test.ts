@@ -53,7 +53,7 @@ describe("LLM connection resolution", () => {
     expect(payload.max_tokens).toBe(128);
   });
 
-  it("uses a custom OpenAI URL only with the matching OpenAI key", async () => {
+  it("prefers the built-in Forge pair over legacy custom OpenAI variables", async () => {
     vi.stubEnv("OPENAI_API_KEY", "custom-openai-key");
     vi.stubEnv("OPENAI_API_URL", "https://openai-proxy.example.test/");
     vi.stubEnv("BUILT_IN_FORGE_API_URL", "https://forge.example.test");
@@ -68,14 +68,31 @@ describe("LLM connection resolution", () => {
     });
 
     const [url, init] = fetchMock.mock.calls[0];
-    expect(url).toBe("https://openai-proxy.example.test/v1/chat/completions");
+    expect(url).toBe("https://forge.example.test/v1/chat/completions");
     expect(new Headers(init?.headers).get("authorization")).toBe(
-      "Bearer custom-openai-key",
+      "Bearer forge-key",
     );
     const payload = JSON.parse(String(init?.body));
     expect(payload.model).toBe("gpt-5-mini");
     expect(payload.max_completion_tokens).toBe(256);
     expect(payload.max_tokens).toBeUndefined();
+  });
+
+  it("uses a custom OpenAI pair when Forge is unavailable", async () => {
+    vi.stubEnv("OPENAI_API_KEY", "custom-openai-key");
+    vi.stubEnv("OPENAI_API_URL", "https://openai-proxy.example.test/");
+    vi.stubEnv("BUILT_IN_FORGE_API_URL", "");
+    vi.stubEnv("BUILT_IN_FORGE_API_KEY", "");
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(okResponse());
+
+    const invokeLLM = await loadInvokeLLM();
+    await invokeLLM({ messages: [{ role: "user", content: "Привет" }] });
+
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toBe("https://openai-proxy.example.test/v1/chat/completions");
+    expect(new Headers(init?.headers).get("authorization")).toBe(
+      "Bearer custom-openai-key",
+    );
   });
 
   it("falls back to the direct OpenAI endpoint when Forge is unavailable", async () => {

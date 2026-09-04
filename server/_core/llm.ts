@@ -1,8 +1,8 @@
 /**
  * LLM helper — OpenAI-compatible API client.
  *
- * Priority: OPENAI_API_URL > BUILT_IN_FORGE_API_URL > https://api.openai.com
- * Auth key: OPENAI_API_KEY > BUILT_IN_FORGE_API_KEY
+ * Priority for webdev runtime: BUILT_IN_FORGE_API_URL > custom OpenAI > OpenAI.
+ * URL and credentials are always selected as an inseparable pair.
  *
  * The request/response format is fully OpenAI Chat Completions compatible,
  * so it works with OpenAI, Azure OpenAI, or any proxy that speaks the same protocol.
@@ -197,6 +197,17 @@ const resolveConnection = (): LlmConnection => {
   const forgeUrl = ENV.forgeApiUrl.trim();
   const forgeKey = ENV.forgeApiKey.trim();
 
+  // Webdev projects must prefer the platform-provided Forge pair. Production
+  // can retain legacy OPENAI_API_URL/OPENAI_API_KEY values that are unrelated
+  // to the current built-in proxy and otherwise cause 401 responses.
+  if (forgeUrl && forgeKey) {
+    return {
+      apiUrl: `${forgeUrl.replace(/\/$/, "")}/v1/chat/completions`,
+      apiKey: forgeKey,
+      source: "forge",
+    };
+  }
+
   if (openaiUrl) {
     if (!directOpenaiKey) {
       throw new Error("OPENAI_API_URL is configured but OPENAI_API_KEY is missing.");
@@ -205,14 +216,6 @@ const resolveConnection = (): LlmConnection => {
       apiUrl: `${openaiUrl.replace(/\/$/, "")}/v1/chat/completions`,
       apiKey: directOpenaiKey,
       source: "custom-openai",
-    };
-  }
-
-  if (forgeUrl && forgeKey) {
-    return {
-      apiUrl: `${forgeUrl.replace(/\/$/, "")}/v1/chat/completions`,
-      apiKey: forgeKey,
-      source: "forge",
     };
   }
 
@@ -327,17 +330,29 @@ export async function invokeLLM(params: InvokeParams): Promise<InvokeResult> {
     payload.response_format = normalizedResponseFormat;
   }
 
-  const response = await fetch(connection.apiUrl, {
-    method: "POST",
-    headers: {
-      "content-type": "application/json",
-      authorization: `Bearer ${connection.apiKey}`,
-    },
-    body: JSON.stringify(payload),
-  });
+  let response: Response;
+  try {
+    response = await fetch(connection.apiUrl, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        authorization: `Bearer ${connection.apiKey}`,
+      },
+      body: JSON.stringify(payload),
+    });
+  } catch (error) {
+    console.error(
+      `[LLM] Network error source=${connection.source} model=${String(payload.model)}`,
+      error,
+    );
+    throw error;
+  }
 
   if (!response.ok) {
     const errorText = await response.text();
+    console.error(
+      `[LLM] Upstream error source=${connection.source} model=${String(payload.model)} status=${response.status}`,
+    );
     throw new Error(
       `LLM invoke failed: ${response.status} ${response.statusText} – ${errorText}`
     );
