@@ -2811,4 +2811,4 @@ Module: Контроль оборота молока. Spec v2.1. Mobile-first AR
 - [x] Masha video: Verify HTTP status, Content-Type, Content-Length, Accept-Ranges, and browser codec compatibility
 - [x] Masha video: Fix broken media source or player handling without storing media in the web project
 - [x] Tests: Add regression coverage for Masha video source and player fallback
-- [ ] Post-publish: Verify Masha video loads metadata and plays on koza.vip
+- [x] Post-publish: Verify Masha video loads metadata and plays on koza.vip
