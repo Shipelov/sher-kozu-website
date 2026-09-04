@@ -1,4 +1,6 @@
 import { describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { fmtFixed, fmtNum } from "../client/src/lib/utils";
 
 describe("dashboard number formatting", () => {
@@ -18,5 +20,17 @@ describe("dashboard number formatting", () => {
   it("supports an explicit precision and keeps fmtFixed compatible", () => {
     expect(fmtNum(1.2345, 3)).toBe("1.234");
     expect(fmtFixed(12, 2)).toBe("12.00");
+  });
+
+  it("formats every liter value in the milk overview table", () => {
+    const source = readFileSync(
+      resolve(process.cwd(), "client/src/pages/AdminMilkDashboard.tsx"),
+      "utf8",
+    );
+
+    expect(source).toContain("{fmtNum(d[c.key].volumeL)}");
+    expect(source).toContain("{fmtNum(d[c.key].netL)}");
+    expect(source).toContain("d[c.key].feedingL > 0 ? fmtNum(d[c.key].feedingL)");
+    expect(source).toContain("d[c.key].acceptedL > 0 ? fmtNum(d[c.key].acceptedL)");
   });
 });

@@ -1574,7 +1574,7 @@ function OverviewSection({
               <td className={`${tdBold} text-[oklch(0.30_0.12_150)]`}>Надой, л</td>
               {columns.map((c) => (
                 <td key={c.key} className={`${tdBold} text-[oklch(0.30_0.12_150)]`}>
-                  {d[c.key].volumeL}
+                  {fmtNum(d[c.key].volumeL)}
                 </td>
               ))}
             </tr>
@@ -1582,7 +1582,9 @@ function OverviewSection({
             <tr className="hover:bg-[oklch(0.98_0.005_90)]">
               <td className={`${tdCls} text-[oklch(0.4_0.04_80)]`}>Выпойка, л</td>
               {columns.map((c) => (
-                <td key={c.key} className={tdCls}>{d[c.key].feedingL || "—"}</td>
+                <td key={c.key} className={tdCls}>
+                  {d[c.key].feedingL > 0 ? fmtNum(d[c.key].feedingL) : "—"}
+                </td>
               ))}
             </tr>
             {/* Losses */}
@@ -1592,7 +1594,7 @@ function OverviewSection({
                 const hasLoss = d[c.key].lossesL > 0;
                 return (
                   <td key={c.key} className={`${tdCls} ${hasLoss ? "text-amber-700 font-medium" : ""}`}>
-                    {hasLoss ? d[c.key].lossesL : "—"}
+                    {hasLoss ? fmtNum(d[c.key].lossesL) : "—"}
                   </td>
                 );
               })}
@@ -1602,7 +1604,7 @@ function OverviewSection({
               <td className={`${tdBold} text-[oklch(0.25_0.12_150)]`}>Нетто (→ сыроделу), л</td>
               {columns.map((c) => (
                 <td key={c.key} className={`${tdBold} text-[oklch(0.25_0.12_150)]`}>
-                  {d[c.key].netL}
+                  {fmtNum(d[c.key].netL)}
                 </td>
               ))}
             </tr>
@@ -1611,7 +1613,7 @@ function OverviewSection({
               <td className={`${tdBold} text-emerald-700`}>✔ Принято, л</td>
               {columns.map((c) => (
                 <td key={c.key} className={`${tdBold} text-emerald-700`}>
-                  {d[c.key].acceptedL || "—"}
+                  {d[c.key].acceptedL > 0 ? fmtNum(d[c.key].acceptedL) : "—"}
                 </td>
               ))}
             </tr>
@@ -1621,7 +1623,7 @@ function OverviewSection({
               <td className={`${tdBold} text-red-600`}>✖ Отклонено, л</td>
               {columns.map((c) => (
                 <td key={c.key} className={`${tdBold} text-red-600`}>
-                  {d[c.key].rejectedL || "—"}
+                  {d[c.key].rejectedL > 0 ? fmtNum(d[c.key].rejectedL) : "—"}
                 </td>
               ))}
             </tr>
@@ -2060,14 +2062,14 @@ function buildOverviewRows(d: PeriodData) {
 
   const rows = [
     row("Голов", (k) => d[k].heads || "—"),
-    row("Надой, л", (k) => d[k].volumeL),
-    row("Выпойка, л", (k) => d[k].feedingL || "—"),
-    row("Потери, л", (k) => d[k].lossesL || "—"),
-    row("Нетто (→ сыроделу), л", (k) => d[k].netL),
-    row("✔ Принято, л", (k) => d[k].acceptedL || "—"),
+    row("Надой, л", (k) => fmtNum(d[k].volumeL)),
+    row("Выпойка, л", (k) => d[k].feedingL > 0 ? fmtNum(d[k].feedingL) : "—"),
+    row("Потери, л", (k) => d[k].lossesL > 0 ? fmtNum(d[k].lossesL) : "—"),
+    row("Нетто (→ сыроделу), л", (k) => fmtNum(d[k].netL)),
+    row("✔ Принято, л", (k) => d[k].acceptedL > 0 ? fmtNum(d[k].acceptedL) : "—"),
   ];
   if (d.total.rejectedL > 0) {
-    rows.push(row("✖ Отклонено, л", (k) => d[k].rejectedL || "—"));
+    rows.push(row("✖ Отклонено, л", (k) => d[k].rejectedL > 0 ? fmtNum(d[k].rejectedL) : "—"));
   }
   rows.push(
     row("% выпойки", (k) => pct(d[k].feedingL, d[k].volumeL)),

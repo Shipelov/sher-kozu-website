@@ -2759,3 +2759,7 @@ Module: Контроль оборота молока. Spec v2.1. Mobile-first AR
 - [x] Production admin smoke: Check browser console and failed network requests during authenticated navigation
 - [x] Bugfix: Ensure all dashboard numeric displays use exactly two decimal places and eliminate floating-point artifacts
 - [x] Audit/Bugfix: Correct per-product conversion analytics for processing sessions with multiple outputs and eliminate false extreme deviations
+
+- [ ] Post-publish 7c60230f: Verify all milk dashboard quantities render with exactly two decimal places
+- [x] Post-publish 7c60230f: Verify multi-output sessions no longer generate false conversion alerts
+- [x] Post-publish 7c60230f: Verify admin routes, health endpoint, browser console, and network responses remain stable
