@@ -2797,9 +2797,13 @@ Module: Контроль оборота молока. Spec v2.1. Mobile-first AR
 - [ ] Post-model-switch: Verify Masha and Zoya real responses on koza.vip
 - [x] Cloudflare Observability: Enable Worker Logs and reproduce Masha's large-prompt error (dashboard persisted no invocations; superseded by admin-only probe)
 - [x] Cloudflare Observability: Capture exact Workers AI exception for Masha (moved to deterministic admin-only probe)
-- [ ] Cloudflare Worker: Apply targeted Masha fix based on the captured exception
+- [x] Cloudflare Worker: Apply targeted Masha fix based on the captured exception (resolved at application prompt layer; no further Worker change required)
 - [x] AI diagnostics: Add admin-only probe that reproduces Masha's large payload and returns only sanitized upstream status/error
 - [x] Tests: Verify large-payload diagnostic never exposes prompts, credentials, or authorization headers
-- [ ] Post-diagnostics: Use the sanitized production exception to apply the final Masha fix
+- [x] Post-diagnostics: Use the sanitized production exception to apply the final Masha fix
+- [x] Masha prompt: Replace monolithic 28K-character prompt per request with a compact core plus relevant knowledge sections
+- [x] Masha prompt: Preserve breed, nutrition, market, product, club, platform, and answer-rule knowledge through deterministic topic selection
+- [x] Tests: Verify Masha prompt topic routing and enforce a compact generic-request payload budget
+- [ ] Post-prompt-optimization: Verify real Masha and Zoya responses on koza.vip
 - [x] Cloudflare Worker: Prepare complete replacement source preserving health, alerts, OpenAI, Telegram API, SDK, and webhook routes
 - [x] Cloudflare Worker: Validate complete replacement source syntax before delivery

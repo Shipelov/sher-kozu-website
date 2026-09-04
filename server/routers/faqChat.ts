@@ -356,6 +356,120 @@ export const MASHA_SYSTEM_PROMPT = `Ты — Маша, AI-управляющая
 - При упоминании конкретного животного фермы — используй его имя и привязывай к породе
 - В конце длинных ответов можешь предложить задать ещё вопрос`;
 
+const sliceMashaKnowledge = (start: string, end?: string): string => {
+  const startIndex = MASHA_SYSTEM_PROMPT.indexOf(start);
+  if (startIndex < 0) return "";
+  const endIndex = end
+    ? MASHA_SYSTEM_PROMPT.indexOf(end, startIndex + start.length)
+    : MASHA_SYSTEM_PROMPT.length;
+  return MASHA_SYSTEM_PROMPT.slice(
+    startIndex,
+    endIndex < 0 ? MASHA_SYSTEM_PROMPT.length : endIndex,
+  ).trim();
+};
+
+const MASHA_IDENTITY = MASHA_SYSTEM_PROMPT.slice(
+  0,
+  MASHA_SYSTEM_PROMPT.indexOf("═══ БАЗА ЗНАНИЙ ═══"),
+).trim();
+const MASHA_CORE = sliceMashaKnowledge("## О ферме", "═══ ПОРОДЫ КОЗ ═══");
+const MASHA_GOAT_BREEDS = sliceMashaKnowledge("═══ ПОРОДЫ КОЗ ═══", "═══ ПОРОДЫ ОВЕЦ ═══");
+const MASHA_SHEEP_BREEDS = sliceMashaKnowledge("═══ ПОРОДЫ ОВЕЦ ═══", "═══ НУТРИЦИОЛОГИЯ МОЛОКА ═══");
+const MASHA_NUTRITION = sliceMashaKnowledge("═══ НУТРИЦИОЛОГИЯ МОЛОКА ═══", "═══ РЫНОЧНЫЙ КОНТЕКСТ ═══");
+const MASHA_MARKET = sliceMashaKnowledge("═══ РЫНОЧНЫЙ КОНТЕКСТ ═══", "═══ ПРОДУКТЫ ═══");
+const MASHA_PRODUCTS_AND_PLATFORM = sliceMashaKnowledge("═══ ПРОДУКТЫ ═══", "═══ ПРАВИЛА ОТВЕТОВ ═══");
+const MASHA_ANSWER_RULES = sliceMashaKnowledge("═══ ПРАВИЛА ОТВЕТОВ ═══");
+
+const breedSection = (start: string, end: string): string =>
+  sliceMashaKnowledge(start, end);
+
+const includesAny = (text: string, terms: string[]): boolean =>
+  terms.some((term) => text.includes(term));
+
+/**
+ * Keep every knowledge section in source while sending only topic-relevant
+ * blocks to the model. This prevents large-payload disconnects on Workers AI.
+ */
+export function buildMashaSystemPrompt(question: string): string {
+  const normalized = question.toLocaleLowerCase("ru-RU");
+  const sections = [MASHA_IDENTITY, MASHA_CORE];
+
+  const specificBreed = [
+    {
+      terms: ["мира", "заанен"],
+      section: breedSection("### Зааненская коза (Мира)", "### Англо-нубийская коза (Лола)"),
+    },
+    {
+      terms: ["лола", "нубий", "англо-нубий"],
+      section: breedSection("### Англо-нубийская коза (Лола)", "### Альпийская коза"),
+    },
+    {
+      terms: ["альпий"],
+      section: breedSection("### Альпийская коза", "═══ ПОРОДЫ ОВЕЦ ═══"),
+    },
+    {
+      terms: ["руфа", "лакон"],
+      section: breedSection("### Лакон (Руфа)", "### Казахская тонкорунная (Злата)"),
+    },
+    {
+      terms: ["злата", "тонкорун"],
+      section: breedSection("### Казахская тонкорунная (Злата)", "### Ост-фризская"),
+    },
+    {
+      terms: ["ост-фриз", "остфриз", "восточно-фриз", "фризская овц"],
+      section: breedSection("### Ост-фризская", "═══ НУТРИЦИОЛОГИЯ МОЛОКА ═══"),
+    },
+  ].find(({ terms }) => includesAny(normalized, terms));
+
+  if (specificBreed) {
+    sections.push(specificBreed.section);
+  } else if (
+    includesAny(normalized, ["порода коз", "породы коз", "коза", "козы", "козу"]) &&
+    !normalized.includes("молок")
+  ) {
+    sections.push(MASHA_GOAT_BREEDS);
+  } else if (
+    includesAny(normalized, ["порода овец", "породы овец", "овца", "овцы", "овцу"]) &&
+    !normalized.includes("молок")
+  ) {
+    sections.push(MASHA_SHEEP_BREEDS);
+  }
+
+  if (
+    includesAny(normalized, [
+      "молок",
+      "нутри",
+      "казеин",
+      "лактоз",
+      "белок",
+      "жир",
+      "кальци",
+      "витамин",
+      "усвоя",
+      "аллерг",
+      "состав",
+    ])
+  ) {
+    sections.push(MASHA_NUTRITION);
+  }
+
+  if (
+    includesAny(normalized, [
+      "рынок",
+      "маркетинг",
+      "спрос",
+      "целевая аудитория",
+      "преимущество",
+      "премиальн",
+    ])
+  ) {
+    sections.push(MASHA_MARKET);
+  }
+
+  sections.push(MASHA_PRODUCTS_AND_PLATFORM, MASHA_ANSWER_RULES);
+  return sections.filter(Boolean).join("\n\n");
+}
+
 /* ─── Rate limiting (simple in-memory) ─── */
 const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
 const RATE_LIMIT = 20; // messages per window
@@ -421,8 +535,13 @@ export const faqChatRouter = router({
       })
     )
     .mutation(async ({ input, ctx }) => {
+      // Extract the last user question for prompt routing and analytics.
+      const lastUserMessage = [...input.messages]
+        .reverse()
+        .find((m) => m.role === "user");
+
       // Build personalized system prompt
-      let systemPrompt = MASHA_SYSTEM_PROMPT;
+      let systemPrompt = buildMashaSystemPrompt(lastUserMessage?.content ?? "");
       if (input.userName) {
         systemPrompt += `\n\nСобеседника зовут ${input.userName}. Обращайся к нему/ней по имени.`;
       }
@@ -438,11 +557,6 @@ export const faqChatRouter = router({
           content: m.content,
         })),
       ];
-
-      // Extract the last user question for analytics
-      const lastUserMessage = [...input.messages]
-        .reverse()
-        .find((m) => m.role === "user");
 
       try {
         const result = await invokeLLM({

@@ -2,7 +2,7 @@ import { z } from "zod";
 import { notifyOwner } from "./notification";
 import { adminProcedure, publicProcedure, router } from "./trpc";
 import { diagnoseLLMConnection, diagnoseLLMPayload } from "./llm";
-import { MASHA_SYSTEM_PROMPT } from "../routers/faqChat";
+import { buildMashaSystemPrompt } from "../routers/faqChat";
 
 export const systemRouter = router({
   health: publicProcedure
@@ -34,7 +34,10 @@ export const systemRouter = router({
   mashaAiDiagnostics: adminProcedure.query(async () =>
     diagnoseLLMPayload(
       [
-        { role: "system", content: MASHA_SYSTEM_PROMPT },
+        {
+          role: "system",
+          content: buildMashaSystemPrompt("Расскажи, как работает ферма"),
+        },
         {
           role: "user",
           content: "Диагностический запрос. Ответь одной короткой фразой: ты работаешь?",
