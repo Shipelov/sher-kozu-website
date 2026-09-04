@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
+  buildGroundedAnimalCatalogReply,
   buildGroundedOwnershipReply,
   extractFamilySize,
+  isFarmAnimalCatalogQuestion,
   isOwnershipRecommendationQuestion,
   type OwnershipAdvisorContext,
 } from "./mashaOwnershipAdvisor";
@@ -51,6 +53,27 @@ const context: OwnershipAdvisorContext = {
   ],
   availableAnimals: [
     {
+      name: "Мира",
+      slug: "mira",
+      species: "goat",
+      breed: "Альпийская",
+      availableSharePercents: [50],
+    },
+    {
+      name: "Лола",
+      slug: "Lola",
+      species: "goat",
+      breed: "Англо-нубийская",
+      availableSharePercents: [],
+    },
+    {
+      name: "Аврора",
+      slug: "avrora",
+      species: "goat",
+      breed: "Англо-нубийская",
+      availableSharePercents: [],
+    },
+    {
       name: "Руфа",
       slug: "Rufa",
       species: "sheep",
@@ -99,7 +122,7 @@ describe("Masha grounded ownership advisor", () => {
   it("explicitly rejects the fabricated plan and avoids unsupported promises", () => {
     const reply = buildGroundedOwnershipReply(question, context);
 
-    expect(reply).toContain("Отдельного овечьего или семейного тарифа сейчас нет");
+    expect(reply).toContain("Отдельного тарифа по виду животного или составу семьи сейчас нет");
     expect(reply).not.toContain("План \"Овечья семья\"");
     expect(reply).not.toContain("будет принадлежать только вам");
     expect(reply).not.toContain("широкому спектру овечьих сыров");
@@ -119,5 +142,34 @@ describe("Masha grounded ownership advisor", () => {
 
     expect(reply).toContain("нет свободной доли овцы");
     expect(reply).toContain("[актуальный каталог](/animals)");
+  });
+});
+
+describe("Masha grounded farm animal catalog", () => {
+  const question = "Хочу выбрать Козу. Какие у вас породы?";
+
+  it("detects a farm-catalog question rather than a general breed question", () => {
+    expect(isFarmAnimalCatalogQuestion(question)).toBe(true);
+    expect(isFarmAnimalCatalogQuestion("Расскажи историю зааненской породы")).toBe(false);
+  });
+
+  it("lists only live goats, groups real breeds, and keeps sheep out", () => {
+    const reply = buildGroundedAnimalCatalogReply(question, context);
+
+    expect(reply).toContain("**Альпийская**");
+    expect(reply).toContain("[Мира](/animals/mira)");
+    expect(reply).toContain("**Англо-нубийская**");
+    expect(reply).toContain("[Лола](/animals/Lola)");
+    expect(reply).toContain("[Аврора](/animals/avrora)");
+    expect(reply).not.toContain("Руфа");
+    expect(reply).not.toContain("Злата");
+    expect(reply).not.toContain("Зааненская коза (Мира)");
+  });
+
+  it("distinguishes publication from current share availability", () => {
+    const reply = buildGroundedAnimalCatalogReply(question, context);
+
+    expect(reply).toContain("доступна доля 50%");
+    expect(reply).toContain("свободных долей сейчас нет");
   });
 });

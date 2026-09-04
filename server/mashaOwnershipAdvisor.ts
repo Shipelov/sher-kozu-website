@@ -20,6 +20,18 @@ const OWNERSHIP_INTENT_TERMS = [
   "подобрать план",
 ];
 
+const FARM_CATALOG_INTENT_TERMS = [
+  "какие у вас породы",
+  "какие породы у вас",
+  "какие у вас козы",
+  "какие у вас овцы",
+  "какие животные у вас",
+  "кого можно выбрать",
+  "хочу выбрать козу",
+  "хочу выбрать овцу",
+  "выбрать животное",
+];
+
 type OwnershipTier = {
   slug: string;
   name: string;
@@ -65,6 +77,17 @@ export function isOwnershipRecommendationQuestion(question: string) {
   return hasStrongIntent || (hasStarterIntent && hasOwnershipContext);
 }
 
+export function isFarmAnimalCatalogQuestion(question: string) {
+  const normalized = question.toLocaleLowerCase("ru-RU");
+  if (FARM_CATALOG_INTENT_TERMS.some((term) => normalized.includes(term))) {
+    return true;
+  }
+  const asksAboutBreed = /какие|перечисл|покажи|есть/.test(normalized);
+  const farmContext = /у вас|на ферме|выбрать|доступн/.test(normalized);
+  const animalContext = /пород|коз|овц|животн/.test(normalized);
+  return asksAboutBreed && farmContext && animalContext;
+}
+
 export function extractFamilySize(question: string) {
   const normalized = question.toLocaleLowerCase("ru-RU");
   const direct = normalized.match(/(\d{1,2})\s*(?:человек|члена|членов|персон)/);
@@ -78,6 +101,66 @@ function detectSpecies(question: string): "goat" | "sheep" | null {
   if (/овеч|овц|лакон|остфриз/.test(normalized)) return "sheep";
   if (/коз|заанен|нубий|альпий/.test(normalized)) return "goat";
   return null;
+}
+
+function animalAvailabilityText(animal: AvailableAnimal) {
+  if (!animal.availableSharePercents.length) return "свободных долей сейчас нет";
+  return `доступна доля ${animal.availableSharePercents.join("% или ")}%`;
+}
+
+export function buildGroundedAnimalCatalogReply(
+  question: string,
+  context: OwnershipAdvisorContext,
+) {
+  if (!isFarmAnimalCatalogQuestion(question)) return null;
+
+  const species = detectSpecies(question);
+  const animals = context.availableAnimals.filter(
+    (animal) => !species || animal.species === species,
+  );
+  const speciesLabel =
+    species === "goat" ? "коз" : species === "sheep" ? "овец" : "животных";
+
+  if (!animals.length) {
+    return [
+      `Сейчас в публичном каталоге фермы нет опубликованных ${speciesLabel}. Я не буду перечислять породы, которых нет в актуальных данных.`,
+      "Проверьте [каталог животных](/animals) позднее или напишите ферме напрямую.",
+    ].join("\n\n");
+  }
+
+  const grouped = new Map<string, AvailableAnimal[]>();
+  for (const animal of animals) {
+    const breed = animal.breed?.trim() || "Порода не указана";
+    const group = grouped.get(breed) ?? [];
+    group.push(animal);
+    grouped.set(breed, group);
+  }
+
+  const lines = [
+    `В актуальном каталоге фермы сейчас ${animals.length} ${speciesLabel} ${grouped.size === 1 ? "одной породы" : `следующих пород (${grouped.size})`}:`,
+    ...Array.from(grouped.entries()).map(([breed, breedAnimals]) => {
+      const animalList = breedAnimals
+        .map(
+          (animal: AvailableAnimal) =>
+            `[${animal.name}](/animals/${animal.slug}) — ${animalAvailabilityText(animal)}`,
+        )
+        .join("; ");
+      return `- **${breed}**: ${animalList}.`;
+    }),
+    "Я перечисляю только фактически опубликованных животных и отдельно показываю наличие доли. Энциклопедические сведения о других породах не означают, что такие животные есть на ферме.",
+  ];
+
+  if (animals.some((animal) => animal.availableSharePercents.length > 0)) {
+    lines.push(
+      "Если скажете, какие продукты предпочитаете и сколько человек в семье, я сравню только реальные тарифы для доступных животных.",
+    );
+  } else {
+    lines.push(
+      "Сейчас свободных долей среди этих животных нет; наличие может измениться, поэтому проверяйте карточки перед оформлением.",
+    );
+  }
+
+  return lines.join("\n\n");
 }
 
 function wantsAgedCheese(question: string) {
@@ -151,8 +234,10 @@ export function buildGroundedOwnershipReply(
       : species === "goat"
         ? "с интересом к козьим продуктам"
         : "которая выбирает первое животное";
+  const selectedAnimalLabel =
+    species === "sheep" ? "овцу" : species === "goat" ? "козу" : "животное";
   const lines = [
-    `${familyText} ${preferenceText} я сравниваю только действующие тарифы из каталога. Отдельного овечьего или семейного тарифа сейчас нет.`,
+    `${familyText} ${preferenceText} я сравниваю только действующие тарифы из каталога. Отдельного тарифа по виду животного или составу семьи сейчас нет.`,
     `**Стартовый вариант — «${starterTier.name}»**: доля ${starterTier.sharePercent}%, тарифная плата ${formatRub(starterTier.monthlyFeeMinor)} ₽/мес., продуктовый план можно менять ${frequencyLabel(starterTier.planChangeFrequency)}, адресов доставки — ${starterTier.deliveryAddresses}. Это разумный способ проверить, какой объём продукции реально нужен семье.`,
   ];
 
@@ -199,7 +284,7 @@ export function buildGroundedOwnershipReply(
   }
 
   lines.push(
-    "**С чего начать:** откройте [калькулятор](/pricing/calculator), выберите овцу и сначала сравните 50% и 100% по желаемому объёму сыра. Напишите, сколько килограммов сыра семья съедает в месяц и нужны ли выдержанные сыры — тогда я уточню выбор без предположений.",
+    `**С чего начать:** откройте [калькулятор](/pricing/calculator), выберите ${selectedAnimalLabel} и сначала сравните доступные доли по желаемому объёму продукции. Напишите, сколько продукции семья потребляет в месяц и нужны ли выдержанные сыры — тогда я уточню выбор без предположений.`,
   );
 
   return lines.join("\n\n");
@@ -261,6 +346,20 @@ export async function getGroundedOwnershipRecommendation(question: string) {
     return [
       "Сейчас мне не удалось загрузить актуальные тарифы и наличие животных, поэтому я не буду предлагать план по памяти.",
       "Пожалуйста, проверьте [раздел цен](/pricing) и [каталог животных](/animals) или повторите вопрос через несколько минут.",
+    ].join("\n\n");
+  }
+}
+
+export async function getGroundedAnimalCatalogAnswer(question: string) {
+  if (!isFarmAnimalCatalogQuestion(question)) return null;
+  try {
+    const context = await loadOwnershipAdvisorContext();
+    return buildGroundedAnimalCatalogReply(question, context);
+  } catch (error) {
+    console.error("[Masha Animal Catalog] Failed to load live catalog:", error);
+    return [
+      "Сейчас мне не удалось загрузить актуальный состав животных, поэтому я не буду перечислять породы по памяти.",
+      "Пожалуйста, откройте [каталог животных](/animals) или повторите вопрос через несколько минут.",
     ].join("\n\n");
   }
 }

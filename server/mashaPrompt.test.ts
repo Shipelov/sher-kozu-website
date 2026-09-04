@@ -9,23 +9,31 @@ describe("Masha topic-aware system prompt", () => {
     expect(prompt).toContain("## О ферме");
     expect(prompt).toContain("═══ ПРОДУКТЫ ═══");
     expect(prompt).toContain("═══ ПРАВИЛА ОТВЕТОВ ═══");
-    expect(prompt).not.toContain("### Зааненская коза (Мира)");
+    expect(prompt).not.toContain("### Зааненская коза");
     expect(prompt.length).toBeLessThan(8_000);
   });
 
-  it("selects one specific breed profile instead of every goat and sheep profile", () => {
-    const prompt = buildMashaSystemPrompt("Расскажи о козе Мире и зааненской породе");
+  it("routes Mira to Alpine live identity rather than the stale Saanen association", () => {
+    const prompt = buildMashaSystemPrompt("Расскажи про козу Миру");
 
-    expect(prompt).toContain("### Зааненская коза (Мира)");
-    expect(prompt).not.toContain("### Англо-нубийская коза (Лола)");
+    expect(prompt).toContain("### Альпийская коза");
+    expect(prompt).not.toContain("### Зааненская коза");
+    expect(prompt).not.toContain("### Англо-нубийская коза");
     expect(prompt).not.toContain("### Лакон (Руфа)");
+  });
+
+  it("keeps Saanen as general breed knowledge without assigning Mira to it", () => {
+    const prompt = buildMashaSystemPrompt("Расскажи о зааненской породе");
+
+    expect(prompt).toContain("### Зааненская коза");
+    expect(prompt).not.toContain("Зааненская коза (Мира)");
   });
 
   it("selects nutrition knowledge for milk questions without all breed encyclopedias", () => {
     const prompt = buildMashaSystemPrompt("Чем козье молоко отличается по составу?");
 
     expect(prompt).toContain("═══ НУТРИЦИОЛОГИЯ МОЛОКА ═══");
-    expect(prompt).not.toContain("### Зааненская коза (Мира)");
+    expect(prompt).not.toContain("### Зааненская коза");
     expect(prompt).not.toContain("### Лакон (Руфа)");
   });
 

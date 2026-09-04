@@ -44,24 +44,21 @@ describe("Masha Knowledge Base — Structure", () => {
 });
 
 describe("Masha Knowledge Base — Farm Animals", () => {
-  it("should list all 4 farm animals with correct breeds", () => {
-    expect(systemPrompt).toContain("Мира — Зааненская коза");
-    expect(systemPrompt).toContain("Лола — Англо-нубийская коза");
-    expect(systemPrompt).toContain("Руфа — овца породы Лакон");
-    expect(systemPrompt).toContain(
-      "Злата — овца Казахской тонкорунной породы"
-    );
+  it("should require current farm inventory to come from the live catalog", () => {
+    expect(systemPrompt).toContain("Фактический состав животных");
+    expect(systemPrompt).toContain("ВСЕГДА загружай из live-каталога");
+    expect(systemPrompt).not.toContain("Мира — Зааненская коза");
   });
 
-  it("should include animal slugs for linking", () => {
-    expect(systemPrompt).toContain("slug: mira");
-    expect(systemPrompt).toContain("slug: Lola");
-    expect(systemPrompt).toContain("slug: Rufa");
-    expect(systemPrompt).toContain("slug: zlata");
+  it("should not hard-code animal slugs that can become stale", () => {
+    expect(systemPrompt).not.toContain("slug: mira");
+    expect(systemPrompt).not.toContain("slug: Lola");
+    expect(systemPrompt).not.toContain("slug: Rufa");
+    expect(systemPrompt).not.toContain("slug: zlata");
   });
 });
 
-describe("Masha Knowledge Base — Saanen Goat (Мира)", () => {
+describe("Masha Knowledge Base — Saanen Goat", () => {
   it("should contain origin and history", () => {
     expect(systemPrompt).toContain("Заанен");
     expect(systemPrompt).toContain("Швейцария");
@@ -96,7 +93,7 @@ describe("Masha Knowledge Base — Saanen Goat (Мира)", () => {
   });
 });
 
-describe("Masha Knowledge Base — Anglo-Nubian Goat (Лола)", () => {
+describe("Masha Knowledge Base — Anglo-Nubian Goat", () => {
   it("should contain origin and history", () => {
     expect(systemPrompt).toContain("Британская порода");
     expect(systemPrompt).toContain("Джамнапари");

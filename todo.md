@@ -2818,3 +2818,9 @@ Module: Контроль оборота молока. Spec v2.1. Mobile-first AR
 - [x] Masha safety: Require clarification or link to pricing/catalog when live data is insufficient
 - [x] Tests: Cover the 4-person sheep-cheese recommendation and reject invented `Овечья семья` claims
 - [ ] Post-publish: Verify grounded Masha ownership recommendation on koza.vip
+- [x] Masha catalog accuracy: Eliminate incorrect claims that Mira is Saanen and avoid mixing sheep into goat-only farm-catalog answers
+- [x] Masha grounding: Answer `какие у вас породы/животные` from live public animal records, grouped by species and breed
+- [x] Masha availability: Distinguish published animals from animals with currently available ownership shares
+- [x] Masha knowledge: Keep static breed expertise only for breed characteristics, never as evidence of current farm inventory
+- [x] Tests: Cover the goat-breed question and enforce Mira=Alpine, Lola/Aurora=Anglo-Nubian, no unrelated sheep
+- [ ] Post-publish: Verify grounded goat-breed answer on koza.vip
