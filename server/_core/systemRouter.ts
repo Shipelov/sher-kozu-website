@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { notifyOwner } from "./notification";
 import { adminProcedure, publicProcedure, router } from "./trpc";
+import { diagnoseLLMConnection } from "./llm";
 
 export const systemRouter = router({
   health: publicProcedure
@@ -26,4 +27,6 @@ export const systemRouter = router({
         success: delivered,
       } as const;
     }),
+
+  aiDiagnostics: adminProcedure.query(async () => diagnoseLLMConnection()),
 });

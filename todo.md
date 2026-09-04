@@ -2782,3 +2782,5 @@ Module: Контроль оборота молока. Spec v2.1. Mobile-first AR
 - [x] Cleanup: Remove temporary Manus-domain one-hop assistant fallback after Cloudflare path is restored
 - [x] Tests: Cover Cloudflare proxy precedence and direct Forge fallback behavior
 - [ ] Post-publish: Verify Masha and Zoya answer through the Cloudflare route on koza.vip
+- [x] Diagnostics: Add admin-only live LLM probe returning source, model, upstream status, and safe error details
+- [x] Tests: Cover admin-only LLM diagnostics without exposing endpoint URL or credentials

@@ -184,6 +184,21 @@ type LlmConnection = {
   source: "cloudflare-openai" | "custom-openai" | "forge" | "openai";
 };
 
+export type LlmDiagnosticResult = {
+  ok: boolean;
+  source: LlmConnection["source"] | "unconfigured";
+  model: string;
+  endpointHost: string;
+  endpointPath: string;
+  status: number | null;
+  latencyMs: number;
+  error?: {
+    type?: string;
+    code?: string;
+    message: string;
+  };
+};
+
 function isCloudflareWorkerUrl(value: string): boolean {
   try {
     return new URL(value).hostname.endsWith(".workers.dev");
@@ -284,6 +299,98 @@ const resolveConnection = (): LlmConnection => {
   );
 };
 
+const defaultModelForConnection = (connection: LlmConnection): string =>
+  connection.source === "forge" ? "gemini-3-flash-preview" : "gpt-4o-mini";
+
+const sanitizeDiagnosticText = (value: unknown): string =>
+  String(value ?? "Unknown upstream error")
+    .replace(/sk-[A-Za-z0-9_-]+/g, "[REDACTED]")
+    .replace(/Bearer\s+[A-Za-z0-9._-]+/gi, "Bearer [REDACTED]")
+    .slice(0, 240);
+
+export async function diagnoseLLMConnection(): Promise<LlmDiagnosticResult> {
+  const startedAt = Date.now();
+  let connection: LlmConnection;
+
+  try {
+    connection = resolveConnection();
+  } catch (error) {
+    return {
+      ok: false,
+      source: "unconfigured",
+      model: "unknown",
+      endpointHost: "",
+      endpointPath: "",
+      status: null,
+      latencyMs: Date.now() - startedAt,
+      error: { message: sanitizeDiagnosticText((error as Error)?.message) },
+    };
+  }
+
+  const endpoint = new URL(connection.apiUrl);
+  const model = defaultModelForConnection(connection);
+
+  try {
+    const response = await fetch(connection.apiUrl, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        authorization: `Bearer ${connection.apiKey}`,
+      },
+      body: JSON.stringify({
+        model,
+        messages: [{ role: "user", content: "Reply with OK" }],
+        max_tokens: 8,
+      }),
+      signal: AbortSignal.timeout(30_000),
+    });
+    const responseText = await response.text();
+    let payload: any = null;
+    try {
+      payload = responseText ? JSON.parse(responseText) : null;
+    } catch {
+      payload = null;
+    }
+
+    const upstreamError = payload?.error;
+    return {
+      ok: response.ok,
+      source: connection.source,
+      model,
+      endpointHost: endpoint.hostname,
+      endpointPath: endpoint.pathname,
+      status: response.status,
+      latencyMs: Date.now() - startedAt,
+      ...(response.ok
+        ? {}
+        : {
+            error: {
+              ...(upstreamError?.type
+                ? { type: sanitizeDiagnosticText(upstreamError.type) }
+                : {}),
+              ...(upstreamError?.code
+                ? { code: sanitizeDiagnosticText(upstreamError.code) }
+                : {}),
+              message: sanitizeDiagnosticText(
+                upstreamError?.message || responseText || response.statusText,
+              ),
+            },
+          }),
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      source: connection.source,
+      model,
+      endpointHost: endpoint.hostname,
+      endpointPath: endpoint.pathname,
+      status: null,
+      latencyMs: Date.now() - startedAt,
+      error: { message: sanitizeDiagnosticText((error as Error)?.message) },
+    };
+  }
+}
+
 const normalizeResponseFormat = ({
   responseFormat,
   response_format,
@@ -342,9 +449,7 @@ export async function invokeLLM(params: InvokeParams): Promise<InvokeResult> {
   } = params;
 
   const payload: Record<string, unknown> = {
-    model:
-      params.model ||
-      (connection.source === "forge" ? "gemini-3-flash-preview" : "gpt-4o-mini"),
+    model: params.model || defaultModelForConnection(connection),
     messages: messages.map(normalizeMessage),
   };
 
