@@ -17,9 +17,6 @@ export const ENV = {
   // ─── Forge API (legacy Manus proxy — fallback for LLM/storage/maps) ───
   forgeApiUrl: process.env.BUILT_IN_FORGE_API_URL ?? "",
   forgeApiKey: process.env.BUILT_IN_FORGE_API_KEY ?? "",
-  aiFallbackBaseUrl:
-    process.env.AI_FALLBACK_BASE_URL ??
-    "https://sherkozu-mlhmg5vm.manus.space",
 
   // ─── S3 Storage (direct AWS/Yandex Object Storage) ───
   s3Endpoint: process.env.S3_ENDPOINT ?? "",

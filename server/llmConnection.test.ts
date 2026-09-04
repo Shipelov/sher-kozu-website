@@ -53,9 +53,9 @@ describe("LLM connection resolution", () => {
     expect(payload.max_tokens).toBe(128);
   });
 
-  it("prefers the built-in Forge pair over legacy custom OpenAI variables", async () => {
+  it("normalizes the Cloudflare Worker root to the /openai route", async () => {
     vi.stubEnv("OPENAI_API_KEY", "custom-openai-key");
-    vi.stubEnv("OPENAI_API_URL", "https://openai-proxy.example.test/");
+    vi.stubEnv("OPENAI_API_URL", "https://tg-proxy.example.workers.dev/");
     vi.stubEnv("BUILT_IN_FORGE_API_URL", "https://forge.example.test");
     vi.stubEnv("BUILT_IN_FORGE_API_KEY", "forge-key");
     const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(okResponse());
@@ -68,14 +68,41 @@ describe("LLM connection resolution", () => {
     });
 
     const [url, init] = fetchMock.mock.calls[0];
-    expect(url).toBe("https://forge.example.test/v1/chat/completions");
+    expect(url).toBe(
+      "https://tg-proxy.example.workers.dev/openai/v1/chat/completions",
+    );
     expect(new Headers(init?.headers).get("authorization")).toBe(
-      "Bearer forge-key",
+      "Bearer custom-openai-key",
     );
     const payload = JSON.parse(String(init?.body));
     expect(payload.model).toBe("gpt-5-mini");
     expect(payload.max_completion_tokens).toBe(256);
     expect(payload.max_tokens).toBeUndefined();
+  });
+
+  it("derives the OpenAI route from the existing Telegram Cloudflare Worker", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("OPENAI_API_KEY", "custom-openai-key");
+    vi.stubEnv("OPENAI_API_URL", "");
+    vi.stubEnv(
+      "TELEGRAM_API_PROXY_URL",
+      "https://tg-proxy.example.workers.dev",
+    );
+    vi.stubEnv("BUILT_IN_FORGE_API_URL", "https://forge.example.test");
+    vi.stubEnv("BUILT_IN_FORGE_API_KEY", "forge-key");
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(okResponse());
+
+    const invokeLLM = await loadInvokeLLM();
+    await invokeLLM({ messages: [{ role: "user", content: "Привет" }] });
+
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toBe(
+      "https://tg-proxy.example.workers.dev/openai/v1/chat/completions",
+    );
+    expect(new Headers(init?.headers).get("authorization")).toBe(
+      "Bearer custom-openai-key",
+    );
+    expect(JSON.parse(String(init?.body)).model).toBe("gpt-4o-mini");
   });
 
   it("uses a custom OpenAI pair when Forge is unavailable", async () => {

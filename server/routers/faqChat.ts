@@ -15,7 +15,6 @@ import { desc, sql, eq, gte, lt, and } from "drizzle-orm";
 import { faqQuestions, greetingVariants, abTestSessions, uncertainAnswers } from "../../drizzle/schema";
 import { getDb } from "../db";
 import { notifyOwner } from "../_core/notification";
-import { requestMashaFallback, shouldUseAiFallback } from "../aiFallback";
 
 /* ─── Uncertainty detection ─── */
 const UNCERTAIN_PHRASES = [
@@ -484,12 +483,6 @@ export const faqChatRouter = router({
         return { reply: content, uncertain };
       } catch (error) {
         console.error("[Masha Chat] LLM error:", error);
-        if (shouldUseAiFallback(ctx.req.headers)) {
-          const fallback = await requestMashaFallback(input);
-          if (fallback) {
-            return fallback;
-          }
-        }
         return {
           reply:
             "Ой, что-то пошло не так с моей стороны. Пожалуйста, попробуйте позже или свяжитесь с фермой напрямую! 🐐",

@@ -2776,4 +2776,9 @@ Module: Контроль оборота молока. Spec v2.1. Mobile-first AR
 - [x] Architecture: Add one-hop Masha/Zoya fallback from external koza.vip server to the working Manus deployment
 - [x] Security: Restrict remote AI fallback to assistant-specific endpoints and prevent recursive fallback loops
 - [x] Tests: Cover Masha JSON fallback and Zoya SSE proxy success/error flows
-- [ ] Post-publish: Verify koza.vip Masha and Zoya return real responses through the fallback path
+- [x] Post-publish: Verify koza.vip Masha and Zoya return real responses through the fallback path (superseded by restored Cloudflare architecture)
+- [x] Investigation: Recover previous Cloudflare Worker AI proxy URL, route, and environment contract from repository history/config
+- [x] Architecture: Restore Cloudflare-first AI routing for koza.vip Russian server
+- [x] Cleanup: Remove temporary Manus-domain one-hop assistant fallback after Cloudflare path is restored
+- [x] Tests: Cover Cloudflare proxy precedence and direct Forge fallback behavior
+- [ ] Post-publish: Verify Masha and Zoya answer through the Cloudflare route on koza.vip

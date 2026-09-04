@@ -1,7 +1,7 @@
 /**
  * LLM helper — OpenAI-compatible API client.
  *
- * Priority for webdev runtime: BUILT_IN_FORGE_API_URL > custom OpenAI > OpenAI.
+ * Priority: Cloudflare OpenAI proxy > Manus Forge > custom OpenAI > OpenAI.
  * URL and credentials are always selected as an inseparable pair.
  *
  * The request/response format is fully OpenAI Chat Completions compatible,
@@ -181,8 +181,29 @@ const normalizeToolChoice = (
 type LlmConnection = {
   apiUrl: string;
   apiKey: string;
-  source: "custom-openai" | "forge" | "openai";
+  source: "cloudflare-openai" | "custom-openai" | "forge" | "openai";
 };
+
+function isCloudflareWorkerUrl(value: string): boolean {
+  try {
+    return new URL(value).hostname.endsWith(".workers.dev");
+  } catch {
+    return false;
+  }
+}
+
+function toOpenAiChatUrl(baseUrl: string, cloudflareWorker = false): string {
+  let normalized = baseUrl.replace(/\/+$/, "");
+  if (cloudflareWorker) {
+    const parsed = new URL(normalized);
+    const path = parsed.pathname.replace(/\/+$/, "");
+    if (!path.endsWith("/openai")) {
+      parsed.pathname = `${path}/openai`.replace(/\/+/g, "/");
+      normalized = parsed.toString().replace(/\/+$/, "");
+    }
+  }
+  return `${normalized}/v1/chat/completions`;
+}
 
 /**
  * Resolve URL and API key as an inseparable pair.
@@ -196,11 +217,34 @@ const resolveConnection = (): LlmConnection => {
   const directOpenaiKey = ENV.openaiApiKeyDirect.trim();
   const forgeUrl = ENV.forgeApiUrl.trim();
   const forgeKey = ENV.forgeApiKey.trim();
+  const telegramProxyUrl = ENV.telegramApiProxyUrl.trim();
 
-  // Webdev projects must prefer the platform-provided Forge pair. Production
-  // can retain legacy OPENAI_API_URL/OPENAI_API_KEY values that are unrelated
-  // to the current built-in proxy and otherwise cause 401 responses.
-  if (forgeUrl && forgeKey) {
+  // The Russian VDS reaches OpenAI through the existing Cloudflare Worker.
+  // OPENAI_API_URL may be either the Worker root or its /openai route.
+  if (directOpenaiKey && openaiUrl && isCloudflareWorkerUrl(openaiUrl)) {
+    return {
+      apiUrl: toOpenAiChatUrl(openaiUrl, true),
+      apiKey: directOpenaiKey,
+      source: "cloudflare-openai",
+    };
+  }
+
+  // TELEGRAM_API_PROXY_URL points to the same multipurpose Worker and is a
+  // durable fallback if OPENAI_API_URL was accidentally reset on the VDS.
+  if (
+    ENV.isProduction &&
+    directOpenaiKey &&
+    telegramProxyUrl &&
+    isCloudflareWorkerUrl(telegramProxyUrl)
+  ) {
+    return {
+      apiUrl: toOpenAiChatUrl(telegramProxyUrl, true),
+      apiKey: directOpenaiKey,
+      source: "cloudflare-openai",
+    };
+  }
+
+  if (forgeUrl && forgeKey && !isCloudflareWorkerUrl(forgeUrl)) {
     return {
       apiUrl: `${forgeUrl.replace(/\/$/, "")}/v1/chat/completions`,
       apiKey: forgeKey,
@@ -213,9 +257,17 @@ const resolveConnection = (): LlmConnection => {
       throw new Error("OPENAI_API_URL is configured but OPENAI_API_KEY is missing.");
     }
     return {
-      apiUrl: `${openaiUrl.replace(/\/$/, "")}/v1/chat/completions`,
+      apiUrl: toOpenAiChatUrl(openaiUrl),
       apiKey: directOpenaiKey,
       source: "custom-openai",
+    };
+  }
+
+  if (forgeUrl && forgeKey) {
+    return {
+      apiUrl: toOpenAiChatUrl(forgeUrl, isCloudflareWorkerUrl(forgeUrl)),
+      apiKey: forgeKey,
+      source: isCloudflareWorkerUrl(forgeUrl) ? "cloudflare-openai" : "forge",
     };
   }
 
