@@ -2773,3 +2773,7 @@ Module: Контроль оборота молока. Spec v2.1. Mobile-first AR
 - [ ] Post-publish: Verify Masha and Zoya answer real test messages on koza.vip
 - [x] Bugfix: First AI checkpoint still falls back on production; force built-in Forge connection ahead of legacy OpenAI environment variables
 - [x] Diagnostics: Log safe LLM upstream source and HTTP status without exposing credentials
+- [x] Architecture: Add one-hop Masha/Zoya fallback from external koza.vip server to the working Manus deployment
+- [x] Security: Restrict remote AI fallback to assistant-specific endpoints and prevent recursive fallback loops
+- [x] Tests: Cover Masha JSON fallback and Zoya SSE proxy success/error flows
+- [ ] Post-publish: Verify koza.vip Masha and Zoya return real responses through the fallback path

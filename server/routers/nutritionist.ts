@@ -14,6 +14,7 @@
 import { z } from "zod";
 import { publicProcedure, protectedProcedure, adminProcedure, router } from "../_core/trpc";
 import { invokeLLM } from "../_core/llm";
+import { requestZoyaFallback, shouldUseAiFallback } from "../aiFallback";
 import type { Message } from "../_core/llm";
 import { TRPCError } from "@trpc/server";
 import {
@@ -203,6 +204,16 @@ export const nutritionistRouter = router({
         };
       } catch (error) {
         console.error("[Zoya Chat] LLM error:", error);
+        if (shouldUseAiFallback(ctx.req.headers)) {
+          const fallback = await requestZoyaFallback(input);
+          if (fallback) {
+            return {
+              reply: fallback.reply,
+              userType,
+              limitReached: fallback.limitReached ?? false,
+            };
+          }
+        }
         return {
           reply: "Ой, что-то пошло не так. Пожалуйста, попробуйте позже! 🌿",
           userType,

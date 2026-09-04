@@ -24,6 +24,7 @@ import {
   extractSearchKeywords,
   type ZoyaUserContext,
 } from "./prompts/zoyaSystemPrompt";
+import { requestZoyaFallback, shouldUseAiFallback } from "./aiFallback";
 
 const GUEST_MESSAGE_LIMIT = 3;
 
@@ -203,6 +204,27 @@ export function registerZoyaSSE(app: Express) {
       }
     } catch (error) {
       console.error("[Zoya SSE] LLM error:", error);
+      if (shouldUseAiFallback(req.headers)) {
+        const fallback = await requestZoyaFallback({
+          messages,
+          sessionId,
+          fingerprint,
+        });
+        if (fallback) {
+          const content = fallback.reply;
+          for (let i = 0; i < content.length; i += 8) {
+            res.write(
+              `data: ${JSON.stringify({
+                type: "chunk",
+                content: content.slice(i, i + 8),
+              })}\n\n`,
+            );
+          }
+          res.write("data: [DONE]\n\n");
+          res.end();
+          return;
+        }
+      }
       res.write(
         `data: ${JSON.stringify({
           type: "error",
