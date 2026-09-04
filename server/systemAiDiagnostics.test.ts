@@ -13,7 +13,29 @@ const diagnoseLLMConnection = vi.hoisted(() =>
   }),
 );
 
-vi.mock("./_core/llm", () => ({ diagnoseLLMConnection }));
+const diagnoseLLMPayload = vi.hoisted(() =>
+  vi.fn().mockResolvedValue({
+    ok: false,
+    source: "cloudflare-openai",
+    model: "gpt-4o-mini",
+    endpointHost: "tg-proxy.example.workers.dev",
+    endpointPath: "/openai/v1/chat/completions",
+    status: 502,
+    latencyMs: 1200,
+    error: {
+      type: "workers_ai_error",
+      code: "workers_ai_failed",
+      message: "sanitized worker error",
+    },
+    request: {
+      messageCount: 2,
+      contentCharacters: 28000,
+      maxTokens: 1024,
+    },
+  }),
+);
+
+vi.mock("./_core/llm", () => ({ diagnoseLLMConnection, diagnoseLLMPayload }));
 vi.mock("./_core/notification", () => ({ notifyOwner: vi.fn() }));
 
 import { systemRouter } from "./_core/systemRouter";
@@ -46,6 +68,30 @@ describe("system.aiDiagnostics", () => {
   it("rejects a non-admin user", async () => {
     await expect(
       systemRouter.createCaller(context("user")).aiDiagnostics(),
+    ).rejects.toThrow();
+  });
+
+  it("diagnoses Masha's real payload for an administrator without returning prompt text", async () => {
+    const result = await systemRouter
+      .createCaller(context("admin"))
+      .mashaAiDiagnostics();
+
+    expect(result).toMatchObject({
+      ok: false,
+      status: 502,
+      request: {
+        messageCount: 2,
+        contentCharacters: 28000,
+        maxTokens: 1024,
+      },
+    });
+    expect(JSON.stringify(result)).not.toContain("Диагностический запрос");
+    expect(diagnoseLLMPayload).toHaveBeenCalledOnce();
+  });
+
+  it("rejects a non-admin user for Masha payload diagnostics", async () => {
+    await expect(
+      systemRouter.createCaller(context("user")).mashaAiDiagnostics(),
     ).rejects.toThrow();
   });
 });

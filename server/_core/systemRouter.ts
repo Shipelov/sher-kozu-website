@@ -1,7 +1,8 @@
 import { z } from "zod";
 import { notifyOwner } from "./notification";
 import { adminProcedure, publicProcedure, router } from "./trpc";
-import { diagnoseLLMConnection } from "./llm";
+import { diagnoseLLMConnection, diagnoseLLMPayload } from "./llm";
+import { MASHA_SYSTEM_PROMPT } from "../routers/faqChat";
 
 export const systemRouter = router({
   health: publicProcedure
@@ -29,4 +30,17 @@ export const systemRouter = router({
     }),
 
   aiDiagnostics: adminProcedure.query(async () => diagnoseLLMConnection()),
+
+  mashaAiDiagnostics: adminProcedure.query(async () =>
+    diagnoseLLMPayload(
+      [
+        { role: "system", content: MASHA_SYSTEM_PROMPT },
+        {
+          role: "user",
+          content: "Диагностический запрос. Ответь одной короткой фразой: ты работаешь?",
+        },
+      ],
+      1024,
+    ),
+  ),
 });

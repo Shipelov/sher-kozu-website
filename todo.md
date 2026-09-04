@@ -2784,3 +2784,22 @@ Module: Контроль оборота молока. Spec v2.1. Mobile-first AR
 - [ ] Post-publish: Verify Masha and Zoya answer through the Cloudflare route on koza.vip
 - [x] Diagnostics: Add admin-only live LLM probe returning source, model, upstream status, and safe error details
 - [x] Tests: Cover admin-only LLM diagnostics without exposing endpoint URL or credentials
+- [x] Cloudflare Worker: Replace copied inbound headers on `/openai/*` with a strict allowlist
+- [x] Cloudflare Worker: Remove forwarding of `X-Forwarded-For`, `Forwarded`, `True-Client-IP`, `X-Real-IP`, and Cloudflare geo headers
+- [ ] Post-Worker-deploy: Verify system.aiDiagnostics returns HTTP 200 instead of unsupported_country_region_territory
+- [ ] Post-Worker-deploy: Verify real Masha tRPC and Zoya SSE responses on koza.vip
+- [x] Cloudflare Worker: Replace blocked OpenAI upstream with Workers AI binding `AI`
+- [x] Cloudflare Worker: Return OpenAI-compatible chat completion responses from Workers AI
+- [x] Security: Restrict Workers AI route to the koza.vip VDS instead of exposing account inference publicly
+- [x] Tests: Validate Workers AI adapter, route protection, and existing Telegram/SDK/webhook routes
+- [x] Cloudflare Worker: Switch Workers AI model to `@cf/meta/llama-3.1-8b-instruct-fast` (128K context)
+- [x] Tests: Update and validate Worker expectations for the 8B model
+- [ ] Post-model-switch: Verify Masha and Zoya real responses on koza.vip
+- [x] Cloudflare Observability: Enable Worker Logs and reproduce Masha's large-prompt error (dashboard persisted no invocations; superseded by admin-only probe)
+- [x] Cloudflare Observability: Capture exact Workers AI exception for Masha (moved to deterministic admin-only probe)
+- [ ] Cloudflare Worker: Apply targeted Masha fix based on the captured exception
+- [x] AI diagnostics: Add admin-only probe that reproduces Masha's large payload and returns only sanitized upstream status/error
+- [x] Tests: Verify large-payload diagnostic never exposes prompts, credentials, or authorization headers
+- [ ] Post-diagnostics: Use the sanitized production exception to apply the final Masha fix
+- [x] Cloudflare Worker: Prepare complete replacement source preserving health, alerts, OpenAI, Telegram API, SDK, and webhook routes
+- [x] Cloudflare Worker: Validate complete replacement source syntax before delivery

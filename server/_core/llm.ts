@@ -199,6 +199,14 @@ export type LlmDiagnosticResult = {
   };
 };
 
+export type LlmPayloadDiagnosticResult = LlmDiagnosticResult & {
+  request: {
+    messageCount: number;
+    contentCharacters: number;
+    maxTokens: number;
+  };
+};
+
 function isCloudflareWorkerUrl(value: string): boolean {
   try {
     return new URL(value).hostname.endsWith(".workers.dev");
@@ -387,6 +395,107 @@ export async function diagnoseLLMConnection(): Promise<LlmDiagnosticResult> {
       status: null,
       latencyMs: Date.now() - startedAt,
       error: { message: sanitizeDiagnosticText((error as Error)?.message) },
+    };
+  }
+}
+
+/**
+ * Diagnose a real text-only chat payload without returning prompt contents,
+ * credentials, request headers, or the generated completion.
+ */
+export async function diagnoseLLMPayload(
+  messages: Message[],
+  maxTokens = 1024,
+): Promise<LlmPayloadDiagnosticResult> {
+  const startedAt = Date.now();
+  const request = {
+    messageCount: messages.length,
+    contentCharacters: messages.reduce(
+      (total, message) => total + JSON.stringify(message.content).length,
+      0,
+    ),
+    maxTokens,
+  };
+  let connection: LlmConnection;
+
+  try {
+    connection = resolveConnection();
+  } catch (error) {
+    return {
+      ok: false,
+      source: "unconfigured",
+      model: "unknown",
+      endpointHost: "",
+      endpointPath: "",
+      status: null,
+      latencyMs: Date.now() - startedAt,
+      error: { message: sanitizeDiagnosticText((error as Error)?.message) },
+      request,
+    };
+  }
+
+  const endpoint = new URL(connection.apiUrl);
+  const model = defaultModelForConnection(connection);
+
+  try {
+    const response = await fetch(connection.apiUrl, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        authorization: `Bearer ${connection.apiKey}`,
+      },
+      body: JSON.stringify({
+        model,
+        messages: messages.map(normalizeMessage),
+        max_tokens: maxTokens,
+      }),
+      signal: AbortSignal.timeout(90_000),
+    });
+    const responseText = await response.text();
+    let payload: any = null;
+    try {
+      payload = responseText ? JSON.parse(responseText) : null;
+    } catch {
+      payload = null;
+    }
+
+    const upstreamError = payload?.error;
+    return {
+      ok: response.ok,
+      source: connection.source,
+      model,
+      endpointHost: endpoint.hostname,
+      endpointPath: endpoint.pathname,
+      status: response.status,
+      latencyMs: Date.now() - startedAt,
+      request,
+      ...(response.ok
+        ? {}
+        : {
+            error: {
+              ...(upstreamError?.type
+                ? { type: sanitizeDiagnosticText(upstreamError.type) }
+                : {}),
+              ...(upstreamError?.code
+                ? { code: sanitizeDiagnosticText(upstreamError.code) }
+                : {}),
+              message: sanitizeDiagnosticText(
+                upstreamError?.message || responseText || response.statusText,
+              ),
+            },
+          }),
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      source: connection.source,
+      model,
+      endpointHost: endpoint.hostname,
+      endpointPath: endpoint.pathname,
+      status: null,
+      latencyMs: Date.now() - startedAt,
+      error: { message: sanitizeDiagnosticText((error as Error)?.message) },
+      request,
     };
   }
 }
