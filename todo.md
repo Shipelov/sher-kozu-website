@@ -2749,3 +2749,7 @@ Module: Контроль оборота молока. Spec v2.1. Mobile-first AR
 - [x] Audit: Verify koza.vip availability, TLS/redirect behavior, public pages, and protected application routes
 - [x] Audit: Fix critical regressions found during system verification and add/update Vitest coverage
 - [x] Audit: Re-run verification, document residual risks, and save a stable checkpoint
+
+- [x] Post-publish: Confirm koza.vip serves the newly published JavaScript bundle
+- [x] Post-publish: Verify koza.vip health endpoint, robots.txt, HTTPS redirect, and key routes
+- [x] Post-publish: Verify unauthenticated `/farm/controller` redirects to `/farm` instead of a blank screen
