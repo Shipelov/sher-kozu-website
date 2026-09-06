@@ -2890,3 +2890,8 @@ Module: Контроль оборота молока. Spec v2.1. Mobile-first AR
 - [x] Zoya rebuild UX audit: Проверить первый запрос, повторную сессию, смену профиля, редактирование и персональное меню в браузере
 - [x] Zoya public science safety: Убрать абсолютные утверждения об A2-казеине и козьем молоке как решении при аллергии из публичной страницы Зои
 - [x] Zoya rebuild validation: Выполнить полный Vitest, TypeScript и production build перед чекпоинтом
+- [x] Zoya post-publish incident: Проверить commit/version koza.vip и подтвердить, почему запрос меню обслуживается старым алгоритмом (VDS обслуживает промежуточный runtime; `/api/version` не получал GIT_COMMIT)
+- [x] Zoya post-publish incident: Проверить завершение GitHub/VDS deploy и наличие миграции мультипрофилей в production (profiles API существует, но финальный SSE-контракт не развёрнут)
+- [ ] Zoya post-publish verification: Убедиться, что новый запрос меню сначала проходит profile gate и confirmed-product context
+- [ ] Zoya post-publish verification: Повторить точную формулировку «Зоя мне нужно меню на завтра с моими продуктами» без вымышленных позиций
+- [ ] Zoya post-publish verification: Проверить tRPC/SSE, health, browser console и network после синхронизации production
