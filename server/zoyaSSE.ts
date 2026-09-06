@@ -6,7 +6,6 @@
  */
 
 import type { Express, Request, Response } from "express";
-import { invokeLLM } from "./_core/llm";
 import type { Message } from "./_core/llm";
 import { sdk } from "./_core/sdk";
 import type { User } from "../drizzle/schema";
@@ -23,6 +22,8 @@ import {
   type ZoyaUserContext,
 } from "./prompts/zoyaSystemPrompt";
 import { getZoyaRagEntries } from "./zoyaRag";
+import { buildGroundedSportsMenuReply } from "./zoyaSportsMenuAdvisor";
+import { invokeZoyaLLM } from "./zoyaChatRuntime";
 
 const GUEST_MESSAGE_LIMIT = 3;
 
@@ -123,8 +124,31 @@ export function registerZoyaSSE(app: Express) {
       userContext.ownerContext = await getOwnerNutriContext(user.id);
     }
 
-    // RAG: search knowledge base
     const lastUserMsg = [...messages].reverse().find((m) => m.role === "user");
+    const groundedSportsReply = buildGroundedSportsMenuReply(messages, userContext);
+
+    if (groundedSportsReply && lastUserMsg) {
+      res.setHeader("Content-Type", "text/event-stream");
+      res.setHeader("Cache-Control", "no-cache");
+      res.setHeader("Connection", "keep-alive");
+      res.setHeader("X-Accel-Buffering", "no");
+      res.write(`data: ${JSON.stringify({ type: "meta", userType })}\n\n`);
+      res.write(`data: ${JSON.stringify({ type: "chunk", content: groundedSportsReply })}\n\n`);
+      res.write("data: [DONE]\n\n");
+      res.end();
+
+      saveZoyaChatAsync(
+        sessionId ?? null,
+        user?.id ?? null,
+        lastUserMsg.content,
+        groundedSportsReply,
+        userType,
+        fingerprint,
+      ).catch((err) => console.error("[Zoya SSE] Save error:", err));
+      return;
+    }
+
+    // RAG: search knowledge base
     const ragEntries = await getZoyaRagEntries(lastUserMsg?.content);
 
     // Build system prompt
@@ -155,10 +179,7 @@ export function registerZoyaSSE(app: Express) {
     try {
       // Use non-streaming LLM call and simulate streaming by chunking the response
       // (invokeLLM doesn't support native streaming, so we chunk the result)
-      const result = await invokeLLM({
-        messages: llmMessages,
-        maxTokens: 2048,
-      });
+      const result = await invokeZoyaLLM(llmMessages);
 
       const content = result.choices?.[0]?.message?.content;
       if (!content || typeof content !== "string") {

@@ -53,6 +53,8 @@ import {
   type ZoyaUserContext,
 } from "../prompts/zoyaSystemPrompt";
 import { getZoyaRagEntries } from "../zoyaRag";
+import { buildGroundedSportsMenuReply } from "../zoyaSportsMenuAdvisor";
+import { invokeZoyaLLM } from "../zoyaChatRuntime";
 
 // ═══════════════════════════════════════════════════════════════════
 // Constants
@@ -147,8 +149,25 @@ export const nutritionistRouter = router({
         userContext.ownerContext = await getOwnerNutriContext(ctx.user.id);
       }
 
-      // RAG: search knowledge base for relevant entries
       const lastUserMsg = [...input.messages].reverse().find((m) => m.role === "user");
+      const groundedSportsReply = buildGroundedSportsMenuReply(input.messages, userContext);
+      if (groundedSportsReply && lastUserMsg) {
+        saveNutriChatAsync(
+          input.sessionId ?? null,
+          ctx.user?.id ?? null,
+          lastUserMsg.content,
+          groundedSportsReply,
+          userType,
+          input.fingerprint,
+        );
+        return {
+          reply: groundedSportsReply,
+          userType,
+          limitReached: false,
+        };
+      }
+
+      // RAG: search knowledge base for relevant entries
       const ragEntries = await getZoyaRagEntries(lastUserMsg?.content);
 
       // Build system prompt
@@ -168,10 +187,7 @@ export const nutritionistRouter = router({
       ];
 
       try {
-        const result = await invokeLLM({
-          messages: llmMessages,
-          maxTokens: 2048,
-        });
+        const result = await invokeZoyaLLM(llmMessages);
 
         const content = result.choices?.[0]?.message?.content;
         if (!content || typeof content !== "string") {

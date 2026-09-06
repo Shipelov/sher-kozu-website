@@ -41,6 +41,7 @@ type UserType = "guest" | "registered" | "owner";
 
 const MAX_CHARS = 8000;
 const CHAR_WARNING = 6500;
+const REQUEST_HISTORY_LIMIT = 12;
 
 /* ─── Suggested prompts by user type ─── */
 const GUEST_PROMPTS = [
@@ -180,7 +181,9 @@ export default function ZoyaChat({
           credentials: "include",
           signal: controller.signal,
           body: JSON.stringify({
-            messages: updatedMessages.filter((m) => m.role === "user" || m.role === "assistant"),
+            messages: updatedMessages
+              .filter((m) => m.role === "user" || m.role === "assistant")
+              .slice(-REQUEST_HISTORY_LIMIT),
             sessionId,
             fingerprint: !isAuthenticated ? getFingerprint() : undefined,
           }),

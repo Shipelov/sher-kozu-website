@@ -191,6 +191,13 @@ describe("Zoya System Prompt — Red Lines for Data Integrity", () => {
     expect(promptSource).toContain("Если не знаешь точный состав");
   });
 
+  it("should prevent cheese-only sports menus and ungrounded owner products", () => {
+    expect(promptSource).toContain("Молочные продукты фермы — часть меню, а не весь рацион");
+    expect(promptSource).toContain("не рекомендуй сыр во время часовой силовой тренировки");
+    expect(promptSource).toContain("только если он присутствует в подтверждённом продуктовом плане");
+    expect(promptSource).toContain("Не переводи процент в граммы без выбранной единицы");
+  });
+
   it("should require distinguishing real vs average data", () => {
     expect(promptSource).toContain("Реальные vs средние данные");
     expect(promptSource).toContain("Не выдавай средние за реальные");
