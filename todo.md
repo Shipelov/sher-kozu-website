@@ -2918,3 +2918,14 @@ Module: Контроль оборота молока. Spec v2.1. Mobile-first AR
 - [x] Zoya AI composition tests: Покрыть accepted/rejected/fallback сценарии для меню, general questions, tRPC и SSE
 - [x] Zoya AI composition live validation: Проверить реальное меню и обычный ответ через внешний AI без записи production-данных
 - [x] Zoya AI composition final validation: Выполнить полный Vitest, TypeScript и production build перед новым чекпоинтом
+- [x] Zoya planning intent incident: Воспроизвести диалог «план здорового питания → меню на завтра» и зафиксировать intent/session/planner state
+- [x] Zoya planning intent: Распознавать план/рацион/меню как персональную задачу независимо от упоминания процента продукции
+- [x] Zoya planning defaults: Автоматически рассчитывать calorie/protein targets из подтверждённого профиля при отсутствии явной калорийности
+- [x] Zoya planning defaults: Использовать умеренную server-owned долю confirmed-продукции по умолчанию и ясно маркировать допущение
+- [x] Zoya planning output: Формировать полноценное меню на завтра с confirmed-продуктами, КБЖУ и 1–2 заменами без обязательного уточнения процента
+- [x] Zoya planning UX: Убрать внутренние фразы «проверенное знание базы Зои» и нерелевантные nutrition sources из пользовательского блока
+- [x] Zoya planning session: Сохранять intent планирования между короткими продолжениями в одной сессии
+- [x] Zoya planning tests: Покрыть точный двухшаговый диалог, active AI composition и locked server facts в tRPC/SSE
+- [x] Zoya planning validation: Выполнить real read-only check, полный внутренний Vitest, TypeScript и production build
+- [x] Zoya planning balance: Не масштабировать белковые продукты пропорционально всей калорийности и удерживать итоговый белок около profile-derived диапазона
+- [ ] Zoya planning post-publish: После публикации проверить на koza.vip точный диалог «Составь мне план здорового питания» → «Сделай мне меню на завтра», active AI, confirmed-продукты, КБЖУ и SSE [DONE]

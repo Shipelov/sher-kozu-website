@@ -48,6 +48,13 @@ const BASE_MEALS: Array<{ name: string; time: string; items: Ingredient[] }> = [
   },
 ];
 
+const ENERGY_SCALABLE_ITEMS = new Set([
+  "Овсяные хлопья",
+  "Рис, готовый",
+  "Картофель, отварной",
+  "Оливковое масло",
+]);
+
 function round1(value: number): number {
   return Math.round(value * 10) / 10;
 }
@@ -86,12 +93,18 @@ function roundedGrams(value: number, name: string): number {
   return Math.max(5, Math.round(value / 5) * 5);
 }
 
-function cloneAndScaleBase(scale: number): Array<{ name: string; time: string; items: Ingredient[] }> {
+function cloneAndScaleBase(
+  scale: number,
+  mode: "all" | "energy_only" = "all",
+): Array<{ name: string; time: string; items: Ingredient[] }> {
   return BASE_MEALS.map((meal) => ({
     ...meal,
     items: meal.items.map((item) => ({
       ...item,
-      grams: roundedGrams(item.grams * scale, item.name),
+      grams: roundedGrams(
+        item.grams * (mode === "all" || ENERGY_SCALABLE_ITEMS.has(item.name) ? scale : 1),
+        item.name,
+      ),
     })),
   }));
 }
@@ -124,6 +137,9 @@ export function buildZoyaDeterministicMenuDraft(
   const selected = usableProducts.slice(0, 2);
   const requestedShare = context.calculationTargets.requestedDairyShare;
   const sharePercent = requestedShare?.percent ?? 10;
+  const shareDescription = requestedShare
+    ? `${sharePercent}% ${requestedShare.basis === "food_mass" ? "массы рациона" : "калорийности"} из продукции фермы`
+    : "умеренная планировочная доля продукции фермы: около 10% калорийности (допущение по умолчанию)";
   const shareRatio = Math.min(0.65, Math.max(0.03, sharePercent / 100));
   const split = selected.length === 1 ? [1] : [0.55, 0.45];
   const baseItems = BASE_MEALS.flatMap((meal) => meal.items);
@@ -146,7 +162,9 @@ export function buildZoyaDeterministicMenuDraft(
       sum + dairyTargetKcal * split[index]! / product.referenceNutrition!.per100g.kcal * 100
     ), 0);
     const dairyKcal = dairyTargetKcal;
-    baseScale = Math.max(0.35, (calorieTarget - dairyKcal) / baseMacros.kcal);
+    const scalableBaseKcal = sumMacros(baseItems.filter((item) => ENERGY_SCALABLE_ITEMS.has(item.name))).kcal;
+    const fixedBaseKcal = sumMacros(baseItems.filter((item) => !ENERGY_SCALABLE_ITEMS.has(item.name))).kcal;
+    baseScale = Math.max(0.35, (calorieTarget - dairyKcal - fixedBaseKcal) / scalableBaseKcal);
   }
 
   const dairyItems: Ingredient[] = selected.map((product, index) => {
@@ -160,7 +178,10 @@ export function buildZoyaDeterministicMenuDraft(
       farmProduct: true,
     };
   });
-  const meals = cloneAndScaleBase(baseScale);
+  const meals = cloneAndScaleBase(
+    baseScale,
+    requestedShare?.basis === "food_mass" ? "all" : "energy_only",
+  );
   meals[0]!.items.push(dairyItems[0]!);
   if (dairyItems[1]) meals[1]!.items.push(dairyItems[1]);
 
@@ -210,7 +231,7 @@ export function buildZoyaDeterministicMenuDraft(
     consideredFacts: [
       `подтверждённый профиль ${context.profile?.profileName ?? "клиента"}`,
       `цель: ${(context.profile?.goals ?? []).join(", ") || "сбалансированный рацион"}`,
-      `${sharePercent}% ${shareBasisLabel} из продукции фермы`,
+      shareDescription,
       `использованы только подтверждённые продукты: ${selected.map((product) => product.label).join(", ")}`,
     ],
     answer: "Рацион рассчитан сервером: молочная продукция распределена между основными приёмами пищи и дополнена белковыми продуктами, сложными углеводами, овощами, фруктом и источниками ненасыщенных жиров.",

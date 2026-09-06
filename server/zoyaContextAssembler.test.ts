@@ -25,8 +25,10 @@ vi.mock("./zoyaRag", () => ({
 import {
   assembleZoyaContext,
   buildZoyaSessionState,
+  classifyZoyaIntent,
   extractConfirmedOwnerProducts,
 } from "./zoyaContextAssembler";
+import { buildZoyaDeterministicMenuDraft } from "./zoyaMenuPlanner";
 
 const completeProfile = {
   id: 12,
@@ -109,6 +111,12 @@ describe("assembleZoyaContext", () => {
       userType: "guest",
     });
     expect(general.status).toBe("ready");
+  });
+
+  it("classifies healthy eating plans and tomorrow menus as personal planning requests", () => {
+    expect(classifyZoyaIntent("Составь мне план здорового питания")).toBe("personal_menu");
+    expect(classifyZoyaIntent("Составь мне план сбалансированного здорового питания")).toBe("personal_menu");
+    expect(classifyZoyaIntent("Сделай мне меню на завтра")).toBe("personal_menu");
   });
 
   it("answers a general allergy safety question without profile but gates a personal medical request", async () => {
@@ -218,6 +226,58 @@ describe("assembleZoyaContext", () => {
     expect(context.pendingClarifications).not.toContain("dairyShareBasis");
     expect(context.calculationTargets.requestedDairyShare).toEqual({ percent: 30, basis: "food_mass" });
     expect(buildZoyaSessionState(context).pendingField).toBeUndefined();
+  });
+
+  it("reclassifies a new explicit menu request instead of keeping a stale general intent", async () => {
+    getNutritionProfileMock.mockResolvedValue(completeProfile);
+    getNutriSessionMock.mockResolvedValue({
+      id: 100,
+      userId: 42,
+      profileId: 12,
+      contextState: {
+        intent: "general_information",
+        collected: { originalQuery: "Расскажи о здоровом питании" },
+      },
+    });
+    getOwnerNutriContextMock.mockResolvedValue(ownerContext);
+
+    const context = await assembleZoyaContext({
+      query: "Сделай мне меню на завтра",
+      userId: 42,
+      userType: "owner",
+      profileId: 12,
+      profileConfirmed: true,
+      sessionId: 100,
+    });
+
+    expect(context.intent).toBe("personal_menu");
+    expect(context.effectiveQuery).toBe("Сделай мне меню на завтра");
+    expect(context.calculationTargets.calorieTargetSource).toBe("profile_estimate");
+  });
+
+  it("turns the user's exact healthy-plan request into a ready server menu without asking for a percentage", async () => {
+    getPrimaryNutritionProfileMock.mockResolvedValue(completeProfile);
+    getOwnerNutriContextMock.mockResolvedValue(ownerContext);
+
+    const context = await assembleZoyaContext({
+      query: "Составь мне план здорового питания",
+      userId: 42,
+      userType: "owner",
+      profileConfirmed: true,
+    });
+    const draft = buildZoyaDeterministicMenuDraft(context);
+
+    expect(context.intent).toBe("personal_menu");
+    expect(context.status).toBe("ready");
+    expect(context.calculationTargets.calorieTargetSource).toBe("profile_estimate");
+    expect(context.calculationTargets.requestedDairyShare).toBeNull();
+    expect(draft?.mealPlan.enabled).toBe(true);
+    expect(draft?.consideredFacts).toContain(
+      "умеренная планировочная доля продукции фермы: около 10% калорийности (допущение по умолчанию)",
+    );
+    expect(draft?.mealPlan.meals.flatMap((meal) => meal.items).filter((item) => item.farmProduct).map((item) => item.name)).toEqual([
+      "Рикотта с травами",
+    ]);
   });
 });
 

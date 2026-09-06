@@ -6,6 +6,11 @@ import { findReferenceNutrition } from "./zoyaProductNutrition";
 const query = "Составь меню на 2500 ккал: 30% калорийности из моей молочной продукции";
 const profile = {
   profileName: "Основной профиль",
+  gender: "male",
+  birthDate: "1979-01-01",
+  heightCm: 174,
+  weightKg: 102,
+  activityLevel: "high",
   goals: ["рост мышц"],
   preferredProducts: ["Рикотта"],
 } as any;
@@ -67,5 +72,23 @@ describe("Zoya deterministic menu planner", () => {
     expect(draft.substitutions).toHaveLength(1);
     expect(draft.substitutions[0].with).toMatch(/Брынза из козьего молока — около \d+ г/);
     expect(draft.substitutions[0].reason).toContain("Эквивалентная по калорийности");
+  });
+
+  it("uses a clearly labelled moderate default share when no percentage was requested", () => {
+    const calculationTargets = calculateZoyaTargets(profile, "Составь мне план здорового питания");
+    const draft = buildZoyaDeterministicMenuDraft({
+      ...context,
+      calculationTargets: {
+        ...calculationTargets,
+        requestedDairyShare: null,
+      },
+    })!;
+
+    expect(draft.consideredFacts).toContain(
+      "умеренная планировочная доля продукции фермы: около 10% калорийности (допущение по умолчанию)",
+    );
+    expect(draft.mealPlan.farmProductShareText).toContain("калорийности");
+    expect(draft.mealPlan.dailyNutrition.proteinG).toBeGreaterThanOrEqual(calculationTargets.proteinRangeG!.min * 0.9);
+    expect(draft.mealPlan.dailyNutrition.proteinG).toBeLessThanOrEqual(calculationTargets.proteinRangeG!.max * 1.05);
   });
 });

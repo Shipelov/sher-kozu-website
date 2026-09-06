@@ -94,11 +94,12 @@ const MEDICAL_PATTERN = /(?:аллерг|неперенос|диабет|бер�
 const RECIPE_PATTERN = /(?:рецепт|приготов|блюдо|запек|салат|завтрак|обед|ужин)/i;
 const PRODUCT_PATTERN = /(?:сыр|молок|кефир|йогурт|брынз|рикотт|халуми|камамбер|продукт)/i;
 const OWN_PRODUCT_PATTERN = /(?:мо[яйюего]{1,4}\s+(?:молочн\w+\s+)?продукц|мо[ия]\s+сыр|из\s+мо(?:ей|их)\s+продукц)/i;
+const PERSONAL_PLAN_PATTERN = /(?:меню|рацион|кбжу|калори|план\w*(?:\s+[а-яё-]+){0,3}\s+питани)/i;
 
 export function classifyZoyaIntent(query: string): ZoyaIntent {
   if (MEDICAL_PATTERN.test(query)) return "medical_safety";
   if (SPORTS_PATTERN.test(query) && PERSONAL_QUERY_PATTERN.test(query)) return "sports_nutrition";
-  if (/(?:меню|рацион|кбжу|калори|план\s+питани)/i.test(query) && PERSONAL_QUERY_PATTERN.test(query)) return "personal_menu";
+  if (PERSONAL_PLAN_PATTERN.test(query) && PERSONAL_QUERY_PATTERN.test(query)) return "personal_menu";
   if (RECIPE_PATTERN.test(query)) return "recipe";
   if (PRODUCT_PATTERN.test(query)) return "product_information";
   return "general_information";
@@ -317,7 +318,7 @@ export async function assembleZoyaContext(input: AssembleZoyaContextInput): Prom
   const effectiveQuery = sessionOwned?.contextState?.pendingField && previousQuery
     ? `${previousQuery}\nУточнение пользователя: ${input.query}`
     : input.query;
-  const intent = isZoyaIntent(sessionOwned?.contextState?.intent)
+  const intent = sessionOwned?.contextState?.pendingField && isZoyaIntent(sessionOwned.contextState.intent)
     ? sessionOwned.contextState.intent
     : classifyZoyaIntent(effectiveQuery);
   const requiresPersonalization = intentRequiresPersonalization(intent, effectiveQuery);

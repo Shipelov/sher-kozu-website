@@ -258,9 +258,9 @@ describe("Zoya structured orchestrator", () => {
       requiresPersonalization: true,
       calculationTargets: {
         ...context.calculationTargets,
-        calorieTarget: 960,
-        calorieRange: { min: 900, max: 1_020 },
-        proteinRangeG: { min: 30, max: 60 },
+        calorieTarget: 2_500,
+        calorieRange: { min: 2_375, max: 2_625 },
+        proteinRangeG: { min: 143, max: 204 },
       },
     };
     invokeZoyaLLMMock.mockResolvedValue({
@@ -284,9 +284,9 @@ describe("Zoya structured orchestrator", () => {
       requiresPersonalization: true,
       calculationTargets: {
         ...context.calculationTargets,
-        calorieTarget: 960,
-        calorieRange: { min: 900, max: 1_020 },
-        proteinRangeG: { min: 30, max: 80 },
+        calorieTarget: 2_500,
+        calorieRange: { min: 2_375, max: 2_625 },
+        proteinRangeG: { min: 143, max: 204 },
       },
     };
     invokeZoyaLLMMock.mockResolvedValue({
@@ -308,9 +308,9 @@ describe("Zoya structured orchestrator", () => {
       requiresPersonalization: true,
       calculationTargets: {
         ...context.calculationTargets,
-        calorieTarget: 960,
-        calorieRange: { min: 900, max: 1_020 },
-        proteinRangeG: { min: 30, max: 80 },
+        calorieTarget: 2_500,
+        calorieRange: { min: 2_375, max: 2_625 },
+        proteinRangeG: { min: 143, max: 204 },
       },
     };
     invokeZoyaLLMMock.mockResolvedValue({
@@ -353,9 +353,9 @@ describe("Zoya structured orchestrator", () => {
       requiresPersonalization: true,
       calculationTargets: {
         ...context.calculationTargets,
-        calorieTarget: 960,
-        calorieRange: { min: 900, max: 1_020 },
-        proteinRangeG: { min: 30, max: 80 },
+        calorieTarget: 2_500,
+        calorieRange: { min: 2_375, max: 2_625 },
+        proteinRangeG: { min: 143, max: 204 },
       },
     };
     invokeZoyaLLMMock.mockResolvedValue({
@@ -399,9 +399,9 @@ describe("Zoya structured orchestrator", () => {
       requiresPersonalization: true,
       calculationTargets: {
         ...context.calculationTargets,
-        calorieTarget: 960,
-        calorieRange: { min: 900, max: 1_020 },
-        proteinRangeG: { min: 30, max: 80 },
+        calorieTarget: 2_500,
+        calorieRange: { min: 2_375, max: 2_625 },
+        proteinRangeG: { min: 143, max: 204 },
       },
     };
     invokeZoyaLLMMock.mockResolvedValue({

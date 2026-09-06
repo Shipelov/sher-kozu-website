@@ -218,9 +218,10 @@ export function buildZoyaVerifiedDraft(context: ZoyaAssembledContext): ZoyaStruc
     context.confirmedProducts.length > 0
       ? `подтверждённые продукты: ${context.confirmedProducts.slice(0, 5).map((item) => item.label).join(", ")}`
       : null,
-    ...evidence.slice(0, 3).map((item) => item.sourceName
-      ? `проверенный источник: ${item.sourceName}`
-      : "проверенное знание базы Зои"),
+    ...evidence
+      .filter((item) => item.sourceName)
+      .slice(0, 3)
+      .map((item) => `проверенный источник: ${item.sourceName}`),
   ].filter((item): item is string => Boolean(item));
 
   const milkAllergyQuestion = context.intent === "medical_safety"
