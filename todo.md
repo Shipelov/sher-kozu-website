@@ -2824,3 +2824,8 @@ Module: Контроль оборота молока. Spec v2.1. Mobile-first AR
 - [x] Masha knowledge: Keep static breed expertise only for breed characteristics, never as evidence of current farm inventory
 - [x] Tests: Cover the goat-breed question and enforce Mira=Alpine, Lola/Aurora=Anglo-Nubian, no unrelated sheep
 - [ ] Post-publish: Verify grounded goat-breed answer on koza.vip
+- [x] Zoya knowledge audit: Inventory all active production knowledge records, sources, categories, and statuses
+- [x] Zoya knowledge audit: Verify which records are injected into tRPC and SSE chat contexts
+- [x] Zoya knowledge audit: Evaluate duplication, conflicts, evidence quality, freshness, and coverage gaps
+- [x] Zoya knowledge audit: Run representative production questions and trace answers to the updated knowledge (read-only RAG trace; chat calls intentionally avoided because both paths persist test sessions/messages)
+- [x] Zoya knowledge audit: Document concrete qualitative improvements and remaining risks
