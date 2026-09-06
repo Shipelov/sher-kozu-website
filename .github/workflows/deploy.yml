@@ -50,18 +50,19 @@ jobs:
 
       - name: Deploy to VDS
         run: |
+          SSH_OPTS="-i ~/.ssh/deploy_key -o StrictHostKeyChecking=no -o ServerAliveInterval=20 -o ServerAliveCountMax=30 -o TCPKeepAlive=yes -o ConnectTimeout=20"
           rsync -avz --delete \
-            -e "ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no" \
+            -e "ssh ${SSH_OPTS}" \
             dist/ \
             ${{ secrets.VDS_USER }}@${{ secrets.VDS_HOST }}:${{ env.DEPLOY_PATH }}/dist/
 
           rsync -avz \
-            -e "ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no" \
+            -e "ssh ${SSH_OPTS}" \
             drizzle/ \
             ${{ secrets.VDS_USER }}@${{ secrets.VDS_HOST }}:${{ env.DEPLOY_PATH }}/drizzle/
 
           rsync -avz \
-            -e "ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no" \
+            -e "ssh ${SSH_OPTS}" \
             package.json pnpm-lock.yaml drizzle.config.ts \
             ${{ secrets.VDS_USER }}@${{ secrets.VDS_HOST }}:${{ env.DEPLOY_PATH }}/
 
@@ -84,8 +85,11 @@ jobs:
           GATE_P: ${{ secrets.GATE_PASSWORD }}
           COMMIT_SHA: ${{ github.sha }}
         run: |
-          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no \
+          SSH_OPTS="-i ~/.ssh/deploy_key -o StrictHostKeyChecking=no -o ServerAliveInterval=20 -o ServerAliveCountMax=30 -o TCPKeepAlive=yes -o ConnectTimeout=20"
+          BUILD_TS="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+          ssh ${SSH_OPTS} \
             ${{ secrets.VDS_USER }}@${{ secrets.VDS_HOST }} "bash -s" << DEPLOY_SCRIPT
+          set -Eeuo pipefail
           cd /var/www/sherkozu/current
 
           cat > .env << 'INNEREOF'
@@ -125,7 +129,7 @@ jobs:
           GATE_LOGIN=${GATE_L}
           GATE_PASSWORD=${GATE_P}
           GIT_COMMIT=${COMMIT_SHA}
-          BUILD_TIME=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+          BUILD_TIME=${BUILD_TS}
           INNEREOF
           sed -i 's/^          //' .env
 
@@ -144,7 +148,7 @@ jobs:
                 NODE_ENV: "production",
                 PORT: 3000,
                 GIT_COMMIT: "${COMMIT_SHA}",
-                BUILD_TIME: "$(date -u +"%Y-%m-%dT%H:%M:%SZ")",
+                BUILD_TIME: "${BUILD_TS}",
                 BITRIX24_OUTBOUND_WEBHOOK_TOKEN: "v1o6pwyb478h4cn8d0ov2ln5b2pxia8f"
               },
               max_memory_restart: "512M",
@@ -162,11 +166,15 @@ jobs:
 
           echo "${COMMIT_SHA}" > .deploy_version
 
+          echo "--- Installing dependencies ---"
+          if ! command -v pnpm >/dev/null 2>&1; then
+            corepack enable
+            corepack prepare pnpm@10 --activate
+          fi
+          pnpm install --frozen-lockfile --reporter=append-only
+
           echo "--- Running database migrations ---"
-          npm install -g pnpm 2>/dev/null || true
-          pnpm install --frozen-lockfile 2>/dev/null || npm install drizzle-kit drizzle-orm mysql2 2>/dev/null || true
-          npx drizzle-kit generate 2>&1 || true
-          npx drizzle-kit migrate 2>&1
+          pnpm exec drizzle-kit migrate
           echo "--- Migrations complete ---"
 
           pm2 stop sherkozu 2>/dev/null || true

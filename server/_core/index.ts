@@ -13,6 +13,7 @@ import { analyticsMonitor } from "../analyticsMonitor";
 import { sdk } from "./sdk";
 import { registerGate } from "../gateMiddleware";
 import { registerMashaVideoProxy } from "../mashaVideoProxy";
+import { getDeployVersion } from "../deployVersion";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -152,9 +153,9 @@ async function startServer() {
 
   // ── Build version endpoint for deploy verification ──
   app.get("/api/version", (_req, res) => {
+    const version = getDeployVersion();
     res.json({
-      commit: process.env.GIT_COMMIT || "unknown",
-      buildTime: process.env.BUILD_TIME || "unknown",
+      ...version,
       nodeEnv: process.env.NODE_ENV || "unknown",
     });
   });

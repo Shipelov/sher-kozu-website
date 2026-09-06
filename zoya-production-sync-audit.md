@@ -14,7 +14,7 @@ Production endpoint `https://koza.vip/api/version` возвращает `commit:
 
 ## Исправление проверяемости
 
-Deploy workflow теперь передаёт `GIT_COMMIT` и `BUILD_TIME` в `.env` и PM2. После следующего успешного VDS deploy `/api/version` должен однозначно показать опубликованный commit.
+GitHub App не имеет разрешения изменять `.github/workflows/*`, поэтому version-маркировка перенесена в приложение. Endpoint `/api/version` теперь читает commit из существующего файла `.deploy_version`, который прежний VDS workflow уже создаёт при каждом deploy, а время сборки — из времени изменения этого файла. Изменять workflow для этого не требуется.
 
 ## Критерий успешной синхронизации
 
