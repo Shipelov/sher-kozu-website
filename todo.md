@@ -2892,10 +2892,10 @@ Module: Контроль оборота молока. Spec v2.1. Mobile-first AR
 - [x] Zoya rebuild validation: Выполнить полный Vitest, TypeScript и production build перед чекпоинтом
 - [x] Zoya post-publish incident: Проверить commit/version koza.vip и подтвердить, почему запрос меню обслуживается старым алгоритмом (VDS обслуживает промежуточный runtime; `/api/version` не получал GIT_COMMIT)
 - [x] Zoya post-publish incident: Проверить завершение GitHub/VDS deploy и наличие миграции мультипрофилей в production (profiles API существует, но финальный SSE-контракт не развёрнут)
-- [ ] Zoya post-publish verification: Убедиться, что новый запрос меню сначала проходит profile gate и confirmed-product context
-- [ ] Zoya post-publish verification: Повторить точную формулировку «Зоя мне нужно меню на завтра с моими продуктами» без вымышленных позиций
-- [ ] Zoya post-publish verification: Проверить tRPC/SSE, health, browser console и network после синхронизации production
+- [x] Zoya post-publish verification: Убедиться, что новый запрос меню сначала проходит profile gate и confirmed-product context
+- [x] Zoya post-publish verification: Повторить точную формулировку «Зоя мне нужно меню на завтра с моими продуктами» без вымышленных позиций
+- [x] Zoya post-publish verification: Проверить tRPC/SSE, health, browser console и network после синхронизации production
 - [x] VDS deploy incident: Устранить SSH `Broken pipe` на шаге Write env and restart с keepalive-параметрами
 - [x] VDS deploy incident: Убрать тихую глобальную установку pnpm и выполнять dependency install/migration с видимым выводом
 - [x] VDS deploy incident: Сохранить обязательный fail-fast для миграции до перезапуска PM2
-- [ ] VDS deploy incident: Повторно запустить workflow и подтвердить успешный health check и commit 855fb31c+
+- [x] VDS deploy incident: Повторно запустить workflow и подтвердить успешный health check и commit 855fb31c+
