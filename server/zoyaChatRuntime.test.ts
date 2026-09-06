@@ -114,6 +114,12 @@ describe("Zoya sports-menu runtime wiring", () => {
   it("uses the same deterministic advisor in tRPC and SSE before LLM fallback", () => {
     expect(trpcSource).toContain("buildGroundedSportsMenuReply(input.messages, userContext)");
     expect(sseSource).toContain("buildGroundedSportsMenuReply(messages, userContext)");
+    expect(trpcSource.indexOf("buildGroundedSportsMenuReply(input.messages, userContext)")).toBeLessThan(
+      trpcSource.indexOf("invokeZoyaLLM(llmMessages)"),
+    );
+    expect(sseSource.indexOf("buildGroundedSportsMenuReply(messages, userContext)")).toBeLessThan(
+      sseSource.indexOf("invokeZoyaLLM(llmMessages)"),
+    );
   });
 
   it("uses the same resilient LLM runtime in tRPC and SSE", () => {

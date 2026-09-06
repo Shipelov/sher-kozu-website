@@ -3,6 +3,7 @@ import type { ZoyaUserContext } from "./prompts/zoyaSystemPrompt";
 import {
   buildGroundedSportsMenuReply,
   extractSportsFacts,
+  isSportsMenuConversation,
   isSportsMenuQuestion,
   type ZoyaConversationMessage,
 } from "./zoyaSportsMenuAdvisor";
@@ -11,6 +12,10 @@ const firstQuestion =
   "Какой у меня оптимальный рацион из моих сыров на день с высокими спортивными нагрузками";
 const followUpQuestion =
   "я хочу использовать 20% своей молочной продукции в дневном рационе. Хочу поддерживать необходимый баланс для роста мышц. Провожу 1 час в зале силовые тренировки. Мне 47 лет. Рост 174, Вес 102. Сделай сбалансированное меню на день";
+const productionFirstQuestion =
+  "Зоя, хочу использовать 30% своей молочной продукции в рационе питания. Наращиваю мышцы и хожу в день на 1 час активной силовой тренировки. Сделай дневное меню";
+const productionFollowUp =
+  "Ты знаешь мои сыры. Выбери из них. Мой рост 174, вес 102, возраст 47";
 
 function ownerContext(overrides?: Partial<ZoyaUserContext>): ZoyaUserContext {
   return {
@@ -68,6 +73,17 @@ describe("Zoya sports-menu intent and fact extraction", () => {
       trainingMinutes: 60,
       dairySharePercent: 20,
     });
+  });
+
+  it("recognizes a product-selection follow-up from the preceding sports-menu context", () => {
+    expect(
+      isSportsMenuConversation([
+        { role: "user", content: productionFirstQuestion },
+        { role: "assistant", content: "Предварительная структура меню" },
+        { role: "user", content: productionFollowUp },
+      ]),
+    ).toBe(true);
+    expect(isSportsMenuQuestion(productionFollowUp)).toBe(false);
   });
 });
 
@@ -146,5 +162,47 @@ describe("Zoya grounded sports menu", () => {
         ownerContext(),
       ),
     ).toBeNull();
+  });
+
+  it("answers the exact two-step production dialogue with 30% and selected confirmed cheeses", () => {
+    const context = ownerContext({
+      ownerContext: {
+        ...ownerContext().ownerContext!,
+        productPlans: [
+          {
+            status: "confirmed",
+            selectionsJson: JSON.stringify([
+              { label: "Брынза из козьего молока", productType: "brynza" },
+              { label: "Брынза из овечьего молока", productType: "brynza" },
+              { label: "Халуми", productType: "halloumi" },
+              { label: "Рикотта с травами", productType: "ricotta" },
+              { label: "Козий камамбер", productType: "camembert" },
+            ]),
+          },
+        ],
+      },
+    });
+
+    const reply = buildGroundedSportsMenuReply(
+      [
+        { role: "user", content: productionFirstQuestion },
+        { role: "assistant", content: "Первый детерминированный ответ Зои" },
+        { role: "user", content: productionFollowUp },
+      ],
+      context,
+    )!;
+
+    expect(reply).toContain("30% молочной продукции");
+    expect(reply).not.toContain("означает 20%");
+    expect(reply).toContain("47 лет");
+    expect(reply).toContain("рост 174 см");
+    expect(reply).toContain("вес 102 кг");
+    expect(reply).toContain("Рикотта с травами — ориентировочно 30–40 г");
+    expect(reply).toContain("Брынза из козьего молока — ориентировочно 20–30 г");
+    expect(reply).toContain("Халуми");
+    expect(reply).toContain("Козий камамбер");
+    expect(reply).toContain("Названия ваших сыров уже учтены");
+    expect(reply).not.toContain("перечислите сыры");
+    expect(reply).not.toContain("Ой, что-то пошло не так");
   });
 });

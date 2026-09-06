@@ -2845,3 +2845,9 @@ Module: Контроль оборота молока. Spec v2.1. Mobile-first AR
 - [x] Zoya sports menu shared path: Обеспечить одинаковую логику для nutritionist.chat и /api/zoya/chat/stream
 - [x] Zoya sports menu tests: Покрыть оба исходных запроса пользователя, запрет вымышленных продуктов и недопустимого сыроцентричного меню
 - [x] Zoya sports menu validation: Выполнить полный Vitest, TypeScript и production build перед чекпоинтом
+- [x] Zoya sports follow-up: Распознавать «выбери из моих сыров» как продолжение предыдущего спортивного меню
+- [x] Zoya sports follow-up: Использовать последний указанный процент вместо захардкоженного текста «20%»
+- [x] Zoya sports follow-up: Распределять конкретные сыры из confirmed-плана по меню без выдуманных КБЖУ
+- [x] Zoya sports follow-up: Не отправлять поддержанный двухшаговый сценарий в LLM и не показывать общую ошибку
+- [x] Zoya sports follow-up tests: Покрыть полный диалог 30% → выбор сыров → возраст/рост/вес
+- [x] Zoya sports follow-up validation: Выполнить полный Vitest, TypeScript и production build перед чекпоинтом

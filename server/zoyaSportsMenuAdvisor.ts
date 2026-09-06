@@ -16,9 +16,22 @@ type SportsFacts = {
 const SPORTS_MENU_INTENT = /(?:рацион|меню|питан|прием\s+пищ|приём\s+пищ)/i;
 const SPORTS_CONTEXT = /(?:спорт|нагруз|тренир|силов|зал|мышц|восстанов|вынослив)/i;
 const CHEESE_PATTERN = /(?:сыр|брынз|качот|халуми|рикот|камамбер|пекорино|рокфор|шевр)/i;
+const SPORTS_MENU_FOLLOW_UP = /(?:мо(?:и|их)\s+сыр|выбери\s+из|ты\s+знаешь|рост|вес|возраст|мне\s+\d{2}|процент|уточн)/i;
 
 export function isSportsMenuQuestion(question: string): boolean {
   return SPORTS_MENU_INTENT.test(question) && SPORTS_CONTEXT.test(question);
+}
+
+export function isSportsMenuConversation(messages: ZoyaConversationMessage[]): boolean {
+  const userMessages = messages.filter((message) => message.role === "user");
+  const lastUserMessage = userMessages.at(-1);
+  if (!lastUserMessage) return false;
+  if (isSportsMenuQuestion(lastUserMessage.content)) return true;
+  if (!SPORTS_MENU_FOLLOW_UP.test(lastUserMessage.content)) return false;
+
+  return userMessages
+    .slice(0, -1)
+    .some((message) => isSportsMenuQuestion(message.content));
 }
 
 function parseNumber(value: string | undefined): number | null {
@@ -33,7 +46,7 @@ function findLatestNumber(
 ): number | null {
   for (let index = userMessages.length - 1; index >= 0; index -= 1) {
     const match = userMessages[index]?.match(pattern);
-    const value = parseNumber(match?.[1]);
+    const value = parseNumber(match?.slice(1).find(Boolean));
     if (value !== null) return value;
   }
   return null;
@@ -54,7 +67,10 @@ export function extractSportsFacts(messages: ZoyaConversationMessage[]): SportsF
   );
 
   return {
-    age: findLatestNumber(userMessages, /(?:мне\s+)?(\d{2})\s*(?:лет|года|год)/i),
+    age: findLatestNumber(
+      userMessages,
+      /(?:(?:мне\s+)?(\d{2})\s*(?:лет|года|год)|возраст[^\d]{0,8}(\d{2}))/i,
+    ),
     heightCm: findLatestNumber(userMessages, /(?:рост(?:ом)?)[^\d]{0,8}(\d{3}(?:[.,]\d+)?)\s*(?:см)?/i),
     weightKg: findLatestNumber(userMessages, /(?:вес(?:ом)?)[^\d]{0,8}(\d{2,3}(?:[.,]\d+)?)\s*(?:кг)?/i),
     trainingMinutes: hours !== null ? Math.round(hours * 60) : minutes !== null ? Math.round(minutes) : null,
@@ -120,23 +136,75 @@ function proteinGuidance(facts: SportsFacts): string {
   return `По общей массе тела расчётный спортивный диапазон составляет примерно **${lower}–${upper} г белка/сутки**. Для стартового меню без данных о составе тела разумно ориентироваться на нижнюю часть диапазона — около **${lower}–${practicalUpper} г/сутки**, распределяя белок по 4 приёмам. При заболеваниях почек, выраженной гипертонии или назначенной лечебной диете этот расчёт нужно согласовать с врачом.`;
 }
 
-function ownedCheeseGuidance(context: ZoyaUserContext): string {
+type CheeseDayPlan = {
+  guidance: string;
+  breakfast: string;
+  lunch: string;
+  rotation: string;
+  hasConfirmedCheeses: boolean;
+};
+
+function chooseCheese(labels: string[], pattern: RegExp, excluded: Set<string>): string | null {
+  const match = labels.find((label) => pattern.test(label) && !excluded.has(label));
+  if (match) excluded.add(match);
+  return match ?? null;
+}
+
+function buildCheeseDayPlan(context: ZoyaUserContext): CheeseDayPlan {
   const cheeses = currentOwnedCheeses(context);
   if (cheeses.length === 0) {
-    return "В текущем **подтверждённом продуктовом плане** я не вижу читаемого списка ваших сыров. Поэтому не буду придумывать шевр, камамбер, пекорино или их КБЖУ. В предварительном меню используйте один из фактически получаемых сыров только после выбора точного названия и проверки этикетки/анализа.";
+    return {
+      guidance: "В текущем **подтверждённом продуктовом плане** я не вижу читаемого списка ваших сыров. Поэтому не буду придумывать шевр, камамбер, пекорино или их КБЖУ.",
+      breakfast: "добавьте сыр только после выбора точного продукта из поставки и проверки этикетки",
+      lunch: "без дополнительной порции сыра, пока продукт не подтверждён",
+      rotation: "После появления читаемого продуктового плана я распределю конкретные сыры.",
+      hasConfirmedCheeses: false,
+    };
   }
 
-  return `В подтверждённом продуктовом плане вижу: **${cheeses.join(", ")}**. Для примера используйте **один** из этих сыров небольшой порцией около 30–40 г в составе завтрака или обеда. Точные КБЖУ не указываю без анализа готового продукта или этикетки.`;
+  const selected = new Set<string>();
+  const breakfastCheese =
+    chooseCheese(cheeses, /рикот/i, selected) ??
+    chooseCheese(cheeses, /брынз|качот|сыр/i, selected) ??
+    cheeses[0];
+  selected.add(breakfastCheese);
+  const lunchCheese =
+    chooseCheese(cheeses, /брынз/i, selected) ??
+    chooseCheese(cheeses, /халуми|качот|камамбер|сыр/i, selected);
+  const unused = cheeses.filter((label) => !selected.has(label));
+
+  return {
+    guidance: `Я использую только подтверждённые продукты вашего плана: **${cheeses.join(", ")}**. На этот день выбираю **${breakfastCheese}**${lunchCheese ? ` и **${lunchCheese}**` : ""}. Точные КБЖУ не указываю без анализа готового продукта или этикетки.`,
+    breakfast: `${breakfastCheese} — ориентировочно 30–40 г как часть блюда`,
+    lunch: lunchCheese
+      ? `${lunchCheese} — ориентировочно 20–30 г в салате или с овощами`
+      : "вторую порцию сыра сегодня не добавляйте",
+    rotation: unused.length > 0
+      ? `Остальные сыры (**${unused.join(", ")}**) лучше чередовать в другие дни, а не складывать все порции в один рацион.`
+      : "Не увеличивайте порции без данных о жирности и соли готового продукта.",
+    hasConfirmedCheeses: true,
+  };
+}
+
+function finalClarification(facts: SportsFacts, hasConfirmedCheeses: boolean): string {
+  const share = facts.dairySharePercent !== null
+    ? `${facts.dairySharePercent}%`
+    : "долю молочной продукции";
+  const productText = hasConfirmedCheeses
+    ? "Названия ваших сыров уже учтены."
+    : "Нужно подтвердить названия сыров из текущей поставки.";
+
+  return `${productText} Чтобы точно пересчитать ${share} в граммы, уточните: это процент калорий, белка, массы еды или объёма поставки, и добавьте КБЖУ/соль с этикетки либо анализа выбранных сыров.`;
 }
 
 export function buildGroundedSportsMenuReply(
   messages: ZoyaConversationMessage[],
   context: ZoyaUserContext,
 ): string | null {
-  const lastUserMessage = [...messages].reverse().find((message) => message.role === "user");
-  if (!lastUserMessage || !isSportsMenuQuestion(lastUserMessage.content)) return null;
+  if (!isSportsMenuConversation(messages)) return null;
 
   const facts = extractSportsFacts(messages);
+  const cheesePlan = buildCheeseDayPlan(context);
 
   return [
     "## Сбалансированный день при силовой тренировке",
@@ -144,16 +212,17 @@ export function buildGroundedSportsMenuReply(
     `**Учтённые данные:** ${formatKnownFacts(facts)}.`,
     proteinGuidance(facts),
     dairyInterpretation(facts),
-    ownedCheeseGuidance(context),
+    cheesePlan.guidance,
     "### Структура меню",
-    "- **Завтрак:** овсянка или гречка, яйца/другой полноценный источник белка, овощи или ягоды. Небольшую порцию вашего фактического сыра можно добавить сюда, а не делать её отдельным 100-граммовым блюдом.",
-    "- **Обед:** нежирная птица, рыба или бобовые; крупа/картофель; большая порция овощей; источник ненасыщенных жиров.",
+    `- **Завтрак:** овсянка или гречка, яйца/другой полноценный источник белка, овощи или ягоды; ${cheesePlan.breakfast}.`,
+    `- **Обед:** нежирная птица, рыба или бобовые; крупа/картофель; большая порция овощей; ${cheesePlan.lunch}.`,
     "- **За 2–3 часа до тренировки:** обычный приём пищи с углеводами и 25–40 г белка, без большой порции жирного выдержанного сыра.",
     "- **Во время часовой силовой тренировки:** вода по жажде. Сыр во время занятия не нужен.",
     "- **После тренировки:** в ближайшем приёме пищи 25–40 г белка плюс углеводы — например, рыба/птица/яйца/бобовые с крупой и овощами. Молочный продукт может быть частью этого приёма, но не единственным его содержанием.",
     "- **Ужин:** ещё один полноценный источник белка, овощи и умеренная порция сложных углеводов по аппетиту и общей калорийности дня.",
+    cheesePlan.rotation,
     "### Что нужно уточнить для точного расчёта",
-    "Напишите, что именно означает 20%, перечислите сыры из вашей текущей поставки и укажите их КБЖУ/соль с этикетки или анализа. Тогда я распределю конкретные граммы по меню без выдуманных продуктов и цифр.",
+    finalClarification(facts, cheesePlan.hasConfirmedCheeses),
     "Ориентиры по белку: [ISSN — protein and exercise](https://pmc.ncbi.nlm.nih.gov/articles/PMC5477153/). Принципы баланса и умеренности: [ВОЗ — здоровый рацион](https://www.who.int/news-room/fact-sheets/detail/healthy-diet).",
   ].join("\n\n");
 }
