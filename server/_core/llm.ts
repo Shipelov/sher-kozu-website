@@ -67,6 +67,8 @@ export type ToolChoice =
 export type InvokeParams = {
   model?: string;
   messages: Message[];
+  signal?: AbortSignal;
+  timeoutMs?: number;
   tools?: Tool[];
   toolChoice?: ToolChoice;
   tool_choice?: ToolChoice;
@@ -596,6 +598,19 @@ export async function invokeLLM(params: InvokeParams): Promise<InvokeResult> {
     payload.response_format = normalizedResponseFormat;
   }
 
+  const timeoutMs = params.timeoutMs ?? 90_000;
+  const requestController = new AbortController();
+  const forwardAbort = () => requestController.abort(params.signal?.reason);
+  if (params.signal?.aborted) {
+    forwardAbort();
+  } else {
+    params.signal?.addEventListener("abort", forwardAbort, { once: true });
+  }
+  const timeoutId = setTimeout(
+    () => requestController.abort(new Error(`LLM request timed out after ${timeoutMs}ms`)),
+    timeoutMs,
+  );
+
   let response: Response;
   try {
     response = await fetch(connection.apiUrl, {
@@ -605,6 +620,7 @@ export async function invokeLLM(params: InvokeParams): Promise<InvokeResult> {
         authorization: `Bearer ${connection.apiKey}`,
       },
       body: JSON.stringify(payload),
+      signal: requestController.signal,
     });
   } catch (error) {
     console.error(
@@ -612,6 +628,9 @@ export async function invokeLLM(params: InvokeParams): Promise<InvokeResult> {
       error,
     );
     throw error;
+  } finally {
+    clearTimeout(timeoutId);
+    params.signal?.removeEventListener("abort", forwardAbort);
   }
 
   if (!response.ok) {

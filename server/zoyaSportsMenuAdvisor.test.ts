@@ -3,6 +3,7 @@ import type { ZoyaUserContext } from "./prompts/zoyaSystemPrompt";
 import {
   buildGroundedSportsMenuReply,
   extractSportsFacts,
+  isDairyMenuQuestion,
   isSportsMenuConversation,
   isSportsMenuQuestion,
   type ZoyaConversationMessage,
@@ -84,6 +85,14 @@ describe("Zoya sports-menu intent and fact extraction", () => {
       ]),
     ).toBe(true);
     expect(isSportsMenuQuestion(productionFollowUp)).toBe(false);
+  });
+
+  it("recognizes a standalone dairy-share menu without sports keywords", () => {
+    const question = "Сделай мне дневное меню, в рационе которого будет 30% моей молочной продукции";
+
+    expect(isSportsMenuQuestion(question)).toBe(false);
+    expect(isDairyMenuQuestion(question)).toBe(true);
+    expect(isSportsMenuConversation([{ role: "user", content: question }])).toBe(true);
   });
 });
 
@@ -203,6 +212,25 @@ describe("Zoya grounded sports menu", () => {
     expect(reply).toContain("Козий камамбер");
     expect(reply).toContain("Названия ваших сыров уже учтены");
     expect(reply).not.toContain("перечислите сыры");
+    expect(reply).not.toContain("Ой, что-то пошло не так");
+  });
+
+  it("answers the exact standalone 30% dairy-menu request without calling the LLM", () => {
+    const reply = buildGroundedSportsMenuReply(
+      [
+        {
+          role: "user",
+          content: "Сделай мне дневное меню, в рационе которого будет 30% моей молочной продукции",
+        },
+      ],
+      ownerContext(),
+    )!;
+
+    expect(reply).toContain("Сбалансированное дневное меню с вашей молочной продукцией");
+    expect(reply).toContain("30% молочной продукции");
+    expect(reply).toContain("Качотта из козьего молока");
+    expect(reply).toContain("без расчёта калорий и белка");
+    expect(reply).not.toContain("при силовой тренировке");
     expect(reply).not.toContain("Ой, что-то пошло не так");
   });
 });

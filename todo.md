@@ -2851,3 +2851,11 @@ Module: Контроль оборота молока. Spec v2.1. Mobile-first AR
 - [x] Zoya sports follow-up: Не отправлять поддержанный двухшаговый сценарий в LLM и не показывать общую ошибку
 - [x] Zoya sports follow-up tests: Покрыть полный диалог 30% → выбор сыров → возраст/рост/вес
 - [x] Zoya sports follow-up validation: Выполнить полный Vitest, TypeScript и production build перед чекпоинтом
+- [x] Zoya reliability incident: Воспроизвести зависание общего SSE/LLM-пути на koza.vip и зафиксировать upstream-статус/время
+- [x] Zoya reliability: Добавить жёсткий server-side тайм-аут каждого AI-вызова и общий deadline запроса
+- [x] Zoya reliability: Ограничить retry только остатком общего deadline и временными ошибками
+- [x] Zoya reliability: Гарантированно завершать SSE-соединение содержательным fallback вместо зависания/общей ошибки
+- [x] Zoya reliability: Обеспечить эквивалентное fallback-поведение tRPC и SSE
+- [x] Zoya menu fallback: Обрабатывать общий запрос дневного меню с долей молочной продукции без обязательных спортивных слов
+- [x] Zoya reliability tests: Покрыть timeout, abort, retry budget, закрытие SSE и точную новую формулировку пользователя
+- [x] Zoya reliability validation: Выполнить полный Vitest, TypeScript и production build перед чекпоинтом

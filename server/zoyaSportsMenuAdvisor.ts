@@ -17,21 +17,30 @@ const SPORTS_MENU_INTENT = /(?:рацион|меню|питан|прием\s+п�
 const SPORTS_CONTEXT = /(?:спорт|нагруз|тренир|силов|зал|мышц|восстанов|вынослив)/i;
 const CHEESE_PATTERN = /(?:сыр|брынз|качот|халуми|рикот|камамбер|пекорино|рокфор|шевр)/i;
 const SPORTS_MENU_FOLLOW_UP = /(?:мо(?:и|их)\s+сыр|выбери\s+из|ты\s+знаешь|рост|вес|возраст|мне\s+\d{2}|процент|уточн)/i;
+const DAIRY_MENU_CONTEXT = /(?:\d{1,3}(?:[.,]\d+)?\s*%[^.!?\n]{0,60}(?:молочн|сыр|продукц)|мо(?:ей|я|и|их)\s+(?:молочн|сыр)|молочн[^.!?\n]{0,30}(?:рацион|меню))/i;
 
 export function isSportsMenuQuestion(question: string): boolean {
   return SPORTS_MENU_INTENT.test(question) && SPORTS_CONTEXT.test(question);
+}
+
+export function isDairyMenuQuestion(question: string): boolean {
+  return SPORTS_MENU_INTENT.test(question) && DAIRY_MENU_CONTEXT.test(question);
 }
 
 export function isSportsMenuConversation(messages: ZoyaConversationMessage[]): boolean {
   const userMessages = messages.filter((message) => message.role === "user");
   const lastUserMessage = userMessages.at(-1);
   if (!lastUserMessage) return false;
-  if (isSportsMenuQuestion(lastUserMessage.content)) return true;
+  if (isSportsMenuQuestion(lastUserMessage.content) || isDairyMenuQuestion(lastUserMessage.content)) {
+    return true;
+  }
   if (!SPORTS_MENU_FOLLOW_UP.test(lastUserMessage.content)) return false;
 
   return userMessages
     .slice(0, -1)
-    .some((message) => isSportsMenuQuestion(message.content));
+    .some((message) =>
+      isSportsMenuQuestion(message.content) || isDairyMenuQuestion(message.content),
+    );
 }
 
 function parseNumber(value: string | undefined): number | null {
@@ -205,21 +214,38 @@ export function buildGroundedSportsMenuReply(
 
   const facts = extractSportsFacts(messages);
   const cheesePlan = buildCheeseDayPlan(context);
+  const hasSportsContext = messages
+    .filter((message) => message.role === "user")
+    .some((message) => SPORTS_CONTEXT.test(message.content));
+  const menuStructure = hasSportsContext
+    ? [
+        `- **Завтрак:** овсянка или гречка, яйца/другой полноценный источник белка, овощи или ягоды; ${cheesePlan.breakfast}.`,
+        `- **Обед:** нежирная птица, рыба или бобовые; крупа/картофель; большая порция овощей; ${cheesePlan.lunch}.`,
+        "- **За 2–3 часа до тренировки:** обычный приём пищи с углеводами и 25–40 г белка, без большой порции жирного выдержанного сыра.",
+        "- **Во время часовой силовой тренировки:** вода по жажде. Сыр во время занятия не нужен.",
+        "- **После тренировки:** в ближайшем приёме пищи 25–40 г белка плюс углеводы — например, рыба/птица/яйца/бобовые с крупой и овощами. Молочный продукт может быть частью этого приёма, но не единственным его содержанием.",
+        "- **Ужин:** ещё один полноценный источник белка, овощи и умеренная порция сложных углеводов по аппетиту и общей калорийности дня.",
+      ]
+    : [
+        `- **Завтрак:** овсянка или гречка, яйца, овощи или ягоды; ${cheesePlan.breakfast}.`,
+        `- **Обед:** птица, рыба или бобовые; крупа/картофель; большая порция овощей; ${cheesePlan.lunch}.`,
+        "- **Перекус:** фрукт или ягоды, при необходимости — небольшая порция орехов; дополнительный сыр не нужен.",
+        "- **Ужин:** рыба, птица, яйца или бобовые с овощами и умеренной порцией сложных углеводов по аппетиту.",
+      ];
 
   return [
-    "## Сбалансированный день при силовой тренировке",
+    hasSportsContext
+      ? "## Сбалансированный день при силовой тренировке"
+      : "## Сбалансированное дневное меню с вашей молочной продукцией",
     "_Это расчётный ориентир для здорового взрослого, а не медицинское назначение. Если есть заболевания почек, сердца, диабет, выраженная гипертония или лечебная диета, персональный план должен подтвердить врач или спортивный диетолог._",
     `**Учтённые данные:** ${formatKnownFacts(facts)}.`,
-    proteinGuidance(facts),
+    hasSportsContext
+      ? proteinGuidance(facts)
+      : "Пока не указаны цель, возраст, вес и активность, это безопасная структура дня без расчёта калорий и белка. Для персональных цифр добавьте эти данные.",
     dairyInterpretation(facts),
     cheesePlan.guidance,
     "### Структура меню",
-    `- **Завтрак:** овсянка или гречка, яйца/другой полноценный источник белка, овощи или ягоды; ${cheesePlan.breakfast}.`,
-    `- **Обед:** нежирная птица, рыба или бобовые; крупа/картофель; большая порция овощей; ${cheesePlan.lunch}.`,
-    "- **За 2–3 часа до тренировки:** обычный приём пищи с углеводами и 25–40 г белка, без большой порции жирного выдержанного сыра.",
-    "- **Во время часовой силовой тренировки:** вода по жажде. Сыр во время занятия не нужен.",
-    "- **После тренировки:** в ближайшем приёме пищи 25–40 г белка плюс углеводы — например, рыба/птица/яйца/бобовые с крупой и овощами. Молочный продукт может быть частью этого приёма, но не единственным его содержанием.",
-    "- **Ужин:** ещё один полноценный источник белка, овощи и умеренная порция сложных углеводов по аппетиту и общей калорийности дня.",
+    ...menuStructure,
     cheesePlan.rotation,
     "### Что нужно уточнить для точного расчёта",
     finalClarification(facts, cheesePlan.hasConfirmedCheeses),

@@ -54,7 +54,10 @@ import {
 } from "../prompts/zoyaSystemPrompt";
 import { getZoyaRagEntries } from "../zoyaRag";
 import { buildGroundedSportsMenuReply } from "../zoyaSportsMenuAdvisor";
-import { invokeZoyaLLM } from "../zoyaChatRuntime";
+import {
+  invokeZoyaLLM,
+  ZOYA_TEMPORARY_UNAVAILABLE_REPLY,
+} from "../zoyaChatRuntime";
 
 // ═══════════════════════════════════════════════════════════════════
 // Constants
@@ -192,8 +195,7 @@ export const nutritionistRouter = router({
         const content = result.choices?.[0]?.message?.content;
         if (!content || typeof content !== "string") {
           return {
-            reply:
-              "Простите, у меня сейчас небольшие технические трудности. Попробуйте спросить ещё раз через минутку! 🌿",
+            reply: ZOYA_TEMPORARY_UNAVAILABLE_REPLY,
             userType,
           };
         }
@@ -218,7 +220,7 @@ export const nutritionistRouter = router({
       } catch (error) {
         console.error("[Zoya Chat] LLM error:", error);
         return {
-          reply: "Ой, что-то пошло не так. Пожалуйста, попробуйте позже! 🌿",
+          reply: ZOYA_TEMPORARY_UNAVAILABLE_REPLY,
           userType,
         };
       }

@@ -23,7 +23,10 @@ import {
 } from "./prompts/zoyaSystemPrompt";
 import { getZoyaRagEntries } from "./zoyaRag";
 import { buildGroundedSportsMenuReply } from "./zoyaSportsMenuAdvisor";
-import { invokeZoyaLLM } from "./zoyaChatRuntime";
+import {
+  invokeZoyaLLM,
+  ZOYA_TEMPORARY_UNAVAILABLE_REPLY,
+} from "./zoyaChatRuntime";
 
 const GUEST_MESSAGE_LIMIT = 3;
 
@@ -176,19 +179,35 @@ export function registerZoyaSSE(app: Express) {
     // Send user type info first
     res.write(`data: ${JSON.stringify({ type: "meta", userType })}\n\n`);
 
+    const requestController = new AbortController();
+    let completed = false;
+    const canWrite = () => !res.writableEnded && !res.destroyed;
+    const onClose = () => {
+      if (!completed) requestController.abort();
+    };
+    res.on("close", onClose);
+    const heartbeat = setInterval(() => {
+      if (canWrite() && !completed) res.write(": keepalive\n\n");
+    }, 5_000);
+
     try {
-      // Use non-streaming LLM call and simulate streaming by chunking the response
-      // (invokeLLM doesn't support native streaming, so we chunk the result)
-      const result = await invokeZoyaLLM(llmMessages);
+      // Use non-streaming LLM call and simulate streaming by chunking the response.
+      // The shared runtime enforces a bounded deadline and aborts stalled upstream work.
+      const result = await invokeZoyaLLM(llmMessages, {
+        signal: requestController.signal,
+      });
+
+      if (!canWrite() || requestController.signal.aborted) return;
 
       const content = result.choices?.[0]?.message?.content;
       if (!content || typeof content !== "string") {
         res.write(
           `data: ${JSON.stringify({
             type: "chunk",
-            content: "Простите, у меня сейчас небольшие технические трудности. Попробуйте спросить ещё раз 🌿",
-          })}\n\n`
+            content: ZOYA_TEMPORARY_UNAVAILABLE_REPLY,
+          })}\n\n`,
         );
+        completed = true;
         res.write("data: [DONE]\n\n");
         res.end();
         return;
@@ -197,14 +216,15 @@ export function registerZoyaSSE(app: Express) {
       // Stream the response in small chunks for a typing effect
       const chunkSize = 8; // characters per chunk
       for (let i = 0; i < content.length; i += chunkSize) {
+        if (!canWrite() || requestController.signal.aborted) return;
         const chunk = content.slice(i, i + chunkSize);
         res.write(`data: ${JSON.stringify({ type: "chunk", content: chunk })}\n\n`);
-        // Small delay for typing effect (only in chunks, not blocking)
         if (i + chunkSize < content.length) {
           await new Promise((resolve) => setTimeout(resolve, 15));
         }
       }
 
+      completed = true;
       res.write("data: [DONE]\n\n");
       res.end();
 
@@ -216,19 +236,24 @@ export function registerZoyaSSE(app: Express) {
           lastUserMsg.content,
           content,
           userType,
-          fingerprint
+          fingerprint,
         ).catch((err) => console.error("[Zoya SSE] Save error:", err));
       }
     } catch (error) {
       console.error("[Zoya SSE] LLM error:", error);
+      if (!canWrite() || requestController.signal.aborted) return;
       res.write(
         `data: ${JSON.stringify({
-          type: "error",
-          content: "Ой, что-то пошло не так. Попробуйте позже 🌿",
-        })}\n\n`
+          type: "chunk",
+          content: ZOYA_TEMPORARY_UNAVAILABLE_REPLY,
+        })}\n\n`,
       );
+      completed = true;
       res.write("data: [DONE]\n\n");
       res.end();
+    } finally {
+      clearInterval(heartbeat);
+      res.off("close", onClose);
     }
   });
 }

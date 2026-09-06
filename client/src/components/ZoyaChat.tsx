@@ -42,6 +42,7 @@ type UserType = "guest" | "registered" | "owner";
 const MAX_CHARS = 8000;
 const CHAR_WARNING = 6500;
 const REQUEST_HISTORY_LIMIT = 12;
+const REQUEST_TIMEOUT_MS = 45_000;
 
 /* ─── Suggested prompts by user type ─── */
 const GUEST_PROMPTS = [
@@ -173,6 +174,11 @@ export default function ZoyaChat({
       abortRef.current?.abort();
       const controller = new AbortController();
       abortRef.current = controller;
+      let requestTimedOut = false;
+      const timeoutId = window.setTimeout(() => {
+        requestTimedOut = true;
+        controller.abort();
+      }, REQUEST_TIMEOUT_MS);
 
       try {
         const response = await fetch("/api/zoya/chat/stream", {
@@ -256,7 +262,16 @@ export default function ZoyaChat({
           ]);
         }
       } catch (error: any) {
-        if (error.name !== "AbortError") {
+        if (requestTimedOut) {
+          setMessages((prev) => [
+            ...prev,
+            {
+              role: "assistant",
+              content:
+                "Внешний AI-сервис отвечает слишком долго, поэтому я остановила ожидание. Попробуйте повторить запрос через минуту 🌿",
+            },
+          ]);
+        } else if (error.name !== "AbortError") {
           setMessages((prev) => [
             ...prev,
             {
@@ -267,6 +282,7 @@ export default function ZoyaChat({
           ]);
         }
       } finally {
+        window.clearTimeout(timeoutId);
         setIsStreaming(false);
         setStreamingContent("");
       }

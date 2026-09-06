@@ -13,6 +13,7 @@ import {
   compactZoyaMessages,
   invokeZoyaLLM,
   ZOYA_MAX_HISTORY_MESSAGES,
+  ZOYA_TEMPORARY_UNAVAILABLE_REPLY,
 } from "./zoyaChatRuntime";
 
 function conversation(messageCount = 20): Message[] {
@@ -101,6 +102,40 @@ describe("invokeZoyaLLM", () => {
     expect(invokeLLMMock).toHaveBeenCalledTimes(1);
     errorSpy.mockRestore();
   });
+
+  it("bounds a completely stalled upstream by the total deadline", async () => {
+    vi.useFakeTimers();
+    invokeLLMMock.mockImplementation(() => new Promise(() => {}));
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    const request = invokeZoyaLLM(conversation(4), {
+      totalDeadlineMs: 50,
+      primaryTimeoutMs: 30,
+      retryTimeoutMs: 25,
+    });
+    const rejection = expect(request).rejects.toMatchObject({ name: "TimeoutError" });
+
+    await vi.advanceTimersByTimeAsync(50);
+    await rejection;
+    expect(invokeLLMMock).toHaveBeenCalledTimes(2);
+
+    errorSpy.mockRestore();
+    vi.useRealTimers();
+  });
+
+  it("aborts immediately when the SSE client closes and does not retry", async () => {
+    invokeLLMMock.mockImplementation(() => new Promise(() => {}));
+    const controller = new AbortController();
+
+    const request = invokeZoyaLLM(conversation(4), {
+      signal: controller.signal,
+      totalDeadlineMs: 1_000,
+    });
+    controller.abort();
+
+    await expect(request).rejects.toMatchObject({ name: "AbortError" });
+    expect(invokeLLMMock).toHaveBeenCalledTimes(1);
+  });
 });
 
 describe("Zoya sports-menu runtime wiring", () => {
@@ -110,6 +145,7 @@ describe("Zoya sports-menu runtime wiring", () => {
     path.resolve(__dirname, "../client/src/components/ZoyaChat.tsx"),
     "utf8",
   );
+  const llmSource = readFileSync(path.resolve(__dirname, "_core/llm.ts"), "utf8");
 
   it("uses the same deterministic advisor in tRPC and SSE before LLM fallback", () => {
     expect(trpcSource).toContain("buildGroundedSportsMenuReply(input.messages, userContext)");
@@ -118,17 +154,35 @@ describe("Zoya sports-menu runtime wiring", () => {
       trpcSource.indexOf("invokeZoyaLLM(llmMessages)"),
     );
     expect(sseSource.indexOf("buildGroundedSportsMenuReply(messages, userContext)")).toBeLessThan(
-      sseSource.indexOf("invokeZoyaLLM(llmMessages)"),
+      sseSource.indexOf("invokeZoyaLLM(llmMessages, {"),
     );
   });
 
   it("uses the same resilient LLM runtime in tRPC and SSE", () => {
     expect(trpcSource).toContain("invokeZoyaLLM(llmMessages)");
-    expect(sseSource).toContain("invokeZoyaLLM(llmMessages)");
+    expect(sseSource).toContain("invokeZoyaLLM(llmMessages, {");
+    expect(trpcSource).toContain("ZOYA_TEMPORARY_UNAVAILABLE_REPLY");
+    expect(sseSource).toContain("ZOYA_TEMPORARY_UNAVAILABLE_REPLY");
+    expect(ZOYA_TEMPORARY_UNAVAILABLE_REPLY).toContain("остановила ожидание");
   });
 
-  it("bounds client-side history before sending the SSE request", () => {
+  it("bounds client-side history and request duration before sending the SSE request", () => {
     expect(clientSource).toContain("const REQUEST_HISTORY_LIMIT = 12");
     expect(clientSource).toContain(".slice(-REQUEST_HISTORY_LIMIT)");
+    expect(clientSource).toContain("const REQUEST_TIMEOUT_MS = 45_000");
+    expect(clientSource).toContain("controller.abort()");
+  });
+
+  it("keeps SSE alive while waiting and always uses a writable-response guard", () => {
+    expect(sseSource).toContain('res.write(": keepalive\\n\\n")');
+    expect(sseSource).toContain("const canWrite = () => !res.writableEnded && !res.destroyed");
+    expect(sseSource).toContain('res.on("close", onClose)');
+    expect(sseSource).toContain('res.write("data: [DONE]\\n\\n")');
+  });
+
+  it("passes an AbortSignal to every core LLM fetch", () => {
+    expect(llmSource).toContain("signal?: AbortSignal");
+    expect(llmSource).toContain("timeoutMs?: number");
+    expect(llmSource).toContain("signal: requestController.signal");
   });
 });
