@@ -2,14 +2,15 @@ import { EventEmitter } from "node:events";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const invokeZoyaLLMMock = vi.hoisted(() => vi.fn());
+const buildGroundedSportsMenuReplyMock = vi.hoisted(() => vi.fn());
 
 vi.mock("./_core/sdk", () => ({
   sdk: { authenticateRequest: vi.fn().mockResolvedValue(null) },
 }));
 
 vi.mock("./nutritionistDb", () => ({
-  createNutriSession: vi.fn(),
-  addNutriMessage: vi.fn(),
+  createNutriSession: vi.fn().mockResolvedValue({ id: 1 }),
+  addNutriMessage: vi.fn().mockResolvedValue(undefined),
   getGuestMessageCount: vi.fn().mockResolvedValue(0),
   getNutriProfile: vi.fn().mockResolvedValue(null),
   determineNutriUserType: vi.fn().mockResolvedValue("guest"),
@@ -25,7 +26,7 @@ vi.mock("./zoyaRag", () => ({
 }));
 
 vi.mock("./zoyaSportsMenuAdvisor", () => ({
-  buildGroundedSportsMenuReply: vi.fn().mockReturnValue(null),
+  buildGroundedSportsMenuReply: buildGroundedSportsMenuReplyMock,
 }));
 
 vi.mock("./zoyaChatRuntime", () => ({
@@ -92,6 +93,29 @@ function requestBody() {
 describe("Zoya SSE reliability", () => {
   beforeEach(() => {
     invokeZoyaLLMMock.mockReset();
+    buildGroundedSportsMenuReplyMock.mockReset().mockReturnValue(null);
+  });
+
+  it("returns the deterministic clarification for the exact dairy-menu request before LLM", async () => {
+    const clarification =
+      "Что означает 30%: доля суточной калорийности, массы еды или вашей поставки?";
+    buildGroundedSportsMenuReplyMock.mockReturnValue(clarification);
+    const res = new MockResponse();
+
+    await createHandler()({
+      body: {
+        messages: [{
+          role: "user",
+          content: "Зоя сделай мне дневное сбалансированное меню с содержанием 30% моей молочной продукции и посчитай КБЖУ",
+        }],
+      },
+    }, res);
+
+    const stream = res.chunks.join("");
+    expect(stream).toContain(clarification);
+    expect(stream).toContain("data: [DONE]");
+    expect(invokeZoyaLLMMock).not.toHaveBeenCalled();
+    expect(res.writableEnded).toBe(true);
   });
 
   it("returns a meaningful chunk and [DONE] when the upstream times out", async () => {

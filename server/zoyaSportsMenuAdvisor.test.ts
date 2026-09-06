@@ -97,7 +97,7 @@ describe("Zoya sports-menu intent and fact extraction", () => {
 });
 
 describe("Zoya grounded sports menu", () => {
-  it("answers the exact follow-up without an LLM and builds a balanced day", () => {
+  it("asks one concise basis question instead of inventing a menu", () => {
     const reply = buildGroundedSportsMenuReply(
       [
         { role: "user", content: firstQuestion },
@@ -108,15 +108,14 @@ describe("Zoya grounded sports menu", () => {
     );
 
     expect(reply).not.toBeNull();
-    expect(reply).toContain("47 лет");
-    expect(reply).toContain("рост 174 см");
-    expect(reply).toContain("вес 102 кг");
-    expect(reply).toContain("143–163 г/сутки");
-    expect(reply).toContain("20% молочной продукции");
-    expect(reply).toContain("неоднозначна");
+    expect(reply).toContain("что означает **20% молочной продукции**");
+    expect(reply).toContain("Доля **суточной калорийности**");
+    expect(reply).toContain("Доля **массы всей еды за день**");
+    expect(reply).toContain("Доля **вашей поставки**");
     expect(reply).toContain("Качотта из козьего молока");
-    expect(reply).toContain("Сыр во время занятия не нужен");
-    expect(reply).toContain("рыба/птица/яйца/бобовые");
+    expect(reply).toContain("вариант 1, 2500 ккал");
+    expect(reply).not.toContain("Структура меню");
+    expect(reply.length).toBeLessThan(1_000);
     expect(reply).not.toContain("Ой, что-то пошло не так");
   });
 
@@ -147,20 +146,34 @@ describe("Zoya grounded sports menu", () => {
       context,
     )!;
 
-    expect(reply).toContain("не вижу читаемого списка ваших сыров");
+    expect(reply).toContain("нет читаемого списка сыров");
     expect(reply).not.toContain("Козий камамбер");
     expect(reply).not.toContain("Выдержанный козий сыр");
   });
 
-  it("includes a health disclaimer and avoids diagnosing the user", () => {
+  it("includes a health disclaimer in the final calculated menu and avoids diagnosing the user", () => {
+    const context = ownerContext({
+      ownerContext: {
+        ...ownerContext().ownerContext!,
+        productPlans: [{
+          status: "confirmed",
+          selectionsJson: JSON.stringify([
+            { label: "Брынза из козьего молока", productType: "brynza" },
+          ]),
+        }],
+      },
+    });
     const reply = buildGroundedSportsMenuReply(
-      [{ role: "user", content: followUpQuestion }],
-      ownerContext(),
+      [
+        { role: "user", content: followUpQuestion },
+        { role: "assistant", content: "Что означает 20%?" },
+        { role: "user", content: "Вариант 1, целевая калорийность 2500 ккал" },
+      ],
+      context,
     )!;
 
     expect(reply).toContain("не медицинское назначение");
-    expect(reply).toContain("заболеваниях почек");
-    expect(reply).toContain("согласовать с врачом");
+    expect(reply).toContain("справочным аналогам");
     expect(reply).not.toMatch(/у вас (?:ожирение|диабет|гипертония)/i);
   });
 
@@ -173,7 +186,7 @@ describe("Zoya grounded sports menu", () => {
     ).toBeNull();
   });
 
-  it("answers the exact two-step production dialogue with 30% and selected confirmed cheeses", () => {
+  it("answers the production dialogue after an explicit 30% calorie basis and target", () => {
     const context = ownerContext({
       ownerContext: {
         ...ownerContext().ownerContext!,
@@ -195,27 +208,28 @@ describe("Zoya grounded sports menu", () => {
     const reply = buildGroundedSportsMenuReply(
       [
         { role: "user", content: productionFirstQuestion },
-        { role: "assistant", content: "Первый детерминированный ответ Зои" },
+        { role: "assistant", content: "Уточните базу процента" },
         { role: "user", content: productionFollowUp },
+        { role: "assistant", content: "Что означает 30%?" },
+        { role: "user", content: "Вариант 1, целевая калорийность 2500 ккал" },
       ],
       context,
     )!;
 
-    expect(reply).toContain("30% молочной продукции");
+    expect(reply).toContain("30% от 2500 ккал");
     expect(reply).not.toContain("означает 20%");
-    expect(reply).toContain("47 лет");
-    expect(reply).toContain("рост 174 см");
-    expect(reply).toContain("вес 102 кг");
-    expect(reply).toContain("Рикотта с травами — ориентировочно 30–40 г");
-    expect(reply).toContain("Брынза из козьего молока — ориентировочно 20–30 г");
-    expect(reply).toContain("Халуми");
-    expect(reply).toContain("Козий камамбер");
-    expect(reply).toContain("Названия ваших сыров уже учтены");
-    expect(reply).not.toContain("перечислите сыры");
+    expect(reply).toContain("Рикотта с травами");
+    expect(reply).toContain("Брынза из козьего молока");
+    expect(reply).toContain("КБЖУ");
+    expect(reply).toContain("около **29.6%**");
+    expect(reply).toContain("143–204 г белка/сутки");
+    expect(reply).toContain("высокая сырная нагрузка");
+    expect(reply).toContain("USDA: ricotta, whole milk");
+    expect(reply).toContain("USDA: feta");
     expect(reply).not.toContain("Ой, что-то пошло не так");
   });
 
-  it("answers the exact standalone 30% dairy-menu request without calling the LLM", () => {
+  it("answers the exact standalone 30% dairy-menu request with one clarification", () => {
     const reply = buildGroundedSportsMenuReply(
       [
         {
@@ -226,11 +240,41 @@ describe("Zoya grounded sports menu", () => {
       ownerContext(),
     )!;
 
-    expect(reply).toContain("Сбалансированное дневное меню с вашей молочной продукцией");
-    expect(reply).toContain("30% молочной продукции");
+    expect(reply).toContain("что означает **30% молочной продукции**");
     expect(reply).toContain("Качотта из козьего молока");
-    expect(reply).toContain("без расчёта калорий и белка");
-    expect(reply).not.toContain("при силовой тренировке");
+    expect(reply).toContain("вариант 1, 2500 ккал");
+    expect(reply).not.toContain("Учтённые данные");
+    expect(reply).not.toContain("Структура меню");
     expect(reply).not.toContain("Ой, что-то пошло не так");
+  });
+
+  it("requests target calories after the user chooses calorie share", () => {
+    const reply = buildGroundedSportsMenuReply(
+      [
+        { role: "user", content: "Сделай меню с 30% моей молочной продукции и КБЖУ" },
+        { role: "assistant", content: "Что означает 30%?" },
+        { role: "user", content: "30% от суточной калорийности" },
+      ],
+      ownerContext(),
+    )!;
+
+    expect(reply).toContain("30% суточной калорийности");
+    expect(reply).toContain("целевую калорийность в ккал/сутки");
+    expect(reply).not.toContain("Структура меню");
+  });
+
+  it("does not fabricate macros for an owned cheese without a reference analogue", () => {
+    const reply = buildGroundedSportsMenuReply(
+      [
+        { role: "user", content: "Сделай меню с 30% моей молочной продукции и КБЖУ" },
+        { role: "assistant", content: "Что означает 30%?" },
+        { role: "user", content: "Вариант 1, 2500 ккал" },
+      ],
+      ownerContext(),
+    )!;
+
+    expect(reply).toContain("нет надёжного справочного аналога КБЖУ");
+    expect(reply).toContain("Качотта из козьего молока");
+    expect(reply).not.toMatch(/Качотта[^\n]+\d+ ккал/);
   });
 });
