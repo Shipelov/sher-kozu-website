@@ -16,7 +16,14 @@ import {
 import { ZOYA_TEMPORARY_UNAVAILABLE_REPLY } from "./zoyaChatRuntime";
 import { assembleZoyaContext, buildZoyaSessionState } from "./zoyaContextAssembler";
 import { buildZoyaProfileGateMeta, buildZoyaProfileGateReply } from "./zoyaProfileGate";
-import { buildZoyaValidationFallback, runZoyaOrchestrator } from "./zoyaOrchestrator";
+import {
+  buildZoyaValidationFallback,
+  runZoyaOrchestrator,
+} from "./zoyaOrchestrator";
+import {
+  buildZoyaTelemetryEvent,
+  logZoyaTelemetry,
+} from "./zoyaObservability";
 
 const GUEST_MESSAGE_LIMIT = 3;
 
@@ -159,12 +166,19 @@ export function registerZoyaSSE(app: Express) {
       if (canWrite() && !completed) res.write(": keepalive\n\n");
     }, 5_000);
 
+    const orchestrationStartedAt = Date.now();
     try {
       // Use non-streaming LLM call and simulate streaming by chunking the response.
       // The shared runtime enforces a bounded deadline and aborts stalled upstream work.
       const result = await runZoyaOrchestrator(assembledContext, messages, {
         signal: requestController.signal,
       });
+      logZoyaTelemetry(buildZoyaTelemetryEvent({
+        transport: "sse",
+        context: assembledContext,
+        diagnostics: result.diagnostics,
+        totalLatencyMs: Date.now() - orchestrationStartedAt,
+      }));
 
       if (!canWrite() || requestController.signal.aborted) return;
 
@@ -206,7 +220,12 @@ export function registerZoyaSSE(app: Express) {
     } catch (error) {
       const isValidationError = error instanceof Error
         && ["ZoyaValidationError", "ZoyaStructuredOutputError"].includes(error.name);
-      console.error("[Zoya SSE] Orchestrator error:", error);
+      logZoyaTelemetry(buildZoyaTelemetryEvent({
+        transport: "sse",
+        context: assembledContext,
+        error,
+        totalLatencyMs: Date.now() - orchestrationStartedAt,
+      }));
       if (!canWrite() || requestController.signal.aborted) return;
       const fallbackContent = isValidationError
         ? buildZoyaValidationFallback(assembledContext)

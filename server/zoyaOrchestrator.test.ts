@@ -6,11 +6,11 @@ vi.mock("./zoyaChatRuntime", () => ({
 }));
 
 import {
-  buildZoyaOrchestratorPrompt,
+  buildVerifiedDraftRewritePrompt,
+  buildZoyaVerifiedDraft,
   renderZoyaStructuredResponse,
   runZoyaOrchestrator,
   validateZoyaStructuredResponse,
-  ZOYA_RESPONSE_FORMAT,
   type ZoyaStructuredResponse,
 } from "./zoyaOrchestrator";
 
@@ -128,14 +128,14 @@ const completeMenuResponse = (): ZoyaStructuredResponse => {
 describe("Zoya structured orchestrator", () => {
   beforeEach(() => invokeZoyaLLMMock.mockReset());
 
-  it("separates confirmed products from merely available variants in the prompt", () => {
-    const prompt = buildZoyaOrchestratorPrompt(context);
-    expect(prompt).toContain("confirmedProducts");
-    expect(prompt).toContain("availableProductVariants");
-    expect(prompt).toContain("ТОЛЬКО элементы confirmedProducts");
-    expect(prompt).toContain("ОБЯЗАТЕЛЬНЫЙ JSON-ШАБЛОН");
-    expect(prompt).toContain('"consideredFacts"');
-    expect(prompt).toContain('"mealPlan"');
+  it("sends only a server-owned draft to the plain-text rewrite layer", () => {
+    const draft = buildZoyaVerifiedDraft(context);
+    const prompt = buildVerifiedDraftRewritePrompt(context, draft);
+    expect(prompt).toContain("SERVER_DRAFT");
+    expect(prompt).toContain("Рикотта с травами");
+    expect(prompt).toContain("Верни только обычный текст без JSON");
+    expect(prompt).not.toContain("availableProductVariants");
+    expect(prompt).not.toContain("ОБЯЗАТЕЛЬНЫЙ JSON-ШАБЛОН");
   });
 
   it("accepts a consistent answer using only a confirmed farm product", () => {
@@ -220,9 +220,7 @@ describe("Zoya structured orchestrator", () => {
 
   it("removes only an incomplete trailing clause from a provider answer", async () => {
     invokeZoyaLLMMock.mockResolvedValue({
-      choices: [{ message: { content: JSON.stringify(response({
-        answer: "Первое полное предложение. Второе полное предложение. Незавершённый хвост ответа",
-      })) } }],
+      choices: [{ message: { content: "Первое полное предложение. Второе полное предложение. Незавершённый хвост ответа" } }],
     });
 
     const result = await runZoyaOrchestrator(context, [{ role: "user", content: "Составь меню" }]);
@@ -253,7 +251,7 @@ describe("Zoya structured orchestrator", () => {
     expect(result.response.summary).toContain("не считается безопасной заменой");
   });
 
-  it("uses the short narrative path for a deterministic menu and returns validated Markdown", async () => {
+  it("returns a validated deterministic menu without calling the external AI", async () => {
     const menuContext = {
       ...context,
       intent: "personal_menu",
@@ -265,24 +263,17 @@ describe("Zoya structured orchestrator", () => {
         proteinRangeG: { min: 30, max: 60 },
       },
     };
-    invokeZoyaLLMMock.mockResolvedValue({
-      choices: [{ message: { content: JSON.stringify({
-        summary: "AI-пояснение к рассчитанному меню",
-        consideredFacts: ["цель — рост мышц"],
-        answer: "Рацион распределяет белок и энергию между основными приёмами пищи.",
-      }) } }],
-    });
     const result = await runZoyaOrchestrator(menuContext, [{ role: "user", content: "Составь меню" }]);
-    expect(invokeZoyaLLMMock).toHaveBeenCalledWith(
-      expect.any(Array),
-      expect.objectContaining({ maxTokens: 1_200, primaryTimeoutMs: 13_000 }),
-    );
-    expect(invokeZoyaLLMMock.mock.calls[0][1]).not.toHaveProperty("responseFormat");
-    expect(result.markdown).toContain("AI-пояснение к рассчитанному меню");
+    expect(invokeZoyaLLMMock).not.toHaveBeenCalled();
     expect(result.markdown).toContain("### Меню на день");
+    expect(result.diagnostics).toMatchObject({
+      aiAttempted: false,
+      aiOutcome: "skipped",
+      aiReasonCode: "SERVER_DRAFT_COMPLETE",
+    });
   });
 
-  it("returns the validated deterministic menu when the narrative AI call fails", async () => {
+  it("returns the deterministic menu independently of the configured AI response", async () => {
     const menuContext = {
       ...context,
       intent: "personal_menu",
@@ -295,16 +286,18 @@ describe("Zoya structured orchestrator", () => {
       },
     };
     invokeZoyaLLMMock.mockResolvedValue({
-      choices: [{ message: { content: "not valid narrative json" } }],
+      choices: [{ message: { content: "Этот текст не должен использоваться." } }],
     });
 
     const result = await runZoyaOrchestrator(menuContext, [{ role: "user", content: "Составь меню" }]);
 
     expect(result.markdown).toContain("### Меню на день");
     expect(result.response.mealPlan.meals).toHaveLength(4);
+    expect(invokeZoyaLLMMock).not.toHaveBeenCalled();
+    expect(result.diagnostics.aiOutcome).toBe("skipped");
   });
 
-  it("removes unsupported nutrition claims and ignores model-generated medical warnings", async () => {
+  it("cannot receive unsupported claims or model-generated medical warnings in menu mode", async () => {
     const menuContext = {
       ...context,
       intent: "personal_menu",
@@ -317,29 +310,26 @@ describe("Zoya structured orchestrator", () => {
       },
     };
     invokeZoyaLLMMock.mockResolvedValue({
-      choices: [{ message: { content: JSON.stringify({
-        summary: "Рассчитанное меню",
-        consideredFacts: ["цель — рост мышц"],
-        answer: "Рацион распределяет белок между приёмами пищи. Рикотта якобы обеспечивает кальцием.",
-        warnings: ["Пейте не менее трёх литров воды."],
-      }) } }],
+      choices: [{ message: { content: "Рацион распределяет белок между приёмами пищи. Рикотта якобы обеспечивает кальцием. Пейте не менее трёх литров воды." } }],
     });
 
     const result = await runZoyaOrchestrator(menuContext, [{ role: "user", content: "Составь меню" }]);
 
+    expect(invokeZoyaLLMMock).not.toHaveBeenCalled();
     expect(result.response.answer).not.toContain("кальцием");
     expect(result.response.warnings).not.toContain("Пейте не менее трёх литров воды.");
   });
 
-  it("fails closed after one call when the provider returns empty content", async () => {
+  it("returns the verified draft after one call when the provider returns empty content", async () => {
     invokeZoyaLLMMock.mockResolvedValue({ choices: [{ message: { content: null }, finish_reason: "stop" }] });
 
-    await expect(runZoyaOrchestrator(context, [{ role: "user", content: "Составь меню" }]))
-      .rejects.toMatchObject({ name: "ZoyaStructuredOutputError" });
+    const result = await runZoyaOrchestrator(context, [{ role: "user", content: "Составь меню" }]);
+    expect(result.response.answer).toContain("Рикотта с травами");
+    expect(result.diagnostics).toMatchObject({ aiOutcome: "fallback", aiReasonCode: "AI_CONTENT_INVALID" });
     expect(invokeZoyaLLMMock).toHaveBeenCalledTimes(1);
   });
 
-  it("repairs a syntactically malformed JSON fallback before schema validation", async () => {
+  it("rejects an unexpected legacy JSON payload and keeps the verified draft", async () => {
     const malformed = `${JSON.stringify(response()).slice(0, -1)},}`;
     invokeZoyaLLMMock.mockResolvedValue({
       choices: [{ message: { content: `\`\`\`json\n${malformed}\n\`\`\`` }, finish_reason: "stop" }],
@@ -347,32 +337,49 @@ describe("Zoya structured orchestrator", () => {
 
     const result = await runZoyaOrchestrator(context, [{ role: "user", content: "Составь меню" }]);
 
-    expect(result.markdown).toContain("Сбалансированный рацион");
+    expect(result.response.answer).toContain("Рикотта с травами");
+    expect(result.diagnostics.aiOutcome).toBe("fallback");
   });
 
-  it("normalizes numeric nutrition strings from a schema-less provider fallback", async () => {
-    const stringifiedNumbers = response();
-    (stringifiedNumbers.mealPlan.dailyNutrition.carbsG as unknown) = "44";
-    (stringifiedNumbers.mealPlan.meals[0].nutrition.proteinG as unknown) = "14,0";
+  it("does not let a provider JSON payload override server-owned menu arithmetic", async () => {
+    const menuContext = {
+      ...context,
+      intent: "personal_menu",
+      requiresPersonalization: true,
+      calculationTargets: {
+        ...context.calculationTargets,
+        calorieTarget: 960,
+        calorieRange: { min: 900, max: 1_020 },
+        proteinRangeG: { min: 30, max: 80 },
+      },
+    };
     invokeZoyaLLMMock.mockResolvedValue({
-      choices: [{ message: { content: JSON.stringify(stringifiedNumbers) }, finish_reason: "stop" }],
+      choices: [{ message: { content: JSON.stringify(response({ mealPlan: { ...response().mealPlan, dailyNutrition: nutrition(9_999, 1, 1, 1) } })) }, finish_reason: "stop" }],
     });
 
-    const result = await runZoyaOrchestrator(context, [{ role: "user", content: "Составь меню" }]);
+    const result = await runZoyaOrchestrator(menuContext, [{ role: "user", content: "Составь меню" }]);
 
-    expect(result.response.mealPlan.dailyNutrition.carbsG).toBe(44);
-    expect(result.response.mealPlan.meals[0].nutrition.proteinG).toBe(14);
+    expect(result.response.mealPlan.dailyNutrition.kcal).not.toBe(9_999);
+    expect(invokeZoyaLLMMock).not.toHaveBeenCalled();
+    expect(result.diagnostics.aiOutcome).toBe("skipped");
   });
 
-  it("safely completes a missing answer field from the provider summary", async () => {
-    const incomplete = response() as Record<string, unknown>;
-    delete incomplete.answer;
-    invokeZoyaLLMMock.mockResolvedValue({
-      choices: [{ message: { content: JSON.stringify(incomplete) }, finish_reason: "stop" }],
-    });
-
-    const result = await runZoyaOrchestrator(context, [{ role: "user", content: "Составь меню" }]);
-
-    expect(result.response.answer).toBe("Сбалансированный рацион");
+  it("skips the external AI for a milk-allergy red-line answer", async () => {
+    const medicalContext = {
+      ...context,
+      intent: "medical_safety",
+      effectiveQuery: "Можно ли козье молоко при аллергии на казеин?",
+      evidence: [{
+        level: "verified_knowledge",
+        key: "mandatory_safety",
+        value: "Козье молоко не является безопасной заменой.",
+        sourceName: "ASCIA",
+        sourceUrl: "https://www.allergy.org.au/",
+      }],
+    };
+    const result = await runZoyaOrchestrator(medicalContext, [{ role: "user", content: medicalContext.effectiveQuery }]);
+    expect(invokeZoyaLLMMock).not.toHaveBeenCalled();
+    expect(result.diagnostics.aiOutcome).toBe("skipped");
+    expect(result.response.answer).toContain("не следует самостоятельно заменять");
   });
 });

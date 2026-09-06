@@ -55,6 +55,10 @@ import {
   runZoyaOrchestrator,
 } from "../zoyaOrchestrator";
 import {
+  buildZoyaTelemetryEvent,
+  logZoyaTelemetry,
+} from "../zoyaObservability";
+import {
   archiveNutritionProfile,
   confirmNutritionProfile,
   createNutritionProfile,
@@ -213,8 +217,15 @@ export const nutritionistRouter = router({
         };
       }
 
+      const orchestrationStartedAt = Date.now();
       try {
-        const { markdown: content } = await runZoyaOrchestrator(assembledContext, input.messages);
+        const { markdown: content, diagnostics } = await runZoyaOrchestrator(assembledContext, input.messages);
+        logZoyaTelemetry(buildZoyaTelemetryEvent({
+          transport: "trpc",
+          context: assembledContext,
+          diagnostics,
+          totalLatencyMs: Date.now() - orchestrationStartedAt,
+        }));
 
         let savedSessionId = input.sessionId ?? null;
         if (lastUserMsg) {
@@ -241,7 +252,12 @@ export const nutritionistRouter = router({
       } catch (error) {
         const isValidationError = error instanceof Error
           && ["ZoyaValidationError", "ZoyaStructuredOutputError"].includes(error.name);
-        console.error("[Zoya Chat] Orchestrator error:", error);
+        logZoyaTelemetry(buildZoyaTelemetryEvent({
+          transport: "trpc",
+          context: assembledContext,
+          error,
+          totalLatencyMs: Date.now() - orchestrationStartedAt,
+        }));
         return {
           reply: isValidationError
             ? buildZoyaValidationFallback(assembledContext)

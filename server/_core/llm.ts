@@ -312,6 +312,11 @@ const resolveConnection = (): LlmConnection => {
 const defaultModelForConnection = (connection: LlmConnection): string =>
   connection.source === "forge" ? "gemini-3-flash-preview" : "gpt-4o-mini";
 
+const diagnosticModelLabel = (connection: LlmConnection, requestModel: string): string =>
+  connection.source === "cloudflare-openai"
+    ? `worker-managed (request alias: ${requestModel})`
+    : requestModel;
+
 const sanitizeDiagnosticText = (value: unknown): string =>
   String(value ?? "Unknown upstream error")
     .replace(/sk-[A-Za-z0-9_-]+/g, "[REDACTED]")
@@ -338,7 +343,8 @@ export async function diagnoseLLMConnection(): Promise<LlmDiagnosticResult> {
   }
 
   const endpoint = new URL(connection.apiUrl);
-  const model = defaultModelForConnection(connection);
+  const requestModel = defaultModelForConnection(connection);
+  const model = diagnosticModelLabel(connection, requestModel);
 
   try {
     const response = await fetch(connection.apiUrl, {
@@ -348,7 +354,7 @@ export async function diagnoseLLMConnection(): Promise<LlmDiagnosticResult> {
         authorization: `Bearer ${connection.apiKey}`,
       },
       body: JSON.stringify({
-        model,
+        model: requestModel,
         messages: [{ role: "user", content: "Reply with OK" }],
         max_tokens: 8,
       }),
@@ -437,7 +443,8 @@ export async function diagnoseLLMPayload(
   }
 
   const endpoint = new URL(connection.apiUrl);
-  const model = defaultModelForConnection(connection);
+  const requestModel = defaultModelForConnection(connection);
+  const model = diagnosticModelLabel(connection, requestModel);
 
   try {
     const response = await fetch(connection.apiUrl, {
@@ -447,7 +454,7 @@ export async function diagnoseLLMPayload(
         authorization: `Bearer ${connection.apiKey}`,
       },
       body: JSON.stringify({
-        model,
+        model: requestModel,
         messages: messages.map(normalizeMessage),
         max_tokens: maxTokens,
       }),

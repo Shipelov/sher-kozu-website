@@ -168,7 +168,7 @@ describe("LLM connection resolution", () => {
     expect(result).toMatchObject({
       ok: false,
       source: "cloudflare-openai",
-      model: "gpt-4o-mini",
+      model: "worker-managed (request alias: gpt-4o-mini)",
       endpointHost: "tg-proxy.example.workers.dev",
       endpointPath: "/openai/v1/chat/completions",
       status: 401,

@@ -7,28 +7,7 @@ vi.mock("./_core/llm", async (importOriginal) => {
     invokeLLM: vi.fn().mockResolvedValue({
       choices: [{
         message: {
-          content: JSON.stringify({
-            summary: "Проверенный ответ Зои",
-            consideredFacts: [],
-            answer: "Общий информационный ответ без персонального расчёта.",
-            mealPlan: {
-              enabled: false,
-              title: "",
-              meals: [],
-              dailyNutrition: {
-                kcal: null,
-                proteinG: null,
-                fatG: null,
-                carbsG: null,
-                estimated: false,
-              },
-              farmProductShareText: "",
-            },
-            substitutions: [],
-            warnings: [],
-            sources: [],
-            referenceNote: "",
-          }),
+          content: "Общий информационный ответ сформулирован только по проверенному серверному черновику.",
         },
       }],
     }),

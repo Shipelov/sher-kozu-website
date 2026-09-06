@@ -1,6 +1,4 @@
 import { z } from "zod";
-import type { Message } from "./_core/llm";
-import { jsonrepair } from "jsonrepair";
 import { invokeZoyaLLM } from "./zoyaChatRuntime";
 import type { ZoyaAssembledContext } from "./zoyaContextAssembler";
 import { parseAmountGrams } from "./zoyaNutritionCalculator";
@@ -10,6 +8,15 @@ import { buildZoyaDeterministicMenuDraft } from "./zoyaMenuPlanner";
 export type ZoyaConversationMessage = {
   role: "user" | "assistant";
   content: string;
+};
+
+export type ZoyaOrchestrationDiagnostics = {
+  mode: "deterministic_menu" | "verified_draft";
+  aiAttempted: boolean;
+  aiOutcome: "used" | "fallback" | "skipped";
+  aiReasonCode: string | null;
+  aiLatencyMs: number | null;
+  validationErrors: string[];
 };
 
 const nullableNutritionNumber = z.preprocess((value) => {
@@ -74,150 +81,6 @@ export const zoyaStructuredResponseSchema = z.object({
 
 export type ZoyaStructuredResponse = z.infer<typeof zoyaStructuredResponseSchema>;
 
-const zoyaMenuNarrativeSchema = z.object({
-  summary: z.string().min(1),
-  consideredFacts: z.array(z.string()).max(8),
-  answer: z.string().min(1),
-  warnings: z.array(z.string()).max(4),
-});
-
-const ZOYA_PROMPT_RESPONSE_TEMPLATE = {
-  summary: "",
-  consideredFacts: [""],
-  answer: "",
-  mealPlan: {
-    enabled: false,
-    title: "",
-    meals: [{
-      name: "",
-      time: "",
-      items: [{
-        name: "",
-        amount: "",
-        farmProduct: false,
-        nutrition: { kcal: null, proteinG: null, fatG: null, carbsG: null, estimated: true },
-      }],
-      nutrition: { kcal: null, proteinG: null, fatG: null, carbsG: null, estimated: true },
-    }],
-    dailyNutrition: { kcal: null, proteinG: null, fatG: null, carbsG: null, estimated: true },
-    farmProductShareText: "",
-  },
-  substitutions: [{ replace: "", with: "", reason: "", farmProduct: false }],
-  warnings: [""],
-  sources: [{ evidenceId: 1, title: "" }],
-  referenceNote: "",
-};
-
-const nullableNumberSchema = { anyOf: [{ type: "number", minimum: 0 }, { type: "null" }] };
-const nutritionJsonSchema = {
-  type: "object",
-  properties: {
-    kcal: nullableNumberSchema,
-    proteinG: nullableNumberSchema,
-    fatG: nullableNumberSchema,
-    carbsG: nullableNumberSchema,
-    estimated: { type: "boolean" },
-  },
-  required: ["kcal", "proteinG", "fatG", "carbsG", "estimated"],
-  additionalProperties: false,
-};
-
-export const ZOYA_RESPONSE_FORMAT = {
-  type: "json_schema" as const,
-  json_schema: {
-    name: "zoya_verified_answer",
-    strict: true,
-    schema: {
-      type: "object",
-      properties: {
-        summary: { type: "string" },
-        consideredFacts: { type: "array", items: { type: "string" }, maxItems: 12 },
-        answer: { type: "string" },
-        mealPlan: {
-          type: "object",
-          properties: {
-            enabled: { type: "boolean" },
-            title: { type: "string" },
-            meals: {
-              type: "array",
-              maxItems: 8,
-              items: {
-                type: "object",
-                properties: {
-                  name: { type: "string" },
-                  time: { type: "string" },
-                  items: {
-                    type: "array",
-                    items: {
-                      type: "object",
-                      properties: {
-                        name: { type: "string" },
-                        amount: { type: "string" },
-                        farmProduct: { type: "boolean" },
-                        nutrition: nutritionJsonSchema,
-                      },
-                      required: ["name", "amount", "farmProduct", "nutrition"],
-                      additionalProperties: false,
-                    },
-                  },
-                  nutrition: nutritionJsonSchema,
-                },
-                required: ["name", "time", "items", "nutrition"],
-                additionalProperties: false,
-              },
-            },
-            dailyNutrition: nutritionJsonSchema,
-            farmProductShareText: { type: "string" },
-          },
-          required: ["enabled", "title", "meals", "dailyNutrition", "farmProductShareText"],
-          additionalProperties: false,
-        },
-        substitutions: {
-          type: "array",
-          maxItems: 2,
-          items: {
-            type: "object",
-            properties: {
-              replace: { type: "string" },
-              with: { type: "string" },
-              reason: { type: "string" },
-              farmProduct: { type: "boolean" },
-            },
-            required: ["replace", "with", "reason", "farmProduct"],
-            additionalProperties: false,
-          },
-        },
-        warnings: { type: "array", items: { type: "string" }, maxItems: 6 },
-        sources: {
-          type: "array",
-          maxItems: 8,
-          items: {
-            type: "object",
-            properties: {
-              evidenceId: { type: "integer", minimum: 1 },
-              title: { type: "string" },
-            },
-            required: ["evidenceId", "title"],
-            additionalProperties: false,
-          },
-        },
-        referenceNote: { type: "string" },
-      },
-      required: [
-        "summary",
-        "consideredFacts",
-        "answer",
-        "mealPlan",
-        "substitutions",
-        "warnings",
-        "sources",
-        "referenceNote",
-      ],
-      additionalProperties: false,
-    },
-  },
-};
-
 function normalize(value: string): string {
   return value.toLowerCase().replace(/ё/g, "е").replace(/[^a-zа-я0-9]+/gi, " ").trim();
 }
@@ -245,57 +108,6 @@ function safeProfile(context: ZoyaAssembledContext) {
   };
 }
 
-export function buildZoyaOrchestratorPrompt(context: ZoyaAssembledContext): string {
-  const evidence = context.evidence.map((item, index) => ({ id: index + 1, ...item }));
-  const confirmedProducts = context.confirmedProducts.map((product) => ({
-    label: product.label,
-    productType: product.productType,
-    annualUnits: product.annualUnits,
-    unit: product.unit,
-    referenceNutrition: product.referenceNutrition
-      ? {
-        per100g: product.referenceNutrition.per100g,
-        sourceName: product.referenceNutrition.sourceName,
-        sourceUrl: product.referenceNutrition.sourceUrl,
-      }
-      : null,
-  }));
-  const availableProductVariants = context.availableProductVariants.map((product) => ({
-    label: product.label,
-    productType: product.productType,
-    unit: product.unit,
-  }));
-  return `Ты — Зоя, AI-нутрициолог семейной фермы «Шерь Козу». Отвечай на русском языке.
-
-Твоя задача — сформировать полезный естественный ответ, используя только предоставленные ниже факты. Не придумывай профиль, продукты фермы, наличие, лабораторные показатели, КБЖУ или научные утверждения.
-
-ОБЯЗАТЕЛЬНЫЕ ПРАВИЛА:
-1. Фактической продукцией клиента являются ТОЛЬКО элементы confirmedProducts. availableProductVariants — лишь возможные варианты и не должны называться текущей поставкой.
-2. Если у конкретного продукта нет лабораторных КБЖУ, допускается справочная оценка по ближайшему типу, но nutrition.estimated=true и referenceNote должен прямо это объяснить.
-3. Персональное меню должно быть полноценным: белковые продукты, сложные углеводы, овощи/фрукты и источники ненасыщенных жиров. Молочная продукция — часть рациона, не весь рацион.
-4. Для меню укажи КБЖУ каждого приёма и итог дня. Если достоверный расчёт невозможен, используй null, а не выдуманное число.
-5. Дай основной вариант и не более двух замен. Замены фермерской продукции также должны быть из confirmedProducts.
-6. Строго соблюдай allergies, restrictions и dislikedProducts. Не ставь диагнозы, не назначай лечение. При аллергии на молочный белок не называй козье или овечье молоко безопасной заменой.
-7. Научные утверждения основывай только на evidence. В sources указывай только evidence ID из входных данных.
-8. Не повторяй длинные формальные предупреждения. Добавляй только предупреждения, релевантные запросу и профилю.
-9. Верни только JSON, соответствующий заданной схеме.
-
-ОБЯЗАТЕЛЬНЫЙ JSON-ШАБЛОН (сохрани все поля и типы; ненужные массивы оставь пустыми):
-${JSON.stringify(ZOYA_PROMPT_RESPONSE_TEMPLATE)}
-
-КОНТЕКСТ:
-${JSON.stringify({
-    intent: context.intent,
-    effectiveQuery: context.effectiveQuery,
-    profile: safeProfile(context),
-    confirmedProducts,
-    availableProductVariants,
-    calculationTargets: context.calculationTargets,
-    evidence,
-  })}
-`;
-}
-
 class ZoyaStructuredOutputError extends Error {
   constructor(message: string) {
     super(message);
@@ -311,163 +123,30 @@ const emptyNutrition = () => ({
   estimated: false,
 });
 
-function asRecord(value: unknown): Record<string, unknown> {
-  return value && typeof value === "object" && !Array.isArray(value)
-    ? value as Record<string, unknown>
-    : {};
-}
-
-function completeStructuredCandidate(value: unknown): unknown {
-  const candidate = asRecord(value);
-  const rawMealPlan = asRecord(candidate.mealPlan);
-  const meals = Array.isArray(rawMealPlan.meals) ? rawMealPlan.meals : [];
-  const summary = typeof candidate.summary === "string" && candidate.summary.trim()
-    ? candidate.summary.trim()
-    : typeof candidate.answer === "string" && candidate.answer.trim()
-      ? candidate.answer.trim().split(/(?<=[.!?])\s/)[0].slice(0, 180)
-      : meals.length > 0
-        ? "Персональный рацион"
-        : "";
-  const answer = typeof candidate.answer === "string" && candidate.answer.trim()
-    ? candidate.answer.trim()
-    : summary
-      ? summary
-      : meals.length > 0
-        ? "Ниже приведён рассчитанный вариант рациона."
-        : "";
-
-  return {
-    ...candidate,
-    summary,
-    consideredFacts: Array.isArray(candidate.consideredFacts)
-      ? candidate.consideredFacts.filter((item): item is string => typeof item === "string")
-      : [],
-    answer,
-    mealPlan: {
-      ...rawMealPlan,
-      enabled: rawMealPlan.enabled === true || rawMealPlan.enabled === "true",
-      title: typeof rawMealPlan.title === "string" ? rawMealPlan.title : "",
-      meals,
-      dailyNutrition: Object.keys(asRecord(rawMealPlan.dailyNutrition)).length > 0
-        ? rawMealPlan.dailyNutrition
-        : emptyNutrition(),
-      farmProductShareText: typeof rawMealPlan.farmProductShareText === "string"
-        ? rawMealPlan.farmProductShareText
-        : "",
-    },
-    substitutions: Array.isArray(candidate.substitutions) ? candidate.substitutions : [],
-    warnings: Array.isArray(candidate.warnings)
-      ? candidate.warnings.filter((item): item is string => typeof item === "string")
-      : [],
-    sources: Array.isArray(candidate.sources) ? candidate.sources : [],
-    referenceNote: typeof candidate.referenceNote === "string" ? candidate.referenceNote : "",
-  };
-}
-
-function parseStructuredContent(content: unknown): ZoyaStructuredResponse {
-  try {
-    if (content && typeof content === "object" && !Array.isArray(content)) {
-      return zoyaStructuredResponseSchema.parse(completeStructuredCandidate(content));
-    }
-
-    const text = Array.isArray(content)
-      ? content
-        .filter((part): part is { type: "text"; text: string } => (
-          Boolean(part)
-          && typeof part === "object"
-          && (part as { type?: unknown }).type === "text"
-          && typeof (part as { text?: unknown }).text === "string"
-        ))
-        .map((part) => part.text)
-        .join("")
-      : content;
-
-    if (typeof text !== "string" || !text.trim()) {
-      throw new Error("content_missing");
-    }
-    const cleaned = text.trim().replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "");
-    let parsed: unknown;
-    try {
-      parsed = JSON.parse(cleaned);
-    } catch {
-      parsed = JSON.parse(jsonrepair(cleaned));
-    }
-    return zoyaStructuredResponseSchema.parse(completeStructuredCandidate(parsed));
-  } catch (error) {
-    const reason = error instanceof Error ? error.message.slice(0, 160) : "unknown";
-    throw new ZoyaStructuredOutputError(`ZOYA_STRUCTURED_OUTPUT_INVALID:${reason}`);
+function extractPlainTextContent(content: unknown): string {
+  const text = Array.isArray(content)
+    ? content
+      .filter((part): part is { type: "text"; text: string } => (
+        Boolean(part)
+        && typeof part === "object"
+        && (part as { type?: unknown }).type === "text"
+        && typeof (part as { text?: unknown }).text === "string"
+      ))
+      .map((part) => part.text)
+      .join("")
+    : content;
+  if (typeof text !== "string" || !text.trim()) {
+    throw new ZoyaStructuredOutputError("ZOYA_PLAIN_TEXT_CONTENT_MISSING");
   }
-}
-
-function parseMenuNarrative(content: unknown): z.infer<typeof zoyaMenuNarrativeSchema> {
-  try {
-    const text = Array.isArray(content)
-      ? content
-        .filter((part): part is { type: "text"; text: string } => (
-          Boolean(part)
-          && typeof part === "object"
-          && (part as { type?: unknown }).type === "text"
-          && typeof (part as { text?: unknown }).text === "string"
-        ))
-        .map((part) => part.text)
-        .join("")
-      : content;
-    if (typeof text !== "string" || !text.trim()) throw new Error("content_missing");
-    const cleaned = text.trim().replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "");
-    let parsed: unknown;
-    try {
-      parsed = JSON.parse(cleaned);
-    } catch {
-      parsed = JSON.parse(jsonrepair(cleaned));
-    }
-    const candidate = asRecord(parsed);
-    return zoyaMenuNarrativeSchema.parse({
-      summary: candidate.summary,
-      consideredFacts: Array.isArray(candidate.consideredFacts)
-        ? candidate.consideredFacts.filter((item): item is string => typeof item === "string")
-        : [],
-      answer: candidate.answer,
-      warnings: Array.isArray(candidate.warnings)
-        ? candidate.warnings.filter((item): item is string => typeof item === "string")
-        : [],
-    });
-  } catch (error) {
-    const reason = error instanceof Error ? error.message.slice(0, 160) : "unknown";
-    throw new ZoyaStructuredOutputError(`ZOYA_MENU_NARRATIVE_INVALID:${reason}`);
+  const cleaned = text
+    .trim()
+    .replace(/^```(?:text|markdown)?\s*/i, "")
+    .replace(/\s*```$/, "")
+    .trim();
+  if (/^[{[]/.test(cleaned)) {
+    throw new ZoyaStructuredOutputError("ZOYA_PLAIN_TEXT_UNEXPECTED_JSON");
   }
-}
-
-export function buildMenuNarrativePrompt(
-  context: ZoyaAssembledContext,
-  draft: ZoyaStructuredResponse,
-): string {
-  return `Ты — Зоя, AI-нутрициолог фермы «Шерь Козу». Сервер уже рассчитал и проверил меню. Не меняй продукты, порции, КБЖУ, долю продукции, замены или источники.
-
-Верни только JSON:
-{"summary":"краткий заголовок","consideredFacts":["до 8 фактов"],"answer":"2–4 предложения: почему рацион сбалансирован и как использовать продукты фермы","warnings":["только необходимые предупреждения"]}
-
-ПРОФИЛЬ И ЦЕЛЬ:
-${JSON.stringify({ profile: safeProfile(context), calculationTargets: context.calculationTargets })}
-
-ПРОВЕРЕННЫЙ РАСЧЁТ:
-${JSON.stringify({
-    meals: draft.mealPlan.meals.map((meal) => ({
-      name: meal.name,
-      items: meal.items.map((item) => ({ name: item.name, amount: item.amount, farmProduct: item.farmProduct })),
-    })),
-    dailyNutrition: draft.mealPlan.dailyNutrition,
-    farmProductShareText: draft.mealPlan.farmProductShareText,
-    substitutions: draft.substitutions,
-  })}
-
-ПРОВЕРЕННЫЕ ЗНАНИЯ:
-${JSON.stringify(context.evidence.slice(0, 8).map((item, index) => ({
-    id: index + 1,
-    level: item.level,
-    value: item.value,
-    sourceName: item.sourceName,
-  })))}
-`;
+  return cleaned;
 }
 
 function evidenceSupportsTerm(context: ZoyaAssembledContext, pattern: RegExp): boolean {
@@ -490,6 +169,155 @@ function sanitizeMenuNarrative(text: string, context: ZoyaAssembledContext): str
     )))
     .join(" ")
     .trim();
+}
+
+function emptyMealPlan(): ZoyaStructuredResponse["mealPlan"] {
+  return {
+    enabled: false,
+    title: "",
+    meals: [],
+    dailyNutrition: emptyNutrition(),
+    farmProductShareText: "",
+  };
+}
+
+function evidenceSources(context: ZoyaAssembledContext): ZoyaStructuredResponse["sources"] {
+  const seen = new Set<string>();
+  return context.evidence
+    .map((item, index) => ({ item, evidenceId: index + 1 }))
+    .filter(({ item }) => Boolean(item.sourceName?.trim()))
+    .filter(({ item }) => {
+      const key = `${item.sourceName}|${item.sourceUrl ?? ""}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    })
+    .slice(0, 4)
+    .map(({ item, evidenceId }) => ({
+      evidenceId,
+      title: item.sourceName!.trim(),
+    }));
+}
+
+function verifiedEvidenceForAnswer(context: ZoyaAssembledContext): ZoyaAssembledContext["evidence"] {
+  return context.evidence.filter((item) => {
+    if (context.intent === "medical_safety") return item.level === "verified_knowledge";
+    return item.level === "verified_knowledge"
+      || item.level === "trusted_knowledge"
+      || item.level === "farm_fact"
+      || item.level === "reference_estimate";
+  });
+}
+
+export function buildZoyaVerifiedDraft(context: ZoyaAssembledContext): ZoyaStructuredResponse {
+  const evidence = verifiedEvidenceForAnswer(context).slice(0, 4);
+  const consideredFacts = [
+    context.profileConfirmed && context.profile?.profileName
+      ? `подтверждённый профиль ${context.profile.profileName}`
+      : null,
+    context.confirmedProducts.length > 0
+      ? `подтверждённые продукты: ${context.confirmedProducts.slice(0, 5).map((item) => item.label).join(", ")}`
+      : null,
+    ...evidence.slice(0, 3).map((item) => `${item.level}: ${item.key}`),
+  ].filter((item): item is string => Boolean(item));
+
+  const milkAllergyQuestion = context.intent === "medical_safety"
+    && /(?:аллерг|казеин|молочн\w*\s+бел)/i.test(context.effectiveQuery);
+  if (milkAllergyQuestion) {
+    return {
+      summary: "Козье молоко не считается безопасной заменой при аллергии на молочный белок",
+      consideredFacts,
+      answer: "При подтверждённой аллергии на казеин или другой молочный белок не следует самостоятельно заменять коровье молоко козьим или овечьим: из-за сходства белков возможна перекрёстная реакция. Исключение или введение молочных продуктов необходимо согласовать с врачом или аллергологом.",
+      mealPlan: emptyMealPlan(),
+      substitutions: [],
+      warnings: [
+        "При подтверждённой пищевой аллергии изменение рациона следует согласовать с врачом или аллергологом.",
+      ],
+      sources: evidenceSources(context),
+      referenceNote: "Ответ сформирован по обязательным проверенным источникам безопасности без генерации медицинского вывода внешней моделью.",
+    };
+  }
+
+  const evidenceText = evidence
+    .map((item) => item.value.trim())
+    .filter(Boolean)
+    .slice(0, 3);
+  const productsText = context.confirmedProducts.length > 0
+    ? `В подтверждённом продуктовом плане: ${context.confirmedProducts.map((item) => item.label).join(", ")}.`
+    : "";
+  const answer = evidenceText.length > 0
+    ? `${evidenceText.join(" ")} ${productsText}`.trim()
+    : productsText
+      || "В проверенной базе Зои пока недостаточно данных для уверенного фактического ответа. Уточните продукт или формулировку вопроса — я выполню повторный поиск по базе знаний.";
+
+  const summaryByIntent: Record<ZoyaAssembledContext["intent"], string> = {
+    general_information: "Ответ по проверенным данным",
+    product_information: "Проверенная информация о продукции",
+    recipe: "Ответ по рецепту и продуктам",
+    personal_menu: "Персональное меню",
+    sports_nutrition: "Спортивное питание",
+    medical_safety: "Безопасный информационный ответ",
+  };
+  return {
+    summary: summaryByIntent[context.intent],
+    consideredFacts,
+    answer,
+    mealPlan: emptyMealPlan(),
+    substitutions: [],
+    warnings: context.intent === "medical_safety"
+      ? ["Ответ носит информационный характер и не заменяет консультацию врача."]
+      : [],
+    sources: evidenceSources(context),
+    referenceNote: context.evidence.some((item) => item.level === "reference_estimate")
+      ? "Числовые значения со статусом справочной оценки не являются лабораторным анализом конкретной партии фермы."
+      : "",
+  };
+}
+
+export function buildVerifiedDraftRewritePrompt(
+  context: ZoyaAssembledContext,
+  draft: ZoyaStructuredResponse,
+): string {
+  return `Ты — редактор ответа Зои. Перепиши только поле answer естественным русским языком в 2–5 предложениях.
+
+Верни только обычный текст без JSON, Markdown-заголовков, списков и ссылок.
+
+Разрешено использовать только факты из SERVER_DRAFT. Запрещено добавлять числа, продукты, полезные свойства, медицинские выводы, причины, источники или рекомендации, которых нет в draft. Не меняй смысл red-line предупреждений.
+
+INTENT: ${context.intent}
+USER_QUERY: ${context.effectiveQuery}
+SERVER_DRAFT: ${JSON.stringify({
+    summary: draft.summary,
+    answer: draft.answer,
+    warnings: draft.warnings,
+  })}`;
+}
+
+function numberTokens(value: string): string[] {
+  return value.match(/\d+(?:[.,]\d+)?/g) ?? [];
+}
+
+function sanitizeVerifiedRewrite(
+  text: string,
+  draft: ZoyaStructuredResponse,
+  context: ZoyaAssembledContext,
+): string {
+  const sanitized = sanitizeMenuNarrative(text, context);
+  const allowedNumbers = new Set(numberTokens(`${draft.summary} ${draft.answer} ${draft.warnings.join(" ")}`));
+  const containsUnknownNumber = numberTokens(sanitized).some((token) => !allowedNumbers.has(token));
+  if (containsUnknownNumber) return "";
+  if (/(?:лечит|вылечит|гарантированно\s+безопас|заменяет\s+(?:врача|лечение))/i.test(sanitized)) return "";
+  return sanitized;
+}
+
+function orchestrationReasonCode(error: unknown): string {
+  if (!(error instanceof Error)) return "AI_UNKNOWN_ERROR";
+  if (error.name === "AbortError" || /timeout|deadline|aborted/i.test(error.message)) return "AI_TIMEOUT";
+  if (error instanceof ZoyaStructuredOutputError) return "AI_CONTENT_INVALID";
+  if (/\b(?:401|403)\b|unauthoriz|forbidden/i.test(error.message)) return "AI_AUTH_ERROR";
+  if (/\b429\b|rate.?limit/i.test(error.message)) return "AI_RATE_LIMIT";
+  if (/\b5\d\d\b|fetch failed|network|econn/i.test(error.message)) return "AI_TRANSPORT_ERROR";
+  return "AI_PROVIDER_ERROR";
 }
 
 function isAllowedFarmProduct(name: string, context: ZoyaAssembledContext): boolean {
@@ -779,11 +607,12 @@ export async function runZoyaOrchestrator(
   context: ZoyaAssembledContext,
   messages: ZoyaConversationMessage[],
   options: { signal?: AbortSignal } = {},
-): Promise<{ response: ZoyaStructuredResponse; markdown: string }> {
-  const llmMessages: Message[] = [
-    { role: "system", content: buildZoyaOrchestratorPrompt(context) },
-    ...messages.slice(-10).map((message) => ({ role: message.role, content: message.content } as Message)),
-  ];
+): Promise<{
+  response: ZoyaStructuredResponse;
+  markdown: string;
+  diagnostics: ZoyaOrchestrationDiagnostics;
+}> {
+  void messages;
   const requestController = new AbortController();
   const abortFromCaller = () => requestController.abort(options.signal?.reason);
   options.signal?.addEventListener("abort", abortFromCaller, { once: true });
@@ -796,31 +625,18 @@ export async function runZoyaOrchestrator(
   try {
     const menuDraft = buildZoyaDeterministicMenuDraft(context);
     if (menuDraft) {
-      try {
-        const narrativeResult = await invokeZoyaLLM([
-          { role: "system", content: buildMenuNarrativePrompt(context, menuDraft) },
-          { role: "user", content: context.effectiveQuery },
-        ], {
-          signal: requestController.signal,
-          totalDeadlineMs: 14_000,
-          primaryTimeoutMs: 13_000,
-          retryOnFailure: false,
-          maxTokens: 1_200,
-        });
-        const narrative = parseMenuNarrative(narrativeResult.choices?.[0]?.message?.content);
-        const safeSummary = sanitizeMenuNarrative(narrative.summary, context);
-        const safeAnswer = sanitizeMenuNarrative(narrative.answer, context);
-        if (safeSummary) menuDraft.summary = safeSummary;
-        menuDraft.consideredFacts = narrative.consideredFacts;
-        if (safeAnswer.length >= 60) menuDraft.answer = safeAnswer;
-      } catch (error) {
-        console.error("[Zoya Orchestrator] Menu narrative fallback", {
-          name: error instanceof Error ? error.name : "UnknownError",
-        });
-      }
+      const diagnostics: ZoyaOrchestrationDiagnostics = {
+        mode: "deterministic_menu",
+        aiAttempted: false,
+        aiOutcome: "skipped",
+        aiReasonCode: "SERVER_DRAFT_COMPLETE",
+        aiLatencyMs: null,
+        validationErrors: [],
+      };
 
       const verifiedDraft = applyDeterministicResponseMetadata(menuDraft, context);
       const validationErrors = validateZoyaStructuredResponse(verifiedDraft, context);
+      diagnostics.validationErrors = validationErrors;
       if (validationErrors.length > 0) {
         const error = new Error(`ZOYA_RESPONSE_VALIDATION_FAILED:${validationErrors.join(",")}`);
         error.name = "ZoyaValidationError";
@@ -829,28 +645,84 @@ export async function runZoyaOrchestrator(
       return {
         response: verifiedDraft,
         markdown: renderZoyaStructuredResponse(verifiedDraft, context),
+        diagnostics,
       };
     }
 
-    const result = await invokeZoyaLLM(llmMessages, {
-      signal: requestController.signal,
-      totalDeadlineMs: 26_000,
-      primaryTimeoutMs: 25_000,
-      retryOnFailure: false,
-      maxTokens: context.intent === "personal_menu" || context.intent === "sports_nutrition"
-        ? 5_000
-        : 3_000,
-    });
-    let response = parseStructuredContent(result.choices?.[0]?.message?.content);
+    if (context.intent === "personal_menu") {
+      const response = applyDeterministicResponseMetadata(buildZoyaVerifiedDraft(context), context);
+      const diagnostics: ZoyaOrchestrationDiagnostics = {
+        mode: "verified_draft",
+        aiAttempted: false,
+        aiOutcome: "skipped",
+        aiReasonCode: "MENU_DRAFT_NOT_READY",
+        aiLatencyMs: null,
+        validationErrors: [],
+      };
+      const validationErrors = validateZoyaStructuredResponse(response, context);
+      diagnostics.validationErrors = validationErrors;
+      if (validationErrors.length > 0) {
+        const error = new Error(`ZOYA_RESPONSE_VALIDATION_FAILED:${validationErrors.join(",")}`);
+        error.name = "ZoyaValidationError";
+        throw error;
+      }
+      return {
+        response,
+        markdown: renderZoyaStructuredResponse(response, context),
+        diagnostics,
+      };
+    }
+
+    let response = buildZoyaVerifiedDraft(context);
+    const diagnostics: ZoyaOrchestrationDiagnostics = {
+      mode: "verified_draft",
+      aiAttempted: context.intent !== "medical_safety",
+      aiOutcome: context.intent === "medical_safety" ? "skipped" : "fallback",
+      aiReasonCode: null,
+      aiLatencyMs: null,
+      validationErrors: [],
+    };
+    if (diagnostics.aiAttempted) {
+      const aiStartedAt = Date.now();
+      try {
+        const result = await invokeZoyaLLM([
+          { role: "system", content: buildVerifiedDraftRewritePrompt(context, response) },
+          { role: "user", content: context.effectiveQuery },
+        ], {
+          signal: requestController.signal,
+          totalDeadlineMs: 12_000,
+          primaryTimeoutMs: 11_000,
+          retryOnFailure: false,
+          maxTokens: 700,
+        });
+        const rewritten = extractPlainTextContent(result.choices?.[0]?.message?.content);
+        const safeRewrite = sanitizeVerifiedRewrite(rewritten, response, context);
+        if (safeRewrite.length >= 60) {
+          response.answer = safeRewrite;
+          diagnostics.aiOutcome = "used";
+        } else {
+          diagnostics.aiReasonCode = "AI_REWRITE_REJECTED";
+        }
+      } catch (error) {
+        diagnostics.aiReasonCode = orchestrationReasonCode(error);
+      } finally {
+        diagnostics.aiLatencyMs = Date.now() - aiStartedAt;
+      }
+    }
 
     response = applyDeterministicResponseMetadata(response, context);
     const validationErrors = validateZoyaStructuredResponse(response, context);
+    diagnostics.validationErrors = validationErrors;
     if (validationErrors.length > 0) {
       const error = new Error(`ZOYA_RESPONSE_VALIDATION_FAILED:${validationErrors.join(",")}`);
       error.name = "ZoyaValidationError";
       throw error;
     }
-    return { response, markdown: renderZoyaStructuredResponse(response, context) };
+    return {
+      response,
+      markdown: renderZoyaStructuredResponse(response, context),
+      diagnostics,
+    };
   } finally {
     clearTimeout(deadline);
     options.signal?.removeEventListener("abort", abortFromCaller);

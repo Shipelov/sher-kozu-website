@@ -2899,3 +2899,13 @@ Module: Контроль оборота молока. Spec v2.1. Mobile-first AR
 - [x] VDS deploy incident: Убрать тихую глобальную установку pnpm и выполнять dependency install/migration с видимым выводом
 - [x] VDS deploy incident: Сохранить обязательный fail-fast для миграции до перезапуска PM2
 - [x] VDS deploy incident: Повторно запустить workflow и подтвердить успешный health check и commit 855fb31c+
+- [x] Zoya external AI root cause: Зафиксировать точный production error code и этап отказа context/transport/parser/validator
+- [x] Zoya external AI root cause: Воспроизвести проблемный запрос с профилем Андрей Шипелов и тем же confirmed-product context без записи пользовательских данных
+- [x] Zoya external AI transport: Проверить Worker endpoint, модель, timeout, finish_reason и фактический content shape серией контролируемых вызовов
+- [x] Zoya external AI validation: Определить конкретные правила фактов/продуктов/арифметики, которые отклоняют внешний ответ
+- [x] Zoya external AI architecture: Выбрать контракт, где внешний AI не отвечает за критические факты, продукты и расчёты
+- [x] Zoya external AI observability: Добавить безопасные reason codes, latency этапов и diagnostics без prompt/PII/секретов
+- [x] Zoya external AI fallbacks: Разделить timeout, transport, parse и validation ошибки в tRPC/SSE и пользовательских сообщениях
+- [x] Zoya external AI tests: Покрыть пустой/обрезанный/невалидный JSON, неизвестные продукты, арифметический конфликт и временный upstream-сбой
+- [x] Zoya external AI live validation: Выполнить реальные read-only вызовы, полный Vitest, TypeScript и production build
+- [ ] Zoya external AI post-publish: Проверить на koza.vip personal menu без AI-вызова и general question с optional rewrite/fallback telemetry

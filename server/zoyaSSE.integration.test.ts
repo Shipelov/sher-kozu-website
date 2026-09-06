@@ -141,7 +141,18 @@ describe("Zoya SSE reliability", () => {
   });
 
   it("streams a validated orchestrator answer and returns sessionId", async () => {
-    runZoyaOrchestratorMock.mockResolvedValue({ markdown: "## Проверенный ответ" });
+    runZoyaOrchestratorMock.mockResolvedValue({
+      markdown: "## Проверенный ответ",
+      diagnostics: {
+        mode: "verified_draft",
+        aiAttempted: true,
+        aiOutcome: "used",
+        aiReasonCode: null,
+        aiLatencyMs: 120,
+        validationErrors: [],
+      },
+    });
+    const infoSpy = vi.spyOn(console, "info").mockImplementation(() => {});
     const res = new MockResponse();
 
     await createHandler()(requestBody(), res);
@@ -156,11 +167,12 @@ describe("Zoya SSE reliability", () => {
     expect(stream).toContain('"type":"session","sessionId":77');
     expect(streamedContent).toContain("Проверенный ответ");
     expect(stream).toContain("data: [DONE]");
+    infoSpy.mockRestore();
   });
 
   it("returns a meaningful chunk and [DONE] when the orchestrator times out", async () => {
     runZoyaOrchestratorMock.mockRejectedValue(Object.assign(new Error("timed out"), { name: "TimeoutError" }));
-    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
     const res = new MockResponse();
 
     await createHandler()(requestBody(), res);
@@ -172,7 +184,7 @@ describe("Zoya SSE reliability", () => {
     expect(stream).toContain("остановила ожидание");
     expect(stream).toContain("data: [DONE]");
     expect(res.writableEnded).toBe(true);
-    errorSpy.mockRestore();
+    warnSpy.mockRestore();
   });
 
   it("aborts the orchestrator when the client closes the response", async () => {
@@ -185,7 +197,7 @@ describe("Zoya SSE reliability", () => {
         });
       });
     });
-    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
     const res = new MockResponse();
     const responsePromise = createHandler()(requestBody(), res);
 
@@ -197,6 +209,6 @@ describe("Zoya SSE reliability", () => {
     expect(upstreamSignal?.aborted).toBe(true);
     expect(res.chunks.join("")).not.toContain("остановила ожидание");
     expect(res.writableEnded).toBe(false);
-    errorSpy.mockRestore();
+    warnSpy.mockRestore();
   });
 });
