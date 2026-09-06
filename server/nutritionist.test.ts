@@ -1,4 +1,40 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+
+vi.mock("./_core/llm", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("./_core/llm")>();
+  return {
+    ...actual,
+    invokeLLM: vi.fn().mockResolvedValue({
+      choices: [{
+        message: {
+          content: JSON.stringify({
+            summary: "Проверенный ответ Зои",
+            consideredFacts: [],
+            answer: "Общий информационный ответ без персонального расчёта.",
+            mealPlan: {
+              enabled: false,
+              title: "",
+              meals: [],
+              dailyNutrition: {
+                kcal: null,
+                proteinG: null,
+                fatG: null,
+                carbsG: null,
+                estimated: false,
+              },
+              farmProductShareText: "",
+            },
+            substitutions: [],
+            warnings: [],
+            sources: [],
+            referenceNote: "",
+          }),
+        },
+      }],
+    }),
+  };
+});
+
 import { appRouter } from "./routers";
 import type { TrpcContext } from "./_core/context";
 

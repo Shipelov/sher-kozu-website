@@ -138,7 +138,7 @@ describe("invokeZoyaLLM", () => {
   });
 });
 
-describe("Zoya sports-menu runtime wiring", () => {
+describe("Zoya structured runtime wiring", () => {
   const trpcSource = readFileSync(path.resolve(__dirname, "routers/nutritionist.ts"), "utf8");
   const sseSource = readFileSync(path.resolve(__dirname, "zoyaSSE.ts"), "utf8");
   const clientSource = readFileSync(
@@ -147,20 +147,24 @@ describe("Zoya sports-menu runtime wiring", () => {
   );
   const llmSource = readFileSync(path.resolve(__dirname, "_core/llm.ts"), "utf8");
 
-  it("uses the same deterministic advisor in tRPC and SSE before LLM fallback", () => {
-    expect(trpcSource).toContain("buildGroundedSportsMenuReply(input.messages, userContext)");
-    expect(sseSource).toContain("buildGroundedSportsMenuReply(messages, userContext)");
-    expect(trpcSource.indexOf("buildGroundedSportsMenuReply(input.messages, userContext)")).toBeLessThan(
-      trpcSource.indexOf("invokeZoyaLLM(llmMessages)"),
+  it("uses the same context assembler and profile gate before orchestration", () => {
+    expect(trpcSource).toContain("assembleZoyaContext({");
+    expect(sseSource).toContain("assembleZoyaContext({");
+    expect(trpcSource).toContain("buildZoyaProfileGateReply(assembledContext)");
+    expect(sseSource).toContain("buildZoyaProfileGateReply(assembledContext)");
+    expect(trpcSource.indexOf("buildZoyaProfileGateReply(assembledContext)")).toBeLessThan(
+      trpcSource.indexOf("runZoyaOrchestrator(assembledContext"),
     );
-    expect(sseSource.indexOf("buildGroundedSportsMenuReply(messages, userContext)")).toBeLessThan(
-      sseSource.indexOf("invokeZoyaLLM(llmMessages, {"),
+    expect(sseSource.indexOf("buildZoyaProfileGateReply(assembledContext)")).toBeLessThan(
+      sseSource.indexOf("runZoyaOrchestrator(assembledContext"),
     );
   });
 
-  it("uses the same resilient LLM runtime in tRPC and SSE", () => {
-    expect(trpcSource).toContain("invokeZoyaLLM(llmMessages)");
-    expect(sseSource).toContain("invokeZoyaLLM(llmMessages, {");
+  it("uses the same validated orchestrator and bounded fallback in tRPC and SSE", () => {
+    expect(trpcSource).toContain("runZoyaOrchestrator(assembledContext");
+    expect(sseSource).toContain("runZoyaOrchestrator(assembledContext");
+    expect(trpcSource).toContain("buildZoyaValidationFallback(assembledContext)");
+    expect(sseSource).toContain("buildZoyaValidationFallback(assembledContext)");
     expect(trpcSource).toContain("ZOYA_TEMPORARY_UNAVAILABLE_REPLY");
     expect(sseSource).toContain("ZOYA_TEMPORARY_UNAVAILABLE_REPLY");
     expect(ZOYA_TEMPORARY_UNAVAILABLE_REPLY).toContain("остановила ожидание");

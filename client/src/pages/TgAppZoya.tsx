@@ -8,6 +8,7 @@ import TelegramMiniAppLayout from "@/components/TelegramMiniAppLayout";
 import { useTelegram } from "@/contexts/TelegramContext";
 import { trpc } from "@/lib/trpc";
 import { Loader2, Send, Stethoscope, Sparkles } from "lucide-react";
+import ZoyaNutritionProfiles from "@/components/ZoyaNutritionProfiles";
 
 interface ChatMessage {
   role: "user" | "assistant";
@@ -22,10 +23,13 @@ const QUICK_PROMPTS = [
 ];
 
 export default function TgAppZoya() {
-  const { webApp } = useTelegram();
+  const { webApp, user, isAuthenticated } = useTelegram();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
+  const [activeProfileId, setActiveProfileId] = useState<number | null>(null);
+  const [profileConfirmed, setProfileConfirmed] = useState(false);
+  const [sessionId, setSessionId] = useState<number | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -56,9 +60,15 @@ export default function TgAppZoya() {
           role: m.role,
           content: m.content,
         })),
+        sessionId: sessionId ?? undefined,
+        profileId: activeProfileId ?? undefined,
+        profileConfirmed,
       });
 
       const reply = (result as any)?.reply || "Извините, не удалось получить ответ.";
+      if (typeof (result as any)?.sessionId === "number") {
+        setSessionId((result as any).sessionId);
+      }
       setMessages((prev) => [...prev, { role: "assistant", content: reply }]);
       webApp?.HapticFeedback?.notificationOccurred("success");
     } catch (err) {
@@ -83,6 +93,14 @@ export default function TgAppZoya() {
   return (
     <TelegramMiniAppLayout title="Зоя — нутрициолог">
       <div className="flex flex-col" style={{ height: "calc(100vh - 48px)" }}>
+        <ZoyaNutritionProfiles
+          isAuthenticated={isAuthenticated}
+          userId={user?.id}
+          activeProfileId={activeProfileId}
+          onActiveProfileChange={setActiveProfileId}
+          onProfileConfirmed={setProfileConfirmed}
+          compact
+        />
         {/* Chat area */}
         <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 pt-4 pb-2">
           {messages.length === 0 && (

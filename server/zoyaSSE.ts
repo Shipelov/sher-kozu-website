@@ -6,27 +6,17 @@
  */
 
 import type { Express, Request, Response } from "express";
-import type { Message } from "./_core/llm";
 import { sdk } from "./_core/sdk";
 import type { User } from "../drizzle/schema";
 import {
-  createNutriSession,
-  addNutriMessage,
   getGuestMessageCount,
-  getNutriProfile,
   determineNutriUserType,
-  getOwnerNutriContext,
+  saveNutriConversation,
 } from "./nutritionistDb";
-import {
-  buildZoyaPrompt,
-  type ZoyaUserContext,
-} from "./prompts/zoyaSystemPrompt";
-import { getZoyaRagEntries } from "./zoyaRag";
-import { buildGroundedSportsMenuReply } from "./zoyaSportsMenuAdvisor";
-import {
-  invokeZoyaLLM,
-  ZOYA_TEMPORARY_UNAVAILABLE_REPLY,
-} from "./zoyaChatRuntime";
+import { ZOYA_TEMPORARY_UNAVAILABLE_REPLY } from "./zoyaChatRuntime";
+import { assembleZoyaContext, buildZoyaSessionState } from "./zoyaContextAssembler";
+import { buildZoyaProfileGateMeta, buildZoyaProfileGateReply } from "./zoyaProfileGate";
+import { buildZoyaValidationFallback, runZoyaOrchestrator } from "./zoyaOrchestrator";
 
 const GUEST_MESSAGE_LIMIT = 3;
 
@@ -59,10 +49,12 @@ async function tryAuthenticateUser(req: Request): Promise<User | null> {
 
 export function registerZoyaSSE(app: Express) {
   app.post("/api/zoya/chat/stream", async (req: Request, res: Response) => {
-    const { messages, sessionId, fingerprint } = req.body as {
+    const { messages, sessionId, fingerprint, profileId, profileConfirmed } = req.body as {
       messages: Array<{ role: "user" | "assistant"; content: string }>;
       sessionId?: number;
       fingerprint?: string;
+      profileId?: number;
+      profileConfirmed?: boolean;
     };
 
     if (!messages || !Array.isArray(messages) || messages.length === 0) {
@@ -106,69 +98,46 @@ export function registerZoyaSSE(app: Express) {
       }
     }
 
-    // Build user context
-    const userContext: ZoyaUserContext = {
-      userType,
-      userName: user?.name,
-      messageCountInSession: messages.filter((m) => m.role === "user").length - 1,
-      totalGuestMessages:
-        userType === "guest" && fingerprint
-          ? await getGuestMessageCount(fingerprint)
-          : undefined,
-    };
-
-    // Load profile for registered/owner users
-    if (user?.id && userType !== "guest") {
-      userContext.profile = await getNutriProfile(user.id);
-    }
-
-    // Load owner context for Type 2 users
-    if (user?.id && userType === "owner") {
-      userContext.ownerContext = await getOwnerNutriContext(user.id);
-    }
-
     const lastUserMsg = [...messages].reverse().find((m) => m.role === "user");
-    const groundedSportsReply = buildGroundedSportsMenuReply(messages, userContext);
+    const assembledContext = await assembleZoyaContext({
+      query: lastUserMsg?.content ?? "",
+      userId: user?.id,
+      userType,
+      profileId,
+      profileConfirmed,
+      sessionId,
+    });
+    const profileContext = buildZoyaProfileGateMeta(assembledContext);
 
-    if (groundedSportsReply && lastUserMsg) {
+    const profileGateReply = buildZoyaProfileGateReply(assembledContext);
+    if (profileGateReply && lastUserMsg) {
       res.setHeader("Content-Type", "text/event-stream");
       res.setHeader("Cache-Control", "no-cache");
       res.setHeader("Connection", "keep-alive");
       res.setHeader("X-Accel-Buffering", "no");
-      res.write(`data: ${JSON.stringify({ type: "meta", userType })}\n\n`);
-      res.write(`data: ${JSON.stringify({ type: "chunk", content: groundedSportsReply })}\n\n`);
-      res.write("data: [DONE]\n\n");
-      res.end();
-
-      saveZoyaChatAsync(
+      res.write(`data: ${JSON.stringify({ type: "meta", userType, profileContext })}\n\n`);
+      const savedSessionId = await saveZoyaChatAsync(
         sessionId ?? null,
         user?.id ?? null,
         lastUserMsg.content,
-        groundedSportsReply,
+        profileGateReply,
         userType,
         fingerprint,
-      ).catch((err) => console.error("[Zoya SSE] Save error:", err));
+        assembledContext.profile?.id ?? null,
+        Boolean(profileConfirmed),
+        buildZoyaSessionState(assembledContext),
+      ).catch((err) => {
+        console.error("[Zoya SSE] Save error:", err);
+        return null;
+      });
+      if (savedSessionId) {
+        res.write(`data: ${JSON.stringify({ type: "session", sessionId: savedSessionId })}\n\n`);
+      }
+      res.write(`data: ${JSON.stringify({ type: "chunk", content: profileGateReply })}\n\n`);
+      res.write("data: [DONE]\n\n");
+      res.end();
       return;
     }
-
-    // RAG: search knowledge base
-    const ragEntries = await getZoyaRagEntries(lastUserMsg?.content);
-
-    // Build system prompt
-    const systemPrompt = buildZoyaPrompt({
-      user: userContext,
-      ragEntries,
-      currentQuery: lastUserMsg?.content,
-    });
-
-    // Build LLM messages
-    const llmMessages: Message[] = [
-      { role: "system", content: systemPrompt },
-      ...messages.map((m) => ({
-        role: m.role as "user" | "assistant",
-        content: m.content,
-      })),
-    ];
 
     // Set SSE headers
     res.setHeader("Content-Type", "text/event-stream");
@@ -177,7 +146,7 @@ export function registerZoyaSSE(app: Express) {
     res.setHeader("X-Accel-Buffering", "no");
 
     // Send user type info first
-    res.write(`data: ${JSON.stringify({ type: "meta", userType })}\n\n`);
+    res.write(`data: ${JSON.stringify({ type: "meta", userType, profileContext })}\n\n`);
 
     const requestController = new AbortController();
     let completed = false;
@@ -193,24 +162,31 @@ export function registerZoyaSSE(app: Express) {
     try {
       // Use non-streaming LLM call and simulate streaming by chunking the response.
       // The shared runtime enforces a bounded deadline and aborts stalled upstream work.
-      const result = await invokeZoyaLLM(llmMessages, {
+      const result = await runZoyaOrchestrator(assembledContext, messages, {
         signal: requestController.signal,
       });
 
       if (!canWrite() || requestController.signal.aborted) return;
 
-      const content = result.choices?.[0]?.message?.content;
-      if (!content || typeof content !== "string") {
-        res.write(
-          `data: ${JSON.stringify({
-            type: "chunk",
-            content: ZOYA_TEMPORARY_UNAVAILABLE_REPLY,
-          })}\n\n`,
-        );
-        completed = true;
-        res.write("data: [DONE]\n\n");
-        res.end();
-        return;
+      const content = result.markdown;
+      const savedSessionId = lastUserMsg
+        ? await saveZoyaChatAsync(
+          sessionId ?? null,
+          user?.id ?? null,
+          lastUserMsg.content,
+          content,
+          userType,
+          fingerprint,
+          assembledContext.profile?.id ?? null,
+          Boolean(profileConfirmed),
+          buildZoyaSessionState(assembledContext),
+        ).catch((err) => {
+          console.error("[Zoya SSE] Save error:", err);
+          return null;
+        })
+        : null;
+      if (savedSessionId && canWrite()) {
+        res.write(`data: ${JSON.stringify({ type: "session", sessionId: savedSessionId })}\n\n`);
       }
 
       // Stream the response in small chunks for a typing effect
@@ -227,25 +203,37 @@ export function registerZoyaSSE(app: Express) {
       completed = true;
       res.write("data: [DONE]\n\n");
       res.end();
-
-      // Save to DB asynchronously
-      if (lastUserMsg) {
-        saveZoyaChatAsync(
+    } catch (error) {
+      const isValidationError = error instanceof Error
+        && ["ZoyaValidationError", "ZoyaStructuredOutputError"].includes(error.name);
+      console.error("[Zoya SSE] Orchestrator error:", error);
+      if (!canWrite() || requestController.signal.aborted) return;
+      const fallbackContent = isValidationError
+        ? buildZoyaValidationFallback(assembledContext)
+        : ZOYA_TEMPORARY_UNAVAILABLE_REPLY;
+      const savedSessionId = lastUserMsg
+        ? await saveZoyaChatAsync(
           sessionId ?? null,
           user?.id ?? null,
           lastUserMsg.content,
-          content,
+          fallbackContent,
           userType,
           fingerprint,
-        ).catch((err) => console.error("[Zoya SSE] Save error:", err));
+          assembledContext.profile?.id ?? null,
+          Boolean(profileConfirmed),
+          buildZoyaSessionState(assembledContext),
+        ).catch((saveError) => {
+          console.error("[Zoya SSE] Save error:", saveError);
+          return null;
+        })
+        : null;
+      if (savedSessionId) {
+        res.write(`data: ${JSON.stringify({ type: "session", sessionId: savedSessionId })}\n\n`);
       }
-    } catch (error) {
-      console.error("[Zoya SSE] LLM error:", error);
-      if (!canWrite() || requestController.signal.aborted) return;
       res.write(
         `data: ${JSON.stringify({
           type: "chunk",
-          content: ZOYA_TEMPORARY_UNAVAILABLE_REPLY,
+          content: fallbackContent,
         })}\n\n`,
       );
       completed = true;
@@ -264,29 +252,24 @@ async function saveZoyaChatAsync(
   userMessage: string,
   assistantReply: string,
   userType: "guest" | "registered" | "owner",
-  fingerprint?: string | null
+  fingerprint?: string | null,
+  profileId?: number | null,
+  profileConfirmed?: boolean,
+  contextState?: {
+    intent?: string;
+    pendingField?: string;
+    collected?: Record<string, string | number | boolean | string[]>;
+  } | null,
 ) {
-  let sid: number;
-  if (sessionId) {
-    sid = sessionId;
-  } else {
-    const session = await createNutriSession({
-      userId,
-      userType,
-      guestFingerprint: fingerprint ?? null,
-    });
-    sid = session.id;
-  }
-
-  await addNutriMessage({
-    sessionId: sid,
-    role: "user",
-    content: userMessage,
-  });
-
-  await addNutriMessage({
-    sessionId: sid,
-    role: "assistant",
-    content: assistantReply,
+  return saveNutriConversation({
+    sessionId,
+    userId,
+    userType,
+    guestFingerprint: fingerprint,
+    profileId,
+    profileConfirmed,
+    contextState,
+    userMessage,
+    assistantReply,
   });
 }

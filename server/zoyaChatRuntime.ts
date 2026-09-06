@@ -1,4 +1,4 @@
-import { invokeLLM, type Message } from "./_core/llm";
+import { invokeLLM, type Message, type ResponseFormat } from "./_core/llm";
 
 export const ZOYA_MAX_HISTORY_MESSAGES = 12;
 export const ZOYA_MAX_HISTORY_CHARS = 12_000;
@@ -20,6 +20,9 @@ type InvokeZoyaOptions = {
   totalDeadlineMs?: number;
   primaryTimeoutMs?: number;
   retryTimeoutMs?: number;
+  responseFormat?: ResponseFormat;
+  maxTokens?: number;
+  retryOnFailure?: boolean;
 };
 
 export class ZoyaTimeoutError extends Error {
@@ -90,6 +93,8 @@ function invokeZoyaAttempt(
   messages: Message[],
   timeoutMs: number,
   externalSignal?: AbortSignal,
+  responseFormat?: ResponseFormat,
+  maxTokens = 2048,
 ) {
   if (externalSignal?.aborted) return Promise.reject(abortError());
   if (timeoutMs <= 0) return Promise.reject(new ZoyaTimeoutError(timeoutMs));
@@ -114,7 +119,13 @@ function invokeZoyaAttempt(
     }, timeoutMs);
 
     externalSignal?.addEventListener("abort", onExternalAbort, { once: true });
-    invokeLLM({ messages, maxTokens: 2048, signal: controller.signal, timeoutMs })
+    invokeLLM({
+      messages,
+      maxTokens,
+      signal: controller.signal,
+      timeoutMs,
+      responseFormat,
+    })
       .then((result) => finish(() => resolve(result)))
       .catch((error) => finish(() => reject(error)));
   });
@@ -132,11 +143,13 @@ export async function invokeZoyaLLM(
       primaryMessages,
       Math.min(options.primaryTimeoutMs ?? ZOYA_PRIMARY_TIMEOUT_MS, totalDeadlineMs),
       options.signal,
+      options.responseFormat,
+      options.maxTokens,
     );
   } catch (error) {
     if (error instanceof Error && error.name === "AbortError") throw error;
     console.error("[Zoya LLM] Primary attempt failed", safeFailureMeta(error, primaryMessages, 1));
-    if (!shouldRetryZoyaError(error)) throw error;
+    if (options.retryOnFailure === false || !shouldRetryZoyaError(error)) throw error;
   }
 
   const retryMessages = compactZoyaMessages(messages, {
@@ -149,5 +162,7 @@ export async function invokeZoyaLLM(
     retryMessages,
     Math.min(options.retryTimeoutMs ?? ZOYA_RETRY_TIMEOUT_MS, remainingMs),
     options.signal,
+    options.responseFormat,
+    options.maxTokens,
   );
 }

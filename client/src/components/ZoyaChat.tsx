@@ -27,6 +27,7 @@ import {
   ArrowRight,
 } from "lucide-react";
 import ZoyaExportActions from "./ZoyaExportActions";
+import ZoyaNutritionProfiles from "./ZoyaNutritionProfiles";
 import { cn } from "@/lib/utils";
 
 const ZOYA_AVATAR =
@@ -107,6 +108,8 @@ export default function ZoyaChat({
   const [userType, setUserType] = useState<UserType>("guest");
   const [limitReached, setLimitReached] = useState(false);
   const [sessionId, setSessionId] = useState<number | null>(null);
+  const [activeProfileId, setActiveProfileId] = useState<number | null>(null);
+  const [profileConfirmed, setProfileConfirmed] = useState(false);
   const [initialized, setInitialized] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -191,6 +194,8 @@ export default function ZoyaChat({
               .filter((m) => m.role === "user" || m.role === "assistant")
               .slice(-REQUEST_HISTORY_LIMIT),
             sessionId,
+            profileId: activeProfileId ?? undefined,
+            profileConfirmed,
             fingerprint: !isAuthenticated ? getFingerprint() : undefined,
           }),
         });
@@ -287,7 +292,7 @@ export default function ZoyaChat({
         setStreamingContent("");
       }
     },
-    [input, messages, isStreaming, limitReached, sessionId, isAuthenticated]
+    [input, messages, isStreaming, limitReached, sessionId, isAuthenticated, activeProfileId, profileConfirmed]
   );
 
   const handleKeyDown = useCallback(
@@ -350,6 +355,15 @@ export default function ZoyaChat({
           </div>
         )}
       </div>
+
+      <ZoyaNutritionProfiles
+        isAuthenticated={isAuthenticated}
+        userId={user?.id}
+        activeProfileId={activeProfileId}
+        onActiveProfileChange={setActiveProfileId}
+        onProfileConfirmed={setProfileConfirmed}
+        compact={mode === "compact"}
+      />
 
       {/* Messages */}
       <div ref={scrollRef} className="flex-1 overflow-hidden">

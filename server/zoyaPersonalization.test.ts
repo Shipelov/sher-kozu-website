@@ -264,20 +264,22 @@ describe("Zoya DB — getOwnerNutriContext enrichment", () => {
 // 7. SSE Endpoint — Context Passing
 // ═══════════════════════════════════════════════════════════════════
 
-describe("Zoya SSE — Owner context passed to prompt builder", () => {
+describe("Zoya SSE — assembled owner context passed to structured orchestrator", () => {
   const ssePath = path.resolve(__dirname, "zoyaSSE.ts");
   const sseSource = readFileSync(ssePath, "utf-8");
 
-  it("should call getOwnerNutriContext for owner users", () => {
-    expect(sseSource).toContain("getOwnerNutriContext(user.id)");
+  it("should assemble profile, owner products and RAG through the shared context layer", () => {
+    expect(sseSource).toContain("assembleZoyaContext({");
+    expect(sseSource).toContain("userType,");
   });
 
-  it("should assign ownerContext to userContext", () => {
-    expect(sseSource).toContain("userContext.ownerContext = await getOwnerNutriContext");
+  it("should gate incomplete or unconfirmed personal profiles before AI", () => {
+    expect(sseSource).toContain("buildZoyaProfileGateReply(assembledContext)");
+    expect(sseSource).toContain("profileContext");
   });
 
-  it("should pass userContext to buildZoyaPrompt", () => {
-    expect(sseSource).toContain("buildZoyaPrompt({");
-    expect(sseSource).toContain("user: userContext");
+  it("should pass the verified assembled context to the structured orchestrator", () => {
+    expect(sseSource).toContain("runZoyaOrchestrator(assembledContext, messages");
+    expect(sseSource).toContain("buildZoyaSessionState(assembledContext)");
   });
 });

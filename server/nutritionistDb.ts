@@ -188,6 +188,55 @@ export async function addNutriMessage(data: {
   return message;
 }
 
+export async function saveNutriConversation(data: {
+  sessionId?: number | null;
+  userId?: number | null;
+  userType: "guest" | "registered" | "owner";
+  guestFingerprint?: string | null;
+  profileId?: number | null;
+  profileConfirmed?: boolean;
+  contextState?: {
+    intent?: string;
+    pendingField?: string;
+    collected?: Record<string, string | number | boolean | string[]>;
+  } | null;
+  userMessage: string;
+  assistantReply: string;
+}): Promise<number> {
+  let sessionId = data.sessionId ?? null;
+  if (sessionId) {
+    const existing = await getNutriSession(sessionId);
+    const belongsToUser = data.userId
+      ? existing?.userId === data.userId
+      : existing?.userId == null && existing?.guestFingerprint === data.guestFingerprint;
+    if (!belongsToUser) sessionId = null;
+  }
+
+  if (!sessionId) {
+    const session = await createNutriSession({
+      userId: data.userId,
+      profileId: data.profileId,
+      profileConfirmedAt: data.profileConfirmed ? new Date() : null,
+      contextState: data.contextState,
+      userType: data.userType,
+      guestFingerprint: data.guestFingerprint,
+    });
+    sessionId = session.id;
+  } else if (data.userId) {
+    await updateNutriSessionContext(sessionId, data.userId, {
+      profileId: data.profileId,
+      profileConfirmedAt: data.profileConfirmed ? new Date() : null,
+      contextState: data.contextState,
+    });
+  }
+
+  if (!sessionId) throw new Error("NUTRITION_SESSION_NOT_CREATED");
+  const resolvedSessionId = sessionId;
+  await addNutriMessage({ sessionId: resolvedSessionId, role: "user", content: data.userMessage });
+  await addNutriMessage({ sessionId: resolvedSessionId, role: "assistant", content: data.assistantReply });
+  return resolvedSessionId;
+}
+
 export async function getSessionMessages(sessionId: number) {
   const db = await getDb();
   if (!db) throw new Error("Database unavailable");

@@ -17,10 +17,8 @@ import { invokeLLM } from "../_core/llm";
 import type { Message } from "../_core/llm";
 import { TRPCError } from "@trpc/server";
 import {
-  createNutriSession,
   getNutriSession,
   listUserSessions,
-  addNutriMessage,
   getSessionMessages,
   getGuestMessageCount,
   getNutriProfile,
@@ -47,17 +45,15 @@ import {
   getOwnerNutriContext,
   getNutriAnalytics,
   getNutriAnalyticsExtended,
+  saveNutriConversation,
 } from "../nutritionistDb";
+import { ZOYA_TEMPORARY_UNAVAILABLE_REPLY } from "../zoyaChatRuntime";
+import { assembleZoyaContext, buildZoyaSessionState } from "../zoyaContextAssembler";
+import { buildZoyaProfileGateMeta, buildZoyaProfileGateReply } from "../zoyaProfileGate";
 import {
-  buildZoyaPrompt,
-  type ZoyaUserContext,
-} from "../prompts/zoyaSystemPrompt";
-import { getZoyaRagEntries } from "../zoyaRag";
-import { buildGroundedSportsMenuReply } from "../zoyaSportsMenuAdvisor";
-import {
-  invokeZoyaLLM,
-  ZOYA_TEMPORARY_UNAVAILABLE_REPLY,
-} from "../zoyaChatRuntime";
+  buildZoyaValidationFallback,
+  runZoyaOrchestrator,
+} from "../zoyaOrchestrator";
 import {
   archiveNutritionProfile,
   confirmNutritionProfile,
@@ -153,6 +149,8 @@ export const nutritionistRouter = router({
           .min(1)
           .max(50),
         sessionId: z.number().optional(),
+        profileId: z.number().int().positive().optional(),
+        profileConfirmed: z.boolean().optional(),
         fingerprint: z.string().max(128).optional(),
       })
     )
@@ -182,85 +180,54 @@ export const nutritionistRouter = router({
         }
       }
 
-      // Build user context
-      const userContext: ZoyaUserContext = {
-        userType,
-        userName: ctx.user?.name,
-        messageCountInSession: input.messages.filter((m) => m.role === "user").length - 1,
-        totalGuestMessages:
-          userType === "guest" && input.fingerprint
-            ? await getGuestMessageCount(input.fingerprint)
-            : undefined,
-      };
-
-      // Load profile for registered/owner users
-      if (ctx.user?.id && userType !== "guest") {
-        const profile = await getNutriProfile(ctx.user.id);
-        userContext.profile = profile;
-      }
-
-      // Load owner context for Type 2 users
-      if (ctx.user?.id && userType === "owner") {
-        userContext.ownerContext = await getOwnerNutriContext(ctx.user.id);
-      }
-
       const lastUserMsg = [...input.messages].reverse().find((m) => m.role === "user");
-      const groundedSportsReply = buildGroundedSportsMenuReply(input.messages, userContext);
-      if (groundedSportsReply && lastUserMsg) {
-        saveNutriChatAsync(
+      const assembledContext = await assembleZoyaContext({
+        query: lastUserMsg?.content ?? "",
+        userId: ctx.user?.id,
+        userType,
+        profileId: input.profileId,
+        profileConfirmed: input.profileConfirmed,
+        sessionId: input.sessionId,
+      });
+      const profileContext = buildZoyaProfileGateMeta(assembledContext);
+
+      const profileGateReply = buildZoyaProfileGateReply(assembledContext);
+      if (profileGateReply && lastUserMsg) {
+        const savedSessionId = await saveNutriChatAsync(
           input.sessionId ?? null,
           ctx.user?.id ?? null,
           lastUserMsg.content,
-          groundedSportsReply,
+          profileGateReply,
           userType,
           input.fingerprint,
+          assembledContext.profile?.id ?? null,
+          Boolean(input.profileConfirmed),
+          buildZoyaSessionState(assembledContext),
         );
         return {
-          reply: groundedSportsReply,
+          reply: profileGateReply,
           userType,
           limitReached: false,
+          profileContext,
+          sessionId: savedSessionId ?? input.sessionId ?? null,
         };
       }
 
-      // RAG: search knowledge base for relevant entries
-      const ragEntries = await getZoyaRagEntries(lastUserMsg?.content);
-
-      // Build system prompt
-      const systemPrompt = buildZoyaPrompt({
-        user: userContext,
-        ragEntries,
-        currentQuery: lastUserMsg?.content,
-      });
-
-      // Build LLM messages
-      const llmMessages: Message[] = [
-        { role: "system", content: systemPrompt },
-        ...input.messages.map((m) => ({
-          role: m.role as "user" | "assistant",
-          content: m.content,
-        })),
-      ];
-
       try {
-        const result = await invokeZoyaLLM(llmMessages);
+        const { markdown: content } = await runZoyaOrchestrator(assembledContext, input.messages);
 
-        const content = result.choices?.[0]?.message?.content;
-        if (!content || typeof content !== "string") {
-          return {
-            reply: ZOYA_TEMPORARY_UNAVAILABLE_REPLY,
-            userType,
-          };
-        }
-
-        // Save session & messages (fire-and-forget)
+        let savedSessionId = input.sessionId ?? null;
         if (lastUserMsg) {
-          saveNutriChatAsync(
+          savedSessionId = await saveNutriChatAsync(
             input.sessionId ?? null,
             ctx.user?.id ?? null,
             lastUserMsg.content,
             content,
             userType,
-            input.fingerprint
+            input.fingerprint,
+            assembledContext.profile?.id ?? null,
+            Boolean(input.profileConfirmed),
+            buildZoyaSessionState(assembledContext),
           );
         }
 
@@ -268,12 +235,19 @@ export const nutritionistRouter = router({
           reply: content,
           userType,
           limitReached: false,
+          profileContext,
+          sessionId: savedSessionId,
         };
       } catch (error) {
-        console.error("[Zoya Chat] LLM error:", error);
+        const isValidationError = error instanceof Error
+          && ["ZoyaValidationError", "ZoyaStructuredOutputError"].includes(error.name);
+        console.error("[Zoya Chat] Orchestrator error:", error);
         return {
-          reply: ZOYA_TEMPORARY_UNAVAILABLE_REPLY,
+          reply: isValidationError
+            ? buildZoyaValidationFallback(assembledContext)
+            : ZOYA_TEMPORARY_UNAVAILABLE_REPLY,
           userType,
+          profileContext,
         };
       }
     }),
@@ -697,38 +671,30 @@ async function saveNutriChatAsync(
   userMessage: string,
   assistantReply: string,
   userType: "guest" | "registered" | "owner",
-  fingerprint?: string | null
-) {
+  fingerprint?: string | null,
+  profileId?: number | null,
+  profileConfirmed?: boolean,
+  contextState?: {
+    intent?: string;
+    pendingField?: string;
+    collected?: Record<string, string | number | boolean | string[]>;
+  } | null,
+): Promise<number | null> {
   try {
-    let sid: number;
-
-    // Create session if needed
-    if (sessionId) {
-      sid = sessionId;
-    } else {
-      const session = await createNutriSession({
-        userId,
-        userType,
-        guestFingerprint: fingerprint ?? null,
-      });
-      sid = session.id;
-    }
-
-    // Save user message
-    await addNutriMessage({
-      sessionId: sid,
-      role: "user",
-      content: userMessage,
-    });
-
-    // Save assistant reply
-    await addNutriMessage({
-      sessionId: sid,
-      role: "assistant",
-      content: assistantReply,
+    return await saveNutriConversation({
+      sessionId,
+      userId,
+      userType,
+      guestFingerprint: fingerprint,
+      profileId,
+      profileConfirmed,
+      contextState,
+      userMessage,
+      assistantReply,
     });
   } catch (err) {
     console.error("[Zoya] Failed to save chat:", err);
+    return null;
   }
 }
 
