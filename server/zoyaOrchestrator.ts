@@ -218,7 +218,9 @@ export function buildZoyaVerifiedDraft(context: ZoyaAssembledContext): ZoyaStruc
     context.confirmedProducts.length > 0
       ? `подтверждённые продукты: ${context.confirmedProducts.slice(0, 5).map((item) => item.label).join(", ")}`
       : null,
-    ...evidence.slice(0, 3).map((item) => `${item.level}: ${item.key}`),
+    ...evidence.slice(0, 3).map((item) => item.sourceName
+      ? `проверенный источник: ${item.sourceName}`
+      : "проверенное знание базы Зои"),
   ].filter((item): item is string => Boolean(item));
 
   const milkAllergyQuestion = context.intent === "medical_safety"
@@ -234,7 +236,7 @@ export function buildZoyaVerifiedDraft(context: ZoyaAssembledContext): ZoyaStruc
         "При подтверждённой пищевой аллергии изменение рациона следует согласовать с врачом или аллергологом.",
       ],
       sources: evidenceSources(context),
-      referenceNote: "Ответ сформирован по обязательным проверенным источникам безопасности без генерации медицинского вывода внешней моделью.",
+      referenceNote: "Медицинский вывод и обязательное предупреждение закреплены сервером по проверенным источникам; внешний AI может улучшать только формулировку, не меняя смысл.",
     };
   }
 
@@ -293,8 +295,70 @@ SERVER_DRAFT: ${JSON.stringify({
   })}`;
 }
 
+export function buildMenuCompositionPrompt(
+  context: ZoyaAssembledContext,
+  draft: ZoyaStructuredResponse,
+): string {
+  return `Ты — AI-нутрициолог Зоя. Сервер уже подготовил и проверил персональное меню. Сразу напиши окончательный текст, не описывая ход рассуждений.
+
+Сформулируй 1–2 завершённых содержательных предложения обычного русского текста: объясни логику распределения рациона и роль подтверждённых продуктов фермы. Пиши естественно и по делу.
+
+Верни только текст без JSON, Markdown-заголовков, списков и ссылок. Не повторяй граммовки и КБЖУ: они будут показаны сервером ниже.
+
+LOCKED FACTS нельзя менять или дополнять. Запрещено добавлять новые числа, продукты, медицинские обещания, полезные свойства, витамины, минералы, источники или рекомендации, которых нет в draft.
+
+USER_QUERY: ${context.effectiveQuery}
+LOCKED_FACTS: ${JSON.stringify({
+    summary: draft.summary,
+    consideredFacts: draft.consideredFacts,
+    serverAnswer: draft.answer,
+    farmProducts: draft.mealPlan.meals.flatMap((meal) => meal.items)
+      .filter((item) => item.farmProduct)
+      .map((item) => item.name),
+    mealNames: draft.mealPlan.meals.map((meal) => meal.name),
+    substitutions: draft.substitutions.map((item) => `${item.replace} → ${item.with}`),
+    warnings: draft.warnings,
+  })}`;
+}
+
 function numberTokens(value: string): string[] {
   return value.match(/\d+(?:[.,]\d+)?/g) ?? [];
+}
+
+const DAIRY_CATEGORY_PATTERNS: Array<{ name: string; pattern: RegExp }> = [
+  { name: "кефир", pattern: /кефир/i },
+  { name: "йогурт", pattern: /йогурт/i },
+  { name: "сметана", pattern: /сметан/i },
+  { name: "молоко", pattern: /молок/i },
+  { name: "масло", pattern: /масл/i },
+  { name: "брынза", pattern: /брынз/i },
+  { name: "халуми", pattern: /халуми/i },
+  { name: "рикотта", pattern: /рикотт/i },
+  { name: "камамбер", pattern: /камамбер/i },
+];
+
+function completePlainText(text: string): string {
+  const compact = text.replace(/\s+/g, " ").trim();
+  if (/[.!?]$/.test(compact)) return compact;
+  const sentences = compact.match(/[^.!?]+[.!?]+/g) ?? [];
+  return sentences.map((sentence) => sentence.trim()).join(" ");
+}
+
+function mentionsUnknownDairyCategory(
+  text: string,
+  draft: ZoyaStructuredResponse,
+  context: ZoyaAssembledContext,
+): boolean {
+  const allowedText = normalize([
+    draft.answer,
+    ...draft.consideredFacts,
+    ...draft.mealPlan.meals.flatMap((meal) => meal.items.map((item) => item.name)),
+    ...draft.substitutions.flatMap((item) => [item.replace, item.with]),
+    ...context.confirmedProducts.map((product) => product.label),
+  ].join(" "));
+  return DAIRY_CATEGORY_PATTERNS.some(({ name, pattern }) => (
+    pattern.test(text) && !allowedText.includes(name)
+  ));
 }
 
 function sanitizeVerifiedRewrite(
@@ -302,11 +366,18 @@ function sanitizeVerifiedRewrite(
   draft: ZoyaStructuredResponse,
   context: ZoyaAssembledContext,
 ): string {
-  const sanitized = sanitizeMenuNarrative(text, context);
+  const sanitized = completePlainText(sanitizeMenuNarrative(text, context));
+  if (!sanitized) return "";
   const allowedNumbers = new Set(numberTokens(`${draft.summary} ${draft.answer} ${draft.warnings.join(" ")}`));
   const containsUnknownNumber = numberTokens(sanitized).some((token) => !allowedNumbers.has(token));
   if (containsUnknownNumber) return "";
+  if (mentionsUnknownDairyCategory(sanitized, draft, context)) return "";
   if (/(?:лечит|вылечит|гарантированно\s+безопас|заменяет\s+(?:врача|лечение))/i.test(sanitized)) return "";
+  if (
+    context.intent === "medical_safety"
+    && /аллерг|казеин|молочн.{0,8}бел/i.test(context.effectiveQuery)
+    && !/(?:не\s+(?:является|считается|следует|подходит|безопас)|нельзя|не\s+рекоменду)/i.test(sanitized)
+  ) return "";
   return sanitized;
 }
 
@@ -627,12 +698,38 @@ export async function runZoyaOrchestrator(
     if (menuDraft) {
       const diagnostics: ZoyaOrchestrationDiagnostics = {
         mode: "deterministic_menu",
-        aiAttempted: false,
-        aiOutcome: "skipped",
-        aiReasonCode: "SERVER_DRAFT_COMPLETE",
+        aiAttempted: true,
+        aiOutcome: "fallback",
+        aiReasonCode: null,
         aiLatencyMs: null,
         validationErrors: [],
       };
+
+      const aiStartedAt = Date.now();
+      try {
+        const result = await invokeZoyaLLM([
+          { role: "system", content: buildMenuCompositionPrompt(context, menuDraft) },
+          { role: "user", content: context.effectiveQuery },
+        ], {
+          signal: requestController.signal,
+          totalDeadlineMs: 18_000,
+          primaryTimeoutMs: 17_000,
+          retryOnFailure: false,
+          maxTokens: 1_600,
+        });
+        const rewritten = extractPlainTextContent(result.choices?.[0]?.message?.content);
+        const safeRewrite = sanitizeVerifiedRewrite(rewritten, menuDraft, context);
+        if (safeRewrite.length >= 80) {
+          menuDraft.answer = safeRewrite;
+          diagnostics.aiOutcome = "used";
+        } else {
+          diagnostics.aiReasonCode = "AI_REWRITE_REJECTED";
+        }
+      } catch (error) {
+        diagnostics.aiReasonCode = orchestrationReasonCode(error);
+      } finally {
+        diagnostics.aiLatencyMs = Date.now() - aiStartedAt;
+      }
 
       const verifiedDraft = applyDeterministicResponseMetadata(menuDraft, context);
       const validationErrors = validateZoyaStructuredResponse(verifiedDraft, context);
@@ -676,8 +773,8 @@ export async function runZoyaOrchestrator(
     let response = buildZoyaVerifiedDraft(context);
     const diagnostics: ZoyaOrchestrationDiagnostics = {
       mode: "verified_draft",
-      aiAttempted: context.intent !== "medical_safety",
-      aiOutcome: context.intent === "medical_safety" ? "skipped" : "fallback",
+      aiAttempted: true,
+      aiOutcome: "fallback",
       aiReasonCode: null,
       aiLatencyMs: null,
       validationErrors: [],

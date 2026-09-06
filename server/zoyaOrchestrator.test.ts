@@ -220,12 +220,12 @@ describe("Zoya structured orchestrator", () => {
 
   it("removes only an incomplete trailing clause from a provider answer", async () => {
     invokeZoyaLLMMock.mockResolvedValue({
-      choices: [{ message: { content: "Первое полное предложение. Второе полное предложение. Незавершённый хвост ответа" } }],
+      choices: [{ message: { content: "Первое полное предложение содержит проверенный факт. Второе полное предложение понятно объясняет его. Незавершённый хвост ответа" } }],
     });
 
     const result = await runZoyaOrchestrator(context, [{ role: "user", content: "Составь меню" }]);
 
-    expect(result.response.answer).toBe("Первое полное предложение. Второе полное предложение.");
+    expect(result.response.answer).toBe("Первое полное предложение содержит проверенный факт. Второе полное предложение понятно объясняет его.");
   });
 
   it("replaces a weak greeting-only medical answer with the verified safety conclusion", async () => {
@@ -251,7 +251,7 @@ describe("Zoya structured orchestrator", () => {
     expect(result.response.summary).toContain("не считается безопасной заменой");
   });
 
-  it("returns a validated deterministic menu without calling the external AI", async () => {
+  it("actively composes the explanation while preserving the validated deterministic menu", async () => {
     const menuContext = {
       ...context,
       intent: "personal_menu",
@@ -263,17 +263,21 @@ describe("Zoya structured orchestrator", () => {
         proteinRangeG: { min: 30, max: 60 },
       },
     };
+    invokeZoyaLLMMock.mockResolvedValue({
+      choices: [{ message: { content: "Рацион распределён между основными приёмами пищи, а продукты фермы встроены в полноценный день. Рикотта с травами дополняет базовые блюда, не заменяя остальные группы продуктов." } }],
+    });
     const result = await runZoyaOrchestrator(menuContext, [{ role: "user", content: "Составь меню" }]);
-    expect(invokeZoyaLLMMock).not.toHaveBeenCalled();
+    expect(invokeZoyaLLMMock).toHaveBeenCalledTimes(1);
     expect(result.markdown).toContain("### Меню на день");
+    expect(result.response.answer).toContain("Рикотта с травами");
     expect(result.diagnostics).toMatchObject({
-      aiAttempted: false,
-      aiOutcome: "skipped",
-      aiReasonCode: "SERVER_DRAFT_COMPLETE",
+      aiAttempted: true,
+      aiOutcome: "used",
+      aiReasonCode: null,
     });
   });
 
-  it("returns the deterministic menu independently of the configured AI response", async () => {
+  it("returns the deterministic menu when the AI composition is too weak", async () => {
     const menuContext = {
       ...context,
       intent: "personal_menu",
@@ -293,8 +297,8 @@ describe("Zoya structured orchestrator", () => {
 
     expect(result.markdown).toContain("### Меню на день");
     expect(result.response.mealPlan.meals).toHaveLength(4);
-    expect(invokeZoyaLLMMock).not.toHaveBeenCalled();
-    expect(result.diagnostics.aiOutcome).toBe("skipped");
+    expect(invokeZoyaLLMMock).toHaveBeenCalledTimes(1);
+    expect(result.diagnostics).toMatchObject({ aiOutcome: "fallback", aiReasonCode: "AI_REWRITE_REJECTED" });
   });
 
   it("cannot receive unsupported claims or model-generated medical warnings in menu mode", async () => {
@@ -315,7 +319,8 @@ describe("Zoya structured orchestrator", () => {
 
     const result = await runZoyaOrchestrator(menuContext, [{ role: "user", content: "Составь меню" }]);
 
-    expect(invokeZoyaLLMMock).not.toHaveBeenCalled();
+    expect(invokeZoyaLLMMock).toHaveBeenCalledTimes(1);
+    expect(result.diagnostics).toMatchObject({ aiOutcome: "fallback", aiReasonCode: "AI_REWRITE_REJECTED" });
     expect(result.response.answer).not.toContain("кальцием");
     expect(result.response.warnings).not.toContain("Пейте не менее трёх литров воды.");
   });
@@ -360,11 +365,11 @@ describe("Zoya structured orchestrator", () => {
     const result = await runZoyaOrchestrator(menuContext, [{ role: "user", content: "Составь меню" }]);
 
     expect(result.response.mealPlan.dailyNutrition.kcal).not.toBe(9_999);
-    expect(invokeZoyaLLMMock).not.toHaveBeenCalled();
-    expect(result.diagnostics.aiOutcome).toBe("skipped");
+    expect(invokeZoyaLLMMock).toHaveBeenCalledTimes(1);
+    expect(result.diagnostics).toMatchObject({ aiOutcome: "fallback", aiReasonCode: "AI_CONTENT_INVALID" });
   });
 
-  it("skips the external AI for a milk-allergy red-line answer", async () => {
+  it("uses an active AI composition only when it preserves the milk-allergy red line", async () => {
     const medicalContext = {
       ...context,
       intent: "medical_safety",
@@ -377,9 +382,60 @@ describe("Zoya structured orchestrator", () => {
         sourceUrl: "https://www.allergy.org.au/",
       }],
     };
+    invokeZoyaLLMMock.mockResolvedValue({
+      choices: [{ message: { content: "Козье молоко не является безопасной заменой при аллергии на молочный белок. Из-за возможной перекрёстной реакции изменение рациона следует согласовать с врачом или аллергологом." } }],
+    });
     const result = await runZoyaOrchestrator(medicalContext, [{ role: "user", content: medicalContext.effectiveQuery }]);
-    expect(invokeZoyaLLMMock).not.toHaveBeenCalled();
-    expect(result.diagnostics.aiOutcome).toBe("skipped");
+    expect(invokeZoyaLLMMock).toHaveBeenCalledTimes(1);
+    expect(result.diagnostics.aiOutcome).toBe("used");
+    expect(result.response.answer).toContain("не является безопасной заменой");
+    expect(result.response.warnings).toHaveLength(1);
+  });
+
+  it("rejects a menu composition that invents an unconfirmed dairy product", async () => {
+    const menuContext = {
+      ...context,
+      intent: "personal_menu",
+      requiresPersonalization: true,
+      calculationTargets: {
+        ...context.calculationTargets,
+        calorieTarget: 960,
+        calorieRange: { min: 900, max: 1_020 },
+        proteinRangeG: { min: 30, max: 80 },
+      },
+    };
+    invokeZoyaLLMMock.mockResolvedValue({
+      choices: [{ message: { content: "Рацион распределён между основными приёмами пищи. Дополнительно выпейте козий кефир, чтобы сделать меню разнообразнее." } }],
+    });
+
+    const result = await runZoyaOrchestrator(menuContext, [{ role: "user", content: "Составь меню" }]);
+
+    expect(result.diagnostics).toMatchObject({ aiOutcome: "fallback", aiReasonCode: "AI_REWRITE_REJECTED" });
+    expect(result.response.answer).not.toContain("кефир");
+    expect(result.response.mealPlan.meals).toHaveLength(4);
+  });
+
+  it("rejects an active medical composition that omits the mandatory allergy negation", async () => {
+    const medicalContext = {
+      ...context,
+      intent: "medical_safety",
+      effectiveQuery: "Можно ли козье молоко при аллергии на казеин?",
+      evidence: [{
+        level: "verified_knowledge",
+        key: "mandatory_safety",
+        value: "Козье молоко не является безопасной заменой.",
+        sourceName: "ASCIA",
+        sourceUrl: "https://www.allergy.org.au/",
+      }],
+    };
+    invokeZoyaLLMMock.mockResolvedValue({
+      choices: [{ message: { content: "Козье молоко подходит людям с аллергией на молочный белок. Его можно использовать вместо коровьего молока после постепенного введения." } }],
+    });
+
+    const result = await runZoyaOrchestrator(medicalContext, [{ role: "user", content: medicalContext.effectiveQuery }]);
+
+    expect(result.diagnostics).toMatchObject({ aiOutcome: "fallback", aiReasonCode: "AI_REWRITE_REJECTED" });
     expect(result.response.answer).toContain("не следует самостоятельно заменять");
+    expect(result.response.sources).toHaveLength(1);
   });
 });

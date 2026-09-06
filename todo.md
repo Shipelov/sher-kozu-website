@@ -2908,4 +2908,13 @@ Module: Контроль оборота молока. Spec v2.1. Mobile-first AR
 - [x] Zoya external AI fallbacks: Разделить timeout, transport, parse и validation ошибки в tRPC/SSE и пользовательских сообщениях
 - [x] Zoya external AI tests: Покрыть пустой/обрезанный/невалидный JSON, неизвестные продукты, арифметический конфликт и временный upstream-сбой
 - [x] Zoya external AI live validation: Выполнить реальные read-only вызовы, полный Vitest, TypeScript и production build
-- [ ] Zoya external AI post-publish: Проверить на koza.vip personal menu без AI-вызова и general question с optional rewrite/fallback telemetry
+- [ ] Zoya external AI post-publish: Проверить на koza.vip personal menu с active AI-композицией и locked server facts, а также general/medical rewrite и fallback telemetry
+- [x] Zoya AI composition design: Определить plain-text контракт, где AI активно объясняет меню и варианты, но не меняет locked server facts
+- [x] Zoya AI composition: Вернуть внешний AI в персональное меню как обязательную попытку качественной композиции поверх server draft
+- [x] Zoya AI composition: Сохранить server-owned граммовки, КБЖУ, confirmed-продукты, долю и замены неизменяемыми
+- [x] Zoya AI post-validation: Проверять новые числа, продукты, медицинские обещания и обязательные факты в AI-тексте
+- [x] Zoya AI post-validation: Принимать качественный текст модели и отклонять только фактические нарушения, а не стилистические отличия
+- [x] Zoya AI fallback: При timeout/transport/invalid content показывать полный server draft без отказа функции
+- [x] Zoya AI composition tests: Покрыть accepted/rejected/fallback сценарии для меню, general questions, tRPC и SSE
+- [x] Zoya AI composition live validation: Проверить реальное меню и обычный ответ через внешний AI без записи production-данных
+- [x] Zoya AI composition final validation: Выполнить полный Vitest, TypeScript и production build перед новым чекпоинтом
