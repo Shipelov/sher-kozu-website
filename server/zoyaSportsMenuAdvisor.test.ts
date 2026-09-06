@@ -108,7 +108,7 @@ describe("Zoya grounded sports menu", () => {
     );
 
     expect(reply).not.toBeNull();
-    expect(reply).toContain("что означает **20% молочной продукции**");
+    expect(reply).toContain("Что означает **20% молочной продукции**");
     expect(reply).toContain("Доля **суточной калорийности**");
     expect(reply).toContain("Доля **массы всей еды за день**");
     expect(reply).toContain("Доля **вашей поставки**");
@@ -240,7 +240,7 @@ describe("Zoya grounded sports menu", () => {
       ownerContext(),
     )!;
 
-    expect(reply).toContain("что означает **30% молочной продукции**");
+    expect(reply).toContain("Что означает **30% молочной продукции**");
     expect(reply).toContain("Качотта из козьего молока");
     expect(reply).toContain("вариант 1, 2500 ккал");
     expect(reply).not.toContain("Учтённые данные");
@@ -276,5 +276,73 @@ describe("Zoya grounded sports menu", () => {
     expect(reply).toContain("нет надёжного справочного аналога КБЖУ");
     expect(reply).toContain("Качотта из козьего молока");
     expect(reply).not.toMatch(/Качотта[^\n]+\d+ ккал/);
+  });
+
+  it("keeps the exact four-step mass-share dialogue inside the calculator", () => {
+    const context = ownerContext({
+      ownerContext: {
+        ...ownerContext().ownerContext!,
+        productPlans: [{
+          status: "confirmed",
+          selectionsJson: JSON.stringify([
+            { label: "Брынза из козьего молока", productType: "brynza" },
+            { label: "Брынза из овечьего молока", productType: "brynza" },
+            { label: "Халуми", productType: "halloumi" },
+            { label: "Рикотта с травами", productType: "ricotta" },
+            { label: "Козий камамбер", productType: "camembert" },
+          ]),
+        }],
+      },
+    });
+    const first = "Зоя сделай мне меню из моей молочной продукции на завтра";
+    const second = "30% моей продукции в рационе по массе";
+    const third = "мне нужно 2500 кал";
+    const correction = "Но кроме молочной продукции ты больше ничего не предложила, а я хочу сбалансированное питание";
+
+    const firstReply = buildGroundedSportsMenuReply([{ role: "user", content: first }], context)!;
+    const secondReply = buildGroundedSportsMenuReply([
+      { role: "user", content: first },
+      { role: "assistant", content: firstReply },
+      { role: "user", content: second },
+    ], context)!;
+    const thirdReply = buildGroundedSportsMenuReply([
+      { role: "user", content: first },
+      { role: "assistant", content: firstReply },
+      { role: "user", content: second },
+      { role: "assistant", content: secondReply },
+      { role: "user", content: third },
+    ], context)!;
+    const correctedReply = buildGroundedSportsMenuReply([
+      { role: "user", content: first },
+      { role: "assistant", content: firstReply },
+      { role: "user", content: second },
+      { role: "assistant", content: secondReply },
+      { role: "user", content: third },
+      { role: "assistant", content: thirdReply },
+      { role: "user", content: correction },
+    ], context)!;
+
+    expect(firstReply).toContain("Какую долю молочной продукции");
+    expect(secondReply).toContain("30% от массы всей еды");
+    expect(secondReply).toContain("Укажите только целевую калорийность");
+    expect(thirdReply).toContain("Сбалансированное меню: 30% молочной продукции по массе");
+    expect(thirdReply).toContain("цель 2500 ккал");
+    expect(thirdReply).toContain("Рикотта с травами");
+    expect(thirdReply).toContain("Брынза из козьего молока");
+    expect(thirdReply).toContain("Остальное меню содержит яйца, птицу, рыбу, крупы, овощи, фрукт и ненасыщенные жиры");
+    expect(thirdReply).not.toMatch(/(?:кефир|йогурт)/i);
+    expect(thirdReply).not.toContain("Сейчас внешний AI-сервис");
+    expect(correctedReply).toContain("Сбалансированное меню: 30% молочной продукции по массе");
+    expect(correctedReply).not.toContain("Сейчас внешний AI-сервис");
+
+    const massMatch = thirdReply.match(/общий вес меню выбран \*\*(\d+) г\*\*, из него ваши сыры — \*\*(\d+) г \(([\d.]+)%\)\*\*/);
+    expect(massMatch).not.toBeNull();
+    const totalMass = Number(massMatch?.[1]);
+    const dairyMass = Number(massMatch?.[2]);
+    expect(dairyMass / totalMass).toBeCloseTo(0.3, 2);
+
+    const totalKcalMatch = thirdReply.match(/### Итого за день\n\*\*(\d+) ккал/);
+    expect(totalKcalMatch).not.toBeNull();
+    expect(Math.abs(Number(totalKcalMatch?.[1]) - 2500) / 2500).toBeLessThanOrEqual(0.03);
   });
 });

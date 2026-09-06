@@ -44,7 +44,7 @@ type MenuIngredient = {
 const SPORTS_MENU_INTENT = /(?:рацион|меню|питан|прием\s+пищ|приём\s+пищ)/i;
 const SPORTS_CONTEXT = /(?:спорт|нагруз|тренир|силов|зал|мышц|восстанов|вынослив)/i;
 const CHEESE_PATTERN = /(?:сыр|брынз|качот|халуми|рикот|камамбер|пекорино|рокфор|шевр)/i;
-const MENU_FOLLOW_UP = /(?:мо(?:и|их)\s+сыр|выбери\s+из|ты\s+знаешь|рост|вес|возраст|мне\s+\d{2}|процент|уточн|калор|ккал|по\s+массе|поставк|пункт|вариант)/i;
+const MENU_FOLLOW_UP = /(?:мо(?:и|их)\s+сыр|выбери\s+из|ты\s+знаешь|рост|вес|возраст|мне\s+\d{2}|процент|уточн|калор|ккал|нужно[^\d]{0,12}\d{3,4}\s*кал|по\s+массе|поставк|пункт|вариант|сбалансир|кроме\s+молочн|не\s+только\s+молочн|^\s*\d{3,4}(?:[.,]\d+)?\s*(?:ккал|кал|кг|г)(?:\s|$|[.,!?]))/i;
 const DAIRY_MENU_CONTEXT = /(?:\d{1,3}(?:[.,]\d+)?\s*%[^.!?\n]{0,60}(?:молочн|сыр|продукц)|мо(?:ей|я|и|их)\s+(?:молочн|сыр)|молочн[^.!?\n]{0,30}(?:рацион|меню))/i;
 
 const USDA_FETA = "https://fdc.nal.usda.gov/fdc-app.html#/food-details/173420/nutrients";
@@ -190,7 +190,7 @@ function extractShareBasis(messages: ZoyaConversationMessage[]): ShareBasis {
 function extractTargetCalories(messages: ZoyaConversationMessage[]): number | null {
   return findLatestNumber(
     userTexts(messages),
-    /(?:целев[^\d]{0,20}|суточн[^\d]{0,20}|рацион[^\d]{0,20}|^|\s)(\d{3,4})\s*(?:ккал|калор)/i,
+    /(?:целев[^\d]{0,20}|суточн[^\d]{0,20}|рацион[^\d]{0,20}|нужно[^\d]{0,20}|^|\s)(\d{3,4})\s*(?:ккал|калор|кал(?:\s|$|[.,!?]))/i,
   );
 }
 
@@ -225,9 +225,11 @@ function productSummary(cheeses: OwnedCheese[]): string {
 }
 
 function buildBasisQuestion(percent: number | null, cheeses: OwnedCheese[]): string {
-  const share = percent === null ? "указанную долю" : `${percent}%`;
+  const question = percent === null
+    ? "Какую долю молочной продукции вы хотите включить и как её считать?"
+    : `Что означает **${percent}% молочной продукции**?`;
   return [
-    `Уточню один параметр, чтобы не придумать цифры: что означает **${share} молочной продукции**?`,
+    `Уточню один параметр, чтобы не придумать цифры: ${question}`,
     "1. Доля **суточной калорийности**.",
     "2. Доля **массы всей еды за день**.",
     "3. Доля **вашей поставки** за выбранный период.",
@@ -277,17 +279,147 @@ function ingredientText(items: MenuIngredient[]): string {
   return items.map((item) => `${item.label} — ${item.grams} г`).join(", ");
 }
 
+function mappedCheeses(cheeses: OwnedCheese[]): Array<{ cheese: OwnedCheese; reference: ReferenceCheese }> {
+  return cheeses
+    .map((cheese) => ({ cheese, reference: referenceFor(cheese) }))
+    .filter((item): item is { cheese: OwnedCheese; reference: ReferenceCheese } => Boolean(item.reference))
+    .sort((a, b) => Number(/рикот/i.test(b.cheese.label)) - Number(/рикот/i.test(a.cheese.label)))
+    .slice(0, 2);
+}
+
+function dairyItemsByMass(
+  mapped: Array<{ cheese: OwnedCheese; reference: ReferenceCheese }>,
+  totalGrams: number,
+): MenuIngredient[] {
+  if (mapped.length === 1) {
+    const item = mapped[0]!;
+    return [{
+      label: item.cheese.label,
+      grams: totalGrams,
+      per100g: item.reference.per100g,
+      farmProduct: true,
+      referenceName: item.reference.referenceName,
+    }];
+  }
+
+  const firstGrams = Math.round(totalGrams * 0.55 / 5) * 5;
+  return mapped.map((item, index) => ({
+    label: item.cheese.label,
+    grams: index === 0 ? firstGrams : totalGrams - firstGrams,
+    per100g: item.reference.per100g,
+    farmProduct: true,
+    referenceName: item.reference.referenceName,
+  }));
+}
+
+function scaledBaseMeals(targetMass: number): Record<string, MenuIngredient[]> {
+  const allItems = Object.values(BASE_MEALS).flat();
+  const baseMass = allItems.reduce((sum, item) => sum + item.grams, 0);
+  const scale = targetMass / baseMass;
+  const meals = Object.fromEntries(
+    Object.entries(BASE_MEALS).map(([meal, items]) => [
+      meal,
+      items.map((item) => ({ ...item, grams: roundPortion(item.grams * scale, item.label) })),
+    ]),
+  ) as Record<string, MenuIngredient[]>;
+  const currentMass = Object.values(meals).flat().reduce((sum, item) => sum + item.grams, 0);
+  const correction = targetMass - currentMass;
+  const flexible = meals.dinner?.find((item) => item.label === "овощи") ?? meals.lunch?.find((item) => item.label === "овощи");
+  if (flexible) flexible.grams = Math.max(50, flexible.grams + correction);
+  return meals;
+}
+
+function tuneCaloriesAtConstantMass(
+  meals: Record<string, MenuIngredient[]>,
+  targetNonDairyKcal: number,
+): void {
+  const current = () => sumMacros(Object.values(meals).flat()).kcal;
+  for (const mealName of ["lunch", "dinner"] as const) {
+    const items = meals[mealName] ?? [];
+    const oil = items.find((item) => item.label === "оливковое масло");
+    const vegetables = items.find((item) => item.label === "овощи");
+    if (!oil || !vegetables) continue;
+    const difference = targetNonDairyKcal - current();
+    if (Math.abs(difference) < 15) break;
+    const kcalDeltaPerGram = oil.per100g.kcal / 100 - vegetables.per100g.kcal / 100;
+    if (difference > 0) {
+      const swap = Math.max(0, Math.min(Math.round(difference / kcalDeltaPerGram), vegetables.grams - 75));
+      oil.grams += swap;
+      vegetables.grams -= swap;
+    } else {
+      const swap = Math.max(0, Math.min(Math.round(-difference / kcalDeltaPerGram), oil.grams - 3));
+      oil.grams -= swap;
+      vegetables.grams += swap;
+    }
+  }
+}
+
+function calculatedMassMenu(
+  percent: number,
+  targetCalories: number,
+  cheeses: OwnedCheese[],
+  facts: SportsFacts,
+): string {
+  const mapped = mappedCheeses(cheeses);
+  if (mapped.length === 0) {
+    return `${productSummary(cheeses)} Для этих сыров у меня нет надёжного справочного аналога КБЖУ. Пришлите значения с этикетки на 100 г (ккал, белки, жиры, углеводы), и я сразу посчитаю меню.`;
+  }
+
+  const share = Math.min(0.8, Math.max(0.01, percent / 100));
+  const dairyDensity = mapped.length === 1
+    ? mapped[0]!.reference.per100g.kcal / 100
+    : mapped[0]!.reference.per100g.kcal / 100 * 0.55 + mapped[1]!.reference.per100g.kcal / 100 * 0.45;
+  const baseItems = Object.values(BASE_MEALS).flat();
+  const baseDensity = sumMacros(baseItems).kcal / baseItems.reduce((sum, item) => sum + item.grams, 0);
+  const estimatedDensity = dairyDensity * share + baseDensity * (1 - share);
+  const totalMass = Math.max(1_200, Math.min(2_600, Math.round(targetCalories / estimatedDensity / 50) * 50));
+  const dairyMass = Math.round(totalMass * share / 5) * 5;
+  const dairyItems = dairyItemsByMass(mapped, dairyMass);
+  const dairyMacros = sumMacros(dairyItems);
+  const meals = scaledBaseMeals(totalMass - dairyMass);
+  tuneCaloriesAtConstantMass(meals, Math.max(400, targetCalories - dairyMacros.kcal));
+  meals.breakfast!.push(dairyItems[0]!);
+  if (dairyItems[1]) meals.lunch!.push(dairyItems[1]);
+
+  const labels: Record<string, string> = { breakfast: "Завтрак", lunch: "Обед", snack: "Перекус", dinner: "Ужин" };
+  const menuLines = Object.entries(meals).map(([key, items]) =>
+    `- **${labels[key]}:** ${ingredientText(items)}.  \n+  ${macroText(sumMacros(items))}`,
+  );
+  const allItems = Object.values(meals).flat();
+  const totals = sumMacros(allItems);
+  const actualMass = allItems.reduce((sum, item) => sum + item.grams, 0);
+  const actualDairyMass = dairyItems.reduce((sum, item) => sum + item.grams, 0);
+  const actualShare = actualDairyMass / actualMass * 100;
+  const proteinRange = facts.weightKg
+    ? `При весе ${facts.weightKg} кг ориентир 1,4–2,0 г/кг составляет ${Math.round(facts.weightKg * 1.4)}–${Math.round(facts.weightKg * 2)} г белка/сутки; в меню около ${Math.round(totals.protein)} г.`
+    : "Для персональной проверки белка укажите текущий вес и цель.";
+  const calorieDeviation = Math.abs(totals.kcal - targetCalories) / targetCalories * 100;
+
+  return [
+    "## Сбалансированное меню: 30% молочной продукции по массе",
+    "_Расчётный пример для здорового взрослого, не медицинское назначение. Состав ваших сыров оценён по справочным аналогам, а не по лабораторному анализу партии._",
+    `**Условия:** ${percent}% по массе, цель ${targetCalories} ккал. Для совместимости условий расчётный общий вес меню выбран **${actualMass} г**, из него ваши сыры — **${actualDairyMass} г (${actualShare.toFixed(1)}%)**.`,
+    ...menuLines,
+    `### Итого за день\n**${macroText(totals)}**`,
+    `Из вашей продукции: **${ingredientText(dairyItems)}** — ${macroText(dairyMacros)}. Остальное меню содержит яйца, птицу, рыбу, крупы, овощи, фрукт и ненасыщенные жиры.`,
+    proteinRange,
+    actualDairyMass > 300
+      ? `**Важно:** 30% массы в этом расчёте — около ${actualDairyMass} г сыра. Это высокая ежедневная нагрузка по жирам и соли; перед регулярным применением лучше добавить КБЖУ и соль фактических партий и рассмотреть меньшую долю.`
+      : "Сыры включены в основные приёмы пищи и не заменяют остальные группы продуктов.",
+    calorieDeviation > 3
+      ? `Из-за одновременного ограничения по массе фактическая калорийность отличается от цели на ${calorieDeviation.toFixed(1)}%. Можно скорректировать цель или долю сыра.`
+      : "Фактическая расчётная калорийность находится в пределах 3% от заданной цели.",
+    `**Справочные аналоги:** ${dairyItems.map((item) => `${item.label} → ${item.referenceName}`).join("; ")}. Источники: [USDA FoodData Central](${USDA_SEARCH}) · [Halloumi — Matvaretabellen](${NORWAY_HALLOUMI}).`,
+  ].join("\n\n");
+}
+
 function calculatedMenu(
   percent: number,
   targetCalories: number,
   cheeses: OwnedCheese[],
   facts: SportsFacts,
 ): string {
-  const mapped = cheeses
-    .map((cheese) => ({ cheese, reference: referenceFor(cheese) }))
-    .filter((item): item is { cheese: OwnedCheese; reference: ReferenceCheese } => Boolean(item.reference))
-    .sort((a, b) => Number(/рикот/i.test(b.cheese.label)) - Number(/рикот/i.test(a.cheese.label)))
-    .slice(0, 2);
+  const mapped = mappedCheeses(cheeses);
 
   if (mapped.length === 0) {
     return `${productSummary(cheeses)} Для этих сыров у меня нет надёжного справочного аналога КБЖУ. Пришлите значения с этикетки на 100 г (ккал, белки, жиры, углеводы), и я сразу посчитаю меню.`;
@@ -377,7 +509,14 @@ export function buildGroundedSportsMenuReply(
   }
 
   if (basis === "food_mass") {
-    return `Поняла: **${facts.dairySharePercent}% от массы всей еды**. Уточните общий вес рациона за день и целевую калорийность. Без этих двух величин граммовки и КБЖУ будут выдуманными.`;
+    const targetCalories = extractTargetCalories(messages);
+    if (targetCalories === null) {
+      return `Поняла: **${facts.dairySharePercent}% от массы всей еды**. Укажите только целевую калорийность — например, **2500 ккал**. Общий вес меню я подберу расчётно и покажу явно.`;
+    }
+    if (targetCalories < 1_200 || targetCalories > 5_000) {
+      return `Целевая калорийность **${targetCalories} ккал** выглядит нетипично для взрослого рациона. Подтвердите число, чтобы я не построила ошибочное меню.`;
+    }
+    return calculatedMassMenu(facts.dairySharePercent, targetCalories, cheeses, facts);
   }
 
   const targetCalories = extractTargetCalories(messages);
