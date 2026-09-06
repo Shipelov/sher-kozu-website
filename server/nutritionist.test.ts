@@ -100,8 +100,30 @@ describe("nutritionist.knowledge.search", () => {
 
     expect(result).toBeDefined();
     expect(Array.isArray(result)).toBe(true);
-    // Search may return 0 results depending on LIKE matching
-    expect(result.length).toBeGreaterThanOrEqual(0);
+    expect(result.length).toBeGreaterThan(0);
+    expect(
+      result.some((entry) => /коз|молок|кальц/i.test(`${entry.title} ${entry.content}`)),
+    ).toBe(true);
+  });
+
+  it.each([
+    ["Сколько кальция в овечьем молоке?", [/овеч/i, /кальц/i]],
+    ["Сколько белка в овечьем молоке?", [/овеч/i, /белк/i]],
+    ["Безопасен ли А2 казеин при аллергии?", [/(?:a2|а2)/i, /казеин/i]],
+    ["Подходит ли козье молоко при непереносимости лактозы?", [/коз/i, /лактоз/i]],
+    ["Какие витамины есть в козьем сыре?", [/коз/i, /сыр/i]],
+    ["Полезны ли ферментированные продукты для микробиома?", [/микробиом/i]],
+  ])("retrieves relevant knowledge for %s", async (query, patterns) => {
+    const ctx = createGuestContext();
+    const caller = appRouter.createCaller(ctx);
+
+    const result = await caller.nutritionist.knowledge.search({ query, limit: 6 });
+    const searchableText = result.map((entry) => `${entry.title} ${entry.content}`).join("\n");
+
+    expect(result.length).toBeGreaterThan(0);
+    for (const pattern of patterns) {
+      expect(searchableText).toMatch(pattern);
+    }
   });
 });
 
@@ -242,15 +264,19 @@ describe("nutritionist.admin.knowledge", () => {
 
     const result = await caller.nutritionist.knowledge.create({
       category: "general",
-      title: "Тестовая запись от админа",
-      content: "Тестовое содержание для проверки создания записи через админ-панель.",
+      title: "Временная тестовая запись от админа",
+      content: "Временное содержание для проверки создания записи через админ-панель.",
       confidence: "verified",
       tags: ["тест", "админ"],
     });
 
-    expect(result).toBeDefined();
-    expect(result.title).toBe("Тестовая запись от админа");
-    expect(result.status).toBe("active");
+    try {
+      expect(result).toBeDefined();
+      expect(result.title).toBe("Временная тестовая запись от админа");
+      expect(result.status).toBe("active");
+    } finally {
+      await caller.nutritionist.knowledge.delete({ id: result.id });
+    }
   });
 
   it("allows admin to update knowledge entry", async () => {
@@ -265,15 +291,19 @@ describe("nutritionist.admin.knowledge", () => {
       confidence: "verified",
     });
 
-    // Then update it
-    const updated = await caller.nutritionist.knowledge.update({
-      id: created.id,
-      title: "Обновлённая запись",
-      content: "Обновлённое содержание.",
-    });
+    try {
+      // Then update it
+      const updated = await caller.nutritionist.knowledge.update({
+        id: created.id,
+        title: "Временно обновлённая запись",
+        content: "Временно обновлённое содержание.",
+      });
 
-    expect(updated).toBeDefined();
-    expect(updated.title).toBe("Обновлённая запись");
+      expect(updated).toBeDefined();
+      expect(updated.title).toBe("Временно обновлённая запись");
+    } finally {
+      await caller.nutritionist.knowledge.delete({ id: created.id });
+    }
   });
 
   it("allows admin to delete knowledge entry", async () => {

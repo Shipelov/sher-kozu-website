@@ -15,15 +15,14 @@ import {
   addNutriMessage,
   getGuestMessageCount,
   getNutriProfile,
-  searchKnowledge,
   determineNutriUserType,
   getOwnerNutriContext,
 } from "./nutritionistDb";
 import {
   buildZoyaPrompt,
-  extractSearchKeywords,
   type ZoyaUserContext,
 } from "./prompts/zoyaSystemPrompt";
+import { getZoyaRagEntries } from "./zoyaRag";
 
 const GUEST_MESSAGE_LIMIT = 3;
 
@@ -126,9 +125,7 @@ export function registerZoyaSSE(app: Express) {
 
     // RAG: search knowledge base
     const lastUserMsg = [...messages].reverse().find((m) => m.role === "user");
-    const keywords = lastUserMsg ? extractSearchKeywords(lastUserMsg.content) : [];
-    const ragEntries =
-      keywords.length > 0 ? await searchKnowledge(keywords.join(" "), { limit: 6 }) : [];
+    const ragEntries = await getZoyaRagEntries(lastUserMsg?.content);
 
     // Build system prompt
     const systemPrompt = buildZoyaPrompt({

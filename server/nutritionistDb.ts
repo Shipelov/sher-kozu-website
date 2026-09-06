@@ -5,7 +5,7 @@
  * Separated from main db.ts to keep files manageable.
  */
 
-import { eq, desc, and, like, sql, gte, lt, inArray } from "drizzle-orm";
+import { eq, desc, and, like, or, sql, gte, lt, inArray } from "drizzle-orm";
 import {
   nutriSessions,
   nutriMessages,
@@ -35,6 +35,10 @@ import {
   type NutriKnowledgeEntry,
 } from "../drizzle/schema";
 import { getDb } from "./db";
+import {
+  buildKnowledgeSearchPlan,
+  rankKnowledgeEntries,
+} from "./zoyaKnowledgeRetrieval";
 
 // ═══════════════════════════════════════════════════════════════════
 // Sessions
@@ -396,18 +400,22 @@ export async function deleteKnowledge(id: number) {
 }
 
 /**
- * Search knowledge base using MySQL LIKE (simple text search).
- * Returns top-N entries matching the query, ranked by relevance heuristic.
+ * Search the active knowledge base by normalized terms and rank candidates in memory.
+ * The same function powers public search, tRPC chat and SSE chat retrieval.
  */
 export async function searchKnowledge(query: string, options?: {
   category?: string;
   limit?: number;
   statusFilter?: string[];
 }): Promise<NutriKnowledgeEntry[]> {
+  const searchPlan = buildKnowledgeSearchPlan(query);
+  if (searchPlan.terms.length === 0) return [];
+
   const db = await getDb();
   if (!db) return [];
 
   const limit = options?.limit ?? 10;
+  if (limit <= 0) return [];
   const conditions = [
     eq(nutriKnowledge.status, "active"),
   ];
@@ -416,38 +424,24 @@ export async function searchKnowledge(query: string, options?: {
     conditions.push(eq(nutriKnowledge.category, options.category as any));
   }
 
-  // Search in title and content
-  const searchTerm = `%${query}%`;
-  const titleMatch = like(nutriKnowledge.title, searchTerm);
-  const contentMatch = like(nutriKnowledge.content, searchTerm);
+  const termMatches = searchPlan.patterns.flatMap((term) => {
+    const searchTerm = `%${term}%`;
+    return [
+      like(nutriKnowledge.title, searchTerm),
+      like(nutriKnowledge.content, searchTerm),
+      sql`CAST(${nutriKnowledge.tags} AS CHAR) LIKE ${searchTerm}`,
+    ];
+  });
 
-  // First try title matches (higher relevance), then content matches
-  const titleResults = await db
+  const candidateLimit = Math.min(Math.max(limit * 20, 80), 500);
+  const candidates = await db
     .select()
     .from(nutriKnowledge)
-    .where(and(...conditions, titleMatch))
-    .orderBy(desc(nutriKnowledge.confidence))
-    .limit(limit);
+    .where(and(...conditions, or(...termMatches)))
+    .orderBy(desc(nutriKnowledge.updatedAt))
+    .limit(candidateLimit);
 
-  if (titleResults.length >= limit) return titleResults;
-
-  const remaining = limit - titleResults.length;
-  const titleIds: number[] = titleResults.map((r: NutriKnowledgeEntry) => r.id);
-
-  const contentResults = await db
-    .select()
-    .from(nutriKnowledge)
-    .where(
-      and(
-        ...conditions,
-        contentMatch,
-        titleIds.length > 0 ? sql`${nutriKnowledge.id} NOT IN (${sql.join(titleIds.map((id: number) => sql`${id}`), sql`, `)})` : undefined,
-      )
-    )
-    .orderBy(desc(nutriKnowledge.confidence))
-    .limit(remaining);
-
-  return [...titleResults, ...contentResults];
+  return rankKnowledgeEntries(candidates, query, limit);
 }
 
 // ═══════════════════════════════════════════════════════════════════

@@ -2829,3 +2829,11 @@ Module: Контроль оборота молока. Spec v2.1. Mobile-first AR
 - [x] Zoya knowledge audit: Evaluate duplication, conflicts, evidence quality, freshness, and coverage gaps
 - [x] Zoya knowledge audit: Run representative production questions and trace answers to the updated knowledge (read-only RAG trace; chat calls intentionally avoided because both paths persist test sessions/messages)
 - [x] Zoya knowledge audit: Document concrete qualitative improvements and remaining risks
+- [x] Zoya RAG: Спроектировать единый retrieval helper для tRPC и SSE без дублирования логики
+- [x] Zoya RAG: Нормализовать русскоязычный запрос и искать по отдельным значимым терминам, а не по полной фразе
+- [x] Zoya RAG: Добавить ранжирование по покрытию терминов, заголовку, тегам, confidence и свежести с дедупликацией результатов
+- [x] Zoya RAG: Ограничить retrieval только активными записями и сохранить текущий лимит контекста
+- [x] Zoya RAG: Подключить общий helper к nutritionist.chat и /api/zoya/chat/stream
+- [x] Zoya RAG tests: Проверить кальций/белок овечьего молока, A2 и аллергию, лактозную непереносимость, козий сыр и микробиом
+- [x] Zoya RAG tests: Проверить устойчивость к словоформам, порядку слов, стоп-словам, дубликатам и пустым запросам
+- [x] Zoya RAG validation: Выполнить Vitest, TypeScript и production build перед чекпоинтом
