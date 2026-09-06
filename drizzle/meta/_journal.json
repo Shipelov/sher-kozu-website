@@ -456,6 +456,13 @@
       "when": 1778241698553,
       "tag": "0065_freezing_viper",
       "breakpoints": true
+    },
+    {
+      "idx": 66,
+      "version": "5",
+      "when": 1788700524089,
+      "tag": "0066_low_whiplash",
+      "breakpoints": true
     }
   ]
 }

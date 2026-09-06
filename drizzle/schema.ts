@@ -1,4 +1,4 @@
-import { boolean, double, index, int, json, mysqlEnum, mysqlTable, text, timestamp, varchar } from "drizzle-orm/mysql-core";
+import { boolean, date, double, index, int, json, mysqlEnum, mysqlTable, text, timestamp, varchar } from "drizzle-orm/mysql-core";
 
 /**
  * Core user table backing auth flow.
@@ -1937,6 +1937,10 @@ export const nutriSearchJobStatusEnum = mysqlEnum("nutriSearchJobStatus", [
 ]);
 export const nutriRecipeStatusEnum = mysqlEnum("nutriRecipeStatus", ["active", "draft", "archived"]);
 export const nutriSeasonEnum = mysqlEnum("nutriSeason", ["all", "spring", "summer", "autumn", "winter"]);
+export const nutriProfileRelationshipEnum = mysqlEnum("nutriProfileRelationship", ["self", "spouse", "child", "family", "other"]);
+export const nutriProfileGenderEnum = mysqlEnum("nutriProfileGender", ["male", "female"]);
+export const nutriActivityLevelEnum = mysqlEnum("nutriActivityLevel", ["low", "light", "moderate", "high", "very_high"]);
+export const nutriProfileStatusEnum = mysqlEnum("nutriProfileStatus", ["draft", "complete"]);
 
 /**
  * Zoya chat sessions — one per conversation thread.
@@ -1945,6 +1949,13 @@ export const nutriSeasonEnum = mysqlEnum("nutriSeason", ["all", "spring", "summe
 export const nutriSessions = mysqlTable("nutriSessions", {
   id: int("id").autoincrement().primaryKey(),
   userId: int("userId"),
+  profileId: int("profileId"),
+  profileConfirmedAt: timestamp("profileConfirmedAt"),
+  contextState: json("contextState").$type<{
+    intent?: string;
+    pendingField?: string;
+    collected?: Record<string, string | number | boolean | string[]>;
+  }>(),
   userType: nutriUserTypeEnum.notNull(),
   guestFingerprint: varchar("guestFingerprint", { length: 128 }),
   goal: varchar("goal", { length: 255 }),
@@ -1954,6 +1965,7 @@ export const nutriSessions = mysqlTable("nutriSessions", {
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 }, (t) => ([
   index("idx_nutriSessions_userId").on(t.userId),
+  index("idx_nutriSessions_profileId").on(t.profileId),
   index("idx_nutriSessions_guestFingerprint").on(t.guestFingerprint),
   index("idx_nutriSessions_createdAt").on(t.createdAt),
 ]));
@@ -1974,21 +1986,45 @@ export const nutriMessages = mysqlTable("nutriMessages", {
 ]));
 
 /**
- * User nutrition profile — goals, allergies, restrictions, family members.
- * One per authenticated user.
+ * User nutrition profiles — one primary profile by default, with optional
+ * additional household profiles owned by the same authenticated user.
  */
 export const nutriProfiles = mysqlTable("nutriProfiles", {
   id: int("id").autoincrement().primaryKey(),
   userId: int("userId").notNull(),
+  profileName: varchar("profileName", { length: 120 }),
+  relationship: nutriProfileRelationshipEnum,
+  gender: nutriProfileGenderEnum,
+  birthDate: date("birthDate", { mode: "string" }),
+  heightCm: int("heightCm"),
+  weightKg: double("weightKg"),
+  activityLevel: nutriActivityLevelEnum,
+  activityDetails: text("activityDetails"),
   goals: json("goals").$type<string[]>(),
   allergies: json("allergies").$type<string[]>(),
   restrictions: json("restrictions").$type<string[]>(),
   familyMembers: json("familyMembers").$type<Array<{ name: string; age?: number; notes?: string }>>(),
   preferredProducts: json("preferredProducts").$type<string[]>(),
+  dislikedProducts: json("dislikedProducts").$type<string[]>(),
+  mealPreferences: json("mealPreferences").$type<{
+    mealsPerDay?: number;
+    preferredTimes?: string[];
+    notes?: string;
+  }>(),
+  medicalNotes: text("medicalNotes"),
+  noAllergiesConfirmed: boolean("noAllergiesConfirmed").default(false).notNull(),
+  noRestrictionsConfirmed: boolean("noRestrictionsConfirmed").default(false).notNull(),
+  isPrimary: boolean("isPrimary").default(false).notNull(),
+  onboardingStatus: nutriProfileStatusEnum.default("draft").notNull(),
+  confirmedAt: timestamp("confirmedAt"),
+  lastReviewedAt: timestamp("lastReviewedAt"),
+  archivedAt: timestamp("archivedAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 }, (t) => ([
   index("idx_nutriProfiles_userId").on(t.userId),
+  index("idx_nutriProfiles_userPrimary").on(t.userId, t.isPrimary),
+  index("idx_nutriProfiles_archivedAt").on(t.archivedAt),
 ]));
 
 /**
@@ -1997,6 +2033,7 @@ export const nutriProfiles = mysqlTable("nutriProfiles", {
 export const nutriMealPlans = mysqlTable("nutriMealPlans", {
   id: int("id").autoincrement().primaryKey(),
   userId: int("userId").notNull(),
+  profileId: int("profileId"),
   sessionId: int("sessionId"),
   title: varchar("title", { length: 255 }).notNull(),
   goal: varchar("goal", { length: 255 }),
@@ -2015,6 +2052,7 @@ export const nutriMealPlans = mysqlTable("nutriMealPlans", {
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 }, (t) => ([
   index("idx_nutriMealPlans_userId").on(t.userId),
+  index("idx_nutriMealPlans_profileId").on(t.profileId),
 ]));
 
 /**

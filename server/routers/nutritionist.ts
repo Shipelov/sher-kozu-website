@@ -58,6 +58,17 @@ import {
   invokeZoyaLLM,
   ZOYA_TEMPORARY_UNAVAILABLE_REPLY,
 } from "../zoyaChatRuntime";
+import {
+  archiveNutritionProfile,
+  confirmNutritionProfile,
+  createNutritionProfile,
+  getNutritionProfile,
+  getNutritionProfileRequirements,
+  getPrimaryNutritionProfile,
+  listNutritionProfiles,
+  setPrimaryNutritionProfile,
+  updateNutritionProfile,
+} from "../zoyaProfiles";
 
 // ═══════════════════════════════════════════════════════════════════
 // Constants
@@ -69,6 +80,47 @@ const GUEST_MESSAGE_LIMIT = 3;
 const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
 const RATE_LIMIT = 30;
 const RATE_WINDOW_MS = 60 * 60 * 1000;
+
+const profilePatchSchema = z.object({
+  profileName: z.string().trim().min(1).max(120).nullable().optional(),
+  relationship: z.enum(["self", "spouse", "child", "family", "other"]).nullable().optional(),
+  gender: z.enum(["male", "female"]).nullable().optional(),
+  birthDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
+  heightCm: z.number().int().min(50).max(250).nullable().optional(),
+  weightKg: z.number().min(15).max(400).nullable().optional(),
+  activityLevel: z.enum(["low", "light", "moderate", "high", "very_high"]).nullable().optional(),
+  activityDetails: z.string().trim().max(1000).nullable().optional(),
+  goals: z.array(z.string().trim().min(1).max(120)).max(12).nullable().optional(),
+  allergies: z.array(z.string().trim().min(1).max(120)).max(30).nullable().optional(),
+  restrictions: z.array(z.string().trim().min(1).max(160)).max(30).nullable().optional(),
+  preferredProducts: z.array(z.string().trim().min(1).max(160)).max(30).nullable().optional(),
+  dislikedProducts: z.array(z.string().trim().min(1).max(160)).max(30).nullable().optional(),
+  mealPreferences: z.object({
+    mealsPerDay: z.number().int().min(1).max(8).optional(),
+    preferredTimes: z.array(z.string().trim().max(20)).max(8).optional(),
+    notes: z.string().trim().max(1000).optional(),
+  }).nullable().optional(),
+  medicalNotes: z.string().trim().max(2000).nullable().optional(),
+  noAllergiesConfirmed: z.boolean().optional(),
+  noRestrictionsConfirmed: z.boolean().optional(),
+});
+
+function profileError(error: unknown): TRPCError {
+  const message = error instanceof Error ? error.message : "NUTRITION_PROFILE_ERROR";
+  if (message === "NUTRITION_PROFILE_NOT_FOUND") {
+    return new TRPCError({ code: "NOT_FOUND", message: "Профиль питания не найден" });
+  }
+  if (message === "NUTRITION_PROFILE_LIMIT_REACHED") {
+    return new TRPCError({ code: "BAD_REQUEST", message: "Можно создать не более 8 профилей питания" });
+  }
+  if (message === "PRIMARY_NUTRITION_PROFILE_CANNOT_BE_ARCHIVED") {
+    return new TRPCError({ code: "BAD_REQUEST", message: "Сначала назначьте другой профиль основным" });
+  }
+  if (message.startsWith("NUTRITION_PROFILE_INCOMPLETE:")) {
+    return new TRPCError({ code: "BAD_REQUEST", message: "Заполните обязательные поля профиля перед подтверждением" });
+  }
+  return new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Не удалось сохранить профиль питания" });
+}
 
 function checkRateLimit(key: string): boolean {
   const now = Date.now();
@@ -279,6 +331,82 @@ export const nutritionistRouter = router({
     .mutation(async ({ ctx, input }) => {
       return upsertNutriProfile(ctx.user.id, input);
     }),
+
+  profiles: router({
+    list: protectedProcedure.query(async ({ ctx }) => {
+      const profiles = await listNutritionProfiles(ctx.user.id);
+      return profiles.map((profile) => ({
+        ...profile,
+        requirements: getNutritionProfileRequirements(profile),
+      }));
+    }),
+
+    getActive: protectedProcedure
+      .input(z.object({ profileId: z.number().int().positive().optional() }).optional())
+      .query(async ({ ctx, input }) => {
+        const profile = input?.profileId
+          ? await getNutritionProfile(ctx.user.id, input.profileId)
+          : await getPrimaryNutritionProfile(ctx.user.id);
+        return profile
+          ? { ...profile, requirements: getNutritionProfileRequirements(profile) }
+          : null;
+      }),
+
+    create: protectedProcedure
+      .input(profilePatchSchema)
+      .mutation(async ({ ctx, input }) => {
+        try {
+          const profile = await createNutritionProfile(ctx.user.id, input);
+          return { ...profile, requirements: getNutritionProfileRequirements(profile) };
+        } catch (error) {
+          throw profileError(error);
+        }
+      }),
+
+    update: protectedProcedure
+      .input(z.object({ profileId: z.number().int().positive(), data: profilePatchSchema }))
+      .mutation(async ({ ctx, input }) => {
+        try {
+          const profile = await updateNutritionProfile(ctx.user.id, input.profileId, input.data);
+          return { ...profile, requirements: getNutritionProfileRequirements(profile) };
+        } catch (error) {
+          throw profileError(error);
+        }
+      }),
+
+    setPrimary: protectedProcedure
+      .input(z.object({ profileId: z.number().int().positive() }))
+      .mutation(async ({ ctx, input }) => {
+        try {
+          const profile = await setPrimaryNutritionProfile(ctx.user.id, input.profileId);
+          return { ...profile, requirements: getNutritionProfileRequirements(profile) };
+        } catch (error) {
+          throw profileError(error);
+        }
+      }),
+
+    confirm: protectedProcedure
+      .input(z.object({ profileId: z.number().int().positive() }))
+      .mutation(async ({ ctx, input }) => {
+        try {
+          const profile = await confirmNutritionProfile(ctx.user.id, input.profileId);
+          return { ...profile, requirements: getNutritionProfileRequirements(profile) };
+        } catch (error) {
+          throw profileError(error);
+        }
+      }),
+
+    archive: protectedProcedure
+      .input(z.object({ profileId: z.number().int().positive() }))
+      .mutation(async ({ ctx, input }) => {
+        try {
+          await archiveNutritionProfile(ctx.user.id, input.profileId);
+          return { success: true as const };
+        } catch (error) {
+          throw profileError(error);
+        }
+      }),
+  }),
 
   // ─── Meal Plans ────────────────────────────────────────────────
   listMealPlans: protectedProcedure

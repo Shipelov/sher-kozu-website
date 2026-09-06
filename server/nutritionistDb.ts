@@ -39,6 +39,11 @@ import {
   buildKnowledgeSearchPlan,
   rankKnowledgeEntries,
 } from "./zoyaKnowledgeRetrieval";
+import {
+  createNutritionProfile,
+  getPrimaryNutritionProfile,
+  updateNutritionProfile,
+} from "./zoyaProfiles";
 
 // ═══════════════════════════════════════════════════════════════════
 // Sessions
@@ -46,6 +51,13 @@ import {
 
 export async function createNutriSession(data: {
   userId?: number | null;
+  profileId?: number | null;
+  profileConfirmedAt?: Date | null;
+  contextState?: {
+    intent?: string;
+    pendingField?: string;
+    collected?: Record<string, string | number | boolean | string[]>;
+  } | null;
   userType: "guest" | "registered" | "owner";
   guestFingerprint?: string | null;
   goal?: string | null;
@@ -55,6 +67,9 @@ export async function createNutriSession(data: {
 
   const [result] = await db.insert(nutriSessions).values({
     userId: data.userId ?? undefined,
+    profileId: data.profileId ?? undefined,
+    profileConfirmedAt: data.profileConfirmedAt ?? undefined,
+    contextState: data.contextState ?? undefined,
     userType: data.userType,
     guestFingerprint: data.guestFingerprint ?? undefined,
     goal: data.goal ?? undefined,
@@ -88,6 +103,35 @@ export async function getNutriSession(sessionId: number) {
     .orderBy(nutriMessages.createdAt);
 
   return { ...session, messages };
+}
+
+export async function updateNutriSessionContext(
+  sessionId: number,
+  userId: number,
+  data: {
+    profileId?: number | null;
+    profileConfirmedAt?: Date | null;
+    contextState?: {
+      intent?: string;
+      pendingField?: string;
+      collected?: Record<string, string | number | boolean | string[]>;
+    } | null;
+  },
+) {
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+
+  const set: Record<string, unknown> = {};
+  if (data.profileId !== undefined) set.profileId = data.profileId;
+  if (data.profileConfirmedAt !== undefined) set.profileConfirmedAt = data.profileConfirmedAt;
+  if (data.contextState !== undefined) set.contextState = data.contextState;
+  if (Object.keys(set).length === 0) return getNutriSession(sessionId);
+
+  await db
+    .update(nutriSessions)
+    .set(set)
+    .where(and(eq(nutriSessions.id, sessionId), eq(nutriSessions.userId, userId)));
+  return getNutriSession(sessionId);
 }
 
 export async function listUserSessions(userId: number, limit = 20) {
@@ -181,16 +225,7 @@ export async function getGuestMessageCount(guestFingerprint: string): Promise<nu
 // ═══════════════════════════════════════════════════════════════════
 
 export async function getNutriProfile(userId: number) {
-  const db = await getDb();
-  if (!db) return null;
-
-  const [profile] = await db
-    .select()
-    .from(nutriProfiles)
-    .where(eq(nutriProfiles.userId, userId))
-    .limit(1);
-
-  return profile ?? null;
+  return getPrimaryNutritionProfile(userId);
 }
 
 export async function upsertNutriProfile(userId: number, data: {
@@ -200,42 +235,25 @@ export async function upsertNutriProfile(userId: number, data: {
   familyMembers?: Array<{ name: string; age?: number; notes?: string }>;
   preferredProducts?: string[];
 }) {
-  const db = await getDb();
-  if (!db) throw new Error("Database unavailable");
-
   const existing = await getNutriProfile(userId);
 
   if (existing) {
-    await db
-      .update(nutriProfiles)
-      .set({
-        goals: data.goals ?? existing.goals,
-        allergies: data.allergies ?? existing.allergies,
-        restrictions: data.restrictions ?? existing.restrictions,
-        familyMembers: data.familyMembers ?? existing.familyMembers,
-        preferredProducts: data.preferredProducts ?? existing.preferredProducts,
-      })
-      .where(eq(nutriProfiles.userId, userId));
-
-    return getNutriProfile(userId);
+    return updateNutritionProfile(userId, existing.id, {
+      goals: data.goals,
+      allergies: data.allergies,
+      restrictions: data.restrictions,
+      preferredProducts: data.preferredProducts,
+    });
   }
 
-  const [result] = await db.insert(nutriProfiles).values({
-    userId,
+  return createNutritionProfile(userId, {
+    profileName: "Основной профиль",
+    relationship: "self",
     goals: data.goals ?? [],
     allergies: data.allergies ?? [],
     restrictions: data.restrictions ?? [],
-    familyMembers: data.familyMembers ?? [],
     preferredProducts: data.preferredProducts ?? [],
-  }).$returningId();
-
-  const [profile] = await db
-    .select()
-    .from(nutriProfiles)
-    .where(eq(nutriProfiles.id, result.id))
-    .limit(1);
-
-  return profile;
+  });
 }
 
 // ═══════════════════════════════════════════════════════════════════
