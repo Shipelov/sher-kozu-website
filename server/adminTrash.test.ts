@@ -121,10 +121,10 @@ describe("Soft-Delete / Trash Feature", () => {
     });
 
     it("listTrashedUsers should filter by non-null deletedAt", () => {
-      const fnBody = dbSrc.slice(
-        dbSrc.indexOf("export async function listTrashedUsers"),
-        dbSrc.indexOf("export async function listTrashedUsers") + 500
-      );
+      // Окно до следующей export-функции: select со многими полями длиннее 500 символов
+      const fnStart = dbSrc.indexOf("export async function listTrashedUsers");
+      const fnEnd = dbSrc.indexOf("\nexport ", fnStart + 1);
+      const fnBody = dbSrc.slice(fnStart, fnEnd === -1 ? undefined : fnEnd);
       expect(fnBody).toContain("isNotNull");
       expect(fnBody).toContain("deletedAt");
     });

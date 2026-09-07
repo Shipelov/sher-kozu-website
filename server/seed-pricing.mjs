@@ -9,14 +9,7 @@
  */
 import 'dotenv/config';
 import mysql from 'mysql2/promise';
-
-const DATABASE_URL = process.env.DATABASE_URL;
-if (!DATABASE_URL) {
-  console.error('DATABASE_URL is not set');
-  process.exit(1);
-}
-
-const conn = await mysql.createConnection(DATABASE_URL);
+import { pathToFileURL } from 'node:url';
 
 // Helper: convert rubles to kopecks
 const rub = (r) => Math.round(r * 100);
@@ -192,6 +185,8 @@ const tiers = [
   }
 ];
 
+/** Идемпотентный сид тарифов, рыночных цен и конверсий. Используется и CLI, и scripts/seed-test-db.mjs. */
+export async function seedPricing(conn) {
 console.log('Seeding pricing tiers...');
 for (const tier of tiers) {
   const cols = Object.keys(tier);
@@ -276,13 +271,39 @@ for (const c of conversions) {
     console.log(`  ⚠ Skipping conversion (missing marketPriceId for slug)`);
     continue;
   }
-  await conn.execute(
-    `INSERT INTO productConversions (marketPriceId, milkLitersPerUnit, pc_outputUnit, notes) VALUES (?, ?, ?, ?)
-     ON DUPLICATE KEY UPDATE milkLitersPerUnit = VALUES(milkLitersPerUnit), pc_outputUnit = VALUES(pc_outputUnit), notes = VALUES(notes)`,
-    [c.marketPriceId, c.milkLitersPerUnit, c.pc_outputUnit, c.notes]
+  // У productConversions нет unique-ключа, поэтому ON DUPLICATE KEY не работает — проверяем вручную
+  const [existing] = await conn.execute(
+    'SELECT id FROM productConversions WHERE marketPriceId = ? LIMIT 1',
+    [c.marketPriceId]
   );
+  if (existing.length > 0) {
+    await conn.execute(
+      'UPDATE productConversions SET milkLitersPerUnit = ?, pc_outputUnit = ?, notes = ? WHERE id = ?',
+      [c.milkLitersPerUnit, c.pc_outputUnit, c.notes, existing[0].id]
+    );
+  } else {
+    await conn.execute(
+      'INSERT INTO productConversions (marketPriceId, milkLitersPerUnit, pc_outputUnit, notes) VALUES (?, ?, ?, ?)',
+      [c.marketPriceId, c.milkLitersPerUnit, c.pc_outputUnit, c.notes]
+    );
+  }
   console.log(`  ✓ Conversion for marketPriceId=${c.marketPriceId}`);
 }
 
 console.log('\n✅ Pricing seed complete!');
-await conn.end();
+}
+
+// Запуск как CLI: node server/seed-pricing.mjs
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  const DATABASE_URL = process.env.DATABASE_URL;
+  if (!DATABASE_URL) {
+    console.error('DATABASE_URL is not set');
+    process.exit(1);
+  }
+  const conn = await mysql.createConnection(DATABASE_URL);
+  try {
+    await seedPricing(conn);
+  } finally {
+    await conn.end();
+  }
+}
