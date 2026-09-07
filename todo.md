@@ -2936,3 +2936,20 @@ Module: Контроль оборота молока. Spec v2.1. Mobile-first AR
 - [x] Cloudflare Worker security: Проверить экспорт на встроенные секреты и заменить значения безопасными env/secret references
 - [x] Cloudflare Worker repository: Добавить воспроизводимую структуру Worker, конфигурацию и проверки маршрутов/синтаксиса в репозиторий
 - [x] Cloudflare Worker handover: Обновить HANDOVER.md, выполнить validation и сохранить отдельный checkpoint
+- [x] Infrastructure ownership audit: Установить доступные TiDB/VDS/domain/external ownership facts, а недоступные billing/owner/backups данные явно обозначить как неподтверждённые
+- [x] TiDB provenance incident: Проследить происхождение `DATABASE_URL` до автоматически управляемой WebDev/TiDB базы и документировать отсутствие customer-owned console organization
+- [x] TiDB portability audit: Описать процедуру переноса, downtime, экспорт/импорт, изменение DATABASE_URL и сетевые ограничения
+- [x] Cloudflare ownership audit: Зафиксировать подтверждённый владельцем аккаунт и прекратить дальнейшую проверку Cloudflare по его указанию
+- [x] VDS and domains ownership audit: Подтвердить доступные provider/WHOIS/DNS facts и документировать недоступные account/payer/authorized_keys сведения
+- [x] External services ownership audit: Инвентаризировать GitHub, Telegram BotFather, LLM, Яндекс.Карты, Bitrix24, почту и прочие сервисы
+- [x] Infrastructure ownership report: Создать безопасный отчёт «сервис — аккаунт — владелец — плательщик — способ передачи» и обновить HANDOVER
+- [x] Infrastructure access transfer: Закрыто без изменений — владелец запретил Cloudflare invitations; у managed TiDB нет customer organization для приглашения
+- [x] Managed TiDB dump: Создать read-only логический дамп managed-базы, checksum/manifest и private package без публикации credentials
+- [x] Managed TiDB schema compatibility: Сверить дамп с Drizzle schema, migration ledger, таблицами, row counts, indexes/constraints и документировать расхождения
+- [x] Managed TiDB cutover: Подготовить owner-controlled target plan, последовательность freeze/export/import/validate/switch/rollback и оценку простоя
+- [x] Manus dependency exit audit: Зафиксировать, что потребуется заменить или экспортировать при закрытии Manus-проекта — DB, uploads, S3, OAuth, AI, maps, notifications, secrets и deployment metadata
+- [x] Cloudflare scope closure: Зафиксировать аккаунт как подтверждённый владельцем; не продолжать аудит и не отправлять приглашения
+- [ ] Production DB identity proof: Сравнить SHA-256 fingerprint текущего VDS `DATABASE_URL` с audited managed URL без раскрытия credentials; при несовпадении повторить production dump
+- [ ] Owner-controlled TiDB restore drill: Создать целевой кластер владельца, импортировать dump, baseline `0066`, проверить schema/rows/auth/API и документировать восстановление
+- [ ] Production media exit: Сделать независимую копию `/var/www/sherkozu/uploads` и project CloudFront assets, проверить checksums и sample restore
+- [ ] VDS account handover: Подтвердить RU-CENTER customer account/плательщика, перечислить fingerprints `authorized_keys` по владельцам и проверить provider backup restore

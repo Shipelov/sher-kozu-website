@@ -1,0 +1,412 @@
+{
+  "scope": "current-managed-webdev-database-not-yet-confirmed-as-production",
+  "createdAt": "2026-09-07T19:41:12.593Z",
+  "database": "mLhmg5VmBsEBpZiYqdnhMQ",
+  "serverVersion": "8.0.11-TiDB-v8.5.3-serverless",
+  "snapshotPosition": "468925827018391612",
+  "tableCount": 96,
+  "viewCount": 0,
+  "exactRows": 24798,
+  "tableStats": [
+    {
+      "tableName": "__drizzle_migrations",
+      "rowCount": 69
+    },
+    {
+      "tableName": "abExperimentAssignments",
+      "rowCount": 846
+    },
+    {
+      "tableName": "abExperimentVariants",
+      "rowCount": 1974
+    },
+    {
+      "tableName": "abExperiments",
+      "rowCount": 1974
+    },
+    {
+      "tableName": "abTestSessions",
+      "rowCount": 399
+    },
+    {
+      "tableName": "achievementBadges",
+      "rowCount": 9
+    },
+    {
+      "tableName": "analyticsAlertHistory",
+      "rowCount": 0
+    },
+    {
+      "tableName": "analyticsAlertRules",
+      "rowCount": 568
+    },
+    {
+      "tableName": "animalFeedbackMessages",
+      "rowCount": 0
+    },
+    {
+      "tableName": "animalMedia",
+      "rowCount": 0
+    },
+    {
+      "tableName": "animalOwnerships",
+      "rowCount": 59
+    },
+    {
+      "tableName": "animalPhotos",
+      "rowCount": 6
+    },
+    {
+      "tableName": "animalProductionProfiles",
+      "rowCount": 5
+    },
+    {
+      "tableName": "animalWellnessMetrics",
+      "rowCount": 6
+    },
+    {
+      "tableName": "animals",
+      "rowCount": 5
+    },
+    {
+      "tableName": "authRateLimits",
+      "rowCount": 952
+    },
+    {
+      "tableName": "autoAllocationSettings",
+      "rowCount": 1
+    },
+    {
+      "tableName": "calculatorSessions",
+      "rowCount": 1124
+    },
+    {
+      "tableName": "catalogImportHistory",
+      "rowCount": 0
+    },
+    {
+      "tableName": "chatMessages",
+      "rowCount": 1
+    },
+    {
+      "tableName": "clubAdminPresets",
+      "rowCount": 3
+    },
+    {
+      "tableName": "clubEventRegistrations",
+      "rowCount": 2
+    },
+    {
+      "tableName": "clubEvents",
+      "rowCount": 2
+    },
+    {
+      "tableName": "clubMembers",
+      "rowCount": 3
+    },
+    {
+      "tableName": "clubPostComments",
+      "rowCount": 4
+    },
+    {
+      "tableName": "clubPostLikes",
+      "rowCount": 2
+    },
+    {
+      "tableName": "clubPosts",
+      "rowCount": 5
+    },
+    {
+      "tableName": "cmsBlockHistory",
+      "rowCount": 0
+    },
+    {
+      "tableName": "cmsBlocks",
+      "rowCount": 276
+    },
+    {
+      "tableName": "deliverySchedule",
+      "rowCount": 48
+    },
+    {
+      "tableName": "families",
+      "rowCount": 1
+    },
+    {
+      "tableName": "faqQuestions",
+      "rowCount": 32
+    },
+    {
+      "tableName": "farmAccountTransactions",
+      "rowCount": 17
+    },
+    {
+      "tableName": "farmAccounts",
+      "rowCount": 2
+    },
+    {
+      "tableName": "farmWorkers",
+      "rowCount": 3
+    },
+    {
+      "tableName": "farmerChecklists",
+      "rowCount": 10
+    },
+    {
+      "tableName": "greetingVariants",
+      "rowCount": 4
+    },
+    {
+      "tableName": "integrationAudits",
+      "rowCount": 210
+    },
+    {
+      "tableName": "marketPrices",
+      "rowCount": 16
+    },
+    {
+      "tableName": "marketplaceCategories",
+      "rowCount": 7
+    },
+    {
+      "tableName": "marketplaceItems",
+      "rowCount": 40
+    },
+    {
+      "tableName": "marketplacePurchases",
+      "rowCount": 10
+    },
+    {
+      "tableName": "milkAuditLog",
+      "rowCount": 84
+    },
+    {
+      "tableName": "milkProcessingBatches",
+      "rowCount": 0
+    },
+    {
+      "tableName": "milkReceptions",
+      "rowCount": 6
+    },
+    {
+      "tableName": "milkSessionAnimals",
+      "rowCount": 0
+    },
+    {
+      "tableName": "milkSessions",
+      "rowCount": 2
+    },
+    {
+      "tableName": "milkTankMovements",
+      "rowCount": 7
+    },
+    {
+      "tableName": "milkTanks",
+      "rowCount": 3
+    },
+    {
+      "tableName": "notificationPreferences",
+      "rowCount": 586
+    },
+    {
+      "tableName": "nutriKnowledge",
+      "rowCount": 326
+    },
+    {
+      "tableName": "nutriKnowledgeImports",
+      "rowCount": 0
+    },
+    {
+      "tableName": "nutriMealPlans",
+      "rowCount": 0
+    },
+    {
+      "tableName": "nutriMessages",
+      "rowCount": 260
+    },
+    {
+      "tableName": "nutriProfiles",
+      "rowCount": 1
+    },
+    {
+      "tableName": "nutriRecipes",
+      "rowCount": 0
+    },
+    {
+      "tableName": "nutriSearchJobs",
+      "rowCount": 1
+    },
+    {
+      "tableName": "nutriSearchSettings",
+      "rowCount": 0
+    },
+    {
+      "tableName": "nutriSessions",
+      "rowCount": 130
+    },
+    {
+      "tableName": "otpCodes",
+      "rowCount": 4
+    },
+    {
+      "tableName": "ownerProductPlans",
+      "rowCount": 6
+    },
+    {
+      "tableName": "ownerRatings",
+      "rowCount": 1
+    },
+    {
+      "tableName": "ownerTierStatus",
+      "rowCount": 1
+    },
+    {
+      "tableName": "pagePerformance",
+      "rowCount": 1465
+    },
+    {
+      "tableName": "partnerLeads",
+      "rowCount": 176
+    },
+    {
+      "tableName": "passwordResetTokens",
+      "rowCount": 0
+    },
+    {
+      "tableName": "planChangeLog",
+      "rowCount": 28
+    },
+    {
+      "tableName": "planDurations",
+      "rowCount": 114
+    },
+    {
+      "tableName": "plans",
+      "rowCount": 51
+    },
+    {
+      "tableName": "pricingPageViews",
+      "rowCount": 398
+    },
+    {
+      "tableName": "pricingTiers",
+      "rowCount": 4
+    },
+    {
+      "tableName": "processingInputs",
+      "rowCount": 0
+    },
+    {
+      "tableName": "processingOutputs",
+      "rowCount": 0
+    },
+    {
+      "tableName": "processingSessions",
+      "rowCount": 0
+    },
+    {
+      "tableName": "productBatches",
+      "rowCount": 3
+    },
+    {
+      "tableName": "productCompositionSnapshots",
+      "rowCount": 9
+    },
+    {
+      "tableName": "productConversions",
+      "rowCount": 16
+    },
+    {
+      "tableName": "productDeliveries",
+      "rowCount": 2
+    },
+    {
+      "tableName": "productMonthlyMetrics",
+      "rowCount": 9
+    },
+    {
+      "tableName": "productOptions",
+      "rowCount": 44
+    },
+    {
+      "tableName": "productPlanSetupRequests",
+      "rowCount": 1
+    },
+    {
+      "tableName": "ratingSnapshots",
+      "rowCount": 5
+    },
+    {
+      "tableName": "siteEvents",
+      "rowCount": 782
+    },
+    {
+      "tableName": "siteVisits",
+      "rowCount": 5829
+    },
+    {
+      "tableName": "telegramLinkTokens",
+      "rowCount": 2
+    },
+    {
+      "tableName": "telegramSessions",
+      "rowCount": 1
+    },
+    {
+      "tableName": "tierProductCatalog",
+      "rowCount": 20
+    },
+    {
+      "tableName": "uncertainAnswers",
+      "rowCount": 1
+    },
+    {
+      "tableName": "userNotifications",
+      "rowCount": 5640
+    },
+    {
+      "tableName": "users",
+      "rowCount": 4
+    },
+    {
+      "tableName": "walletTransactions",
+      "rowCount": 15
+    },
+    {
+      "tableName": "wallets",
+      "rowCount": 13
+    },
+    {
+      "tableName": "warehouseInventory",
+      "rowCount": 0
+    },
+    {
+      "tableName": "warehouseMovements",
+      "rowCount": 0
+    },
+    {
+      "tableName": "warehouses",
+      "rowCount": 53
+    },
+    {
+      "tableName": "zoyaSharedContent",
+      "rowCount": 0
+    }
+  ],
+  "files": {
+    "managed-tidb-full.sql": {
+      "bytes": 4970860,
+      "sha256": "5ccc58082a6c238d106f6b13bce11aba2c7d0942daede99ecd2c9670df49a3a2"
+    },
+    "managed-tidb-schema.sql": {
+      "bytes": 80948,
+      "sha256": "ed2eab542ac7e34ea319af88ed856665a954b43b761c3c8fcac8f4575787a4de"
+    },
+    "managed-tidb-data.sql": {
+      "bytes": 4889911,
+      "sha256": "a3043ee1544546073b28fcce0e165c0c6dce53eab2e40c37a105e870f89adceb"
+    }
+  },
+  "credentialsIncluded": false,
+  "consistency": "TiDB START TRANSACTION WITH CONSISTENT SNAPSHOT on one connection"
+}

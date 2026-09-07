@@ -1,0 +1,626 @@
+{
+  "generatedAt": "2026-09-07T19:45:12.346Z",
+  "scope": "current-managed-webdev-database-not-yet-confirmed-as-production",
+  "snapshotPosition": "468925827018391612",
+  "dumpIntegrity": {
+    "manifestTableCount": 96,
+    "parsedCreateTableCount": 96,
+    "manifestExactRows": 24798,
+    "manifestRowStatsTotal": 24798,
+    "credentialsDetectedInSchema": false
+  },
+  "drizzleCompatibility": {
+    "latestSnapshot": "0066_snapshot.json",
+    "drizzleTableCount": 95,
+    "dumpApplicationTableCount": 95,
+    "onlyInDump": [],
+    "onlyInDrizzle": [],
+    "columnMismatches": [
+      {
+        "tableName": "notificationPreferences",
+        "expected": [
+          "clubEvent",
+          "clubPost",
+          "compositionUpdate",
+          "deliveryStatus",
+          "id",
+          "metricsUpdate",
+          "photoApproved",
+          "photoRejected",
+          "updatedAt",
+          "userOpenId"
+        ],
+        "actual": [
+          "clubEvent",
+          "clubPost",
+          "compositionUpdate",
+          "deliveryStatus",
+          "id",
+          "metricsUpdate",
+          "photoApproved",
+          "photoRejected",
+          "productPlanUpdate",
+          "updatedAt",
+          "userOpenId"
+        ]
+      }
+    ],
+    "typeMismatches": [],
+    "nullabilityMismatches": [],
+    "autoincrementMismatches": [],
+    "primaryKeyMismatches": [],
+    "indexMismatches": [],
+    "dumpForeignKeyCount": 0,
+    "drizzleForeignKeyCount": 0
+  },
+  "migrations": {
+    "journalEntryCount": 66,
+    "localSqlFileCount": 66,
+    "databaseMigrationRowCount": 69,
+    "matchingHashCount": 52,
+    "databaseOnlyHashCount": 17,
+    "localOnlyHashCount": 4,
+    "databaseOnlyRows": [
+      {
+        "id": 3286626,
+        "createdAt": 1774266426268
+      },
+      {
+        "id": 3600566,
+        "createdAt": 1774304534964
+      },
+      {
+        "id": 6083941,
+        "createdAt": 1775125071258
+      },
+      {
+        "id": 6743179,
+        "createdAt": 1776670643105
+      },
+      {
+        "id": 6773179,
+        "createdAt": 1776692401514
+      },
+      {
+        "id": 7239690,
+        "createdAt": 1776703813557
+      },
+      {
+        "id": 7269690,
+        "createdAt": 1776762915826
+      },
+      {
+        "id": 7269691,
+        "createdAt": 1776790960795
+      },
+      {
+        "id": 7269692,
+        "createdAt": 1776794337069
+      },
+      {
+        "id": 7269693,
+        "createdAt": 1776797471960
+      },
+      {
+        "id": 7269694,
+        "createdAt": 1776802754071
+      },
+      {
+        "id": 7269695,
+        "createdAt": 1776804281453
+      },
+      {
+        "id": 7269696,
+        "createdAt": 1776806759760
+      },
+      {
+        "id": 8456405,
+        "createdAt": 1776934813822
+      },
+      {
+        "id": 8456406,
+        "createdAt": 1776936494716
+      },
+      {
+        "id": 8486405,
+        "createdAt": 1777106032515
+      },
+      {
+        "id": 9088618,
+        "createdAt": 1777738263484
+      }
+    ],
+    "localOnlyFiles": [
+      "0048_smooth_husk.sql",
+      "0060_jazzy_wolfsbane.sql",
+      "0061_slimy_fixer.sql",
+      "0066_low_whiplash.sql"
+    ],
+    "timestampMatchedCount": 65,
+    "timestampMatchedHashMismatchCount": 14,
+    "timestampMatchedMigrations": [
+      {
+        "id": 1,
+        "createdAt": 1773421611529,
+        "tag": "0000_mysterious_susan_delgado",
+        "filename": "0000_mysterious_susan_delgado.sql",
+        "hashMatchesCurrentFile": true
+      },
+      {
+        "id": 2,
+        "createdAt": 1773421857325,
+        "tag": "0001_needy_thunderbolt_ross",
+        "filename": "0001_needy_thunderbolt_ross.sql",
+        "hashMatchesCurrentFile": true
+      },
+      {
+        "id": 695718,
+        "createdAt": 1773479815303,
+        "tag": "0002_chief_blink",
+        "filename": "0002_chief_blink.sql",
+        "hashMatchesCurrentFile": true
+      },
+      {
+        "id": 725718,
+        "createdAt": 1773485298997,
+        "tag": "0003_clever_nico_minoru",
+        "filename": "0003_clever_nico_minoru.sql",
+        "hashMatchesCurrentFile": true
+      },
+      {
+        "id": 932545,
+        "createdAt": 1773566121768,
+        "tag": "0004_needy_jazinda",
+        "filename": "0004_needy_jazinda.sql",
+        "hashMatchesCurrentFile": true
+      },
+      {
+        "id": 962545,
+        "createdAt": 1773596845939,
+        "tag": "0005_cooing_squirrel_girl",
+        "filename": "0005_cooing_squirrel_girl.sql",
+        "hashMatchesCurrentFile": true
+      },
+      {
+        "id": 1476604,
+        "createdAt": 1773667259873,
+        "tag": "0006_goofy_epoch",
+        "filename": "0006_goofy_epoch.sql",
+        "hashMatchesCurrentFile": true
+      },
+      {
+        "id": 2097026,
+        "createdAt": 1773673039743,
+        "tag": "0007_hot_captain_marvel",
+        "filename": "0007_hot_captain_marvel.sql",
+        "hashMatchesCurrentFile": true
+      },
+      {
+        "id": 2307789,
+        "createdAt": 1773996000821,
+        "tag": "0008_bizarre_randall_flagg",
+        "filename": "0008_bizarre_randall_flagg.sql",
+        "hashMatchesCurrentFile": true
+      },
+      {
+        "id": 2500810,
+        "createdAt": 1774009023101,
+        "tag": "0009_modern_jack_murdock",
+        "filename": "0009_modern_jack_murdock.sql",
+        "hashMatchesCurrentFile": true
+      },
+      {
+        "id": 2530810,
+        "createdAt": 1774012898759,
+        "tag": "0010_shocking_cerise",
+        "filename": "0010_shocking_cerise.sql",
+        "hashMatchesCurrentFile": true
+      },
+      {
+        "id": 2530811,
+        "createdAt": 1774014192043,
+        "tag": "0011_melted_hammerhead",
+        "filename": "0011_melted_hammerhead.sql",
+        "hashMatchesCurrentFile": true
+      },
+      {
+        "id": 3077734,
+        "createdAt": 1774027649317,
+        "tag": "0012_spotty_thunderbolt",
+        "filename": "0012_spotty_thunderbolt.sql",
+        "hashMatchesCurrentFile": true
+      },
+      {
+        "id": 3107734,
+        "createdAt": 1774030028861,
+        "tag": "0013_clean_scorpion",
+        "filename": "0013_clean_scorpion.sql",
+        "hashMatchesCurrentFile": true
+      },
+      {
+        "id": 3107735,
+        "createdAt": 1774033344466,
+        "tag": "0014_lonely_titania",
+        "filename": "0014_lonely_titania.sql",
+        "hashMatchesCurrentFile": true
+      },
+      {
+        "id": 3107736,
+        "createdAt": 1774036667017,
+        "tag": "0015_married_sphinx",
+        "filename": "0015_married_sphinx.sql",
+        "hashMatchesCurrentFile": true
+      },
+      {
+        "id": 3107737,
+        "createdAt": 1774040756745,
+        "tag": "0016_lowly_ultron",
+        "filename": "0016_lowly_ultron.sql",
+        "hashMatchesCurrentFile": true
+      },
+      {
+        "id": 3286627,
+        "createdAt": 1774267461082,
+        "tag": "0017_fantastic_radioactive_man",
+        "filename": "0017_fantastic_radioactive_man.sql",
+        "hashMatchesCurrentFile": true
+      },
+      {
+        "id": 3316626,
+        "createdAt": 1774272417603,
+        "tag": "0018_nervous_masque",
+        "filename": "0018_nervous_masque.sql",
+        "hashMatchesCurrentFile": true
+      },
+      {
+        "id": 3600564,
+        "createdAt": 1774293016743,
+        "tag": "0019_silky_blacklash",
+        "filename": "0019_silky_blacklash.sql",
+        "hashMatchesCurrentFile": true
+      },
+      {
+        "id": 3600565,
+        "createdAt": 1774294069415,
+        "tag": "0020_soft_goliath",
+        "filename": "0020_soft_goliath.sql",
+        "hashMatchesCurrentFile": true
+      },
+      {
+        "id": 3630564,
+        "createdAt": 1774308565376,
+        "tag": "0022_jazzy_naoko",
+        "filename": "0022_jazzy_naoko.sql",
+        "hashMatchesCurrentFile": true
+      },
+      {
+        "id": 3660564,
+        "createdAt": 1774355392603,
+        "tag": "0023_broken_microbe",
+        "filename": "0023_broken_microbe.sql",
+        "hashMatchesCurrentFile": true
+      },
+      {
+        "id": 3660565,
+        "createdAt": 1774357807022,
+        "tag": "0024_narrow_miss_america",
+        "filename": "0024_narrow_miss_america.sql",
+        "hashMatchesCurrentFile": true
+      },
+      {
+        "id": 3660566,
+        "createdAt": 1774359990387,
+        "tag": "0025_eager_rhino",
+        "filename": "0025_eager_rhino.sql",
+        "hashMatchesCurrentFile": true
+      },
+      {
+        "id": 3690564,
+        "createdAt": 1774364116172,
+        "tag": "0026_next_genesis",
+        "filename": "0026_next_genesis.sql",
+        "hashMatchesCurrentFile": true
+      },
+      {
+        "id": 4128077,
+        "createdAt": 1774370966535,
+        "tag": "0027_wandering_black_knight",
+        "filename": "0027_wandering_black_knight.sql",
+        "hashMatchesCurrentFile": true
+      },
+      {
+        "id": 4158077,
+        "createdAt": 1774522118834,
+        "tag": "0028_stale_baron_strucker",
+        "filename": "0028_stale_baron_strucker.sql",
+        "hashMatchesCurrentFile": true
+      },
+      {
+        "id": 4223934,
+        "createdAt": 1774597465657,
+        "tag": "0029_red_shape",
+        "filename": "0029_red_shape.sql",
+        "hashMatchesCurrentFile": true
+      },
+      {
+        "id": 4253934,
+        "createdAt": 1774855439543,
+        "tag": "0030_late_valkyrie",
+        "filename": "0030_late_valkyrie.sql",
+        "hashMatchesCurrentFile": true
+      },
+      {
+        "id": 5103034,
+        "createdAt": 1774900379599,
+        "tag": "0031_past_metal_master",
+        "filename": "0031_past_metal_master.sql",
+        "hashMatchesCurrentFile": true
+      },
+      {
+        "id": 5103035,
+        "createdAt": 1774902566567,
+        "tag": "0032_curved_raza",
+        "filename": "0032_curved_raza.sql",
+        "hashMatchesCurrentFile": true
+      },
+      {
+        "id": 5103036,
+        "createdAt": 1774905751294,
+        "tag": "0033_typical_speed",
+        "filename": "0033_typical_speed.sql",
+        "hashMatchesCurrentFile": true
+      },
+      {
+        "id": 5103037,
+        "createdAt": 1774907818178,
+        "tag": "0034_melted_johnny_blaze",
+        "filename": "0034_melted_johnny_blaze.sql",
+        "hashMatchesCurrentFile": true
+      },
+      {
+        "id": 5103038,
+        "createdAt": 1774908123135,
+        "tag": "0035_ancient_mimic",
+        "filename": "0035_ancient_mimic.sql",
+        "hashMatchesCurrentFile": true
+      },
+      {
+        "id": 5574055,
+        "createdAt": 1775067720933,
+        "tag": "0036_pink_bushwacker",
+        "filename": "0036_pink_bushwacker.sql",
+        "hashMatchesCurrentFile": true
+      },
+      {
+        "id": 5574056,
+        "createdAt": 1775071403772,
+        "tag": "0037_lean_colonel_america",
+        "filename": "0037_lean_colonel_america.sql",
+        "hashMatchesCurrentFile": true
+      },
+      {
+        "id": 6053940,
+        "createdAt": 1775084349160,
+        "tag": "0038_cheerful_night_thrasher",
+        "filename": "0038_cheerful_night_thrasher.sql",
+        "hashMatchesCurrentFile": true
+      },
+      {
+        "id": 6083940,
+        "createdAt": 1775113069656,
+        "tag": "0039_keen_moonstone",
+        "filename": "0039_keen_moonstone.sql",
+        "hashMatchesCurrentFile": true
+      },
+      {
+        "id": 6178281,
+        "createdAt": 1775155029983,
+        "tag": "0040_optimal_magus",
+        "filename": "0040_optimal_magus.sql",
+        "hashMatchesCurrentFile": true
+      },
+      {
+        "id": 6208281,
+        "createdAt": 1775574068290,
+        "tag": "0041_famous_zuras",
+        "filename": "0041_famous_zuras.sql",
+        "hashMatchesCurrentFile": true
+      },
+      {
+        "id": 6274117,
+        "createdAt": 1775581924886,
+        "tag": "0042_careful_dark_phoenix",
+        "filename": "0042_careful_dark_phoenix.sql",
+        "hashMatchesCurrentFile": true
+      },
+      {
+        "id": 6304117,
+        "createdAt": 1775679803843,
+        "tag": "0043_stiff_proemial_gods",
+        "filename": "0043_stiff_proemial_gods.sql",
+        "hashMatchesCurrentFile": true
+      },
+      {
+        "id": 6343815,
+        "createdAt": 1775721320055,
+        "tag": "0044_eager_scalphunter",
+        "filename": "0044_eager_scalphunter.sql",
+        "hashMatchesCurrentFile": true
+      },
+      {
+        "id": 6373815,
+        "createdAt": 1775753265054,
+        "tag": "0045_complete_dracula",
+        "filename": "0045_complete_dracula.sql",
+        "hashMatchesCurrentFile": true
+      },
+      {
+        "id": 6403815,
+        "createdAt": 1775900069639,
+        "tag": "0046_past_pestilence",
+        "filename": "0046_past_pestilence.sql",
+        "hashMatchesCurrentFile": true
+      },
+      {
+        "id": 6433815,
+        "createdAt": 1775923260913,
+        "tag": "0047_orange_storm",
+        "filename": "0047_orange_storm.sql",
+        "hashMatchesCurrentFile": true
+      },
+      {
+        "id": 6743179,
+        "createdAt": 1776670643105,
+        "tag": "0048_smooth_husk",
+        "filename": "0048_smooth_husk.sql",
+        "hashMatchesCurrentFile": false
+      },
+      {
+        "id": 6773179,
+        "createdAt": 1776692401514,
+        "tag": "0049_wonderful_goliath",
+        "filename": "0049_wonderful_goliath.sql",
+        "hashMatchesCurrentFile": false
+      },
+      {
+        "id": 7239690,
+        "createdAt": 1776703813557,
+        "tag": "0050_illegal_zarek",
+        "filename": "0050_illegal_zarek.sql",
+        "hashMatchesCurrentFile": false
+      },
+      {
+        "id": 7269690,
+        "createdAt": 1776762915826,
+        "tag": "0051_flat_shocker",
+        "filename": "0051_flat_shocker.sql",
+        "hashMatchesCurrentFile": false
+      },
+      {
+        "id": 7269691,
+        "createdAt": 1776790960795,
+        "tag": "0052_concerned_darkhawk",
+        "filename": "0052_concerned_darkhawk.sql",
+        "hashMatchesCurrentFile": false
+      },
+      {
+        "id": 7269692,
+        "createdAt": 1776794337069,
+        "tag": "0053_strange_golden_guardian",
+        "filename": "0053_strange_golden_guardian.sql",
+        "hashMatchesCurrentFile": false
+      },
+      {
+        "id": 7269693,
+        "createdAt": 1776797471960,
+        "tag": "0054_slimy_richard_fisk",
+        "filename": "0054_slimy_richard_fisk.sql",
+        "hashMatchesCurrentFile": false
+      },
+      {
+        "id": 7269694,
+        "createdAt": 1776802754071,
+        "tag": "0055_oval_squadron_supreme",
+        "filename": "0055_oval_squadron_supreme.sql",
+        "hashMatchesCurrentFile": false
+      },
+      {
+        "id": 7269695,
+        "createdAt": 1776804281453,
+        "tag": "0056_free_mysterio",
+        "filename": "0056_free_mysterio.sql",
+        "hashMatchesCurrentFile": false
+      },
+      {
+        "id": 7269696,
+        "createdAt": 1776806759760,
+        "tag": "0057_many_juggernaut",
+        "filename": "0057_many_juggernaut.sql",
+        "hashMatchesCurrentFile": false
+      },
+      {
+        "id": 8456405,
+        "createdAt": 1776934813822,
+        "tag": "0058_sweet_beast",
+        "filename": "0058_sweet_beast.sql",
+        "hashMatchesCurrentFile": false
+      },
+      {
+        "id": 8456406,
+        "createdAt": 1776936494716,
+        "tag": "0059_pretty_lockheed",
+        "filename": "0059_pretty_lockheed.sql",
+        "hashMatchesCurrentFile": false
+      },
+      {
+        "id": 8486405,
+        "createdAt": 1777106032515,
+        "tag": "0060_jazzy_wolfsbane",
+        "filename": "0060_jazzy_wolfsbane.sql",
+        "hashMatchesCurrentFile": false
+      },
+      {
+        "id": 9088618,
+        "createdAt": 1777738263484,
+        "tag": "0061_slimy_fixer",
+        "filename": "0061_slimy_fixer.sql",
+        "hashMatchesCurrentFile": false
+      },
+      {
+        "id": 9187979,
+        "createdAt": 1777890178914,
+        "tag": "0062_typical_aqueduct",
+        "filename": "0062_typical_aqueduct.sql",
+        "hashMatchesCurrentFile": true
+      },
+      {
+        "id": 9187980,
+        "createdAt": 1777893121265,
+        "tag": "0063_adorable_tenebrous",
+        "filename": "0063_adorable_tenebrous.sql",
+        "hashMatchesCurrentFile": true
+      },
+      {
+        "id": 9217979,
+        "createdAt": 1778241563307,
+        "tag": "0064_gifted_carmella_unuscione",
+        "filename": "0064_gifted_carmella_unuscione.sql",
+        "hashMatchesCurrentFile": true
+      },
+      {
+        "id": 9217980,
+        "createdAt": 1778241698553,
+        "tag": "0065_freezing_viper",
+        "filename": "0065_freezing_viper.sql",
+        "hashMatchesCurrentFile": true
+      }
+    ],
+    "databaseOnlyTimestampCount": 4,
+    "databaseOnlyTimestamps": [
+      {
+        "id": 3286626,
+        "createdAt": 1774266426268
+      },
+      {
+        "id": 3600566,
+        "createdAt": 1774304534964
+      },
+      {
+        "id": 5574054,
+        "createdAt": 1775065557688
+      },
+      {
+        "id": 6083941,
+        "createdAt": 1775125071258
+      }
+    ],
+    "localOnlyTimestampCount": 1,
+    "localOnlyTimestamps": [
+      {
+        "when": 1788700524089,
+        "tag": "0066_low_whiplash"
+      }
+    ]
+  },
+  "compatible": false
+}

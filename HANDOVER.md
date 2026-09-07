@@ -158,7 +158,7 @@ git diff -- drizzle/
 pnpm exec drizzle-kit migrate
 ```
 
-SQL migrations находятся прямо в `drizzle/`. В текущем репозитории 66 SQL-файлов и 66 journal entries; индекс `0021` отсутствует, при этом существует snapshot `0021`. Development `__drizzle_migrations` содержит 69 записей — на три больше journal. Это признак исторического drift/manual state; перед clean-room восстановлением нужно сопоставить hashes и фактическую production migration table. [19]
+SQL migrations находятся прямо в `drizzle/`. В текущем репозитории 66 SQL-файлов и 66 journal entries; индекс `0021` отсутствует, при этом существует snapshot `0021`. Managed WebDev `__drizzle_migrations` содержит 69 записей. Автоматическая сверка показала: 65 timestamps совпадают с journal, 14 соответствующих hashes отличаются от текущих SQL-файлов, четыре DB timestamps отсутствуют в текущем journal, а `0066_low_whiplash` физически применена, но не зарегистрирована. После raw restore **нельзя сразу запускать `drizzle-kit migrate`**: сначала нужно проверить physical schema и добавить baseline row 0066 по runbook. [19] [35]
 
 `pnpm db:push` в этом проекте означает `drizzle-kit generate && drizzle-kit migrate`. Не запускайте его против production без review, backup и rollback plan. [20]
 
@@ -171,6 +171,14 @@ SQL migrations находятся прямо в `drizzle/`. В текущем р
 ### 4.4. Legacy-кандидаты
 
 Статический runtime-reference audit нашёл две таблицы без ссылок за пределами schema/generated bundle: `milkSessionAnimals` и `milkProcessingBatches`. Они являются **кандидатами**, а не разрешением на DROP. Перед удалением проверьте production row counts, audit entity references, exports и исторические отчёты. [18]
+
+### 4.5. Managed TiDB exit package
+
+7 сентября 2026 года создан согласованный read-only snapshot текущей автоматически управляемой WebDev/TiDB Serverless базы: 96 физических таблиц, 24 798 строк, 4 970 860 байт SQL; gzip — 586 504 байта. Raw SQL с пользовательскими данными хранится только вне Git в `/home/ubuntu/private-backups/sherkozu-managed-tidb-2026-09-07/` с ограниченными правами. Для передачи подготовлен отдельно зашифрованный AES‑256 bundle; контрольная расшифровка и все checksums успешны. В Git добавлены только безопасные manifest и compatibility metadata. [35] [36] [37]
+
+Все 95 application tables, types, nullability, autoincrement, primary keys и indexes совпадают с Drizzle snapshot после штатной TiDB-нормализации. Единственный schema drift: extra column `notificationPreferences.productPlanUpdate`, который сохранён в dump и не должен удаляться автоматически. Полный ownership/Manus-exit отчёт, 15–30-минутный cutover plan, migration baseline и матрица внешних сервисов находятся в `MANAGED_TIDB_EXIT_AND_OWNERSHIP_AUDIT.md`. [35]
+
+Равенство снимка текущей production VDS базе остаётся условным до сравнения SHA-256 fingerprint `DATABASE_URL` на VDS: GitHub Actions Secret и VDS `.env` недоступны для чтения из этой среды. При несовпадении fingerprint нужно повторить dump через production credential до переключения.
 
 ## 5. Локальный запуск и тесты
 
@@ -416,9 +424,9 @@ Tracked HEAD не содержит `.env`, Telegram token или private SSH key
 
 ### 9.1. Текущее рабочее состояние
 
-До создания HANDOVER локальный code checkpoint был чистым; незакоммиченным был только `todo.md` с задачами handover. Других незавершённых code changes/feature branches в текущей среде не обнаружено. Production уже обслуживает commit `00810c3a`.
+Последний сохранённый checkpoint перед infrastructure audit — `2de7bf59` (экспорт `tg-proxy`). Production на момент последней подтверждённой проверки обслуживал `00810c3a`; новые audit documents и metadata ещё не публиковались и не меняли production.
 
-`todo.md` содержит 70 unchecked и 2 120 checked элементов и является историческим ledger. Некоторые unchecked deployment items устарели: deploy/rollback workflows уже существуют. Перед новым sprint нужно сделать отдельный backlog triage, а не выполнять все чекбоксы подряд. [30]
+`todo.md` является большим историческим ledger. Некоторые unchecked deployment items устарели: deploy/rollback workflows уже существуют. Перед новым sprint нужно сделать отдельный backlog triage, а не выполнять все чекбоксы подряд. [30]
 
 ### 9.2. Приоритет P0/P1
 
@@ -427,7 +435,8 @@ Tracked HEAD не содержит `.env`, Telegram token или private SSH key
 | Выполнено | `tg-proxy` source/Wrangler экспортирован в Git | `pnpm validate` и Wrangler dry-run проходят; production не изменялся |
 | P0 | Подключить подтверждаемый Worker CI/version-first deploy | Preview/version upload, approval, deploy и rollback documented |
 | P0 | Rotate Bitrix token/history exposure | Новый secret, workflow без literal, old revoked |
-| P0 | Проверить VDS/TiDB/uploads backups | Успешный documented restore drill |
+| P0 | Перенести managed TiDB в owner-controlled account | Production fingerprint подтверждён; rehearsal restore/baseline/smoke успешны; затем 15–30-минутный cutover [35] |
+| P0 | Backup VDS uploads и Manus CDN assets | Независимая копия, checksums и успешный restore/sample URL smoke |
 | P0 | Authenticated production smoke Зои | Exact two-step menu, confirmed products, locked facts, `[DONE]` |
 | P1 | Унифицировать Telegram bot Зою/Машу | Bot вызывает canonical server services |
 | P1 | Scientific/medical audit Маши | Убраны unsafe A2/disease claims; tests добавлены |
@@ -510,13 +519,16 @@ sudo journalctl -u nginx --since '1 hour ago' --no-pager
 | nginx config, SSL automation, SSE buffering/timeouts | `/etc/nginx`, certbot/systemd |
 | Дополнительные PM2/system cron jobs | `pm2 list`, crontabs, systemd timers |
 | Uploads backup and restore history | VDS/provider backup console |
-| TiDB plan, region, quota, PITR/retention | TiDB Cloud console |
-| Production migration hash parity | Production `__drizzle_migrations` read-only audit |
+| Договорный срок managed DB после закрытия Manus/subscription | Только официальный ответ через https://help.manus.im; не выводится из кода/SQL |
+| Monthly RU, billing/card и automatic backup policy managed DB | Недоступны без internal owning organization; owner-controlled target должен иметь собственный billing/backup |
+| Совпадает ли текущий VDS `DATABASE_URL` с audited managed DB | SHA-256 fingerprint на VDS/GitHub-controlled diagnostic без вывода URL |
 | GitHub owner/collaborators/branch protection | Repository Settings |
 | Cloudflare/VDS/TiDB/Bitrix members | Provider access settings |
 | Текущие Bitrix funnels/robots/permissions | Bitrix24 admin |
 | Отдельный Cloudflare audio transcription route | В экспортированном `tg-proxy` отсутствует; проверить другие Workers/account services |
 | Business use of Gamma/Google Drive outside code | Owner/process interview |
+
+Подтверждённые регистраторы/сроки, VDS network operator, BotFather transfer procedure, Bitrix admin profile, GitHub/Cloudflare/Yandex ownership boundaries и полный список сервисов сведены в отдельный audit. [35]
 
 ## 12. References
 
@@ -554,3 +566,7 @@ sudo journalctl -u nginx --since '1 hour ago' --no-pager
 [32]: ./cloudflare/tg-proxy/src/worker.js "Exported active tg-proxy source"
 [33]: ./cloudflare/tg-proxy/README.md "Worker routes, bindings, validation and safe deployment runbook"
 [34]: ./cloudflare/tg-proxy/export-metadata.json "Worker export provenance and checksums"
+[35]: ./MANAGED_TIDB_EXIT_AND_OWNERSHIP_AUDIT.md "Managed TiDB exit, cutover and infrastructure ownership audit"
+[36]: ./docs/managed-tidb-dump-manifest.json "Managed TiDB logical snapshot manifest; no business rows"
+[37]: ./docs/managed-tidb-compatibility-report.json "Managed TiDB/Drizzle compatibility and migration-ledger report"
+[38]: ./docs/managed-media-origin-inventory.json "Managed DB and source media-origin inventory without raw user URLs"

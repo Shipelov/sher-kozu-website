@@ -1,0 +1,645 @@
+{
+  "scope": "current-managed-webdev-database-and-repository-source",
+  "generatedAt": "2026-09-07T19:51:44.542Z",
+  "database": {
+    "inspectedColumns": 22,
+    "columns": [
+      {
+        "tableName": "animalFeedbackMessages",
+        "columnName": "photoUrl",
+        "dataType": "text",
+        "nonEmptyValues": 0,
+        "hostCounts": {}
+      },
+      {
+        "tableName": "animalMedia",
+        "columnName": "fileKey",
+        "dataType": "varchar",
+        "nonEmptyValues": 0,
+        "hostCounts": {}
+      },
+      {
+        "tableName": "animalMedia",
+        "columnName": "url",
+        "dataType": "text",
+        "nonEmptyValues": 0,
+        "hostCounts": {}
+      },
+      {
+        "tableName": "animalPhotos",
+        "columnName": "fileKey",
+        "dataType": "varchar",
+        "nonEmptyValues": 6,
+        "hostCounts": {}
+      },
+      {
+        "tableName": "animalPhotos",
+        "columnName": "url",
+        "dataType": "text",
+        "nonEmptyValues": 6,
+        "hostCounts": {
+          "d2xsxph8kpxj0f.cloudfront.net": 6
+        }
+      },
+      {
+        "tableName": "animals",
+        "columnName": "coverImageUrl",
+        "dataType": "text",
+        "nonEmptyValues": 5,
+        "hostCounts": {
+          "d2xsxph8kpxj0f.cloudfront.net": 5
+        }
+      },
+      {
+        "tableName": "chatMessages",
+        "columnName": "photoUrl",
+        "dataType": "text",
+        "nonEmptyValues": 0,
+        "hostCounts": {}
+      },
+      {
+        "tableName": "chatMessages",
+        "columnName": "photoKey",
+        "dataType": "varchar",
+        "nonEmptyValues": 0,
+        "hostCounts": {}
+      },
+      {
+        "tableName": "clubPosts",
+        "columnName": "imageUrl",
+        "dataType": "text",
+        "nonEmptyValues": 5,
+        "hostCounts": {
+          "d2xsxph8kpxj0f.cloudfront.net": 5
+        }
+      },
+      {
+        "tableName": "cmsBlockHistory",
+        "columnName": "prevImageUrl",
+        "dataType": "text",
+        "nonEmptyValues": 0,
+        "hostCounts": {}
+      },
+      {
+        "tableName": "cmsBlockHistory",
+        "columnName": "newImageUrl",
+        "dataType": "text",
+        "nonEmptyValues": 0,
+        "hostCounts": {}
+      },
+      {
+        "tableName": "cmsBlockHistory",
+        "columnName": "prevMobileImageUrl",
+        "dataType": "text",
+        "nonEmptyValues": 0,
+        "hostCounts": {}
+      },
+      {
+        "tableName": "cmsBlockHistory",
+        "columnName": "newMobileImageUrl",
+        "dataType": "text",
+        "nonEmptyValues": 0,
+        "hostCounts": {}
+      },
+      {
+        "tableName": "cmsBlocks",
+        "columnName": "imageUrl",
+        "dataType": "text",
+        "nonEmptyValues": 13,
+        "hostCounts": {
+          "d2xsxph8kpxj0f.cloudfront.net": 13
+        }
+      },
+      {
+        "tableName": "cmsBlocks",
+        "columnName": "mobileImageUrl",
+        "dataType": "text",
+        "nonEmptyValues": 12,
+        "hostCounts": {
+          "koza.vip": 12
+        }
+      },
+      {
+        "tableName": "farmerChecklists",
+        "columnName": "photoUrlsJson",
+        "dataType": "text",
+        "nonEmptyValues": 0,
+        "hostCounts": {}
+      },
+      {
+        "tableName": "marketplaceCategories",
+        "columnName": "iconUrl",
+        "dataType": "text",
+        "nonEmptyValues": 0,
+        "hostCounts": {}
+      },
+      {
+        "tableName": "marketplaceItems",
+        "columnName": "imageUrl",
+        "dataType": "text",
+        "nonEmptyValues": 0,
+        "hostCounts": {}
+      },
+      {
+        "tableName": "nutriKnowledge",
+        "columnName": "sourceUrl",
+        "dataType": "text",
+        "nonEmptyValues": 0,
+        "hostCounts": {}
+      },
+      {
+        "tableName": "nutriKnowledgeImports",
+        "columnName": "sourceUrl",
+        "dataType": "text",
+        "nonEmptyValues": 0,
+        "hostCounts": {}
+      },
+      {
+        "tableName": "nutriKnowledgeImports",
+        "columnName": "fileKey",
+        "dataType": "varchar",
+        "nonEmptyValues": 0,
+        "hostCounts": {}
+      },
+      {
+        "tableName": "nutriRecipes",
+        "columnName": "imageUrl",
+        "dataType": "text",
+        "nonEmptyValues": 0,
+        "hostCounts": {}
+      }
+    ],
+    "hostCounts": {
+      "d2xsxph8kpxj0f.cloudfront.net": 29,
+      "koza.vip": 12
+    }
+  },
+  "source": {
+    "hostCounts": {
+      "${domain}": 2,
+      "*.amazonaws.com": 3,
+      "*.cloudfront.net": 3,
+      "*.googleapis.com": 1,
+      "*.koza.vip": 1,
+      "*.storage.yandexcloud.net": 1,
+      "*.telegram.org": 1,
+      "*.workers.dev": 2,
+      "*.yandex.net": 2,
+      "*.yandex.ru": 2,
+      "*.yastatic.net": 5,
+      "...": 8,
+      "89.111.165.77": 1,
+      "acsm.org": 1,
+      "api-maps.yandex.ru": 5,
+      "api.manus.im": 1,
+      "api.nal.usda.gov": 2,
+      "api.openai.com": 6,
+      "api.telegram.org": 10,
+      "api.telegram.org.": 1,
+      "b24-gzcp0i.bitrix24.ru": 1,
+      "cdn.example.com": 32,
+      "cdn.jsdelivr.net": 2,
+      "cdn.test": 1,
+      "d2xsxph8kpxj0f.cloudfront.net": 154,
+      "dash.cloudflare.com": 1,
+      "default.com": 5,
+      "developers.cloudflare.com": 4,
+      "e2e-test.local": 1,
+      "example.com": 17,
+      "farm.example": 11,
+      "fdc.nal.usda.gov": 8,
+      "files.manuscdn.com": 1,
+      "fonts.googleapis.com": 7,
+      "fonts.gstatic.com": 3,
+      "forge.example.com": 1,
+      "forge.example.test": 4,
+      "forge.manus.ai": 2,
+      "github.com": 2,
+      "google.com": 2,
+      "ip-api.com": 1,
+      "koza.vip": 29,
+      "koza.vip`": 3,
+      "link.springer.com": 1,
+      "localhost": 10,
+      "manus-analytics.com": 1,
+      "manus.im": 1,
+      "maps.google.com": 1,
+      "maps.googleapis.com": 5,
+      "maps.gstatic.com": 1,
+      "nutritionsource.hsph.harvard.edu": 1,
+      "old-image.com": 4,
+      "openai-proxy.example.test": 2,
+      "other.com": 1,
+      "other.example": 1,
+      "pmc.ncbi.nlm.nih.gov": 3,
+      "pubmed.ncbi.nlm.nih.gov": 1,
+      "schema.org": 3,
+      "sher-kozu.example": 3,
+      "sherkozu-mlhmg5vm.manus.space": 6,
+      "sherkozu.manus.space": 3,
+      "spam1.com": 1,
+      "spam2.com": 1,
+      "spam3.com": 1,
+      "t.me": 4,
+      "telegram.org": 2,
+      "test.api.com": 1,
+      "test.bitrix24.ru": 3,
+      "tg-proxy.example.workers.dev": 6,
+      "tg-proxy.shipelovspain.workers.dev": 1,
+      "tsx.is": 2,
+      "ui.shadcn.com": 1,
+      "vk.com": 1,
+      "wa.me": 2,
+      "web.telegram.org": 1,
+      "worker.test": 8,
+      "www.allergy.org.au": 6,
+      "www.facebook.com": 1,
+      "www.google.com": 1,
+      "www.matvaretabellen.no": 3,
+      "www.who.int": 1,
+      "x.com": 2,
+      "yandex.ru": 2,
+      "yandex.st": 1,
+      "yastatic.net": 5
+    },
+    "filesByHost": {
+      "...": [
+        ".adminclub-tabs/all_tabs_block_current.tsx",
+        ".adminclub-tabs/posts.tsx",
+        ".adminclub-tabs/posts_full_exact.tsx",
+        ".adminclub-tabs/posts_wrapper_current.tsx",
+        ".posts_tab_capture.tsx",
+        "client/src/pages/AdminMarketplace.tsx",
+        "client/src/pages/AdminNutriKnowledge.tsx",
+        "client/src/pages/adminClubCrudTabs.tsx"
+      ],
+      "*.amazonaws.com": [
+        "server/_core/index.ts"
+      ],
+      "*.cloudfront.net": [
+        "server/_core/index.ts"
+      ],
+      "*.googleapis.com": [
+        "server/_core/index.ts"
+      ],
+      "*.koza.vip": [
+        "server/_core/index.ts"
+      ],
+      "*.storage.yandexcloud.net": [
+        "server/_core/index.ts"
+      ],
+      "*.telegram.org": [
+        "server/_core/index.ts"
+      ],
+      "*.workers.dev": [
+        "server/_core/index.ts"
+      ],
+      "*.yandex.net": [
+        "server/_core/index.ts"
+      ],
+      "*.yandex.ru": [
+        "server/_core/index.ts"
+      ],
+      "*.yastatic.net": [
+        "server/_core/index.ts",
+        "server/securityHeaders.test.ts"
+      ],
+      "${domain}": [
+        "server/_core/index.ts"
+      ],
+      "89.111.165.77": [
+        "todo.md"
+      ],
+      "acsm.org": [
+        "zoya-sports-menu-design.md"
+      ],
+      "api-maps.yandex.ru": [
+        "client/src/components/FarmMap.tsx",
+        "server/_core/index.ts",
+        "server/yandexMaps.test.ts"
+      ],
+      "api.manus.im": [
+        ".project-config.json"
+      ],
+      "api.nal.usda.gov": [
+        "zoya-menu-calculation-design.md"
+      ],
+      "api.openai.com": [
+        "server/_core/imageGeneration.ts",
+        "server/_core/index.ts",
+        "server/_core/llm.ts",
+        "server/_core/voiceTranscription.ts",
+        "server/llmConnection.test.ts"
+      ],
+      "api.telegram.org": [
+        "cloudflare/tg-proxy/src/worker.js",
+        "cloudflare/tg-proxy/test/worker.test.mjs",
+        "server/_core/index.ts",
+        "server/_core/telegramApiBase.ts",
+        "server/telegram.token.test.ts",
+        "server/telegramBot.ts"
+      ],
+      "api.telegram.org.": [
+        "server/_core/telegramApiBase.ts"
+      ],
+      "b24-gzcp0i.bitrix24.ru": [
+        ".project-config.json"
+      ],
+      "cdn.example.com": [
+        "server/adminAnimalsUiHelpers.test.ts",
+        "server/cms.test.ts",
+        "server/lazyImageAndCoverCache.test.ts"
+      ],
+      "cdn.jsdelivr.net": [
+        "server/_core/index.ts"
+      ],
+      "cdn.test": [
+        "server/planLifecycleProgressBar.test.ts"
+      ],
+      "d2xsxph8kpxj0f.cloudfront.net": [
+        ".manus/db/db-query-1774367490286.json",
+        ".manus/db/db-query-1774367571541.json",
+        ".manus/db/db-query-1774367605984.json",
+        ".manus/db/db-query-1774367706809.json",
+        ".manus/db/db-query-1774368530501.json",
+        ".manus/db/db-query-1774368650326.json",
+        ".manus/db/db-query-1774368656243.json",
+        ".manus/db/db-query-1774368810945.json",
+        ".manus/db/db-query-1774369015332.json",
+        ".manus/db/db-query-1774388105438.json",
+        ".manus/db/db-query-1774388134948.json",
+        ".manus/db/db-query-1774388145971.json",
+        ".manus/db/db-query-1774388541674.json",
+        ".manus/db/db-query-1774388547215.json",
+        ".manus/db/db-query-1774903911564.json",
+        ".manus/db/db-query-1774903939865.json",
+        ".manus/db/db-query-1774903990554.json",
+        ".manus/db/db-query-1774904296100.json",
+        ".manus/db/db-query-1774904315113.json",
+        ".manus/db/db-query-1774904563272.json",
+        "client/index.html",
+        "client/src/components/AIFloatingHub.tsx",
+        "client/src/components/MashaFloatingChat.tsx",
+        "client/src/components/ZoyaChat.tsx",
+        "client/src/components/ZoyaFloatingChat.tsx",
+        "client/src/lib/generateCalculatorPdf.ts",
+        "client/src/pages/AboutFarm.tsx",
+        "client/src/pages/AdminAnimals.tsx",
+        "client/src/pages/AnimalProfile.tsx",
+        "client/src/pages/ClubFeed.tsx",
+        "client/src/pages/Dashboard.tsx",
+        "client/src/pages/DemoTracker.tsx",
+        "client/src/pages/FAQ.tsx",
+        "client/src/pages/Home.tsx",
+        "client/src/pages/Nutritionist.tsx",
+        "client/src/pages/ProductTracker.tsx",
+        "client/src/pages/ZoyaSharedView.tsx",
+        "server/db.ts",
+        "server/mashaVideoProxy.ts",
+        "server/pdfDeliveryGenerator.ts",
+        "server/pdfGenerator.ts",
+        "server/routers/cms.ts",
+        "server/zoyaExportGenerator.ts"
+      ],
+      "dash.cloudflare.com": [
+        "HANDOVER.md"
+      ],
+      "default.com": [
+        "server/cms.test.ts"
+      ],
+      "developers.cloudflare.com": [
+        "cloudflare/tg-proxy/README.md",
+        "zoya-external-ai-root-cause.md"
+      ],
+      "e2e-test.local": [
+        "server/e2ePublicAndProfile.test.ts"
+      ],
+      "example.com": [
+        "server/_core/imageGeneration.ts",
+        "server/clubNotifications.test.ts",
+        "server/cms.test.ts",
+        "server/commentModeration.test.ts",
+        "server/phaseD-regression.test.ts",
+        "server/zoyaRag.test.ts"
+      ],
+      "farm.example": [
+        "server/oauthState.test.ts"
+      ],
+      "fdc.nal.usda.gov": [
+        "server/zoyaOrchestrator.test.ts",
+        "server/zoyaProductNutrition.ts",
+        "server/zoyaSportsMenuAdvisor.ts"
+      ],
+      "files.manuscdn.com": [
+        ".project-config.json"
+      ],
+      "fonts.googleapis.com": [
+        "client/index.html",
+        "server/_core/index.ts",
+        "server/gateMiddleware.ts"
+      ],
+      "fonts.gstatic.com": [
+        "client/index.html",
+        "server/_core/index.ts",
+        "server/gateMiddleware.ts"
+      ],
+      "forge.example.com": [
+        "server/llmTimeout.test.ts"
+      ],
+      "forge.example.test": [
+        "server/llmConnection.test.ts"
+      ],
+      "forge.manus.ai": [
+        ".project-config.json"
+      ],
+      "github.com": [
+        "client/src/pages/ComponentShowcase.tsx",
+        "zoya-external-ai-root-cause.md"
+      ],
+      "google.com": [
+        "server/analytics.test.ts",
+        "server/pricing.test.ts"
+      ],
+      "ip-api.com": [
+        "server/geoip.ts"
+      ],
+      "koza.vip": [
+        ".github/workflows/deploy.yml",
+        ".project-config.json",
+        "HANDOVER.md",
+        "audit-status-2026-09-04.md",
+        "client/src/components/TelegramMiniAppLayout.tsx",
+        "client/src/pages/AnimalProfile.tsx",
+        "client/src/pages/TgAppHome.tsx",
+        "cloudflare/tg-proxy/src/worker.js",
+        "cloudflare/tg-proxy/test/worker.test.mjs",
+        "scripts/setup-b24-outbound-webhook.mjs",
+        "scripts/test-b24-e2e-with-db.mjs",
+        "scripts/test-b24-full-cycle.mjs",
+        "server/_core/index.ts",
+        "server/nutriFileUpload.ts",
+        "server/productPlanSetupCron.ts",
+        "server/routers.ts",
+        "server/routers/productTrack.ts",
+        "server/securityHeaders.test.ts",
+        "server/storage.local.test.ts",
+        "zoya-production-sync-audit.md"
+      ],
+      "koza.vip`": [
+        "HANDOVER.md",
+        "audit-status-2026-09-04.md",
+        "cloudflare/tg-proxy/README.md"
+      ],
+      "link.springer.com": [
+        "zoya-sports-menu-design.md"
+      ],
+      "localhost": [
+        ".github/workflows/deploy.yml",
+        ".github/workflows/rollback.yml",
+        "HANDOVER.md",
+        "README.md",
+        "server/phaseD-regression.test.ts",
+        "shared/oauthState.ts",
+        "test-auth-flow.mjs"
+      ],
+      "manus-analytics.com": [
+        ".project-config.json"
+      ],
+      "manus.im": [
+        ".project-config.json"
+      ],
+      "maps.google.com": [
+        "server/_core/index.ts"
+      ],
+      "maps.googleapis.com": [
+        "client/src/components/Map.tsx",
+        "server/_core/index.ts",
+        "server/_core/map.ts"
+      ],
+      "maps.gstatic.com": [
+        "server/_core/index.ts"
+      ],
+      "nutritionsource.hsph.harvard.edu": [
+        "zoya-sports-menu-design.md"
+      ],
+      "old-image.com": [
+        "server/cms.test.ts"
+      ],
+      "openai-proxy.example.test": [
+        "server/llmConnection.test.ts"
+      ],
+      "other.com": [
+        "server/commentModeration.test.ts"
+      ],
+      "other.example": [
+        "server/oauthState.test.ts"
+      ],
+      "pmc.ncbi.nlm.nih.gov": [
+        "server/zoyaContextAssembler.ts",
+        "server/zoyaSportsMenuAdvisor.ts",
+        "zoya-sports-menu-design.md"
+      ],
+      "pubmed.ncbi.nlm.nih.gov": [
+        "client/src/pages/AdminNutriKnowledge.tsx"
+      ],
+      "schema.org": [
+        "client/src/components/PageBreadcrumbs.tsx",
+        "server/breadcrumbs.test.ts"
+      ],
+      "sher-kozu.example": [
+        "server/oauthState.test.ts"
+      ],
+      "sherkozu-mlhmg5vm.manus.space": [
+        "server/adminClub.test.ts",
+        "server/breadcrumbs.test.ts",
+        "server/phaseD-regression.test.ts"
+      ],
+      "sherkozu.manus.space": [
+        "server/phaseD-regression.test.ts"
+      ],
+      "spam1.com": [
+        "server/commentModeration.test.ts"
+      ],
+      "spam2.com": [
+        "server/commentModeration.test.ts"
+      ],
+      "spam3.com": [
+        "server/commentModeration.test.ts"
+      ],
+      "t.me": [
+        "client/src/components/ZoyaExportActions.tsx",
+        "client/src/pages/ZoyaSharedView.tsx",
+        "server/bitrix24.ts",
+        "server/routers.ts"
+      ],
+      "telegram.org": [
+        "cloudflare/tg-proxy/src/worker.js",
+        "server/_core/index.ts"
+      ],
+      "test.api.com": [
+        "server/telegramBot.test.ts"
+      ],
+      "test.bitrix24.ru": [
+        "server/bitrix24Webhook.test.ts"
+      ],
+      "tg-proxy.example.workers.dev": [
+        "server/_core/telegramApiBase.ts",
+        "server/llmConnection.test.ts"
+      ],
+      "tg-proxy.shipelovspain.workers.dev": [
+        "client/index.html"
+      ],
+      "tsx.is": [
+        "pnpm-lock.yaml"
+      ],
+      "ui.shadcn.com": [
+        "components.json"
+      ],
+      "vk.com": [
+        "client/src/pages/AnimalProfile.tsx"
+      ],
+      "wa.me": [
+        "client/src/components/ZoyaExportActions.tsx",
+        "client/src/pages/ZoyaSharedView.tsx"
+      ],
+      "web.telegram.org": [
+        "server/_core/index.ts"
+      ],
+      "worker.test": [
+        "cloudflare/tg-proxy/test/worker.test.mjs"
+      ],
+      "www.allergy.org.au": [
+        "server/zoyaContextAssembler.ts",
+        "server/zoyaOrchestrator.test.ts"
+      ],
+      "www.facebook.com": [
+        "client/src/pages/AnimalProfile.tsx"
+      ],
+      "www.google.com": [
+        "client/src/components/Map.tsx"
+      ],
+      "www.matvaretabellen.no": [
+        "server/zoyaProductNutrition.ts",
+        "server/zoyaSportsMenuAdvisor.ts",
+        "zoya-menu-calculation-design.md"
+      ],
+      "www.who.int": [
+        "zoya-sports-menu-design.md"
+      ],
+      "x.com": [
+        "server/phaseD-regression.test.ts"
+      ],
+      "yandex.ru": [
+        "client/src/components/FarmMap.tsx"
+      ],
+      "yandex.st": [
+        "server/_core/index.ts"
+      ],
+      "yastatic.net": [
+        "server/_core/index.ts",
+        "server/securityHeaders.test.ts"
+      ]
+    }
+  },
+  "rawUrlsIncluded": false
+}
