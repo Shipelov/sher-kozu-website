@@ -14,10 +14,10 @@ import * as path from "node:path";
 
 const DB_SRC = fs.readFileSync(path.resolve(__dirname, "db.ts"), "utf-8");
 const ROUTERS_SRC = fs.readFileSync(path.resolve(__dirname, "routers.ts"), "utf-8");
-const DASHBOARD_SRC = fs.readFileSync(
-  path.resolve(__dirname, "../client/src/pages/Dashboard.tsx"),
-  "utf-8",
-);
+// CRLF на Windows-чекауте раздувает 300-символьное окно вокруг isPrimary — нормализуем
+const DASHBOARD_SRC = fs
+  .readFileSync(path.resolve(__dirname, "../client/src/pages/Dashboard.tsx"), "utf-8")
+  .replace(/\r\n/g, "\n");
 const SCHEMA_SRC = fs.readFileSync(
   path.resolve(__dirname, "../drizzle/schema.ts"),
   "utf-8",

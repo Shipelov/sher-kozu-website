@@ -16,9 +16,12 @@ import * as path from "node:path";
  * 4. updateOwnerRating deduplicates animalIds before querying metrics
  */
 
-const GAMIFICATION_ROUTER_SRC = fs.readFileSync(path.resolve(__dirname, "routers/gamification.ts"), "utf-8");
-const GAMIFICATION_SRC = fs.readFileSync(path.resolve(__dirname, "gamification.ts"), "utf-8");
-const ROUTERS_SRC = fs.readFileSync(path.resolve(__dirname, "routers.ts"), "utf-8");
+// Нормализуем CRLF: тест ищет "return result;\n}" и на Windows-чекауте иначе не находит конец функции
+const readSource = (relativePath: string) =>
+  fs.readFileSync(path.resolve(__dirname, relativePath), "utf-8").replace(/\r\n/g, "\n");
+const GAMIFICATION_ROUTER_SRC = readSource("routers/gamification.ts");
+const GAMIFICATION_SRC = readSource("gamification.ts");
+const ROUTERS_SRC = readSource("routers.ts");
 
 describe("Animal Count Fix — myRating (routers/gamification.ts)", () => {
   it("uses COUNT(DISTINCT animalId) instead of COUNT(*)", () => {
