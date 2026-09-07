@@ -35,8 +35,7 @@ describe("drizzle migration journal", () => {
       const prev = journal.entries[i - 1];
       const cur = journal.entries[i];
       expect(cur.when, `${cur.tag} when`).toBeGreaterThan(prev.when);
-      // Исторический пропуск idx 21 (0021 в журнале нет) — требуем только рост
-      expect(cur.idx, `${cur.tag} idx`).toBeGreaterThan(prev.idx);
+      expect(cur.idx, `${cur.tag} idx`).toBe(prev.idx + 1);
     }
   });
 
@@ -57,6 +56,16 @@ describe("drizzle migration journal", () => {
     expect(baseline).toBeGreaterThan(-1);
     expect(tags[baseline - 1]).toBe("0060_jazzy_wolfsbane");
     expect(tags[baseline + 1]).toBe("0061_slimy_fixer");
+  });
+
+  it("fills the historic idx 21 gap with the users columns baseline", () => {
+    const entry = journal.entries.find((e) => e.tag === "0021_users_columns_baseline");
+    expect(entry?.idx).toBe(21);
+    const sql = migrationSql("0021_users_columns_baseline");
+    expect(sql).toContain("ALTER TABLE `users` ADD `primaryAnimalId` int");
+    expect(sql).toContain("ALTER TABLE `users` DROP COLUMN `plainPassword`");
+    // 0017 закомментирована и колонку не добавляет — иначе baseline был бы дублем
+    expect(migrationSql("0017_fantastic_radioactive_man").trim().startsWith("--")).toBe(true);
   });
 
   it("baseline creates every table that was pushed without a migration", () => {
