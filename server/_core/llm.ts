@@ -317,6 +317,30 @@ const diagnosticModelLabel = (connection: LlmConnection, requestModel: string): 
     ? `worker-managed (request alias: ${requestModel})`
     : requestModel;
 
+export const DEFAULT_MAX_TOKENS = 2048;
+export const RETRY_DELAY_MS = 800;
+const MAX_ATTEMPTS = 2;
+const RETRYABLE_STATUSES = new Set([429, 502, 503, 504]);
+const ERROR_SNIPPET_CHARS = 200;
+
+/** Задержка, прерываемая abort-сигналом, чтобы повтор не пережил отмену. */
+const sleep = (ms: number, signal: AbortSignal): Promise<void> =>
+  new Promise((resolve, reject) => {
+    if (signal.aborted) {
+      reject(signal.reason);
+      return;
+    }
+    const onAbort = () => {
+      clearTimeout(timer);
+      reject(signal.reason);
+    };
+    const timer = setTimeout(() => {
+      signal.removeEventListener("abort", onAbort);
+      resolve();
+    }, ms);
+    signal.addEventListener("abort", onAbort, { once: true });
+  });
+
 const sanitizeDiagnosticText = (value: unknown): string =>
   String(value ?? "Unknown upstream error")
     .replace(/sk-[A-Za-z0-9_-]+/g, "[REDACTED]")
@@ -584,7 +608,7 @@ export async function invokeLLM(params: InvokeParams): Promise<InvokeResult> {
   }
 
   const model = String(payload.model);
-  const maxTokens = params.maxTokens ?? params.max_tokens ?? 16384;
+  const maxTokens = params.maxTokens ?? params.max_tokens ?? DEFAULT_MAX_TOKENS;
   const maxCompletionTokens =
     params.maxCompletionTokens ?? params.max_completion_tokens;
 
@@ -606,6 +630,7 @@ export async function invokeLLM(params: InvokeParams): Promise<InvokeResult> {
   }
 
   const timeoutMs = params.timeoutMs ?? 90_000;
+  const deadline = Date.now() + timeoutMs;
   const requestController = new AbortController();
   const forwardAbort = () => requestController.abort(params.signal?.reason);
   if (params.signal?.aborted) {
@@ -613,42 +638,69 @@ export async function invokeLLM(params: InvokeParams): Promise<InvokeResult> {
   } else {
     params.signal?.addEventListener("abort", forwardAbort, { once: true });
   }
+  // Один таймер на всю операцию, включая повтор: timeoutMs — общий бюджет.
   const timeoutId = setTimeout(
     () => requestController.abort(new Error(`LLM request timed out after ${timeoutMs}ms`)),
     timeoutMs,
   );
 
-  let response: Response;
-  try {
-    response = await fetch(connection.apiUrl, {
+  const body = JSON.stringify(payload);
+  const logContext = `source=${connection.source} model=${model}`;
+  const sendRequest = () =>
+    fetch(connection.apiUrl, {
       method: "POST",
       headers: {
         "content-type": "application/json",
         authorization: `Bearer ${connection.apiKey}`,
       },
-      body: JSON.stringify(payload),
+      body,
       signal: requestController.signal,
     });
-  } catch (error) {
-    console.error(
-      `[LLM] Network error source=${connection.source} model=${String(payload.model)}`,
-      error,
-    );
-    throw error;
+  // Повтор не делаем при abort (свой таймаут или вызывающий код) и если
+  // после задержки не останется времени в бюджете.
+  const canRetry = (attempt: number) =>
+    attempt < MAX_ATTEMPTS &&
+    !requestController.signal.aborted &&
+    Date.now() + RETRY_DELAY_MS < deadline;
+
+  try {
+    for (let attempt = 1; ; attempt += 1) {
+      let response: Response;
+      try {
+        response = await sendRequest();
+      } catch (error) {
+        if (!canRetry(attempt)) {
+          console.error(`[LLM] Network error ${logContext} attempt=${attempt}`, error);
+          throw error;
+        }
+        console.warn(`[LLM] Network error ${logContext} attempt=${attempt}, retrying in ${RETRY_DELAY_MS}ms`);
+        await sleep(RETRY_DELAY_MS, requestController.signal);
+        continue;
+      }
+
+      if (response.ok) {
+        return (await response.json()) as InvokeResult;
+      }
+
+      if (RETRYABLE_STATUSES.has(response.status) && canRetry(attempt)) {
+        await response.body?.cancel().catch(() => undefined);
+        console.warn(
+          `[LLM] Upstream error ${logContext} status=${response.status} attempt=${attempt}, retrying in ${RETRY_DELAY_MS}ms`,
+        );
+        await sleep(RETRY_DELAY_MS, requestController.signal);
+        continue;
+      }
+
+      // Тело апстрима может содержать фрагменты промпта — в сообщение
+      // ошибки попадает только статус и короткий санитизированный фрагмент.
+      const errorText = await response.text();
+      console.error(`[LLM] Upstream error ${logContext} status=${response.status} attempt=${attempt}`);
+      throw new Error(
+        `LLM invoke failed: ${response.status} ${response.statusText} – ${sanitizeDiagnosticText(errorText).slice(0, ERROR_SNIPPET_CHARS)}`,
+      );
+    }
   } finally {
     clearTimeout(timeoutId);
     params.signal?.removeEventListener("abort", forwardAbort);
   }
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    console.error(
-      `[LLM] Upstream error source=${connection.source} model=${String(payload.model)} status=${response.status}`,
-    );
-    throw new Error(
-      `LLM invoke failed: ${response.status} ${response.statusText} – ${errorText}`
-    );
-  }
-
-  return (await response.json()) as InvokeResult;
 }

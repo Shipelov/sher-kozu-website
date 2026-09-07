@@ -1,4 +1,5 @@
 import { invokeLLM, type Message, type ResponseFormat } from "./_core/llm";
+import { chatHistoryLength, compactChatHistory } from "./_core/chatHistory";
 
 export const ZOYA_MAX_HISTORY_MESSAGES = 12;
 export const ZOYA_MAX_HISTORY_CHARS = 12_000;
@@ -32,35 +33,14 @@ export class ZoyaTimeoutError extends Error {
   }
 }
 
-function messageTextLength(message: Message): number {
-  return typeof message.content === "string"
-    ? message.content.length
-    : JSON.stringify(message.content).length;
-}
-
 export function compactZoyaMessages(
   messages: Message[],
   options: CompactOptions = {},
 ): Message[] {
-  if (messages.length === 0) return [];
-
-  const maxHistoryMessages = options.maxHistoryMessages ?? ZOYA_MAX_HISTORY_MESSAGES;
-  const maxHistoryChars = options.maxHistoryChars ?? ZOYA_MAX_HISTORY_CHARS;
-  const systemMessages = messages.filter((message) => message.role === "system");
-  const history = messages.filter((message) => message.role !== "system");
-  const selected: Message[] = [];
-  let totalChars = 0;
-
-  for (let index = history.length - 1; index >= 0; index -= 1) {
-    if (selected.length >= maxHistoryMessages) break;
-    const message = history[index];
-    const length = messageTextLength(message);
-    if (selected.length > 0 && totalChars + length > maxHistoryChars) break;
-    selected.push(message);
-    totalChars += length;
-  }
-
-  return [...systemMessages.slice(0, 1), ...selected.reverse()];
+  return compactChatHistory(messages, {
+    maxMessages: options.maxHistoryMessages ?? ZOYA_MAX_HISTORY_MESSAGES,
+    maxChars: options.maxHistoryChars ?? ZOYA_MAX_HISTORY_CHARS,
+  });
 }
 
 function safeFailureMeta(error: unknown, messages: Message[], attempt: number) {
@@ -71,7 +51,7 @@ function safeFailureMeta(error: unknown, messages: Message[], attempt: number) {
     name: error instanceof Error ? error.name : "UnknownError",
     upstreamStatus: statusMatch?.[1] ?? null,
     messageCount: messages.length,
-    contentChars: messages.reduce((sum, message) => sum + messageTextLength(message), 0),
+    contentChars: chatHistoryLength(messages),
   };
 }
 

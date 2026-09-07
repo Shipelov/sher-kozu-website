@@ -14,7 +14,8 @@ function buildWebhookBaseUrl() {
   return `${baseUrl}/rest/${userId}/${token}`;
 }
 
-describe("Bitrix24 webhook secrets", () => {
+// Требует боевых BITRIX24_* и ходит в реальный Bitrix24 — в CI пропускается по флагу.
+describe.skipIf(process.env.SKIP_EXTERNAL_TESTS === "1")("Bitrix24 webhook secrets", () => {
   it("builds a valid webhook base url from env", () => {
     const webhookBaseUrl = buildWebhookBaseUrl();
 
