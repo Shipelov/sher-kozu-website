@@ -14,6 +14,7 @@ import { sdk } from "./sdk";
 import { registerGate } from "../gateMiddleware";
 import { registerMashaVideoProxy } from "../mashaVideoProxy";
 import { getDeployVersion } from "../deployVersion";
+import { createBodyLimitMiddleware } from "./bodyLimits";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -108,11 +109,13 @@ async function runTrashCleanup() {
 async function startServer() {
   const app = express();
   const server = createServer(app);
+  // Приложение стоит за nginx: без этого req.ip всегда 127.0.0.1,
+  // а rate-limit по IP бесполезен.
+  app.set("trust proxy", 1);
   // Gzip/deflate compression for all responses
   app.use(compression());
-  // Configure body parser with reasonable size limit
-  app.use(express.json({ limit: "10mb" }));
-  app.use(express.urlencoded({ limit: "10mb", extended: true }));
+  // 200kb по умолчанию, 10mb только для маршрутов загрузки файлов
+  app.use(...createBodyLimitMiddleware());
 
   // Security headers
   app.use((_req, res, next) => {

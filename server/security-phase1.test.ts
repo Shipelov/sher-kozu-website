@@ -136,19 +136,30 @@ describe("Security: admin routers use adminProcedure", () => {
 
 describe("Security: body parser limit", () => {
   const serverIndex = readFile("server/_core/index.ts");
+  const bodyLimits = readFile("server/_core/bodyLimits.ts");
 
-  it("JSON body limit should be 10mb or less", () => {
-    const jsonLimitMatch = serverIndex.match(/express\.json\(\s*\{[^}]*limit:\s*["'](\d+)mb["']/);
-    expect(jsonLimitMatch).not.toBeNull();
-    const limitMb = parseInt(jsonLimitMatch![1]);
-    expect(limitMb).toBeLessThanOrEqual(10);
+  it("server uses the path-aware body limit middleware", () => {
+    expect(serverIndex).toContain("createBodyLimitMiddleware()");
+    expect(serverIndex).not.toMatch(/express\.json\(\s*\{[^}]*limit:/);
   });
 
-  it("URL-encoded body limit should be 10mb or less", () => {
-    const urlLimitMatch = serverIndex.match(/express\.urlencoded\(\s*\{[^}]*limit:\s*["'](\d+)mb["']/);
-    expect(urlLimitMatch).not.toBeNull();
-    const limitMb = parseInt(urlLimitMatch![1]);
-    expect(limitMb).toBeLessThanOrEqual(10);
+  it("default body limit should be 200kb or less", () => {
+    const match = bodyLimits.match(/DEFAULT_BODY_LIMIT\s*=\s*["'](\d+)kb["']/);
+    expect(match).not.toBeNull();
+    expect(parseInt(match![1])).toBeLessThanOrEqual(200);
+  });
+
+  it("upload body limit should be 10mb or less", () => {
+    const match = bodyLimits.match(/UPLOAD_BODY_LIMIT\s*=\s*["'](\d+)mb["']/);
+    expect(match).not.toBeNull();
+    expect(parseInt(match![1])).toBeLessThanOrEqual(10);
+  });
+
+  it("trust proxy is enabled before middleware registration", () => {
+    const trustIndex = serverIndex.indexOf('app.set("trust proxy", 1)');
+    const firstUse = serverIndex.indexOf("app.use(");
+    expect(trustIndex).toBeGreaterThan(-1);
+    expect(trustIndex).toBeLessThan(firstUse);
   });
 });
 
