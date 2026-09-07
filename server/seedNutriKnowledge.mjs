@@ -8,20 +8,10 @@
  */
 
 import "dotenv/config";
-import { drizzle } from "drizzle-orm/mysql2";
 import mysql from "mysql2/promise";
-import { sql } from "drizzle-orm";
+import { pathToFileURL } from "node:url";
 
-const DATABASE_URL = process.env.DATABASE_URL;
-if (!DATABASE_URL) {
-  console.error("DATABASE_URL not set");
-  process.exit(1);
-}
-
-const connection = await mysql.createConnection(DATABASE_URL);
-const db = drizzle(connection);
-
-const entries = [
+export const NUTRI_KNOWLEDGE_ENTRIES = [
   // ═══════════════════════════════════════════════════════════════
   // NUTRITION_SCIENCE — Козье молоко
   // ═══════════════════════════════════════════════════════════════
@@ -375,22 +365,45 @@ const entries = [
   },
 ];
 
-console.log(`[Seed] Inserting ${entries.length} knowledge entries...`);
-
-let inserted = 0;
-for (const entry of entries) {
-  try {
-    await db.execute(sql`
-      INSERT INTO nutriKnowledge (nutriKnowledgeCategory, title, content, nutriSourceType, nutriConfidence, tags, nutriKnowledgeStatus, language)
-      VALUES (${entry.category}, ${entry.title}, ${entry.content}, ${entry.sourceType}, ${entry.confidence}, ${entry.tags}, ${entry.status}, ${entry.language})
-    `);
+/**
+ * Идемпотентный сид базы знаний: записи с уже существующим title пропускаются.
+ * Используется и CLI, и scripts/seed-test-db.mjs.
+ */
+export async function seedNutriKnowledge(connection) {
+  console.log(`[Seed] Checking ${NUTRI_KNOWLEDGE_ENTRIES.length} knowledge entries...`);
+  let inserted = 0;
+  let skipped = 0;
+  for (const entry of NUTRI_KNOWLEDGE_ENTRIES) {
+    const [existing] = await connection.execute(
+      "SELECT id FROM nutriKnowledge WHERE title = ? LIMIT 1",
+      [entry.title],
+    );
+    if (existing.length > 0) {
+      skipped++;
+      continue;
+    }
+    await connection.execute(
+      `INSERT INTO nutriKnowledge (nutriKnowledgeCategory, title, content, nutriSourceType, nutriConfidence, tags, nutriKnowledgeStatus, language)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [entry.category, entry.title, entry.content, entry.sourceType, entry.confidence, entry.tags, entry.status, entry.language],
+    );
     inserted++;
-    process.stdout.write(`\r[Seed] Inserted ${inserted}/${entries.length}`);
-  } catch (err) {
-    console.error(`\n[Seed] Failed to insert "${entry.title}":`, err);
   }
+  console.log(`[Seed] Done! Inserted ${inserted}, skipped ${skipped} existing.`);
+  return { inserted, skipped };
 }
 
-console.log(`\n[Seed] Done! Inserted ${inserted} entries.`);
-await connection.end();
-process.exit(0);
+// Запуск как CLI: node server/seedNutriKnowledge.mjs
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  const DATABASE_URL = process.env.DATABASE_URL;
+  if (!DATABASE_URL) {
+    console.error("DATABASE_URL not set");
+    process.exit(1);
+  }
+  const connection = await mysql.createConnection(DATABASE_URL);
+  try {
+    await seedNutriKnowledge(connection);
+  } finally {
+    await connection.end();
+  }
+}
