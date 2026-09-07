@@ -93,6 +93,8 @@ async function analyzeTextWithLLM(
   const truncated = text.slice(0, 15000); // Limit to ~15k chars for LLM context
 
   const response = await invokeLLM({
+    // До 10 фактов по 200–500 символов в JSON — нужен запас
+    maxTokens: 8192,
     messages: [
       {
         role: "system",
@@ -183,6 +185,7 @@ async function checkConflicts(
     if (existing.length > 0) {
       // Use LLM to check if there's a real conflict
       const checkResponse = await invokeLLM({
+        maxTokens: 8192,
         messages: [
           {
             role: "system",

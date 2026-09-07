@@ -496,7 +496,7 @@ function registerHandlers(bot: Bot) {
       // Send typing indicator
       await ctx.replyWithChatAction("typing");
 
-      const response = await invokeLLM({ messages });
+      const response = await invokeLLM({ messages, maxTokens: 2048 });
       const rawContent = response.choices?.[0]?.message?.content;
       const reply = (typeof rawContent === "string" ? rawContent : JSON.stringify(rawContent)) ?? "Не удалось получить ответ. Попробуйте ещё раз.";
 
@@ -586,7 +586,7 @@ function registerHandlers(bot: Bot) {
       ];
 
       await ctx.replyWithChatAction("typing");
-      const response = await invokeLLM({ messages });
+      const response = await invokeLLM({ messages, maxTokens: 2048 });
       const rawVoiceContent = response.choices?.[0]?.message?.content;
       const reply = (typeof rawVoiceContent === "string" ? rawVoiceContent : JSON.stringify(rawVoiceContent)) ?? "Не удалось получить ответ.";
 

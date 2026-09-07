@@ -1185,6 +1185,8 @@ export const appRouter = router({
         const speciesLabelNom = input.species === "goat" ? "коза" : "овца";
 
         const result = await invokeLLM({
+          // Профиль животного: ~1500 символов JSON
+          maxTokens: 2048,
           messages: [
             {
               role: "system",

@@ -747,6 +747,8 @@ async function processFileImport(
     const isPdf = fileKey.endsWith(".pdf") || sourceType === "file_upload";
 
     const result = await invokeLLM({
+      // Извлечение всех фактов из целого файла — длинный JSON-массив
+      maxTokens: 4096,
       messages: [
         { role: "system", content: extractionPrompt },
         {
@@ -933,6 +935,8 @@ async function processSearchJob(jobId: number, topics?: string[]) {
 
     // Use LLM to generate search queries
     const queryGenResult = await invokeLLM({
+      // 10–15 коротких поисковых запросов
+      maxTokens: 2048,
       messages: [
         {
           role: "system",
@@ -963,6 +967,8 @@ async function processSearchJob(jobId: number, topics?: string[]) {
 
     // Use LLM to "search" by generating knowledge based on its training data
     const searchResult = await invokeLLM({
+      // Массив новых фактов с описаниями и источниками — самый длинный ответ
+      maxTokens: 8192,
       messages: [
         {
           role: "system",
