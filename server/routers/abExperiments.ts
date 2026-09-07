@@ -7,6 +7,7 @@ import {
   updateExperiment,
   deleteExperiment,
   listVariants,
+  countVariantsByExperimentIds,
   createVariant,
   deleteVariant,
   getOrAssignVariant,
@@ -52,14 +53,14 @@ export const abExperimentsRouter = router({
 
   list: adminProcedure.query(async () => {
     const experiments = await listExperiments();
-    // Attach variant count for each experiment
-    const withVariants = await Promise.all(
-      experiments.map(async (exp: { id: number }) => {
-        const variants = await listVariants(exp.id);
-        return { ...exp, variantCount: variants.length };
-      })
+    // Один запрос по всем экспериментам вместо N параллельных соединений
+    const variantCounts = await countVariantsByExperimentIds(
+      experiments.map((exp: { id: number }) => exp.id),
     );
-    return withVariants;
+    return experiments.map((exp: { id: number }) => ({
+      ...exp,
+      variantCount: variantCounts.get(exp.id) ?? 0,
+    }));
   }),
 
   getById: adminProcedure.input(z.object({ id: z.number().int() })).query(async ({ input }) => {

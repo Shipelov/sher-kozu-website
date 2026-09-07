@@ -419,7 +419,7 @@ export async function getDb() {
       namedPlaceholders: true,
       enableKeepAlive: true,
       keepAliveInitialDelay: 5000,    // Send keep-alive probe after 5s idle (was 10s)
-      connectTimeout: 5000,           // 5s connect timeout
+      connectTimeout: 20000,          // TiDB Starter холодно стартует 5–10 с после простоя; 5 с давали ETIMEDOUT
       idleTimeout: 30000,             // Close idle connections after 30s (was 60s) — TiDB serverless drops idle faster
       maxIdle: 3,                     // Keep at most 3 idle connections (was 5)
       timezone: "Z",
@@ -5242,6 +5242,27 @@ export async function deleteExperiment(id: number) {
 export async function listVariants(experimentId: number) {
   const db = await getDb();
   return db.select().from(abExperimentVariants).where(eq(abExperimentVariants.experimentId, experimentId));
+}
+
+/** Число вариантов по каждому эксперименту одним запросом (вместо N+1 в abExperiments.list). */
+export async function countVariantsByExperimentIds(
+  experimentIds: number[],
+): Promise<Map<number, number>> {
+  const counts = new Map<number, number>();
+  if (experimentIds.length === 0) return counts;
+  const db = await getDb();
+  const rows: Array<{ experimentId: number; count: number }> = await db
+    .select({
+      experimentId: abExperimentVariants.experimentId,
+      count: sql<number>`count(*)`,
+    })
+    .from(abExperimentVariants)
+    .where(inArray(abExperimentVariants.experimentId, experimentIds))
+    .groupBy(abExperimentVariants.experimentId);
+  for (const row of rows) {
+    counts.set(Number(row.experimentId), Number(row.count));
+  }
+  return counts;
 }
 
 export async function createVariant(data: InsertAbExperimentVariant) {
