@@ -45,6 +45,14 @@ jobs:
           DATABASE_URL: ${{ secrets.TEST_DATABASE_URL }}
         run: pnpm exec drizzle-kit migrate
 
+      # Вся цепочка миграций с нуля во временной схеме: ловит разрывы вроде
+      # ALTER TABLE по таблице, которую ни одна миграция не создаёт.
+      - name: Check migrations on a fresh schema
+        if: ${{ env.HAS_TEST_DB == 'true' }}
+        env:
+          MIGRATION_CHECK_DATABASE_URL: ${{ secrets.TEST_DATABASE_URL }}
+        run: pnpm db:check-fresh
+
       - name: Run tests
         if: ${{ env.HAS_TEST_DB == 'true' }}
         env:
