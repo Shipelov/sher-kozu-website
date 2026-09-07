@@ -1402,6 +1402,14 @@ export const appRouter = router({
       action: z.enum(["approve", "reject"]),
       rejectionReason: z.string().max(255).optional(),
     })).mutation(async ({ ctx, input }) => {
+      // moderateAnimalPhoto пускает только владельца фермы и бросает обычный Error,
+      // который tRPC превращал в INTERNAL_SERVER_ERROR. Проверяем заранее и отдаём FORBIDDEN.
+      if (ctx.user.openId !== ENV.ownerOpenId) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Модерировать фото может только владелец фермы.",
+        });
+      }
       const result = await moderateAnimalPhoto({
         photoId: input.photoId,
         moderatorOpenId: ctx.user.openId,
