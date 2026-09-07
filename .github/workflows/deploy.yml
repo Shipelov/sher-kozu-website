@@ -61,6 +61,14 @@ jobs:
           MIGRATION_CHECK_DATABASE_URL: ${{ secrets.TEST_DATABASE_URL }}
         run: pnpm db:check-fresh
 
+      # TiDB Starter засыпает после простоя; ждём первый успешный SELECT 1 до 60 с,
+      # чтобы тесты не ловили ETIMEDOUT на холодном кластере.
+      - name: Warm up test database
+        if: ${{ env.HAS_TEST_DB == 'true' }}
+        env:
+          DATABASE_URL: ${{ secrets.TEST_DATABASE_URL }}
+        run: node scripts/warm-up-db.mjs
+
       - name: Run tests
         if: ${{ env.HAS_TEST_DB == 'true' }}
         env:
