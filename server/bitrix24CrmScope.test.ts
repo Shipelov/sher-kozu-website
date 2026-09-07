@@ -31,7 +31,8 @@ function isNetworkError(err: any): boolean {
   return err.name === "AbortError" || err.message?.includes("fetch failed") || err.cause?.code === "UND_ERR_CONNECT_TIMEOUT";
 }
 
-describe("Bitrix24 CRM scope", () => {
+// Ходит в реальный Bitrix24 REST — в CI и офлайн пропускается по флагу.
+describe.skipIf(process.env.SKIP_EXTERNAL_TESTS === "1")("Bitrix24 CRM scope", () => {
   it("can access CRM dictionaries required for partner lead sync", async () => {
     const webhookBaseUrl = buildWebhookBaseUrl();
     try {

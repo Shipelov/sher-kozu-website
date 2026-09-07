@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 
-describe("Telegram Bot Token", () => {
+// Ходит в api.telegram.org — в CI и офлайн пропускается по флагу.
+describe.skipIf(process.env.SKIP_EXTERNAL_TESTS === "1")("Telegram Bot Token", () => {
   it("should have TELEGRAM_BOT_TOKEN set in environment", () => {
     const token = process.env.TELEGRAM_BOT_TOKEN;
     expect(token).toBeDefined();

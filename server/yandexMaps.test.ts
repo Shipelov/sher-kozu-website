@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 
-describe("Yandex Maps API Key", () => {
+// Ходит в api-maps.yandex.ru с боевым ключом — в CI и офлайн пропускается по флагу.
+describe.skipIf(process.env.SKIP_EXTERNAL_TESTS === "1")("Yandex Maps API Key", () => {
   it("should have VITE_YANDEX_MAPS_API_KEY set", () => {
     const key = process.env.VITE_YANDEX_MAPS_API_KEY;
     expect(key).toBeDefined();
