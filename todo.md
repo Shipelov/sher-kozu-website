@@ -2929,3 +2929,6 @@ Module: Контроль оборота молока. Spec v2.1. Mobile-first AR
 - [x] Zoya planning validation: Выполнить real read-only check, полный внутренний Vitest, TypeScript и production build
 - [x] Zoya planning balance: Не масштабировать белковые продукты пропорционально всей калорийности и удерживать итоговый белок около profile-derived диапазона
 - [ ] Zoya planning post-publish: После публикации проверить на koza.vip точный диалог «Составь мне план здорового питания» → «Сделай мне меню на завтра», active AI, confirmed-продукты, КБЖУ и SSE [DONE]
+- [x] Technical handover audit: Инвентаризировать Cloudflare Worker, VDS, БД, deploy, тесты, AI-ассистентов, интеграции, доступы и незавершённые работы без раскрытия секретов
+- [x] Technical handover document: Создать в корне репозитория HANDOVER.md с конкретными путями, командами, подтверждёнными фактами и явно обозначенными зонами неизвестности
+- [x] Technical handover validation: Проверить HANDOVER.md на отсутствие секретов, корректность путей/команд и сохранить отдельный чекпоинт передачи
