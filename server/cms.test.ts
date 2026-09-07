@@ -1400,7 +1400,7 @@ describe("cms.reorderBlocks", () => {
 /* ─── CMS Editor: all pages visible ─── */
 describe("CMS Editor page list completeness", () => {
   const editorSource = require("fs").readFileSync(
-    "/home/ubuntu/sher-kozu-website/client/src/pages/AdminCmsEditor.tsx",
+    require("path").resolve(process.cwd(), "client/src/pages/AdminCmsEditor.tsx"),
     "utf8"
   );
 

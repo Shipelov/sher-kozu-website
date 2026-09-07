@@ -1,21 +1,22 @@
 import { describe, expect, it } from "vitest";
 import fs from "node:fs";
+import path from "node:path";
 
-const homeSource = fs.readFileSync("/home/ubuntu/sher-kozu-website/client/src/pages/Home.tsx", "utf8");
-const partnersSource = fs.readFileSync("/home/ubuntu/sher-kozu-website/client/src/pages/Partners.tsx", "utf8");
-const dashboardSource = fs.readFileSync("/home/ubuntu/sher-kozu-website/client/src/pages/Dashboard.tsx", "utf8");
-const trackerSource = fs.readFileSync("/home/ubuntu/sher-kozu-website/client/src/pages/ProductTracker.tsx", "utf8");
-const clubSource = fs.readFileSync("/home/ubuntu/sher-kozu-website/client/src/pages/ClubFeed.tsx", "utf8");
-const appSource = fs.readFileSync("/home/ubuntu/sher-kozu-website/client/src/App.tsx", "utf8");
-const navbarSource = fs.readFileSync("/home/ubuntu/sher-kozu-website/client/src/components/Navbar.tsx", "utf8");
-const dashboardLayoutSource = fs.readFileSync("/home/ubuntu/sher-kozu-website/client/src/components/DashboardLayout.tsx", "utf8");
-const adminHubSource = fs.readFileSync("/home/ubuntu/sher-kozu-website/client/src/pages/AdminHub.tsx", "utf8");
-const adminAnimalsSource = fs.readFileSync("/home/ubuntu/sher-kozu-website/client/src/pages/AdminAnimals.tsx", "utf8");
-const animalsCatalogSource = fs.readFileSync("/home/ubuntu/sher-kozu-website/client/src/pages/AnimalsCatalog.tsx", "utf8");
-const animalProfileSource = fs.readFileSync("/home/ubuntu/sher-kozu-website/client/src/pages/AnimalProfile.tsx", "utf8");
-const animalShareCardSource = fs.readFileSync("/home/ubuntu/sher-kozu-website/client/src/components/AnimalShareCard.tsx", "utf8");
-const aboutFarmSource = fs.readFileSync("/home/ubuntu/sher-kozu-website/client/src/pages/AboutFarm.tsx", "utf8");
-const shareSelectionPreviewCardSource = fs.readFileSync("/home/ubuntu/sher-kozu-website/client/src/components/ShareSelectionPreviewCard.tsx", "utf8");
+const homeSource = fs.readFileSync(path.resolve(process.cwd(), "client/src/pages/Home.tsx"), "utf8").replace(/\r\n/g, "\n");
+const partnersSource = fs.readFileSync(path.resolve(process.cwd(), "client/src/pages/Partners.tsx"), "utf8").replace(/\r\n/g, "\n");
+const dashboardSource = fs.readFileSync(path.resolve(process.cwd(), "client/src/pages/Dashboard.tsx"), "utf8").replace(/\r\n/g, "\n");
+const trackerSource = fs.readFileSync(path.resolve(process.cwd(), "client/src/pages/ProductTracker.tsx"), "utf8").replace(/\r\n/g, "\n");
+const clubSource = fs.readFileSync(path.resolve(process.cwd(), "client/src/pages/ClubFeed.tsx"), "utf8").replace(/\r\n/g, "\n");
+const appSource = fs.readFileSync(path.resolve(process.cwd(), "client/src/App.tsx"), "utf8").replace(/\r\n/g, "\n");
+const navbarSource = fs.readFileSync(path.resolve(process.cwd(), "client/src/components/Navbar.tsx"), "utf8").replace(/\r\n/g, "\n");
+const dashboardLayoutSource = fs.readFileSync(path.resolve(process.cwd(), "client/src/components/DashboardLayout.tsx"), "utf8").replace(/\r\n/g, "\n");
+const adminHubSource = fs.readFileSync(path.resolve(process.cwd(), "client/src/pages/AdminHub.tsx"), "utf8").replace(/\r\n/g, "\n");
+const adminAnimalsSource = fs.readFileSync(path.resolve(process.cwd(), "client/src/pages/AdminAnimals.tsx"), "utf8").replace(/\r\n/g, "\n");
+const animalsCatalogSource = fs.readFileSync(path.resolve(process.cwd(), "client/src/pages/AnimalsCatalog.tsx"), "utf8").replace(/\r\n/g, "\n");
+const animalProfileSource = fs.readFileSync(path.resolve(process.cwd(), "client/src/pages/AnimalProfile.tsx"), "utf8").replace(/\r\n/g, "\n");
+const animalShareCardSource = fs.readFileSync(path.resolve(process.cwd(), "client/src/components/AnimalShareCard.tsx"), "utf8").replace(/\r\n/g, "\n");
+const aboutFarmSource = fs.readFileSync(path.resolve(process.cwd(), "client/src/pages/AboutFarm.tsx"), "utf8").replace(/\r\n/g, "\n");
+const shareSelectionPreviewCardSource = fs.readFileSync(path.resolve(process.cwd(), "client/src/components/ShareSelectionPreviewCard.tsx"), "utf8").replace(/\r\n/g, "\n");
 
 describe("page visual integration source smoke", () => {
   /* ─── Home.tsx — Redesigned marketing landing ─── */
@@ -90,7 +91,7 @@ describe("page visual integration source smoke", () => {
   it("links to /partners from shared Footer component used by Home", () => {
     // Home.tsx uses the shared <Footer /> component which contains the /partners link
     expect(homeSource).toContain("Footer");
-    const footerSource = fs.readFileSync("/home/ubuntu/sher-kozu-website/client/src/components/Footer.tsx", "utf8");
+    const footerSource = fs.readFileSync(path.resolve(process.cwd(), "client/src/components/Footer.tsx"), "utf8").replace(/\r\n/g, "\n");
     expect(footerSource).toContain('href="/partners"');
     expect(footerSource).toContain("Для партнёров");
   });

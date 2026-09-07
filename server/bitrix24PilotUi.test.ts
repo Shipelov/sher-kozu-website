@@ -1,13 +1,14 @@
 import { describe, expect, it } from "vitest";
 import fs from "node:fs";
+import path from "node:path";
 
-const homeSource = fs.readFileSync("/home/ubuntu/sher-kozu-website/client/src/pages/Home.tsx", "utf8");
-const partnersSource = fs.readFileSync("/home/ubuntu/sher-kozu-website/client/src/pages/Partners.tsx", "utf8");
-const adminClubSource = fs.readFileSync("/home/ubuntu/sher-kozu-website/client/src/pages/AdminClub.tsx", "utf8");
-const adminClubRemainingTabsSource = fs.readFileSync("/home/ubuntu/sher-kozu-website/client/src/pages/adminClubRemainingTabs.tsx", "utf8");
-const adminActivitySource = fs.readFileSync("/home/ubuntu/sher-kozu-website/client/src/lib/adminClubActivity.ts", "utf8");
-const routerSource = fs.readFileSync("/home/ubuntu/sher-kozu-website/server/routers.ts", "utf8");
-const dbSource = fs.readFileSync("/home/ubuntu/sher-kozu-website/server/db.ts", "utf8");
+const homeSource = fs.readFileSync(path.resolve(process.cwd(), "client/src/pages/Home.tsx"), "utf8").replace(/\r\n/g, "\n");
+const partnersSource = fs.readFileSync(path.resolve(process.cwd(), "client/src/pages/Partners.tsx"), "utf8").replace(/\r\n/g, "\n");
+const adminClubSource = fs.readFileSync(path.resolve(process.cwd(), "client/src/pages/AdminClub.tsx"), "utf8").replace(/\r\n/g, "\n");
+const adminClubRemainingTabsSource = fs.readFileSync(path.resolve(process.cwd(), "client/src/pages/adminClubRemainingTabs.tsx"), "utf8").replace(/\r\n/g, "\n");
+const adminActivitySource = fs.readFileSync(path.resolve(process.cwd(), "client/src/lib/adminClubActivity.ts"), "utf8").replace(/\r\n/g, "\n");
+const routerSource = fs.readFileSync(path.resolve(process.cwd(), "server/routers.ts"), "utf8").replace(/\r\n/g, "\n");
+const dbSource = fs.readFileSync(path.resolve(process.cwd(), "server/db.ts"), "utf8").replace(/\r\n/g, "\n");
 
 // Combined source for checks that span AdminClub + its extracted tab components
 const adminClubCombinedSource = adminClubSource + adminClubRemainingTabsSource;
@@ -21,7 +22,7 @@ describe("Bitrix24 pilot UI source smoke", () => {
     expect(partnersSource).toContain("createPartnerLead");
     // Home uses shared Footer component which contains /partners link
     expect(homeSource).toContain("Footer");
-    const footerSource = fs.readFileSync("/home/ubuntu/sher-kozu-website/client/src/components/Footer.tsx", "utf8");
+    const footerSource = fs.readFileSync(path.resolve(process.cwd(), "client/src/components/Footer.tsx"), "utf8").replace(/\r\n/g, "\n");
     expect(footerSource).toContain('href="/partners"');
     expect(footerSource).toContain("Для партнёров");
   });
