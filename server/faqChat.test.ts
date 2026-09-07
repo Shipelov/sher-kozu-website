@@ -1,6 +1,19 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { faqChatRouter } from "./routers/faqChat";
+import {
+  faqChatRouter,
+  CHAT_RATE_LIMIT,
+  CHAT_HISTORY_MAX_CHARS,
+  checkChatRateLimit,
+  chatRateLimitSize,
+  pruneExpiredRateLimits,
+  resetChatRateLimit,
+} from "./routers/faqChat";
 import type { TrpcContext } from "./_core/context";
+
+// Все тесты делят один in-memory rate-limit — сбрасываем перед каждым.
+beforeEach(() => {
+  resetChatRateLimit();
+});
 
 /* ─── Mock the LLM module ─── */
 vi.mock("./_core/llm", () => ({
@@ -292,6 +305,154 @@ describe("faqChat.chat", () => {
     });
 
     expect(result).toHaveProperty("reply");
+  });
+});
+
+describe("faqChat.chat rate limit", () => {
+  function createContextWithIp(ip: string): TrpcContext {
+    const ctx = createPublicContext();
+    return { ...ctx, req: { ...ctx.req, ip } as TrpcContext["req"] };
+  }
+
+  it("allows up to the limit and rejects the next message with TOO_MANY_REQUESTS", async () => {
+    const caller = faqChatRouter.createCaller(createContextWithIp("203.0.113.10"));
+    const input = { messages: [{ role: "user" as const, content: "Привет" }] };
+
+    for (let i = 0; i < CHAT_RATE_LIMIT; i += 1) {
+      await expect(caller.chat(input)).resolves.toHaveProperty("reply");
+    }
+
+    await expect(caller.chat(input)).rejects.toMatchObject({
+      code: "TOO_MANY_REQUESTS",
+      message: "Слишком много сообщений, подождите минуту",
+    });
+  });
+
+  it("keeps separate buckets per IP", async () => {
+    const first = faqChatRouter.createCaller(createContextWithIp("203.0.113.1"));
+    const second = faqChatRouter.createCaller(createContextWithIp("203.0.113.2"));
+    const input = { messages: [{ role: "user" as const, content: "Привет" }] };
+
+    for (let i = 0; i < CHAT_RATE_LIMIT; i += 1) {
+      await first.chat(input);
+    }
+    await expect(first.chat(input)).rejects.toMatchObject({ code: "TOO_MANY_REQUESTS" });
+    await expect(second.chat(input)).resolves.toHaveProperty("reply");
+  });
+
+  it("rate limit is checked before grounded shortcuts and the LLM", async () => {
+    const { invokeLLM } = await import("./_core/llm");
+    const caller = faqChatRouter.createCaller(createContextWithIp("203.0.113.3"));
+    const input = { messages: [{ role: "user" as const, content: "Расскажи о ферме" }] };
+
+    for (let i = 0; i < CHAT_RATE_LIMIT; i += 1) {
+      await caller.chat(input);
+    }
+    vi.clearAllMocks();
+    await expect(caller.chat(input)).rejects.toMatchObject({ code: "TOO_MANY_REQUESTS" });
+    expect(invokeLLM).not.toHaveBeenCalled();
+  });
+
+  it("resets the window after an hour", () => {
+    const start = 1_000_000;
+    for (let i = 0; i < CHAT_RATE_LIMIT; i += 1) {
+      expect(checkChatRateLimit("198.51.100.1", start)).toBe(true);
+    }
+    expect(checkChatRateLimit("198.51.100.1", start + 1)).toBe(false);
+    expect(checkChatRateLimit("198.51.100.1", start + 60 * 60 * 1000 + 1)).toBe(true);
+  });
+
+  it("prunes expired entries so the map does not grow forever", () => {
+    const start = 1_000_000;
+    for (let i = 0; i < 50; i += 1) {
+      checkChatRateLimit(`10.0.0.${i}`, start);
+    }
+    expect(chatRateLimitSize()).toBe(50);
+
+    // До истечения окна ничего не удаляется
+    expect(pruneExpiredRateLimits(start + 1000)).toBe(0);
+    expect(chatRateLimitSize()).toBe(50);
+
+    // После окна просроченные записи удаляются
+    expect(pruneExpiredRateLimits(start + 60 * 60 * 1000 + 1)).toBe(50);
+    expect(chatRateLimitSize()).toBe(0);
+  });
+
+  it("prunes automatically during checks once the prune interval passed", () => {
+    const start = 1_000_000;
+    checkChatRateLimit("10.1.0.1", start);
+    checkChatRateLimit("10.1.0.2", start);
+    expect(chatRateLimitSize()).toBe(2);
+
+    // Новый запрос спустя час с лишним: старые записи вычищены, новая добавлена
+    checkChatRateLimit("10.1.0.3", start + 61 * 60 * 1000);
+    expect(chatRateLimitSize()).toBe(1);
+  });
+});
+
+describe("faqChat.chat history compaction", () => {
+  async function getLlmMessages() {
+    const { invokeLLM } = await import("./_core/llm");
+    const call = (invokeLLM as any).mock.calls.at(-1)?.[0];
+    return call.messages as Array<{ role: string; content: string }>;
+  }
+
+  it("passes the full history to the LLM when it fits into the budget", async () => {
+    const caller = faqChatRouter.createCaller(createPublicContext());
+    const messages = [
+      { role: "user" as const, content: "Первый вопрос" },
+      { role: "assistant" as const, content: "Ответ" },
+      { role: "user" as const, content: "Второй вопрос" },
+    ];
+    vi.clearAllMocks();
+    await caller.chat({ messages });
+
+    const llmMessages = await getLlmMessages();
+    expect(llmMessages[0].role).toBe("system");
+    expect(llmMessages.slice(1)).toEqual(messages);
+  });
+
+  it("drops old middle messages but keeps the first user message and the tail", async () => {
+    const caller = faqChatRouter.createCaller(createPublicContext());
+    const chunk = "я".repeat(9_000);
+    // 5 сообщений по 9000 символов = 45 000 > 24 000
+    const messages = [
+      { role: "user" as const, content: `первый ${chunk}` },
+      { role: "assistant" as const, content: `старый ответ ${chunk}` },
+      { role: "user" as const, content: `старый вопрос ${chunk}` },
+      { role: "assistant" as const, content: `свежий ответ ${chunk}` },
+      { role: "user" as const, content: `текущий вопрос ${chunk}` },
+    ];
+    vi.clearAllMocks();
+    await caller.chat({ messages });
+
+    const llmMessages = await getLlmMessages();
+    const history = llmMessages.slice(1);
+    const total = history.reduce((sum, m) => sum + m.content.length, 0);
+
+    expect(history[0].content.startsWith("первый")).toBe(true);
+    expect(history.at(-1)?.content.startsWith("текущий вопрос")).toBe(true);
+    expect(history.some((m) => m.content.startsWith("старый"))).toBe(false);
+    expect(total).toBeLessThanOrEqual(CHAT_HISTORY_MAX_CHARS);
+  });
+
+  it("uses the compacted last user message for routing when history is long", async () => {
+    const caller = faqChatRouter.createCaller(createPublicContext());
+    const chunk = "я".repeat(9_500);
+    const messages = [
+      { role: "user" as const, content: `первый ${chunk}` },
+      { role: "assistant" as const, content: `ответ ${chunk}` },
+      { role: "user" as const, content: `середина ${chunk}` },
+      { role: "assistant" as const, content: `ответ ${chunk}` },
+      { role: "user" as const, content: "Расскажи о ферме" },
+    ];
+    vi.clearAllMocks();
+    const result = await caller.chat({ messages });
+    expect(result).toHaveProperty("reply");
+
+    const llmMessages = await getLlmMessages();
+    expect(llmMessages.at(-1)?.content).toBe("Расскажи о ферме");
+    expect(llmMessages.some((m) => m.content.startsWith("середина"))).toBe(false);
   });
 });
 

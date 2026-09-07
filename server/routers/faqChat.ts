@@ -19,6 +19,7 @@ import {
   getGroundedAnimalCatalogAnswer,
   getGroundedOwnershipRecommendation,
 } from "../mashaOwnershipAdvisor";
+import { compactChatHistory } from "../_core/chatHistory";
 
 /* ─── Uncertainty detection ─── */
 const UNCERTAIN_PHRASES = [
@@ -477,19 +478,48 @@ export function buildMashaSystemPrompt(question: string): string {
 
 /* ─── Rate limiting (simple in-memory) ─── */
 const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
-const RATE_LIMIT = 20; // messages per window
+export const CHAT_RATE_LIMIT = 20; // messages per window
 const RATE_WINDOW_MS = 60 * 60 * 1000; // 1 hour
+const RATE_PRUNE_INTERVAL_MS = 10 * 60 * 1000;
+let lastPruneAt = 0;
 
-function checkChatRateLimit(ip: string): boolean {
-  const now = Date.now();
+/** Суммарный размер истории (сумма content), передаваемой в LLM. */
+export const CHAT_HISTORY_MAX_CHARS = 24_000;
+
+/** Удаляет просроченные записи, иначе Map растёт бесконечно. */
+export function pruneExpiredRateLimits(now = Date.now()): number {
+  let removed = 0;
+  rateLimitMap.forEach((entry, key) => {
+    if (now > entry.resetAt) {
+      rateLimitMap.delete(key);
+      removed += 1;
+    }
+  });
+  lastPruneAt = now;
+  return removed;
+}
+
+export function checkChatRateLimit(ip: string, now = Date.now()): boolean {
+  if (now - lastPruneAt > RATE_PRUNE_INTERVAL_MS) {
+    pruneExpiredRateLimits(now);
+  }
   const entry = rateLimitMap.get(ip);
   if (!entry || now > entry.resetAt) {
     rateLimitMap.set(ip, { count: 1, resetAt: now + RATE_WINDOW_MS });
     return true;
   }
-  if (entry.count >= RATE_LIMIT) return false;
+  if (entry.count >= CHAT_RATE_LIMIT) return false;
   entry.count++;
   return true;
+}
+
+export function resetChatRateLimit(): void {
+  rateLimitMap.clear();
+  lastPruneAt = 0;
+}
+
+export function chatRateLimitSize(): number {
+  return rateLimitMap.size;
 }
 
 /* ─── Helper: save question to DB (fire-and-forget) ─── */
@@ -540,13 +570,27 @@ export const faqChatRouter = router({
       })
     )
     .mutation(async ({ input, ctx }) => {
+      const clientIp = ctx.req?.ip || "unknown";
+      if (!checkChatRateLimit(clientIp)) {
+        throw new TRPCError({
+          code: "TOO_MANY_REQUESTS",
+          message: "Слишком много сообщений, подождите минуту",
+        });
+      }
+
+      // Хвост истории в пределах бюджета символов; первый вопрос сохраняется.
+      const messages = compactChatHistory(input.messages, {
+        maxChars: CHAT_HISTORY_MAX_CHARS,
+        keepFirstUserMessage: true,
+      });
+
       // Extract the last user question for prompt routing and analytics.
-      const lastUserMessage = [...input.messages]
+      const lastUserMessage = [...messages]
         .reverse()
         .find((m) => m.role === "user");
 
       if (lastUserMessage) {
-        const conversationContext = input.messages
+        const conversationContext = messages
           .slice(-8)
           .map((message) => `${message.role}: ${message.content}`)
           .join("\n");
@@ -595,7 +639,7 @@ export const faqChatRouter = router({
       // Build LLM messages with system prompt
       const llmMessages: Message[] = [
         { role: "system", content: systemPrompt },
-        ...input.messages.map((m) => ({
+        ...messages.map((m) => ({
           role: m.role as "user" | "assistant",
           content: m.content,
         })),
