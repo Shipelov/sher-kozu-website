@@ -1,0 +1,24 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "tg-proxy",
+  "main": "src/worker.js",
+  "compatibility_date": "2026-09-07",
+  "workers_dev": true,
+  "preview_urls": true,
+  "keep_vars": true,
+  "ai": {
+    "binding": "AI"
+  },
+  "observability": {
+    "enabled": true,
+    "head_sampling_rate": 1
+  },
+  "secrets": {
+    "required": [
+      "ALERT_BOT_TOKEN",
+      "ALERT_CHAT_ID",
+      "OPENAI_PROXY_SECRET",
+      "PROXY_SECRET"
+    ]
+  }
+}

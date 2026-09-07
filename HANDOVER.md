@@ -19,7 +19,7 @@
 | Маша web | Grounded shortcuts + topic-aware inline prompt + AI | В prompt остаются медицинские/A2 утверждения, требующие аудита |
 | Telegram Mini App | Использует общий tRPC-контур Зои | Зависит от привязки Telegram-аккаунта |
 | Telegram bot chat | Отдельные облегчённые prompts и прямой LLM | Не использует профиль/RAG/validators web-Зои |
-| Cloudflare Worker | `tg-proxy`, Workers AI binding `AI`, 0 ошибок на последнем просмотре | Исходник и Wrangler-конфиг отсутствуют в Git |
+| Cloudflare Worker | `tg-proxy`, исходник и Wrangler-конфиг экспортированы в Git, binding `AI` подтверждён | Автоматический Worker CI ещё не подключён; production deploy остаётся отдельной подтверждаемой операцией |
 | База | TiDB; 95 application tables в Drizzle | Dev migration ledger расходится с репозиторием на 3 записи |
 | Файлы | `/var/www/sherkozu/uploads` на VDS | Нет подтверждённого backup/restore процесса |
 
@@ -27,46 +27,50 @@
 
 ### 2.1. Что подтверждено
 
-В Cloudflare существует Worker `tg-proxy` на hostname `tg-proxy.shipelovspain.workers.dev`. У него один Workers AI binding с именем `AI`; Workers Logs включены, Traces выключены. Последний read-only просмотр панели показал 71 invocation, 0 errors и модель `@cf/meta/llama-3.1-8b-instruct-fast`. Workers AI usage на момент просмотра составлял 660,1 из 10 000 дневных нейронов; в выбранном 24-часовом окне отображалось 75,19 тыс. входных и 10,05 тыс. выходных токенов. Эти цифры — снимок панели, а не договорный лимит на будущие периоды. [3]
+В Cloudflare существует Worker `tg-proxy` на hostname `tg-proxy.shipelovspain.workers.dev`. У него один Workers AI binding с именем `AI`; Workers Logs включены, Traces выключены. На момент экспорта активной была вручную опубликованная Dashboard-версия `f364d3ca`; последний read-only просмотр overview показывал 82 invocation, 1 ms CPU time и 0 errors за выбранные 24 часа. Workers AI usage в предыдущем просмотре составлял 660,1 из 10 000 дневных нейронов; в 24-часовом окне отображалось 75,19 тыс. входных и 10,05 тыс. выходных токенов. Эти цифры — снимки панели, а не договорный лимит на будущие периоды. [3] [32]
 
-Приложение отправляет OpenAI-compatible запросы на `/openai/v1/chat/completions` и указывает `model: gpt-4o-mini`. Для Cloudflare это **request alias**, а не фактическое имя OpenAI-модели. Диагностика приложения намеренно показывает `worker-managed (request alias: gpt-4o-mini)`. Реальную модель выбирает Worker; последняя подтверждённая модель — Llama 3.1 8B Workers AI. [5]
+Приложение отправляет OpenAI-compatible запросы на `/openai/v1/chat/completions` и указывает `model: gpt-4o-mini`. Для Cloudflare это **request alias**, а не фактическое имя OpenAI-модели. Экспортированный Worker игнорирует входное поле `model` и всегда вызывает `@cf/meta/llama-3.1-8b-instruct-fast`. Диагностика приложения поэтому корректно показывает `worker-managed (request alias: gpt-4o-mini)`. [5] [32]
 
-По коду приложения Worker должен обслуживать следующие семейства маршрутов. Полный switch Worker необходимо подтвердить после экспорта исходника. [4] [5] [12]
+Полный switch маршрутов теперь подтверждён экспортированным исходником и покрыт изолированными regression tests. [32] [33]
 
 | Маршрут | Назначение | Степень подтверждения |
 |---|---|---|
-| `/openai/v1/chat/completions` | OpenAI-compatible chat для Зои/Маши | Подтверждено приложением и live-вызовами |
-| `/bot<TOKEN>/<method>` | Telegram Bot API proxy | Требуется приложению |
-| `/file/bot<TOKEN>/<path>` | Получение файлов Telegram, включая voice | Требуется приложению |
-| `/webhook/api/telegram/webhook` | Relay Telegram webhook на `koza.vip` | Настраивается production startup |
-| `/sdk/telegram-web-app.js` | Telegram Web App SDK proxy | Прямо используется в `client/index.html` |
+| `/openai/v1/chat/completions` | OpenAI-compatible chat для Зои/Маши | Только `POST`; разрешённый IP VDS или `X-OpenAI-Proxy-Secret`; модель locked в Worker |
+| `/bot<TOKEN>/<method>` | Telegram Bot API proxy | Catch-all proxy; проверяет `X-Proxy-Secret`, если `PROXY_SECRET` настроен |
+| `/file/bot<TOKEN>/<path>` | Получение файлов Telegram, включая voice | Обрабатывается тем же защищённым catch-all proxy |
+| `/webhook/api/telegram/webhook` | Relay Telegram webhook на фиксированный origin `https://koza.vip` | Передаёт allowlisted Telegram secret header; конечный endpoint обязан его валидировать |
+| `/sdk/telegram-web-app.js` | Telegram Web App SDK proxy | Только `GET`, public cache 1 час |
+| `/health` | Проверка Telegram API, binding `AI` и VDS health | Публичный JSON без secret values |
 
-### 2.2. Чего нет в репозитории
+### 2.2. Экспорт и воспроизводимая структура
 
-В Git отсутствуют `wrangler.toml`, `wrangler.json*`, Worker `src/`, lockfile и Worker CI. Поэтому из приложения нельзя достоверно установить полный код, все маршруты, secret names, поведение `model`, поддержку `stream: true`, AI Gateway и способ deployment. Нельзя считать содержимое старых сообщений или документации заменой исходника.
+Активный Dashboard source экспортирован вручную без публикации изменений и находится в [`cloudflare/tg-proxy/src/worker.js`](./cloudflare/tg-proxy/src/worker.js). Metadata фиксирует active version ID, способ экспорта, hostname, binding и SHA-256 исходника; отдельная normalized-LF checksum защищает provenance после Git checkout на разных ОС. Автоматический secret scan не обнаружил literal API keys, bot tokens или private keys: код содержит только обращения к runtime secret names. [32] [34]
 
-Рекомендуемая структура после экспорта:
+В репозитории создана изолированная структура:
 
 ```text
-infra/cloudflare/tg-proxy/
+cloudflare/tg-proxy/
 ├── package.json
 ├── pnpm-lock.yaml
-├── wrangler.toml
+├── pnpm-workspace.yaml
+├── wrangler.jsonc
+├── export-metadata.json
 ├── src/
-│   └── index.ts
-├── test/
+│   └── worker.js
+├── test/worker.test.mjs
+├── .dev.vars.example
 └── README.md
 ```
 
-Экспортируйте код через Cloudflare Dashboard: **Workers & Pages → tg-proxy → Edit code → Download/Copy**, добавьте bindings/secrets только по именам, затем настройте `wrangler deploy` или отдельный GitHub Actions workflow. Значения секретов должны оставаться в Cloudflare Secrets/GitHub Secrets.
+Wrangler зафиксирован на версии `4.129.0`. `pnpm validate` проверяет синтаксис и 10 offline route/security regressions; `wrangler deploy --dry-run` успешно собирает bundle и подтверждает binding `env.AI`. Значения `ALERT_BOT_TOKEN`, `ALERT_CHAT_ID`, `OPENAI_PROXY_SECRET` и `PROXY_SECRET` должны оставаться в Cloudflare Secrets; `.dev.vars` игнорируется Git. Production Worker не изменялся. [33]
 
 ### 2.3. Model mapping, Gateway, streaming и исчерпание лимита
 
-Приложение позволяет передать поле `model`, но Worker может игнорировать или переназначать его. Это можно подтвердить только Worker source или контролируемым diagnostic endpoint. AI Gateway в overview Worker не был виден; это не доказывает, что Gateway отсутствует во всём аккаунте. Вызовы сторонних OpenAI, Anthropic или Google через Gateway не подтверждены. Подтверждён прямой Workers AI binding `AI`.
+Worker всегда использует `@cf/meta/llama-3.1-8b-instruct-fast`, ограничивает `max_tokens` диапазоном 1–4096 и передаёт Workers AI поля `messages`, `temperature`, `tools`, `tool_choice` и `response_format`. Поле `stream` не передаётся, поэтому upstream streaming отсутствует. AI Gateway в исходнике не используется; подтверждён прямой Workers AI binding `AI`. Наличие других Gateway-конфигураций в аккаунте остаётся отдельной неизвестностью. [32]
 
 Текущий LLM helper делает обычный non-streaming fetch. Web-SSE Зои не является upstream token streaming: сервер сначала получает полный ответ, проверяет его, затем выдаёт клиенту синтетические chunks. Даже если Worker поддержит `stream: true`, Zoya post-validation потребует либо буферизации полного ответа, либо отдельного streaming-safe validator. [5] [7]
 
-При quota/rate error Worker должен вернуть HTTP 429/4xx/5xx. Зоя сохранит работоспособность через проверенный серверный fallback; Маша вернёт техническое сообщение. Точный HTTP contract при исчерпании Workers AI quota нужно добавить в Worker tests после экспорта.
+Ошибки `env.AI.run`, включая quota/rate failures, текущая версия перехватывает и возвращает как HTTP 502 с `Workers AI error`. Исходный upstream status не сохраняется. Зоя при этом сохраняет работоспособность через проверенный серверный fallback; Маша возвращает техническое сообщение. Если операционной диагностике потребуется различать quota, timeout и model error, контракт Worker следует расширить отдельным изменением, не ослабляя fallback. [32]
 
 ### 2.4. Логи и метрики
 
@@ -420,7 +424,8 @@ Tracked HEAD не содержит `.env`, Telegram token или private SSH key
 
 | Приоритет | Работа | Done criteria |
 |---|---|---|
-| P0 | Экспортировать `tg-proxy` source/Wrangler в Git | Worker воспроизводимо deploy-ится из repo |
+| Выполнено | `tg-proxy` source/Wrangler экспортирован в Git | `pnpm validate` и Wrangler dry-run проходят; production не изменялся |
+| P0 | Подключить подтверждаемый Worker CI/version-first deploy | Preview/version upload, approval, deploy и rollback documented |
 | P0 | Rotate Bitrix token/history exposure | Новый secret, workflow без literal, old revoked |
 | P0 | Проверить VDS/TiDB/uploads backups | Успешный documented restore drill |
 | P0 | Authenticated production smoke Зои | Exact two-step menu, confirmed products, locked facts, `[DONE]` |
@@ -436,7 +441,7 @@ OAuth return path; mobile/empty/error smoke; product images; разделени�
 
 ### 9.4. Самые хрупкие места
 
-1. **Неверсионируемый Worker** — production AI и Telegram зависят от кода вне Git.
+1. **Worker deploy пока ручной** — исходник теперь версионируется, но CI/version-first deploy и rollback ещё не подключены.
 2. **Local uploads без backup** — БД backup не восстанавливает файлы.
 3. **Forward-only DB deploy** — rollback bundle не откатывает schema/data.
 4. **In-process schedules** — downtime и multiple instances меняют semantics.
@@ -494,13 +499,13 @@ sudo journalctl -u nginx --since '1 hour ago' --no-pager
 
 ## 11. Явные зоны неизвестности
 
-Ниже перечислены факты, которые **не удалось подтвердить из Git и read-only public checks**:
+Ниже перечислены факты, которые **не удалось подтвердить из Git и read-only проверок** после экспорта Worker:
 
 | Неизвестность | Где подтвердить |
 |---|---|
-| Полный Worker source, routes, secrets, stream behavior | Cloudflare `tg-proxy` editor/export |
 | AI Gateway и внешние provider connections | Cloudflare AI Gateway/account settings |
-| Worker deployment source/CI | Cloudflare deployment history + account audit |
+| Точные deployed secret values/status и кто имеет право их менять | Cloudflare Settings → Variables and Secrets + Members/Audit logs |
+| Worker CI, approval и rollback process | Отдельный GitHub workflow; сейчас подтверждены ручные Dashboard deployments |
 | Ubuntu release, CPU/RAM/disk, SSH users, fail2ban | VDS read-only audit |
 | nginx config, SSL automation, SSE buffering/timeouts | `/etc/nginx`, certbot/systemd |
 | Дополнительные PM2/system cron jobs | `pm2 list`, crontabs, systemd timers |
@@ -510,7 +515,7 @@ sudo journalctl -u nginx --since '1 hour ago' --no-pager
 | GitHub owner/collaborators/branch protection | Repository Settings |
 | Cloudflare/VDS/TiDB/Bitrix members | Provider access settings |
 | Текущие Bitrix funnels/robots/permissions | Bitrix24 admin |
-| Support Worker audio transcription route | Worker source + controlled test |
+| Отдельный Cloudflare audio transcription route | В экспортированном `tg-proxy` отсутствует; проверить другие Workers/account services |
 | Business use of Gamma/Google Drive outside code | Owner/process interview |
 
 ## 12. References
@@ -546,3 +551,6 @@ sudo journalctl -u nginx --since '1 hour ago' --no-pager
 [29]: ./client/src/components/FarmMap.tsx "Yandex farm map"
 [30]: ./todo.md "Historical project ledger"
 [31]: ./README.md "Project README; currently stale in parts"
+[32]: ./cloudflare/tg-proxy/src/worker.js "Exported active tg-proxy source"
+[33]: ./cloudflare/tg-proxy/README.md "Worker routes, bindings, validation and safe deployment runbook"
+[34]: ./cloudflare/tg-proxy/export-metadata.json "Worker export provenance and checksums"

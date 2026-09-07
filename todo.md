@@ -2932,3 +2932,7 @@ Module: Контроль оборота молока. Spec v2.1. Mobile-first AR
 - [x] Technical handover audit: Инвентаризировать Cloudflare Worker, VDS, БД, deploy, тесты, AI-ассистентов, интеграции, доступы и незавершённые работы без раскрытия секретов
 - [x] Technical handover document: Создать в корне репозитория HANDOVER.md с конкретными путями, командами, подтверждёнными фактами и явно обозначенными зонами неизвестности
 - [x] Technical handover validation: Проверить HANDOVER.md на отсутствие секретов, корректность путей/команд и сохранить отдельный чекпоинт передачи
+- [x] Cloudflare Worker export: Получить актуальный исходный код `tg-proxy`, bindings и deployment metadata из правильного аккаунта без изменения production
+- [x] Cloudflare Worker security: Проверить экспорт на встроенные секреты и заменить значения безопасными env/secret references
+- [x] Cloudflare Worker repository: Добавить воспроизводимую структуру Worker, конфигурацию и проверки маршрутов/синтаксиса в репозиторий
+- [x] Cloudflare Worker handover: Обновить HANDOVER.md, выполнить validation и сохранить отдельный checkpoint

@@ -1,0 +1,15 @@
+{
+  "name": "sher-kozu-tg-proxy",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "check": "node --check src/worker.js",
+    "test": "node --test test/worker.test.mjs",
+    "validate": "pnpm check && pnpm test",
+    "dev": "wrangler dev"
+  },
+  "devDependencies": {
+    "wrangler": "4.129.0"
+  }
+}
