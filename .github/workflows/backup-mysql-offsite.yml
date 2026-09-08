@@ -1,0 +1,232 @@
+name: MySQL backup offsite and restore test
+
+# Ежедневная копия production MySQL (localhost:3306 на VDS, база sherkozu) за пределами
+# сервера: по SSH запускаем scripts/ops/backup-mysql.sh, забираем свежий .sql.gz и
+# stats.json, шифруем AES-256 и кладём артефактом на 90 дней. Затем restore-test:
+# дамп импортируется в базу test кластера koza-rehearsal (после DROP всех таблиц) и
+# сверяется число таблиц и COUNT(*) по 10 крупнейшим. См. docs/ops/BACKUP.md.
+
+on:
+  schedule:
+    - cron: "30 3 * * *"
+  workflow_dispatch:
+    inputs:
+      expected_table_count:
+        description: "Expected base table count in the production database"
+        required: false
+        default: "96"
+      skip_restore_test:
+        description: "Only fetch and encrypt the backup, skip the restore test"
+        required: false
+        default: "false"
+        type: choice
+        options: ["false", "true"]
+      force_new_dump:
+        description: "Force a fresh mysqldump even if today's file already exists on the VDS"
+        required: false
+        default: "false"
+        type: choice
+        options: ["false", "true"]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: backup-mysql-offsite
+  cancel-in-progress: false
+
+jobs:
+  backup-and-restore-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      NODE_VERSION: "22"
+      OUTPUT_DIR: backup-output
+      # При schedule inputs нет — берём значения по умолчанию
+      EXPECTED_TABLE_COUNT: ${{ inputs.expected_table_count || '96' }}
+      SKIP_RESTORE_TEST: ${{ inputs.skip_restore_test || 'false' }}
+      FORCE_NEW_DUMP: ${{ inputs.force_new_dump || 'false' }}
+      VDS_HOST: ${{ secrets.VDS_HOST }}
+      VDS_USER: ${{ secrets.VDS_USER }}
+      REHEARSAL_DATABASE_URL: ${{ secrets.REHEARSAL_DATABASE_URL }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      - name: Verify required secrets and inputs
+        env:
+          VDS_SSH_KEY: ${{ secrets.VDS_SSH_KEY }}
+          BACKUP_PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
+        run: |
+          set -euo pipefail
+          missing=0
+          for name in VDS_HOST VDS_USER VDS_SSH_KEY BACKUP_PASSPHRASE REHEARSAL_DATABASE_URL; do
+            if [ -z "${!name:-}" ]; then
+              echo "Missing required GitHub Secret: ${name}"
+              missing=1
+            fi
+          done
+          [ "$missing" -eq 0 ]
+          [[ "$EXPECTED_TABLE_COUNT" =~ ^[1-9][0-9]*$ ]] || { echo "expected_table_count must be positive"; exit 1; }
+          printf '%s' "$BACKUP_PASSPHRASE" > "$RUNNER_TEMP/backup-passphrase"
+          chmod 600 "$RUNNER_TEMP/backup-passphrase"
+          mkdir -p "$OUTPUT_DIR/private"
+          chmod 700 "$OUTPUT_DIR/private"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Self-tests
+        run: |
+          set -euo pipefail
+          bash scripts/ops/backup-mysql.sh --self-test
+          node scripts/ci/db-url-parts.mjs --self-test
+          node scripts/ci/verify-owner-dump.mjs --self-test
+
+      - name: Setup SSH
+        env:
+          VDS_SSH_KEY: ${{ secrets.VDS_SSH_KEY }}
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.ssh
+          printf '%s\n' "$VDS_SSH_KEY" > ~/.ssh/backup_key
+          chmod 600 ~/.ssh/backup_key
+          ssh-keyscan -H "$VDS_HOST" >> ~/.ssh/known_hosts 2>/dev/null
+
+      # Скрипт передаётся по stdin (bash -s): на VDS нужна только ~/.my.cnf у VDS_USER
+      # и права на /var/backups/sherkozu и /var/log/sherkozu-backup.log
+      - name: Run backup on VDS
+        run: |
+          set -euo pipefail
+          SSH="ssh -i ~/.ssh/backup_key -o StrictHostKeyChecking=yes -o ServerAliveInterval=20 -o ServerAliveCountMax=30 -o ConnectTimeout=20"
+          started=$(date +%s)
+          mode=run
+          [ "$FORCE_NEW_DUMP" != "true" ] || mode=--force
+          $SSH "$VDS_USER@$VDS_HOST" "bash -s -- $mode" < scripts/ops/backup-mysql.sh
+          latest=$($SSH "$VDS_USER@$VDS_HOST" "bash -s -- --latest" < scripts/ops/backup-mysql.sh)
+          [[ "$latest" =~ ^/var/backups/sherkozu/sherkozu-[0-9]{4}-[0-9]{2}-[0-9]{2}\.sql\.gz$ ]] || { echo "unexpected latest path: $latest"; exit 1; }
+          printf '%s' "$latest" > "$RUNNER_TEMP/latest-path"
+          echo "backup on VDS: $latest ($(( $(date +%s) - started )) s)"
+
+      - name: Fetch backup and stats from VDS
+        run: |
+          set -euo pipefail
+          latest=$(cat "$RUNNER_TEMP/latest-path")
+          name=$(basename "$latest")
+          printf '%s' "$name" > "$RUNNER_TEMP/backup-name"
+          scp -i ~/.ssh/backup_key -o StrictHostKeyChecking=yes -o ConnectTimeout=20 \
+            "$VDS_USER@$VDS_HOST:$latest" "$OUTPUT_DIR/private/$name"
+          scp -i ~/.ssh/backup_key -o StrictHostKeyChecking=yes -o ConnectTimeout=20 \
+            "$VDS_USER@$VDS_HOST:${latest%.sql.gz}.stats.json" "$OUTPUT_DIR/${name%.sql.gz}.stats.json"
+          ls -la "$OUTPUT_DIR/private/$name"
+
+      # Дамп проверяется на раннере независимо от VDS: gzip цел, есть Dump completed,
+      # число CREATE TABLE = expected_table_count, нет артефактов вроде '[object Object]'
+      - name: Verify dump
+        run: |
+          set -euo pipefail
+          name=$(cat "$RUNNER_TEMP/backup-name")
+          gzip -t "$OUTPUT_DIR/private/$name"
+          gzip -dc "$OUTPUT_DIR/private/$name" > "$OUTPUT_DIR/private/dump.sql"
+          node scripts/ci/verify-owner-dump.mjs --file "$OUTPUT_DIR/private/dump.sql" \
+            --expected-tables "$EXPECTED_TABLE_COUNT" --tool mysqldump \
+            --summary "$OUTPUT_DIR/dump-verification.json"
+
+      - name: Encrypt backup
+        run: |
+          set -euo pipefail
+          name=$(cat "$RUNNER_TEMP/backup-name")
+          sha256sum "$OUTPUT_DIR/private/$name" | awk -v n="$name" '{print $1 "  " n}' > "$OUTPUT_DIR/$name.plaintext.sha256"
+          gpg --symmetric --cipher-algo AES256 --batch --yes --pinentry-mode loopback \
+            --passphrase-file "$RUNNER_TEMP/backup-passphrase" \
+            --output "$OUTPUT_DIR/$name.gpg" "$OUTPUT_DIR/private/$name"
+          (cd "$OUTPUT_DIR" && sha256sum "$name.gpg" > "$name.gpg.sha256")
+          ls -la "$OUTPUT_DIR"
+
+      - name: Upload encrypted backup
+        uses: actions/upload-artifact@v4
+        with:
+          name: mysql-backup-encrypted-${{ github.run_id }}
+          path: |
+            backup-output/*.sql.gz.gpg
+            backup-output/*.sql.gz.gpg.sha256
+            backup-output/*.plaintext.sha256
+            backup-output/*.stats.json
+            backup-output/dump-verification.json
+          retention-days: 90
+          if-no-files-found: error
+
+      # ── Restore test: единственная база, в которую пишет workflow, — test из REHEARSAL_DATABASE_URL ──
+      - name: Prepare rehearsal client
+        if: env.SKIP_RESTORE_TEST != 'true'
+        run: |
+          set -euo pipefail
+          node scripts/ci/db-url-parts.mjs --env REHEARSAL_DATABASE_URL --prefix REHEARSAL_DB_ \
+            --mysql-cnf "$RUNNER_TEMP/rehearsal.cnf" --github-env
+          node scripts/ci/db-connectivity-check.mjs --env REHEARSAL_DATABASE_URL --label rehearsal
+          mysql --version
+
+      - name: Guard rehearsal database name
+        if: env.SKIP_RESTORE_TEST != 'true'
+        run: |
+          set -euo pipefail
+          [ "${REHEARSAL_DB_NAME:-}" = "test" ] || { echo "Rehearsal database must be named test"; exit 1; }
+
+      # MySQL 8 → TiDB: GTID_PURGED, SQL_LOG_BIN, rocksdb-обёртки, триггеры/процедуры
+      - name: Filter dump for TiDB compatibility
+        if: env.SKIP_RESTORE_TEST != 'true'
+        run: |
+          set -euo pipefail
+          sed -E -f scripts/ops/tidb-compat-filter.sed "$OUTPUT_DIR/private/dump.sql" > "$OUTPUT_DIR/private/restore.sql"
+          echo "filtered lines: $(( $(wc -l < "$OUTPUT_DIR/private/dump.sql") - $(wc -l < "$OUTPUT_DIR/private/restore.sql") ))"
+
+      - name: Reset rehearsal database (DROP all tables in test)
+        if: env.SKIP_RESTORE_TEST != 'true'
+        run: node scripts/ci/reset-rehearsal-db.mjs
+
+      - name: Import dump into rehearsal database
+        if: env.SKIP_RESTORE_TEST != 'true'
+        run: |
+          set -euo pipefail
+          started=$(date +%s)
+          mysql --defaults-extra-file="$RUNNER_TEMP/rehearsal.cnf" --database="$REHEARSAL_DB_NAME" \
+            < "$OUTPUT_DIR/private/restore.sql" 2> "$OUTPUT_DIR/private/import-stderr.log" \
+            || { sed -E "s/'[^']*'/'***'/g" < "$OUTPUT_DIR/private/import-stderr.log" | tail -20; exit 1; }
+          echo "import: $(( $(date +%s) - started )) s"
+
+      - name: Check restored data
+        if: env.SKIP_RESTORE_TEST != 'true'
+        run: |
+          set -euo pipefail
+          name=$(cat "$RUNNER_TEMP/backup-name")
+          node scripts/ci/restore-check.mjs --stats "$OUTPUT_DIR/${name%.sql.gz}.stats.json" \
+            --expected-tables "$EXPECTED_TABLE_COUNT" --top 10 --tolerance-percent 1 \
+            --output "$OUTPUT_DIR/restore-check.json"
+
+      - name: Upload restore test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: restore-test-results-${{ github.run_id }}
+          path: |
+            backup-output/restore-check.json
+            backup-output/dump-verification.json
+          retention-days: 30
+          if-no-files-found: warn
+
+      - name: Cleanup plaintext and credentials
+        if: always()
+        run: |
+          rm -f ~/.ssh/backup_key "$RUNNER_TEMP/backup-passphrase" "$RUNNER_TEMP/rehearsal.cnf"
+          rm -f "$RUNNER_TEMP/latest-path" "$RUNNER_TEMP/backup-name"
+          rm -rf backup-output/private

@@ -1,0 +1,6 @@
+# Скрипты, которые выполняются на Linux (VDS, GitHub runner) или импортируются vite-node,
+# должны оставаться с LF даже при checkout на Windows с core.autocrlf=true:
+# CRLF ломает shebang в bash и разбор .mjs в vitest.
+*.sh text eol=lf
+*.mjs text eol=lf
+*.sed text eol=lf

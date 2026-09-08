@@ -1,5 +1,10 @@
 # Managed TiDB: резервная копия, выход из Manus и владение инфраструктурой
 
+> **Предпосылка неверна (8 сентября 2026).** Production-база — MySQL 8 на самом VDS (`localhost:3306`, база `sherkozu`),
+> а не managed TiDB; managed TiDB была dev-базой Manus. Cutover «managed TiDB → своя база» не требуется. Документ сохранён
+> как история аудита. Актуально: `HANDOVER.md` раздел 4.1 и `docs/ops/BACKUP.md`.
+
+
 **Состояние на:** 7 сентября 2026 года  
 **Автор:** Manus AI  
 **Режим аудита:** read-only; production, Cloudflare, DNS, роли и секреты не изменялись

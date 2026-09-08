@@ -1,5 +1,10 @@
 name: One-time VDS audit and TiDB rehearsal
 
+# 2026-09-08: шаги копирования/импорта managed-dump'а удалены — production-база это MySQL
+# на самом VDS (см. docs/ops/BACKUP.md), а managed TiDB была лишь dev-базой Manus. Остались
+# read-only аудит VDS с копией uploads и архив CloudFront-ассетов. База test кластера
+# koza-rehearsal наполняется restore-test'ом workflow backup-mysql-offsite.yml.
+
 on:
   workflow_dispatch:
     inputs:
@@ -7,17 +12,6 @@ on:
         description: "Type RUN_REHEARSAL"
         required: true
         default: "RUN_REHEARSAL"
-      managed_dump_vds_path:
-        description: "Absolute non-web VDS path of the encrypted managed TiDB .gpg bundle"
-        required: true
-        default: "/var/backups/sherkozu/sherkozu-managed-tidb-2026-09-07.tar.gz.gpg"
-      managed_dump_sha256:
-        description: "SHA-256 of the encrypted .gpg file"
-        required: true
-      expected_table_count:
-        description: "Expected table count in the dump manifest"
-        required: true
-        default: "96"
       expected_cloudfront_occurrences:
         description: "Expected DB-linked CloudFront URL occurrences"
         required: true
@@ -33,10 +27,7 @@ concurrency:
 env:
   NODE_VERSION: "22"
   OUTPUT_DIR: rehearsal-output
-  EXPECTED_TABLE_COUNT: ${{ inputs.expected_table_count }}
   EXPECTED_CLOUDFRONT_OCCURRENCES: ${{ inputs.expected_cloudfront_occurrences }}
-  MANAGED_DUMP_VDS_PATH: ${{ inputs.managed_dump_vds_path }}
-  MANAGED_DUMP_SHA256: ${{ inputs.managed_dump_sha256 }}
   SOURCE_DATABASE_URL: ${{ secrets.DATABASE_URL }}
   REHEARSAL_DATABASE_URL: ${{ secrets.REHEARSAL_DATABASE_URL }}
   SSH_HOST: ${{ secrets.VDS_HOST }}
@@ -68,20 +59,13 @@ jobs:
         run: |
           set -euo pipefail
           missing=0
-          for name in SOURCE_DATABASE_URL REHEARSAL_DATABASE_URL SSH_HOST SSH_USER SSH_PRIVATE_KEY MANAGED_DUMP_PASSPHRASE MANAGED_DUMP_VDS_PATH MANAGED_DUMP_SHA256; do
+          for name in SOURCE_DATABASE_URL REHEARSAL_DATABASE_URL SSH_HOST SSH_USER SSH_PRIVATE_KEY MANAGED_DUMP_PASSPHRASE; do
             if [ -z "${!name:-}" ]; then
               echo "Missing required workflow input or GitHub Secret: ${name}"
               missing=1
             fi
           done
           [ "$missing" -eq 0 ]
-          case "$MANAGED_DUMP_VDS_PATH" in
-            /var/backups/sherkozu/*) ;;
-            *) echo "managed_dump_vds_path must be under /var/backups/sherkozu"; exit 1 ;;
-          esac
-          [[ "$MANAGED_DUMP_VDS_PATH" =~ ^/[A-Za-z0-9._/-]+$ ]] || { echo "managed_dump_vds_path contains unsupported characters"; exit 1; }
-          [[ "$MANAGED_DUMP_SHA256" =~ ^[0-9a-fA-F]{64}$ ]] || { echo "managed_dump_sha256 must be 64 hex characters"; exit 1; }
-          [[ "$EXPECTED_TABLE_COUNT" =~ ^[1-9][0-9]*$ ]] || { echo "expected_table_count must be positive"; exit 1; }
           [[ "$EXPECTED_CLOUDFRONT_OCCURRENCES" =~ ^[1-9][0-9]*$ ]] || { echo "expected_cloudfront_occurrences must be positive"; exit 1; }
           printf '%s' "$MANAGED_DUMP_PASSPHRASE" > "$RUNNER_TEMP/managed-dump-passphrase"
           chmod 600 "$RUNNER_TEMP/managed-dump-passphrase"
@@ -95,7 +79,6 @@ jobs:
           DATABASE_URL: ${{ secrets.REHEARSAL_DATABASE_URL }}
         run: |
           pnpm exec drizzle-kit check
-          node scripts/ci/run-managed-tidb-rehearsal.mjs --self-test
           node scripts/ci/archive-cloudfront-assets.mjs --self-test
           bash -n scripts/ci/run-vds-readonly-audit.sh
 
@@ -108,31 +91,6 @@ jobs:
           printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/rehearsal_audit_key
           chmod 600 ~/.ssh/rehearsal_audit_key
           ssh-keyscan -H "$SSH_HOST" >> ~/.ssh/known_hosts 2>/dev/null
-
-      - name: Copy, verify and decrypt managed dump from VDS
-        run: |
-          set -euo pipefail
-          mkdir -p "$OUTPUT_DIR/private/dump"
-          chmod 700 "$OUTPUT_DIR/private" "$OUTPUT_DIR/private/dump"
-          copy_started=$(date +%s%3N)
-          scp -i ~/.ssh/rehearsal_audit_key -o StrictHostKeyChecking=yes -o ConnectTimeout=20 "$SSH_USER@$SSH_HOST:$MANAGED_DUMP_VDS_PATH" "$OUTPUT_DIR/private/managed-dump.tar.gz.gpg"
-          copy_finished=$(date +%s%3N)
-          actual_sha=$(sha256sum "$OUTPUT_DIR/private/managed-dump.tar.gz.gpg" | awk '{print $1}')
-          [ "$actual_sha" = "$MANAGED_DUMP_SHA256" ] || { echo "Encrypted dump SHA-256 mismatch"; exit 1; }
-          decrypt_started=$(date +%s%3N)
-          gpg --batch --yes --pinentry-mode loopback --passphrase-file "$RUNNER_TEMP/managed-dump-passphrase" --decrypt --output "$OUTPUT_DIR/private/managed-dump.tar.gz" "$OUTPUT_DIR/private/managed-dump.tar.gz.gpg"
-          tar -C "$OUTPUT_DIR/private/dump" -xzf "$OUTPUT_DIR/private/managed-dump.tar.gz"
-          (cd "$OUTPUT_DIR/private/dump" && sha256sum -c SHA256SUMS)
-          decrypt_finished=$(date +%s%3N)
-          COPY_MS=$((copy_finished-copy_started)) DECRYPT_EXTRACT_VERIFY_MS=$((decrypt_finished-decrypt_started)) node --input-type=module <<'NODE' > "$OUTPUT_DIR/dump-delivery-summary.json"
-          console.log(JSON.stringify({
-            copyFromVdsMs: Number(process.env.COPY_MS),
-            decryptExtractVerifyMs: Number(process.env.DECRYPT_EXTRACT_VERIFY_MS),
-            encryptedSha256Verified: true,
-            internalChecksumsVerified: true,
-            vdsMutations: 0,
-          }, null, 2));
-          NODE
 
       - name: Run read-only VDS audit and copy uploads
         run: bash scripts/ci/run-vds-readonly-audit.sh
@@ -158,12 +116,7 @@ jobs:
           retention-days: 7
           if-no-files-found: error
 
-      - name: Import dump and run TiDB rehearsal
-        env:
-          MANAGED_DUMP_SQL: rehearsal-output/private/dump/managed-tidb-full.sql
-          MANAGED_DUMP_MANIFEST: rehearsal-output/private/dump/dump-manifest.json
-        run: node scripts/ci/run-managed-tidb-rehearsal.mjs
-
+      # База test должна быть наполнена restore-test'ом backup-mysql-offsite.yml (тот же день)
       - name: Download CloudFront assets and prepare replacement SQL
         env:
           DATABASE_URL: ${{ secrets.REHEARSAL_DATABASE_URL }}
@@ -183,13 +136,8 @@ jobs:
         with:
           name: migration-rehearsal-results
           path: |
-            rehearsal-output/rehearsal-result.json
-            rehearsal-output/row-diff.json
-            rehearsal-output/migration-output.log
-            rehearsal-output/drizzle-check-output.log
             rehearsal-output/cloudfront-assets-summary.json
             rehearsal-output/vds-audit-summary.json
-            rehearsal-output/dump-delivery-summary.json
           retention-days: 7
           if-no-files-found: warn
 
