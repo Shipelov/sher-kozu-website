@@ -17,7 +17,8 @@ export default defineConfig({
     include: ["server/**/*.test.ts", "server/**/*.spec.ts"],
     // Интеграционные тесты ходят в TiDB: bcrypt и сетевые запросы не укладываются в 5 с
     testTimeout: 15_000,
-    hookTimeout: 30_000,
+    // В CI beforeAll с цепочкой запросов к холодному TiDB не укладывается в 30 с
+    hookTimeout: process.env.CI ? 60_000 : 30_000,
     // Повтор только в CI и только для упавших тестов: TiDB Starter иногда отдаёт
     // ETIMEDOUT на первом соединении после простоя. Локально retry выключен,
     // чтобы нестабильный тест был виден сразу, а не маскировался повтором.
