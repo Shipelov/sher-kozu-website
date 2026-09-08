@@ -16,6 +16,9 @@ export default defineConfig({
     environment: "node",
     include: ["server/**/*.test.ts", "server/**/*.spec.ts"],
     setupFiles: ["./vitest.setup.ts"],
+    // afterAll в обратном порядке регистрации: сначала очистка самого файла,
+    // потом closeDb() из setup-файла — иначе DELETE-ы пойдут в закрытый пул
+    sequence: { hooks: "stack" },
     // Интеграционные тесты ходят в TiDB: bcrypt и сетевые запросы не укладываются в 5 с
     testTimeout: 15_000,
     // В CI beforeAll с цепочкой запросов к холодному TiDB не укладывается в 30 с
