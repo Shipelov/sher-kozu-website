@@ -277,6 +277,67 @@ describe("Zoya structured orchestrator", () => {
     });
   });
 
+  it("passes the compacted conversation history to the LLM without duplicating the current query", async () => {
+    const menuContext = {
+      ...context,
+      intent: "personal_menu",
+      requiresPersonalization: true,
+      calculationTargets: {
+        ...context.calculationTargets,
+        calorieTarget: 2_500,
+        calorieRange: { min: 2_375, max: 2_625 },
+        proteinRangeG: { min: 143, max: 204 },
+      },
+    };
+    invokeZoyaLLMMock.mockResolvedValue({
+      choices: [{ message: { content: "Рацион распределён между основными приёмами пищи, а продукты фермы встроены в полноценный день. Рикотта с травами дополняет базовые блюда, не заменяя остальные группы продуктов." } }],
+    });
+    const history = [
+      { role: "user" as const, content: "Мне 47 лет, тренируюсь три раза в неделю" },
+      { role: "assistant" as const, content: "Записала: 47 лет, три тренировки в неделю." },
+      { role: "user" as const, content: "Составь меню" },
+    ];
+    await runZoyaOrchestrator(menuContext, history);
+
+    expect(invokeZoyaLLMMock).toHaveBeenCalledTimes(1);
+    const [llmMessages] = invokeZoyaLLMMock.mock.calls[0] as [Array<{ role: string; content: string }>];
+    expect(llmMessages.map((m) => m.role)).toEqual(["system", "user", "assistant", "user"]);
+    expect(llmMessages[1].content).toContain("47 лет");
+    expect(llmMessages[2].content).toContain("три тренировки");
+    // Последнее сообщение истории совпадает с effectiveQuery — не дублируется
+    expect(llmMessages.filter((m) => m.content === "Составь меню")).toHaveLength(1);
+    expect(llmMessages.at(-1)).toEqual({ role: "user", content: "Составь меню" });
+  });
+
+  it("keeps only the newest 8 history messages within 6000 characters", async () => {
+    const menuContext = {
+      ...context,
+      intent: "personal_menu",
+      requiresPersonalization: true,
+      calculationTargets: {
+        ...context.calculationTargets,
+        calorieTarget: 2_500,
+        calorieRange: { min: 2_375, max: 2_625 },
+        proteinRangeG: { min: 143, max: 204 },
+      },
+    };
+    invokeZoyaLLMMock.mockResolvedValue({
+      choices: [{ message: { content: "Рацион распределён между основными приёмами пищи, а продукты фермы встроены в полноценный день. Рикотта с травами дополняет базовые блюда, не заменяя остальные группы продуктов." } }],
+    });
+    const history = Array.from({ length: 20 }, (_, i) => ({
+      role: (i % 2 === 0 ? "user" : "assistant") as "user" | "assistant",
+      content: `Сообщение ${i} ${"я".repeat(1_000)}`,
+    }));
+    await runZoyaOrchestrator(menuContext, history);
+
+    const [llmMessages] = invokeZoyaLLMMock.mock.calls[0] as [Array<{ role: string; content: string }>];
+    const historyPart = llmMessages.slice(1, -1);
+    expect(historyPart.length).toBeLessThanOrEqual(8);
+    expect(historyPart.reduce((sum, m) => sum + m.content.length, 0)).toBeLessThanOrEqual(6_000);
+    expect(historyPart.at(-1)?.content).toContain("Сообщение 19");
+    expect(llmMessages.at(-1)).toEqual({ role: "user", content: "Составь меню" });
+  });
+
   it("returns the deterministic menu when the AI composition is too weak", async () => {
     const menuContext = {
       ...context,

@@ -7,6 +7,7 @@
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
 import { and, eq, gt, sql } from "drizzle-orm";
+import { maskEmail } from "./_core/logSafety";
 import {
   authRateLimits,
   otpCodes,
@@ -382,7 +383,10 @@ export async function sendOtpEmail(
   const purposeLabel =
     purpose === "registration" ? "регистрации" : "сброса пароля";
 
-  console.log(`[LocalAuth] OTP for ${email} (${purposeLabel}): ${code}`);
+  // Код в логи не пишем никогда: в production лог pm2 — это утечка одноразового кода.
+  if (process.env.NODE_ENV !== "production") {
+    console.log(`[LocalAuth] OTP issued for ${maskEmail(email)} (${purposeLabel})`);
+  }
 
   // Try Bitrix24 CRM email first
   if (isBitrixConfigured()) {
@@ -400,7 +404,7 @@ export async function sendOtpEmail(
           htmlBody: buildOtpEmailHtml(code, purposeLabel),
         });
         if (sent) {
-          console.log(`[LocalAuth] OTP email sent via Bitrix24 to ${email}`);
+          console.log(`[LocalAuth] OTP email sent via Bitrix24 to ${maskEmail(email)}`);
           return true;
         }
       }
@@ -431,7 +435,9 @@ export async function sendPasswordResetEmail(
   email: string,
   code: string
 ): Promise<boolean> {
-  console.log(`[LocalAuth] Password reset code for ${email}: ${code}`);
+  if (process.env.NODE_ENV !== "production") {
+    console.log(`[LocalAuth] Password reset code issued for ${maskEmail(email)}`);
+  }
 
   // Try Bitrix24 CRM email first
   if (isBitrixConfigured()) {
@@ -449,7 +455,7 @@ export async function sendPasswordResetEmail(
           htmlBody: buildOtpEmailHtml(code, "сброса пароля"),
         });
         if (sent) {
-          console.log(`[LocalAuth] Reset email sent via Bitrix24 to ${email}`);
+          console.log(`[LocalAuth] Reset email sent via Bitrix24 to ${maskEmail(email)}`);
           return true;
         }
       }

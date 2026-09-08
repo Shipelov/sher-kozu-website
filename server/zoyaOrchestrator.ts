@@ -4,11 +4,44 @@ import type { ZoyaAssembledContext } from "./zoyaContextAssembler";
 import { parseAmountGrams } from "./zoyaNutritionCalculator";
 import { scaleReferenceNutrition } from "./zoyaProductNutrition";
 import { buildZoyaDeterministicMenuDraft } from "./zoyaMenuPlanner";
+import { compactChatHistory } from "./_core/chatHistory";
 
 export type ZoyaConversationMessage = {
   role: "user" | "assistant";
   content: string;
 };
+
+const ZOYA_ORCHESTRATOR_HISTORY_MESSAGES = 8;
+const ZOYA_ORCHESTRATOR_HISTORY_CHARS = 6_000;
+
+type ZoyaLlmMessage = { role: "system" | "user" | "assistant"; content: string };
+
+/**
+ * [system, ...компактная история, user(effectiveQuery)]. Последнее сообщение
+ * истории не дублируется, если оно уже совпадает с текущим запросом.
+ */
+export function buildZoyaLlmMessages(
+  systemPrompt: string,
+  messages: ZoyaConversationMessage[],
+  effectiveQuery: string,
+): ZoyaLlmMessage[] {
+  const history = compactChatHistory(
+    messages.filter((message) => message.role === "user" || message.role === "assistant"),
+    {
+      maxMessages: ZOYA_ORCHESTRATOR_HISTORY_MESSAGES,
+      maxChars: ZOYA_ORCHESTRATOR_HISTORY_CHARS,
+    },
+  );
+  const last = history[history.length - 1];
+  if (last && last.role === "user" && last.content.trim() === effectiveQuery.trim()) {
+    history.pop();
+  }
+  return [
+    { role: "system", content: systemPrompt },
+    ...history,
+    { role: "user", content: effectiveQuery },
+  ];
+}
 
 export type ZoyaOrchestrationDiagnostics = {
   mode: "deterministic_menu" | "verified_draft";
@@ -684,7 +717,6 @@ export async function runZoyaOrchestrator(
   markdown: string;
   diagnostics: ZoyaOrchestrationDiagnostics;
 }> {
-  void messages;
   const requestController = new AbortController();
   const abortFromCaller = () => requestController.abort(options.signal?.reason);
   options.signal?.addEventListener("abort", abortFromCaller, { once: true });
@@ -708,10 +740,11 @@ export async function runZoyaOrchestrator(
 
       const aiStartedAt = Date.now();
       try {
-        const result = await invokeZoyaLLM([
-          { role: "system", content: buildMenuCompositionPrompt(context, menuDraft) },
-          { role: "user", content: context.effectiveQuery },
-        ], {
+        const result = await invokeZoyaLLM(buildZoyaLlmMessages(
+          buildMenuCompositionPrompt(context, menuDraft),
+          messages,
+          context.effectiveQuery,
+        ), {
           signal: requestController.signal,
           totalDeadlineMs: 18_000,
           primaryTimeoutMs: 17_000,
@@ -783,10 +816,11 @@ export async function runZoyaOrchestrator(
     if (diagnostics.aiAttempted) {
       const aiStartedAt = Date.now();
       try {
-        const result = await invokeZoyaLLM([
-          { role: "system", content: buildVerifiedDraftRewritePrompt(context, response) },
-          { role: "user", content: context.effectiveQuery },
-        ], {
+        const result = await invokeZoyaLLM(buildZoyaLlmMessages(
+          buildVerifiedDraftRewritePrompt(context, response),
+          messages,
+          context.effectiveQuery,
+        ), {
           signal: requestController.signal,
           totalDeadlineMs: 12_000,
           primaryTimeoutMs: 11_000,

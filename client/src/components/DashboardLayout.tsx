@@ -47,6 +47,7 @@ const adminMenuItems = [
 /** Small badge showing count of pending photos for admin sidebar */
 function PendingPhotoBadge() {
   const { data } = trpc.animalPhotos.pendingCount.useQuery(undefined, {
+    staleTime: 0,
     refetchInterval: 30_000,
   });
   const count = typeof data === "number" ? data : 0;

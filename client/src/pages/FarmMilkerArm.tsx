@@ -432,8 +432,10 @@ export default function FarmMilkerArm() {
   const [editNote, setEditNote] = useState("");
 
   // ─── Queries ───
+  // Live-статус смены доярки: свежий при каждом монтировании и фокусе окна
   const todayQuery = trpc.milkSession.myToday.useQuery(undefined, {
     enabled: !!meQuery.data,
+    staleTime: 0,
     refetchOnWindowFocus: true,
   });
 

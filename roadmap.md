@@ -80,6 +80,6 @@ Sher Kozu — это не просто сайт фермы, а сервис **п
 
 ## References
 
-[1]: file:///home/ubuntu/sher-kozu-website/ideas.md "Дизайн-концепции для сайта Шерь Козу"
-[2]: file:///home/ubuntu/sher-kozu-website/site_critical_audit.md "Аудит критических рисков сайта «Шерь Козу»"
+[1]: ./docs/archive/ideas.md "Дизайн-концепции для сайта Шерь Козу"
+[2]: ./docs/archive/site_critical_audit.md "Аудит критических рисков сайта «Шерь Козу»"
 [3]: file:///home/ubuntu/sher-kozu-website/.manus-notes/core_flow_findings.md "Core Flow Findings"

@@ -50,7 +50,7 @@ export default function AdminHub() {
   const animalsQuery = trpc.adminAnimals.list.useQuery(undefined, { enabled: isAdmin, retry: false });
   const clubQuery = trpc.adminClub.dashboard.useQuery(undefined, { enabled: isAdmin, retry: false });
   const funnelQuery = trpc.adminAnalytics.userFunnel.useQuery(undefined, { enabled: isAdmin, retry: false });
-  const pendingCountQuery = trpc.adminAnalytics.pendingApplicationsCount.useQuery(undefined, { enabled: isAdmin, retry: false });
+  const pendingCountQuery = trpc.adminAnalytics.pendingApplicationsCount.useQuery(undefined, { enabled: isAdmin, retry: false, staleTime: 0 });
 
   const funnel = funnelQuery.data;
   const pendingCount = pendingCountQuery.data ?? 0;

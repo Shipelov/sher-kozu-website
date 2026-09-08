@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { ZoyaUserContext } from "./prompts/zoyaSystemPrompt";
+import type { ZoyaUserContext } from "./zoyaSportsMenuAdvisor";
 import {
   buildGroundedSportsMenuReply,
   extractSportsFacts,

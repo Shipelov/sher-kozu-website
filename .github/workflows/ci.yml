@@ -1,0 +1,95 @@
+name: CI
+
+# Проверки для pull request в main. Шаги намеренно дублируют deploy.yml
+# до «Build project» включительно: при изменении шагов править ОБА файла.
+
+on:
+  pull_request:
+    branches: [main]
+
+env:
+  NODE_VERSION: "22"
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      # Контекст secrets недоступен в if: шагов — флаг вычисляется на уровне job
+      HAS_TEST_DB: ${{ secrets.TEST_DATABASE_URL != '' }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Type check
+        run: pnpm check
+
+      # Отдельная dev/test база: интеграционные тесты пишут в БД,
+      # production DATABASE_URL сюда передавать нельзя. Пока секрет не задан,
+      # миграция и тесты пропускаются.
+      - name: Migrate test database
+        if: ${{ env.HAS_TEST_DB == 'true' }}
+        env:
+          DATABASE_URL: ${{ secrets.TEST_DATABASE_URL }}
+        run: pnpm exec drizzle-kit migrate
+
+      # Минимальные синтетические данные для интеграционных тестов (идемпотентно)
+      - name: Seed test database
+        if: ${{ env.HAS_TEST_DB == 'true' }}
+        env:
+          DATABASE_URL: ${{ secrets.TEST_DATABASE_URL }}
+          OWNER_OPEN_ID: ci-farm-owner
+        run: pnpm db:seed-test
+
+      # Вся цепочка миграций с нуля во временной схеме: ловит разрывы вроде
+      # ALTER TABLE по таблице, которую ни одна миграция не создаёт.
+      - name: Check migrations on a fresh schema
+        if: ${{ env.HAS_TEST_DB == 'true' }}
+        env:
+          MIGRATION_CHECK_DATABASE_URL: ${{ secrets.TEST_DATABASE_URL }}
+        run: pnpm db:check-fresh
+
+      # TiDB Starter засыпает после простоя; ждём первый успешный SELECT 1 до 60 с,
+      # чтобы тесты не ловили ETIMEDOUT на холодном кластере.
+      - name: Warm up test database
+        if: ${{ env.HAS_TEST_DB == 'true' }}
+        env:
+          DATABASE_URL: ${{ secrets.TEST_DATABASE_URL }}
+        run: node scripts/warm-up-db.mjs
+
+      - name: Run tests
+        if: ${{ env.HAS_TEST_DB == 'true' }}
+        env:
+          SKIP_EXTERNAL_TESTS: "1"
+          DATABASE_URL: ${{ secrets.TEST_DATABASE_URL }}
+          # Тот же openId, что в шаге сида: тесты admin/owner используют его
+          OWNER_OPEN_ID: ci-farm-owner
+          LOCAL_UPLOADS_DIR: /tmp/koza-test-uploads
+          BASE_URL: http://localhost:3000
+        run: |
+          mkdir -p "$LOCAL_UPLOADS_DIR"
+          pnpm test
+
+      - name: Build project
+        run: pnpm build
+
+      - name: Verify build
+        run: |
+          if [ ! -f dist/index.js ]; then
+            echo "Build failed: dist/index.js not found"
+            exit 1
+          fi
+          echo "Build successful"

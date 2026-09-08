@@ -1,4 +1,5 @@
 import { ENV } from "./_core/env";
+import { maskEmail } from "./_core/logSafety";
 
 export type PartnerLeadAttachment = {
   name: string;
@@ -390,7 +391,7 @@ export async function sendBitrixEmail(params: {
         },
       },
     });
-    console.log(`[Bitrix24] Email sent to ${params.toEmail} (contact ${params.contactId})`);
+    console.log(`[Bitrix24] Email sent to ${maskEmail(params.toEmail)} (contact ${params.contactId})`);
     return true;
   } catch (e) {
     console.warn("[Bitrix24] sendBitrixEmail error:", e);

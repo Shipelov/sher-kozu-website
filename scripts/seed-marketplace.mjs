@@ -11,7 +11,8 @@ import { fileURLToPath } from "url";
 import { dirname, resolve } from "path";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-dotenv.config({ path: resolve(__dirname, ".env") });
+// Скрипт живёт в scripts/, .env — в корне репозитория
+dotenv.config({ path: resolve(__dirname, "..", ".env") });
 
 const DATABASE_URL = process.env.DATABASE_URL;
 if (!DATABASE_URL) {

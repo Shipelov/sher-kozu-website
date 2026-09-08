@@ -20,6 +20,7 @@ import {
   getUserProfile,
 } from "./db";
 import { sendTelegramNotification } from "./telegramBot";
+import { maskEmail } from "./_core/logSafety";
 import {
   isBitrixConfigured,
   findOrCreateBitrixContact,
@@ -93,7 +94,7 @@ async function sendProductPlanReadyEmail(
     });
 
     if (!contactId) {
-      console.warn(`[ProductPlanCron] Could not find/create B24 contact for ${profile.email}`);
+      console.warn(`[ProductPlanCron] Could not find/create B24 contact for ${maskEmail(profile.email)}`);
       return false;
     }
 
@@ -106,7 +107,7 @@ async function sendProductPlanReadyEmail(
     });
 
     if (sent) {
-      console.log(`[ProductPlanCron] Email sent to ${profile.email} for animal ${animalName}`);
+      console.log(`[ProductPlanCron] Email sent to ${maskEmail(profile.email)} for animal ${animalName}`);
     }
     return sent;
   } catch (err) {

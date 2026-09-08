@@ -1,4 +1,8 @@
 import { describe, expect, it } from "vitest";
+// Статический импорт: динамический import("./routers") внутри it() под нагрузкой
+// не укладывался в testTimeout, а при сборке файла лимита нет.
+import { appRouter } from "./routers";
+import * as dbModule from "./db";
 
 /* ═══════════════════════════════════════════════════════════════
    Delivery Tab — Unit Tests
@@ -339,37 +343,34 @@ describe("Delivery Tab: itemsJson parsing", () => {
 
 describe("Delivery Tab: DB helper exports", () => {
   it("listDeliveryScheduleByAnimal should be exported from db module", async () => {
-    const db = await import("./db");
+    const db = dbModule;
     expect(typeof db.listDeliveryScheduleByAnimal).toBe("function");
   }, 15000);
 
   it("bulkUpdateDeliveryStatus should be exported from db module", async () => {
-    const db = await import("./db");
+    const db = dbModule;
     expect(typeof db.bulkUpdateDeliveryStatus).toBe("function");
   });
 
   it("updateDeliveryNote should be exported from db module", async () => {
-    const db = await import("./db");
+    const db = dbModule;
     expect(typeof db.updateDeliveryNote).toBe("function");
   });
 });
 
 describe("Delivery Tab: Router procedure existence", () => {
   it("getScheduleByAnimal procedure should exist on productTrack router", async () => {
-    const { appRouter } = await import("./routers");
     // Check that the procedure exists by verifying the router shape
     const procedures = Object.keys((appRouter as any)._def.procedures);
     expect(procedures).toContain("productTrack.getScheduleByAnimal");
   });
 
   it("bulkUpdateDeliveryStatus procedure should exist on productTrack router", async () => {
-    const { appRouter } = await import("./routers");
     const procedures = Object.keys((appRouter as any)._def.procedures);
     expect(procedures).toContain("productTrack.bulkUpdateDeliveryStatus");
   });
 
   it("updateDeliveryNote procedure should exist on productTrack router", async () => {
-    const { appRouter } = await import("./routers");
     const procedures = Object.keys((appRouter as any)._def.procedures);
     expect(procedures).toContain("productTrack.updateDeliveryNote");
   });
