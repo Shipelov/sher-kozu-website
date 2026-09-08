@@ -25,8 +25,8 @@ describe("backup-mysql-offsite workflow", () => {
     const runStep = workflow.slice(workflow.indexOf("- name: Run backup on VDS"), workflow.indexOf("- name: Fetch backup and stats from VDS"));
     expect(runStep).toContain('run_as="sudo -u $BACKUP_RUN_AS -H"');
     expect(runStep).toContain('if [ "$VDS_USER" = "$BACKUP_RUN_AS" ]; then');
-    expect(runStep).toContain("$run_as '$BACKUP_SCRIPT_PATH' $mode");
-    expect(runStep).toContain("$run_as '$BACKUP_SCRIPT_PATH' --latest");
+    expect(runStep).toContain("cd /tmp && $run_as '$BACKUP_SCRIPT_PATH' $mode");
+    expect(runStep).toContain("cd /tmp && $run_as '$BACKUP_SCRIPT_PATH' --latest");
     expect(runStep).not.toContain("bash -s");
     // scp дампа и stats — от ssh-пользователя, без sudo
     const fetchStep = workflow.slice(workflow.indexOf("- name: Fetch backup and stats from VDS"), workflow.indexOf("- name: Verify dump"));
@@ -97,6 +97,8 @@ describe("scripts/ops/backup-mysql.sh", () => {
     expect(backupScript).toContain("SELECT table_name FROM information_schema.tables");
     expect(backupScript).toContain('query+="${query:+ UNION ALL }SELECT');
     expect(backupScript).toContain("ПРЕДУПРЕЖДЕНИЕ: не удалось собрать COUNT(*)");
+    // Из стартового каталога уходим до find: при sudo из /root он недоступен
+    expect(backupScript).toContain('run|--force|--latest) cd / || die');
   });
 
   it("self-test на фикстурах проходит (дамп, проверка, stats, ротация, повторный запуск)", () => {

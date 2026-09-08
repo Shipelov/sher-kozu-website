@@ -26,6 +26,7 @@ TiDB Cloud используется только для тестов CI (`TEST_D
 | Запуск скрипта из workflow | `deploy` через `sudo -u deploy -H /opt/sherkozu/backup-mysql.sh …` | если `VDS_USER` совпадает с `BACKUP_RUN_AS` (`deploy`), sudo не нужен; имя пользователя — env `BACKUP_RUN_AS` на уровне job |
 | `scp` дампа и `stats.json` в CI | `root` (ssh-пользователь) | root читает файлы `deploy` без изменений прав |
 | Файлы в `/var/backups/sherkozu` | всегда `deploy`, права 600 | и cron, и workflow пишут от `deploy`; `/root/.my.cnf` не нужен и не должен существовать |
+| Рабочий каталог | скрипт сам делает `cd /`, workflow — `cd /tmp` перед `sudo` | при `sudo -u deploy` из `/root` `find` в ротации падал с «Failed to restore initial working directory: /root: Permission denied» |
 
 Если ssh-пользователь не `root` и не `deploy`, ему нужен `sudo -u deploy` без пароля: `echo '<user> ALL=(deploy) NOPASSWD: /opt/sherkozu/backup-mysql.sh' | sudo tee /etc/sudoers.d/sherkozu-backup`.
 

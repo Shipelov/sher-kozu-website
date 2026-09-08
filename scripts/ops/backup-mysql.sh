@@ -25,6 +25,8 @@ MYSQL="${MYSQL:-mysql}"
 DEFAULTS_FILE="${MYSQL_DEFAULTS_FILE:-$HOME/.my.cnf}"
 BACKUP_DATE="${BACKUP_DATE:-$(date +%F)}"
 DUMP_TIMEOUT="${BACKUP_DUMP_TIMEOUT:-1200}"   # секунд на mysqldump
+# Абсолютный путь к самому скрипту: self-test перезапускает его после cd /
+SCRIPT_PATH=$(readlink -f "$0" 2>/dev/null || printf '%s' "$0")
 
 log() {
   local line
@@ -190,7 +192,7 @@ EOF
   done
 
   # 2026-09-06 — воскресенье → должна появиться недельная копия
-  BACKUP_DATE=2026-09-06 bash "$0" run >/dev/null 2>&1
+  BACKUP_DATE=2026-09-06 bash "$SCRIPT_PATH" run >/dev/null 2>&1
   check "дневной файл создан" "[ -s '$BACKUP_DIR/sherkozu-2026-09-06.sql.gz' ]"
   check "файл заканчивается Dump completed" "gzip -dc '$BACKUP_DIR/sherkozu-2026-09-06.sql.gz' | tail -n 1 | grep -q '^-- Dump completed'"
   check "stats.json со 100 таблицами (GROUP_CONCAT-лимит 1024 не мешает)" "[ \$(grep -o '\"tableName\"' '$BACKUP_DIR/sherkozu-2026-09-06.stats.json' | wc -l) -eq 100 ]"
@@ -202,26 +204,37 @@ EOF
   check "недельных хранится 8" "[ \$(find '$BACKUP_DIR/weekly' -maxdepth 1 -name 'sherkozu-????-??-??.sql.gz' | wc -l) -eq 8 ]"
   check "самые старые удалены, свежий остался" "[ ! -f '$BACKUP_DIR/sherkozu-2026-06-10.sql.gz' ] && [ -f '$BACKUP_DIR/sherkozu-2026-09-06.sql.gz' ]"
   check "права 600 на дампе" "[ \$(stat -c %a '$BACKUP_DIR/sherkozu-2026-09-06.sql.gz') = 600 ]"
-  check "--latest печатает свежий файл" "[ \$(bash '$0' --latest) = '$BACKUP_DIR/sherkozu-2026-09-06.sql.gz' ]"
+  check "--latest печатает свежий файл" "[ \$(bash '$SCRIPT_PATH' --latest) = '$BACKUP_DIR/sherkozu-2026-09-06.sql.gz' ]"
   check "лог пишется" "grep -q 'готово за' '$BACKUP_LOG_FILE'"
 
   # Повторный запуск в тот же день переиспользует файл
   local before after
   before=$(stat -c %Y "$BACKUP_DIR/sherkozu-2026-09-06.sql.gz")
   sleep 1
-  BACKUP_DATE=2026-09-06 bash "$0" run >/dev/null 2>&1
+  BACKUP_DATE=2026-09-06 bash "$SCRIPT_PATH" run >/dev/null 2>&1
   after=$(stat -c %Y "$BACKUP_DIR/sherkozu-2026-09-06.sql.gz")
   check "повторный запуск не пересоздаёт файл" "[ '$before' = '$after' ] && grep -q 'пропускаю' '$BACKUP_LOG_FILE'"
 
   # Оборванный дамп отклоняется, файл не появляется
-  if FAKE_TRUNCATE=1 BACKUP_DATE=2026-09-07 bash "$0" run >/dev/null 2>&1; then
+  if FAKE_TRUNCATE=1 BACKUP_DATE=2026-09-07 bash "$SCRIPT_PATH" run >/dev/null 2>&1; then
     check "оборванный дамп отклонён" "false"
   else
     check "оборванный дамп отклонён" "[ ! -f '$BACKUP_DIR/sherkozu-2026-09-07.sql.gz' ] && grep -q 'оборван' '$BACKUP_LOG_FILE'"
   fi
 
+  # Запуск из каталога, которого больше нет (или недоступного, как /root при sudo -u deploy):
+  # find в ротации падал на восстановлении cwd. На Windows каталог-cwd удалить нельзя —
+  # тогда проверка вырождается в обычный запуск из этого каталога.
+  mkdir -p "$tmp/gone"
+  if ( cd "$tmp/gone" && { rmdir "$tmp/gone" 2>/dev/null || true; } && BACKUP_DATE=2026-09-09 bash "$SCRIPT_PATH" run >/dev/null 2>&1 ); then
+    check "запуск из удалённого каталога: exit 0" "true"
+  else
+    check "запуск из удалённого каталога: exit 0" "false"
+  fi
+  check "запуск из удалённого каталога: дамп создан, ротация отработала" "[ -s '$BACKUP_DIR/sherkozu-2026-09-09.sql.gz' ] && [ \$(find '$BACKUP_DIR' -maxdepth 1 -name 'sherkozu-????-??-??.sql.gz' | wc -l) -eq 14 ]"
+
   # Сбой статистики не трогает дамп и не меняет код выхода
-  if FAKE_STATS_FAIL=1 BACKUP_DATE=2026-09-08 bash "$0" run >/dev/null 2>&1; then
+  if FAKE_STATS_FAIL=1 BACKUP_DATE=2026-09-08 bash "$SCRIPT_PATH" run >/dev/null 2>&1; then
     check "сбой stats: exit 0" "true"
   else
     check "сбой stats: exit 0" "false"
@@ -233,7 +246,7 @@ EOF
   chmod 644 "$tmp/my.cnf"
   if [ "$(stat -c %a "$tmp/my.cnf")" != "644" ]; then
     echo "skip my.cnf с правами 644 отклонён (ФС не хранит права, например Git Bash на Windows)"
-  elif BACKUP_DATE=2026-09-10 bash "$0" run >/dev/null 2>&1; then
+  elif BACKUP_DATE=2026-09-10 bash "$SCRIPT_PATH" run >/dev/null 2>&1; then
     check "my.cnf с правами 644 отклонён" "false"
   else
     check "my.cnf с правами 644 отклонён" "true"
@@ -247,6 +260,12 @@ EOF
     return 1
   fi
 }
+
+# Уходим из стартового каталога: при sudo -u deploy из /root find в ротации не может
+# вернуться в недоступный cwd и падает; self-test делает это сам для своих вызовов
+case "${1:-run}" in
+  run|--force|--latest) cd / || die "не удалось перейти в /" ;;
+esac
 
 case "${1:-run}" in
   run) run_backup "${2:-}" ;;
