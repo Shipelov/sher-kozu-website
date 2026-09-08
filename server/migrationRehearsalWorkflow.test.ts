@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { existsSync, readFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import path from "node:path";
 
 const root = path.resolve(import.meta.dirname, "..");
@@ -18,10 +18,10 @@ const assets = readFileSync(
 const vds = readFileSync(path.join(root, "scripts/ci/run-vds-readonly-audit.sh"), "utf8");
 
 describe("one-time migration rehearsal workflow", () => {
-  it("is stored as a handoff template, manual-only, and cannot deploy production", () => {
+  it("is an exact copy of the handoff template, manual-only, and cannot deploy production", () => {
     expect(
-      existsSync(path.join(root, ".github/workflows/one-time-migration-rehearsal.yml")),
-    ).toBe(false);
+      readFileSync(path.join(root, ".github/workflows/one-time-migration-rehearsal.yml")),
+    ).toEqual(readFileSync(path.join(root, "docs/ops/readonly-audit.workflow.yml")));
     expect(workflow).toContain("workflow_dispatch:");
     expect(workflow).not.toMatch(/\n\s+push:/);
     expect(workflow).not.toContain("pm2 restart");
