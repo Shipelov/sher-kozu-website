@@ -26,6 +26,10 @@ on:
         description: "TiDB toolkit version (Dumpling binary)"
         required: true
         default: "v8.5.1"
+      toolkit_sha256:
+        description: "Pinned sha256 of tidb-community-toolkit-<version>-linux-amd64.tar.gz (empty = trust published .sha256 only)"
+        required: false
+        default: "49a67fefb2f2ade52160b5c8dea8f70dc5fada4845f30751d74a59eecd212a41"
       dumpling_consistency:
         description: "Dumpling --consistency: snapshot (tidb_snapshot) or none"
         required: true
@@ -52,6 +56,7 @@ env:
   EXPECTED_TABLE_COUNT: ${{ inputs.expected_table_count }}
   DUMPLING_VERSION: ${{ inputs.dumpling_version }}
   DUMPLING_CONSISTENCY: ${{ inputs.dumpling_consistency }}
+  TOOLKIT_SHA256: ${{ inputs.toolkit_sha256 }}
   SOURCE_DATABASE_URL: ${{ secrets.DATABASE_URL }}
   REHEARSAL_DATABASE_URL: ${{ secrets.REHEARSAL_DATABASE_URL }}
 
@@ -89,6 +94,7 @@ jobs:
           [ "$missing" -eq 0 ]
           [[ "$EXPECTED_TABLE_COUNT" =~ ^[1-9][0-9]*$ ]] || { echo "expected_table_count must be positive"; exit 1; }
           [[ "$DUMPLING_VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "dumpling_version must look like v8.5.1"; exit 1; }
+          [[ -z "$TOOLKIT_SHA256" || "$TOOLKIT_SHA256" =~ ^[0-9a-f]{64}$ ]] || { echo "toolkit_sha256 must be 64 hex characters or empty"; exit 1; }
           [ "$SOURCE_DATABASE_URL" != "$REHEARSAL_DATABASE_URL" ] || { echo "DATABASE_URL and REHEARSAL_DATABASE_URL are identical"; exit 1; }
           printf '%s' "$MANAGED_DUMP_PASSPHRASE" > "$RUNNER_TEMP/managed-dump-passphrase"
           chmod 600 "$RUNNER_TEMP/managed-dump-passphrase"
@@ -132,8 +138,9 @@ jobs:
           mysql --version
 
       # Основной инструмент — TiDB Dumpling: mysqldump 8 в режиме single transaction падает на
-      # ROLLBACK TO SAVEPOINT (TiDB не поддерживает savepoints). Toolkit скачивается с
-      # официального download.pingcap.org и проверяется по опубликованному sha256.
+      # ROLLBACK TO SAVEPOINT (TiDB не поддерживает savepoints). Toolkit (~1 ГБ) скачивается
+      # с официального download.pingcap.com, сверяется с опубликованным .sha256 и с хэшем,
+      # закреплённым в input toolkit_sha256; из архива извлекается только dumpling.
       # Fallback (только dump_tool=auto) — mysqldump без режима single transaction,
       # с --skip-lock-tables/--skip-add-locks (LOCK TABLES в TiDB no-op), --column-statistics=0,
       # --set-gtid-purged=OFF, --no-tablespaces; снимок при этом не консистентный.
@@ -146,16 +153,25 @@ jobs:
           mask_log() { sed -E "s/'[^']*'/'***'/g; s/@[^ :]+/@***/g"; }
           tool=""
           if [ "${{ inputs.dump_tool }}" != "mysqldump" ]; then
-            base="https://download.pingcap.org/tidb-community-toolkit-${DUMPLING_VERSION}-linux-amd64"
+            base="https://download.pingcap.com/tidb-community-toolkit-${DUMPLING_VERSION}-linux-amd64"
             curl -fsSL --retry 3 -o "$RUNNER_TEMP/toolkit.tar.gz" "${base}.tar.gz"
             curl -fsSL --retry 3 -o "$RUNNER_TEMP/toolkit.sha256" "${base}.tar.gz.sha256"
-            expected_sha=$(awk '{print $1}' "$RUNNER_TEMP/toolkit.sha256")
+            # Опубликованный .sha256 содержит голый хэш без имени файла
+            published_sha=$(tr -d '[:space:]' < "$RUNNER_TEMP/toolkit.sha256")
             actual_sha=$(sha256sum "$RUNNER_TEMP/toolkit.tar.gz" | awk '{print $1}')
-            [ "$expected_sha" = "$actual_sha" ] || { echo "toolkit sha256 mismatch"; exit 1; }
+            [[ "$published_sha" =~ ^[0-9a-f]{64}$ ]] || { echo "published .sha256 is malformed"; exit 1; }
+            [ "$published_sha" = "$actual_sha" ] || { echo "toolkit sha256 mismatch with published .sha256"; exit 1; }
+            if [ -n "$TOOLKIT_SHA256" ]; then
+              [ "$TOOLKIT_SHA256" = "$actual_sha" ] || { echo "toolkit sha256 mismatch with pinned toolkit_sha256 (actual: $actual_sha)"; exit 1; }
+            else
+              echo "::warning::toolkit_sha256 is empty — trusting only the published .sha256 (actual: $actual_sha)"
+            fi
             mkdir -p "$RUNNER_TEMP/toolkit"
-            tar -C "$RUNNER_TEMP/toolkit" -xzf "$RUNNER_TEMP/toolkit.tar.gz"
+            # Из архива на ~1 ГБ извлекается только вложенный tarball Dumpling
+            tar -C "$RUNNER_TEMP/toolkit" -xzf "$RUNNER_TEMP/toolkit.tar.gz" --wildcards "*dumpling-${DUMPLING_VERSION}-linux-amd64.tar.gz"
             nested=$(find "$RUNNER_TEMP/toolkit" -name "dumpling-${DUMPLING_VERSION}-linux-amd64.tar.gz" | head -n 1)
-            if [ -n "$nested" ]; then tar -C "$RUNNER_TEMP/toolkit" -xzf "$nested"; fi
+            [ -n "$nested" ] || { echo "dumpling-${DUMPLING_VERSION}-linux-amd64.tar.gz not found inside toolkit"; exit 1; }
+            tar -C "$RUNNER_TEMP/toolkit" -xzf "$nested"
             DUMPLING=$(find "$RUNNER_TEMP/toolkit" -type f -name dumpling | head -n 1)
             [ -n "$DUMPLING" ] || { echo "dumpling binary not found in toolkit"; exit 1; }
             chmod +x "$DUMPLING"
