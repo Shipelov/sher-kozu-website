@@ -166,16 +166,18 @@ export default function AdminMilkDashboard() {
         ? (sessionStatus as "in_progress" | "pending_confirm" | "confirmed" | "disputed")
         : undefined,
     },
-    { enabled: tab === "sessions" },
+    // Admin-мониторинг смен/приёмок/танков: данные меняются с АРМ, кэш 30 с недопустим
+    { enabled: tab === "sessions", staleTime: 0 },
   );
 
   const receptionsQuery = trpc.milkAdmin.receptions.useQuery(
     { page: receptionPage, pageSize: 15 },
-    { enabled: tab === "receptions" },
+    { enabled: tab === "receptions", staleTime: 0 },
   );
 
   const tanksQuery = trpc.milkAdmin.tanks.useQuery(undefined, {
     enabled: tab === "tanks",
+    staleTime: 0,
   });
 
   // ─── Tank analytics state ───

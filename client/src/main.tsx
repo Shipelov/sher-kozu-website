@@ -24,7 +24,20 @@ export function getTgMiniAppToken() {
 /** Detect if we're inside Telegram WebView */
 const isTelegramMiniApp = !!(window as any).Telegram?.WebApp?.initData;
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      // Большинство данных (каталог, профили, CMS) меняется редко: 30 с без
+      // повторных запросов при перемонтировании и без refetch на фокус окна.
+      // Запросам, которым нужна свежесть (чат, уведомления, live-статусы АРМ),
+      // staleTime/refetchInterval задаются точечно в месте useQuery.
+      staleTime: 30_000,
+      refetchOnWindowFocus: false,
+      retry: 1,
+      gcTime: 5 * 60_000,
+    },
+  },
+});
 let hasScheduledUnauthorizedRedirect = false;
 
 const redirectToLoginIfUnauthorized = (error: unknown) => {

@@ -129,13 +129,16 @@ export default function FarmCheesemakerArm() {
   const [rejectReason, setRejectReason] = useState("");
 
   // ─── Queries ───
+  // Live-статусы АРМ сыродела: без глобального staleTime 30 с
   const pendingQuery = trpc.milkReception.pendingSessions.useQuery(undefined, {
     enabled: !!meQuery.data,
+    staleTime: 0,
     refetchInterval: 30_000,
   });
 
   const tanksQuery = trpc.milkTank.list.useQuery(undefined, {
     enabled: !!meQuery.data,
+    staleTime: 0,
   });
 
   const historyQuery = trpc.milkReception.myReceptions.useQuery(

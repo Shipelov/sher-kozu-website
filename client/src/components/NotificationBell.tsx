@@ -56,12 +56,15 @@ export default function NotificationBell() {
   const [isShaking, setIsShaking] = useState(false);
   const prevUnreadRef = useRef<number | null>(null);
 
+  // Колокольчик должен быть свежим: без глобального staleTime 30 с
   const unreadCountQuery = trpc.notifications.unreadCount.useQuery(undefined, {
+    staleTime: 0,
     refetchInterval: 30_000,
   });
 
   const listQuery = trpc.notifications.list.useQuery(undefined, {
     enabled: open,
+    staleTime: 0,
   });
 
   const utils = trpc.useUtils();

@@ -207,7 +207,8 @@ export default function OwnerAdminChat({
   // Queries
   const messagesQuery = trpc.productTrack.listMessages.useQuery(
     { animalId, ownerOpenId },
-    { refetchInterval: POLL_INTERVAL },
+    // Чат: всегда свежий, глобальный staleTime не применяем
+    { staleTime: 0, refetchInterval: POLL_INTERVAL },
   );
 
   const messages = (messagesQuery.data ?? []) as ChatMsg[];
