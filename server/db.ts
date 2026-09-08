@@ -404,6 +404,14 @@ function resetPool() {
   _db = null;
 }
 
+/** Закрывает пул. Нужен тестам: vitest создаёт модуль db заново для каждого файла. */
+export async function closeDb() {
+  const pool = _pool;
+  _pool = null;
+  _db = null;
+  if (pool) await pool.end().catch(() => {});
+}
+
 export async function getDb() {
   if (_db) return _db;
 
@@ -414,7 +422,8 @@ export async function getDb() {
   try {
     _pool = createPool({
       uri: ENV.databaseUrl,
-      connectionLimit: 10,           // Reduced from 20 — TiDB serverless has connection limits
+      // 10 на процесс; под vitest каждый из 4 воркеров держит свой пул, поэтому лимит меньше
+      connectionLimit: process.env.VITEST ? 4 : 10,
       waitForConnections: true,
       queueLimit: 0,                    // 0 = unlimited queue (prevents Queue limit reached errors)
       namedPlaceholders: true,

@@ -15,6 +15,7 @@ export default defineConfig({
   test: {
     environment: "node",
     include: ["server/**/*.test.ts", "server/**/*.spec.ts"],
+    setupFiles: ["./vitest.setup.ts"],
     // Интеграционные тесты ходят в TiDB: bcrypt и сетевые запросы не укладываются в 5 с
     testTimeout: 15_000,
     // В CI beforeAll с цепочкой запросов к холодному TiDB не укладывается в 30 с
