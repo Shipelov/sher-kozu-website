@@ -1,5 +1,12 @@
 # Передача одноразового VDS audit и TiDB migration rehearsal
 
+> **Обновление 2026-09-08.** Предпосылка этого документа — что production живёт в managed TiDB — неверна:
+> production-база это MySQL 8 на самом VDS (`localhost:3306`, база `sherkozu`), а managed TiDB была
+> dev-базой Manus. Из workflow удалены разделы 2–3 (доставка и inputs managed-dump'а) и шаги import/rehearsal
+> (разделы 5 п. 4, 7 `migration-rehearsal-results`, 8): остались read-only аудит VDS с копией `uploads` и архив
+> CloudFront-ассетов. Скрипт `run-managed-tidb-rehearsal.mjs` удалён. Бэкап и restore-test production-базы —
+> `docs/ops/BACKUP.md`; шаг CloudFront читает базу `test`, которую наполняет restore-test.
+
 **Автор:** Manus AI  
 **Статус:** шаблон подготовлен, но не активирован в GitHub Actions  
 **Шаблон:** `docs/ops/readonly-audit.workflow.yml`
