@@ -39,8 +39,8 @@ env:
   MANAGED_DUMP_SHA256: ${{ inputs.managed_dump_sha256 }}
   SOURCE_DATABASE_URL: ${{ secrets.DATABASE_URL }}
   REHEARSAL_DATABASE_URL: ${{ secrets.REHEARSAL_DATABASE_URL }}
-  SSH_HOST: ${{ secrets.SSH_HOST }}
-  SSH_USER: ${{ secrets.SSH_USER }}
+  SSH_HOST: ${{ secrets.VDS_HOST }}
+  SSH_USER: ${{ secrets.VDS_USER }}
 
 jobs:
   audit-and-rehearse:
@@ -63,7 +63,7 @@ jobs:
 
       - name: Verify required secrets and inputs
         env:
-          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          SSH_PRIVATE_KEY: ${{ secrets.VDS_SSH_KEY }}
           MANAGED_DUMP_PASSPHRASE: ${{ secrets.MANAGED_DUMP_PASSPHRASE }}
         run: |
           set -euo pipefail
@@ -98,7 +98,7 @@ jobs:
 
       - name: Setup SSH
         env:
-          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          SSH_PRIVATE_KEY: ${{ secrets.VDS_SSH_KEY }}
         run: |
           set -euo pipefail
           mkdir -p ~/.ssh
