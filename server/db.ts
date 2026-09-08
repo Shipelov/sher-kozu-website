@@ -1,4 +1,4 @@
-import { and, asc, between, desc, eq, gt, gte, isNotNull, isNull, like, lt, lte, ne, or, sql } from "drizzle-orm";
+import { and, asc, between, desc, eq, gt, gte, isNotNull, isNull, like, lt, lte, ne, or, sql, count } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import { inArray } from "drizzle-orm";
 import { createPool, type Pool } from "mysql2/promise";
@@ -1205,7 +1205,7 @@ export async function getOwnerDashboardData(ownerOpenId: string) {
           ? {
               id: "open-club-event",
               title: `Посмотреть ближайшее событие: ${nextEvent.title}`,
-              description: nextEvent.teaser ?? nextEvent.description ?? "Клубный маршрут поддерживает личную связь семьи с фермой.",
+              description: nextEvent.description || "Клубный маршрут поддерживает личную связь семьи с фермой.",
               href: clubHref,
               kind: "club",
             }
@@ -1346,7 +1346,24 @@ export async function getProductTrackerData(ownerOpenId: string, animalSlug: str
   };
 }
 
-export async function getClubFeedData(ownerOpenId: string) {
+/** Лимиты выдачи клуба по умолчанию: раньше всё выбиралось без LIMIT */
+export const CLUB_LIST_LIMITS = { posts: 50, events: 50, members: 200, max: 500 } as const;
+
+export type ClubListLimits = { posts?: number; events?: number; members?: number };
+
+function clubLimit(value: number | undefined, fallback: number): number {
+  if (value === undefined || !Number.isFinite(value) || value < 1) return fallback;
+  return Math.min(Math.floor(value), CLUB_LIST_LIMITS.max);
+}
+
+/** Выбираем limit + 1 строку: лишняя строка — признак, что есть ещё */
+function takeWithHasMore<T>(rows: T[], limit: number): { items: T[]; hasMore: boolean } {
+  return { items: rows.slice(0, limit), hasMore: rows.length > limit };
+}
+
+const EMPTY_CLUB_HAS_MORE = { posts: false, events: false, members: false };
+
+export async function getClubFeedData(ownerOpenId: string, limits: ClubListLimits = {}) {
   const db = await getDb();
   if (!db) {
     return {
@@ -1354,25 +1371,46 @@ export async function getClubFeedData(ownerOpenId: string) {
       events: [],
       members: [],
       presets: [],
+      hasMore: { ...EMPTY_CLUB_HAS_MORE },
     };
   }
 
-  const [posts, events, members, presets] = await Promise.all([
-    db.select().from(clubPosts).where(and(eq(clubPosts.ownerOpenId, ownerOpenId), eq(clubPosts.hidden, false))).orderBy(asc(clubPosts.sortOrder), desc(clubPosts.createdAt)),
-    db.select().from(clubEvents).where(and(eq(clubEvents.ownerOpenId, ownerOpenId), eq(clubEvents.hidden, false))).orderBy(asc(clubEvents.sortOrder), desc(clubEvents.createdAt)),
-    db.select().from(clubMembers).where(and(eq(clubMembers.ownerOpenId, ownerOpenId), eq(clubMembers.hidden, false))).orderBy(asc(clubMembers.sortOrder), desc(clubMembers.createdAt)),
+  const postsLimit = clubLimit(limits.posts, CLUB_LIST_LIMITS.posts);
+  const eventsLimit = clubLimit(limits.events, CLUB_LIST_LIMITS.events);
+  const membersLimit = clubLimit(limits.members, CLUB_LIST_LIMITS.members);
+
+  const [postRows, eventRows, memberRows, presets] = await Promise.all([
+    db.select().from(clubPosts).where(and(eq(clubPosts.ownerOpenId, ownerOpenId), eq(clubPosts.hidden, false))).orderBy(asc(clubPosts.sortOrder), desc(clubPosts.createdAt)).limit(postsLimit + 1),
+    db.select().from(clubEvents).where(and(eq(clubEvents.ownerOpenId, ownerOpenId), eq(clubEvents.hidden, false))).orderBy(asc(clubEvents.sortOrder), desc(clubEvents.createdAt)).limit(eventsLimit + 1),
+    db.select().from(clubMembers).where(and(eq(clubMembers.ownerOpenId, ownerOpenId), eq(clubMembers.hidden, false))).orderBy(asc(clubMembers.sortOrder), desc(clubMembers.createdAt)).limit(membersLimit + 1),
     db.select().from(clubAdminPresets).where(eq(clubAdminPresets.ownerOpenId, ownerOpenId)).orderBy(asc(clubAdminPresets.sortOrder), asc(clubAdminPresets.id)),
   ]);
+  const posts = takeWithHasMore<typeof clubPosts.$inferSelect>(postRows, postsLimit);
+  const events = takeWithHasMore<typeof clubEvents.$inferSelect>(eventRows, eventsLimit);
+  const members = takeWithHasMore<typeof clubMembers.$inferSelect>(memberRows, membersLimit);
 
   return {
-    posts,
-    events,
-    members,
+    posts: posts.items,
+    events: events.items,
+    members: members.items,
     presets,
+    hasMore: { posts: posts.hasMore, events: events.hasMore, members: members.hasMore },
   };
 }
 
-export async function listClubAdminData(ownerOpenId: string) {
+/** Видимое событие по id — для регистрации, чтобы не перебирать всю ленту */
+export async function getClubEventById(id: number, ownerOpenId: string): Promise<typeof clubEvents.$inferSelect | null> {
+  const db = await getDb();
+  if (!db) return null;
+  const rows = await db
+    .select()
+    .from(clubEvents)
+    .where(and(eq(clubEvents.id, id), eq(clubEvents.ownerOpenId, ownerOpenId), eq(clubEvents.hidden, false)))
+    .limit(1);
+  return rows[0] ?? null;
+}
+
+export async function listClubAdminData(ownerOpenId: string, limits: ClubListLimits = {}) {
   const db = await getDb();
   if (!db) {
     return {
@@ -1380,6 +1418,7 @@ export async function listClubAdminData(ownerOpenId: string) {
       events: [],
       members: [],
       presets: [],
+      hasMore: { ...EMPTY_CLUB_HAS_MORE },
       summary: {
         totalPosts: 0,
         pinnedPosts: 0,
@@ -1390,24 +1429,38 @@ export async function listClubAdminData(ownerOpenId: string) {
     };
   }
 
-  const [posts, events, members, presets] = await Promise.all([
-    db.select().from(clubPosts).where(eq(clubPosts.ownerOpenId, ownerOpenId)).orderBy(asc(clubPosts.sortOrder), desc(clubPosts.createdAt)),
-    db.select().from(clubEvents).where(eq(clubEvents.ownerOpenId, ownerOpenId)).orderBy(asc(clubEvents.sortOrder), desc(clubEvents.createdAt)),
-    db.select().from(clubMembers).where(eq(clubMembers.ownerOpenId, ownerOpenId)).orderBy(asc(clubMembers.sortOrder), desc(clubMembers.createdAt)),
+  const postsLimit = clubLimit(limits.posts, CLUB_LIST_LIMITS.posts);
+  const eventsLimit = clubLimit(limits.events, CLUB_LIST_LIMITS.events);
+  const membersLimit = clubLimit(limits.members, CLUB_LIST_LIMITS.members);
+
+  const [postRows, eventRows, memberRows, presets] = await Promise.all([
+    db.select().from(clubPosts).where(eq(clubPosts.ownerOpenId, ownerOpenId)).orderBy(asc(clubPosts.sortOrder), desc(clubPosts.createdAt)).limit(postsLimit + 1),
+    db.select().from(clubEvents).where(eq(clubEvents.ownerOpenId, ownerOpenId)).orderBy(asc(clubEvents.sortOrder), desc(clubEvents.createdAt)).limit(eventsLimit + 1),
+    db.select().from(clubMembers).where(eq(clubMembers.ownerOpenId, ownerOpenId)).orderBy(asc(clubMembers.sortOrder), desc(clubMembers.createdAt)).limit(membersLimit + 1),
     db.select().from(clubAdminPresets).where(eq(clubAdminPresets.ownerOpenId, ownerOpenId)).orderBy(asc(clubAdminPresets.sortOrder), asc(clubAdminPresets.id)),
   ]);
+  // Сводка считается по всей таблице, а не по усечённой выборке
+  const [[postStats], [eventStats], [memberStats]] = await Promise.all([
+    db.select({ total: count(), pinned: sql<number>`SUM(CASE WHEN ${clubPosts.pinned} > 0 THEN 1 ELSE 0 END)` }).from(clubPosts).where(eq(clubPosts.ownerOpenId, ownerOpenId)),
+    db.select({ total: count(), open: sql<number>`SUM(CASE WHEN ${clubEvents.status} IN ('Открыта запись', 'Мест осталось мало') THEN 1 ELSE 0 END)` }).from(clubEvents).where(eq(clubEvents.ownerOpenId, ownerOpenId)),
+    db.select({ total: count() }).from(clubMembers).where(eq(clubMembers.ownerOpenId, ownerOpenId)),
+  ]);
+  const posts = takeWithHasMore<typeof clubPosts.$inferSelect>(postRows, postsLimit);
+  const events = takeWithHasMore<typeof clubEvents.$inferSelect>(eventRows, eventsLimit);
+  const members = takeWithHasMore<typeof clubMembers.$inferSelect>(memberRows, membersLimit);
 
   return {
-    posts,
-    events,
-    members,
+    posts: posts.items,
+    events: events.items,
+    members: members.items,
     presets,
+    hasMore: { posts: posts.hasMore, events: events.hasMore, members: members.hasMore },
     summary: {
-      totalPosts: posts.length,
-      pinnedPosts: posts.filter((post: any) => Boolean(post.pinned)).length,
-      totalEvents: events.length,
-      openEvents: events.filter((event: any) => ["Открыта запись", "Мест осталось мало"].includes(event.status)).length,
-      totalMembers: members.length,
+      totalPosts: Number(postStats?.total ?? 0),
+      pinnedPosts: Number(postStats?.pinned ?? 0),
+      totalEvents: Number(eventStats?.total ?? 0),
+      openEvents: Number(eventStats?.open ?? 0),
+      totalMembers: Number(memberStats?.total ?? 0),
     },
   };
 }

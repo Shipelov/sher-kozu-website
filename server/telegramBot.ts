@@ -330,8 +330,7 @@ function registerHandlers(bot: Bot) {
       for (const event of upcoming) {
         const statusIcon = event.status === "Открыта запись" ? "🟢" : event.status === "Мест осталось мало" ? "🟡" : "📌";
         msg += `${statusIcon} *${escapeMarkdown(event.title)}*\n`;
-        if (event.date) msg += `   📆 ${escapeMarkdown(String(event.date))}\n`;
-        if (event.teaser) msg += `   ${escapeMarkdown(event.teaser)}\n`;
+        if (event.dateLabel) msg += `   📆 ${escapeMarkdown(event.dateLabel)}\n`;
         msg += `\n`;
       }
 

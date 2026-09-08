@@ -32,6 +32,7 @@ import {
   ensureSprintOneSeed,
   getAnimalBySlug,
   getClubFeedData,
+  getClubEventById,
   getOwnerDashboardData,
   getIntegrationAuditById,
   getPartnerLeadById,
@@ -486,6 +487,12 @@ async function attemptBitrixSync(
 function sanitizeFileName(fileName: string) {
   return fileName.toLowerCase().replace(/[^a-z0-9.-]+/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "") || "photo";
 }
+
+// Необязательные лимиты клубных списков; без input действуют CLUB_LIST_LIMITS
+const clubLimitInput = z.number().int().min(1).max(500).optional();
+const clubListLimitsInput = z
+  .object({ posts: clubLimitInput, events: clubLimitInput, members: clubLimitInput })
+  .optional();
 
 export const appRouter = router({
   system: systemRouter,
@@ -1470,9 +1477,9 @@ export const appRouter = router({
     }),
   }),
   club: router({
-    feed: publicProcedure.query(async ({ ctx }) => {
+    feed: publicProcedure.input(clubListLimitsInput).query(async ({ ctx, input }) => {
       const ownerOpenId = ctx.user?.openId ?? ENV.ownerOpenId;
-      const feedData = await getClubFeedData(ownerOpenId);
+      const feedData = await getClubFeedData(ownerOpenId, input ?? {});
       const likedPostIds = ctx.user ? await getUserLikedPostIds(ctx.user.openId) : [];
       const eventRegistrations = ctx.user ? await getUserEventRegistrations(ctx.user.openId) : [];
       return {
@@ -1541,8 +1548,7 @@ export const appRouter = router({
       .input(z.object({ eventId: z.number().int().positive() }))
       .mutation(async ({ ctx, input }) => {
         // Check event exists and registration is open
-        const feedData = await getClubFeedData(ENV.ownerOpenId);
-        const event = feedData.events.find((e: any) => e.id === input.eventId);
+        const event = await getClubEventById(input.eventId, ENV.ownerOpenId);
         if (!event) throw new TRPCError({ code: "NOT_FOUND", message: "Событие не найдено." });
         if (!(event as any).registrationOpen) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Регистрация на это событие закрыта." });
 
@@ -1769,8 +1775,8 @@ export const appRouter = router({
     }),
   }),
   adminClub: router({
-    dashboard: adminProcedure.query(async ({ ctx }) => {
-      return listClubAdminData(ctx.user.openId);
+    dashboard: adminProcedure.input(clubListLimitsInput).query(async ({ ctx, input }) => {
+      return listClubAdminData(ctx.user.openId, input ?? {});
     }),
     createPost: adminProcedure.input(clubPostInput).mutation(async ({ ctx, input }) => {
       return createClubPost({ ownerOpenId: ctx.user.openId, ...input, tagsCsv: "", pinned: input.isPinned ? 1 : 0 });
