@@ -124,8 +124,9 @@ jobs:
           fi
           echo "ssh user: $VDS_USER, backup runs as: $BACKUP_RUN_AS, script: $BACKUP_SCRIPT_PATH"
           $SSH "$VDS_USER@$VDS_HOST" "test -x '$BACKUP_SCRIPT_PATH' || { echo '$BACKUP_SCRIPT_PATH is missing on the VDS — see docs/ops/BACKUP.md'; exit 1; }"
-          $SSH "$VDS_USER@$VDS_HOST" "$run_as '$BACKUP_SCRIPT_PATH' $mode"
-          latest=$($SSH "$VDS_USER@$VDS_HOST" "$run_as '$BACKUP_SCRIPT_PATH' --latest")
+          # cd /tmp: при sudo -u deploy из /root find внутри скрипта падал на недоступном cwd
+          $SSH "$VDS_USER@$VDS_HOST" "cd /tmp && $run_as '$BACKUP_SCRIPT_PATH' $mode"
+          latest=$($SSH "$VDS_USER@$VDS_HOST" "cd /tmp && $run_as '$BACKUP_SCRIPT_PATH' --latest")
           [[ "$latest" =~ ^/var/backups/sherkozu/sherkozu-[0-9]{4}-[0-9]{2}-[0-9]{2}\.sql\.gz$ ]] || { echo "unexpected latest path: $latest"; exit 1; }
           printf '%s' "$latest" > "$RUNNER_TEMP/latest-path"
           echo "backup on VDS: $latest ($(( $(date +%s) - started )) s)"
