@@ -2953,3 +2953,12 @@ Module: Контроль оборота молока. Spec v2.1. Mobile-first AR
 - [ ] Owner-controlled TiDB restore drill: Создать целевой кластер владельца, импортировать dump, baseline `0066`, проверить schema/rows/auth/API и документировать восстановление
 - [ ] Production media exit: Сделать независимую копию `/var/www/sherkozu/uploads` и project CloudFront assets, проверить checksums и sample restore
 - [ ] VDS account handover: Подтвердить RU-CENTER customer account/плательщика, перечислить fingerprints `authorized_keys` по владельцам и проверить provider backup restore
+- [ ] One-time GitHub audit workflow: Добавить только `workflow_dispatch` workflow без deploy для VDS DATABASE_URL fingerprint, SSH public-key fingerprints, uploads inventory и backup status
+- [ ] VDS uploads artifact: Создать read-only архив `/var/www/sherkozu/uploads` и сохранить GitHub Actions artifact на 7 дней без изменения production
+- [ ] TiDB rehearsal import: Импортировать encrypted managed dump в owner-controlled `koza-rehearsal` через `REHEARSAL_DATABASE_URL` без вывода connection string
+- [ ] TiDB rehearsal migrations: Проверить physical `0066`, записать baseline, явно доказать пропуск baseline-миграций `0021` и `0060a` по timestamp, выполнить migrate/check без schema changes
+- [ ] TiDB rehearsal row parity: Сверить row counts всех 96 таблиц с manifest и подготовить таблицу расхождений с ожидаемым итогом 0
+- [ ] TiDB rehearsal timings: Замерить import, baseline, migrate, check и validation для уточнения production downtime
+- [ ] CloudFront media rehearsal: Скачать 29 DB-linked CloudFront assets в 7-day artifact и подготовить SQL замены URL без выполнения
+- [ ] Migration rehearsal report: Добавить `MIGRATION_REHEARSAL.md` без credentials с результатами, timings, row-diff и ссылками на workflow artifacts
+- [ ] One-time workflow cleanup: После получения результатов удалить временный workflow отдельным checkpoint и подтвердить отсутствие deploy/production mutations
