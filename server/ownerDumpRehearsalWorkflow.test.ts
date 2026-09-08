@@ -32,8 +32,11 @@ describe("owner dump and rehearsal workflow", () => {
   });
 
   it("снимает дамп Dumpling с проверкой sha256, mysqldump только как fallback без savepoints", () => {
-    expect(workflow).toContain("download.pingcap.org/tidb-community-toolkit-");
-    expect(workflow).toContain('[ "$expected_sha" = "$actual_sha" ]');
+    expect(workflow).toContain("download.pingcap.com/tidb-community-toolkit-");
+    expect(workflow).not.toContain("pingcap.org");
+    expect(workflow).toContain("TOOLKIT_SHA256");
+    expect(workflow).toContain("--wildcards \"*dumpling-${DUMPLING_VERSION}-linux-amd64.tar.gz\"");
+    expect(workflow).toContain('[ "$published_sha" = "$actual_sha" ]');
     expect(workflow).toContain("--consistency \"$DUMPLING_CONSISTENCY\"");
     expect(workflow).toContain("--ca /etc/ssl/certs/ca-certificates.crt");
     expect(workflow).toContain("options: [auto, dumpling, mysqldump]");
