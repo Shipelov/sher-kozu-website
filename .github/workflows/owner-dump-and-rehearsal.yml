@@ -111,31 +111,40 @@ jobs:
           DATABASE_URL: ${{ secrets.REHEARSAL_DATABASE_URL }}
         run: |
           set -euo pipefail
-          bash scripts/ci/parse-database-url.sh --self-test
+          node scripts/ci/db-url-parts.mjs --self-test
           node scripts/ci/verify-owner-dump.mjs --self-test
           node scripts/ci/run-owner-dump-rehearsal.mjs --self-test
           pnpm exec drizzle-kit check
 
-      # Разбор URL в shell без вывода значений; пароли уходят в option-файлы mode 600,
-      # компоненты маскируются в логе. Имя базы нужно mysqldump/mysql аргументом.
-      - name: Prepare MySQL client option files
+      # Разбор URL в node (new URL + decodeURIComponent, схемы mysql:// и mysql2://).
+      # host/port/user/db → GITHUB_ENV, пароль → файл mode 600 (и option-файл mysql),
+      # user и пароль маскируются; в лог попадают только host, port и имя базы.
+      - name: Parse database URLs
         run: |
           set -euo pipefail
-          source scripts/ci/parse-database-url.sh
-          parse_database_url "$SOURCE_DATABASE_URL"
-          echo "::add-mask::$DB_PASSWORD"
-          echo "::add-mask::$DB_USER"
-          echo "::add-mask::$DB_HOST"
-          write_mysql_defaults_file "$RUNNER_TEMP/source.cnf"
-          printf '%s' "$DB_NAME" > "$RUNNER_TEMP/source-db-name"
-          [ "$DB_NAME" != "test" ] || { echo "Source database is named test — refusing to treat it as production"; exit 1; }
-          parse_database_url "$REHEARSAL_DATABASE_URL"
-          echo "::add-mask::$DB_PASSWORD"
-          write_mysql_defaults_file "$RUNNER_TEMP/rehearsal.cnf"
-          printf '%s' "$DB_NAME" > "$RUNNER_TEMP/rehearsal-db-name"
-          [ "$DB_NAME" = "test" ] || { echo "Rehearsal database must be named test"; exit 1; }
-          chmod 600 "$RUNNER_TEMP/source-db-name" "$RUNNER_TEMP/rehearsal-db-name"
+          node scripts/ci/db-url-parts.mjs --env SOURCE_DATABASE_URL --prefix SOURCE_DB_ \
+            --password-file "$RUNNER_TEMP/source.pw" --mysql-cnf "$RUNNER_TEMP/source.cnf" --github-env
+          node scripts/ci/db-url-parts.mjs --env REHEARSAL_DATABASE_URL --prefix REHEARSAL_DB_ \
+            --password-file "$RUNNER_TEMP/rehearsal.pw" --mysql-cnf "$RUNNER_TEMP/rehearsal.cnf" --github-env
           mysql --version
+
+      - name: Guard database names
+        run: |
+          set -euo pipefail
+          [ -n "${SOURCE_DB_HOST:-}" ] && [ -n "${SOURCE_DB_NAME:-}" ] && [ -n "${SOURCE_DB_USER:-}" ] || { echo "Source URL parts are empty"; exit 1; }
+          [ -n "${REHEARSAL_DB_HOST:-}" ] && [ -n "${REHEARSAL_DB_NAME:-}" ] || { echo "Rehearsal URL parts are empty"; exit 1; }
+          [ "$SOURCE_DB_NAME" != "test" ] || { echo "Source database is named test — refusing to treat it as production"; exit 1; }
+          [ "$REHEARSAL_DB_NAME" = "test" ] || { echo "Rehearsal database must be named test"; exit 1; }
+          [ "$SOURCE_DB_HOST/$SOURCE_DB_NAME" != "$REHEARSAL_DB_HOST/$REHEARSAL_DB_NAME" ] || { echo "Source and rehearsal point to the same database"; exit 1; }
+          echo "source: host=$SOURCE_DB_HOST db=$SOURCE_DB_NAME; rehearsal: host=$REHEARSAL_DB_HOST db=$REHEARSAL_DB_NAME"
+
+      # Доказательство, что URL рабочие, до внешних утилит: mysql2 печатает VERSION(),
+      # число таблиц и первые пять имён. Только чтение.
+      - name: Check connectivity with mysql2
+        run: |
+          set -euo pipefail
+          node scripts/ci/db-connectivity-check.mjs --env SOURCE_DATABASE_URL --label source
+          node scripts/ci/db-connectivity-check.mjs --env REHEARSAL_DATABASE_URL --label rehearsal
 
       # Основной инструмент — TiDB Dumpling: mysqldump 8 в режиме single transaction падает на
       # ROLLBACK TO SAVEPOINT (TiDB не поддерживает savepoints). Toolkit (~1 ГБ) скачивается
@@ -149,7 +158,7 @@ jobs:
         run: |
           set -euo pipefail
           DUMP_FILE="$OUTPUT_DIR/private/owner-dump.sql"
-          SOURCE_DB=$(cat "$RUNNER_TEMP/source-db-name")
+          SOURCE_DB="$SOURCE_DB_NAME"
           mask_log() { sed -E "s/'[^']*'/'***'/g; s/@[^ :]+/@***/g"; }
           tool=""
           if [ "${{ inputs.dump_tool }}" != "mysqldump" ]; then
@@ -176,17 +185,18 @@ jobs:
             [ -n "$DUMPLING" ] || { echo "dumpling binary not found in toolkit"; exit 1; }
             chmod +x "$DUMPLING"
             "$DUMPLING" --version
-            source scripts/ci/parse-database-url.sh
-            parse_database_url "$SOURCE_DATABASE_URL"
+            # У Dumpling нет ни env, ни конфига для пароля (dumpling/export/config.go: только
+            # флаг -p); значение подставляется из файла в кавычках — любые символы, кроме
+            # перевода строки, который парсер отклоняет. Раннер эфемерный, в логе замаскировано.
             started=$(date +%s%3N)
-            if "$DUMPLING" -h "$DB_HOST" -P "$DB_PORT" -u "$DB_USER" -p "$DB_PASSWORD" \
-                --ca /etc/ssl/certs/ca-certificates.crt -B "$DB_NAME" --filetype sql --filesize 256MiB \
+            if "$DUMPLING" -h "$SOURCE_DB_HOST" -P "$SOURCE_DB_PORT" -u "$SOURCE_DB_USER" -p "$(cat "$RUNNER_TEMP/source.pw")" \
+                --ca /etc/ssl/certs/ca-certificates.crt -B "$SOURCE_DB_NAME" --filetype sql --filesize 256MiB \
                 --consistency "$DUMPLING_CONSISTENCY" --threads 2 -o "$OUTPUT_DIR/private/dumpling" \
                 2> "$OUTPUT_DIR/private/dumpling-stderr.log"; then
               # Схема, затем данные — один файл для mysql <
               : > "$DUMP_FILE"
-              find "$OUTPUT_DIR/private/dumpling" -name "${DB_NAME}.*-schema.sql" | sort | xargs -r cat >> "$DUMP_FILE"
-              find "$OUTPUT_DIR/private/dumpling" -name "${DB_NAME}.*.sql" ! -name "*-schema.sql" ! -name "*-schema-create.sql" | sort | xargs -r cat >> "$DUMP_FILE"
+              find "$OUTPUT_DIR/private/dumpling" -name "${SOURCE_DB_NAME}.*-schema.sql" | sort | xargs -r cat >> "$DUMP_FILE"
+              find "$OUTPUT_DIR/private/dumpling" -name "${SOURCE_DB_NAME}.*.sql" ! -name "*-schema.sql" ! -name "*-schema-create.sql" | sort | xargs -r cat >> "$DUMP_FILE"
               tool=dumpling
               echo "dumpMs=$(( $(date +%s%3N) - started ))" >> "$OUTPUT_DIR/step-timings.env"
             else
@@ -254,7 +264,7 @@ jobs:
           set -euo pipefail
           started=$(date +%s%3N)
           mysql --defaults-extra-file="$RUNNER_TEMP/rehearsal.cnf" \
-            --database="$(cat "$RUNNER_TEMP/rehearsal-db-name")" \
+            --database="$REHEARSAL_DB_NAME" \
             < "$OUTPUT_DIR/private/owner-dump.sql" 2> "$OUTPUT_DIR/private/import-stderr.log" \
             || { sed -E "s/'[^']*'/'***'/g" < "$OUTPUT_DIR/private/import-stderr.log" | tail -20; exit 1; }
           echo "importMs=$(( $(date +%s%3N) - started ))" >> "$OUTPUT_DIR/step-timings.env"
@@ -288,7 +298,7 @@ jobs:
         if: always()
         run: |
           rm -f "$RUNNER_TEMP/source.cnf" "$RUNNER_TEMP/rehearsal.cnf" "$RUNNER_TEMP/managed-dump-passphrase"
-          rm -f "$RUNNER_TEMP/source-db-name" "$RUNNER_TEMP/rehearsal-db-name"
+          rm -f "$RUNNER_TEMP/source.pw" "$RUNNER_TEMP/rehearsal.pw"
           rm -rf "$RUNNER_TEMP/toolkit" "$RUNNER_TEMP/toolkit.tar.gz" "$RUNNER_TEMP/toolkit.sha256"
           rm -rf rehearsal-output/private
           rm -f rehearsal-output/*.sql

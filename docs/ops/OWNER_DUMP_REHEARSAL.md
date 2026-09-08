@@ -11,8 +11,9 @@
 
 | Шаг | Что происходит | Пишет в |
 |---|---|---|
-| Prepare option files | `scripts/ci/parse-database-url.sh` разбирает `DATABASE_URL` и `REHEARSAL_DATABASE_URL` в shell без вывода значений; пароли уходят в option-файлы mode 600 с `ssl-mode=REQUIRED`; компоненты маскируются в логе | `$RUNNER_TEMP` |
-| Dump | TiDB Dumpling из `tidb-community-toolkit` (`download.pingcap.com`, ~1 ГБ; sha256 сверяется с опубликованным `.sha256` и с закреплённым `toolkit_sha256`, из архива извлекается только `dumpling-<version>-linux-amd64.tar.gz`): `--filetype sql --consistency snapshot` (или `none`), TLS через `--ca`; файлы схемы и данных склеиваются в один SQL. Если Dumpling падает и `dump_tool=auto` — `mysqldump --skip-lock-tables --skip-add-locks --set-gtid-purged=OFF --hex-blob --column-statistics=0 --no-tablespaces` **без** `--single-transaction`: mysqldump 8 с ним падает на `ROLLBACK TO SAVEPOINT`, которого в TiDB нет; снимок fallback-а не консистентный | только чтение |
+| Parse URLs | `scripts/ci/db-url-parts.mjs` разбирает `DATABASE_URL` и `REHEARSAL_DATABASE_URL` через `new URL()` (схемы `mysql://` и `mysql2://`, `decodeURIComponent` для user/password, query игнорируется); host/port/user/db → `GITHUB_ENV`, пароль → файл mode 600 и option-файл mysql с `ssl-mode=REQUIRED`; user и пароль маскируются, в лог идут только host, port и имя базы | `$RUNNER_TEMP` |
+| Guard + connectivity | имя базы источника ≠ `test`, репетиции = `test`, адреса различаются; `scripts/ci/db-connectivity-check.mjs` подключается через mysql2 к обоим URL и печатает `VERSION()`, число таблиц и первые пять имён — доказательство, что URL рабочие, до внешних утилит | только чтение |
+| Dump | TiDB Dumpling из `tidb-community-toolkit` (`download.pingcap.com`, ~1 ГБ; sha256 сверяется с опубликованным `.sha256` и с закреплённым `toolkit_sha256`, из архива извлекается только `dumpling-<version>-linux-amd64.tar.gz`): `--filetype sql --consistency snapshot` (или `none`), TLS через `--ca`, пароль подставляется из файла флагом `-p` (env и конфига для пароля у Dumpling нет, проверено по `dumpling/export/config.go`); файлы схемы и данных склеиваются в один SQL. Если Dumpling падает и `dump_tool=auto` — `mysqldump --skip-lock-tables --skip-add-locks --set-gtid-purged=OFF --hex-blob --column-statistics=0 --no-tablespaces` **без** `--single-transaction`: mysqldump 8 с ним падает на `ROLLBACK TO SAVEPOINT`, которого в TiDB нет; снимок fallback-а не консистентный | только чтение |
 | Verify | `scripts/ci/verify-owner-dump.mjs`: число `CREATE TABLE` = `expected_table_count`, файл завершён (`-- Dump completed` у mysqldump, `;` у Dumpling), нет `[object Object]` и `,,,` | — |
 | Encrypt | gpg AES-256 с `MANAGED_DUMP_PASSPHRASE`, sha256 encrypted и plaintext | artifact `owner-managed-dump-encrypted`, 7 дней |
 | Reset | `scripts/ci/reset-rehearsal-db.mjs`: DROP всех таблиц; отказ, если база не `test` или адрес совпадает с `DATABASE_URL` | база `test` |
@@ -64,11 +65,12 @@ sha256sum -c owner-dump.plaintext.sha256
 ## Локальные проверки
 
 ```bash
-bash scripts/ci/parse-database-url.sh --self-test
+node scripts/ci/db-url-parts.mjs --self-test
+SOURCE_DATABASE_URL=… node scripts/ci/db-connectivity-check.mjs --env SOURCE_DATABASE_URL --label local
 node scripts/ci/verify-owner-dump.mjs --self-test
 node scripts/ci/run-owner-dump-rehearsal.mjs --self-test
 REHEARSAL_DATABASE_URL=… node scripts/ci/reset-rehearsal-db.mjs --dry-run
-pnpm vitest run server/ownerDumpRehearsalWorkflow.test.ts
+pnpm vitest run server/ownerDumpRehearsalWorkflow.test.ts server/dbUrlParts.test.ts
 ```
 
 mysqldump против боевой базы локально не запускать.
