@@ -31,9 +31,16 @@ describe("owner dump and rehearsal workflow", () => {
     expect(workflow).toContain("::add-mask::$DB_PASSWORD");
   });
 
-  it("снимает дамп mysqldump с нужными флагами и TLS, с fallback на Dumpling по sha256", () => {
+  it("снимает дамп Dumpling с проверкой sha256, mysqldump только как fallback без savepoints", () => {
+    expect(workflow).toContain("download.pingcap.org/tidb-community-toolkit-");
+    expect(workflow).toContain('[ "$expected_sha" = "$actual_sha" ]');
+    expect(workflow).toContain("--consistency \"$DUMPLING_CONSISTENCY\"");
+    expect(workflow).toContain("--ca /etc/ssl/certs/ca-certificates.crt");
+    expect(workflow).toContain("options: [auto, dumpling, mysqldump]");
+    // mysqldump 8 с --single-transaction падает на ROLLBACK TO SAVEPOINT в TiDB
+    expect(workflow).not.toContain("--single-transaction");
     for (const flag of [
-      "--single-transaction",
+      "--skip-add-locks",
       "--skip-lock-tables",
       "--set-gtid-purged=OFF",
       "--hex-blob",
@@ -45,8 +52,6 @@ describe("owner dump and rehearsal workflow", () => {
       expect(workflow).toContain(flag);
     }
     expect(parseScript).toContain("ssl-mode=REQUIRED");
-    expect(workflow).toContain("download.pingcap.org/tidb-community-toolkit-");
-    expect(workflow).toContain('[ "$expected_sha" = "$actual_sha" ]');
   });
 
   it("проверяет дамп, шифрует его и хранит артефакты 7 дней", () => {

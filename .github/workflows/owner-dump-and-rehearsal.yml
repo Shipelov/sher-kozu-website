@@ -17,15 +17,21 @@ on:
         required: true
         default: "96"
       dump_tool:
-        description: "auto = mysqldump, Dumpling only if mysqldump fails"
+        description: "auto = Dumpling, mysqldump only if Dumpling fails"
         required: true
         default: "auto"
         type: choice
-        options: [auto, mysqldump, dumpling]
+        options: [auto, dumpling, mysqldump]
       dumpling_version:
-        description: "TiDB toolkit version for the Dumpling fallback"
+        description: "TiDB toolkit version (Dumpling binary)"
         required: true
         default: "v8.5.1"
+      dumpling_consistency:
+        description: "Dumpling --consistency: snapshot (tidb_snapshot) or none"
+        required: true
+        default: "snapshot"
+        type: choice
+        options: [snapshot, none]
       strict_row_parity:
         description: "Fail when COUNT(*) differs from the live source (writes may land between dump and count)"
         required: true
@@ -45,6 +51,7 @@ env:
   OUTPUT_DIR: rehearsal-output
   EXPECTED_TABLE_COUNT: ${{ inputs.expected_table_count }}
   DUMPLING_VERSION: ${{ inputs.dumpling_version }}
+  DUMPLING_CONSISTENCY: ${{ inputs.dumpling_consistency }}
   SOURCE_DATABASE_URL: ${{ secrets.DATABASE_URL }}
   REHEARSAL_DATABASE_URL: ${{ secrets.REHEARSAL_DATABASE_URL }}
 
@@ -122,37 +129,23 @@ jobs:
           printf '%s' "$DB_NAME" > "$RUNNER_TEMP/rehearsal-db-name"
           [ "$DB_NAME" = "test" ] || { echo "Rehearsal database must be named test"; exit 1; }
           chmod 600 "$RUNNER_TEMP/source-db-name" "$RUNNER_TEMP/rehearsal-db-name"
-          mysqldump --version
           mysql --version
 
-      # mysqldump 8 против TiDB: --column-statistics=0 (нет COLUMN_STATISTICS),
-      # --set-gtid-purged=OFF (нет GTID), --no-tablespaces (нет INFORMATION_SCHEMA.FILES),
-      # --skip-lock-tables/--skip-add-locks (LOCK TABLES в TiDB no-op), --single-transaction —
-      # консистентный снапшот. TLS обязателен через option-файл (ssl-mode=REQUIRED).
-      - name: Dump managed database (mysqldump, Dumpling fallback)
+      # Основной инструмент — TiDB Dumpling: mysqldump 8 в режиме single transaction падает на
+      # ROLLBACK TO SAVEPOINT (TiDB не поддерживает savepoints). Toolkit скачивается с
+      # официального download.pingcap.org и проверяется по опубликованному sha256.
+      # Fallback (только dump_tool=auto) — mysqldump без режима single transaction,
+      # с --skip-lock-tables/--skip-add-locks (LOCK TABLES в TiDB no-op), --column-statistics=0,
+      # --set-gtid-purged=OFF, --no-tablespaces; снимок при этом не консистентный.
+      # TLS обязателен: Dumpling через --ca, mysqldump через option-файл (ssl-mode=REQUIRED).
+      - name: Dump managed database (Dumpling, mysqldump fallback)
         run: |
           set -euo pipefail
           DUMP_FILE="$OUTPUT_DIR/private/owner-dump.sql"
           SOURCE_DB=$(cat "$RUNNER_TEMP/source-db-name")
           mask_log() { sed -E "s/'[^']*'/'***'/g; s/@[^ :]+/@***/g"; }
           tool=""
-          if [ "${{ inputs.dump_tool }}" != "dumpling" ]; then
-            started=$(date +%s%3N)
-            if mysqldump --defaults-extra-file="$RUNNER_TEMP/source.cnf" \
-                --single-transaction --skip-lock-tables --skip-add-locks --set-gtid-purged=OFF \
-                --hex-blob --default-character-set=utf8mb4 --column-statistics=0 --no-tablespaces \
-                --quick --result-file="$DUMP_FILE" "$SOURCE_DB" 2> "$OUTPUT_DIR/private/mysqldump-stderr.log"; then
-              tool=mysqldump
-              echo "dumpMs=$(( $(date +%s%3N) - started ))" >> "$OUTPUT_DIR/step-timings.env"
-            else
-              echo "::warning::mysqldump failed, see masked stderr below"
-              mask_log < "$OUTPUT_DIR/private/mysqldump-stderr.log" | head -20 | tee "$OUTPUT_DIR/mysqldump-stderr-masked.log"
-              [ "${{ inputs.dump_tool }}" = "auto" ] || { echo "dump_tool=mysqldump requested, no fallback"; exit 1; }
-              rm -f "$DUMP_FILE"
-            fi
-          fi
-          if [ -z "$tool" ]; then
-            # Fallback: TiDB Dumpling из официального toolkit с проверкой sha256
+          if [ "${{ inputs.dump_tool }}" != "mysqldump" ]; then
             base="https://download.pingcap.org/tidb-community-toolkit-${DUMPLING_VERSION}-linux-amd64"
             curl -fsSL --retry 3 -o "$RUNNER_TEMP/toolkit.tar.gz" "${base}.tar.gz"
             curl -fsSL --retry 3 -o "$RUNNER_TEMP/toolkit.sha256" "${base}.tar.gz.sha256"
@@ -162,22 +155,40 @@ jobs:
             mkdir -p "$RUNNER_TEMP/toolkit"
             tar -C "$RUNNER_TEMP/toolkit" -xzf "$RUNNER_TEMP/toolkit.tar.gz"
             nested=$(find "$RUNNER_TEMP/toolkit" -name "dumpling-${DUMPLING_VERSION}-linux-amd64.tar.gz" | head -n 1)
-            [ -n "$nested" ] || { echo "dumpling tarball not found in toolkit"; exit 1; }
-            tar -C "$RUNNER_TEMP/toolkit" -xzf "$nested"
+            if [ -n "$nested" ]; then tar -C "$RUNNER_TEMP/toolkit" -xzf "$nested"; fi
             DUMPLING=$(find "$RUNNER_TEMP/toolkit" -type f -name dumpling | head -n 1)
-            [ -x "$DUMPLING" ] || { echo "dumpling binary not found"; exit 1; }
+            [ -n "$DUMPLING" ] || { echo "dumpling binary not found in toolkit"; exit 1; }
+            chmod +x "$DUMPLING"
+            "$DUMPLING" --version
             source scripts/ci/parse-database-url.sh
             parse_database_url "$SOURCE_DATABASE_URL"
             started=$(date +%s%3N)
-            "$DUMPLING" -h "$DB_HOST" -P "$DB_PORT" -u "$DB_USER" -p "$DB_PASSWORD" \
-              --ca /etc/ssl/certs/ca-certificates.crt -B "$DB_NAME" --filetype sql --filesize 256MiB \
-              --threads 2 -o "$OUTPUT_DIR/private/dumpling" 2> "$OUTPUT_DIR/private/dumpling-stderr.log" \
-              || { mask_log < "$OUTPUT_DIR/private/dumpling-stderr.log" | tail -20; exit 1; }
-            # Схема, затем данные — один файл для mysql <
-            : > "$DUMP_FILE"
-            find "$OUTPUT_DIR/private/dumpling" -name "${DB_NAME}.*-schema.sql" | sort | xargs -r cat >> "$DUMP_FILE"
-            find "$OUTPUT_DIR/private/dumpling" -name "${DB_NAME}.*.sql" ! -name "*-schema.sql" ! -name "*-schema-create.sql" | sort | xargs -r cat >> "$DUMP_FILE"
-            tool=dumpling
+            if "$DUMPLING" -h "$DB_HOST" -P "$DB_PORT" -u "$DB_USER" -p "$DB_PASSWORD" \
+                --ca /etc/ssl/certs/ca-certificates.crt -B "$DB_NAME" --filetype sql --filesize 256MiB \
+                --consistency "$DUMPLING_CONSISTENCY" --threads 2 -o "$OUTPUT_DIR/private/dumpling" \
+                2> "$OUTPUT_DIR/private/dumpling-stderr.log"; then
+              # Схема, затем данные — один файл для mysql <
+              : > "$DUMP_FILE"
+              find "$OUTPUT_DIR/private/dumpling" -name "${DB_NAME}.*-schema.sql" | sort | xargs -r cat >> "$DUMP_FILE"
+              find "$OUTPUT_DIR/private/dumpling" -name "${DB_NAME}.*.sql" ! -name "*-schema.sql" ! -name "*-schema-create.sql" | sort | xargs -r cat >> "$DUMP_FILE"
+              tool=dumpling
+              echo "dumpMs=$(( $(date +%s%3N) - started ))" >> "$OUTPUT_DIR/step-timings.env"
+            else
+              echo "::warning::Dumpling failed, see masked stderr below"
+              mask_log < "$OUTPUT_DIR/private/dumpling-stderr.log" | tail -20 | tee "$OUTPUT_DIR/dumpling-stderr-masked.log"
+              [ "${{ inputs.dump_tool }}" = "auto" ] || { echo "dump_tool=dumpling requested, no fallback"; exit 1; }
+              rm -rf "$OUTPUT_DIR/private/dumpling" "$DUMP_FILE"
+            fi
+          fi
+          if [ -z "$tool" ]; then
+            mysqldump --version
+            started=$(date +%s%3N)
+            mysqldump --defaults-extra-file="$RUNNER_TEMP/source.cnf" \
+              --skip-lock-tables --skip-add-locks --set-gtid-purged=OFF \
+              --hex-blob --default-character-set=utf8mb4 --column-statistics=0 --no-tablespaces \
+              --quick --result-file="$DUMP_FILE" "$SOURCE_DB" 2> "$OUTPUT_DIR/private/mysqldump-stderr.log" \
+              || { mask_log < "$OUTPUT_DIR/private/mysqldump-stderr.log" | head -20 | tee "$OUTPUT_DIR/mysqldump-stderr-masked.log"; exit 1; }
+            tool=mysqldump
             echo "dumpMs=$(( $(date +%s%3N) - started ))" >> "$OUTPUT_DIR/step-timings.env"
           fi
           printf '%s' "$tool" > "$OUTPUT_DIR/private/dump-tool"
@@ -252,6 +263,7 @@ jobs:
             rehearsal-output/drizzle-check-output.log
             rehearsal-output/dump-verification.json
             rehearsal-output/step-timings.env
+            rehearsal-output/dumpling-stderr-masked.log
             rehearsal-output/mysqldump-stderr-masked.log
           retention-days: 7
           if-no-files-found: warn
