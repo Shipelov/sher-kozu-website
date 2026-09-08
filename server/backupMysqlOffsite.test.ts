@@ -19,9 +19,19 @@ describe("backup-mysql-offsite workflow", () => {
     for (const forbidden of ["pm2", "rsync", "git push", "wrangler", "DROP DATABASE"]) {
       expect(workflow).not.toContain(forbidden);
     }
-    // На VDS выполняется только скрипт бэкапа, переданный по stdin
-    expect(workflow).toContain('"bash -s -- $mode" < scripts/ops/backup-mysql.sh');
-    expect(workflow).toContain('"bash -s -- --latest" < scripts/ops/backup-mysql.sh');
+    // На VDS выполняется установленная копия скрипта от пользователя deploy
+    expect(workflow).toContain("BACKUP_RUN_AS: deploy");
+    expect(workflow).toContain("BACKUP_SCRIPT_PATH: /opt/sherkozu/backup-mysql.sh");
+    const runStep = workflow.slice(workflow.indexOf("- name: Run backup on VDS"), workflow.indexOf("- name: Fetch backup and stats from VDS"));
+    expect(runStep).toContain('run_as="sudo -u $BACKUP_RUN_AS -H"');
+    expect(runStep).toContain('if [ "$VDS_USER" = "$BACKUP_RUN_AS" ]; then');
+    expect(runStep).toContain("$run_as '$BACKUP_SCRIPT_PATH' $mode");
+    expect(runStep).toContain("$run_as '$BACKUP_SCRIPT_PATH' --latest");
+    expect(runStep).not.toContain("bash -s");
+    // scp дампа и stats — от ssh-пользователя, без sudo
+    const fetchStep = workflow.slice(workflow.indexOf("- name: Fetch backup and stats from VDS"), workflow.indexOf("- name: Verify dump"));
+    expect(fetchStep).not.toContain("sudo");
+    expect(fetchStep).toContain("scp -i ~/.ssh/backup_key");
     expect(workflow).not.toMatch(/ssh .*['"](?:rm|mv|mkdir|touch|tee|systemctl)/);
   });
 
