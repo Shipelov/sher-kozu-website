@@ -3,6 +3,10 @@
  * Разбор mysql://user:pass@host:port/db?… (а также mysql2://) через new URL()
  * с decodeURIComponent для user/password. Query (?ssl=…) игнорируется.
  *
+ * Пустая или отсутствующая переменная — ошибка «переменная X не задана или пуста»,
+ * никаких дефолтов. Неразбираемая строка — ошибка с длиной, первыми 8 символами
+ * (после ':'/'@' маскируются) и числом '@'.
+ *
  * Для GitHub Actions:
  *   node scripts/ci/db-url-parts.mjs --env SOURCE_DATABASE_URL --prefix SOURCE_DB_ \
  *     --password-file "$RUNNER_TEMP/source.pw" --mysql-cnf "$RUNNER_TEMP/source.cnf" --github-env
@@ -18,6 +22,39 @@ import path from "node:path";
 const SCHEMES = new Set(["mysql:", "mysql2:", "mariadb:"]);
 const DEFAULT_PORT = 4000;
 
+/**
+ * Диагностика непригодной строки без раскрытия: длина, первые 8 символов (схема;
+ * всё после ':' или '@' внутри них маскируется) и число символов '@'.
+ */
+export function describeUnparsable(value) {
+  const raw = value.slice(0, 8);
+  // Маскируем всё после первого ':' или '@', но '://' схемы оставляем видимым
+  let cut = -1;
+  for (let i = 0; i < raw.length; i += 1) {
+    if (raw[i] === "@") { cut = i; break; }
+    if (raw[i] === ":") {
+      if (raw.slice(i, i + 3) === "://") { i += 2; continue; }
+      cut = i; break;
+    }
+  }
+  const head = cut < 0 ? raw : raw.slice(0, cut + 1) + "*".repeat(raw.length - cut - 1);
+  const at = (value.match(/@/g) ?? []).length;
+  return `длина=${value.length}, начало="${head}", символов '@'=${at}`;
+}
+
+/** Читает URL из переменной окружения; отсутствие или пустая строка — ошибка без вывода значения */
+export function readDbUrlFromEnv(envName, env = process.env) {
+  const raw = env[envName];
+  if (typeof raw !== "string" || raw.trim() === "") {
+    throw new Error(`переменная ${envName} не задана или пуста`);
+  }
+  try {
+    return parseDbUrl(raw);
+  } catch (err) {
+    throw new Error(`${envName}: ${err.message}`);
+  }
+}
+
 export function parseDbUrl(raw) {
   if (typeof raw !== "string") throw new Error("URL базы не задан");
   let value = raw.trim();
@@ -31,12 +68,12 @@ export function parseDbUrl(raw) {
   try {
     url = new URL(value);
   } catch {
-    throw new Error("URL базы не разбирается (ожидается mysql://user:pass@host:port/db)");
+    throw new Error(`URL базы не разбирается (ожидается mysql://user:pass@host:port/db): ${describeUnparsable(value)}`);
   }
   if (!SCHEMES.has(url.protocol)) {
-    throw new Error(`Неподдерживаемая схема ${url.protocol || "(нет)"}; ожидается mysql:// или mysql2://`);
+    throw new Error(`Неподдерживаемая схема ${url.protocol || "(нет)"}; ожидается mysql:// или mysql2://: ${describeUnparsable(value)}`);
   }
-  if (!url.hostname) throw new Error("В URL нет host");
+  if (!url.hostname) throw new Error(`В URL нет host: ${describeUnparsable(value)}`);
   const user = decodeURIComponent(url.username);
   const password = decodeURIComponent(url.password);
   if (!user) throw new Error("В URL нет user");
@@ -146,13 +183,34 @@ function selfTest() {
       console.log(`ok   отклонение: ${item.name}`);
     }
   }
+  for (const [name, env] of [["отсутствующая переменная", {}], ["пустая переменная", { X: "" }], ["пробелы", { X: "   " }]]) {
+    try {
+      readDbUrlFromEnv("X", env);
+      failures += 1;
+      console.log(`FAIL env: ${name} — принято`);
+    } catch (err) {
+      const ok = err.message === "переменная X не задана или пуста";
+      if (!ok) failures += 1;
+      console.log(`${ok ? "ok  " : "FAIL"} env: ${name}${ok ? "" : " — " + err.message}`);
+    }
+  }
+  try {
+    const noScheme = "root:secret@db.example.invalid:3306/koza";
+    readDbUrlFromEnv("X", { X: noScheme });
+    failures += 1;
+    console.log("FAIL диагностика без схемы — принято");
+  } catch (err) {
+    const ok = err.message.includes(`длина=${"root:secret@db.example.invalid:3306/koza".length}`) && err.message.includes('начало="root:***"') && err.message.includes("символов '@'=1") && !err.message.includes("secret");
+    if (!ok) failures += 1;
+    console.log(`${ok ? "ok  " : "FAIL"} диагностика без схемы${ok ? "" : " — " + err.message}`);
+  }
   const cnf = mysqlOptionFile(parseDbUrl("mysql://user:pa%5Css%22q@db.example.invalid/koza"));
   if (!cnf.includes('password="pa\\\\ss\\"q"') || !cnf.includes("ssl-mode=REQUIRED")) {
     failures += 1;
     console.log("FAIL option-файл: экранирование или TLS");
   } else console.log("ok   option-файл: экранирование и TLS");
   if (failures) throw new Error(`db-url-parts self-test: ${failures} ошибок`);
-  console.log(JSON.stringify({ selfTest: "ok", cases: cases.length + rejects.length + 1 }));
+  console.log(JSON.stringify({ selfTest: "ok", cases: cases.length + rejects.length + 5 }));
 }
 
 function main() {
@@ -160,7 +218,7 @@ function main() {
   if (args["self-test"]) return selfTest();
   const envName = args.env ?? "DATABASE_URL";
   const prefix = args.prefix ?? "DB_";
-  const parts = parseDbUrl(process.env[envName]);
+  const parts = readDbUrlFromEnv(envName);
   if (parts.strippedQuotes) console.warn(`[db-url-parts] ${envName} был в кавычках — кавычки отброшены`);
 
   if (args["password-file"]) writeSecretFile(path.resolve(args["password-file"]), parts.password);

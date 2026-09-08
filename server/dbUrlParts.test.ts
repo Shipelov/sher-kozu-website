@@ -3,7 +3,7 @@ import { spawnSync } from "node:child_process";
 import { mkdtempSync, readFileSync, rmSync, statSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { mysqlOptionFile, parseDbUrl } from "../scripts/ci/db-url-parts.mjs";
+import { describeUnparsable, mysqlOptionFile, parseDbUrl, readDbUrlFromEnv } from "../scripts/ci/db-url-parts.mjs";
 
 const root = path.resolve(import.meta.dirname, "..");
 
@@ -58,6 +58,46 @@ describe("db-url-parts: parseDbUrl", () => {
     expect(cnf).toContain('password="pa\\\\ss\\"q"');
     expect(cnf).toContain("ssl-mode=REQUIRED");
     expect(cnf).toContain("host=db.example.invalid");
+  });
+});
+
+describe("db-url-parts: readDbUrlFromEnv", () => {
+  it("пустой или отсутствующий ввод — ошибка с именем переменной, без дефолтов", () => {
+    expect(() => readDbUrlFromEnv("SOURCE_DATABASE_URL", {})).toThrow("переменная SOURCE_DATABASE_URL не задана или пуста");
+    expect(() => readDbUrlFromEnv("SOURCE_DATABASE_URL", { SOURCE_DATABASE_URL: "" })).toThrow("не задана или пуста");
+    expect(() => readDbUrlFromEnv("SOURCE_DATABASE_URL", { SOURCE_DATABASE_URL: "  \n" })).toThrow("не задана или пуста");
+  });
+
+  it("строка без схемы — ошибка с длиной, маскированным началом и числом @, без значения", () => {
+    const raw = "root:secret@db.example.invalid:3306/koza";
+    let message = "";
+    try {
+      readDbUrlFromEnv("SOURCE_DATABASE_URL", { SOURCE_DATABASE_URL: raw });
+    } catch (err) {
+      message = (err as Error).message;
+    }
+    expect(message).toContain("SOURCE_DATABASE_URL:");
+    expect(message).toContain(`длина=${raw.length}`);
+    expect(message).toContain('начало="root:***"');
+    expect(message).toContain("символов '@'=1");
+    expect(message).not.toContain("secret");
+    expect(message).not.toContain("db.example.invalid");
+  });
+
+  it("describeUnparsable маскирует всё после : и @ в первых 8 символах", () => {
+    expect(describeUnparsable("mysql://u:p@h/db")).toBe(`длина=16, начало="mysql://", символов '@'=1`);
+    expect(describeUnparsable("user@host/db")).toBe(`длина=12, начало="user@***", символов '@'=1`);
+  });
+
+  it("CLI падает без дефолтов, если переменная пуста", () => {
+    const run = spawnSync(process.execPath, ["scripts/ci/db-url-parts.mjs", "--env", "FAKE_DB_URL"], {
+      cwd: root,
+      encoding: "utf8",
+      env: { ...process.env, FAKE_DB_URL: "" },
+    });
+    expect(run.status).toBe(1);
+    expect(run.stderr).toContain("переменная FAKE_DB_URL не задана или пуста");
+    expect(run.stdout).not.toContain("localhost");
   });
 });
 
