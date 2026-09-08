@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Pool, PoolConnection } from "mysql2/promise";
-import { createResilientPool, isConnectionError, isReadOnlyStatement } from "./dbResilience";
+import { createResilientPool, endPoolWithTimeout, isConnectionError, isReadOnlyStatement } from "./dbResilience";
 
 function errorWithCode(code: string): Error {
   const err = new Error(code) as Error & { code: string };
@@ -163,5 +163,52 @@ describe("createResilientPool", () => {
 
     await client.end();
     expect(fake.end).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("endPoolWithTimeout", () => {
+  beforeEach(() => {
+    vi.spyOn(console, "warn").mockImplementation(() => undefined);
+  });
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  function poolWithConnections(end: () => Promise<void>) {
+    const destroy = vi.fn();
+    const connections = [{ destroy }, { destroy }];
+    const pool = {
+      end: vi.fn(end),
+      pool: { _allConnections: { length: connections.length, get: (i: number) => connections[i] } },
+    } as unknown as Pool;
+    return { pool, destroy };
+  }
+
+  it("возвращает closed, если end() успел", async () => {
+    const { pool, destroy } = poolWithConnections(async () => undefined);
+    await expect(endPoolWithTimeout(pool, 200)).resolves.toBe("closed");
+    expect(destroy).not.toHaveBeenCalled();
+  });
+
+  it("по таймауту рвёт соединения и не виснет", async () => {
+    const { pool, destroy } = poolWithConnections(() => new Promise(() => undefined));
+    const started = Date.now();
+    await expect(endPoolWithTimeout(pool, 100)).resolves.toBe("forced");
+    expect(Date.now() - started).toBeLessThan(2000);
+    expect(destroy).toHaveBeenCalledTimes(2);
+    expect(console.warn).toHaveBeenCalled();
+  });
+
+  it("при ошибке end() тоже рвёт соединения", async () => {
+    const { pool, destroy } = poolWithConnections(async () => {
+      throw new Error("boom");
+    });
+    await expect(endPoolWithTimeout(pool, 200)).resolves.toBe("forced");
+    expect(destroy).toHaveBeenCalledTimes(2);
+  });
+
+  it("переживает пул без внутреннего списка соединений", async () => {
+    const pool = { end: () => new Promise<void>(() => undefined) } as unknown as Pool;
+    await expect(endPoolWithTimeout(pool, 50)).resolves.toBe("forced");
   });
 });

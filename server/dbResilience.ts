@@ -123,3 +123,51 @@ export function createResilientPool(pool: Pool): Pool {
     },
   });
 }
+
+const CLOSE_TIMEOUT_MS = 5000;
+
+type RawConnection = { destroy?: () => void };
+type RawPool = { _allConnections?: { length: number; get(index: number): RawConnection | undefined } };
+
+/** Принудительно рвёт все соединения пула через внутренний API mysql2 */
+export function destroyPoolConnections(pool: Pool): number {
+  const raw = (pool as unknown as { pool?: RawPool }).pool;
+  const queue = raw?._allConnections;
+  if (!queue) return 0;
+  const connections: RawConnection[] = [];
+  for (let index = 0; index < queue.length; index += 1) {
+    const connection = queue.get(index);
+    if (connection) connections.push(connection);
+  }
+  for (const connection of connections) connection.destroy?.();
+  return connections.length;
+}
+
+/**
+ * pool.end() ждёт завершения активных запросов и может висеть, если TiDB
+ * не отвечает. По таймауту соединения рвутся принудительно.
+ */
+export async function endPoolWithTimeout(
+  pool: Pool,
+  timeoutMs = CLOSE_TIMEOUT_MS,
+): Promise<"closed" | "forced"> {
+  let timer: NodeJS.Timeout | undefined;
+  const timeout = new Promise<"timeout">((resolve) => {
+    timer = setTimeout(() => resolve("timeout"), timeoutMs);
+  });
+  const ending = pool.end().then(() => "closed" as const);
+  // Гонку может проиграть отклонённый end(): не оставляем unhandled rejection
+  ending.catch(() => undefined);
+  try {
+    const outcome = await Promise.race([ending, timeout]);
+    if (outcome === "closed") return "closed";
+    console.warn(`[Database] pool.end() не завершился за ${timeoutMs} мс, соединения закрываются принудительно`);
+  } catch (err) {
+    console.warn("[Database] pool.end() failed:", err instanceof Error ? err.message : String(err));
+  } finally {
+    clearTimeout(timer);
+  }
+  const destroyed = destroyPoolConnections(pool);
+  console.warn(`[Database] Принудительно закрыто соединений: ${destroyed}`);
+  return "forced";
+}

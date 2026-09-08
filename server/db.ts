@@ -77,7 +77,7 @@ import {
   InsertPagePerformance,
 } from "../drizzle/schema";
 import { ENV } from "./_core/env";
-import { createResilientPool } from "./dbResilience";
+import { createResilientPool, endPoolWithTimeout } from "./dbResilience";
 
 let _db: any = null;
 let _pool: Pool | null = null;
@@ -404,12 +404,15 @@ function resetPool() {
   _db = null;
 }
 
-/** Закрывает пул. Нужен тестам: vitest создаёт модуль db заново для каждого файла. */
+/**
+ * Закрывает пул. Нужен тестам: vitest создаёт модуль db заново для каждого файла.
+ * Ожидание pool.end() ограничено 5 с, после чего соединения рвутся принудительно.
+ */
 export async function closeDb() {
   const pool = _pool;
   _pool = null;
   _db = null;
-  if (pool) await pool.end().catch(() => {});
+  if (pool) await endPoolWithTimeout(pool);
 }
 
 export async function getDb() {
