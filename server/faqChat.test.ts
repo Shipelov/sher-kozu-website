@@ -324,7 +324,7 @@ describe("faqChat.chat rate limit", () => {
 
     await expect(caller.chat(input)).rejects.toMatchObject({
       code: "TOO_MANY_REQUESTS",
-      message: "Слишком много сообщений, подождите минуту",
+      message: "Слишком много сообщений за последний час, попробуйте позже",
     });
   });
 

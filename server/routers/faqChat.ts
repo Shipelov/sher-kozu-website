@@ -574,7 +574,7 @@ export const faqChatRouter = router({
       if (!checkChatRateLimit(clientIp)) {
         throw new TRPCError({
           code: "TOO_MANY_REQUESTS",
-          message: "Слишком много сообщений, подождите минуту",
+          message: "Слишком много сообщений за последний час, попробуйте позже",
         });
       }
 
