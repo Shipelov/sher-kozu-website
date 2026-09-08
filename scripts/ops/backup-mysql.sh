@@ -42,16 +42,25 @@ verify_dump() {
   gzip -dc "$file" | tail -n 3 | grep -q '^-- Dump completed' || { log "нет строки 'Dump completed' — дамп оборван: $file"; return 1; }
 }
 
-# COUNT(*) по каждой таблице → JSON; используется restore-test для сверки
+# COUNT(*) по каждой таблице → JSON; используется restore-test для сверки.
+# Список таблиц берётся одним SELECT, UNION ALL собирается в bash: GROUP_CONCAT
+# обрезался по group_concat_max_len=1024 и давал битый SQL на 96 таблицах.
 write_stats() {
-  local out="$1" query
-  query=$($MYSQL --defaults-file="$DEFAULTS_FILE" -N -B -e \
-    "SELECT GROUP_CONCAT(CONCAT('SELECT ''', table_name, ''' AS t, COUNT(*) AS n FROM \`', REPLACE(table_name, '\`', '\`\`'), '\`') SEPARATOR ' UNION ALL ') FROM information_schema.tables WHERE table_schema = '$DB_NAME' AND table_type = 'BASE TABLE'")
-  [ -n "$query" ] && [ "$query" != "NULL" ] || { log "в базе $DB_NAME нет таблиц"; return 1; }
+  local out="$1" tables query="" t ident label
+  tables=$($MYSQL --defaults-file="$DEFAULTS_FILE" -N -B -e \
+    "SELECT table_name FROM information_schema.tables WHERE table_schema = '$DB_NAME' AND table_type = 'BASE TABLE' ORDER BY table_name") || return 1
+  [ -n "$tables" ] || { log "в базе $DB_NAME нет таблиц"; return 1; }
+  while IFS= read -r t; do
+    [ -n "$t" ] || continue
+    ident="${t//\`/\`\`}"
+    label="${t//\'/\'\'}"
+    query+="${query:+ UNION ALL }SELECT '$label' AS t, COUNT(*) AS n FROM \`$ident\`"
+  done <<< "$tables"
   $MYSQL --defaults-file="$DEFAULTS_FILE" -N -B -e "$query" "$DB_NAME" | awk -v db="$DB_NAME" -v ts="$(date -u +%Y-%m-%dT%H:%M:%SZ)" '
     BEGIN { printf "{\"database\":\"%s\",\"createdAt\":\"%s\",\"tables\":[", db, ts }
     { gsub(/\\/, "\\\\", $1); gsub(/"/, "\\\"", $1); printf "%s{\"tableName\":\"%s\",\"rowCount\":%d}", (NR > 1 ? "," : ""), $1, $2 }
-    END { print "]}" }' > "$out"
+    END { print "]}" }' > "$out.tmp" || { rm -f "$out.tmp"; return 1; }
+  mv -f "$out.tmp" "$out"
 }
 
 rotate() {
@@ -109,9 +118,15 @@ run_backup() {
     fi
     mv -f "$tmp" "$final"
     chmod 600 "$final"
-    write_stats "$stats" || die "не удалось собрать COUNT(*) по таблицам"
-    chmod 600 "$stats"
-    log "готово за $(( $(date +%s) - started )) с: $final ($(stat -c %s "$final") байт), таблиц в stats: $(grep -o '"tableName"' "$stats" | wc -l)"
+    log "готово за $(( $(date +%s) - started )) с: $final ($(stat -c %s "$final") байт)"
+    # Статистика вторична: её сбой не трогает уже проверенный дамп и не меняет код выхода
+    if write_stats "$stats"; then
+      chmod 600 "$stats"
+      log "stats: таблиц $(grep -o '"tableName"' "$stats" | wc -l) → $stats"
+    else
+      rm -f "$stats" "$stats.tmp"
+      log "ПРЕДУПРЕЖДЕНИЕ: не удалось собрать COUNT(*) по таблицам — дамп $final сохранён, статистики за $BACKUP_DATE нет"
+    fi
   fi
 
   if [ "$(date -d "$BACKUP_DATE" +%u)" = "$WEEKLY_DOW" ]; then
@@ -140,11 +155,18 @@ printf -- '\n-- Dump completed on 2026-09-08 03:00:00\n'
 EOF
   cat > "$tmp/fake-mysql" <<'EOF'
 #!/usr/bin/env bash
-# Первый вызов — генерация запроса, второй — данные
+# Список таблиц: 100 имён по 59 символов (в пределах лимита MySQL 64) — суммарно больше 1024 байт,
+# на которых обрезался GROUP_CONCAT; одно имя с обратной кавычкой. Второй вызов —
+# COUNT(*) по каждой таблице из построенного UNION ALL.
 if printf '%s' "$*" | grep -q information_schema; then
-  printf "SELECT 'users' AS t, COUNT(*) AS n FROM \`users\` UNION ALL SELECT 'animals' AS t, COUNT(*) AS n FROM \`animals\`\n"
+  # 59 символов с номером — в пределах лимита MySQL (64), суммарно > 1024 байт
+  for i in $(seq 1 98); do printf 'animalProductionProfilesWithVeryLongTableNameForOverflow%03d\n' "$i"; done
+  printf 'users\nweird`name\n'
+elif [ "${FAKE_STATS_FAIL:-}" = "1" ]; then
+  echo "ERROR 1064 (42000) at line 1: You have an error in your SQL syntax" >&2
+  exit 1
 else
-  printf 'users\t2\nanimals\t3\n'
+  printf '%s' "$*" | grep -o "SELECT '[^']*' AS t" | sed -E "s/SELECT '([^']*)' AS t/\\1/" | awk '{ printf "%s\t%d\n", $0, NR }'
 fi
 EOF
   chmod +x "$tmp/fake-mysqldump" "$tmp/fake-mysql"
@@ -171,7 +193,10 @@ EOF
   BACKUP_DATE=2026-09-06 bash "$0" run >/dev/null 2>&1
   check "дневной файл создан" "[ -s '$BACKUP_DIR/sherkozu-2026-09-06.sql.gz' ]"
   check "файл заканчивается Dump completed" "gzip -dc '$BACKUP_DIR/sherkozu-2026-09-06.sql.gz' | tail -n 1 | grep -q '^-- Dump completed'"
-  check "stats.json с двумя таблицами" "grep -q '\"tableName\":\"users\",\"rowCount\":2' '$BACKUP_DIR/sherkozu-2026-09-06.stats.json' && grep -q '\"animals\",\"rowCount\":3' '$BACKUP_DIR/sherkozu-2026-09-06.stats.json'"
+  check "stats.json со 100 таблицами (GROUP_CONCAT-лимит 1024 не мешает)" "[ \$(grep -o '\"tableName\"' '$BACKUP_DIR/sherkozu-2026-09-06.stats.json' | wc -l) -eq 100 ]"
+  check "длинное имя таблицы целиком" "grep -q '\"animalProductionProfilesWithVeryLongTableNameForOverflow098\",\"rowCount\":98' '$BACKUP_DIR/sherkozu-2026-09-06.stats.json'"
+  check "имя с обратной кавычкой экранировано в SQL и сохранено в JSON" "grep -q '\"tableName\":\"weird\`name\",\"rowCount\":100' '$BACKUP_DIR/sherkozu-2026-09-06.stats.json'"
+  check "stats.json — валидный JSON" "node -e 'JSON.parse(require(\"fs\").readFileSync(process.argv[1],\"utf8\"))' '$BACKUP_DIR/sherkozu-2026-09-06.stats.json' 2>/dev/null || python3 -c 'import json,sys; json.load(open(sys.argv[1]))' '$BACKUP_DIR/sherkozu-2026-09-06.stats.json'"
   check "недельная копия по воскресенью" "[ -f '$BACKUP_DIR/weekly/sherkozu-2026-09-06.sql.gz' ]"
   check "дневных хранится 14" "[ \$(find '$BACKUP_DIR' -maxdepth 1 -name 'sherkozu-????-??-??.sql.gz' | wc -l) -eq 14 ]"
   check "недельных хранится 8" "[ \$(find '$BACKUP_DIR/weekly' -maxdepth 1 -name 'sherkozu-????-??-??.sql.gz' | wc -l) -eq 8 ]"
@@ -195,11 +220,20 @@ EOF
     check "оборванный дамп отклонён" "[ ! -f '$BACKUP_DIR/sherkozu-2026-09-07.sql.gz' ] && grep -q 'оборван' '$BACKUP_LOG_FILE'"
   fi
 
+  # Сбой статистики не трогает дамп и не меняет код выхода
+  if FAKE_STATS_FAIL=1 BACKUP_DATE=2026-09-08 bash "$0" run >/dev/null 2>&1; then
+    check "сбой stats: exit 0" "true"
+  else
+    check "сбой stats: exit 0" "false"
+  fi
+  check "сбой stats: дамп сохранён и проходит проверку" "gzip -dc '$BACKUP_DIR/sherkozu-2026-09-08.sql.gz' | tail -n 1 | grep -q '^-- Dump completed'"
+  check "сбой stats: файла статистики нет, есть предупреждение в логе" "[ ! -f '$BACKUP_DIR/sherkozu-2026-09-08.stats.json' ] && [ ! -f '$BACKUP_DIR/sherkozu-2026-09-08.stats.json.tmp' ] && grep -q 'ПРЕДУПРЕЖДЕНИЕ' '$BACKUP_LOG_FILE'"
+
   # Неверные права на my.cnf — отказ
   chmod 644 "$tmp/my.cnf"
   if [ "$(stat -c %a "$tmp/my.cnf")" != "644" ]; then
     echo "skip my.cnf с правами 644 отклонён (ФС не хранит права, например Git Bash на Windows)"
-  elif BACKUP_DATE=2026-09-08 bash "$0" run >/dev/null 2>&1; then
+  elif BACKUP_DATE=2026-09-10 bash "$0" run >/dev/null 2>&1; then
     check "my.cnf с правами 644 отклонён" "false"
   else
     check "my.cnf с правами 644 отклонён" "true"

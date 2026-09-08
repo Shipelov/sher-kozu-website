@@ -3,8 +3,9 @@
  * Проверка восстановления бэкапа в базу test (koza-rehearsal): число таблиц и COUNT(*)
  * по N крупнейшим таблицам сверяются со stats.json, снятым на VDS сразу после дампа.
  *
- * node scripts/ci/restore-check.mjs --stats sherkozu-2026-09-08.stats.json \
+ * node scripts/ci/restore-check.mjs [--stats sherkozu-2026-09-08.stats.json] \
  *   [--expected-tables 96] [--top 10] [--tolerance-percent 1] [--output restore-check.json]
+ * Без --stats (статистика на VDS не собралась) сверяется только число таблиц.
  * Env: REHEARSAL_DATABASE_URL (имя базы обязано быть test). Только чтение.
  */
 import { readFile, writeFile } from "node:fs/promises";
@@ -35,6 +36,22 @@ function parseArgs(argv) {
  */
 export function compareStats({ source, target, expectedTables, top = 10, tolerancePercent = 1 }) {
   const problems = [];
+  if (!source) {
+    // Статистики нет: проверяем только число таблиц
+    if (expectedTables !== undefined && target.length !== expectedTables) {
+      problems.push(`таблиц в test ${target.length}, ожидалось ${expectedTables}`);
+    }
+    return {
+      ok: problems.length === 0,
+      statsAvailable: false,
+      tableCount: { source: null, target: target.length, expected: expectedTables ?? null },
+      missingInTarget: [],
+      extraInTarget: [],
+      largestTables: [],
+      tolerancePercent,
+      problems,
+    };
+  }
   const sourceMap = new Map(source.map((t) => [t.tableName, t.rowCount]));
   const targetMap = new Map(target.map((t) => [t.tableName, t.rowCount]));
   if (expectedTables !== undefined && source.length !== expectedTables) {
@@ -59,6 +76,7 @@ export function compareStats({ source, target, expectedTables, top = 10, toleran
   }
   return {
     ok: problems.length === 0,
+    statsAvailable: true,
     tableCount: { source: source.length, target: target.length, expected: expectedTables ?? null },
     missingInTarget: missing,
     extraInTarget: extra,
@@ -70,14 +88,20 @@ export function compareStats({ source, target, expectedTables, top = 10, toleran
 
 async function main() {
   const args = parseArgs(process.argv.slice(2));
-  if (!args.stats) throw new Error("нужен --stats <file.json>");
   const targetUrl = process.env.REHEARSAL_DATABASE_URL;
   if (!targetUrl) throw new Error("переменная REHEARSAL_DATABASE_URL не задана или пуста");
   const options = parseDatabaseUrl(targetUrl);
   if (options.database !== "test") throw new Error(`Safety stop: база репетиции должна называться test, получено ${options.database || "(пусто)"}`);
 
-  const stats = JSON.parse(await readFile(path.resolve(args.stats), "utf8"));
-  if (!Array.isArray(stats.tables)) throw new Error("stats.json без поля tables");
+  let stats = null;
+  if (args.stats) {
+    stats = JSON.parse(await readFile(path.resolve(args.stats), "utf8"));
+    if (!Array.isArray(stats.tables)) throw new Error("stats.json без поля tables");
+  } else {
+    console.warn("[restore-check] --stats не задан: сверяется только число таблиц");
+  }
+  const expectedTablesRequired = !stats && args["expected-tables"] === undefined;
+  if (expectedTablesRequired) throw new Error("без --stats нужен --expected-tables");
   const expectedTables = args["expected-tables"] !== undefined ? Number(args["expected-tables"]) : undefined;
   const top = Number(args.top ?? 10);
   const tolerancePercent = Number(args["tolerance-percent"] ?? 1);
@@ -91,9 +115,9 @@ async function main() {
   }
   const report = {
     createdAt: new Date().toISOString(),
-    sourceDatabase: stats.database ?? null,
-    sourceStatsAt: stats.createdAt ?? null,
-    ...compareStats({ source: stats.tables, target, expectedTables, top, tolerancePercent }),
+    sourceDatabase: stats?.database ?? null,
+    sourceStatsAt: stats?.createdAt ?? null,
+    ...compareStats({ source: stats?.tables ?? null, target, expectedTables, top, tolerancePercent }),
   };
   const text = `${JSON.stringify(report, null, 2)}\n`;
   if (args.output) await writeFile(path.resolve(args.output), text);

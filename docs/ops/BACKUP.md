@@ -9,9 +9,9 @@ TiDB Cloud используется только для тестов CI (`TEST_D
 
 | Слой | Что | Где |
 |---|---|---|
-| Локальный дамп | `scripts/ops/backup-mysql.sh` из cron на VDS: `mysqldump --single-transaction --routines --triggers --events --hex-blob --set-gtid-purged=OFF --no-tablespaces` → gzip; проверка «файл не пуст, gzip цел, заканчивается `-- Dump completed`»; `stats.json` с `COUNT(*)` по таблицам | `/var/backups/sherkozu/sherkozu-YYYY-MM-DD.sql.gz`, 14 дневных; `weekly/` — 8 недельных (копия по воскресеньям); лог `/var/log/sherkozu-backup.log` |
+| Локальный дамп | `scripts/ops/backup-mysql.sh` из cron на VDS: `mysqldump --single-transaction --routines --triggers --events --hex-blob --set-gtid-purged=OFF --no-tablespaces` → gzip; проверка «файл не пуст, gzip цел, заканчивается `-- Dump completed`»; `stats.json` с `COUNT(*)` по таблицам (вторичен: при его сбое дамп сохраняется, в лог пишется `ПРЕДУПРЕЖДЕНИЕ`, код выхода 0) | `/var/backups/sherkozu/sherkozu-YYYY-MM-DD.sql.gz`, 14 дневных; `weekly/` — 8 недельных (копия по воскресеньям); лог `/var/log/sherkozu-backup.log` |
 | Offsite-копия | `.github/workflows/backup-mysql-offsite.yml` ежедневно в 03:30 UTC и вручную: по SSH запускает тот же скрипт (если файл за сегодня уже есть и проходит проверку — переиспользует), забирает `.sql.gz` и `stats.json` через `scp`, проверяет дамп на раннере, шифрует gpg AES-256 паролем `BACKUP_PASSPHRASE` | artifact `mysql-backup-encrypted-<run_id>`, 90 дней: `*.sql.gz.gpg`, sha256 encrypted и plaintext, `stats.json`, `dump-verification.json` |
-| Restore-test | тот же workflow: sed-фильтр совместимости → DROP всех таблиц в `test` → `mysql < restore.sql` → `restore-check.mjs`: число таблиц и `COUNT(*)` по 10 крупнейшим против `stats.json` с допуском 1 % | artifact `restore-test-results-<run_id>`, 30 дней |
+| Restore-test | тот же workflow: sed-фильтр совместимости → DROP всех таблиц в `test` → `mysql < restore.sql` → `restore-check.mjs`: число таблиц и `COUNT(*)` по 10 крупнейшим против `stats.json` с допуском 1 %; если `stats.json` на VDS не собрался — только число таблиц (`statsAvailable: false` в отчёте) | artifact `restore-test-results-<run_id>`, 30 дней |
 
 Секреты workflow: `VDS_HOST`, `VDS_USER`, `VDS_SSH_KEY` (уже есть, те же, что у deploy), `REHEARSAL_DATABASE_URL`
 (есть), **`BACKUP_PASSPHRASE` — новый, завести владельцу** (длинная случайная строка, хранить в менеджере паролей;
@@ -53,6 +53,7 @@ sudo chmod 755 /opt/sherkozu/backup-mysql.sh
 - Offsite: GitHub → Actions → «MySQL backup offsite and restore test» — зелёный запуск за последние сутки,
   артефакт `mysql-backup-encrypted-<run_id>`. В `restore-test-results-<run_id>/restore-check.json` — `"ok": true`,
   `tableCount.target` = 96 (или текущее число), `largestTables[*].ok` = true.
+- В логе на VDS строка `ПРЕДУПРЕЖДЕНИЕ: не удалось собрать COUNT(*)` означает, что дамп есть, а статистики нет: restore-test пройдёт только по числу таблиц. Причина обычно в правах MySQL-пользователя на `information_schema`/таблицы.
 - Красный запуск = нет свежей проверенной копии: смотреть лог шага (`Run backup on VDS`, `Verify dump`,
   `Import dump`, `Check restored data`).
 
