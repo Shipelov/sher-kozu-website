@@ -444,6 +444,8 @@ Tracked HEAD не содержит `.env`, Telegram token или private SSH key
 | P1 | Staging + sanitized data process | Reproducible non-production environment |
 | P1 | Migration drift reconciliation | Repo journal, dev и production ledgers объяснены |
 
+Для первых двух P0 подготовлен ручной handoff: `docs/ops/readonly-audit.workflow.yml` хранится **вне** `.github/workflows`, а `docs/ops/READONLY_AUDIT_HANDOFF.md` содержит точные inputs, Secrets, non-web VDS path для encrypted dump, задание Claude Code и порядок запуска через отдельный PR. Шаблон использует `DATABASE_URL` только для SHA-256, не подключается к managed source DB, ничего не записывает на VDS и пишет только в пустую rehearsal-базу `test`. Результаты и зашифрованные VDS/CloudFront artifacts хранятся 7 дней.
+
 ### 9.3. Известный product backlog
 
 OAuth return path; mobile/empty/error smoke; product images; разделение `server/db.ts`; composition/monthly metrics admin API; tariff-driven product plan; homepage/geography; inline CMS editing; mobile hero image; renewal/frozen ownership states; Masha→Bitrix escalation; Mira product-plan defect; gate policy; milk anomaly notifications; Controller PDF/Excel export; полный registration→payment→delivery→renewal E2E. Полный исторический список — в `todo.md`. [30]

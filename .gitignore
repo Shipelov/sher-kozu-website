@@ -121,3 +121,6 @@ temp/
 # Webdev artifacts (checkpoint zips, migrations, etc.)
 .webdev/
 .project-config.json
+
+# One-time migration rehearsal outputs (may contain restored data before encryption)
+rehearsal-output/
