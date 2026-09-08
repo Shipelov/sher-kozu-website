@@ -50,6 +50,9 @@ describe("backup-mysql-offsite workflow", () => {
     expect(workflow).toContain('[ "${REHEARSAL_DB_NAME:-}" = "test" ]');
     expect(workflow).toContain("scripts/ci/restore-check.mjs");
     expect(workflow).toContain("--top 10 --tolerance-percent 1");
+    // stats.json вторичен: scp и --stats необязательны
+    expect(workflow).toContain("stats.json for $name is missing on the VDS");
+    expect(workflow).toContain('[ -f "$OUTPUT_DIR/${name%.sql.gz}.stats.json" ] && stats_arg=');
     expect(workflow).toContain("timeout-minutes: 45");
     const cleanup = workflow.slice(workflow.indexOf("Cleanup plaintext and credentials"));
     expect(cleanup).toContain("if: always()");
@@ -79,6 +82,11 @@ describe("scripts/ops/backup-mysql.sh", () => {
     expect(backupScript).toContain("/var/log/sherkozu-backup.log");
     expect(backupScript).toContain("/var/backups/sherkozu");
     expect(backupScript).toContain("'^-- Dump completed'");
+    // Список таблиц одним SELECT, UNION ALL собирается в bash — без GROUP_CONCAT (лимит 1024)
+    expect(backupScript).not.toMatch(/GROUP_CONCAT\(/);
+    expect(backupScript).toContain("SELECT table_name FROM information_schema.tables");
+    expect(backupScript).toContain('query+="${query:+ UNION ALL }SELECT');
+    expect(backupScript).toContain("ПРЕДУПРЕЖДЕНИЕ: не удалось собрать COUNT(*)");
   });
 
   it("self-test на фикстурах проходит (дамп, проверка, stats, ротация, повторный запуск)", () => {
@@ -166,6 +174,17 @@ describe("restore-check: compareStats", () => {
     expect(report.problems.join("\n")).toContain("таблиц в источнике 4, ожидалось 5");
     expect(report.problems.join("\n")).toContain("нет в test: animals");
     expect(report.problems.join("\n")).toContain("siteEvents: источник 10000, test 9000");
+  });
+
+  it("без stats сверяет только число таблиц", () => {
+    const target = source.map((t) => ({ ...t }));
+    const ok = compareStats({ source: null, target, expectedTables: 4 });
+    expect(ok.ok).toBe(true);
+    expect(ok.statsAvailable).toBe(false);
+    expect(ok.largestTables).toEqual([]);
+    const bad = compareStats({ source: null, target, expectedTables: 5 });
+    expect(bad.ok).toBe(false);
+    expect(bad.problems[0]).toContain("таблиц в test 4, ожидалось 5");
   });
 
   it("сверяет только top-N крупнейших", () => {

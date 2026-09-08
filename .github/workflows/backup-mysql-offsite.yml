@@ -126,8 +126,10 @@ jobs:
           printf '%s' "$name" > "$RUNNER_TEMP/backup-name"
           scp -i ~/.ssh/backup_key -o StrictHostKeyChecking=yes -o ConnectTimeout=20 \
             "$VDS_USER@$VDS_HOST:$latest" "$OUTPUT_DIR/private/$name"
+          # stats.json вторичен: без него restore-test сверит только число таблиц
           scp -i ~/.ssh/backup_key -o StrictHostKeyChecking=yes -o ConnectTimeout=20 \
-            "$VDS_USER@$VDS_HOST:${latest%.sql.gz}.stats.json" "$OUTPUT_DIR/${name%.sql.gz}.stats.json"
+            "$VDS_USER@$VDS_HOST:${latest%.sql.gz}.stats.json" "$OUTPUT_DIR/${name%.sql.gz}.stats.json" \
+            || echo "::warning::stats.json for $name is missing on the VDS — COUNT(*) parity will be skipped"
           ls -la "$OUTPUT_DIR/private/$name"
 
       # Дамп проверяется на раннере независимо от VDS: gzip цел, есть Dump completed,
@@ -209,7 +211,9 @@ jobs:
         run: |
           set -euo pipefail
           name=$(cat "$RUNNER_TEMP/backup-name")
-          node scripts/ci/restore-check.mjs --stats "$OUTPUT_DIR/${name%.sql.gz}.stats.json" \
+          stats_arg=()
+          [ -f "$OUTPUT_DIR/${name%.sql.gz}.stats.json" ] && stats_arg=(--stats "$OUTPUT_DIR/${name%.sql.gz}.stats.json")
+          node scripts/ci/restore-check.mjs "${stats_arg[@]}" \
             --expected-tables "$EXPECTED_TABLE_COUNT" --top 10 --tolerance-percent 1 \
             --output "$OUTPUT_DIR/restore-check.json"
 
