@@ -15,6 +15,16 @@ import { isTransientDbError, withRetry } from "./retryUtils";
 
 const RETRY_DELAY_MS = 500;
 
+// mysql2 без таймаута ждёт ответ вечно: соединение, молча сброшенное TiDB,
+// висит до testTimeout/hookTimeout. Таймаут бездействия превращает это в
+// PROTOCOL_SEQUENCE_TIMEOUT, соединение уничтожается, чтение повторяется.
+const DEFAULT_QUERY_TIMEOUT_MS = process.env.VITEST ? 10_000 : 60_000;
+
+export function queryTimeoutMs(): number {
+  const raw = Number(process.env.DB_QUERY_TIMEOUT_MS);
+  return Number.isFinite(raw) && raw > 0 ? raw : DEFAULT_QUERY_TIMEOUT_MS;
+}
+
 const CONNECTION_ERROR_CODES = new Set([
   "ECONNRESET",
   "ECONNREFUSED",
@@ -63,6 +73,37 @@ function extractSql(first: unknown): string {
 
 const retryOnce = { maxAttempts: 2, baseDelayMs: RETRY_DELAY_MS, exponential: false } as const;
 
+/** Добавляет timeout к первому аргументу query/execute (строка или объект опций) */
+function withQueryTimeout<T>(first: T): T {
+  const timeout = queryTimeoutMs();
+  if (typeof first === "string") return { sql: first, timeout } as unknown as T;
+  if (typeof first === "object" && first !== null && !("timeout" in first)) {
+    return { ...(first as object), timeout } as T;
+  }
+  return first;
+}
+
+/** После ошибки транспорта соединение нельзя возвращать в пул — только уничтожать */
+function discardConnection(conn: PoolConnection): void {
+  const raw = conn as unknown as { destroy?: () => void; connection?: { destroy?: () => void } };
+  if (typeof raw.destroy === "function") raw.destroy();
+  else if (typeof raw.connection?.destroy === "function") raw.connection.destroy();
+  else conn.release();
+}
+
+async function useConnection<T>(conn: PoolConnection, run: (conn: PoolConnection) => Promise<T>): Promise<T> {
+  let transportFailed = false;
+  try {
+    return await run(conn);
+  } catch (err) {
+    transportFailed = isConnectionError(err);
+    throw err;
+  } finally {
+    if (transportFailed) discardConnection(conn);
+    else conn.release();
+  }
+}
+
 function acquireConnection(pool: Pool): Promise<PoolConnection> {
   return withRetry(() => pool.getConnection(), {
     ...retryOnce,
@@ -78,22 +119,11 @@ async function runOnConnection<T>(
 ): Promise<T> {
   if (!readOnly) {
     const conn = await acquireConnection(pool);
-    try {
-      return await run(conn);
-    } finally {
-      conn.release();
-    }
+    return useConnection(conn, run);
   }
   // Для чтения повтор охватывает и подключение, и выполнение — но ровно один раз
   return withRetry(
-    async () => {
-      const conn = await pool.getConnection();
-      try {
-        return await run(conn);
-      } finally {
-        conn.release();
-      }
-    },
+    async () => useConnection(await pool.getConnection(), run),
     { ...retryOnce, label: "DB query", isRetryable: isConnectionError },
   );
 }
@@ -103,14 +133,18 @@ async function runOnConnection<T>(
  * защищены повтором. Остальные методы (end, on, …) проксируются в исходный пул.
  */
 export function createResilientPool(pool: Pool): Pool {
-  const query = (...args: QueryArgs) =>
-    runOnConnection(pool, isReadOnlyStatement(extractSql(args[0])), (conn) =>
-      (conn.query as (...a: QueryArgs) => Promise<unknown>)(...args),
+  const query = (...args: QueryArgs) => {
+    const timed = [withQueryTimeout(args[0]), ...args.slice(1)] as QueryArgs;
+    return runOnConnection(pool, isReadOnlyStatement(extractSql(args[0])), (conn) =>
+      (conn.query as (...a: QueryArgs) => Promise<unknown>)(...timed),
     );
-  const execute = (...args: ExecuteArgs) =>
-    runOnConnection(pool, isReadOnlyStatement(extractSql(args[0])), (conn) =>
-      (conn.execute as (...a: ExecuteArgs) => Promise<unknown>)(...args),
+  };
+  const execute = (...args: ExecuteArgs) => {
+    const timed = [withQueryTimeout(args[0]), ...args.slice(1)] as ExecuteArgs;
+    return runOnConnection(pool, isReadOnlyStatement(extractSql(args[0])), (conn) =>
+      (conn.execute as (...a: ExecuteArgs) => Promise<unknown>)(...timed),
     );
+  };
   const getConnection = () => acquireConnection(pool);
 
   return new Proxy(pool, {

@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Pool, PoolConnection } from "mysql2/promise";
-import { createResilientPool, endPoolWithTimeout, isConnectionError, isReadOnlyStatement } from "./dbResilience";
+import { createResilientPool, endPoolWithTimeout, isConnectionError, isReadOnlyStatement, queryTimeoutMs } from "./dbResilience";
 
 function errorWithCode(code: string): Error {
   const err = new Error(code) as Error & { code: string };
@@ -13,6 +13,7 @@ function fakePool(options: { connectErrors?: (Error | null)[]; queryErrors?: (Er
   const connectErrors = [...(options.connectErrors ?? [])];
   const queryErrors = [...(options.queryErrors ?? [])];
   const release = vi.fn();
+  const destroy = vi.fn();
   const query = vi.fn(async () => {
     const err = queryErrors.shift();
     if (err) throw err;
@@ -23,7 +24,7 @@ function fakePool(options: { connectErrors?: (Error | null)[]; queryErrors?: (Er
     if (err) throw err;
     return [[{ ok: 1 }], []];
   });
-  const connection = { query, execute, release } as unknown as PoolConnection;
+  const connection = { query, execute, release, destroy } as unknown as PoolConnection;
   const getConnection = vi.fn(async () => {
     const err = connectErrors.shift();
     if (err) throw err;
@@ -31,7 +32,7 @@ function fakePool(options: { connectErrors?: (Error | null)[]; queryErrors?: (Er
   });
   const end = vi.fn(async () => undefined);
   const pool = { getConnection, end } as unknown as Pool;
-  return { pool, getConnection, query, execute, release, end };
+  return { pool, getConnection, query, execute, release, destroy, end };
 }
 
 describe("isReadOnlyStatement", () => {
@@ -102,7 +103,8 @@ describe("createResilientPool", () => {
     });
     expect(fake.getConnection).toHaveBeenCalledTimes(1);
     expect(fake.query).toHaveBeenCalledTimes(1);
-    expect(fake.release).toHaveBeenCalledTimes(1);
+    expect(fake.destroy).toHaveBeenCalledTimes(1);
+    expect(fake.release).not.toHaveBeenCalled();
   });
 
   it("повторяет чтение один раз при обрыве на выполнении", async () => {
@@ -114,7 +116,8 @@ describe("createResilientPool", () => {
     expect(result).toEqual([[{ ok: 1 }], []]);
     expect(fake.getConnection).toHaveBeenCalledTimes(2);
     expect(fake.query).toHaveBeenCalledTimes(2);
-    expect(fake.release).toHaveBeenCalledTimes(2);
+    expect(fake.destroy).toHaveBeenCalledTimes(1);
+    expect(fake.release).toHaveBeenCalledTimes(1);
   });
 
   it("не повторяет SQL-ошибки", async () => {
@@ -143,6 +146,49 @@ describe("createResilientPool", () => {
     await client.query("select 1");
 
     expect(Date.now() - started).toBeGreaterThanOrEqual(450);
+  });
+
+  it("передаёт таймаут бездействия в каждый запрос", async () => {
+    const fake = fakePool();
+    const client = createResilientPool(fake.pool);
+
+    await client.query("select 1");
+    await client.query({ sql: "select 2", rowsAsArray: true });
+    await client.execute("select 3", []);
+
+    expect(fake.query).toHaveBeenNthCalledWith(1, { sql: "select 1", timeout: queryTimeoutMs() });
+    expect(fake.query).toHaveBeenNthCalledWith(2, { sql: "select 2", rowsAsArray: true, timeout: queryTimeoutMs() });
+    expect(fake.execute).toHaveBeenCalledWith({ sql: "select 3", timeout: queryTimeoutMs() }, []);
+    expect(queryTimeoutMs()).toBe(10_000);
+  });
+
+  it("зависший SELECT: соединение уничтожается, чтение повторяется на новом", async () => {
+    const fake = fakePool({ queryErrors: [errorWithCode("PROTOCOL_SEQUENCE_TIMEOUT")] });
+    const client = createResilientPool(fake.pool);
+
+    await expect(client.query("select 1")).resolves.toEqual([[{ ok: 1 }], []]);
+    expect(fake.destroy).toHaveBeenCalledTimes(1);
+    expect(fake.release).toHaveBeenCalledTimes(1);
+    expect(fake.query).toHaveBeenCalledTimes(2);
+  });
+
+  it("зависшая запись: соединение уничтожается, повтора нет", async () => {
+    const fake = fakePool({ queryErrors: [errorWithCode("PROTOCOL_SEQUENCE_TIMEOUT")] });
+    const client = createResilientPool(fake.pool);
+
+    await expect(client.query("update `t` set a = 1")).rejects.toMatchObject({ code: "PROTOCOL_SEQUENCE_TIMEOUT" });
+    expect(fake.destroy).toHaveBeenCalledTimes(1);
+    expect(fake.release).not.toHaveBeenCalled();
+    expect(fake.query).toHaveBeenCalledTimes(1);
+  });
+
+  it("SQL-ошибка возвращает соединение в пул, а не уничтожает", async () => {
+    const fake = fakePool({ queryErrors: [errorWithCode("ER_DUP_ENTRY")] });
+    const client = createResilientPool(fake.pool);
+
+    await expect(client.query("insert into `t` values (1)")).rejects.toMatchObject({ code: "ER_DUP_ENTRY" });
+    expect(fake.destroy).not.toHaveBeenCalled();
+    expect(fake.release).toHaveBeenCalledTimes(1);
   });
 
   it("execute подчиняется тем же правилам", async () => {

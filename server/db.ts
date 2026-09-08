@@ -1382,9 +1382,13 @@ export async function getClubFeedData(ownerOpenId: string, limits: ClubListLimit
   const eventsLimit = clubLimit(limits.events, CLUB_LIST_LIMITS.events);
   const membersLimit = clubLimit(limits.members, CLUB_LIST_LIMITS.members);
 
-  const [postRows, eventRows, memberRows, presets] = await Promise.all([
+  // Два пакета по два запроса: пиковая потребность — 2 соединения. Четыре разом
+  // забирали весь пул под vitest (connectionLimit 4) и открывали 3 новых TLS-сессии к TiDB
+  const [postRows, eventRows] = await Promise.all([
     db.select().from(clubPosts).where(and(eq(clubPosts.ownerOpenId, ownerOpenId), eq(clubPosts.hidden, false))).orderBy(asc(clubPosts.sortOrder), desc(clubPosts.createdAt)).limit(postsLimit + 1),
     db.select().from(clubEvents).where(and(eq(clubEvents.ownerOpenId, ownerOpenId), eq(clubEvents.hidden, false))).orderBy(asc(clubEvents.sortOrder), desc(clubEvents.createdAt)).limit(eventsLimit + 1),
+  ]);
+  const [memberRows, presets] = await Promise.all([
     db.select().from(clubMembers).where(and(eq(clubMembers.ownerOpenId, ownerOpenId), eq(clubMembers.hidden, false))).orderBy(asc(clubMembers.sortOrder), desc(clubMembers.createdAt)).limit(membersLimit + 1),
     db.select().from(clubAdminPresets).where(eq(clubAdminPresets.ownerOpenId, ownerOpenId)).orderBy(asc(clubAdminPresets.sortOrder), asc(clubAdminPresets.id)),
   ]);
@@ -1436,9 +1440,11 @@ export async function listClubAdminData(ownerOpenId: string, limits: ClubListLim
   const eventsLimit = clubLimit(limits.events, CLUB_LIST_LIMITS.events);
   const membersLimit = clubLimit(limits.members, CLUB_LIST_LIMITS.members);
 
-  const [postRows, eventRows, memberRows, presets] = await Promise.all([
+  const [postRows, eventRows] = await Promise.all([
     db.select().from(clubPosts).where(eq(clubPosts.ownerOpenId, ownerOpenId)).orderBy(asc(clubPosts.sortOrder), desc(clubPosts.createdAt)).limit(postsLimit + 1),
     db.select().from(clubEvents).where(eq(clubEvents.ownerOpenId, ownerOpenId)).orderBy(asc(clubEvents.sortOrder), desc(clubEvents.createdAt)).limit(eventsLimit + 1),
+  ]);
+  const [memberRows, presets] = await Promise.all([
     db.select().from(clubMembers).where(eq(clubMembers.ownerOpenId, ownerOpenId)).orderBy(asc(clubMembers.sortOrder), desc(clubMembers.createdAt)).limit(membersLimit + 1),
     db.select().from(clubAdminPresets).where(eq(clubAdminPresets.ownerOpenId, ownerOpenId)).orderBy(asc(clubAdminPresets.sortOrder), asc(clubAdminPresets.id)),
   ]);
