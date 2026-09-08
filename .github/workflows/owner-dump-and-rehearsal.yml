@@ -1,0 +1,266 @@
+name: Owner managed dump and TiDB rehearsal
+
+# Независимый от дампа Manus путь: логический дамп стандартным инструментом прямо
+# с managed-базы (только чтение) → проверка → шифрование как страховая копия →
+# импорт в базу test кластера koza-rehearsal → baseline 0066, drizzle-kit migrate/check,
+# сверка COUNT(*) с источником. Запуск только вручную владельцем.
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: "Type RUN"
+        required: true
+        default: ""
+      expected_table_count:
+        description: "Expected base table count in the managed database"
+        required: true
+        default: "96"
+      dump_tool:
+        description: "auto = mysqldump, Dumpling only if mysqldump fails"
+        required: true
+        default: "auto"
+        type: choice
+        options: [auto, mysqldump, dumpling]
+      dumpling_version:
+        description: "TiDB toolkit version for the Dumpling fallback"
+        required: true
+        default: "v8.5.1"
+      strict_row_parity:
+        description: "Fail when COUNT(*) differs from the live source (writes may land between dump and count)"
+        required: true
+        default: "false"
+        type: choice
+        options: ["false", "true"]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: owner-dump-and-rehearsal
+  cancel-in-progress: false
+
+env:
+  NODE_VERSION: "22"
+  OUTPUT_DIR: rehearsal-output
+  EXPECTED_TABLE_COUNT: ${{ inputs.expected_table_count }}
+  DUMPLING_VERSION: ${{ inputs.dumpling_version }}
+  SOURCE_DATABASE_URL: ${{ secrets.DATABASE_URL }}
+  REHEARSAL_DATABASE_URL: ${{ secrets.REHEARSAL_DATABASE_URL }}
+
+jobs:
+  dump-and-rehearse:
+    if: inputs.confirm == 'RUN'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      - name: Verify required secrets and inputs
+        env:
+          MANAGED_DUMP_PASSPHRASE: ${{ secrets.MANAGED_DUMP_PASSPHRASE }}
+        run: |
+          set -euo pipefail
+          missing=0
+          for name in SOURCE_DATABASE_URL REHEARSAL_DATABASE_URL MANAGED_DUMP_PASSPHRASE EXPECTED_TABLE_COUNT; do
+            if [ -z "${!name:-}" ]; then
+              echo "Missing required workflow input or GitHub Secret: ${name}"
+              missing=1
+            fi
+          done
+          [ "$missing" -eq 0 ]
+          [[ "$EXPECTED_TABLE_COUNT" =~ ^[1-9][0-9]*$ ]] || { echo "expected_table_count must be positive"; exit 1; }
+          [[ "$DUMPLING_VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "dumpling_version must look like v8.5.1"; exit 1; }
+          [ "$SOURCE_DATABASE_URL" != "$REHEARSAL_DATABASE_URL" ] || { echo "DATABASE_URL and REHEARSAL_DATABASE_URL are identical"; exit 1; }
+          printf '%s' "$MANAGED_DUMP_PASSPHRASE" > "$RUNNER_TEMP/managed-dump-passphrase"
+          chmod 600 "$RUNNER_TEMP/managed-dump-passphrase"
+          mkdir -p "$OUTPUT_DIR/private"
+          chmod 700 "$OUTPUT_DIR/private"
+          : > "$OUTPUT_DIR/step-timings.env"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Self-tests and migration metadata
+        env:
+          # drizzle.config.ts требует DATABASE_URL даже для офлайн-проверки metadata
+          DATABASE_URL: ${{ secrets.REHEARSAL_DATABASE_URL }}
+        run: |
+          set -euo pipefail
+          bash scripts/ci/parse-database-url.sh --self-test
+          node scripts/ci/verify-owner-dump.mjs --self-test
+          node scripts/ci/run-owner-dump-rehearsal.mjs --self-test
+          pnpm exec drizzle-kit check
+
+      # Разбор URL в shell без вывода значений; пароли уходят в option-файлы mode 600,
+      # компоненты маскируются в логе. Имя базы нужно mysqldump/mysql аргументом.
+      - name: Prepare MySQL client option files
+        run: |
+          set -euo pipefail
+          source scripts/ci/parse-database-url.sh
+          parse_database_url "$SOURCE_DATABASE_URL"
+          echo "::add-mask::$DB_PASSWORD"
+          echo "::add-mask::$DB_USER"
+          echo "::add-mask::$DB_HOST"
+          write_mysql_defaults_file "$RUNNER_TEMP/source.cnf"
+          printf '%s' "$DB_NAME" > "$RUNNER_TEMP/source-db-name"
+          [ "$DB_NAME" != "test" ] || { echo "Source database is named test — refusing to treat it as production"; exit 1; }
+          parse_database_url "$REHEARSAL_DATABASE_URL"
+          echo "::add-mask::$DB_PASSWORD"
+          write_mysql_defaults_file "$RUNNER_TEMP/rehearsal.cnf"
+          printf '%s' "$DB_NAME" > "$RUNNER_TEMP/rehearsal-db-name"
+          [ "$DB_NAME" = "test" ] || { echo "Rehearsal database must be named test"; exit 1; }
+          chmod 600 "$RUNNER_TEMP/source-db-name" "$RUNNER_TEMP/rehearsal-db-name"
+          mysqldump --version
+          mysql --version
+
+      # mysqldump 8 против TiDB: --column-statistics=0 (нет COLUMN_STATISTICS),
+      # --set-gtid-purged=OFF (нет GTID), --no-tablespaces (нет INFORMATION_SCHEMA.FILES),
+      # --skip-lock-tables/--skip-add-locks (LOCK TABLES в TiDB no-op), --single-transaction —
+      # консистентный снапшот. TLS обязателен через option-файл (ssl-mode=REQUIRED).
+      - name: Dump managed database (mysqldump, Dumpling fallback)
+        run: |
+          set -euo pipefail
+          DUMP_FILE="$OUTPUT_DIR/private/owner-dump.sql"
+          SOURCE_DB=$(cat "$RUNNER_TEMP/source-db-name")
+          mask_log() { sed -E "s/'[^']*'/'***'/g; s/@[^ :]+/@***/g"; }
+          tool=""
+          if [ "${{ inputs.dump_tool }}" != "dumpling" ]; then
+            started=$(date +%s%3N)
+            if mysqldump --defaults-extra-file="$RUNNER_TEMP/source.cnf" \
+                --single-transaction --skip-lock-tables --skip-add-locks --set-gtid-purged=OFF \
+                --hex-blob --default-character-set=utf8mb4 --column-statistics=0 --no-tablespaces \
+                --quick --result-file="$DUMP_FILE" "$SOURCE_DB" 2> "$OUTPUT_DIR/private/mysqldump-stderr.log"; then
+              tool=mysqldump
+              echo "dumpMs=$(( $(date +%s%3N) - started ))" >> "$OUTPUT_DIR/step-timings.env"
+            else
+              echo "::warning::mysqldump failed, see masked stderr below"
+              mask_log < "$OUTPUT_DIR/private/mysqldump-stderr.log" | head -20 | tee "$OUTPUT_DIR/mysqldump-stderr-masked.log"
+              [ "${{ inputs.dump_tool }}" = "auto" ] || { echo "dump_tool=mysqldump requested, no fallback"; exit 1; }
+              rm -f "$DUMP_FILE"
+            fi
+          fi
+          if [ -z "$tool" ]; then
+            # Fallback: TiDB Dumpling из официального toolkit с проверкой sha256
+            base="https://download.pingcap.org/tidb-community-toolkit-${DUMPLING_VERSION}-linux-amd64"
+            curl -fsSL --retry 3 -o "$RUNNER_TEMP/toolkit.tar.gz" "${base}.tar.gz"
+            curl -fsSL --retry 3 -o "$RUNNER_TEMP/toolkit.sha256" "${base}.tar.gz.sha256"
+            expected_sha=$(awk '{print $1}' "$RUNNER_TEMP/toolkit.sha256")
+            actual_sha=$(sha256sum "$RUNNER_TEMP/toolkit.tar.gz" | awk '{print $1}')
+            [ "$expected_sha" = "$actual_sha" ] || { echo "toolkit sha256 mismatch"; exit 1; }
+            mkdir -p "$RUNNER_TEMP/toolkit"
+            tar -C "$RUNNER_TEMP/toolkit" -xzf "$RUNNER_TEMP/toolkit.tar.gz"
+            nested=$(find "$RUNNER_TEMP/toolkit" -name "dumpling-${DUMPLING_VERSION}-linux-amd64.tar.gz" | head -n 1)
+            [ -n "$nested" ] || { echo "dumpling tarball not found in toolkit"; exit 1; }
+            tar -C "$RUNNER_TEMP/toolkit" -xzf "$nested"
+            DUMPLING=$(find "$RUNNER_TEMP/toolkit" -type f -name dumpling | head -n 1)
+            [ -x "$DUMPLING" ] || { echo "dumpling binary not found"; exit 1; }
+            source scripts/ci/parse-database-url.sh
+            parse_database_url "$SOURCE_DATABASE_URL"
+            started=$(date +%s%3N)
+            "$DUMPLING" -h "$DB_HOST" -P "$DB_PORT" -u "$DB_USER" -p "$DB_PASSWORD" \
+              --ca /etc/ssl/certs/ca-certificates.crt -B "$DB_NAME" --filetype sql --filesize 256MiB \
+              --threads 2 -o "$OUTPUT_DIR/private/dumpling" 2> "$OUTPUT_DIR/private/dumpling-stderr.log" \
+              || { mask_log < "$OUTPUT_DIR/private/dumpling-stderr.log" | tail -20; exit 1; }
+            # Схема, затем данные — один файл для mysql <
+            : > "$DUMP_FILE"
+            find "$OUTPUT_DIR/private/dumpling" -name "${DB_NAME}.*-schema.sql" | sort | xargs -r cat >> "$DUMP_FILE"
+            find "$OUTPUT_DIR/private/dumpling" -name "${DB_NAME}.*.sql" ! -name "*-schema.sql" ! -name "*-schema-create.sql" | sort | xargs -r cat >> "$DUMP_FILE"
+            tool=dumpling
+            echo "dumpMs=$(( $(date +%s%3N) - started ))" >> "$OUTPUT_DIR/step-timings.env"
+          fi
+          printf '%s' "$tool" > "$OUTPUT_DIR/private/dump-tool"
+          echo "dump tool: $tool, size: $(stat -c %s "$DUMP_FILE") bytes"
+
+      - name: Verify dump
+        run: |
+          set -euo pipefail
+          started=$(date +%s%3N)
+          node scripts/ci/verify-owner-dump.mjs \
+            --file "$OUTPUT_DIR/private/owner-dump.sql" \
+            --expected-tables "$EXPECTED_TABLE_COUNT" \
+            --tool "$(cat "$OUTPUT_DIR/private/dump-tool")" \
+            --summary "$OUTPUT_DIR/dump-verification.json"
+          echo "verifyMs=$(( $(date +%s%3N) - started ))" >> "$OUTPUT_DIR/step-timings.env"
+
+      # Страховая копия владельца: тот же AES-256/passphrase, что у остальных артефактов
+      - name: Encrypt dump
+        run: |
+          set -euo pipefail
+          started=$(date +%s%3N)
+          sha256sum "$OUTPUT_DIR/private/owner-dump.sql" | awk '{print $1 "  owner-dump.sql"}' > "$OUTPUT_DIR/owner-dump.plaintext.sha256"
+          gpg --symmetric --cipher-algo AES256 --batch --yes --pinentry-mode loopback \
+            --passphrase-file "$RUNNER_TEMP/managed-dump-passphrase" \
+            --output "$OUTPUT_DIR/owner-dump.sql.gpg" "$OUTPUT_DIR/private/owner-dump.sql"
+          sha256sum "$OUTPUT_DIR/owner-dump.sql.gpg" > "$OUTPUT_DIR/owner-dump.sql.gpg.sha256"
+          echo "encryptMs=$(( $(date +%s%3N) - started ))" >> "$OUTPUT_DIR/step-timings.env"
+
+      - name: Upload encrypted owner dump
+        uses: actions/upload-artifact@v4
+        with:
+          name: owner-managed-dump-encrypted
+          path: |
+            rehearsal-output/owner-dump.sql.gpg
+            rehearsal-output/owner-dump.sql.gpg.sha256
+            rehearsal-output/owner-dump.plaintext.sha256
+            rehearsal-output/dump-verification.json
+          retention-days: 7
+          if-no-files-found: error
+
+      # Единственная база, в которую пишет workflow: test из REHEARSAL_DATABASE_URL
+      - name: Reset rehearsal database (DROP all tables in test)
+        run: node scripts/ci/reset-rehearsal-db.mjs
+
+      - name: Import dump into rehearsal database
+        run: |
+          set -euo pipefail
+          started=$(date +%s%3N)
+          mysql --defaults-extra-file="$RUNNER_TEMP/rehearsal.cnf" \
+            --database="$(cat "$RUNNER_TEMP/rehearsal-db-name")" \
+            < "$OUTPUT_DIR/private/owner-dump.sql" 2> "$OUTPUT_DIR/private/import-stderr.log" \
+            || { sed -E "s/'[^']*'/'***'/g" < "$OUTPUT_DIR/private/import-stderr.log" | tail -20; exit 1; }
+          echo "importMs=$(( $(date +%s%3N) - started ))" >> "$OUTPUT_DIR/step-timings.env"
+
+      - name: Baseline 0066, drizzle-kit migrate/check, row parity
+        env:
+          STEP_TIMINGS_FILE: rehearsal-output/step-timings.env
+          STRICT_ROW_PARITY: ${{ inputs.strict_row_parity == 'true' && '1' || '0' }}
+        run: |
+          set -euo pipefail
+          DUMP_TOOL="$(cat "$OUTPUT_DIR/private/dump-tool")" node scripts/ci/run-owner-dump-rehearsal.mjs
+
+      - name: Upload rehearsal results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: migration-rehearsal-results
+          path: |
+            rehearsal-output/rehearsal-result.json
+            rehearsal-output/row-diff.json
+            rehearsal-output/migration-output.log
+            rehearsal-output/drizzle-check-output.log
+            rehearsal-output/dump-verification.json
+            rehearsal-output/step-timings.env
+            rehearsal-output/mysqldump-stderr-masked.log
+          retention-days: 7
+          if-no-files-found: warn
+
+      - name: Cleanup plaintext and credentials
+        if: always()
+        run: |
+          rm -f "$RUNNER_TEMP/source.cnf" "$RUNNER_TEMP/rehearsal.cnf" "$RUNNER_TEMP/managed-dump-passphrase"
+          rm -f "$RUNNER_TEMP/source-db-name" "$RUNNER_TEMP/rehearsal-db-name"
+          rm -rf "$RUNNER_TEMP/toolkit" "$RUNNER_TEMP/toolkit.tar.gz" "$RUNNER_TEMP/toolkit.sha256"
+          rm -rf rehearsal-output/private
+          rm -f rehearsal-output/*.sql
