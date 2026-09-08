@@ -32,9 +32,9 @@ describe("one-time migration rehearsal workflow", () => {
   it("uses explicit inputs plus secrets without embedding DB/VDS credentials", () => {
     expect(workflow).toContain("secrets.REHEARSAL_DATABASE_URL");
     expect(workflow).toContain("secrets.DATABASE_URL");
-    expect(workflow).toContain("secrets.SSH_PRIVATE_KEY");
-    expect(workflow).toContain("secrets.SSH_HOST");
-    expect(workflow).toContain("secrets.SSH_USER");
+    expect(workflow).toContain("secrets.VDS_SSH_KEY");
+    expect(workflow).toContain("secrets.VDS_HOST");
+    expect(workflow).toContain("secrets.VDS_USER");
     expect(workflow).toContain("secrets.MANAGED_DUMP_PASSPHRASE");
     expect(workflow).toContain("inputs.managed_dump_vds_path");
     expect(workflow).toContain("inputs.managed_dump_sha256");
