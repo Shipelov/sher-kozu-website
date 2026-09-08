@@ -77,6 +77,7 @@ import {
   InsertPagePerformance,
 } from "../drizzle/schema";
 import { ENV } from "./_core/env";
+import { createResilientPool } from "./dbResilience";
 
 let _db: any = null;
 let _pool: Pool | null = null;
@@ -431,15 +432,16 @@ export async function getDb() {
 
     // Auto-recover from pool-level errors (e.g. ETIMEDOUT, ECONNRESET)
     // The underlying pool from mysql2 is accessible via .pool on the promise wrapper
-    const rawPool = (_pool as any).pool;
+    const rawPool = (_pool as { pool?: { on?: (event: "error", handler: (err: unknown) => void) => void } }).pool;
     if (rawPool && typeof rawPool.on === "function") {
-      rawPool.on("error", (err: any) => {
-        console.error("[Database] Pool error, will reset:", err?.code || err?.message);
+      rawPool.on("error", (err: unknown) => {
+        console.error("[Database] Pool error, will reset:", (err as { code?: string; message?: string })?.code || (err as { message?: string })?.message);
         resetPool();
       });
     }
 
-    _db = drizzle(_pool);
+    // Один повтор при ошибках подключения; запись не повторяется после отправки запроса
+    _db = drizzle(createResilientPool(_pool));
     return _db;
   } catch (error) {
     console.error("[Database] Failed to connect:", error);
