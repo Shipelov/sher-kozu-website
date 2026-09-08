@@ -49,6 +49,10 @@ jobs:
       VDS_HOST: ${{ secrets.VDS_HOST }}
       VDS_USER: ${{ secrets.VDS_USER }}
       REHEARSAL_DATABASE_URL: ${{ secrets.REHEARSAL_DATABASE_URL }}
+      # Бэкап живёт у пользователя deploy (~/.my.cnf, cron, владелец файлов); CI заходит
+      # по SSH под VDS_USER (root) и запускает установленную копию скрипта от deploy
+      BACKUP_RUN_AS: deploy
+      BACKUP_SCRIPT_PATH: /opt/sherkozu/backup-mysql.sh
 
     steps:
       - name: Checkout code
@@ -103,8 +107,9 @@ jobs:
           chmod 600 ~/.ssh/backup_key
           ssh-keyscan -H "$VDS_HOST" >> ~/.ssh/known_hosts 2>/dev/null
 
-      # Скрипт передаётся по stdin (bash -s): на VDS нужна только ~/.my.cnf у VDS_USER
-      # и права на /var/backups/sherkozu и /var/log/sherkozu-backup.log
+      # На VDS выполняется установленная копия скрипта (та же, что в cron) от пользователя
+      # BACKUP_RUN_AS: под root — через sudo -u, под самим deploy — напрямую. Так ~/.my.cnf,
+      # /var/backups/sherkozu и лог остаются у deploy.
       - name: Run backup on VDS
         run: |
           set -euo pipefail
@@ -112,8 +117,15 @@ jobs:
           started=$(date +%s)
           mode=run
           [ "$FORCE_NEW_DUMP" != "true" ] || mode=--force
-          $SSH "$VDS_USER@$VDS_HOST" "bash -s -- $mode" < scripts/ops/backup-mysql.sh
-          latest=$($SSH "$VDS_USER@$VDS_HOST" "bash -s -- --latest" < scripts/ops/backup-mysql.sh)
+          if [ "$VDS_USER" = "$BACKUP_RUN_AS" ]; then
+            run_as=""
+          else
+            run_as="sudo -u $BACKUP_RUN_AS -H"
+          fi
+          echo "ssh user: $VDS_USER, backup runs as: $BACKUP_RUN_AS, script: $BACKUP_SCRIPT_PATH"
+          $SSH "$VDS_USER@$VDS_HOST" "test -x '$BACKUP_SCRIPT_PATH' || { echo '$BACKUP_SCRIPT_PATH is missing on the VDS — see docs/ops/BACKUP.md'; exit 1; }"
+          $SSH "$VDS_USER@$VDS_HOST" "$run_as '$BACKUP_SCRIPT_PATH' $mode"
+          latest=$($SSH "$VDS_USER@$VDS_HOST" "$run_as '$BACKUP_SCRIPT_PATH' --latest")
           [[ "$latest" =~ ^/var/backups/sherkozu/sherkozu-[0-9]{4}-[0-9]{2}-[0-9]{2}\.sql\.gz$ ]] || { echo "unexpected latest path: $latest"; exit 1; }
           printf '%s' "$latest" > "$RUNNER_TEMP/latest-path"
           echo "backup on VDS: $latest ($(( $(date +%s) - started )) s)"

@@ -10,12 +10,24 @@ TiDB Cloud используется только для тестов CI (`TEST_D
 | Слой | Что | Где |
 |---|---|---|
 | Локальный дамп | `scripts/ops/backup-mysql.sh` из cron на VDS: `mysqldump --single-transaction --routines --triggers --events --hex-blob --set-gtid-purged=OFF --no-tablespaces` → gzip; проверка «файл не пуст, gzip цел, заканчивается `-- Dump completed`»; `stats.json` с `COUNT(*)` по таблицам (вторичен: при его сбое дамп сохраняется, в лог пишется `ПРЕДУПРЕЖДЕНИЕ`, код выхода 0) | `/var/backups/sherkozu/sherkozu-YYYY-MM-DD.sql.gz`, 14 дневных; `weekly/` — 8 недельных (копия по воскресеньям); лог `/var/log/sherkozu-backup.log` |
-| Offsite-копия | `.github/workflows/backup-mysql-offsite.yml` ежедневно в 03:30 UTC и вручную: по SSH запускает тот же скрипт (если файл за сегодня уже есть и проходит проверку — переиспользует), забирает `.sql.gz` и `stats.json` через `scp`, проверяет дамп на раннере, шифрует gpg AES-256 паролем `BACKUP_PASSPHRASE` | artifact `mysql-backup-encrypted-<run_id>`, 90 дней: `*.sql.gz.gpg`, sha256 encrypted и plaintext, `stats.json`, `dump-verification.json` |
+| Offsite-копия | `.github/workflows/backup-mysql-offsite.yml` ежедневно в 03:30 UTC и вручную: по SSH под `VDS_USER` запускает установленную копию `/opt/sherkozu/backup-mysql.sh` от пользователя `deploy` (если файл за сегодня уже есть и проходит проверку — переиспользует), забирает `.sql.gz` и `stats.json` через `scp`, проверяет дамп на раннере, шифрует gpg AES-256 паролем `BACKUP_PASSPHRASE` | artifact `mysql-backup-encrypted-<run_id>`, 90 дней: `*.sql.gz.gpg`, sha256 encrypted и plaintext, `stats.json`, `dump-verification.json` |
 | Restore-test | тот же workflow: sed-фильтр совместимости → DROP всех таблиц в `test` → `mysql < restore.sql` → `restore-check.mjs`: число таблиц и `COUNT(*)` по 10 крупнейшим против `stats.json` с допуском 1 %; если `stats.json` на VDS не собрался — только число таблиц (`statsAvailable: false` в отчёте) | artifact `restore-test-results-<run_id>`, 30 дней |
 
 Секреты workflow: `VDS_HOST`, `VDS_USER`, `VDS_SSH_KEY` (уже есть, те же, что у deploy), `REHEARSAL_DATABASE_URL`
 (есть), **`BACKUP_PASSPHRASE` — новый, завести владельцу** (длинная случайная строка, хранить в менеджере паролей;
 без неё артефакты не расшифровать).
+
+## Под каким пользователем что работает
+
+| Что | Пользователь | Примечание |
+|---|---|---|
+| cron и локальный дамп | `deploy` | `~/.my.cnf` (600), `/var/backups/sherkozu` и `/var/log/sherkozu-backup.log` принадлежат `deploy`; скрипт установлен в `/opt/sherkozu/backup-mysql.sh` |
+| SSH-доступ CI (`VDS_USER`) | `root` | те же секреты `VDS_HOST`/`VDS_USER`/`VDS_SSH_KEY`, что у deploy-workflow |
+| Запуск скрипта из workflow | `deploy` через `sudo -u deploy -H /opt/sherkozu/backup-mysql.sh …` | если `VDS_USER` совпадает с `BACKUP_RUN_AS` (`deploy`), sudo не нужен; имя пользователя — env `BACKUP_RUN_AS` на уровне job |
+| `scp` дампа и `stats.json` в CI | `root` (ssh-пользователь) | root читает файлы `deploy` без изменений прав |
+| Файлы в `/var/backups/sherkozu` | всегда `deploy`, права 600 | и cron, и workflow пишут от `deploy`; `/root/.my.cnf` не нужен и не должен существовать |
+
+Если ssh-пользователь не `root` и не `deploy`, ему нужен `sudo -u deploy` без пароля: `echo '<user> ALL=(deploy) NOPASSWD: /opt/sherkozu/backup-mysql.sh' | sudo tee /etc/sudoers.d/sherkozu-backup`.
 
 ## Установка на VDS (делает владелец, один раз)
 
@@ -24,14 +36,14 @@ TiDB Cloud используется только для тестов CI (`TEST_D
 sudo mysql -e "CREATE USER 'backup'@'localhost' IDENTIFIED BY '<пароль>'; \
   GRANT SELECT, SHOW VIEW, TRIGGER, EVENT, LOCK TABLES, PROCESS ON *.* TO 'backup'@'localhost'; FLUSH PRIVILEGES;"
 
-# 2. ~/.my.cnf у пользователя, под которым ходит deploy (VDS_USER) и cron
+# 2. ~/.my.cnf у пользователя deploy (не у root: workflow запускает скрипт через sudo -u deploy)
 printf '[client]\nuser=backup\npassword=<пароль>\n' > ~/.my.cnf && chmod 600 ~/.my.cnf
 
 # 3. Каталог и лог
 sudo mkdir -p /var/backups/sherkozu && sudo chown "$USER:$USER" /var/backups/sherkozu && chmod 700 /var/backups/sherkozu
 sudo touch /var/log/sherkozu-backup.log && sudo chown "$USER:$USER" /var/log/sherkozu-backup.log
 
-# 4. Скрипт (rsync deploy его не копирует)
+# 4. Скрипт (rsync deploy его не копирует); путь совпадает с BACKUP_SCRIPT_PATH в workflow
 sudo mkdir -p /opt/sherkozu && sudo cp /var/www/sherkozu/current/scripts/ops/backup-mysql.sh /opt/sherkozu/ 2>/dev/null \
   || curl -fsSL https://raw.githubusercontent.com/Shipelov/sher-kozu-website/main/scripts/ops/backup-mysql.sh | sudo tee /opt/sherkozu/backup-mysql.sh >/dev/null
 sudo chmod 755 /opt/sherkozu/backup-mysql.sh
