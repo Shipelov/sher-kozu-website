@@ -15,6 +15,7 @@ import { registerGate } from "../gateMiddleware";
 import { registerMashaVideoProxy } from "../mashaVideoProxy";
 import { getDeployVersion } from "../deployVersion";
 import { createBodyLimitMiddleware } from "./bodyLimits";
+import { backgroundJobsEnabled, trackBackgroundJob } from "./backgroundJobs";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -104,6 +105,68 @@ async function runTrashCleanup() {
   } catch (err) {
     console.error("[Trash Cleanup] Error during cleanup (all retries exhausted):", err);
   }
+}
+
+/**
+ * Фоновые задачи процесса. Все они живут в одном pm2-процессе; под vitest не
+ * стартуют (см. backgroundJobsEnabled), таймеры снимаются stopBackgroundJobs().
+ */
+function startBackgroundJobs() {
+  // Run trash cleanup on startup and then every 24 hours
+  runTrashCleanup();
+  trackBackgroundJob(setInterval(runTrashCleanup, 24 * 60 * 60 * 1000));
+
+  // Run CMS history cleanup on startup and then every 24 hours
+  runCmsHistoryCleanup();
+  trackBackgroundJob(setInterval(runCmsHistoryCleanup, 24 * 60 * 60 * 1000));
+
+  // Run expired share link cleanup on startup and every 12 hours
+  (async () => {
+    try {
+      const { cleanupExpiredShareLinks } = await import("../nutritionistDb");
+      await cleanupExpiredShareLinks();
+      trackBackgroundJob(setInterval(async () => {
+        try {
+          await cleanupExpiredShareLinks();
+        } catch (err) {
+          console.error("[Zoya Share Cleanup] Error:", err);
+        }
+      }, 12 * 60 * 60 * 1000));
+    } catch (err) {
+      console.error("[Zoya Share Cleanup] Startup error:", err);
+    }
+  })();
+
+  // Check pending product plan setup requests every 5 minutes
+  (async () => {
+    try {
+      const { runProductPlanSetupCheck } = await import("../productPlanSetupCron");
+      // Run once on startup (with 30s delay to let DB connect)
+      trackBackgroundJob(setTimeout(() => runProductPlanSetupCheck().catch(console.error), 30_000));
+      // Then every 5 minutes
+      trackBackgroundJob(setInterval(() => runProductPlanSetupCheck().catch(console.error), 5 * 60 * 1000));
+      console.log("[ProductPlanCron] Scheduled every 5 minutes");
+    } catch (err) {
+      console.error("[ProductPlanCron] Failed to schedule:", err);
+    }
+  })();
+
+  // Milk auto-confirmation cron — runs every hour
+  (async () => {
+    try {
+      const { runMilkAutoConfirm } = await import("../milkAutoConfirm");
+      // First run after 60s to let DB warm up
+      trackBackgroundJob(setTimeout(() => runMilkAutoConfirm().catch(console.error), 60_000));
+      // Then every hour
+      trackBackgroundJob(setInterval(() => runMilkAutoConfirm().catch(console.error), 60 * 60 * 1000));
+      console.log("[MilkAutoConfirm] Scheduled every 1 hour (72h threshold)");
+    } catch (err) {
+      console.error("[MilkAutoConfirm] Failed to schedule:", err);
+    }
+  })();
+
+  // Start analytics monitoring (reports every 5 minutes)
+  analyticsMonitor.startReporting();
 }
 
 async function startServer() {
@@ -461,61 +524,11 @@ async function startServer() {
   server.listen(port, () => {
     console.log(`Server running on http://localhost:${port}/`);
 
-    // Run trash cleanup on startup and then every 24 hours
-    runTrashCleanup();
-    setInterval(runTrashCleanup, 24 * 60 * 60 * 1000);
-
-    // Run CMS history cleanup on startup and then every 24 hours
-    runCmsHistoryCleanup();
-    setInterval(runCmsHistoryCleanup, 24 * 60 * 60 * 1000);
-
-    // Run expired share link cleanup on startup and every 12 hours
-    (async () => {
-      try {
-        const { cleanupExpiredShareLinks } = await import("../nutritionistDb");
-        await cleanupExpiredShareLinks();
-        setInterval(async () => {
-          try {
-            await cleanupExpiredShareLinks();
-          } catch (err) {
-            console.error("[Zoya Share Cleanup] Error:", err);
-          }
-        }, 12 * 60 * 60 * 1000);
-      } catch (err) {
-        console.error("[Zoya Share Cleanup] Startup error:", err);
-      }
-    })();
-
-    // Check pending product plan setup requests every 5 minutes
-    (async () => {
-      try {
-        const { runProductPlanSetupCheck } = await import("../productPlanSetupCron");
-        // Run once on startup (with 30s delay to let DB connect)
-        setTimeout(() => runProductPlanSetupCheck().catch(console.error), 30_000);
-        // Then every 5 minutes
-        setInterval(() => runProductPlanSetupCheck().catch(console.error), 5 * 60 * 1000);
-        console.log("[ProductPlanCron] Scheduled every 5 minutes");
-      } catch (err) {
-        console.error("[ProductPlanCron] Failed to schedule:", err);
-      }
-    })();
-
-    // Milk auto-confirmation cron — runs every hour
-    (async () => {
-      try {
-        const { runMilkAutoConfirm } = await import("../milkAutoConfirm");
-        // First run after 60s to let DB warm up
-        setTimeout(() => runMilkAutoConfirm().catch(console.error), 60_000);
-        // Then every hour
-        setInterval(() => runMilkAutoConfirm().catch(console.error), 60 * 60 * 1000);
-        console.log("[MilkAutoConfirm] Scheduled every 1 hour (72h threshold)");
-      } catch (err) {
-        console.error("[MilkAutoConfirm] Failed to schedule:", err);
-      }
-    })();
-
-    // Start analytics monitoring (reports every 5 minutes)
-    analyticsMonitor.startReporting();
+    if (backgroundJobsEnabled()) {
+      startBackgroundJobs();
+    } else {
+      console.log("[BackgroundJobs] Пропущены: NODE_ENV=test");
+    }
 
     // Set Telegram webhook URL in production
     if (process.env.NODE_ENV === "production") {
