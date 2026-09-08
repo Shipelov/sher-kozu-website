@@ -50,21 +50,22 @@ concurrency:
   group: owner-dump-and-rehearsal
   cancel-in-progress: false
 
-env:
-  NODE_VERSION: "22"
-  OUTPUT_DIR: rehearsal-output
-  EXPECTED_TABLE_COUNT: ${{ inputs.expected_table_count }}
-  DUMPLING_VERSION: ${{ inputs.dumpling_version }}
-  DUMPLING_CONSISTENCY: ${{ inputs.dumpling_consistency }}
-  TOOLKIT_SHA256: ${{ inputs.toolkit_sha256 }}
-  SOURCE_DATABASE_URL: ${{ secrets.DATABASE_URL }}
-  REHEARSAL_DATABASE_URL: ${{ secrets.REHEARSAL_DATABASE_URL }}
-
 jobs:
   dump-and-rehearse:
     if: inputs.confirm == 'RUN'
     runs-on: ubuntu-latest
     timeout-minutes: 60
+    # Единые имена для всех шагов: SOURCE_DATABASE_URL — managed-база (secret DATABASE_URL),
+    # REHEARSAL_DATABASE_URL — база test. Скрипты читают ровно эти имена.
+    env:
+      NODE_VERSION: "22"
+      OUTPUT_DIR: rehearsal-output
+      EXPECTED_TABLE_COUNT: ${{ inputs.expected_table_count }}
+      DUMPLING_VERSION: ${{ inputs.dumpling_version }}
+      DUMPLING_CONSISTENCY: ${{ inputs.dumpling_consistency }}
+      TOOLKIT_SHA256: ${{ inputs.toolkit_sha256 }}
+      SOURCE_DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      REHEARSAL_DATABASE_URL: ${{ secrets.REHEARSAL_DATABASE_URL }}
 
     steps:
       - name: Checkout code

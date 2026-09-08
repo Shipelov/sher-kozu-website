@@ -25,6 +25,12 @@ describe("owner dump and rehearsal workflow", () => {
 
   it("читает только нужные секреты и ни одного production-адреса в открытом виде", () => {
     expect(workflow).toContain("secrets.DATABASE_URL");
+    // env задан на уровне job, а не workflow, и под единственными именами
+    const jobSection = workflow.slice(workflow.indexOf("jobs:"));
+    expect(jobSection).toMatch(/\n    env:\n(?:      .*\n)*      SOURCE_DATABASE_URL: \$\{\{ secrets\.DATABASE_URL \}\}\n/);
+    expect(jobSection).toMatch(/\n    env:\n(?:      .*\n)*      REHEARSAL_DATABASE_URL: \$\{\{ secrets\.REHEARSAL_DATABASE_URL \}\}\n/);
+    expect(workflow.slice(0, workflow.indexOf("jobs:"))).not.toContain("SOURCE_DATABASE_URL");
+    expect(workflow).not.toMatch(/--env (?!SOURCE_DATABASE_URL|REHEARSAL_DATABASE_URL)/);
     expect(workflow).toContain("secrets.REHEARSAL_DATABASE_URL");
     expect(workflow).toContain("secrets.MANAGED_DUMP_PASSPHRASE");
     expect(workflow).not.toMatch(/mysql:\/\/[^$\s]+/);

@@ -34,6 +34,14 @@
 | `dumpling_consistency` | `snapshot` | `--consistency` Dumpling: `snapshot` через `tidb_snapshot` или `none` |
 | `strict_row_parity` | `false` | падать при расхождении `COUNT(*)`; по умолчанию расхождение только фиксируется в `row-diff.json`, потому что живая база меняется между дампом и подсчётом |
 
+## Проводка переменных
+
+На уровне job задано `SOURCE_DATABASE_URL: ${{ secrets.DATABASE_URL }}` (managed-база) и `REHEARSAL_DATABASE_URL: ${{ secrets.REHEARSAL_DATABASE_URL }}` (база `test`); все скрипты читают ровно эти имена (`--env SOURCE_DATABASE_URL` / `--env REHEARSAL_DATABASE_URL`). Пустая или отсутствующая переменная — ошибка «переменная X не задана или пуста» без вывода значения; неразбираемая строка — ошибка с длиной, первыми 8 символами (после `:`/`@` маскируются) и числом `@`.
+
+## Известная проблема: secret `DATABASE_URL` указывает на localhost
+
+Запуск 2026-09-08 показал в шаге «Parse database URLs»: `SOURCE_DATABASE_URL: scheme=mysql host=localhost port=3306 … user=<8 chars>`. Это не дефолт парсера (порт по умолчанию у него 4000, пустой host отклоняется), а содержимое самого секрета: `deploy.yml` записывает `secrets.DATABASE_URL` в `.env` на VDS, то есть приложение работает с базой на `localhost:3306` самого VDS. С GitHub-раннера этот адрес недостижим, и Dumpling/mysqldump до базы не дойдут. Варианты: (а) снимать дамп на VDS по SSH (`VDS_HOST`/`VDS_USER`/`VDS_SSH_KEY`, как в `run-vds-readonly-audit.sh`) и забирать файл `scp`; (б) SSH-туннель с раннера (`ssh -L 3306:127.0.0.1:3306`) и Dumpling против `127.0.0.1:3306`; (в) отдельный secret с сетевым адресом managed-базы, если она существует. Решение за владельцем; до него `Guard database names` и «Check connectivity» останавливают workflow с понятным сообщением.
+
 ## Secrets
 
 `DATABASE_URL` (только чтение: mysqldump и `SELECT COUNT(*)`), `REHEARSAL_DATABASE_URL`
