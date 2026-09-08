@@ -6,7 +6,7 @@ import path from "node:path";
 const root = path.resolve(import.meta.dirname, "..");
 const read = (rel: string) => readFileSync(path.join(root, rel), "utf8");
 const workflow = read(".github/workflows/owner-dump-and-rehearsal.yml");
-const parseScript = read("scripts/ci/parse-database-url.sh");
+const urlParts = read("scripts/ci/db-url-parts.mjs");
 const resetScript = read("scripts/ci/reset-rehearsal-db.mjs");
 const rehearsalScript = read("scripts/ci/run-owner-dump-rehearsal.mjs");
 const lib = read("scripts/ci/rehearsalLib.mjs");
@@ -28,7 +28,10 @@ describe("owner dump and rehearsal workflow", () => {
     expect(workflow).toContain("secrets.REHEARSAL_DATABASE_URL");
     expect(workflow).toContain("secrets.MANAGED_DUMP_PASSPHRASE");
     expect(workflow).not.toMatch(/mysql:\/\/[^$\s]+/);
-    expect(workflow).toContain("::add-mask::$DB_PASSWORD");
+    // Маскировка user/password делает node-парсер, workflow значений не печатает
+    expect(urlParts).toContain("::add-mask::");
+    expect(workflow).not.toContain("$DB_PASSWORD");
+    expect(workflow).not.toContain("::add-mask::");
   });
 
   it("снимает дамп Dumpling с проверкой sha256, mysqldump только как fallback без savepoints", () => {
@@ -54,7 +57,12 @@ describe("owner dump and rehearsal workflow", () => {
     ]) {
       expect(workflow).toContain(flag);
     }
-    expect(parseScript).toContain("ssl-mode=REQUIRED");
+    expect(urlParts).toContain("ssl-mode=REQUIRED");
+    expect(workflow).toContain("scripts/ci/db-url-parts.mjs --env SOURCE_DATABASE_URL --prefix SOURCE_DB_");
+    expect(workflow).toContain("--password-file \"$RUNNER_TEMP/source.pw\"");
+    expect(workflow).toContain("scripts/ci/db-connectivity-check.mjs --env SOURCE_DATABASE_URL");
+    expect(workflow).not.toContain("parse-database-url.sh");
+    expect(workflow).toContain('-p "$(cat "$RUNNER_TEMP/source.pw")"');
   });
 
   it("проверяет дамп, шифрует его и хранит артефакты 7 дней", () => {
@@ -79,6 +87,7 @@ describe("owner dump and rehearsal workflow", () => {
     expect(cleanup).toContain("if: always()");
     expect(cleanup).toContain("managed-dump-passphrase");
     expect(cleanup).toContain("source.cnf");
+    expect(cleanup).toContain("source.pw");
     expect(cleanup).toContain("rehearsal-output/private");
   });
 
@@ -95,9 +104,9 @@ describe("owner dump and rehearsal workflow", () => {
   });
 
   it("self-test разбора URL проходит", () => {
-    const run = spawnSync("bash", ["scripts/ci/parse-database-url.sh", "--self-test"], { cwd: root, encoding: "utf8" });
+    const run = spawnSync(process.execPath, ["scripts/ci/db-url-parts.mjs", "--self-test"], { cwd: root, encoding: "utf8" });
     expect(run.status, run.stdout + run.stderr).toBe(0);
-    expect(run.stdout).toContain("parse-database-url self-test: ok");
+    expect(run.stdout).toContain("selfTest");
   });
 
   it("self-test проверки дампа проходит на фикстурах", () => {
