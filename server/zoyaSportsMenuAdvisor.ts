@@ -1,4 +1,49 @@
-import type { ZoyaUserContext } from "./prompts/zoyaSystemPrompt";
+import type { NutriProfile } from "../drizzle/schema";
+
+// Типы контекста пользователя Зои (перенесены из удалённого prompts/zoyaSystemPrompt.ts —
+// этот файл был единственным потребителем).
+export interface AnimalMilkComposition {
+  label: string;
+  value: string;
+  note: string;
+}
+
+export interface AnimalMonthlyMetric {
+  month: string;
+  milkLiters: number;
+  proteinPercent: number;
+  fatPercent: number;
+}
+
+export interface AnimalProduct {
+  label: string;
+  type: string;
+  unit: string;
+}
+
+export interface EnrichedAnimal {
+  animalName: string | null;
+  animalSlug: string;
+  species: string | null;
+  breed: string | null;
+  milkComposition: AnimalMilkComposition[];
+  monthlyMetrics: AnimalMonthlyMetric[];
+  annualMilkLiters: number | null;
+  availableProducts: AnimalProduct[];
+}
+
+export interface ZoyaUserContext {
+  userType: "guest" | "registered" | "owner";
+  userName?: string | null;
+  profile?: NutriProfile | null;
+  ownerContext?: {
+    animals: Array<EnrichedAnimal>;
+    productPlans: Array<{ status?: string | null; selectionsJson?: unknown } & Record<string, unknown>>;
+    deliveries: Array<Record<string, unknown>>;
+  } | null;
+  messageCountInSession: number;
+  totalGuestMessages?: number;
+}
 
 export type ZoyaConversationMessage = {
   role: "user" | "assistant";
