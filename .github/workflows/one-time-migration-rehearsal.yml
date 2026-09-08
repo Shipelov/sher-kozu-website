@@ -90,6 +90,9 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Validate repository migration metadata
+        env:
+          # drizzle.config.ts требует DATABASE_URL даже для офлайн-проверки metadata
+          DATABASE_URL: ${{ secrets.REHEARSAL_DATABASE_URL }}
         run: |
           pnpm exec drizzle-kit check
           node scripts/ci/run-managed-tidb-rehearsal.mjs --self-test
