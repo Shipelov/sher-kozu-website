@@ -20,7 +20,7 @@
 | Telegram Mini App | Использует общий tRPC-контур Зои | Зависит от привязки Telegram-аккаунта |
 | Telegram bot chat | Отдельные облегчённые prompts и прямой LLM | Не использует профиль/RAG/validators web-Зои |
 | Cloudflare Worker | `tg-proxy`, исходник и Wrangler-конфиг экспортированы в Git, binding `AI` подтверждён | Автоматический Worker CI ещё не подключён; production deploy остаётся отдельной подтверждаемой операцией |
-| База | TiDB; 95 application tables в Drizzle | Dev migration ledger расходится с репозиторием на 3 записи |
+| База | MySQL 8.0 локально на VDS (`localhost:3306`, база `sherkozu`); 95 application tables в Drizzle | Ежедневный бэкап + offsite-копия с restore-test — `docs/ops/BACKUP.md` (cron на VDS настраивает владелец) |
 | Файлы | `/var/www/sherkozu/uploads` на VDS | Нет подтверждённого backup/restore процесса |
 
 ## 2. Cloudflare Worker `tg-proxy`
@@ -131,17 +131,19 @@ Deploy workflow пересоздаёт `.env` на каждом deploy. Пере
 
 ### 3.6. Monitoring и backups
 
-В репозитории нет конфигурации uptime monitoring, disk/RAM alerts, Sentry/Datadog/Prometheus, VDS backup, uploads backup или TiDB restore test. Owner notifications приложения приходят через Telegram или legacy Forge, но это не инфраструктурный мониторинг. [16] [17]
+В репозитории нет конфигурации uptime monitoring, disk/RAM alerts, Sentry/Datadog/Prometheus и uploads backup. Owner notifications приложения приходят через Telegram или legacy Forge, но это не инфраструктурный мониторинг. [16] [17]
 
-Минимум, который следует внедрить: внешний HTTPS health check, disk/RAM alerts, PM2 process alert, nginx 5xx alert, daily encrypted backup uploads, TiDB PITR verification и ежеквартальный restore drill.
+Бэкап базы (добавлен 8 сентября 2026): `scripts/ops/backup-mysql.sh` из cron на VDS снимает `mysqldump` в `/var/backups/sherkozu` (14 дневных + 8 недельных), а `.github/workflows/backup-mysql-offsite.yml` ежедневно в 03:30 UTC забирает свежий дамп по SSH, шифрует AES-256 (`BACKUP_PASSPHRASE`), хранит артефактом 90 дней и проверяет восстановлением в базу `test` кластера `koza-rehearsal`. Установка cron и проверка — `docs/ops/BACKUP.md`.
+
+Минимум, который следует внедрить: внешний HTTPS health check, disk/RAM alerts, PM2 process alert, nginx 5xx alert, encrypted backup для `uploads` и ежеквартальный ручной restore drill на чистый сервер по `docs/ops/BACKUP.md`.
 
 ## 4. База данных и миграции
 
 ### 4.1. Состояние
 
-Приложение использует Drizzle ORM с MySQL dialect. `drizzle/schema.ts` экспортирует 95 application tables. Read-only проверка Manus development DB показала TiDB Serverless `8.0.11-TiDB-v8.5.3-serverless`, 96 physical tables вместе с `__drizzle_migrations`, то есть 95 application tables. Это подтверждает только count parity, не полное совпадение columns/indexes. [18]
+**Реальная схема (уточнено 8 сентября 2026):** production-база — MySQL 8.0 локально на VDS, `localhost:3306`, база `sherkozu`. `secrets.DATABASE_URL` — это именно этот адрес: `deploy.yml` записывает его в `.env` на VDS, а запуск workflow `owner-dump-and-rehearsal` (удалён) показал в разборе секрета `host=localhost port=3306`. Managed TiDB Serverless никогда не была production: это dev-база Manus (`8.0.11-TiDB-v8.5.3-serverless`, 96 physical tables). TiDB Cloud остаётся для тестов CI (`TEST_DATABASE_URL`) и как кластер `koza-rehearsal` (`REHEARSAL_DATABASE_URL`, база `test`) для проверки восстановления бэкапов.
 
-Production TiDB использует отдельный `DATABASE_URL`. Тариф, регион, лимиты, retention/PITR и backup policy не представлены в Git и должны быть переписаны из TiDB Cloud console. Отдельной staging DB и staging VDS в репозитории нет.
+Приложение использует Drizzle ORM с MySQL dialect. `drizzle/schema.ts` экспортирует 95 application tables; в production 96 physical tables вместе с `__drizzle_migrations`. Тариф/регион TiDB Cloud к production не относятся; retention и restore обеспечивает собственный бэкап (`docs/ops/BACKUP.md`). Отдельной staging DB и staging VDS в репозитории нет.
 
 ### 4.2. Migration flow и обнаруженное расхождение
 
@@ -173,6 +175,8 @@ SQL migrations находятся прямо в `drizzle/`. В текущем р
 Статический runtime-reference audit нашёл две таблицы без ссылок за пределами schema/generated bundle: `milkSessionAnimals` и `milkProcessingBatches`. Они являются **кандидатами**, а не разрешением на DROP. Перед удалением проверьте production row counts, audit entity references, exports и исторические отчёты. [18]
 
 ### 4.5. Managed TiDB exit package
+
+> **Предпосылка этого раздела и документа `MANAGED_TIDB_EXIT_AND_OWNERSHIP_AUDIT.md` неверна:** production никогда не жил в managed TiDB (см. 4.1). Описанный ниже snapshot — копия dev-базы Manus, а не production; cutover plan «managed TiDB → своя база» не нужен. Раздел сохранён как история; актуальный процесс копий — `docs/ops/BACKUP.md`.
 
 7 сентября 2026 года создан согласованный read-only snapshot текущей автоматически управляемой WebDev/TiDB Serverless базы: 96 физических таблиц, 24 798 строк, 4 970 860 байт SQL; gzip — 586 504 байта. Raw SQL с пользовательскими данными хранится только вне Git в `/home/ubuntu/private-backups/sherkozu-managed-tidb-2026-09-07/` с ограниченными правами. Для передачи подготовлен отдельно зашифрованный AES‑256 bundle; контрольная расшифровка и все checksums успешны. В Git добавлены только безопасные manifest и compatibility metadata. [35] [36] [37]
 
