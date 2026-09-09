@@ -622,6 +622,17 @@ describe("other routes stay unchanged", () => {
     });
   });
 
+  it("proxies Telegram without a secret check while PROXY_SECRET is unset (open relay, see docs/ops/TELEGRAM_PROXY_SECRET.md)", async () => {
+    let receivedUrl;
+    globalThis.fetch = async (input) => {
+      receivedUrl = String(input);
+      return Response.json({ ok: true });
+    };
+    const response = await worker.fetch(new Request("https://worker.test/bot123/getMe"), {});
+    assert.equal(response.status, 200);
+    assert.equal(receivedUrl, "https://api.telegram.org/bot123/getMe");
+  });
+
   it("enforces PROXY_SECRET on the Telegram catch-all route", async () => {
     let upstreamCalled = false;
     globalThis.fetch = async () => {

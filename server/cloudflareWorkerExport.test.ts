@@ -45,7 +45,6 @@ describe("Cloudflare tg-proxy export", () => {
       "ALERT_BOT_TOKEN",
       "ALERT_CHAT_ID",
       "OPENAI_PROXY_SECRET",
-      "PROXY_SECRET",
       "ANTHROPIC_API_KEY",
       "AI_GATEWAY_URL",
       "ANTHROPIC_MODEL_SONNET",
@@ -53,7 +52,8 @@ describe("Cloudflare tg-proxy export", () => {
     ];
 
     expect(config.secrets.required).toEqual(requiredSecrets);
-    for (const secretName of [...requiredSecrets, "AI_GATEWAY_TOKEN"]) {
+    // PROXY_SECRET необязателен: VDS не шлёт X-Proxy-Secret (docs/ops/TELEGRAM_PROXY_SECRET.md)
+    for (const secretName of [...requiredSecrets, "AI_GATEWAY_TOKEN", "PROXY_SECRET"]) {
       expect(source).toMatch(new RegExp(`env\\?*\\.${secretName}`));
     }
 
