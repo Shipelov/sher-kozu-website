@@ -309,13 +309,36 @@ const resolveConnection = (): LlmConnection => {
   );
 };
 
-const defaultModelForConnection = (connection: LlmConnection): string =>
-  connection.source === "forge" ? "gemini-3-flash-preview" : "gpt-4o-mini";
+// Для Worker поле model — alias: claude-sonnet/claude-haiku/workers-ai, маппинг делает Worker
+const defaultModelForConnection = (connection: LlmConnection): string => {
+  switch (connection.source) {
+    case "forge":
+      return "gemini-3-flash-preview";
+    case "cloudflare-openai":
+      return "claude-sonnet";
+    default:
+      return "gpt-4o-mini";
+  }
+};
 
-const diagnosticModelLabel = (connection: LlmConnection, requestModel: string): string =>
-  connection.source === "cloudflare-openai"
-    ? `worker-managed (request alias: ${requestModel})`
-    : requestModel;
+/**
+ * Worker отдаёт фактическую модель и провайдера в X-Koza-Model / X-Koza-Provider;
+ * до ответа (или без заголовков) остаётся только alias запроса.
+ */
+const diagnosticModelLabel = (
+  connection: LlmConnection,
+  requestModel: string,
+  headers?: Headers,
+): string => {
+  if (connection.source !== "cloudflare-openai") return requestModel;
+  const actualModel = headers?.get("x-koza-model");
+  const provider = headers?.get("x-koza-provider");
+  if (actualModel && provider) {
+    const fallback = headers?.get("x-koza-fallback");
+    return `${provider}/${actualModel}${fallback ? ` (fallback: ${fallback})` : ""} (request alias: ${requestModel})`;
+  }
+  return `worker-managed (request alias: ${requestModel})`;
+};
 
 export const DEFAULT_MAX_TOKENS = 2048;
 export const RETRY_DELAY_MS = 800;
@@ -385,6 +408,7 @@ export async function diagnoseLLMConnection(): Promise<LlmDiagnosticResult> {
       signal: AbortSignal.timeout(30_000),
     });
     const responseText = await response.text();
+    const resolvedModel = diagnosticModelLabel(connection, requestModel, response.headers);
     let payload: any = null;
     try {
       payload = responseText ? JSON.parse(responseText) : null;
@@ -396,7 +420,7 @@ export async function diagnoseLLMConnection(): Promise<LlmDiagnosticResult> {
     return {
       ok: response.ok,
       source: connection.source,
-      model,
+      model: resolvedModel,
       endpointHost: endpoint.hostname,
       endpointPath: endpoint.pathname,
       status: response.status,
@@ -485,6 +509,7 @@ export async function diagnoseLLMPayload(
       signal: AbortSignal.timeout(90_000),
     });
     const responseText = await response.text();
+    const resolvedModel = diagnosticModelLabel(connection, requestModel, response.headers);
     let payload: any = null;
     try {
       payload = responseText ? JSON.parse(responseText) : null;
@@ -496,7 +521,7 @@ export async function diagnoseLLMPayload(
     return {
       ok: response.ok,
       source: connection.source,
-      model,
+      model: resolvedModel,
       endpointHost: endpoint.hostname,
       endpointPath: endpoint.pathname,
       status: response.status,
@@ -576,9 +601,11 @@ const normalizeResponseFormat = ({
   };
 };
 
-export async function invokeLLM(params: InvokeParams): Promise<InvokeResult> {
-  const connection = resolveConnection();
-
+/** Payload Chat Completions из InvokeParams — общий для обычного и стримового вызова. */
+const buildInvokePayload = (
+  params: InvokeParams,
+  connection: LlmConnection,
+): { payload: Record<string, unknown>; model: string } => {
   const {
     messages,
     tools,
@@ -628,6 +655,13 @@ export async function invokeLLM(params: InvokeParams): Promise<InvokeResult> {
   if (normalizedResponseFormat) {
     payload.response_format = normalizedResponseFormat;
   }
+
+  return { payload, model };
+};
+
+export async function invokeLLM(params: InvokeParams): Promise<InvokeResult> {
+  const connection = resolveConnection();
+  const { payload, model } = buildInvokePayload(params, connection);
 
   const timeoutMs = params.timeoutMs ?? 90_000;
   const deadline = Date.now() + timeoutMs;
@@ -698,6 +732,130 @@ export async function invokeLLM(params: InvokeParams): Promise<InvokeResult> {
       throw new Error(
         `LLM invoke failed: ${response.status} ${response.statusText} – ${sanitizeDiagnosticText(errorText).slice(0, ERROR_SNIPPET_CHARS)}`,
       );
+    }
+  } finally {
+    clearTimeout(timeoutId);
+    params.signal?.removeEventListener("abort", forwardAbort);
+  }
+}
+
+/**
+ * Читает SSE-поток и отдаёт содержимое `data:` каждого события (многострочные
+ * data склеиваются через \n). Останавливается на `[DONE]`, не дочитывая остаток.
+ */
+export async function* readSseDataLines(
+  body: ReadableStream<Uint8Array>,
+): AsyncGenerator<string, void, undefined> {
+  const reader = body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  try {
+    for (;;) {
+      const { value, done } = await reader.read();
+      buffer += done ? decoder.decode() : decoder.decode(value, { stream: true });
+      for (;;) {
+        const boundary = buffer.search(/\r?\n\r?\n/);
+        if (boundary < 0) break;
+        const match = /\r?\n\r?\n/.exec(buffer.slice(boundary)) as RegExpExecArray;
+        const block = buffer.slice(0, boundary);
+        buffer = buffer.slice(boundary + match[0].length);
+        const data = block
+          .split(/\r?\n/)
+          .filter((line) => line.startsWith("data:"))
+          .map((line) => line.slice(5).replace(/^ /, ""))
+          .join("\n");
+        if (!data) continue;
+        if (data.trim() === "[DONE]") return;
+        yield data;
+      }
+      if (done) return;
+    }
+  } finally {
+    await reader.cancel().catch(() => undefined);
+  }
+}
+
+/** Текстовая дельта из chunk'а Chat Completions; ошибка провайдера — исключение. */
+export function extractStreamDeltaText(data: string): string {
+  let chunk: unknown;
+  try {
+    chunk = JSON.parse(data);
+  } catch {
+    throw new Error(`LLM stream: неразбираемый chunk (${data.length} символов)`);
+  }
+  if (typeof chunk !== "object" || chunk === null) return "";
+  const record = chunk as { error?: { message?: unknown }; choices?: Array<{ delta?: { content?: unknown; tool_calls?: unknown } }> };
+  if (record.error) {
+    throw new Error(`LLM stream error: ${sanitizeDiagnosticText(record.error.message)}`);
+  }
+  const delta = record.choices?.[0]?.delta;
+  if (delta?.tool_calls) {
+    throw new Error("LLM stream: tool_calls в потоке не поддерживаются, используйте invokeLLM");
+  }
+  return typeof delta?.content === "string" ? delta.content : "";
+}
+
+/**
+ * Стриминг текстовых дельт (stream: true). Без повторов: повтор из invokeLLM
+ * применяется только к не-стримовым вызовам. Если Worker ушёл в fallback без stream,
+ * приходит обычный JSON — тогда весь content отдаётся одной дельтой.
+ */
+export async function* invokeLLMStream(params: InvokeParams): AsyncGenerator<string, void, undefined> {
+  if (params.tools && params.tools.length > 0) {
+    throw new Error("invokeLLMStream не поддерживает tools: используйте invokeLLM");
+  }
+  const connection = resolveConnection();
+  const { payload, model } = buildInvokePayload(params, connection);
+  payload.stream = true;
+
+  const timeoutMs = params.timeoutMs ?? 90_000;
+  const requestController = new AbortController();
+  const forwardAbort = () => requestController.abort(params.signal?.reason);
+  if (params.signal?.aborted) {
+    forwardAbort();
+  } else {
+    params.signal?.addEventListener("abort", forwardAbort, { once: true });
+  }
+  const timeoutId = setTimeout(
+    () => requestController.abort(new Error(`LLM stream timed out after ${timeoutMs}ms`)),
+    timeoutMs,
+  );
+  const logContext = `source=${connection.source} model=${model}`;
+
+  try {
+    const response = await fetch(connection.apiUrl, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        authorization: `Bearer ${connection.apiKey}`,
+        accept: "text/event-stream",
+      },
+      body: JSON.stringify(payload),
+      signal: requestController.signal,
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`[LLM] Stream upstream error ${logContext} status=${response.status}`);
+      throw new Error(
+        `LLM stream failed: ${response.status} ${response.statusText} – ${sanitizeDiagnosticText(errorText).slice(0, ERROR_SNIPPET_CHARS)}`,
+      );
+    }
+    if (!response.body) {
+      throw new Error("LLM stream failed: пустое тело ответа");
+    }
+
+    const contentType = response.headers.get("content-type") ?? "";
+    if (contentType.includes("application/json")) {
+      const result = (await response.json()) as InvokeResult;
+      const content = result.choices?.[0]?.message?.content;
+      if (typeof content === "string" && content) yield content;
+      return;
+    }
+
+    for await (const data of readSseDataLines(response.body)) {
+      const text = extractStreamDeltaText(data);
+      if (text) yield text;
     }
   } finally {
     clearTimeout(timeoutId);
