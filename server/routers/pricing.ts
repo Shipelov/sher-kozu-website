@@ -163,16 +163,20 @@ const getConversions = publicProcedure.query(async () => {
   }));
 });
 
-const calculate = publicProcedure
-  .input(
-    z.object({
-      breed: z.enum(["anglo-nubian", "alpine", "lacaune", "east-friesian"]),
-      sharePercent: z.union([z.literal(50), z.literal(100)]),
-      productAllocation: z.record(z.string(), z.number().min(0).max(100)),
-      animalPriceRub: z.number().positive().optional(),
-    })
-  )
-  .mutation(async ({ input }) => {
+export const calculateInputSchema = z.object({
+  breed: z.enum(["anglo-nubian", "alpine", "lacaune", "east-friesian"]),
+  sharePercent: z.union([z.literal(50), z.literal(100)]),
+  productAllocation: z.record(z.string(), z.number().min(0).max(100)),
+  animalPriceRub: z.number().positive().optional(),
+});
+export type CalculateInput = z.infer<typeof calculateInputSchema>;
+export type CalculatorBreed = CalculateInput["breed"];
+
+/**
+ * Расчёт выгоды доли: используется калькулятором на сайте и инструментом
+ * calculate_share Маши. logSession=false — не писать в calculatorSessions.
+ */
+export async function calculateSharePricing(input: CalculateInput, options: { logSession?: boolean } = {}) {
     const db = await getDb();
     const { breed, sharePercent, productAllocation } = input;
     const species = BREED_SPECIES[breed];
@@ -248,7 +252,7 @@ const calculate = publicProcedure
 
       // Try direct slug match first, then mapped slug
       const mappedSlug = SLUG_MAP[species]?.[slug] || slug;
-      const priceRow = pricesRows.find((p: any) => p.productSlug === mappedSlug || p.productSlug === slug);
+      const priceRow = pricesRows.find((p: { productSlug: string }) => p.productSlug === mappedSlug || p.productSlug === slug);
       if (!priceRow) continue;
 
       const milkForProduct = (myMilk * allocPercent) / 100;
@@ -302,6 +306,7 @@ const calculate = publicProcedure
     };
 
     // Log calculator session
+    if (options.logSession === false) return result;
     try {
       await db.insert(calculatorSessions).values({
         species: species as "goat" | "sheep",
@@ -319,7 +324,11 @@ const calculate = publicProcedure
     }
 
     return result;
-  });
+}
+
+const calculate = publicProcedure
+  .input(calculateInputSchema)
+  .mutation(async ({ input }) => calculateSharePricing(input));
 
 const logPageView = publicProcedure
   .input(
