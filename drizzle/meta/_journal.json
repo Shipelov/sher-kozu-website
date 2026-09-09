@@ -477,6 +477,13 @@
       "when": 1788700524089,
       "tag": "0066_low_whiplash",
       "breakpoints": true
+    },
+    {
+      "idx": 68,
+      "version": "5",
+      "when": 1788982150352,
+      "tag": "0068_amused_red_wolf",
+      "breakpoints": true
     }
   ]
 }
