@@ -21,8 +21,9 @@ const faqPageSrc = readFileSync(
   "utf-8",
 );
 
+// Схема входа faqChat.chat объявлена в assistants/mashaChat.ts (общая с SSE)
 const faqChatRouterSrc = readFileSync(
-  resolve(__dirname, "routers/faqChat.ts"),
+  resolve(__dirname, "assistants/mashaChat.ts"),
   "utf-8",
 );
 

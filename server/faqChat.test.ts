@@ -13,20 +13,29 @@ import type { TrpcContext } from "./_core/context";
 // Все тесты делят один in-memory rate-limit — сбрасываем перед каждым.
 beforeEach(() => {
   resetChatRateLimit();
+  catalogMocks.listPublicAnimals.mockResolvedValue([]);
+  catalogMocks.getAnimalBySlug.mockResolvedValue(null);
+  vi.spyOn(console, "info").mockImplementation(() => undefined);
 });
 
 /* ─── Mock the LLM module ─── */
+const DEFAULT_REPLY = "Привет! Я Маша, управляющая фермой «Шерь Козу». Рада помочь!";
 vi.mock("./_core/llm", () => ({
   invokeLLM: vi.fn().mockResolvedValue({
-    choices: [
-      {
-        message: {
-          content:
-            "Привет! Я Маша, управляющая фермой «Шерь Козу». Рада помочь!",
-        },
-      },
-    ],
+    choices: [{ message: { content: "Привет! Я Маша, управляющая фермой «Шерь Козу». Рада помочь!" }, finish_reason: "stop" }],
   }),
+  invokeLLMStream: vi.fn(),
+}));
+
+/* ─── Уведомления владельца — никаких внешних сервисов из тестов ─── */
+vi.mock("./_core/notification", () => ({
+  notifyOwner: vi.fn().mockResolvedValue(undefined),
+}));
+
+/* ─── Живой каталог для инструментов Маши ─── */
+const catalogMocks = vi.hoisted(() => ({
+  listPublicAnimals: vi.fn(),
+  getAnimalBySlug: vi.fn(),
 }));
 
 /* ─── Mock the DB module (fire-and-forget analytics) ─── */
@@ -64,6 +73,8 @@ vi.mock("./db", () => {
   };
 
   return {
+    listPublicAnimals: catalogMocks.listPublicAnimals,
+    getAnimalBySlug: catalogMocks.getAnimalBySlug,
     getDb: vi.fn().mockResolvedValue({
       insert: vi.fn().mockReturnValue({
         values: vi.fn().mockResolvedValue(undefined),
@@ -280,9 +291,9 @@ describe("faqChat.chat", () => {
 
   it("handles empty LLM response gracefully", async () => {
     const { invokeLLM } = await import("./_core/llm");
-    (invokeLLM as any).mockResolvedValueOnce({
-      choices: [{ message: { content: null } }],
-    });
+    (invokeLLM as any)
+      .mockResolvedValueOnce({ choices: [{ message: { content: null } }] })
+      .mockResolvedValueOnce({ choices: [{ message: { content: "" } }] });
 
     const ctx = createPublicContext();
     const caller = faqChatRouter.createCaller(ctx);
@@ -293,6 +304,7 @@ describe("faqChat.chat", () => {
 
     expect(result).toHaveProperty("reply");
     expect(result.reply).toContain("технические трудности");
+    expect(result.outcome).toBe("error");
   });
 
   it("is accessible as a public procedure (no auth required)", async () => {
@@ -340,7 +352,7 @@ describe("faqChat.chat rate limit", () => {
     await expect(second.chat(input)).resolves.toHaveProperty("reply");
   });
 
-  it("rate limit is checked before grounded shortcuts and the LLM", async () => {
+  it("rate limit is checked before the assistant and the LLM", async () => {
     const { invokeLLM } = await import("./_core/llm");
     const caller = faqChatRouter.createCaller(createContextWithIp("203.0.113.3"));
     const input = { messages: [{ role: "user" as const, content: "Расскажи о ферме" }] };
@@ -741,42 +753,44 @@ describe("FAQ analytics DB schema", () => {
 });
 
 describe("Backend personalization support", () => {
-  it("faqChat.chat input schema accepts userName", async () => {
-    const fs = await import("fs");
-    const content = fs.readFileSync(
-      "server/routers/faqChat.ts",
-      "utf-8"
-    );
-    expect(content).toContain("userName: z.string()");
-  });
+  async function systemPromptOfLastCall(): Promise<string> {
+    const { invokeLLM } = await import("./_core/llm");
+    const call = (invokeLLM as any).mock.calls.at(-1)?.[0];
+    return String(call.messages[0].content);
+  }
 
-  it("faqChat.chat input schema accepts currentPage", async () => {
+  it("faqChat.chat input schema accepts userName and currentPage", async () => {
     const fs = await import("fs");
-    const content = fs.readFileSync(
-      "server/routers/faqChat.ts",
-      "utf-8"
-    );
+    const content = fs.readFileSync("server/assistants/mashaChat.ts", "utf-8");
+    expect(content).toContain("userName: z.string()");
     expect(content).toContain("currentPage: z.string()");
   });
 
   it("system prompt is personalized with userName when provided", async () => {
-    const fs = await import("fs");
-    const content = fs.readFileSync(
-      "server/routers/faqChat.ts",
-      "utf-8"
-    );
-    expect(content).toContain("input.userName");
-    expect(content).toContain("Обращайся к нему/ней по имени");
+    const caller = faqChatRouter.createCaller(createPublicContext());
+    vi.clearAllMocks();
+    await caller.chat({ messages: [{ role: "user", content: "Привет" }], userName: "Анна" });
+    const prompt = await systemPromptOfLastCall();
+    expect(prompt).toContain("Собеседника зовут Анна");
+    expect(prompt).toContain("гость");
   });
 
-  it("system prompt includes currentPage context when provided", async () => {
-    const fs = await import("fs");
-    const content = fs.readFileSync(
-      "server/routers/faqChat.ts",
-      "utf-8"
-    );
-    expect(content).toContain("input.currentPage");
-    expect(content).toContain("Учитывай это в контексте ответов");
+  it("system prompt includes currentPage context and owner mode", async () => {
+    const caller = faqChatRouter.createCaller(createUserContext());
+    vi.clearAllMocks();
+    await caller.chat({ messages: [{ role: "user", content: "Привет" }], currentPage: "/animals/rufa" });
+    const prompt = await systemPromptOfLastCall();
+    expect(prompt).toContain("/animals/rufa");
+    expect(prompt).toContain("авторизован");
+  });
+
+  it("system prompt stays short: facts come from tools, not from the prompt", async () => {
+    const caller = faqChatRouter.createCaller(createPublicContext());
+    vi.clearAllMocks();
+    await caller.chat({ messages: [{ role: "user", content: "Чем знамениты лаконы?" }] });
+    const prompt = await systemPromptOfLastCall();
+    expect(prompt.length).toBeLessThan(2000);
+    expect(prompt).not.toContain("Зааненская");
   });
 });
 
@@ -837,56 +851,22 @@ describe("CSV export UI integration", () => {
 
 /* ─── Feature: Uncertainty Detection & Owner Notifications ─── */
 describe("Uncertainty detection and owner notifications", () => {
-  it("faqChat router imports notifyOwner", async () => {
+  it("analytics module imports notifyOwner", async () => {
     const fs = await import("fs");
-    const content = fs.readFileSync(
-      "server/routers/faqChat.ts",
-      "utf-8"
-    );
+    const content = fs.readFileSync("server/assistants/mashaAnalytics.ts", "utf-8");
     expect(content).toContain("notifyOwner");
     expect(content).toContain("../_core/notification");
-  });
-
-  it("defines UNCERTAIN_PHRASES array", async () => {
-    const fs = await import("fs");
-    const content = fs.readFileSync(
-      "server/routers/faqChat.ts",
-      "utf-8"
-    );
     expect(content).toContain("UNCERTAIN_PHRASES");
     expect(content).toContain("не знаю");
-    expect(content).toContain("не уверена");
-    expect(content).toContain("затрудняюсь");
-  });
-
-  it("has isUncertainAnswer function", async () => {
-    const fs = await import("fs");
-    const content = fs.readFileSync(
-      "server/routers/faqChat.ts",
-      "utf-8"
-    );
     expect(content).toContain("function isUncertainAnswer");
-    expect(content).toContain("toLowerCase");
-  });
-
-  it("has notifyUncertainAnswer function", async () => {
-    const fs = await import("fs");
-    const content = fs.readFileSync(
-      "server/routers/faqChat.ts",
-      "utf-8"
-    );
     expect(content).toContain("async function notifyUncertainAnswer");
     expect(content).toContain("Маша не смогла уверенно ответить");
   });
 
-  it("checks uncertainty after LLM response", async () => {
+  it("checks uncertainty after the assistant answers", async () => {
     const fs = await import("fs");
-    const content = fs.readFileSync(
-      "server/routers/faqChat.ts",
-      "utf-8"
-    );
-    expect(content).toContain("isUncertainAnswer(content)");
-    expect(content).toContain("notifyUncertainAnswer");
+    const content = fs.readFileSync("server/assistants/mashaChat.ts", "utf-8");
+    expect(content).toContain("isUncertainAnswer(result.text)");
   });
 
   it("returns uncertain flag in chat response", async () => {
@@ -899,6 +879,21 @@ describe("Uncertainty detection and owner notifications", () => {
 
     expect(result).toHaveProperty("uncertain");
     expect(typeof result.uncertain).toBe("boolean");
+    expect(result.outcome).toBe("ok");
+  });
+
+  it("marks uncertain answers and notifies the owner with the tool trace", async () => {
+    const { invokeLLM } = await import("./_core/llm");
+    const { notifyOwner } = await import("./_core/notification");
+    (invokeLLM as any).mockResolvedValueOnce({
+      choices: [{ message: { content: "К сожалению, у меня нет данных об этом." }, finish_reason: "stop" }],
+    });
+    const caller = faqChatRouter.createCaller(createPublicContext());
+    const result = await caller.chat({ messages: [{ role: "user", content: "Есть ли коровы?" }], sessionId: "s-unc" });
+    expect(result.uncertain).toBe(true);
+    expect(result.outcome).toBe("uncertain");
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    expect(notifyOwner).toHaveBeenCalledWith(expect.objectContaining({ title: expect.stringContaining("не смогла уверенно") }));
   });
 });
 
@@ -1524,13 +1519,112 @@ describe("notifyUncertainAnswer saves to DB", () => {
   it("notifyUncertainAnswer inserts into uncertainAnswers table", async () => {
     const fs = await import("fs");
     const content = fs.readFileSync(
-      "server/routers/faqChat.ts",
+      "server/assistants/mashaAnalytics.ts",
       "utf-8"
     );
-    expect(content).toContain("db.insert(uncertainAnswers)");
+    expect(content).toContain("db.insert(uncertainAnswers).values({ question, answer, source, sessionId, toolTrace })");
     expect(content).toContain("question,");
     expect(content).toContain("answer,");
     expect(content).toContain("source,");
     expect(content).toContain("sessionId,");
+  });
+});
+
+/* ─── Feature: инструменты Маши (контракт с мокнутым LLM) ─── */
+describe("faqChat.chat with tools", () => {
+  const toolCallResponse = (name: string, args: string, id = "call-1") => ({
+    choices: [
+      {
+        message: { content: "", tool_calls: [{ id, type: "function", function: { name, arguments: args } }] },
+        finish_reason: "tool_calls",
+      },
+    ],
+  });
+
+  type LlmCall = { messages: Array<{ role: string; content: unknown; name?: string; tool_call_id?: string }>; tools?: Array<{ function: { name: string } }> };
+
+  async function calls(): Promise<LlmCall[]> {
+    const { invokeLLM } = await import("./_core/llm");
+    return (invokeLLM as any).mock.calls.map((call: unknown[]) => call[0] as LlmCall);
+  }
+
+  it("offers the catalog tools to the model and hides get_my_animals from guests", async () => {
+    vi.clearAllMocks();
+    const caller = faqChatRouter.createCaller(createPublicContext());
+    await caller.chat({ messages: [{ role: "user", content: "Сколько у вас пород?" }] });
+    const [first] = await calls();
+    const names = (first.tools ?? []).map((tool) => tool.function.name);
+    expect(names).toEqual(expect.arrayContaining(["get_farm_info", "list_animals", "get_animal", "get_pricing_tiers", "calculate_share", "search_knowledge", "get_delivery_info"]));
+    expect(names).not.toContain("get_my_animals");
+
+    vi.clearAllMocks();
+    await faqChatRouter.createCaller(createUserContext()).chat({ messages: [{ role: "user", content: "мои животные" }] });
+    const [owner] = await calls();
+    expect((owner.tools ?? []).map((tool) => tool.function.name)).toContain("get_my_animals");
+  });
+
+  it("calls list_animals with the model's arguments and returns the model's final answer verbatim", async () => {
+    const { invokeLLM } = await import("./_core/llm");
+    catalogMocks.listPublicAnimals.mockResolvedValue([
+      { name: "Руфа", slug: "rufa", species: "sheep", breed: "Лакон", status: "public_available", shortDescription: "", availablePercent: 100, shareUnitPercent: 50, shareUnitPriceMinor: 750000 },
+      { name: "Мира", slug: "mira", species: "goat", breed: "Англо-нубийская", status: "public_available", shortDescription: "", availablePercent: 50, shareUnitPercent: 50, shareUnitPriceMinor: 900000 },
+    ]);
+    const finalAnswer = "Сейчас у нас две породы: Лакон и Англо-нубийская. Подробнее — [каталог](/animals).";
+    (invokeLLM as any)
+      .mockResolvedValueOnce(toolCallResponse("list_animals", '{"availableOnly":true}'))
+      .mockResolvedValueOnce({ choices: [{ message: { content: finalAnswer }, finish_reason: "stop" }] });
+    vi.clearAllMocks();
+
+    const caller = faqChatRouter.createCaller(createPublicContext());
+    const result = await caller.chat({ messages: [{ role: "user", content: "Сколько у вас пород?" }], sessionId: "s-tools" });
+
+    expect(result.reply).toBe(finalAnswer);
+    expect(result.tools).toEqual(["list_animals"]);
+    expect(result.outcome).toBe("ok");
+    expect(catalogMocks.listPublicAnimals).toHaveBeenCalledTimes(1);
+
+    const [, second] = await calls();
+    const toolMessage = second.messages.find((message) => message.role === "tool");
+    expect(toolMessage?.name).toBe("list_animals");
+    const payload = JSON.parse(String(toolMessage?.content)) as { breeds: string[]; total: number; animals: Array<{ url: string }> };
+    expect(payload.breeds).toEqual(["Лакон", "Англо-нубийская"]);
+    expect(payload.total).toBe(2);
+    expect(payload.animals[0].url).toBe("/animal/rufa");
+  });
+
+  it("does not crash the chat when a tool fails: the error goes back to the model", async () => {
+    const { invokeLLM } = await import("./_core/llm");
+    catalogMocks.getAnimalBySlug.mockRejectedValue(new Error("connection lost"));
+    (invokeLLM as any)
+      .mockResolvedValueOnce(toolCallResponse("get_animal", '{"slug":"rufa"}'))
+      .mockResolvedValueOnce({ choices: [{ message: { content: "Не могу сейчас открыть профиль, попробуйте позже." }, finish_reason: "stop" }] });
+    vi.clearAllMocks();
+
+    const result = await faqChatRouter.createCaller(createPublicContext()).chat({ messages: [{ role: "user", content: "Кто такая Руфа?" }] });
+
+    expect(result.reply).toContain("попробуйте позже");
+    expect(result.tools).toEqual(["get_animal"]);
+    const [, second] = await calls();
+    const toolMessage = second.messages.find((message) => message.role === "tool");
+    expect(JSON.parse(String(toolMessage?.content))).toEqual({ error: "connection lost" });
+  });
+
+  it("answers without tools after the round budget and reports rounds_exhausted", async () => {
+    const { invokeLLM } = await import("./_core/llm");
+    (invokeLLM as any).mockImplementation(async (params: { tools?: unknown[] }) =>
+      params.tools && params.tools.length > 0
+        ? toolCallResponse("get_farm_info", "{}", "loop")
+        : { choices: [{ message: { content: "Вот что знаю о ферме." }, finish_reason: "stop" }] },
+    );
+    vi.clearAllMocks();
+
+    const result = await faqChatRouter.createCaller(createPublicContext()).chat({ messages: [{ role: "user", content: "Расскажи о ферме" }] });
+
+    expect(result.reply).toBe("Вот что знаю о ферме.");
+    expect(result.outcome).toBe("rounds_exhausted");
+    expect(result.tools).toEqual(["get_farm_info", "get_farm_info", "get_farm_info", "get_farm_info"]);
+    expect(invokeLLM).toHaveBeenCalledTimes(5);
+    (invokeLLM as any).mockReset();
+    (invokeLLM as any).mockResolvedValue({ choices: [{ message: { content: DEFAULT_REPLY }, finish_reason: "stop" }] });
   });
 });
