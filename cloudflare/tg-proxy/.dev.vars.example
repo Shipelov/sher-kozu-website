@@ -1,4 +1,27 @@
+# Скопировать в .dev.vars (игнорируется Git) и заполнить. Значения — только через
+# защищённый канал; в production задаются `wrangler secret put <NAME>`.
+
+# Telegram-алерты Worker (обязательно для alerts)
 ALERT_BOT_TOKEN=
 ALERT_CHAT_ID=
+
+# Авторизация /openai/*: тот же секрет VDS шлёт как Authorization: Bearer
+# (OPENAI_API_KEY в .env приложения) или X-OpenAI-Proxy-Secret
 OPENAI_PROXY_SECRET=
+
+# Авторизация catch-all Telegram proxy (X-Proxy-Secret)
 PROXY_SECRET=
+
+# Anthropic через Cloudflare AI Gateway.
+# AI_GATEWAY_URL: Dashboard → AI → AI Gateway → <gateway> → API endpoint,
+# вида https://gateway.ai.cloudflare.com/v1/<account_id>/<gateway_id> (без /anthropic)
+ANTHROPIC_API_KEY=
+AI_GATEWAY_URL=
+
+# Идентификаторы моделей Claude (platform.claude.com/docs/en/models/overview, 2026-09-09)
+ANTHROPIC_MODEL_SONNET=claude-sonnet-5
+ANTHROPIC_MODEL_HAIKU=claude-haiku-4-5
+
+# Необязательно: если у Gateway включена authenticated-аутентификация —
+# токен для заголовка cf-aig-authorization: Bearer <token>
+AI_GATEWAY_TOKEN=

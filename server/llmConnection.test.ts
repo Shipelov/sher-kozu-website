@@ -107,7 +107,7 @@ describe("LLM connection resolution", () => {
     expect(new Headers(init?.headers).get("authorization")).toBe(
       "Bearer custom-openai-key",
     );
-    expect(JSON.parse(String(init?.body)).model).toBe("gpt-4o-mini");
+    expect(JSON.parse(String(init?.body)).model).toBe("claude-sonnet");
   });
 
   it("uses a custom OpenAI pair when Forge is unavailable", async () => {
@@ -168,7 +168,7 @@ describe("LLM connection resolution", () => {
     expect(result).toMatchObject({
       ok: false,
       source: "cloudflare-openai",
-      model: "worker-managed (request alias: gpt-4o-mini)",
+      model: "worker-managed (request alias: claude-sonnet)",
       endpointHost: "tg-proxy.example.workers.dev",
       endpointPath: "/openai/v1/chat/completions",
       status: 401,
