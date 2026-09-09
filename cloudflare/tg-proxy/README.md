@@ -11,7 +11,7 @@ Worker — сетевой шлюз приложения для Telegram и LLM. 
 | `POST /openai/v1/audio/transcriptions` | multipart `file` → Workers AI `@cf/openai/whisper` → `{ text }` | тот же секрет |
 | `/sdk/*` | Proxy Telegram Web App SDK | публичный read-only |
 | `/webhook/*` | Relay webhook на `https://koza.vip` | только allowlisted headers |
-| остальные пути | Telegram Bot API/file proxy | `X-Proxy-Secret`, если `PROXY_SECRET` задан |
+| остальные пути | Telegram Bot API/file proxy | `X-Proxy-Secret`, если `PROXY_SECRET` задан; сейчас не задан — см. [задачу-напоминание](../../docs/ops/TELEGRAM_PROXY_SECRET.md) |
 
 Авторизация `/openai/*` — только по секрету, сравнение за постоянное время (`crypto.subtle.timingSafeEqual`, в тестах — XOR по байтам). Список IP-адресов из кода удалён.
 
@@ -62,7 +62,7 @@ Worker — сетевой шлюз приложения для Telegram и LLM. 
 | `ANTHROPIC_MODEL_HAIKU` | secret | обязательно | `claude-haiku-4-5` |
 | `AI_GATEWAY_TOKEN` | secret | **необязательно** | Dashboard → AI Gateway → gateway → Authentication (если включена); заголовок `cf-aig-authorization`. Схема wrangler допускает только `secrets.required`, поэтому в `wrangler.jsonc` не объявлен |
 | `ALERT_BOT_TOKEN`, `ALERT_CHAT_ID` | secret | для алертов | Telegram bot и чат для operational alerts |
-| `PROXY_SECRET` | secret | для Telegram proxy | авторизация catch-all маршрута |
+| `PROXY_SECRET` | secret | **необязательно** (не в `secrets.required`) | авторизация catch-all Telegram-маршрута; VDS заголовок `X-Proxy-Secret` пока не шлёт, поэтому включать только после доработки сервера — [docs/ops/TELEGRAM_PROXY_SECRET.md](../../docs/ops/TELEGRAM_PROXY_SECRET.md) |
 
 Значения secrets в Git не хранятся. Для локальной разработки скопируйте `.dev.vars.example` в `.dev.vars`.
 
@@ -71,7 +71,7 @@ Worker — сетевой шлюз приложения для Telegram и LLM. 
 ```bash
 cd cloudflare/tg-proxy
 pnpm install
-pnpm validate                       # node --check + node --test (32 теста, сеть и env.AI замоканы)
+pnpm validate                       # node --check + node --test (33 теста, сеть и env.AI замоканы)
 pnpm exec wrangler deploy --dry-run # сборка бандла, проверка bindings; ничего не публикует
 ```
 
@@ -122,9 +122,13 @@ pnpm exec wrangler secret put AI_GATEWAY_TOKEN         # только если �
 pnpm exec wrangler deploy
 ```
 
-`OPENAI_PROXY_SECRET`, `PROXY_SECRET`, `ALERT_*` уже заданы в Dashboard и не меняются. До `wrangler deploy` приложение продолжает получать ответы Llama; после — Claude через Gateway, а при его недоступности тот же Llama с пометкой в заголовках. Предпочтителен version-first процесс: `wrangler versions upload` → проверить preview → назначить deployment.
+`OPENAI_PROXY_SECRET`, `ALERT_*` уже заданы в Dashboard и не меняются. `PROXY_SECRET` **не задавать**, пока сервер не отправляет `X-Proxy-Secret`. До `wrangler deploy` приложение продолжает получать ответы Llama; после — Claude через Gateway, а при его недоступности тот же Llama с пометкой в заголовках. Предпочтителен version-first процесс: `wrangler versions upload` → проверить preview → назначить deployment.
 
 Workers Logs включены. Telegram Bot API содержит bot token в URL path, поэтому доступ к логам должен оставаться ограниченным.
+
+## Открытая задача
+
+**Telegram-прокси без секрета — открытый ретранслятор.** Закрыть: сервер шлёт `X-Proxy-Secret` из env `TELEGRAM_PROXY_SECRET`, Worker требует (`PROXY_SECRET` в `secrets.required`). Порядок и проверка — [docs/ops/TELEGRAM_PROXY_SECRET.md](../../docs/ops/TELEGRAM_PROXY_SECRET.md).
 
 ## Источники
 

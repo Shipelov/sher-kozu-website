@@ -9,7 +9,9 @@ ALERT_CHAT_ID=
 # (OPENAI_API_KEY в .env приложения) или X-OpenAI-Proxy-Secret
 OPENAI_PROXY_SECRET=
 
-# Авторизация catch-all Telegram proxy (X-Proxy-Secret)
+# НЕОБЯЗАТЕЛЬНО: авторизация catch-all Telegram proxy (X-Proxy-Secret). Пусто = без проверки.
+# Включать только после того, как сервер начнёт отправлять заголовок
+# (см. docs/ops/TELEGRAM_PROXY_SECRET.md), иначе бот потеряет Telegram.
 PROXY_SECRET=
 
 # Anthropic через Cloudflare AI Gateway.
