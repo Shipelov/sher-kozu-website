@@ -83,6 +83,24 @@ describe("invokeLLM retry", () => {
 
     await expect(request).resolves.toBeTruthy();
     expect(fetchMock).toHaveBeenCalledTimes(2);
+    // Размер тела попадает в лог сетевой ошибки — для диагностики обрывов на прокси
+    const sentBody = String((fetchMock.mock.calls[0][1] as { body: string }).body);
+    expect(console.warn).toHaveBeenCalledWith(
+      expect.stringContaining(`attempt=1 bodyBytes=${Buffer.byteLength(sentBody)}`),
+    );
+  });
+
+  it("logs the body size when the last attempt fails with a network error", async () => {
+    vi.useFakeTimers();
+    const fetchMock = vi.fn().mockRejectedValue(new TypeError("fetch failed"));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const request = invokeLLM({ ...params, timeoutMs: 10_000 });
+    const expectation = expect(request).rejects.toThrow("fetch failed");
+    await vi.advanceTimersByTimeAsync(RETRY_DELAY_MS);
+    await expectation;
+
+    expect(console.error).toHaveBeenCalledWith(expect.stringMatching(/attempt=2 bodyBytes=\d+/), expect.any(Error));
   });
 
   it("does not retry more than once", async () => {
