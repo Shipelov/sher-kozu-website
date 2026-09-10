@@ -86,6 +86,34 @@ export function mapBreedToCalculator(breed: string | null | undefined, species: 
 
 const DEFAULT_ALLOCATION: Record<string, number> = { "fresh-milk": 60, "soft-cheese": 20, tvorog: 20 };
 
+export const SEARCH_KNOWLEDGE_LIMIT = 3;
+export const SEARCH_KNOWLEDGE_CONTENT_MAX_CHARS = 1500;
+
+/**
+ * Записи базы знаний — длинный markdown (породы по 3–5 КБ). В tool_result
+ * уходит плоский текст без разметки, обрезанный по лимиту: большой результат
+ * инструмента ронял второй вызов LLM (ECONNRESET до AI Gateway).
+ */
+export function compactKnowledgeContent(content: string, maxChars = SEARCH_KNOWLEDGE_CONTENT_MAX_CHARS): string {
+  const plain = content
+    .replace(/\r\n/g, "\n")
+    .replace(/^\s{0,3}#{1,6}\s+/gm, "")
+    .replace(/\*\*([^*]+)\*\*/g, "$1")
+    .replace(/(^|[^*])\*([^*\n]+)\*/g, "$1$2")
+    .replace(/__([^_]+)__/g, "$1")
+    .replace(/`([^`]+)`/g, "$1")
+    .replace(/\[([^\]]+)\]\([^)]*\)/g, "$1")
+    .replace(/^\s*[-*+]\s+/gm, "")
+    .replace(/^\s*\d+\.\s+/gm, "")
+    .replace(/[ \t]+/g, " ")
+    .replace(/\n{2,}/g, "\n")
+    .trim();
+  if (plain.length <= maxChars) return plain;
+  const cut = plain.slice(0, maxChars);
+  const boundary = Math.max(cut.lastIndexOf(". "), cut.lastIndexOf("\n"));
+  return `${(boundary > maxChars * 0.6 ? cut.slice(0, boundary + 1) : cut).trimEnd()}…`;
+}
+
 const knowledgeCategorySchema = z.enum(ASSISTANT_KNOWLEDGE_CATEGORIES);
 const mashaTool = createToolDefiner<MashaToolContext>();
 
@@ -239,18 +267,20 @@ export const calculateShare = mashaTool({
 
 export const searchKnowledge = mashaTool({
   name: "search_knowledge",
-  description: "Поиск по базе знаний фермы: породы и их особенности, продукты, клуб владельцев, платформа, рынок, для кого проект. Верни до 5 записей.",
+  description: "Поиск по базе знаний фермы: породы и их особенности, продукты, клуб владельцев, платформа, рынок, для кого проект. Возвращает до 3 самых релевантных записей (текст сокращён).",
   inputSchema: z.object({
     query: z.string().min(2).max(200),
     category: knowledgeCategorySchema.optional(),
   }),
   handler: async (args) => {
-    const entries = await searchAssistantKnowledge("masha", args.query, { category: args.category, limit: 5 });
-    return {
+    const entries = await searchAssistantKnowledge("masha", args.query, { category: args.category, limit: SEARCH_KNOWLEDGE_LIMIT });
+    const result = {
       results: entries
         .filter((entry) => entry.score > 0)
-        .map((entry) => ({ title: entry.title, category: entry.category, content: entry.content })),
+        .map((entry) => ({ title: entry.title, category: entry.category, content: compactKnowledgeContent(entry.content) })),
     };
+    console.info(`[masha:search_knowledge] results=${result.results.length} bytes=${Buffer.byteLength(JSON.stringify(result))}`);
+    return result;
   },
 });
 

@@ -107,6 +107,22 @@ export const DEFAULT_HISTORY_MAX_CHARS = 6_000;
  * "length") перегенерируется потоком без инструментов.
  */
 export const STREAM_TOOL_ROUND_MAX_TOKENS = 320;
+/** Порог предупреждения о размере запроса к LLM: большие тела обрывались на прокси (ECONNRESET). */
+export const LLM_REQUEST_WARN_BYTES = 100 * 1024;
+
+/** Оценка размера тела запроса к LLM (messages + tools) в байтах UTF-8. */
+export function estimateRequestBytes(messages: Message[], tools?: Tool[]): number {
+  return Buffer.byteLength(JSON.stringify(tools && tools.length > 0 ? { messages, tools } : { messages }));
+}
+
+function logRequestSize(label: string, stage: string, bytes: number): void {
+  const line = `${label} ${stage} requestBytes=${bytes}`;
+  if (bytes > LLM_REQUEST_WARN_BYTES) {
+    console.warn(`${line} — превышает ${LLM_REQUEST_WARN_BYTES} байт, возможен обрыв на прокси`);
+  } else {
+    console.info(line);
+  }
+}
 
 /** zod → JSON Schema для поля parameters инструмента (без служебного $schema). */
 export function toolInputJsonSchema(schema: z.ZodType): Record<string, unknown> {
@@ -295,6 +311,7 @@ export async function runAssistant<Ctx>(options: RunAssistantOptions<Ctx>): Prom
     for (let round = 0; round < maxToolRounds; round += 1) {
       rounds = round + 1;
       const llmStartedAt = Date.now();
+      logRequestSize(label, `round=${rounds}`, estimateRequestBytes(llmMessages, toolSpec));
       const result = await invokeLLM({
         messages: llmMessages,
         tools: toolSpec,
@@ -347,6 +364,7 @@ export async function runAssistant<Ctx>(options: RunAssistantOptions<Ctx>): Prom
 
   // Финальный ответ без инструментов: раунды исчерпаны, ответ обрезан или инструментов нет.
   const finalMessages = flattenToolHistory(llmMessages);
+  logRequestSize(label, "final", estimateRequestBytes(finalMessages));
   if (streaming) {
     let text = "";
     for await (const chunk of invokeLLMStream({ messages: finalMessages, maxTokens, signal: options.signal })) {

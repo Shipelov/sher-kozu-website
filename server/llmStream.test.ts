@@ -115,6 +115,23 @@ describe("invokeLLMStream", () => {
     await expect(invokeLLMStream({ messages: [{ role: "user", content: "x" }] }).next()).rejects.not.toThrow(/sk-abcdefghijklmnopqrstuvwxyz/);
   });
 
+  it("логирует размер тела при сетевой ошибке до ответа", async () => {
+    stubWorkerEnv();
+    const { invokeLLMStream } = await loadLlm();
+    const fetchMock = vi.fn().mockRejectedValue(new TypeError("fetch failed"));
+    vi.stubGlobal("fetch", fetchMock);
+    const error = vi.spyOn(console, "error").mockImplementation(() => undefined);
+
+    const stream = invokeLLMStream({ messages: [{ role: "user", content: "Чем знамениты лаконы?" }] });
+    await expect(stream.next()).rejects.toThrow("fetch failed");
+
+    const sentBody = String((fetchMock.mock.calls[0][1] as { body: string }).body);
+    expect(error).toHaveBeenCalledWith(
+      expect.stringContaining(`[LLM] Stream network error source=cloudflare-openai model=claude-sonnet bodyBytes=${Buffer.byteLength(sentBody)}`),
+      expect.any(Error),
+    );
+  });
+
   it("прерывается по abort-сигналу вызывающего кода", async () => {
     stubWorkerEnv();
     vi.spyOn(globalThis, "fetch").mockImplementation((_url, init) =>

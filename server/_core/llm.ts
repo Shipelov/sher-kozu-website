@@ -683,6 +683,7 @@ export async function invokeLLM(params: InvokeParams): Promise<InvokeResult> {
   );
 
   const body = JSON.stringify(payload);
+  const bodyBytes = Buffer.byteLength(body);
   const logContext = `source=${connection.source} model=${model}`;
   const sendRequest = () =>
     fetch(connection.apiUrl, {
@@ -707,11 +708,12 @@ export async function invokeLLM(params: InvokeParams): Promise<InvokeResult> {
       try {
         response = await sendRequest();
       } catch (error) {
+        // Размер тела нужен для диагностики обрывов (ECONNRESET) на прокси
         if (!canRetry(attempt)) {
-          console.error(`[LLM] Network error ${logContext} attempt=${attempt}`, error);
+          console.error(`[LLM] Network error ${logContext} attempt=${attempt} bodyBytes=${bodyBytes}`, error);
           throw error;
         }
-        console.warn(`[LLM] Network error ${logContext} attempt=${attempt}, retrying in ${RETRY_DELAY_MS}ms`);
+        console.warn(`[LLM] Network error ${logContext} attempt=${attempt} bodyBytes=${bodyBytes}, retrying in ${RETRY_DELAY_MS}ms`);
         await sleep(RETRY_DELAY_MS, requestController.signal);
         continue;
       }
@@ -825,18 +827,28 @@ export async function* invokeLLMStream(params: InvokeParams): AsyncGenerator<str
     timeoutMs,
   );
   const logContext = `source=${connection.source} model=${model}`;
+  const body = JSON.stringify(payload);
 
   try {
-    const response = await fetch(connection.apiUrl, {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        authorization: `Bearer ${connection.apiKey}`,
-        accept: "text/event-stream",
-      },
-      body: JSON.stringify(payload),
-      signal: requestController.signal,
-    });
+    let response: Response;
+    try {
+      response = await fetch(connection.apiUrl, {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          authorization: `Bearer ${connection.apiKey}`,
+          accept: "text/event-stream",
+        },
+        body,
+        signal: requestController.signal,
+      });
+    } catch (error) {
+      // Abort вызывающего кода — не сетевая ошибка, не шумим в логе
+      if (!requestController.signal.aborted) {
+        console.error(`[LLM] Stream network error ${logContext} bodyBytes=${Buffer.byteLength(body)}`, error);
+      }
+      throw error;
+    }
 
     if (!response.ok) {
       const errorText = await response.text();

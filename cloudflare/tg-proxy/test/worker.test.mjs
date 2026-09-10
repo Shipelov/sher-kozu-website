@@ -222,6 +222,34 @@ describe("OpenAI → Anthropic request conversion", () => {
     assert.equal(body.stream, undefined);
   });
 
+  it("keeps a long Cyrillic tool result (20 KB) intact without throwing", () => {
+    const paragraph = "Лакон — молочная порода овец из Франции; молоко идёт на сыр рокфор. ";
+    const content = JSON.stringify({ results: [{ title: "Лакон", content: paragraph.repeat(Math.ceil(20_000 / paragraph.length)) }] });
+    assert.ok(content.length >= 20_000);
+    const { body } = toAnthropicRequest(
+      {
+        messages: [
+          { role: "system", content: "Ты Маша." },
+          { role: "user", content: "Чем знамениты лаконы?" },
+          { role: "assistant", content: "", tool_calls: [{ id: "call_k", type: "function", function: { name: "search_knowledge", arguments: '{"query":"лаконы"}' } }] },
+          { role: "tool", tool_call_id: "call_k", name: "search_knowledge", content },
+        ],
+        tools: [{ type: "function", function: { name: "search_knowledge", parameters: { type: "object", properties: { query: { type: "string" } } } } }],
+        tool_choice: "auto",
+      },
+      route,
+    );
+    const toolResult = body.messages[2].content[0];
+    assert.equal(toolResult.type, "tool_result");
+    assert.equal(toolResult.tool_use_id, "call_k");
+    assert.equal(toolResult.content, content);
+    assert.equal(body.messages[2].role, "user");
+    // Тело сериализуется в валидный JSON заданного размера
+    const serialized = JSON.stringify(body);
+    assert.ok(new TextEncoder().encode(serialized).length > 30_000);
+    assert.deepEqual(JSON.parse(serialized).messages[2].content[0].content.length, content.length);
+  });
+
   it("applies defaults: max_tokens 2048, tool_choice required/none/by-name, stream flag", () => {
     const tools = [{ type: "function", function: { name: "f", parameters: { type: "object" } } }];
     const base = { messages: [{ role: "user", content: "x" }], tools };
