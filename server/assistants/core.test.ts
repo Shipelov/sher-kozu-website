@@ -11,6 +11,8 @@ vi.mock("../_core/llm", () => ({
 
 import {
   DEFAULT_HISTORY_MAX_MESSAGES,
+  LLM_REQUEST_WARN_BYTES,
+  estimateRequestBytes,
   STREAM_TOOL_ROUND_MAX_TOKENS,
   createToolDefiner,
   flattenToolHistory,
@@ -59,6 +61,7 @@ beforeEach(() => {
   invokeLLMMock.mockReset();
   invokeLLMStreamMock.mockReset();
   vi.spyOn(console, "info").mockImplementation(() => undefined);
+  vi.spyOn(console, "warn").mockImplementation(() => undefined);
 });
 
 describe("toolsToLlmSpec", () => {
@@ -292,6 +295,39 @@ describe("runAssistant", () => {
     expect(result.text).toBe("plain");
     const call = invokeLLMMock.mock.calls[0][0] as { tools?: unknown };
     expect(call.tools).toBeUndefined();
+  });
+});
+
+describe("request size logging", () => {
+  it("logs the request body size on every round and warns above the threshold", async () => {
+    const big = "я".repeat(60_000); // 120 КБ в UTF-8
+    invokeLLMMock
+      .mockResolvedValueOnce(toolCallResponse([{ id: "1", name: "echo", args: '{"text":"a"}' }]))
+      .mockResolvedValueOnce(textResponse("ok"));
+    const info = vi.spyOn(console, "info").mockImplementation(() => undefined);
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+
+    await runAssistant<Ctx>({
+      systemPrompt: "sys",
+      tools: [tool({ name: "echo", description: "", inputSchema: z.object({ text: z.string() }), handler: () => ({ big }) })],
+      messages: [{ role: "user", content: "?" }],
+      ctx: { userOpenId: null },
+    });
+
+    const infoLines = info.mock.calls.map((call) => String(call[0]));
+    expect(infoLines.some((line) => /\[assistant:generic\] round=1 requestBytes=\d+$/.test(line))).toBe(true);
+    const warnLines = warn.mock.calls.map((call) => String(call[0]));
+    expect(warnLines.some((line) => line.includes("round=2 requestBytes=") && line.includes(String(LLM_REQUEST_WARN_BYTES)))).toBe(true);
+    const round2 = Number(/round=2 requestBytes=(\d+)/.exec(warnLines.join("\n"))?.[1]);
+    expect(round2).toBeGreaterThan(120_000);
+  });
+
+  it("estimates bytes in UTF-8 including tools", () => {
+    const messages: Message[] = [{ role: "user", content: "яя" }];
+    const withoutTools = estimateRequestBytes(messages);
+    const withTools = estimateRequestBytes(messages, [{ type: "function", function: { name: "f", parameters: { type: "object" } } }]);
+    expect(withoutTools).toBe(Buffer.byteLength(JSON.stringify({ messages })));
+    expect(withTools).toBeGreaterThan(withoutTools);
   });
 });
 
