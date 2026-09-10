@@ -26,8 +26,11 @@ vi.mock("../routers/pricing", () => ({
 import { ENV } from "../_core/env";
 import {
   MASHA_GUEST_TOOLS,
+  SEARCH_KNOWLEDGE_CONTENT_MAX_CHARS,
+  SEARCH_KNOWLEDGE_LIMIT,
   animalUrl,
   calculateShare,
+  compactKnowledgeContent,
   getAnimal,
   getDeliveryInfo,
   getFarmInfo,
@@ -67,6 +70,7 @@ function animal(overrides: Record<string, unknown> = {}) {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  vi.spyOn(console, "info").mockImplementation(() => undefined);
   listPublicAnimalsMock.mockResolvedValue([
     animal(),
     animal({ id: 2, name: "Мира", slug: "mira", species: "goat", breed: "Англо-нубийская", availablePercent: 0, status: "fully_booked" }),
@@ -182,8 +186,41 @@ describe("knowledge tools", () => {
       { title: "Ценности", category: "values", content: "...", score: 0 },
     ]);
     const result = (await searchKnowledge.handler({ query: "чем знамениты лаконы" }, guest)) as { results: Array<{ title: string }> };
-    expect(searchAssistantKnowledgeMock).toHaveBeenCalledWith("masha", "чем знамениты лаконы", { category: undefined, limit: 5 });
+    expect(searchAssistantKnowledgeMock).toHaveBeenCalledWith("masha", "чем знамениты лаконы", { category: undefined, limit: SEARCH_KNOWLEDGE_LIMIT });
+    expect(SEARCH_KNOWLEDGE_LIMIT).toBe(3);
     expect(result.results.map((item) => item.title)).toEqual(["Лакон"]);
+  });
+
+  it("search_knowledge returns compact plain text: markdown stripped, content capped, size logged", async () => {
+    const longBreed = "### Лакон\n\n**Происхождение:** Франция, регион Рокфор.\n- Молочная порода\n- [сыр](https://example.invalid) Рокфор\n\n" + "Удой за лактацию 250–300 литров. ".repeat(120);
+    searchAssistantKnowledgeMock.mockResolvedValue([{ title: "Лакон", category: "breeds", content: longBreed, score: 9 }]);
+    const info = vi.spyOn(console, "info").mockImplementation(() => undefined);
+
+    const result = (await searchKnowledge.handler({ query: "лаконы" }, guest)) as { results: Array<{ content: string }> };
+    const content = result.results[0].content;
+
+    expect(content.length).toBeLessThanOrEqual(SEARCH_KNOWLEDGE_CONTENT_MAX_CHARS + 1);
+    expect(content.endsWith("…")).toBe(true);
+    expect(content).not.toContain("###");
+    expect(content).not.toContain("**");
+    expect(content).not.toContain("](");
+    expect(content).toContain("Происхождение: Франция");
+    expect(content).toContain("сыр Рокфор");
+    expect(Buffer.byteLength(JSON.stringify(result))).toBeLessThan(6_000);
+    expect(info).toHaveBeenCalledWith(expect.stringMatching(/^\[masha:search_knowledge\] results=1 bytes=\d+$/));
+  });
+});
+
+describe("compactKnowledgeContent", () => {
+  it("keeps short plain text as is and normalizes whitespace", () => {
+    expect(compactKnowledgeContent("Первая строка.\r\n\r\n\r\nВторая   строка.")).toBe("Первая строка.\nВторая строка.");
+  });
+
+  it("cuts at a sentence boundary and appends an ellipsis", () => {
+    const text = "Предложение номер один. ".repeat(200);
+    const compact = compactKnowledgeContent(text, 300);
+    expect(compact.length).toBeLessThanOrEqual(301);
+    expect(compact.endsWith(".…")).toBe(true);
   });
 });
 
