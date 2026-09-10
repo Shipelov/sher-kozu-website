@@ -303,9 +303,9 @@ Safe telemetry Зои идёт в PM2 stdout: transport, intent, mode, outcome, 
 
 ### 6.4. Маша
 
-`faqChat.chat` сначала пробует deterministic grounded ownership recommendation и live animal catalog answer. Затем строит topic-aware prompt из `MASHA_SYSTEM_PROMPT` и вызывает общий LLM. Questions/answers сохраняются в `faqQuestions`; uncertain responses — в `uncertainAnswers` и owner notification. Есть admin analytics, CSV export и A/B greetings. [11]
+`faqChat.chat` (tRPC, без стрима) и `POST /api/masha/chat/stream` (SSE, `server/mashaSSE.ts`) вызывают `runMashaChat` → `runAssistant` (`server/assistants/core.ts`): Claude получает короткий системный промпт (`server/assistants/mashaPrompt.ts`, персона и правила) и инструменты над живой БД (`server/assistants/mashaTools.ts`: `get_farm_info`, `list_animals`, `get_animal`, `get_pricing_tiers`, `calculate_share`, `search_knowledge`, `get_delivery_info`, `get_my_animals` для авторизованных). До 4 раундов инструментов, таймаут 5 с на инструмент, ошибки инструмента возвращаются модели как `{error}`. Questions/answers сохраняются в `faqQuestions` (с `outcome` и `toolTrace`); uncertain responses — в `uncertainAnswers` и owner notification. Есть admin analytics, CSV export и A/B greetings. [11]
 
-Другой источник знаний Маши — live catalog/ownership advisors в `server/mashaOwnershipAdvisor.ts`. Отдельной RAG DB для Маши нет. Inline prompt сохраняет энциклопедические разделы и должен пройти отдельный scientific/medical audit: в нём остаются слишком сильные A2/hypoallergenicity и disease-prevention формулировки.
+Факты (ферма, породы, продукты, доставка, клуб, платформа) живут в таблице `assistantKnowledge` (admin: `assistantKnowledge.*`, экран `/admin/assistant-knowledge`); стартовое наполнение — `server/assistants/masha-knowledge.md` + `pnpm db:seed-assistant-knowledge` (идемпотентно, ключ ассистент+категория+заголовок). Регулярных перехватчиков (`mashaOwnershipAdvisor`) больше нет. Раздел «нутрициология» базы знаний должен пройти отдельный scientific/medical audit: в нём остаются слишком сильные A2/hypoallergenicity и disease-prevention формулировки. Ручной eval против реального Worker — `scripts/assistants-eval.mjs`.
 
 ### 6.5. Telegram bot и Mini App
 

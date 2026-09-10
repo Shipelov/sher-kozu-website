@@ -76,7 +76,7 @@ client/src/pages, components, lib     — фронт (72k строк, есть �
 server/routers.ts + server/routers/*  — tRPC-роутеры
 server/db.ts                          — 6.5k строк запросов (планируется разбиение по доменам)
 server/_core/                         — express, trpc, llm, env, auth
-server/zoya*.ts, server/routers/faqChat.ts, server/mashaOwnershipAdvisor.ts — AI-слой
+server/zoya*.ts, server/routers/faqChat.ts, server/assistants/* — AI-слой (Маша: core + tools)
 drizzle/schema.ts                     — 63 таблицы
 cloudflare/tg-proxy                   — Worker (Telegram-прокси + LLM-прокси)
 docs/                                 — аналитика и планы (переносится из корня)

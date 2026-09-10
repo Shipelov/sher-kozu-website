@@ -47,6 +47,7 @@ const PricingTierDetail = lazy(() => import("./pages/PricingTierDetail"));
 const AdminPricing = lazy(() => import("./pages/AdminPricing"));
 const AdminClubComments = lazy(() => import("./pages/AdminClubComments"));
 const AdminNutriKnowledge = lazy(() => import("./pages/AdminNutriKnowledge"));
+const AdminAssistantKnowledge = lazy(() => import("./pages/AdminAssistantKnowledge"));
 const AdminClubRegistrations = lazy(() => import("./pages/AdminClubRegistrations"));
 const AdminPerformance = lazy(() => import("./pages/AdminPerformance"));
 const AdminFarmWorkers = lazy(() => import("./pages/AdminFarmWorkers"));
@@ -153,6 +154,7 @@ function Router() {
         <Route path="/pricing/:slug" component={PricingTierDetail} />
         <Route path="/admin/pricing" component={AdminPricing} />
         <Route path="/admin/nutri-knowledge" component={AdminNutriKnowledge} />
+        <Route path="/admin/assistant-knowledge" component={AdminAssistantKnowledge} />
         <Route path="/admin/nutri-analytics" component={AdminNutriAnalytics} />
         <Route path="/admin/performance" component={AdminPerformance} />
         <Route path="/admin/farm-workers" component={AdminFarmWorkers} />

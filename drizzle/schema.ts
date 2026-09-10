@@ -1,4 +1,4 @@
-import { boolean, date, double, index, int, json, mysqlEnum, mysqlTable, text, timestamp, varchar } from "drizzle-orm/mysql-core";
+import { boolean, date, double, index, int, json, mysqlEnum, mysqlTable, text, timestamp, uniqueIndex, varchar } from "drizzle-orm/mysql-core";
 
 /**
  * Core user table backing auth flow.
@@ -1123,6 +1123,10 @@ export const faqQuestions = mysqlTable("faqQuestions", {
   source: varchar("source", { length: 32 }).default("faq").notNull(),
   /** Authenticated user openId (nullable — anonymous users can also ask) */
   userOpenId: varchar("userOpenId", { length: 64 }),
+  /** Итог ответа ассистента: ok | uncertain | error | rounds_exhausted */
+  outcome: varchar("outcome", { length: 32 }),
+  /** Вызванные инструменты: [{ name, ok, latencyMs }] без содержимого */
+  toolTrace: json("toolTrace").$type<Array<{ name: string; ok: boolean; latencyMs: number; error?: string }>>(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 }, (t) => ([
   index("idx_faqQuestions_sessionId").on(t.sessionId),
@@ -1204,6 +1208,8 @@ export const uncertainAnswers = mysqlTable("uncertainAnswers", {
   resolved: boolean("resolved").default(false).notNull(),
   /** Admin note about how the issue was resolved */
   adminNote: text("adminNote"),
+  /** Вызванные инструменты при неуверенном ответе (без содержимого) */
+  toolTrace: json("toolTrace").$type<Array<{ name: string; ok: boolean; latencyMs: number; error?: string }>>(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   resolvedAt: timestamp("resolvedAt"),
 }, (t) => ([
@@ -2871,3 +2877,28 @@ export const catalogImportHistory = mysqlTable("catalogImportHistory", {
 
 export type CatalogImportHistory = typeof catalogImportHistory.$inferSelect;
 export type InsertCatalogImportHistory = typeof catalogImportHistory.$inferInsert;
+
+/* ─── База знаний AI-ассистентов (Маша, Зоя) ─── */
+
+/**
+ * Факты для ассистентов, редактируемые в админке; заменяют константу MASHA_SYSTEM_PROMPT.
+ * Категории свободные (farm, breeds, nutrition, products, delivery, club, platform, faq …).
+ */
+export const assistantKnowledge = mysqlTable("assistantKnowledge", {
+  id: int("id").autoincrement().primaryKey(),
+  assistant: mysqlEnum("assistant", ["masha", "zoya", "shared"]).default("masha").notNull(),
+  category: varchar("category", { length: 64 }).notNull(),
+  title: varchar("title", { length: 255 }).notNull(),
+  content: text("content").notNull(),
+  tags: json("tags").$type<string[]>(),
+  isActive: boolean("isActive").default(true).notNull(),
+  sortOrder: int("sortOrder").default(0).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (t) => ([
+  index("idx_assistantKnowledge_assistant_category_active").on(t.assistant, t.category, t.isActive),
+  // Ключ идемпотентного сида: одна запись на (ассистент, категория, заголовок)
+  uniqueIndex("uq_assistantKnowledge_key").on(t.assistant, t.category, t.title),
+]));
+export type AssistantKnowledge = typeof assistantKnowledge.$inferSelect;
+export type InsertAssistantKnowledge = typeof assistantKnowledge.$inferInsert;

@@ -2,7 +2,7 @@ import { z } from "zod";
 import { notifyOwner } from "./notification";
 import { adminProcedure, publicProcedure, router } from "./trpc";
 import { diagnoseLLMConnection, diagnoseLLMPayload } from "./llm";
-import { buildMashaSystemPrompt } from "../routers/faqChat";
+import { buildMashaSystemPrompt } from "../assistants/mashaPrompt";
 
 export const systemRouter = router({
   health: publicProcedure
@@ -36,7 +36,7 @@ export const systemRouter = router({
       [
         {
           role: "system",
-          content: buildMashaSystemPrompt("Расскажи, как работает ферма"),
+          content: buildMashaSystemPrompt({ isAuthenticated: false }),
         },
         {
           role: "user",

@@ -455,6 +455,10 @@ async function startServer() {
   const { registerZoyaSSE } = await import("../zoyaSSE");
   registerZoyaSSE(app);
 
+  // Маша — SSE-стрим с инструментами
+  const { registerMashaSSE } = await import("../mashaSSE");
+  registerMashaSSE(app);
+
   // Zoya Knowledge Base file upload & URL import endpoints
   const { registerNutriFileUpload } = await import("../nutriFileUpload");
   registerNutriFileUpload(app);

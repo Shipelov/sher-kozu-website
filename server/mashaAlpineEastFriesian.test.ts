@@ -2,9 +2,9 @@ import { describe, it, expect } from "vitest";
 import { readFileSync } from "fs";
 import { resolve } from "path";
 
-// Read the faqChat.ts file to extract the system prompt
+// База знаний Маши живёт в markdown (сид в assistantKnowledge), а не в промпте
 const faqChatSource = readFileSync(
-  resolve(__dirname, "routers/faqChat.ts"),
+  resolve(__dirname, "assistants/masha-knowledge.md"),
   "utf-8"
 );
 

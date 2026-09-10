@@ -13,7 +13,8 @@
     "db:push": "drizzle-kit generate && drizzle-kit migrate",
     "db:check-fresh": "node scripts/check-migrations-fresh.mjs",
     "db:seed-test": "node scripts/seed-test-db.mjs",
-    "db:cleanup-test": "node scripts/cleanup-test-db.mjs"
+    "db:cleanup-test": "node scripts/cleanup-test-db.mjs",
+    "db:seed-assistant-knowledge": "node scripts/seed-assistant-knowledge.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.693.0",

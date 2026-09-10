@@ -8,16 +8,18 @@
  * Mobile: stacked — FAQ first, then chat
  */
 
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { motion } from "framer-motion";
 import { Link } from "wouter";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
-import { trpc } from "@/lib/trpc";
+
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
-import { Streamdown } from "streamdown";
+import LazyStreamdown from "@/components/LazyStreamdown";
+import { MASHA_TOOL_LABELS, useMashaChat } from "@/hooks/useMashaChat";
+import { currentOrigin, renderAssistantLinks } from "@/lib/assistantMarkdown";
 import {
   ChevronDown,
   Leaf,
@@ -205,19 +207,11 @@ function MashaChat() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  const chatMutation = trpc.faqChat.chat.useMutation({
-    onSuccess: (data) => {
-      setMessages((prev) => [...prev, { role: "assistant", content: data.reply }]);
-    },
-    onError: () => {
-      setMessages((prev) => [
-        ...prev,
-        {
-          role: "assistant",
-          content: "Простите, произошла ошибка. Попробуйте ещё раз через минутку! 🌿",
-        },
-      ]);
-    },
+  // Идентификатор сессии для аналитики faqQuestions (раньше FAQ-чат не отслеживался)
+  const sessionId = useMemo(() => `faq-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`, []);
+  // SSE-стрим с fallback на tRPC-мутацию faqChat.chat
+  const mashaChat = useMashaChat({
+    onReply: (reply) => setMessages((prev) => [...prev, { role: "assistant", content: reply }]),
   });
 
   const scrollToBottom = useCallback(() => {
@@ -236,16 +230,16 @@ function MashaChat() {
   const handleSend = useCallback(
     (text?: string) => {
       const content = (text || input).trim();
-      if (!content || chatMutation.isPending) return;
+      if (!content || mashaChat.isPending) return;
 
       const updated: ChatMessage[] = [...messages, { role: "user", content }];
       const trimmed = trimFaqMessages(updated, FAQ_MAX_MESSAGES);
       setMessages(trimmed);
       setInput("");
-      chatMutation.mutate({ messages: trimmed });
+      void mashaChat.send({ messages: trimmed, sessionId, source: "faq" });
       textareaRef.current?.focus();
     },
-    [input, messages, chatMutation]
+    [input, messages, mashaChat, sessionId]
   );
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -300,7 +294,7 @@ function MashaChat() {
                 <button
                   key={prompt}
                   onClick={() => handleSend(prompt)}
-                  disabled={chatMutation.isPending}
+                  disabled={mashaChat.isPending}
                   className="rounded-full border border-border bg-background px-3.5 py-1.5 text-xs text-foreground transition-all hover:border-primary/40 hover:bg-primary/5 disabled:opacity-50 cursor-pointer"
                 >
                   {prompt}
@@ -330,7 +324,7 @@ function MashaChat() {
                   >
                     {msg.role === "assistant" ? (
                       <div className="prose prose-sm dark:prose-invert max-w-none [&_p]:my-1">
-                        <Streamdown>{msg.content}</Streamdown>
+                        <LazyStreamdown>{renderAssistantLinks(msg.content, currentOrigin())}</LazyStreamdown>
                       </div>
                     ) : (
                       <p className="whitespace-pre-wrap">{msg.content}</p>
@@ -339,7 +333,7 @@ function MashaChat() {
                 </div>
               ))}
 
-              {chatMutation.isPending && (
+              {mashaChat.isPending && (
                 <div className="flex gap-2.5">
                   <img
                     src="https://d2xsxph8kpxj0f.cloudfront.net/310519663373020185/mLhmg5VmBsEBpZiYqdnhMQ/masha_avatar_128_ad92cbd8.webp"
@@ -347,11 +341,22 @@ function MashaChat() {
                     className="h-7 w-7 shrink-0 rounded-full object-cover mt-1"
                   />
                   <div className="rounded-2xl rounded-bl-md bg-muted px-4 py-3">
-                    <div className="flex gap-1">
-                      <span className="h-2 w-2 rounded-full bg-muted-foreground/40 animate-bounce [animation-delay:0ms]" />
-                      <span className="h-2 w-2 rounded-full bg-muted-foreground/40 animate-bounce [animation-delay:150ms]" />
-                      <span className="h-2 w-2 rounded-full bg-muted-foreground/40 animate-bounce [animation-delay:300ms]" />
-                    </div>
+                    {mashaChat.streamingContent ? (
+                      <div className="prose prose-sm dark:prose-invert max-w-none [&_p]:my-1">
+                        <LazyStreamdown>{renderAssistantLinks(mashaChat.streamingContent, currentOrigin())}</LazyStreamdown>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2">
+                        <div className="flex gap-1">
+                          <span className="h-2 w-2 rounded-full bg-muted-foreground/40 animate-bounce [animation-delay:0ms]" />
+                          <span className="h-2 w-2 rounded-full bg-muted-foreground/40 animate-bounce [animation-delay:150ms]" />
+                          <span className="h-2 w-2 rounded-full bg-muted-foreground/40 animate-bounce [animation-delay:300ms]" />
+                        </div>
+                        {mashaChat.activeTool && (
+                          <span className="text-xs text-muted-foreground">{MASHA_TOOL_LABELS[mashaChat.activeTool] ?? "Уточняю…"}</span>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
@@ -397,10 +402,10 @@ function MashaChat() {
         <Button
           type="submit"
           size="icon"
-          disabled={!input.trim() || chatMutation.isPending}
+          disabled={!input.trim() || mashaChat.isPending}
           className="shrink-0 h-9 w-9 rounded-xl"
         >
-          {chatMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+          {mashaChat.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
         </Button>
       </form>
     </div>
